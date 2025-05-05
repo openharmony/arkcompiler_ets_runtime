@@ -642,7 +642,7 @@ void Builtins::StrictModeForbiddenAccessCallerArguments(const JSHandle<GlobalEnv
                                                         const JSHandle<JSObject> &prototype) const
 {
     auto function = JSHandle<JSTaggedValue>::Cast(
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError)));
+        factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(JSFunction::AccessCallerArgumentsThrowTypeError)));
     // "caller"
     SetInlineAccessor(prototype, index++, function, function);
     // "arguments"
@@ -680,7 +680,7 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     JSHandle<JSHClass> funcPrototypeHClass = CreateFunctionPrototypeHClass(env, objFuncPrototypeVal);
     // Function.prototype
     JSHandle<JSFunction> funcFuncPrototype = factory_->NewJSFunctionByHClassWithoutAccessor(
-        reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf), funcPrototypeHClass);
+        env, reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf), funcPrototypeHClass);
 
     JSHandle<JSTaggedValue> funcFuncPrototypeValue(funcFuncPrototype);
     // Function.prototype_or_hclass
@@ -691,7 +691,7 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     JSHandle<JSHClass> funcHClass = CreateFunctionHClass(funcFuncPrototype);
     // Function = new Function() (forbidden use NewBuiltinConstructor)
     JSHandle<JSFunction> funcFunc =
-        factory_->NewJSFunctionByHClassWithoutAccessor(reinterpret_cast<void *>(Function::FunctionConstructor),
+        factory_->NewJSFunctionByHClassWithoutAccessor(env, reinterpret_cast<void *>(Function::FunctionConstructor),
         funcHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
 
     // set properties for Function
@@ -791,7 +791,8 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
     JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCIIReadOnly("description"));
-    JSHandle<JSTaggedValue> getter(factory_->NewJSFunction(env, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
+    JSHandle<JSTaggedValue> getter(
+        factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
     SetGetter(symbolFuncPrototype, getterKey, getter);
 
     // Setup symbol.prototype[@@toPrimitive]
@@ -854,7 +855,8 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
     JSHandle<JSTaggedValue> getterKey(factory_->NewFromASCIIReadOnly("description"));
-    JSHandle<JSTaggedValue> getter(factory_->NewJSFunction(realm, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
+    JSHandle<JSTaggedValue> getter(
+        factory_->NewJSBuiltinFunction(realm, reinterpret_cast<void *>(Symbol::DescriptionGetter)));
     SetGetter(symbolFuncPrototype, getterKey, getter);
 
     // Setup symbol.prototype[@@toPrimitive]
@@ -1065,9 +1067,9 @@ void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
 JSHandle<JSFunction> Builtins::InitializeExoticConstructor(const JSHandle<GlobalEnv> &env, EcmaEntrypoint ctorFunc,
                                                            std::string_view name, int length)
 {
-    JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR,
-                                BUILTINS_STUB_ID(ProxyConstructor));
+    JSHandle<JSFunction> ctor = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc),
+                                                               FunctionKind::BUILTIN_PROXY_CONSTRUCTOR,
+                                                               BUILTINS_STUB_ID(ProxyConstructor));
 
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
@@ -1322,7 +1324,7 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     } else if (errorTag == JSType::JS_TYPE_ERROR) {
         env->SetTypeErrorFunction(thread_, nativeErrorFunction);
         JSHandle<JSFunction> throwTypeErrorFunction =
-            factory_->NewJSFunction(env, reinterpret_cast<void *>(TypeError::ThrowTypeError));
+            factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(TypeError::ThrowTypeError));
         JSFunction::SetFunctionLength(thread_, throwTypeErrorFunction, JSTaggedValue(1), false);
         JSObject::PreventExtensions(thread_, JSHandle<JSObject>::Cast(throwTypeErrorFunction));
         env->SetThrowTypeError(thread_, throwTypeErrorFunction);
@@ -1819,7 +1821,7 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
         JSStringIterator::SIZE, JSType::JS_STRING_ITERATOR, JSHandle<JSTaggedValue>(strIterPrototype));
 
     JSHandle<JSFunction> strIterFunction(
-        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+        factory_->NewJSBuiltinFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, strIterFunction,
                                                      strIterFuncInstanceHClass.GetTaggedValue());
 
@@ -1845,7 +1847,7 @@ void Builtins::InitializeAsyncFromSyncIterator(const JSHandle<GlobalEnv> &env,
                                                         JSType::JS_ASYNC_FROM_SYNC_ITERATOR,
                                                         JSHandle<JSTaggedValue>(asyncItPrototype));
     JSHandle<JSFunction> iterFunction(
-        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+        factory_->NewJSBuiltinFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, iterFunction, hclass.GetTaggedValue());
     env->SetAsyncFromSyncIterator(thread_, iterFunction);
     env->SetAsyncFromSyncIteratorPrototype(thread_, asyncItPrototype);
@@ -2071,63 +2073,52 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     SetFunction(env, regPrototype, "test", RegExp::Test, FunctionLength::ONE);
     SetFunction(env, regPrototype, globalConstants->GetHandledToStringString(), RegExp::ToString,
                 FunctionLength::ZERO);
-    JSHandle<JSFunction>(execFunc)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> flagsGetter = CreateGetter(env, RegExp::GetFlags, "flags", FunctionLength::ZERO,
         BUILTINS_STUB_ID(RegExpGetFlags));
     JSHandle<JSTaggedValue> flagsKey(globalConstants->GetHandledFlagsString());
     SetGetter(regPrototype, flagsKey, flagsGetter);
-    JSHandle<JSFunction>(flagsGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> sourceGetter = CreateGetter(env, RegExp::GetSource, "source", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> sourceKey(globalConstants->GetHandledSourceString());
     SetGetter(regPrototype, sourceKey, sourceGetter);
-    JSHandle<JSFunction>(sourceGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> globalGetter = CreateGetter(env, RegExp::GetGlobal, "global", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
     SetGetter(regPrototype, globalKey, globalGetter);
-    JSHandle<JSFunction>(globalGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> hasIndicesGetter =
         CreateGetter(env, RegExp::GetHasIndices, "hasIndices", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCIIReadOnly("hasIndices"));
     SetGetter(regPrototype, hasIndicesKey, hasIndicesGetter);
-    JSHandle<JSFunction>(hasIndicesGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> ignoreCaseGetter =
         CreateGetter(env, RegExp::GetIgnoreCase, "ignoreCase", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCIIReadOnly("ignoreCase"));
     SetGetter(regPrototype, ignoreCaseKey, ignoreCaseGetter);
-    JSHandle<JSFunction>(ignoreCaseGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> multilineGetter =
         CreateGetter(env, RegExp::GetMultiline, "multiline", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> multilineKey(factory_->NewFromASCIIReadOnly("multiline"));
     SetGetter(regPrototype, multilineKey, multilineGetter);
-    JSHandle<JSFunction>(multilineGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> dotAllGetter = CreateGetter(env, RegExp::GetDotAll, "dotAll", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> dotAllKey(factory_->NewFromASCIIReadOnly("dotAll"));
     SetGetter(regPrototype, dotAllKey, dotAllGetter);
-    JSHandle<JSFunction>(dotAllGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> stickyGetter = CreateGetter(env, RegExp::GetSticky, "sticky", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> stickyKey(globalConstants->GetHandledStickyString());
     SetGetter(regPrototype, stickyKey, stickyGetter);
-    JSHandle<JSFunction>(stickyGetter)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> unicodeGetter = CreateGetter(env, RegExp::GetUnicode, "unicode", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> unicodeKey(globalConstants->GetHandledUnicodeString());
     SetGetter(regPrototype, unicodeKey, unicodeGetter);
-    JSHandle<JSFunction>(unicodeGetter)->SetLexicalEnv(thread_, env);
 
     // Set RegExp [ @@species ]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(regexpFunction), speciesSymbol, speciesGetter);
-    JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, env);
 
     // Set RegExp.prototype[@@split]
     JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
@@ -2203,11 +2194,6 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE,
                               BUILTINS_STUB_ID(ArrayConstructor), arrayFunctionHClass));
     JSHandle<JSFunction> arrayFuncFunction(arrayFunction);
-
-    // Set the [[Realm]] internal slot of F to the running execution context's Realm
-    JSHandle<LexicalEnv> lexicalEnv = factory_->NewLexicalEnv(0);
-    lexicalEnv->SetParentEnv(thread_, env.GetTaggedValue());
-    arrayFuncFunction->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, arrayFuncFunction,
                                                      arrFuncInstanceHClass.GetTaggedValue());
@@ -2694,17 +2680,17 @@ void Builtins::InitializePromiseJob(const JSHandle<GlobalEnv> &env)
 void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // ArrayBuffer.prototype
+    // DataView.prototype
     JSHandle<JSHClass> dataViewFuncPrototypeHClass = factory_->NewEcmaHClass(
         JSObject::SIZE, DataView::GetNumPrototypeInlinedProperties(), JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> dataViewFuncPrototype = factory_->NewJSObjectWithInit(dataViewFuncPrototypeHClass);
     JSHandle<JSTaggedValue> dataViewFuncPrototypeValue(dataViewFuncPrototype);
 
-    //  ArrayBuffer.prototype_or_hclass
+    //  DataView.prototype_or_hclass
     JSHandle<JSHClass> dataViewFuncInstanceHClass =
         factory_->NewEcmaHClass(JSDataView::SIZE, JSType::JS_DATA_VIEW, dataViewFuncPrototypeValue);
 
-    // ArrayBuffer = new Function()
+    // DataView = new Function()
     JSHandle<JSObject> dataViewFunction(NewBuiltinConstructor(env, dataViewFuncPrototype, DataView::DataViewConstructor,
                                                               "DataView", FunctionLength::ONE));
 
@@ -2763,9 +2749,9 @@ JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &
                                                                    FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
     JSHandle<JSFunction> ctor;
     if (!hclass.IsEmpty()) {
-        ctor = factory_->NewJSFunctionByHClass(target, hclass);
+        ctor = factory_->NewJSBuiltinFunctionByHClass(env, target, hclass);
     } else {
-        ctor = factory_->NewJSFunction(env, target);
+        ctor = factory_->NewJSBuiltinFunction(env, target);
     }
     InitializeCtor(env, prototype, ctor, name, length);
     return ctor;
@@ -2776,7 +2762,7 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                                  std::string_view name, int length) const
 {
     JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
+        factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
 
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
@@ -2803,7 +2789,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
                                            kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     MemSpaceType methodSpaceType = MemSpaceType::SHARED_NON_MOVABLE;
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId, methodSpaceType);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
@@ -2861,7 +2847,7 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
                                    const JSHandle<JSTaggedValue> &symbol, std::string_view name,
                                    EcmaEntrypoint func, int length) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
     JSHandle<JSFunctionBase> baseFunction(function);
@@ -2893,7 +2879,7 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
                                                                int length,
                                                                kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
@@ -2940,7 +2926,7 @@ JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, E
                                                JSHandle<JSTaggedValue> key, int length,
                                                kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::GETTER_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledGetString();
@@ -2959,7 +2945,7 @@ JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, E
 JSHandle<JSTaggedValue> Builtins::CreateSetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                                JSHandle<JSTaggedValue> key, int length) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledSetString();
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
@@ -3017,7 +3003,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
                                      const JSHandle<JSObject> &obj, std::string_view key,
                                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+    JSHandle<JSFunction> function = factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
@@ -3225,7 +3211,7 @@ JSHandle<JSFunction> Builtins::NewIntlConstructor(const JSHandle<GlobalEnv> &env
                                                   EcmaEntrypoint ctorFunc, std::string_view name, int length)
 {
     JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
+        factory_->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
     InitializeIntlCtor(env, prototype, ctor, name, length);
     return ctor;
 }
@@ -3669,7 +3655,7 @@ void Builtins::InitializeSegments(const JSHandle<GlobalEnv> &env)
         factory_->NewEcmaHClass(JSSegments::SIZE, JSType::JS_SEGMENTS, segmentsPrototypeValue);
 
     JSHandle<JSFunction> segmentsFunction(
-        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+        factory_->NewJSBuiltinFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(segmentsFunction),
                                                      segmentsFuncInstanceHClass.GetTaggedValue());
@@ -3693,7 +3679,7 @@ void Builtins::InitializeSegmentIterator(const JSHandle<GlobalEnv> &env,
         JSSegmentIterator::SIZE, JSType::JS_SEGMENT_ITERATOR, JSHandle<JSTaggedValue>(segIterPrototype));
 
     JSHandle<JSFunction> segIterFunction(
-        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+        factory_->NewJSBuiltinFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(segIterFunction),
                                                      segIterFuncInstanceHClass.GetTaggedValue());

@@ -27,9 +27,8 @@
 #include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript {
-void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
+void JSFunction::InitializeJSFunctionCommon(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
-    InitializeWithDefaultValue(thread, func);
     auto globalConst = thread->GlobalConstants();
     if (HasPrototype(kind)) {
         JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -72,6 +71,19 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     }
 }
 
+void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
+{
+    InitializeWithDefaultValue(thread, func);
+    InitializeJSFunctionCommon(thread, func, kind);
+}
+
+void JSFunction::InitializeJSBuiltinFunction(JSThread *thread, const JSHandle<GlobalEnv> &env,
+                                             const JSHandle<JSFunction> &func, FunctionKind kind)
+{
+    InitializeBuiltinWithDefaultValue(thread, env, func);
+    InitializeJSFunctionCommon(thread, func, kind);
+}
+
 void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
 {
     InitializeWithDefaultValue(thread, func);
@@ -88,12 +100,11 @@ void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction
     }
 }
 
-void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func)
+void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHandle<JSFunction> &func)
 {
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
-    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
@@ -103,6 +114,19 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value
     func->SetCallNapi(false);
+}
+
+void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func)
+{
+    InitializeWithDefaultValueCommon(thread, func);
+    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+}
+
+void JSFunction::InitializeBuiltinWithDefaultValue(JSThread *thread, const JSHandle<GlobalEnv> &env,
+                                                   const JSHandle<JSFunction> &func)
+{
+    InitializeWithDefaultValueCommon(thread, func);
+    func->SetLexicalEnv(thread, env.GetTaggedValue(), SKIP_BARRIER);
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)

@@ -1704,12 +1704,12 @@ void JSFunction::Dump(std::ostream &os) const
     GetProtoOrHClass().Dump(os);
     os << "\n";
     os << " - LexicalEnv: ";
-    if (GetClass()->IsJSSharedFunction()) {
-        os << GetLexicalEnv().GetRawData()<< "\n";
-    } else {
+    if (GetLexicalEnv().IsLexicalEnv()) {
         GetLexicalEnv().Dump(os);
-        os << "\n";
+    } else {
+        GetLexicalEnv().DumpTaggedValue(os); // reduce circular calls
     }
+    os << "\n";
     os << " - RawProfileTypeInfo: ";
     GetRawProfileTypeInfo().Dump(os);
     os << "\n";

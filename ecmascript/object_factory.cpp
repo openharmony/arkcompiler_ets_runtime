@@ -1872,6 +1872,26 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
     return NewJSFunctionByHClass(method, hclass);
 }
 
+JSHandle<JSFunction> ObjectFactory::NewJSBuiltinFunction(const JSHandle<GlobalEnv> env, const void *nativeFunc,
+                                                         FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                         MemSpaceType methodSpaceType)
+{
+    JSHandle<JSHClass> hclass = GetHClassByFunctionKind(env, kind);
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
+        JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, methodSpaceType);
+        return NewJSBuiltinFunctionByHClass(env, method, hclass);
+    }
+    return NewNativeBuiltinFunctionByHClass(env, hclass, nativeFunc, kind);
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSBuiltinFunction(const JSHandle<GlobalEnv> &env,
+                                                         const JSHandle<Method> &method)
+{
+    FunctionKind kind = method->GetFunctionKind();
+    JSHandle<JSHClass> hclass = GetHClassByFunctionKind(env, kind);
+    return NewJSBuiltinFunctionByHClass(env, method, hclass);
+}
+
 JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
                                                  const void *nativeFunc,
                                                  FunctionKind kind,
@@ -2005,9 +2025,7 @@ void ObjectFactory::SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> 
     func->SetCodeEntry(entry);
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
-                                                          const JSHandle<JSHClass> &clazz,
-                                                          MemSpaceType type)
+JSHandle<JSFunction> ObjectFactory::CreateJSFunctionByType(const JSHandle<JSHClass> &clazz, MemSpaceType type)
 {
     JSHandle<JSFunction> function;
     switch (type) {
@@ -2026,7 +2044,11 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     }
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
-    JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
+    return function;
+}
+
+void ObjectFactory::SetupJSFunctionByHClass(const JSHandle<JSFunction> &function, const JSHandle<Method> &method)
+{
     function->SetMethod(thread_, method);
     function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     if (method->IsNativeWithCallField()) {
@@ -2037,6 +2059,25 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     } else {
         SetCodeEntryToFunctionFromMethod(function, method);
     }
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
+                                                          const JSHandle<JSHClass> &clazz,
+                                                          MemSpaceType type)
+{
+    JSHandle<JSFunction> function = CreateJSFunctionByType(clazz, type);
+    JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
+    SetupJSFunctionByHClass(function, method);
+    return function;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                                 const JSHandle<Method> &method,
+                                                                 const JSHandle<JSHClass> &clazz, MemSpaceType type)
+{
+    JSHandle<JSFunction> function = CreateJSFunctionByType(clazz, type);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function, method->GetFunctionKind());
+    SetupJSFunctionByHClass(function, method);
     return function;
 }
 
@@ -2103,24 +2144,22 @@ JSHandle<JSFunction> ObjectFactory::NewNativeFunctionByHClass(const JSHandle<JSH
                                                               FunctionKind kind,
                                                               MemSpaceType type)
 {
-    JSHandle<JSFunction> function;
-    switch (type) {
-        case MemSpaceType::SEMI_SPACE:
-            function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
-            break;
-        case MemSpaceType::OLD_SPACE:
-            function = JSHandle<JSFunction>::Cast(NewOldSpaceJSObject(clazz));
-            break;
-        case MemSpaceType::NON_MOVABLE:
-            function = JSHandle<JSFunction>::Cast(NewNonMovableJSObject(clazz));
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-    clazz->SetCallable(true);
-    clazz->SetExtensible(true);
+    JSHandle<JSFunction> function = CreateJSFunctionByType(clazz, type);
     JSFunction::InitializeJSFunction(thread_, function, kind);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(nativeFunc));
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    return function;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewNativeBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                                     const JSHandle<JSHClass> &clazz,
+                                                                     const void *nativeFunc,
+                                                                     FunctionKind kind,
+                                                                     MemSpaceType type)
+{
+    JSHandle<JSFunction> function = CreateJSFunctionByType(clazz, type);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function, kind);
     function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
     function->SetNativePointer(const_cast<void *>(nativeFunc));
     function->SetTaskConcurrentFuncFlag(0); // 0 : default value
@@ -2140,13 +2179,13 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
 }
 
 // new function with name/length accessor
-JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClassWithoutAccessor(const void *func,
-    const JSHandle<JSHClass> &clazz, FunctionKind kind)
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClassWithoutAccessor(const JSHandle<GlobalEnv> &env,
+    const void *func, const JSHandle<JSHClass> &clazz, FunctionKind kind)
 {
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
-    JSFunction::InitializeWithDefaultValue(thread_, function);
+    JSFunction::InitializeBuiltinWithDefaultValue(thread_, env, function);
     function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
     function->SetNativePointer(const_cast<void *>(func));
     return function;
@@ -2211,7 +2250,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
 JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc)
 {
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
-    return NewNativeFunctionByHClass(hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
+    return NewNativeBuiltinFunctionByHClass(env, hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
@@ -2221,9 +2260,9 @@ JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
     if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
-        return NewJSFunctionByHClass(method, hclass);
+        return NewJSBuiltinFunctionByHClass(env, method, hclass);
     }
-    return NewNativeFunctionByHClass(hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
+    return NewNativeBuiltinFunctionByHClass(env, hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t codeEntry)
