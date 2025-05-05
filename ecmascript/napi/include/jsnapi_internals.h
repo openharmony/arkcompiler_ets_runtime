@@ -16,10 +16,24 @@
 #ifndef ECMASCRIPT_NAPI_INTERNALS_INCLUDE_JSNAPI_H
 #define ECMASCRIPT_NAPI_INTERNALS_INCLUDE_JSNAPI_H
 
+#include <cstdint>
+
 #include "ecmascript/js_tagged_value_internals.h"
+
 namespace panda {
+enum class PatchErrorCode : uint8_t {
+    SUCCESS = 0,
+    PATCH_HAS_LOADED,
+    PATCH_NOT_LOADED,
+    FILE_NOT_EXECUTED,
+    FILE_NOT_FOUND,
+    PACKAGE_NOT_ESMODULE,
+    MODIFY_IMPORT_EXPORT_NOT_SUPPORT,
+    INTERNAL_ERROR
+};
 
 using JSValueRefInternals = ecmascript::JSTaggedValueInternals;
+using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 
 } // namespace panda
 
