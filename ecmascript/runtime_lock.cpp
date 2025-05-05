@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
@@ -24,7 +25,11 @@ RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)
         return;
     }
 #ifndef NDEBUG
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);  // Trigger CMC FULL GC
+#else
     SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread_);
+#endif
 #endif
     ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread_);
     mtx.Lock();

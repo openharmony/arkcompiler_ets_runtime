@@ -76,7 +76,7 @@ namespace panda::ecmascript::kungfu {
     V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
     V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 2)                                         \
     V(LoadWithoutBarrier, LOAD_WITHOUT_BARRIER, GateFlags::NO_WRITE, 0, 1, 1)           \
-    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 4)                                      \
+    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 5)                                      \
     V(StoreWithoutBarrier, STORE_WITHOUT_BARRIER, GateFlags::NONE_FLAG, 0, 1, 2)        \
     V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)
 

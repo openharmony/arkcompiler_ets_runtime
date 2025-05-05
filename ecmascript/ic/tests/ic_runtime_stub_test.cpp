@@ -488,7 +488,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     ICRuntimeStub::StoreWithTransition(thread, *handleObj, JSTaggedValue(2), handleTranHandler.GetTaggedValue());
     auto resultArray = TaggedArray::Cast(handleObj->GetProperties().GetTaggedObject());
     EXPECT_EQ(resultArray->Get(bitOffset).GetInt(), 2);
-    handleObj->SynchronizedSetClass(thread, *originHClass);
+    handleObj->SynchronizedTransitionClass(thread, *originHClass);
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, Field_StoreAndLoad)

@@ -36,7 +36,7 @@ constexpr uint32_t ERROR_TYPE_LEN = 2;
 void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -68,7 +68,7 @@ void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t
 void IsProxyFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -93,7 +93,7 @@ void IsProxyFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSCollatorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -120,7 +120,7 @@ void IsJSCollatorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSPluralRulesFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -148,7 +148,7 @@ void IsJSPluralRulesFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsStrictEqualsFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -163,7 +163,7 @@ void IsStrictEqualsFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSListFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -177,7 +177,7 @@ void IsJSListFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSPrimitiveRefFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -200,7 +200,7 @@ void IsJSPrimitiveRefFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsDequeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -239,7 +239,7 @@ Local<JSValueRef> CreateJSValueRef(EcmaVM *vm, panda::ecmascript::JSType type)
 void IsJSIntlFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -256,7 +256,7 @@ void IsJSIntlFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSDateTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -273,7 +273,7 @@ void IsJSDateTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size
 void IsJSNumberFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -290,7 +290,7 @@ void IsJSNumberFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 void IsJSRelativeTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

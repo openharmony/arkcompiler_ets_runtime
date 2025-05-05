@@ -434,6 +434,7 @@ public:
     // for sharedHeap
     void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
         const JSHandle<JSTaggedValue> &layout);
+    static size_t GetCloneSize(JSHClass* jshclass);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool specificInlinedProps = false, uint32_t specificNumInlinedProps = 0);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -1066,6 +1067,13 @@ public:
     {
         return GetObjectType() == JSType::JS_SHARED_FUNCTION;
     }
+
+#ifdef USE_CMC_GC
+    bool IsInSharedHeap() const
+    {
+        return IsJSShared();
+    }
+#endif
 
     bool IsJSShared() const
     {

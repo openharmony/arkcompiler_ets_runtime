@@ -15,7 +15,7 @@
 
 #include "ecmascript/platform/dfx_hisys_event.h"
 #include "ecmascript/mem/long_gc_stats.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {

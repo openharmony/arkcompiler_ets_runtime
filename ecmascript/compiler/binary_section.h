@@ -19,6 +19,7 @@
 #include <string>
 #include <map>
 #include "ecmascript/common.h"
+#include "libpandabase/macros.h"
 #include "llvm/BinaryFormat/ELF.h"
 
 namespace panda::ecmascript {

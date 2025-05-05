@@ -25,13 +25,13 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/on_heap.h"
 #include "libpandabase/utils/bit_field.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::pgo {
 class ProfileTypeRef;

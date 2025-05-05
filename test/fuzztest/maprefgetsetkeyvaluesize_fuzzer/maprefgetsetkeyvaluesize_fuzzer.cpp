@@ -28,7 +28,7 @@ namespace OHOS {
 void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

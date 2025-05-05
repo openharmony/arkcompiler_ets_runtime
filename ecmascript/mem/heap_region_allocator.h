@@ -18,6 +18,7 @@
 
 #include <atomic>
 
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {

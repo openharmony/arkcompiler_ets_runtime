@@ -49,12 +49,12 @@ private:
         void UpdateObjectSlotRoot(ObjectSlot slot);
     };
 
-    class ObjectFieldCSetVisitor final : public EcmaObjectRangeVisitor<ObjectFieldCSetVisitor> {
+    class ObjectFieldCSetVisitor final : public BaseObjectVisitor<ObjectFieldCSetVisitor> {
     public:
         explicit ObjectFieldCSetVisitor(SharedGCEvacuator *evacuator) : evacuator_(evacuator) {}
         ~ObjectFieldCSetVisitor() override = default;
 
-        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
     private:
         SharedGCEvacuator *evacuator_ {nullptr};
     };
@@ -118,9 +118,9 @@ private:
         ~UpdateReferenceTask() override = default;
         NO_COPY_SEMANTIC(UpdateReferenceTask);
         NO_MOVE_SEMANTIC(UpdateReferenceTask);
-    
+
         bool Run(uint32_t threadIndex) override;
-    
+
     private:
         SharedGCEvacuator *evacuator_ {nullptr};
     };

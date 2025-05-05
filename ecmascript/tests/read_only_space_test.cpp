@@ -17,7 +17,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/verification.h"
@@ -45,7 +45,7 @@ public:
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
-        ecmascript::Log::Initialize(runtimeOptions);
+        Log::Initialize(runtimeOptions.GetLogOptions());
     }
 
     ObjectFactory *factory {nullptr};

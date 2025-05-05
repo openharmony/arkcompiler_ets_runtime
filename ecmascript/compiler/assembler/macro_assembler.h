@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_MACRO_ASSEMBLER_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_MACRO_ASSEMBLER_H
 
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/native_area_allocator.h"

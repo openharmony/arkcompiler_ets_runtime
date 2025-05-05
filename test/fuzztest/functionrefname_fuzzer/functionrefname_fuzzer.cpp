@@ -30,7 +30,7 @@ Local<JSValueRef> FuncRefConCallbackForTest(JsiRuntimeCallInfo *info)
 void FunctionRefSetNameFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -47,7 +47,7 @@ void FunctionRefSetNameFuzzTest(const uint8_t *data, size_t size)
 void FunctionRefGetNameFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

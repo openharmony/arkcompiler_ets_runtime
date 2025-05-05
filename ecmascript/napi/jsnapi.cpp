@@ -30,7 +30,9 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_regexp.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/js_weak_container.h"
 #ifdef ARK_SUPPORT_INTL
@@ -126,7 +128,6 @@ using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
-using ecmascript::Log;
 using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;

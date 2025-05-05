@@ -20,12 +20,12 @@
 
 namespace panda::ecmascript {
 template<TriggerGCType gcType>
-class SlotUpdateRangeVisitor final : public EcmaObjectRangeVisitor<SlotUpdateRangeVisitor<gcType>> {
+class SlotUpdateRangeVisitor final : public BaseObjectVisitor<SlotUpdateRangeVisitor<gcType>> {
 public:
     explicit SlotUpdateRangeVisitor(ParallelEvacuator *evacuator);
     ~SlotUpdateRangeVisitor() override = default;
 
-    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+    void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
 private:
     void UpdateSlot(ObjectSlot slot, Region *rootRegion);
 

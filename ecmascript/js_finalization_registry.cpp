@@ -121,6 +121,10 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
     }
     CheckAndCallScope scope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> maybeEnv(env);
+    if (maybeEnv->IsHole()) {
+        return;
+    }
     JSHandle<JSTaggedValue> prev = env->GetFinRegLists();
 
     if (prev->IsUndefined()) {

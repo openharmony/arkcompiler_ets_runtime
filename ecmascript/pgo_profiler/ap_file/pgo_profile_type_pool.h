@@ -23,7 +23,7 @@
 #include <unordered_map>
 
 #include "ecmascript/common.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem.h"
@@ -33,7 +33,7 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::pgo {
 class PGOProfileTypePool {

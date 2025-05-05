@@ -26,7 +26,7 @@ namespace OHOS {
     void NumberRefNewUint32FuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
         uint32_t input = 0;
         if (size <= 0) {

@@ -27,7 +27,7 @@ namespace OHOS {
 void LocalRegExpGetOriginalSourceFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -56,7 +56,7 @@ void LocalRegExpGetOriginalSourceFuzzTest([[maybe_unused]]const uint8_t *data, s
 void LocalRegExpRefGetOriginalFlagsFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -85,7 +85,7 @@ void LocalRegExpRefGetOriginalFlagsFuzzTest([[maybe_unused]]const uint8_t *data,
 void LocalRegExpIsGlobalRefFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -107,7 +107,7 @@ void LocalRegExpIsGlobalRefFuzzTest([[maybe_unused]]const uint8_t *data, size_t 
 void LocalRegExpIsIgnoreCaseFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -131,7 +131,7 @@ void LocalRegExpIsIgnoreCaseFuzzTest([[maybe_unused]]const uint8_t *data, size_t
 void LocalRegExpIsMultilineFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -155,7 +155,7 @@ void LocalRegExpIsMultilineFuzzTest([[maybe_unused]]const uint8_t *data, size_t 
 void LocalRegExpIsDotAllFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -179,7 +179,7 @@ void LocalRegExpIsDotAllFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
 void LocalRegExpIsUtf16FuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -203,7 +203,7 @@ void LocalRegExpIsUtf16FuzzTest([[maybe_unused]]const uint8_t *data, size_t size
 void LocalRegExpIsSticklFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

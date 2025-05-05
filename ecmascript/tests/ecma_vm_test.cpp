@@ -32,7 +32,7 @@ class EcmaVMTest : public BaseTestWithOutScope {
 HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
 {
     RuntimeOption options;
-    options.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    options.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM::SetMultiThreadCheck(true);
     EcmaVM *ecmaVm1 = JSNApi::CreateJSVM(options);
     EXPECT_TRUE(ecmaVm1->GetMultiThreadCheck());
@@ -94,7 +94,7 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
 HWTEST_F_L0(EcmaVMTest, DumpExceptionObject)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *ecmaVm = JSNApi::CreateJSVM(option);
     auto thread = ecmaVm->GetJSThread();
     int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();

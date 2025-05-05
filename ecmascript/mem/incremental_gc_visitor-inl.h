@@ -24,16 +24,16 @@ namespace panda::ecmascript {
 IncrementalOldGCMarkObjectVisitor::IncrementalOldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder,
     uint32_t &visitAddrNum) : visitor_(workNodeHolder), visitAddrNum_(visitAddrNum) {}
 
-void IncrementalOldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void IncrementalOldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                                              VisitObjectArea area)
 {
-    visitAddrNum_ += end.SlotAddress() - start.SlotAddress();
+    visitAddrNum_ += end - start;
     visitor_(root, start, end, area);
 }
 
-void IncrementalOldGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
+void IncrementalOldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
 {
-    ASSERT(hclass->GetClass()->IsHClass());
+    ASSERT(TaggedObject::Cast(hclass)->GetClass()->IsHClass());
     visitor_.VisitHClass(hclass);
 }
 }  // namespace panda::ecmascript
