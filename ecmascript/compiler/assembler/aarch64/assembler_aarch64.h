@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_H
 
+#include <map>
+
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
 

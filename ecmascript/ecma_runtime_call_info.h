@@ -18,6 +18,7 @@
 
 #include <algorithm>
 
+#include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/common.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"

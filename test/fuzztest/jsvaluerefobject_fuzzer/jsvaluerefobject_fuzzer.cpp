@@ -28,7 +28,7 @@ namespace OHOS {
     void JSValueRefIsSymbolFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -43,7 +43,7 @@ namespace OHOS {
     void JSValueRefIsBigIntFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -58,7 +58,7 @@ namespace OHOS {
     void JSValueRefIsObjectFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -72,7 +72,7 @@ namespace OHOS {
     void IsArgumentsObjectFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -91,7 +91,7 @@ namespace OHOS {
     void IsJSPrimitiveBooleanFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -106,7 +106,7 @@ namespace OHOS {
     void IsGeneratorFunctionFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";

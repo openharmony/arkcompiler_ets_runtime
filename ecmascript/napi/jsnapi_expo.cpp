@@ -22,6 +22,9 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#ifdef USE_CMC_GC
+#include "ecmascript/crt.h"
+#endif
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
@@ -127,7 +130,6 @@ using ecmascript::DebugInfoExtractor;
 using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
-using ecmascript::Log;
 using ecmascript::PatchErrorCode;
 using ecmascript::RegExpParser;
 using ecmascript::base::NumberHelper;
@@ -4034,13 +4036,23 @@ JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
     }
 #endif
+#ifdef USE_CMC_GC
+    hasSwitchState_ = thread_->GetThreadHolder()->TransferToNativeIfInRunning();
+#else
     oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
     thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+#endif
 }
 
 JsiNativeScope::~JsiNativeScope()
 {
+#ifdef USE_CMC_GC
+    if (hasSwitchState_) {
+        thread_->GetThreadHolder()->TransferToRunning();
+    }
+#else
     thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+#endif
 }
 
 // ------------------------------------ JsiFastNativeScope -----------------------------------------------
@@ -4054,6 +4066,10 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
     }
 #endif
+#ifdef USE_CMC_GC
+    hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
+    (void)oldThreadState_;
+#else
     ecmascript::ThreadState oldState = thread_->GetState();
     if (oldState == ecmascript::ThreadState::RUNNING) {
         return;
@@ -4061,12 +4077,17 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
     oldThreadState_ = static_cast<uint16_t>(oldState);
     hasSwitchState_ = true;
     thread_->UpdateState(ecmascript::ThreadState::RUNNING);
+#endif
 }
 
 JsiFastNativeScope::~JsiFastNativeScope()
 {
     if (hasSwitchState_) {
+#ifdef USE_CMC_GC
+        thread_->GetThreadHolder()->TransferToNative();
+#else
         thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+#endif
     }
 }
 
@@ -4426,6 +4447,9 @@ void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 // Enable cross thread execution except in gc process.
 bool JSNApi::CheckAndSetAllowCrossThreadExecution(EcmaVM *vm)
 {
+#ifdef USE_CMC_GC
+    return false;
+#endif
     if (vm->GetHeap()->InGC() || SharedHeap::GetInstance()->InGC()) {
         return false;
     }
@@ -4612,6 +4636,14 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
         LOG_ECMA(INFO) << stack.str();
     }
 #endif
+#ifdef USE_CMC_GC
+        GcType type = GcType::ASYNC;
+        if (gcType == TRIGGER_GC_TYPE::FULL_GC || gcType == TRIGGER_GC_TYPE::SHARED_FULL_GC ||
+            reason == ecmascript::GCReason::ALLOCATION_FAILED) {
+            type = GcType::FULL;
+        }
+        panda::BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+#else  // TODO: add ALL_GC_TYPE here for toolchain
         auto sHeap = ecmascript::SharedHeap::GetInstance();
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
@@ -4634,6 +4666,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
             default:
                 break;
         }
+#endif
     }
 }
 
@@ -5549,7 +5582,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetMaxAotMethodSize(jsOption.GetMaxAotMethodSize());
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
-    Log::Initialize(runtimeOptions);
+    Log::Initialize(runtimeOptions.GetLogOptions());
 
     // 1. system switch 2. an file dir exits 3. whitelist 4. escape mechanism
     bool enableAOT = jsOption.GetEnableAOT() &&

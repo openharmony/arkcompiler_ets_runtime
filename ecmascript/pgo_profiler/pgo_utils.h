@@ -25,7 +25,7 @@
 #include "mem/mem.h"
 
 #include "ecmascript/common.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/mutex.h"
 

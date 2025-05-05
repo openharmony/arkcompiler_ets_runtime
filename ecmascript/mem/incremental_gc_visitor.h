@@ -19,16 +19,15 @@
 #include <ecmascript/mem/old_gc_visitor.h>
 
 namespace panda::ecmascript {
-class IncrementalOldGCMarkObjectVisitor final :
-    public EcmaObjectRangeVisitor<IncrementalOldGCMarkObjectVisitor> {
+class IncrementalOldGCMarkObjectVisitor final : public BaseObjectVisitor<IncrementalOldGCMarkObjectVisitor> {
 public:
     inline explicit IncrementalOldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder, uint32_t &visitAddrNum);
     ~IncrementalOldGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot slot, ObjectSlot start,
+    inline void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
                                      VisitObjectArea area) override;
 
-    inline void VisitObjectHClassImpl(TaggedObject *hclass) override;
+    inline void VisitObjectHClassImpl(BaseObject *hclass) override;
 private:
     OldGCMarkObjectVisitor visitor_;
     uint32_t &visitAddrNum_;

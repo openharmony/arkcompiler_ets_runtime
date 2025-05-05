@@ -306,8 +306,7 @@ void SharedSparseSpace::FreeRegion(Region *current, bool isMain)
     uintptr_t freeStart = current->GetBegin();
     current->IterateAllMarkedBits([this, &freeStart, isMain](void *mem) {
         auto header = reinterpret_cast<TaggedObject *>(mem);
-        auto klass = header->GetClass();
-        auto size = klass->SizeFromJSHClass(header);
+        auto size = header->GetSize();
 
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
@@ -346,7 +345,7 @@ void SharedSparseSpace::IterateOverObjects(const std::function<void(TaggedObject
             if (!freeObject->IsFreeObject()) {
                 auto obj = reinterpret_cast<TaggedObject *>(curPtr);
                 visitor(obj);
-                objSize = obj->GetClass()->SizeFromJSHClass(obj);
+                objSize = obj->GetSize();
             } else {
                 freeObject->AsanUnPoisonFreeObject();
                 objSize = freeObject->Available();
@@ -645,7 +644,7 @@ void SharedReadOnlySpace::IterateOverObjects(const std::function<void(TaggedObje
             if (!freeObject->IsFreeObject()) {
                 auto obj = reinterpret_cast<TaggedObject *>(curPtr);
                 visitor(obj);
-                objSize = obj->GetClass()->SizeFromJSHClass(obj);
+                objSize = obj->GetSize();
             } else {
                 freeObject->AsanUnPoisonFreeObject();
                 objSize = freeObject->Available();

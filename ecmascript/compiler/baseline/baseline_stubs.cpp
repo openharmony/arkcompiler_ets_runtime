@@ -637,7 +637,7 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
     BRANCH(IntPtrEqual(varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { res, *varSp, currentSp });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, res, *varSp, currentSp });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -3434,7 +3434,7 @@ void BaselineReturnStubBuilder::GenerateCircuit()
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { acc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, acc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -4988,7 +4988,7 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
     BRANCH(IntPtrEqual(varPc, IntPtr(BASELINEJIT_PC_FLAG)), &pcEqualBaseline, &pcNotEqualBaseline);
     Bind(&pcEqualBaseline);
     {
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -5713,7 +5713,7 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -5827,7 +5827,7 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);

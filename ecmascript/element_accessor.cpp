@@ -27,7 +27,7 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSHandle<JSObject> re
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(elements->GetData(), offset);
     if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
@@ -47,7 +47,7 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSObject *receiver, u
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(elements->GetData(), offset);
     if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
@@ -64,7 +64,7 @@ JSTaggedValue ElementAccessor::FastGet(JSHandle<TaggedArray> elements, uint32_t 
     ASSERT(idx < elements->GetLength());
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(elements->GetData(), offset);
     return GetTaggedValueWithElementsKind(rawValue, kind);
 }
 

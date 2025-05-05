@@ -27,7 +27,7 @@ namespace OHOS {
 void JSValueRefInt32ValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int inputNum = 0;
     if (data == nullptr || size <= 0) {

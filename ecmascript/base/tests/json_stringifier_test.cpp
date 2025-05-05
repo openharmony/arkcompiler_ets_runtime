@@ -91,7 +91,7 @@ static JSHandle<JSSharedSet> CreateJSSharedSet(JSThread *thread)
     auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> setClass = factory->NewSEcmaHClass(JSSharedSet::SIZE, 0,
         JSType::JS_SHARED_SET, proto, emptySLayout);
-    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(setClass));
     JSHandle<LinkedHashSet> linkedSet(
         LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
     jsSet->SetLinkedSet(thread, linkedSet);
@@ -487,7 +487,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_010)
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSSharedMap::Set(thread, sharedMap1, key2, value2);
-    
+
     JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(sharedMap1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -520,7 +520,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_011)
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSMap::Set(thread, jsMap1, key2, value2);
-    
+
     JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(jsMap1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -551,7 +551,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_012)
 
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSSharedSet::Add(thread, sharedSet1, value2);
-    
+
     JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(sharedSet1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -582,7 +582,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_013)
 
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSSet::Add(thread, jsSet1, value2);
-    
+
     JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(jsSet1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -615,7 +615,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_014)
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSAPIHashMap::Set(thread, hashMap1, key2, value2);
-    
+
     JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(hashMap1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -646,7 +646,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_015)
 
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSAPIHashSet::Add(thread, hashSet1, value2);
-    
+
     JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(hashSet1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -672,7 +672,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_016)
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSSharedMap::Set(thread, sharedMap1, key2, value2);
     JSSharedMap::Set(thread, sharedMap1, key1, value1);
-    
+
     JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(sharedMap1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
@@ -695,7 +695,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_017)
     JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
     JSSharedSet::Add(thread, sharedSet1, value2);
     JSSharedSet::Add(thread, sharedSet1, value1);
-    
+
     JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(sharedSet1);
     JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());

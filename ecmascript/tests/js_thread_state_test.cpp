@@ -18,7 +18,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
@@ -34,7 +34,7 @@ public:
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
-        ecmascript::Log::Initialize(runtimeOptions);
+        Log::Initialize(runtimeOptions.GetLogOptions());
     }
 
     static void NewVMThreadEntry(EcmaVM *newVm,

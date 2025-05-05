@@ -86,7 +86,7 @@ EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue n
     }
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
     *(--newSp) = numActualArgs;
-    *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+    *(--newSp) = ToUintPtr(thread);
     ecmaRuntimeCallInfo->SetNewTarget(newTgt);
     return ecmaRuntimeCallInfo;
 }
@@ -120,7 +120,7 @@ void TearDownFrame(JSThread *thread, JSTaggedType *prev)
 void JSValueRefIsLinkedListIteratorFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

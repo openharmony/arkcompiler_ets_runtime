@@ -24,7 +24,7 @@ namespace OHOS {
 void ExceptionTypeErrorFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     JSThread *thread_ = nullptr;
     thread_ = vm_->GetJSThread();

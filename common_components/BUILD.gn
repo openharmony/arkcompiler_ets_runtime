@@ -1,0 +1,74 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+shared_library("libarkcompiler_gc") {
+  include_dirs = [
+    "//",
+    "//common_interfaces",
+    "//libpandabase",
+    "//third_party/bounds_checking_function/include",
+  ]
+
+  cflags_cc = [
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-pedantic",
+    "-pipe",
+    "-Wdate-time",
+    "-funwind-tables",
+    "-fno-rtti",
+    "-fno-common",
+    "-fno-strict-aliasing",
+    "-fasynchronous-unwind-tables",
+    "-Wformat=2",
+    "-std=c++17",
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-nested-anon-types",
+    "-Wno-unused-parameter",
+    "-Wno-variadic-macros",
+    "-Wno-zero-length-array",
+    "-Wno-unused-variable",
+  ]
+
+  defines = [
+    "USE_CMC_GC",
+    "NDEBUG",
+  ]
+
+  sources = [
+    "runtime.cpp",
+    "base_runtime/base_runtime.cpp",
+    "log/log.cpp",
+    "objects/base_object.cpp",
+    "heap/heap_allocator.cpp",
+    "heap/heap.cpp",
+    "serialize/serialize_utils.cpp",
+    "thread/thread_holder.cpp",
+    "thread/thread_holder_manager.cpp",
+  ]
+
+  ldflags = [
+    "-Wl,-Bsymbolic",
+    "-rdynamic",
+    "-Wl,--no-undefined",
+    "-lpthread",
+  ]
+
+  deps = [
+    "common_runtime/src:libarkcommon-runtime"
+  ]
+
+  output_dir = "//out"
+  output_extension = "so"
+}

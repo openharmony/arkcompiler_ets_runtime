@@ -26,7 +26,7 @@ namespace OHOS {
     void DateRefNewFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -50,7 +50,7 @@ namespace OHOS {
     void DateRefGetTimeFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -75,7 +75,7 @@ namespace OHOS {
     void DateRefToStringFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";

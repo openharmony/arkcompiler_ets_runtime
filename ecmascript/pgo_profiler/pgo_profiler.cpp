@@ -1570,7 +1570,7 @@ bool PGOProfiler::AddTransitionObjectInfo(ProfileType recordType,
     PGOObjectInfo info(receiverRootType, receiverType, holdRootType, holdType, holdRootType, holdTraType,
                        accessorMethod);
     UpdatePrototypeChainInfo(receiver, hold, info);
-    
+
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     return true;
 }
@@ -1809,6 +1809,16 @@ ProfileType PGOProfiler::GetProfileType(JSHClass *hclass, bool check)
         }
     }
     return result;
+}
+
+void PGOProfiler::IteratePGOPreFuncList(RootVisitor& visitor) const
+{
+    if (!isEnable_) {
+        return;
+    }
+    preDumpWorkList_.Iterate([this, &visitor](WorkNode *node) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(node->GetValueAddr()));
+    });
 }
 
 void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)

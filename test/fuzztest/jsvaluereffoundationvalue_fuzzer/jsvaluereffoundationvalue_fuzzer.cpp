@@ -27,7 +27,7 @@ namespace OHOS {
 void JSValueRefIsNumberValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
@@ -64,7 +64,7 @@ void JSValueRefIsNumberValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsStringValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         std::cout << "illegal input!";
@@ -78,7 +78,7 @@ void JSValueRefIsStringValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefWithinInt32ValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int number = 0;
     if (data == nullptr || size <= 0) {
@@ -106,7 +106,7 @@ Local<JSValueRef> FunCallback(JsiRuntimeCallInfo *info)
 void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         std::cout << "illegal input!";
@@ -122,7 +122,7 @@ void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int number = 123;
     if (data == nullptr || size <= 0) {
@@ -157,7 +157,7 @@ void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsDateValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
@@ -200,7 +200,7 @@ void JSValueRefIsDateValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsErrorValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;
@@ -233,7 +233,7 @@ void JSValueRefIsErrorValueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefToStringValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     int key = 0;
     uint32_t inputUnit32 = 32;

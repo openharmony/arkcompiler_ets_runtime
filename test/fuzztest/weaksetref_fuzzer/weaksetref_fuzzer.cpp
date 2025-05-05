@@ -31,7 +31,7 @@ namespace OHOS {
 void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -59,7 +59,7 @@ void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -87,7 +87,7 @@ void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, siz
 void WeakSetRefGetValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

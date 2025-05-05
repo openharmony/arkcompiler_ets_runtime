@@ -401,8 +401,7 @@ GateRef TypedNativeInlineLowering::AllocateArrayIterator(GateRef glue,
     GateRef iterator = builder_.HeapAlloc(glue, builder_.IntPtr(JSArrayIterator::SIZE),
         GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), iterator, TaggedObject::HCLASS_OFFSET,
-                              iteratorHClass, MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue, iterator, iteratorHClass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::HASH_OFFSET,
         builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::PROPERTIES_OFFSET, emptyArray);
@@ -1114,7 +1113,7 @@ void TypedNativeInlineLowering::LowerMathSqrt(GateRef gate)
 }
 
 
-GateRef AllocateNewNumber(const CompilationEnv *compilationEnv, CircuitBuilder *builder, GateAccessor acc,
+GateRef AllocateNewNumber(GateRef glue, const CompilationEnv *compilationEnv, CircuitBuilder *builder, GateAccessor acc,
                           GateRef protoOrHclass, GateRef result)
 {
     Jit::JitLockHolder lock(compilationEnv, "AllocateNewNumber");
@@ -1130,8 +1129,7 @@ GateRef AllocateNewNumber(const CompilationEnv *compilationEnv, CircuitBuilder *
     GateRef object = builder->HeapAlloc(acc.GetGlueFromArgList(), size, GateType::TaggedValue(),
                                         RegionSpaceFlag::IN_YOUNG_SPACE);
     // Initialization:
-    builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, protoOrHclass,
-                              MemoryAttribute::NeedBarrierAndAtomic());
+    builder->StoreHClass(glue, object, protoOrHclass, MemoryAttribute::NeedBarrierAndAtomic());
     builder->StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder->Int64(JSTaggedValue(0).GetRawData()));
     builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
@@ -1188,7 +1186,7 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
     auto protoOrHclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), numberFunction,
                                                   JSFunction::PROTO_OR_DYNCLASS_OFFSET);
 
-    GateRef ret = AllocateNewNumber(compilationEnv_, &builder_, acc_, protoOrHclass, *result);
+    GateRef ret = AllocateNewNumber(glue, compilationEnv_, &builder_, acc_, protoOrHclass, *result);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -2121,8 +2119,8 @@ void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
     GateRef object = builder_.HeapAlloc(acc_.GetGlueFromArgList(), sizeGate, GateType::TaggedValue(),
                                         RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
     // initialization
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
-                              MemoryAttribute::NeedBarrierAndAtomic());
+    GateRef glue = acc_.GetGlueFromArgList();
+    builder_.StoreHClass(glue, object, hclass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::LENGTH_OFFSET, builder_.Int32(length));
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::BIT_FIELD_OFFSET, sign);
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::DATA_OFFSET, value);
@@ -3187,7 +3185,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
                 builder_.Boolean(true),
                 builder_.Int32(Elements::ToUint(ElementsKind::NONE)));
             toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
-            
+
             i = builder_.Int64Add(*i, builder_.Int64(1));
             propKey = builder_.ToTaggedIntPtr(*i);
             BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &finish);

@@ -94,7 +94,7 @@ public:
     void SetUp() override
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
@@ -1761,7 +1761,7 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
     LocalScope scope(vm_);
     std::thread t1([&]() {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto *vm2 = JSNApi::CreateJSVM(option);
         auto *thread = vm2->GetJSThread();
         thread->SetException(JSTaggedValue::Exception());
