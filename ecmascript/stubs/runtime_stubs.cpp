@@ -17,6 +17,7 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/base/gc_helper.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -652,7 +653,11 @@ DEF_RUNTIME_STUBS(ForceGC)
     if (!thread->GetEcmaVM()->GetJSOptions().EnableForceGC()) {
         return JSTaggedValue::Hole().GetRawData();
     }
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::SYNC);
+#else
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+#endif
     return JSTaggedValue::Hole().GetRawData();
 }
 
@@ -3386,15 +3391,33 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
     Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
+void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
+                                       [[maybe_unused]] uintptr_t object,
+                                       [[maybe_unused]] size_t offset,
+                                       [[maybe_unused]] TaggedObject *value)
+{
+#ifdef USE_CMC_GC
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    Barriers::CMCWriteBarrier(thread, (TaggedObject*)object, offset, JSTaggedType(value));
+#endif
+}
+
 JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
 {
-    ObjectSlot slot(addr);
     (void)argGlue;
-    /*
-        Convert argGlue to JSThread: auto thread = JSThread::GlueToJSThread(argGlue);
-        Add ReadBarrier here
-    */
-    return slot.GetTaggedType();
+    return Barriers::GetTaggedValue(addr);
+}
+
+void RuntimeStubs::CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget)
+{
+    (void)argGlue;
+    base::GCHelper::CopyCallTarget(reinterpret_cast<void *>(callTarget)); // callTarget should be ToSpace Reference
+}
+
+void RuntimeStubs::CopyArgvArray(uintptr_t argGlue, uintptr_t argv, uint64_t argc)
+{
+    (void)argGlue;
+    base::GCHelper::CopyArgvArray(reinterpret_cast<void *>(argv), argc); // argv should be ToSpace Reference
 }
 
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
@@ -4455,12 +4478,26 @@ DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
 void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
+#ifdef USE_READ_BARRIER
+    Barriers::CopyObject<true, true>(
+        nullptr, nullptr, reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
+   // TODO:waitopt
+   // std::copy_n(src, count, dst);
+#else
     std::copy_n(src, count, dst);
+#endif
 }
 
 void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
 {
     DISALLOW_GARBAGE_COLLECTION;
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        for (uint32_t i = 0; i < length; i++) {
+            Barriers::UpdateSlot(dst, i * sizeof(JSTaggedType));
+        }
+    }
+#endif
     std::reverse(dst, dst + length);
 }
 
