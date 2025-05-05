@@ -30,10 +30,6 @@
 #include "heap_profiler.h"
 #endif
 
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
-
 namespace panda::ecmascript {
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
@@ -283,26 +279,25 @@ static uint64_t VisitMember(ObjectSlot &slot, uint64_t objAddr, CUnorderedSet<ui
     return newAddr;
 }
 
-class VisitObjVisitor final : public BaseObjectVisitor<VisitObjVisitor> {
+class VisitObjVisitor final : public EcmaObjectRangeVisitor<VisitObjVisitor> {
 public:
     explicit VisitObjVisitor(CUnorderedSet<uint64_t> &notFoundObj, CUnorderedMap<uint64_t, NewAddr *> &objMap,
                              CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap)
         : notFoundObj_(notFoundObj), objMap_(objMap), refSetMap_(refSetMap) {}
     ~VisitObjVisitor() = default;
 
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t endAddr, VisitObjectArea area)
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
     {
         if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
             return;
         }
-        auto jsHclass = TaggedObject::Cast(root)->GetClass();
+        auto jsHclass = root->GetClass();
         auto objAddr = reinterpret_cast<uint64_t>(root);
         CUnorderedSet<uint64_t> *refSet = nullptr;
         if (refSetMap_.find(objAddr) != refSetMap_.end()) {
             refSet = &refSetMap_[objAddr];
         }
-        ObjectSlot end(endAddr);
-        for (ObjectSlot slot(start); slot < end; slot++) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
             auto newAddr = VisitMember(slot, objAddr, notFoundObj_, jsHclass, objMap_);
             if (jsHclass->IsJsGlobalEnv() && refSet != nullptr && newAddr != 0LL) {
                 refSet->insert(newAddr);
@@ -629,7 +624,7 @@ std::pair<uint64_t, uint64_t> GetHeapCntAndSize(const EcmaVM *vm)
     uint64_t cnt = 0;
     uint64_t objectSize = 0;
     auto cb = [&objectSize, &cnt]([[maybe_unused]] TaggedObject *obj) {
-        objectSize += obj->GetSize();
+        objectSize += obj->GetClass()->SizeFromJSHClass(obj);
         ++cnt;
     };
     vm->GetHeap()->IterateOverObjects(cb, false);
@@ -642,7 +637,7 @@ std::pair<uint64_t, uint64_t> GetSharedCntAndSize()
     uint64_t size = 0;
     auto cb = [&cnt, &size](TaggedObject *obj) {
         cnt++;
-        size += obj->GetSize();
+        size += obj->GetClass()->SizeFromJSHClass(obj);
     };
     IterateSharedHeap(cb);
     return std::make_pair(cnt, size);
@@ -693,21 +688,20 @@ static CUnorderedSet<TaggedObject*> GetRootObjects(const EcmaVM *vm)
     return result;
 }
 
-class GetNotFoundObjVisitor final : public BaseObjectVisitor<GetNotFoundObjVisitor> {
+class GetNotFoundObjVisitor final : public EcmaObjectRangeVisitor<GetNotFoundObjVisitor> {
 public:
     explicit GetNotFoundObjVisitor(CUnorderedSet<TaggedObject *> &notFoundObjSet,
                                    CUnorderedSet<TaggedObject*> &allHeapObjSet)
         : notFoundObjSet_(notFoundObjSet), allHeapObjSet_(allHeapObjSet) {}
     ~GetNotFoundObjVisitor() = default;
 
-    void VisitObjectRangeImpl([[maybe_unused]] BaseObject *root, uintptr_t start, uintptr_t endAddr,
+    void VisitObjectRangeImpl([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
                               VisitObjectArea area)
     {
         if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
             return;
         }
-        ObjectSlot end(endAddr);
-        for (ObjectSlot slot(start); slot < end; slot++) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
             auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
             JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
             auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
@@ -738,7 +732,7 @@ size_t GetNotFoundObj(const EcmaVM *vm)
     CUnorderedSet<TaggedObject*> allHeapObjSet {};
     auto handleObj = [&allHeapObjSet, &heapTotalSize](TaggedObject *obj) {
         allHeapObjSet.insert(obj);
-        uint64_t objSize = obj->GetSize();
+        uint64_t objSize = obj->GetClass()->SizeFromJSHClass(obj);
         heapTotalSize += objSize;
     };
     vm->GetHeap()->IterateOverObjects(handleObj, false);
@@ -766,7 +760,7 @@ uint32_t HeapProfiler::CopyObjectMem2Buf(char *objTable, uint32_t objNum,
     for (uint32_t j = 0; j < objNum; ++j) {
         auto obj = reinterpret_cast<TaggedObject *>(objHeaders[j].addr);
         JSTaggedValue value(obj);
-        uint64_t objSize = obj->GetSize();
+        uint64_t objSize = obj->GetClass()->SizeFromJSHClass(obj);
         totalSize += objSize;
         if (currSize + objSize > PER_GROUP_MEM_SIZE || currMemBuf == nullptr) {
             if (currMemBuf != nullptr) {
@@ -1010,13 +1004,9 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     pid_t pid = -1;
     {
         if (dumpOption.isFullGC) {
-#ifdef USE_CMC_GC
-            BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
-#else
             [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
             ForceSharedGC();
             ASSERT(heapClean);
-#endif
         }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
         const_cast<Heap*>(vm_->GetHeap())->Prepare();
@@ -1070,12 +1060,8 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
                                      bool traceAllocation, bool newThread)
 {
-#ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
-#else
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
     ForceSharedGC();
-#endif
     SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
     DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
@@ -1107,12 +1093,8 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     }
 
     {
-#ifdef USE_CMC_GC
-        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
-#else
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
-#endif
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
         UpdateHeapObjects(snapshot);
         snapshot->RecordSampleTime();
@@ -1146,15 +1128,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         progress->ReportProgress(0, heapCount);
     }
     {
-#ifdef USE_CMC_GC
-        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
-#else
         ForceSharedGC();
-#endif
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-#ifndef USE_CMC_GC
         SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
-#endif
         snapshot->FinishSnapshot();
     }
 
@@ -1429,17 +1405,16 @@ void RawHeapDump::BinaryDump(const DumpSnapShotOption &dumpOption)
     EndVisitMark();
 }
 
-void RawHeapDump::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t endAddr, VisitObjectArea area)
+void RawHeapDump::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
     if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
         return;
     }
-    auto hclass = reinterpret_cast<TaggedObject *>(TaggedObject::Cast(root)->GetClass());
+    auto hclass = reinterpret_cast<TaggedObject *>(root->GetClass());
     if (MarkObject(hclass)) {
         bfsQueue_.emplace(hclass);
     }
-    ObjectSlot end(endAddr);
-    for (ObjectSlot slot(start); slot < end; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         auto value = slot.GetTaggedValue();
         if (!value.IsHeapObject()) {
             continue;
@@ -1490,7 +1465,7 @@ void RawHeapDump::DumpObjectTable(const DumpSnapShotOption &dumpOption)
         table.addr = reinterpret_cast<uint64_t>(obj);
         table.id = dumpOption.isDumpOOM ?
             entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(reinterpret_cast<JSTaggedType>(addr));
-        table.objSize = obj->GetSize();
+        table.objSize = obj->GetClass()->SizeFromJSHClass(obj);
         table.offset = offset;
         WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
         if (obj->GetClass()->IsString()) {
@@ -1508,7 +1483,7 @@ void RawHeapDump::DumpObjectMemory()
     uint32_t startOffset = static_cast<uint32_t>(fileOffset_);
     auto objMemDump = [this](void *addr) {
         auto obj = reinterpret_cast<TaggedObject *>(addr);
-        size_t size = obj->GetSize();
+        size_t size = obj->GetClass()->SizeFromJSHClass(obj);
         if (obj->GetClass()->IsString()) {
             size = sizeof(JSHClass *);
         }

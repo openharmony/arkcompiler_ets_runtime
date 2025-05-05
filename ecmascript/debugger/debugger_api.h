@@ -59,9 +59,7 @@ public:
 
     private:
         JSThread *thread_ {nullptr};
-#ifndef USE_CMC_GC
         uint16_t oldThreadState_ {0};
-#endif
         bool hasSwitchState_ {false};
     };
     class PUBLIC_API DebuggerManagedScope {
@@ -73,9 +71,7 @@ public:
 
     private:
         JSThread *thread_ {nullptr};
-#ifndef USE_CMC_GC
         uint16_t oldThreadState_ {0};
-#endif
         bool hasSwitchState_ {false};
     };
 

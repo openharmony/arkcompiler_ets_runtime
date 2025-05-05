@@ -67,14 +67,14 @@ private:
     [[maybe_unused]]UnifiedGCMarker *marker_ {nullptr};
 };
 
-class UnifiedGCMarkObjectVisitor final : public BaseObjectVisitor<UnifiedGCMarkObjectVisitor> {
+class UnifiedGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<UnifiedGCMarkObjectVisitor> {
 public:
     inline explicit UnifiedGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker);
     ~UnifiedGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
-    inline void VisitObjectHClassImpl(BaseObject *hclass) override;
+    inline void VisitObjectHClassImpl(TaggedObject *hclass) override;
 private:
     inline void HandleSlot(ObjectSlot slot);
 

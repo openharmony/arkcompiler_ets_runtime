@@ -1009,7 +1009,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunctio
                                       const NativePointerCallback &deleter, void *data, size_t nativeBindingsize,
                                       Concurrent isConcurrent)
 {
-    JSTaggedType hashField = Barriers::GetTaggedValue(*func, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*func, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data,
@@ -1051,7 +1051,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunctio
 void JSFunction::SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
                                        const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
-    JSTaggedType hashField = Barriers::GetTaggedValue(*func, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*func, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<JSNativePointer> pointer =
@@ -1140,7 +1140,7 @@ void JSFunction::SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<
 
 JSTaggedValue JSFunctionBase::GetFunctionExtraInfo() const
 {
-    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
         if (value.IsTaggedArray()) {
@@ -1164,7 +1164,7 @@ JSTaggedValue JSFunctionBase::GetFunctionExtraInfo() const
 
 JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
 {
-    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.CheckIsJSNativePointer()) {
         return value;

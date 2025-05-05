@@ -27,7 +27,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
-#include "libpandabase/macros.h"
+#include "macros.h"
 
 #ifdef AOT_ESCAPE_ENABLE
 #include "parameters.h"

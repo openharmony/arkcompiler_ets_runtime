@@ -29,6 +29,7 @@ using namespace panda::panda_file;
 using namespace panda::pandasm;
 
 namespace panda::test {
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using Program = panda::ecmascript::Program;
 using EcmaContext = panda::ecmascript::EcmaContext;
 class QuickFixTest : public testing::Test {

@@ -20,7 +20,6 @@
 #include <atomic>
 
 #include "ecmascript/common.h"
-#include "libpandabase/macros.h"
 
 #if defined(PANDA_USE_FUTEX)
 #include "ecmascript/platform/unix/futex.h"

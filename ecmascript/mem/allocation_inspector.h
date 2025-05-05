@@ -17,7 +17,6 @@
 #define ECMASCRIPT_MEM_ALLOCATION_INSPECTOR_H
 
 #include "ecmascript/common.h"
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class Heap;

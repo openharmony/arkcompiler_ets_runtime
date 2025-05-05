@@ -44,7 +44,7 @@
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/ts_types/global_type_info.h"
-#include "libpandabase/macros.h"
+#include "macros.h"
 
 namespace panda::ecmascript::pgo {
 class SaveTask;

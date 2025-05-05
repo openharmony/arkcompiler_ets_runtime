@@ -1,5 +1,6 @@
 **/compile_commands.json
 build
+build_*
 .vscode
 .idea
 *cmake-build-*
@@ -17,5 +18,3 @@ tags
 test/regresstest/__pycache__/
 test/regresstest/ark-regress/
 .cursor
-.codecheck
-.gitkeep

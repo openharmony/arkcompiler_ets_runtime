@@ -36,7 +36,7 @@ void SharedGCEvacuator::EvacuateRegions()
         region->IterateAllMarkedBits([this, inHeapProfiler, sTlabAllocator](void *mem) {
             auto header = reinterpret_cast<TaggedObject *>(mem);
             JSHClass *klass = header->GetClass();
-            size_t size = header->GetSize();
+            size_t size = klass->SizeFromJSHClass(header);
             uintptr_t address = sTlabAllocator->Allocate(size, SHARED_COMPRESS_SPACE);
             ASSERT(address != 0);
             if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
@@ -158,14 +158,12 @@ bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
     }
 }
 
-void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
-    uintptr_t endAddr, VisitObjectArea area)
+void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+    ObjectSlot end, VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
+        JSHClass *hclass = root->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         TaggedObject *dst = hclass->GetLayout().GetTaggedObject();

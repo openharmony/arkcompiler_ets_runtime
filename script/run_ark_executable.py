@@ -94,7 +94,6 @@ def parse_args() -> object:
     parser.add_argument('--qemu-binary-path', help='path to qemu binary, run executable with qemu if assigned')
     parser.add_argument('--qemu-ld-prefix', help='elf interpreter prefix')
     parser.add_argument('--expect-sub-error', help='use error output to compare result')
-    parser.add_argument('--empty', help='do nothing')
     args = parser.parse_args()
     return args
 
@@ -135,7 +134,7 @@ def generate_stub_code_comment(out_str:str):
             zip_file.writestr('stub_code_comment.txt', memory_file.getvalue())
 
 
-def check_expect_output(cmd: str, returncode: str, out_str: str, err_str: str, expect_output: str, start_time: float):
+def check_expect_output(cmd: str, returncode: str, out_str: str, err_str: str, expect_output: str):
     """Check if return code matches expected output."""
     if returncode != expect_output:
         print(">>>>> ret <<<<<")
@@ -146,10 +145,10 @@ def check_expect_output(cmd: str, returncode: str, out_str: str, err_str: str, e
         print(err_str)
         print(">>>>> Expect return: [" + expect_output \
             + "]\n>>>>> But got: [" + returncode + "]")
-        raise RuntimeError("Run [" + cmd + "] failed! used: %.5f seconds" % (time.time() - start_time))
+        raise RuntimeError("Run [" + cmd + "] failed!")
 
 
-def check_expect_sub_output(cmd: str, returncode: str, out_str: str, err_str: str, expect_sub_output: str, start_time: float):
+def check_expect_sub_output(cmd: str, returncode: str, out_str: str, err_str: str, expect_sub_output: str):
     """Check if output contains expected substring."""
     if out_str.find(expect_sub_output) == -1 or returncode != "0":
         print(">>>>> ret <<<<<")
@@ -158,10 +157,10 @@ def check_expect_sub_output(cmd: str, returncode: str, out_str: str, err_str: st
         print(err_str)
         print(">>>>> Expect contain: [" + expect_sub_output \
             + "]\n>>>>> But got: [" + out_str + "]")
-        raise RuntimeError("Run [" + cmd + "] failed! used: %.5f seconds" % (time.time() - start_time))
+        raise RuntimeError("Run [" + cmd + "] failed!")
 
 
-def check_expect_sub_error(cmd: str, returncode: str, out_str: str, err_str: str, expect_sub_error: str, start_time: float):
+def check_expect_sub_error(cmd: str, returncode: str, out_str: str, err_str: str, expect_sub_error: str):
     """Check if error output contains expected substring."""
     if err_str.find(expect_sub_error) == -1 or returncode == '0':
         print(">>>>> returnCode <<<<<")
@@ -174,10 +173,10 @@ def check_expect_sub_error(cmd: str, returncode: str, out_str: str, err_str: str
         else:
             print(">>>>> Expect err : [" + expect_sub_error \
                 + "]\n>>>>> But got wrong err: [" + err_str + "]")
-        raise RuntimeError("Run [" + cmd + "] failed! used: %.5f seconds" % (time.time() - start_time))
+        raise RuntimeError("Run [" + cmd + "] failed!")
 
 
-def check_expect_file(cmd: str, returncode: str, out_str: str, err_str: str, expect_file: str, start_time: float):
+def check_expect_file(cmd: str, returncode: str, out_str: str, err_str: str, expect_file: str):
     """Check if output matches expected file content."""
     with open(expect_file, mode='r') as file:
         # skip license header
@@ -192,15 +191,11 @@ def check_expect_file(cmd: str, returncode: str, out_str: str, err_str: str, exp
             print(">>>>> Expect {} lines: [{}]\n>>>>> But got {} lines: [{}]".format(
                 expect_output.count('\n'), expect_output, out_str.count('\n'), out_str
             ))
-            raise RuntimeError("Run [" + cmd + "] failed! used: %.5f seconds" % (time.time() - start_time))
+            raise RuntimeError("Run [" + cmd + "] failed!")
 
 
 def judge_output(args: object):
     """Run executable and judge if success or not."""
-
-    if args.empty:
-        return
-
     start_time = time.time()
     [cmd, subp] = process_open(args)
     timeout_limit = int(args.timeout_limit) if args.timeout_limit else 1200  # units: s
@@ -216,15 +211,15 @@ def judge_output(args: object):
     returncode = str(subp.returncode)
 
     if args.expect_output:
-        check_expect_output(cmd, returncode, out_str, err_str, args.expect_output, start_time)
+        check_expect_output(cmd, returncode, out_str, err_str, args.expect_output)
     elif args.expect_sub_output:
-        check_expect_sub_output(cmd, returncode, out_str, err_str, args.expect_sub_output, start_time)
+        check_expect_sub_output(cmd, returncode, out_str, err_str, args.expect_sub_output)
     elif args.expect_sub_error:
-        check_expect_sub_error(cmd, returncode, out_str, err_str, args.expect_sub_error, start_time)
+        check_expect_sub_error(cmd, returncode, out_str, err_str, args.expect_sub_error)
     elif args.expect_file:
-        check_expect_file(cmd, returncode, out_str, err_str, args.expect_file, start_time)
+        check_expect_file(cmd, returncode, out_str, err_str, args.expect_file)
     else:
-        raise RuntimeError("Run [" + cmd + "] with no expect! used: %.5f seconds" % (time.time() - start_time))
+        raise RuntimeError("Run [" + cmd + "] with no expect !")
 
     print("Run [" + cmd + "] success!")
     print("used: %.5f seconds" % (time.time() - start_time))

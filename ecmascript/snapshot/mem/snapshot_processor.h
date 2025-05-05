@@ -109,13 +109,13 @@ public:
     size_t GetNativeTableSize() const;
 
 private:
-    class SerializeObjectVisitor final : public BaseObjectVisitor<SerializeObjectVisitor> {
+    class SerializeObjectVisitor final : public EcmaObjectRangeVisitor<SerializeObjectVisitor> {
     public:
         explicit SerializeObjectVisitor(SnapshotProcessor *processor, uintptr_t snapshotObj,
             CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
         ~SerializeObjectVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
         uintptr_t snapshotObj_ {-1};
@@ -123,12 +123,12 @@ private:
         std::unordered_map<uint64_t, ObjectEncode> *data_{nullptr};
     };
 
-    class DeserializeFieldVisitor final : public BaseObjectVisitor<DeserializeFieldVisitor> {
+    class DeserializeFieldVisitor final : public EcmaObjectRangeVisitor<DeserializeFieldVisitor> {
     public:
         explicit DeserializeFieldVisitor(SnapshotProcessor *processor);
         ~DeserializeFieldVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
     };

@@ -338,14 +338,4 @@ group("host_unittest") {
       ":RawHeapTranslateTestAction",
     ]
   }
-
-  # TODO: CMC-GC UT FIX LATER
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
-    deps -= [
-      ":HProfTestAction",
-      ":HeapDumpTestAction",
-      ":HeapSnapShotTestAction",
-      ":HeapTrackerFirstTestAction",
-    ]
-  }
 }

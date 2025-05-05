@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_MEM_MEM_MAP_ALLOCATOR_H
 #define ECMASCRIPT_MEM_MEM_MAP_ALLOCATOR_H
 
-#include <chrono>
 #include <deque>
 #include <map>
 #include <random>
@@ -253,11 +252,8 @@ public:
     {
         AdapterSuitablePoolCapacity();
         memMapTotalSize_ = 0;
-#ifndef USE_CMC_GC
         InitializeHugeRegionMap(alignment);
         InitializeRegularRegionMap(alignment);
-        InitializeCompressRegionMap(alignment);
-#endif
     }
 
     void Finalize()
@@ -276,10 +272,10 @@ public:
     static MemMapAllocator *GetInstance();
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                    const std::string &spaceName, bool regular, bool isCompress, bool isMachineCode,
+                    const std::string &spaceName, bool regular, bool isMachineCode,
                     bool isEnableJitFort, bool shouldPageTag);
 
-    void CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize, bool shouldPageTag, bool skipCache);
+    void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag, bool skipCache);
 
     // This is only used when allocating region failed during GC, since it's unsafe to do HeapDump or throw OOM,
     // just make MemMapAllocator infinite to complete this GC, this will temporarily lead that all JSThread could
@@ -290,14 +286,6 @@ public:
 private:
     void InitializeRegularRegionMap(size_t alignment);
     void InitializeHugeRegionMap(size_t alignment);
-    void InitializeCompressRegionMap(size_t alignment);
-
-    MemMap AllocateFromMemPool(MemMapPool &pool, const uint32_t threadId, size_t size, size_t alignment,
-                               const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
-                               bool shouldPageTag, PageTagType type);
-    MemMap InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
-                          bool isMachineCode, bool isEnableJitFort, bool shouldPageTag, PageTagType type);
-    MemMap AlignMemMapTo4G(const MemMap &memMap);
     // Random generate big mem map addr to avoid js heap is written by others
     void *RandomGenerateBigAddr(uint64_t addr)
     {
@@ -322,9 +310,8 @@ private:
     static constexpr size_t MEM_MAP_RETRY_NUM = 10;
 
     void AdapterSuitablePoolCapacity();
-    void Free(void *mem, size_t size, bool isRegular, bool isCompress);
+    void Free(void *mem, size_t size, bool isRegular);
     MemMapPool memMapPool_;
-    MemMapPool compressMemMapPool_;
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};
     size_t capacity_ {0};

@@ -21,7 +21,6 @@
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/mem/barriers.h"
 
 /*
  * JSHandle: A JSHandle provides a reference to an object that survives relocation by the garbage collector.
@@ -123,9 +122,7 @@ public:
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined();
         }
-        // return *(reinterpret_cast<JSTaggedValue *>(GetAddress()));  // NOLINT(clang-analyzer-core.NullDereference)
-        // temporarily add ReadBarrier for JSHandle
-        return JSTaggedValue(Barriers::GetTaggedValue(GetAddress()));
+        return *(reinterpret_cast<JSTaggedValue *>(GetAddress()));  // NOLINT(clang-analyzer-core.NullDereference)
     }
 
     inline JSTaggedType GetTaggedType() const
@@ -134,9 +131,7 @@ public:
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined().GetRawData();
         }
-        // return *reinterpret_cast<JSTaggedType *>(GetAddress());  // NOLINT(clang-analyzer-core.NullDereference)
-        // temporarily add ReadBarrier for JSHandle
-        return Barriers::GetTaggedValue(GetAddress());
+        return *reinterpret_cast<JSTaggedType *>(GetAddress());  // NOLINT(clang-analyzer-core.NullDereference)
     }
 
     inline T *operator*() const

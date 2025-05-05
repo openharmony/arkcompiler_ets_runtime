@@ -19,11 +19,10 @@
 #include <ctime>
 #include <chrono>
 
-#include "ecmascript/common_enum.h"
+#include "libpandabase/macros.h"
+
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/log_wrapper.h"
-
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 using Clock = std::chrono::high_resolution_clock;

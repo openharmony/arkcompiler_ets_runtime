@@ -194,7 +194,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
-        auto size = header->GetSize();
+        auto size = klass->SizeFromJSHClass(header);
 
         uintptr_t address = 0;
         bool actualPromoted = false;
@@ -416,7 +416,7 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
             auto obj = reinterpret_cast<TaggedObject *>(curPtr);
             auto klass = obj->GetClass();
             UpdateNewObjectField<gcType, needUpdateLocalToShare>(obj, klass, updateFieldVisitor);
-            objSize = obj->GetSize();
+            objSize = klass->SizeFromJSHClass(obj);
         } else {
             freeObject->AsanUnPoisonFreeObject();
             objSize = freeObject->Available();
@@ -447,7 +447,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
             region->ClearLocalToShareRSetInRange(freeStart, freeEnd);
         }
 
-        freeStart = freeEnd + header->GetSize();
+        freeStart = freeEnd + klass->SizeFromJSHClass(header);
     });
     CHECK_REGION_END(freeStart, freeEnd);
     if (freeStart < freeEnd) {
@@ -462,12 +462,9 @@ ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>::
 
 template <TriggerGCType gcType, bool needUpdateLocalToShare>
 void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>::VisitObjectRangeImpl(
-    BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
+    TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        auto root = TaggedObject::Cast(rootObject);
         JSHClass *hclass = root->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;

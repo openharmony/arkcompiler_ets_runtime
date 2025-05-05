@@ -112,7 +112,6 @@
       panda::ecmascript::pgo::PGOProfilerEncoder::*;
       panda::ecmascript::pgo::ProfileType::PROFILE_TYPE_NONE;
       panda::ecmascript::containers::ContainerError::*;
-      panda::ecmascript::MarkWord::BASE_ADDRESS;
       panda::ecmascript::NativeAreaAllocator::*;
 
       panda::os::thread::*;

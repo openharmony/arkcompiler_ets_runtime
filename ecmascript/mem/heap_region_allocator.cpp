@@ -38,9 +38,6 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE &&
         flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE &&
         flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
-    bool isCompress = flags == RegionSpaceFlag::IN_NON_MOVABLE_SPACE ||
-        flags == RegionSpaceFlag::IN_SHARED_NON_MOVABLE || flags == RegionSpaceFlag::IN_READ_ONLY_SPACE ||
-        flags == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
     JSThread::ThreadId tid = 0;
@@ -49,7 +46,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
     }
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
-        ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode, Jit::GetInstance()->IsEnableJitFort(),
+        ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode, Jit::GetInstance()->IsEnableJitFort(),
         shouldPageTag);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
@@ -57,7 +54,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
             // Donot crash in GC.
             TemporarilyEnsureAllocateionAlwaysSuccess(heap);
             pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
-                ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
+                ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode,
                 Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
             mapMem = pool.GetMem();
             if (mapMem == nullptr) {
@@ -102,8 +99,6 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
     auto size = region->GetCapacity();
     bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
         !region->InSharedHugeObjectSpace();
-    bool isCompress = region->InNonMovableSpace() || region->InSharedNonMovableSpace() ||
-        region->InReadOnlySpace() || region->InSharedReadOnlySpace();
     auto allocateBase = region->GetAllocateBase();
     bool shouldPageTag = FreeRegionShouldPageTag(region);
     bool inHugeMachineCodeSpace = region->InHugeMachineCodeSpace();
@@ -126,7 +121,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
         UNREACHABLE();
     }
 #endif
-    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, isCompress, cachedSize,
+    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, cachedSize,
                                                 shouldPageTag, skipCache);
 }
 

@@ -51,7 +51,7 @@ void OldGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
     if (!value.IsHeapObject()) {
         return;
     }
-
+    
     ASSERT(!value.IsWeak());
     TaggedObject *object = value.GetTaggedObject();
     Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -71,12 +71,9 @@ void OldGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
 
 OldGCMarkObjectVisitor::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
 
-void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
+void OldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                   VisitObjectArea area)
 {
-    ObjectSlot startSlot(start);
-    ObjectSlot endSlot(end);
-    auto root = TaggedObject::Cast(rootObject);
     Region *rootRegion = Region::ObjectAddressToRange(root);
     bool rootNeedEvacuate = rootRegion->InYoungSpaceOrCSet();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -84,10 +81,10 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-        ObjectSlot realEnd(start);
+        ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
-        endSlot = endSlot > realEnd ? realEnd : endSlot;
-        for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+        end = end > realEnd ? realEnd : end;
+        for (ObjectSlot slot = start; slot < end; slot++) {
             PropertyAttributes attr = layout->GetAttr(index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot, rootRegion, rootNeedEvacuate);
@@ -95,14 +92,13 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
         }
         return;
     }
-    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         HandleSlot(slot, rootRegion, rootNeedEvacuate);
     }
 }
 
-void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
+void OldGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
 {
-    auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     ASSERT(hclass->GetClass()->IsHClass());
     Region *hclassRegion = Region::ObjectAddressToRange(hclass);
     if (!hclassRegion->InSharedHeap()) {

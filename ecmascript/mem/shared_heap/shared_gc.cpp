@@ -25,9 +25,6 @@
 namespace panda::ecmascript {
 void SharedGC::RunPhases()
 {
-#ifdef USE_CMC_GC
-    ASSERT("SharedGC should be disabled" && false);
-#endif
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";MarkReason" + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))

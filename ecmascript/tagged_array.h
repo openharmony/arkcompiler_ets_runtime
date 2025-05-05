@@ -40,7 +40,7 @@ public:
         //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
         size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
         // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-        return JSTaggedValue(Barriers::GetTaggedValue(reinterpret_cast<JSTaggedType *>(ToUintPtr(this)), DATA_OFFSET + offset));
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), offset));
     }
 
     JSTaggedValue Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const;

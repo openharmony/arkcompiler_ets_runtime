@@ -395,7 +395,7 @@ public:
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
     template <VisitType visitType, class DerivedVisitor>
-    void VisitObjects(BaseObjectVisitor<DerivedVisitor> &visitor)
+    void VisitObjects(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         // no field in this object
         VisitRangeSlot<visitType>(visitor);

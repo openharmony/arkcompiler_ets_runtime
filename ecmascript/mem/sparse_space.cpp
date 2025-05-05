@@ -256,7 +256,8 @@ void SparseSpace::FreeRegion(Region *current, bool isMain)
     current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
         ASSERT(current->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
-        auto size = header->GetSize();
+        auto klass = header->GetClass();
+        auto size = klass->SizeFromJSHClass(header);
 
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
@@ -293,7 +294,7 @@ void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
             if (!freeObject->IsFreeObject()) {
                 auto obj = reinterpret_cast<TaggedObject *>(curPtr);
                 visitor(obj);
-                objSize = obj->GetSize();
+                objSize = obj->GetClass()->SizeFromJSHClass(obj);
             } else {
                 freeObject->AsanUnPoisonFreeObject();
                 objSize = freeObject->Available();
@@ -825,7 +826,7 @@ size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &mac
         if (obj->IsInText(pc)) {
             machineCode = curPtr;
         }
-        objSize = obj->GetSize();
+        objSize = obj->GetClass()->SizeFromJSHClass(obj);
     } else {
         objSize = freeObject->Available();
     }

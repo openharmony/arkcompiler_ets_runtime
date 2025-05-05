@@ -30,8 +30,6 @@
 
 namespace panda {
 namespace ecmascript {
-class EcmaVM;
-
 enum class CreateMode : uint8_t {
     RUNTIME = 0,
     DFX,

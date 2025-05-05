@@ -547,12 +547,8 @@ public:
     inline GateRef IsPrototypeHClass(GateRef hclass);
     inline GateRef IsJsProxy(GateRef glue, GateRef obj);
     GateRef IsJSHClass(GateRef glue, GateRef obj);
-    // It must sets zero for high 32 bits field when store hclass to object header.
-    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass,
-                            MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
-    // It must keeps high 32 bits field when store hclass to object header.
-    inline void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,
-                             MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
+    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
+    inline void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
@@ -566,7 +562,7 @@ public:
     inline GateRef HasConstructorByHClass(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
     inline GateRef LoadHClass(GateRef glue, GateRef object);
-    inline GateRef LoadHClassByConstOffset(GateRef glue, GateRef object);
+    inline GateRef LoadHClassByConstOffset(GateRef object);
     inline GateRef LoadPrototype(GateRef hclass);
     inline GateRef LoadPrototypeHClass(GateRef glue, GateRef object);
     inline GateRef LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef object);
@@ -937,11 +933,8 @@ public:
         MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef LoadWithoutBarrier(VariableType type, GateRef addr, MemoryAttribute mAttr = MemoryAttribute::Default());
 
-
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                MemoryAttribute mAttr = MemoryAttribute::Default());
-    void StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, GateRef compValue,
-                     MemoryAttribute mAttr = MemoryAttribute::Default());
     void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
                              MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);

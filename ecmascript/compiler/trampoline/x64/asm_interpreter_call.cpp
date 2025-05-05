@@ -135,10 +135,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     Register argvRegister = r9;
     Register bitFieldRegister = r12;
     Register tempRegister = r11;  // can not be used to store any variable
-    __ Movl(Operand(callTargetRegister, TaggedObject::HCLASS_OFFSET), tempRegister);
-    Register baseAddrRegister = r12;
-    __ Movq(Operand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)), baseAddrRegister);
-    __ Addq(baseAddrRegister, tempRegister);  // hclass
+    __ Movq(Operand(callTargetRegister, TaggedObject::HCLASS_OFFSET), tempRegister);  // hclass
     __ Movq(Operand(tempRegister, JSHClass::BIT_FIELD_OFFSET), bitFieldRegister);
     __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), bitFieldRegister);
     __ Jb(&notJSFunction);
@@ -1188,9 +1185,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Cmpq(0, temp);
         __ Jne(&notEcmaObject);
         // acc is heap object
-        __ Movl(Operand(ret, JSFunction::HCLASS_OFFSET), temp);
-        __ Movq(Operand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)), r10);
-        __ Addq(r10, temp); // hclass
+        __ Movq(Operand(ret, 0), temp);  // hclass
         __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
         __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
         __ Ja(&notEcmaObject);
@@ -1422,15 +1417,14 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
 
 // ResumeRspAndReturnBaseline(uintptr_t acc)
 // GHC calling convention
-// %r13 - glue
-// %rbp - acc
-// %r12 - prevSp
-// %rbx - sp
-// %r14 - jumpSizeAfterCall
+// %r13 - acc
+// %rbp - prevSp
+// %r12 - sp
+// %rbx - jumpSizeAfterCall
 void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
-    Register currentSp = rbx;
+    Register currentSp = r12;
     Register fpRegister = r10;
     intptr_t fpOffset = static_cast<intptr_t>(AsmInterpretedFrame::GetFpOffset(false)) -
         static_cast<intptr_t>(AsmInterpretedFrame::GetSize(false));
@@ -1438,8 +1432,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
     __ Movq(fpRegister, rsp);
 
     // Check result
-    Register ret = rbp;
-    Register jumpSizeRegister = r14;
+    Register ret = r13;
+    Register jumpSizeRegister = rbx;
     Label getThis;
     Label notUndefined;
     Label normalReturn;
@@ -1469,9 +1463,7 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ Cmpq(0, temp);
             __ Jne(&notEcmaObject);
             // acc is heap object
-            __ Movl(Operand(ret, JSFunction::HCLASS_OFFSET), temp);
-            __ Movq(Operand(r13, JSThread::GlueData::GetBaseAddressOffset(false)), r11);
-            __ Addq(r11, temp); // hclass
+            __ Movq(Operand(ret, 0), temp);  // hclass
             __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
             __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
             __ Ja(&notEcmaObject);
@@ -1685,10 +1677,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     ASSERT(IN_YOUNG_SPACE < SHARED_SPACE_BEGIN && SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN &&
            SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE && IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
     __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
-
-#ifdef USE_CMC_GC
-    __ Ret();
-#else
     Label needCall;
     Label checkMark;
     Label needCallNotShare;
@@ -1775,7 +1763,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         ASMFastSharedWriteBarrier(assembler, needCall);
     }
-#endif // USE_CMC_GC
 }
 
 // %rd1 - glue

@@ -58,16 +58,17 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
     EXPECT_TRUE(*objectClass != nullptr);
     size_t objectSize;
-#ifndef PANDA_TARGET_32
     objectSize = objectClass->GetClass()->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 80U);
-#endif
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
-    objectSize = string->GetSize();
+    objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 16U);
+    string = factory->AllocTreeStringObject();
+    objectSize = string->GetClass()->SizeFromJSHClass(string);
+    EXPECT_EQ(objectSize, 32U);
 
     objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
-    objectSize = (*objectClass)->SizeFromJSHClass(*objectClass);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
     EXPECT_EQ(objectSize, 328U);
 #else
@@ -75,15 +76,15 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 #endif
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = (*objectClass)->SizeFromJSHClass(*objectClass);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 56U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = (*objectClass)->SizeFromJSHClass(*objectClass);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 64U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    objectSize = (*objectClass)->SizeFromJSHClass(*objectClass);
+    objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 64U);
 }
 
@@ -440,7 +441,7 @@ HWTEST_F_L0(JSHClassTest, ProxyHClassClone)
 
     JSHandle<JSProxy> proxy = JSProxy::ProxyCreate(thread,
         JSHandle<JSTaggedValue>(target), JSHandle<JSTaggedValue>(handler));
-
+    
     JSHandle<JSHClass> hclass(thread, proxy->GetClass());
     EXPECT_FALSE(hclass->IsJSObject());
     EXPECT_GT(hclass->GetObjectSize(), 0);

@@ -1413,18 +1413,17 @@ SnapshotProcessor::SerializeObjectVisitor::SerializeObjectVisitor(SnapshotProces
     CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data)
     : processor_(processor), snapshotObj_(snapshotObj), queue_(queue), data_(data) {}
 
-void SnapshotProcessor::SerializeObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start,
-                                                                     uintptr_t endAddr, VisitObjectArea area)
+void SnapshotProcessor::SerializeObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                     ObjectSlot end, VisitObjectArea area)
 {
     int index = 0;
-    ObjectSlot end(endAddr);
-    for (ObjectSlot slot(start); slot < end; slot++) {
+    for (ObjectSlot slot = start; slot < end; slot++) {
         if (area == VisitObjectArea::NATIVE_POINTER) {
             auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
             processor_->SetObjectEncodeField(snapshotObj_, slot.SlotAddress() - ToUintPtr(root),
                                              processor_->NativePointerToEncodeBit(nativePointer).GetValue());
         } else {
-            if (processor_->VisitObjectBodyWithRep(TaggedObject::Cast(root), slot, snapshotObj_, index, area)) {
+            if (processor_->VisitObjectBodyWithRep(root, slot, snapshotObj_, index, area)) {
                 continue;
             }
             auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
@@ -1543,7 +1542,7 @@ void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, Met
             if (objIndex < rootObjSize) {
                 HandleRootObject(type, begin, objType, constSpecialIndex);
             }
-            begin = begin + AlignUp(objectHeader->GetSize(),
+            begin = begin + AlignUp(objectHeader->GetClass()->SizeFromJSHClass(objectHeader),
                                     static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             objIndex++;
         }
@@ -1670,12 +1669,9 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 SnapshotProcessor::DeserializeFieldVisitor::DeserializeFieldVisitor(SnapshotProcessor *processor)
     : processor_(processor) {}
 
-void SnapshotProcessor::DeserializeFieldVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr,
-                                                                      uintptr_t endAddr, VisitObjectArea area)
+void SnapshotProcessor::DeserializeFieldVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                      ObjectSlot end, VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
-    auto root = TaggedObject::Cast(rootObject);
     for (ObjectSlot slot = start; slot < end; slot++) {
         auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
         if (area == VisitObjectArea::NATIVE_POINTER) {
@@ -1849,7 +1845,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         }
     }
     queue->emplace(objectHeader);
-    size_t objectSize = objectHeader->GetSize();
+    size_t objectSize = objectHeader->GetClass()->SizeFromJSHClass(objectHeader);
     if (objectSize == 0) {
         LOG_ECMA_MEM(FATAL) << "It is a zero object. Not Support.";
     }

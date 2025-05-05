@@ -298,7 +298,7 @@ void MCRLowering::LowerMathHClassConsistencyCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
+    GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
 
     GateRef cond = builder_.Equal(receiverHClass,
         builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), GlobalEnv::MATH_FUNCTION_CLASS_INDEX));

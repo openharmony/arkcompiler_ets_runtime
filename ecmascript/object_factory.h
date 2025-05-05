@@ -432,7 +432,6 @@ public:
 
     JSHandle<MutantTaggedArray> EmptyMutantArray() const;
 
-    template <bool needBarrier = false>
     FreeObject *FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots = RemoveSlots::NO,
                                uintptr_t hugeObjectHead = 0);
 
@@ -770,11 +769,6 @@ public:
 
     JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-
-#ifdef USE_CMC_GC
-    JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                                    uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-#endif
 
     JSHandle<TaggedArray> SharedEmptyArray() const;
 

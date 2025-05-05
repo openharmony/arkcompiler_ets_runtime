@@ -15,16 +15,12 @@
 
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
-#include "common_interfaces/base_runtime.h"
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
+
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
 #include "ecmascript/platform/mutex.h"
@@ -166,9 +162,6 @@ public:
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
-#ifdef USE_CMC_GC
-    void IteratorNativeDeleteInSharedGC(WeakVisitor &visitor);
-#endif
 
     void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
     void InvokeSharedNativePointerCallbacks();
@@ -250,13 +243,11 @@ public:
         return nativeAreaAllocator_.get();
     }
 
-    void PreFork(JSThread *thread);
-    void PostFork();
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
     static constexpr uint32_t MAX_SUSPEND_RETRIES = 5000;
-    Runtime();
+    Runtime() = default;
     ~Runtime();
     void SuspendAllThreadsImpl(JSThread *current);
     void ResumeAllThreadsImpl(JSThread *current);
@@ -322,9 +313,6 @@ private:
     static bool firstVmCreated_;
     static Mutex *vmCreationLock_;
     static Runtime *instance_;
-#ifdef USE_CMC_GC
-    static BaseRuntime *baseInstance_;
-#endif
 
     // for string cache
     JSTaggedValue *externalRegisteredStringTable_ {nullptr};

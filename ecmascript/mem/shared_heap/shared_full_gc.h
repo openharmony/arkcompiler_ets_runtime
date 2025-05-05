@@ -74,14 +74,14 @@ private:
     uint32_t threadId_ {-1};
 };
 
-class SharedFullGCMarkObjectVisitor final : public BaseObjectVisitor<SharedFullGCMarkObjectVisitor> {
+class SharedFullGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<SharedFullGCMarkObjectVisitor> {
 public:
     explicit SharedFullGCMarkObjectVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
     ~SharedFullGCMarkObjectVisitor() override = default;
 
-    void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
 
-    void VisitObjectHClassImpl(BaseObject *hclass) override;
+    void VisitObjectHClassImpl(TaggedObject *hclass) override;
 private:
     void HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate);
 

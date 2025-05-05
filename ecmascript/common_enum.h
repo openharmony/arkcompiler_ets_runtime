@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_COMMON_ENUM_H
 #define ECMASCRIPT_COMMON_ENUM_H
 
-#include <cstdint>
-
 namespace panda {
 namespace ecmascript {
 enum BarrierMode { SKIP_BARRIER, WRITE_BARRIER, READ_BARRIER };

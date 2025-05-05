@@ -141,7 +141,7 @@ public:
     ~HeapProfiler() override;
 
     enum class SampleType { ONE_SHOT, REAL_TIME };
-
+    
     void AllocationEvent(TaggedObject *address, size_t size) override;
     void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size) override;
     /**
@@ -247,7 +247,7 @@ private:
     friend class HeapProfilerFriendTest;
 };
 
-class RawHeapDump final : public RootVisitor, public BaseObjectVisitor<RawHeapDump> {
+class RawHeapDump final : public RootVisitor, public EcmaObjectRangeVisitor<RawHeapDump> {
 public:
     RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot, EntryIdMap* entryIdMap)
         : vm_(vm), stream_(stream), snapshot_(snapshot), entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()),
@@ -288,7 +288,7 @@ public:
         // do nothing
     }
 
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
 
 private:
     void DumpVersion();

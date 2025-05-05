@@ -193,7 +193,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
 
         Node *oldNode = entryMap_.FindAndEraseNode(Node::NewAddress(forwardAddress));
         if (oldNode != nullptr) {
-            oldNode->SetAddress(Node::NewAddress(static_cast<TaggedObject *>(nullptr)));
+            oldNode->SetAddress(Node::NewAddress(TaggedObject::Cast(nullptr)));
         }
 
         // Size and name may change during its life for some types(such as string, array and etc).
@@ -201,7 +201,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
             node->SetName(GenerateNodeName(forwardAddress));
         }
         if (JSTaggedValue(forwardAddress).IsString()) {
-            node->SetSelfSize(forwardAddress->GetSize());
+            node->SetSelfSize(forwardAddress->GetClass()->SizeFromJSHClass(forwardAddress));
         } else {
             node->SetSelfSize(size);
         }
@@ -676,7 +676,7 @@ Node *HeapSnapshot::HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &i
 Node *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
                                         TaggedObject* obj, JSTaggedType &addr)
 {
-    size_t selfSize = (size != 0) ? size : obj->GetSize();
+    size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
     size_t nativeSize = 0;
     if (obj->GetClass()->IsJSNativePointer()) {
         nativeSize = JSNativePointer::Cast(obj)->GetBindingSize();
@@ -940,7 +940,8 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     }
     // Allocation Event will generate string node for "".
     // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
-    size_t selfsize = (size != 0) ? size : entry.GetTaggedObject()->GetSize();
+    size_t selfsize = (size != 0) ? size :
+        entry.GetTaggedObject()->GetClass()->SizeFromJSHClass(entry.GetTaggedObject());
     const CString *nodeName = &EMPTY_STRING;
     if (isInFinish || isBinMod) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
@@ -962,7 +963,8 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
         return privateStringNode_;
     }
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
-    size_t selfsize = (size != 0) ? size : stringValue.GetTaggedObject()->GetSize();
+    size_t selfsize = (size != 0) ? size :
+        stringValue.GetTaggedObject()->GetClass()->SizeFromJSHClass(stringValue.GetTaggedObject());
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     JSTaggedType addr = stringValue.GetRawData();
@@ -992,7 +994,7 @@ Node *HeapSnapshot::GenerateFunctionNode(JSTaggedValue entry, size_t size, bool 
         existNode->SetLive(true);
         return existNode;
     }
-    size_t selfsize = (size != 0) ? size : obj->GetSize();
+    size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("JSFunction"), NodeType::CLOSURE, selfsize,
                                0, addr);
     if (isInFinish) {
@@ -1019,7 +1021,7 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
         existNode->SetLive(true);
         return existNode;
     }
-    size_t selfsize = (size != 0) ? size : obj->GetSize();
+    size_t selfsize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString("Object"), NodeType::OBJECT, selfsize,
                                0, addr);
     if (isInFinish) {

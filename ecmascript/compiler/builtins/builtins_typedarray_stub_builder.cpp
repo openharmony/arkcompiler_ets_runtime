@@ -150,7 +150,7 @@ GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, Gate
     Label notDetached(env);
     Label slowPath(env);
     Label indexIsvalid(env);
-
+    
     GateRef buffer = GetViewedArrayBuffer(glue, array);
     BRANCH(IsDetachedBuffer(glue, buffer), &isDetached, &notDetached);
     Bind(&isDetached);
@@ -3339,7 +3339,8 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArrayBuffer(GateRef glue, Ga
             GateRef objHclass = LoadHClass(glue, typedArray);
             GateRef newHclass = GetOnHeapHclassFromType(glue, objHclass, arrayType);
             NotifyHClassChanged(glue, objHclass, newHclass);
-            TransitionHClass(glue, typedArray, newHclass, MemoryAttribute::NeedBarrierAndAtomic());
+            Store(VariableType::JS_ANY(), glue, typedArray, IntPtr(TaggedObject::HCLASS_OFFSET),
+                  newHclass, MemoryAttribute::NeedBarrierAndAtomic());
             if (arrayType == DataViewType::BIGINT64 ||
                 arrayType == DataViewType::BIGUINT64) {
                 SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(ContentType::BigInt)));

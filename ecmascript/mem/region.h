@@ -395,11 +395,6 @@ public:
     template <typename Visitor>
     void IterateAllSweepingRSetBits(Visitor visitor);
 
-    static Region *ObjectAddressToRange(BaseObject *obj)
-    {
-        return reinterpret_cast<Region *>(ToUintPtr(obj) & ~DEFAULT_REGION_MASK);
-    }
-
     static Region *ObjectAddressToRange(TaggedObject *obj)
     {
         return reinterpret_cast<Region *>(ToUintPtr(obj) & ~DEFAULT_REGION_MASK);
@@ -538,9 +533,6 @@ public:
 
     bool InSharedHeap() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#endif
         auto flag = packedData_.flags_.spaceFlag_;
         return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
     }

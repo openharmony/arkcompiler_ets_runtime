@@ -63,24 +63,24 @@ private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
 
-    class SetObjectFieldRSetVisitor final : public BaseObjectVisitor<SetObjectFieldRSetVisitor> {
+    class SetObjectFieldRSetVisitor final : public EcmaObjectRangeVisitor<SetObjectFieldRSetVisitor> {
     public:
         explicit SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator);
         ~SetObjectFieldRSetVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area);
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
 
     template <TriggerGCType gcType, bool needUpdateLocalToShare>
     class UpdateNewObjectFieldVisitor final :
-        public BaseObjectVisitor<UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>> {
+        public EcmaObjectRangeVisitor<UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>> {
     public:
         explicit UpdateNewObjectFieldVisitor(ParallelEvacuator *evacuator);
         ~UpdateNewObjectFieldVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area);
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
@@ -159,7 +159,7 @@ private:
         std::atomic<size_t> indexCursor_ = 0;
         std::atomic<size_t> remainingWorkloadNum_ = 0;
     };
-
+    
     class EvacuateWorkload : public Workload {
     public:
         EvacuateWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}

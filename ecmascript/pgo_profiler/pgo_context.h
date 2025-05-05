@@ -23,7 +23,7 @@
 #include <unordered_map>
 
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "libpandabase/macros.h"
+#include "macros.h"
 
 namespace panda::ecmascript::pgo {
 class PGOAbcFilePool;

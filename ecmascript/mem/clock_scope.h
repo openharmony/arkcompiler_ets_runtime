@@ -19,8 +19,6 @@
 #include <ctime>
 #include <chrono>
 
-#include "libpandabase/macros.h"
-
 namespace panda::ecmascript {
 class ClockScope {
 using Clock = std::chrono::high_resolution_clock;

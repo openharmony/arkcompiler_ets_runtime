@@ -196,7 +196,8 @@ void SharedGCMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object, 
     ASSERT(objectRegion->InSharedHeap());
     if (!NeedEvacuate(objectRegion)) {
         if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
-            auto size = object->GetSize();
+            auto hclass = object->GetClass();
+            auto size = hclass->SizeFromJSHClass(object);
             objectRegion->IncreaseAliveObject(size);
             sWorkManager_->Push(threadId, object);
         }

@@ -601,54 +601,6 @@ public:
         Destroy();
     }
 
-    void SerializeMultiSharedRegionTest1(SerializeData *data)
-    {
-        Init();
-        BaseDeserializer deserializer(thread, data);
-        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-        EXPECT_TRUE(!res.IsEmpty());
-        EXPECT_TRUE(res->IsJSObject());
-        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements();
-        EXPECT_TRUE(elements.IsTaggedArray());
-        EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 3 * 1024); // 3 * 1024: array length
-        for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(i);
-            EXPECT_TRUE(value.IsTaggedArray());
-            uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
-            EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
-        }
-        Destroy();
-    }
-
-    void SerializeMultiSharedRegionTest2(SerializeData *data)
-    {
-        Init();
-        BaseDeserializer deserializer(thread, data);
-        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-        EXPECT_TRUE(!res.IsEmpty());
-        EXPECT_TRUE(res->IsJSObject());
-        JSTaggedValue properties = JSHandle<JSObject>(res)->GetProperties();
-        EXPECT_TRUE(properties.IsTaggedArray());
-        EXPECT_EQ(JSHandle<TaggedArray>(thread, properties)->GetLength(), 3 * 1024); // 3 * 1024: array length
-        for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, properties)->Get(i);
-            EXPECT_TRUE(value.IsTaggedArray());
-            uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
-            EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
-        }
-
-        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements();
-        EXPECT_TRUE(elements.IsTaggedArray());
-        EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 3 * 1024); // 3 * 1024: array length
-        for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(i);
-            EXPECT_TRUE(value.IsTaggedArray());
-            uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
-            EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
-        }
-        Destroy();
-    }
-
     void JSSharedSetBasicTest1(SerializeData *data)
     {
         Init();
@@ -1013,7 +965,8 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize CloneListTest1 fail";
-        EXPECT_TRUE(res->IsJSShared());
+        Region *region = Region::ObjectAddressToRange(res->GetTaggedObject());
+        EXPECT_TRUE(region->InSharedHeap());
         JSType resType = res->GetTaggedObject()->GetClass()->GetObjectType();
         EXPECT_EQ(resType, JSType::JS_SHARED_OBJECT);
 
@@ -1021,7 +974,8 @@ public:
         JSHandle<JSTaggedValue> key(factory->NewFromASCII("str2str1"));
         JSHandle<JSTaggedValue> shareObj =
             JSObject::GetProperty(thread, JSHandle<JSObject>(res), key).GetValue();
-        EXPECT_TRUE(shareObj->IsJSShared());
+        Region *region1 = Region::ObjectAddressToRange(shareObj->GetTaggedObject());
+        EXPECT_TRUE(region1->InSharedHeap());
         Destroy();
     }
 
@@ -1038,7 +992,8 @@ public:
         JSHandle<JSTaggedValue> key(factory->NewFromASCII("shareObj"));
         JSHandle<JSTaggedValue> shareObj =
             JSObject::GetProperty(thread, JSHandle<JSObject>(res), key).GetValue();
-        EXPECT_TRUE(shareObj->IsJSShared());
+        Region *region = Region::ObjectAddressToRange(shareObj->GetTaggedObject());
+        EXPECT_TRUE(region->InSharedHeap());
         Destroy();
     }
 
@@ -2379,12 +2334,14 @@ HWTEST_F_L0(JSSerializerTest, SerializeCloneListTest1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> shareObj = CreateSObject(thread);
-    EXPECT_TRUE(shareObj->IsJSShared());
+    Region *region = Region::ObjectAddressToRange(*shareObj);
+    EXPECT_TRUE(region->InSharedHeap());
 
     JSHandle<EcmaString> key(factory->NewFromASCII("str2str1"));
     JSHandle<JSTaggedValue> shareObj1 =
         JSObject::GetProperty(thread, JSHandle<JSObject>(shareObj), JSHandle<JSTaggedValue>(key)).GetValue();
-    EXPECT_TRUE(shareObj1->IsJSShared());
+    Region *region1 = Region::ObjectAddressToRange(shareObj1->GetTaggedObject());
+    EXPECT_TRUE(region1->InSharedHeap());
 
     JSHandle<JSArray> array = factory->NewJSArray();
     JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(array), 0, JSHandle<JSTaggedValue>(shareObj));
@@ -2616,58 +2573,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SerializeMultiSharedRegionTest, jsDeserializerTest, data.release());
-    ThreadSuspensionScope scope(thread);
-    t1.join();
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion1)
-{
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole()); // 3 * 1024: array length
-    for (int i = 0; i < 5; i++) {
-        JSHandle<TaggedArray> element = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole());
-        array->Set(thread, i, element);
-    }
-    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
-    obj->SetElements(thread, array);
-    ValueSerializer *serializer = new ValueSerializer(thread, false, true);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success);
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::SerializeMultiSharedRegionTest1, jsDeserializerTest, data.release());
-    ThreadSuspensionScope scope(thread);
-    t1.join();
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion2)
-{
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole()); // 10 * 1024: array length
-    for (int i = 0; i < 5; i++) {
-        JSHandle<TaggedArray> element = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole());
-        array->Set(thread, i, element);
-    }
-    JSHandle<TaggedArray> array1 = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole(), true); // 10 * 1024: array length
-    for (int i = 0; i < 5; i++) {
-        JSHandle<TaggedArray> element = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole(), true);
-        array1->Set(thread, i, element);
-    }
-    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
-    obj->SetProperties(thread, array);
-    obj->SetElements(thread, array1);
-    ValueSerializer *serializer = new ValueSerializer(thread, false, true);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success);
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::SerializeMultiSharedRegionTest2, jsDeserializerTest, data.release());
     ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;

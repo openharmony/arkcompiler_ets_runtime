@@ -132,14 +132,14 @@ private:
     void LowerNumberCheck(GateRef gate);
     void LowerBooleanCheck(GateRef gate);
     void LowerIndexCheck(GateRef gate);
-    void LowerObjectTypeCheck(GateRef glue, GateRef gate);
-    void LowerSimpleHClassCheck(GateRef glue, GateRef gate);
-    GateRef BuildCompareHClass(GateRef glue, GateRef gate, GateRef frameState);
-    void LowerStableArrayCheck(GateRef glue, GateRef gate);
-    void LowerTypedArrayCheck(GateRef glue, GateRef gate);
+    void LowerObjectTypeCheck(GateRef gate);
+    void LowerSimpleHClassCheck(GateRef gate);
+    GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
+    void LowerStableArrayCheck(GateRef gate);
+    void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate, GateRef glue);
     void LowerInternStringCheck(GateRef gate, GateRef glue);
-    void LowerEcmaMapCheck(GateRef glue, GateRef gate);
+    void LowerEcmaMapCheck(GateRef gate);
     void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
@@ -198,14 +198,14 @@ private:
     void LowerJSNewObjRangeCallTargetCheck(GateRef gate, GateRef glue);
     void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
-    void LowerGetSuperConstructor(GateRef glue, GateRef gate);
+    void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate, GateRef glue);
     void SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
-    void LowerLookupHolder(GateRef glue, GateRef gate);
+    void LowerLookupHolder(GateRef gate);
     void LowerLoadGetter(GateRef gate, GateRef glue);
     void LowerLoadSetter(GateRef gate, GateRef glue);
-    void LowerPrototypeCheck(GateRef glue, GateRef gate);
+    void LowerPrototypeCheck(GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
@@ -224,15 +224,15 @@ private:
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
-    void LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate);
+    void LowerProtoChangeMarkerCheck(GateRef gate);
     void LowerMonoCallGetterOnProto(GateRef gate, GateRef glue);
-    void LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate);
+    void LowerMonoLoadPropertyOnProto(GateRef gate);
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
     void LowerMonoStoreProperty(GateRef gate, GateRef glue);
     void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
     void LowerMigrateArrayWithKind(GateRef gate, GateRef glue);
     void LowerEcmaObjectCheck(GateRef gate);
-    void LowerElementskindCheck(GateRef glue, GateRef gate);
+    void LowerElementskindCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

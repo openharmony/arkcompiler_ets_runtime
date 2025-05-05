@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_JSSYMBOL_H
 #define ECMASCRIPT_JSSYMBOL_H
 
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"

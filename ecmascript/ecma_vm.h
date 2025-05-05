@@ -31,13 +31,9 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "libpandafile/bytecode_instruction-inl.h"
-
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
 
 namespace panda {
 class JSNApi;
@@ -123,10 +119,6 @@ using SearchHapPathCallBack = std::function<bool(const std::string moduleName, s
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using StopPreLoadSoCallback = std::function<void()>;
-
-#ifdef USE_CMC_GC
-using namespace panda;
-#endif
 
 enum class IcuFormatterType: uint8_t {
     SIMPLE_DATE_FORMAT_DEFAULT,

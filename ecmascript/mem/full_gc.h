@@ -75,12 +75,12 @@ private:
     FullGCRunner *runner_ {nullptr};
 };
 
-class FullGCMarkObjectVisitor final : public BaseObjectVisitor<FullGCMarkObjectVisitor> {
+class FullGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<FullGCMarkObjectVisitor> {
 public:
     inline explicit FullGCMarkObjectVisitor(FullGCRunner *runner);
     ~FullGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
 
     inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
@@ -88,12 +88,12 @@ private:
     FullGCRunner *runner_ {nullptr};
 };
 
-class FullGCUpdateLocalToShareRSetVisitor final : public BaseObjectVisitor<FullGCUpdateLocalToShareRSetVisitor> {
+class FullGCUpdateLocalToShareRSetVisitor final : public EcmaObjectRangeVisitor<FullGCUpdateLocalToShareRSetVisitor> {
 public:
     inline explicit FullGCUpdateLocalToShareRSetVisitor(FullGCRunner *runner);
     ~FullGCUpdateLocalToShareRSetVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                      VisitObjectArea area) override;
 private:
     inline void SetLocalToShareRSet(ObjectSlot slot, Region *rootRegion);
@@ -115,8 +115,8 @@ protected:
     inline void HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object);
 
     template <class Callback>
-    void VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t end, Callback &&cb);
-
+    void VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback &&cb);
+    
 private:
     inline bool NeedEvacuate(Region *region);
 

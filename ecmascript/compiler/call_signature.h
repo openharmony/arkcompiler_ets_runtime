@@ -545,7 +545,6 @@ private:
     V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
     V(SharedGCMarkingBarrier)                   \
-    V(CMCGCMarkingBarrier)                      \
     V(CallArg0)                                 \
     V(CallArg1)                                 \
     V(CallArgs2)                                \
@@ -666,9 +665,7 @@ private:
     V(ReverseBarrier)                                \
     V(GetValueWithBarrier)                           \
     V(ReadBarrier)                                   \
-    V(ComputeStringHashcode)                         \
-    V(CopyCallTarget)                                \
-    V(CopyArgvArray)
+    V(ComputeStringHashcode)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

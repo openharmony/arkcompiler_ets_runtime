@@ -177,29 +177,27 @@ private:
 };
 
 template <class Callback>
-class VerifyVisitor final : public BaseObjectVisitor<VerifyVisitor<Callback>> {
+class VerifyVisitor final : public EcmaObjectRangeVisitor<VerifyVisitor<Callback>> {
 public:
     explicit VerifyVisitor(Callback &cb) : cb_(cb) {}
     ~VerifyVisitor() = default;
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override
     {
-        ObjectSlot start(startAddr);
-        ObjectSlot end(endAddr);
         if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-            auto hclass = TaggedObject::Cast(root)->GetClass();
+            auto hclass = root->GetClass();
             ASSERT(!hclass->IsAllTaggedProp());
             int index = 0;
             for (ObjectSlot slot = start; slot < end; slot++) {
                 auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
                 auto attr = layout->GetAttr(index++);
                 if (attr.IsTaggedRep()) {
-                    cb_(slot, TaggedObject::Cast(root));
+                    cb_(slot, root);
                 }
             }
             return;
         }
         for (ObjectSlot slot = start; slot < end; slot++) {
-            cb_(slot, TaggedObject::Cast(root));
+            cb_(slot, root);
         }
     }
 private:

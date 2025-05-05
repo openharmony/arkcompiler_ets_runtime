@@ -148,7 +148,7 @@ void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
             if (!freeObject->IsFreeObject()) {
                 auto obj = reinterpret_cast<TaggedObject *>(curPtr);
                 visitor(obj);
-                objSize = obj->GetSize();
+                objSize = obj->GetClass()->SizeFromJSHClass(obj);
             } else {
                 freeObject->AsanUnPoisonFreeObject();
                 objSize = freeObject->Available();

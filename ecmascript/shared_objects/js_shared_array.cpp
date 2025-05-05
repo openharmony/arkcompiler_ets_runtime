@@ -22,10 +22,10 @@ namespace panda::ecmascript {
 using base::ArrayHelper;
 
 JSTaggedValue JSSharedArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self,
-                                          [[maybe_unused]] SCheckMode checkMode)
+                                          SCheckMode checkMode)
 {
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, JSHandle<JSTaggedValue>::Cast(self),
-                                                             SCheckMode::CHECK);
+                                                             checkMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return JSTaggedValue(JSSharedArray::Cast(*self)->GetLength());
 }

@@ -302,7 +302,6 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
     EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
 }
 
-#ifndef USE_CMC_GC
 HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
 {
     size_t oldGCCount = DFXJSNApi::GetGCCount(vm_);
@@ -350,7 +349,6 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
     size_t newGCDuration = DFXJSNApi::GetGCDuration(vm_);
     EXPECT_TRUE(oldGCDuration < newGCDuration);
 }
-#endif
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 {
@@ -432,7 +430,6 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyIdleStatusControl)
     EXPECT_TRUE(receivedValue);
 }
 
-#ifndef USE_CMC_GC
 HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
 {
     auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
@@ -440,7 +437,6 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
     DFXJSNApi::NotifyIdleTime(vm_, 10);
     EXPECT_EQ(vm_->GetEcmaGCStats()->GetGCReason(), GCReason::IDLE);
 }
-#endif
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
 {

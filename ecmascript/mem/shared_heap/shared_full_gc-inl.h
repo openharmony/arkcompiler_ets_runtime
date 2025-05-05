@@ -59,13 +59,10 @@ void SharedFullGCMarkRootVisitor::MarkObject([[maybe_unused]] TaggedObject *obje
 SharedFullGCMarkObjectVisitor::SharedFullGCMarkObjectVisitor(SharedGCMovableMarker *marker, uint32_t threadId)
     : marker_(marker), threadId_(threadId) {}
 
-void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                          VisitObjectArea area)
 {
-    ObjectSlot start(startAddr);
-    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        auto root = TaggedObject::Cast(rootObject);
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
@@ -86,7 +83,7 @@ void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject,
     }
 }
 
-void SharedFullGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] BaseObject *hclass)
+void SharedFullGCMarkObjectVisitor::VisitObjectHClassImpl([[maybe_unused]] TaggedObject *hclass)
 {
     UNREACHABLE();
 }

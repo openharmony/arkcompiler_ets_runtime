@@ -2779,7 +2779,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -2879,7 +2879,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -2985,7 +2985,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -3090,7 +3090,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);
@@ -3471,7 +3471,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     Bind(&pcEqualBaseline);
     {
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
-        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { glue, *varAcc, *varSp, currentSp, jumpSize });
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturnBaseline), { *varAcc, *varSp, currentSp, jumpSize });
         Return();
     }
     Bind(&pcNotEqualBaseline);

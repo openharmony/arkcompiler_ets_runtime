@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/log_wrapper.h"
+#include "ecmascript/log.h"
 
 namespace panda::ecmascript {
 std::string previewerTag = "";

@@ -54,7 +54,7 @@
 /* Note: We can't statically decide the element type is a primitive or heap object, especially for */
 /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GET_VALUE(addr, offset) Barriers::GetTaggedValue((addr), (offset))
+#define GET_VALUE(addr, offset) Barriers::GetValue<JSTaggedType>((addr), (offset))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_VALUE_WITH_BARRIER(thread, addr, offset, value)                          \
@@ -75,7 +75,8 @@
     {                                                                                                         \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        return JSTaggedValue(Barriers::GetTaggedValue(this, offset));                                         \
+        /* use thread in Barriers::GetValue */                                                                \
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                                 \
     }                                                                                                         \
     template<typename T>                                                                                      \
     void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)               \
@@ -125,7 +126,8 @@
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */         \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */         \
         /*       Synchronized means it will restrain the store and load in atomic.                         */         \
-        return JSTaggedValue(Barriers::GetTaggedValueAtomic(this, offset));                                           \
+        return JSTaggedValue(reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(this) + offset)         \
+                             ->load(std::memory_order_acquire));                                                      \
     }                                                                                                                 \
     template<typename T>                                                                                              \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                         \
@@ -551,7 +553,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_ARRAY(BEGIN_OFFSET, REF_LENGTH, LENGTH)                                                \
     template <VisitType visitType, class DerivedVisitor>                                                  \
-    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                       \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                  \
     {                                                                                                     \
         ArrayBodyIterator<visitType, (BEGIN_OFFSET)>::IterateBody(this, visitor, (REF_LENGTH), (LENGTH)); \
     }
@@ -559,7 +561,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_OBJECT(BEGIN_OFFSET, END_OFFSET)                                                       \
     template <VisitType visitType, class DerivedVisitor>                                                  \
-    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                       \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                  \
     {                                                                                                     \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateRefBody(this, visitor); \
     }
@@ -567,7 +569,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_PRIMITIVE_OBJECT()                                               \
     template <VisitType visitType, class DerivedVisitor>                            \
-    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                 \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)            \
     {                                                                               \
         PrimitiveObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);   \
     }
@@ -575,7 +577,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_NATIVE_FIELD(BEGIN_OFFSET, END_OFFSET)                                                    \
     template <VisitType visitType, class DerivedVisitor>                                                     \
-    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                          \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                     \
     {                                                                                                        \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateNativeBody(this, visitor); \
     }                                                                                                        \
@@ -583,13 +585,13 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_OBJECT_FOR_JS_OBJECT(PARENTCLASS, BEGIN_OFFSET, END_OFFSET)                         \
     template <VisitType visitType, class DerivedVisitor>                                               \
-    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)                                    \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                               \
     {                                                                                                  \
         VisitObjects<visitType>(visitor);                                                              \
         JSObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);                             \
     }                                                                                                  \
     template <VisitType visitType, class DerivedVisitor>                                               \
-    void VisitObjects(BaseObjectVisitor<DerivedVisitor> &visitor)                                      \
+    void VisitObjects(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                 \
     {                                                                                                  \
         PARENTCLASS::VisitObjects<visitType>(visitor);                                                 \
         static constexpr size_t PARENT_SIZE = PARENTCLASS::SIZE;                                       \

@@ -15,11 +15,12 @@
 #ifndef ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 #define ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 
-#include "ecmascript/napi/include/jsnapi_internals.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 class QuickFixManager {
 public:
     QuickFixManager() = default;

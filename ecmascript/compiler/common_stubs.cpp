@@ -971,13 +971,11 @@ void SetSValueWithBarrierStubBuilder::GenerateCircuit()
 
 void VerifyBarrierStubBuilder::GenerateCircuit()
 {
-#ifndef USE_CMC_GC
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
     VerifyBarrier(glue, obj, offset, value);
-#endif
     Return();
 }
 
@@ -1438,33 +1436,28 @@ void SameValueStubBuilder::GenerateCircuit()
 
 void BatchBarrierStubBuilder::GenerateCircuit()
 {
-#ifndef USE_CMC_GC
     GateRef glue = PtrArgument(0);
     GateRef dstObj = PtrArgument(1);
     GateRef dstAddr = PtrArgument(2);
     GateRef taggedValueCount = TaggedArgument(3);
     BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
     barrierBuilder.DoBatchBarrier();
-#endif
     Return();
 }
 
 void ReverseBarrierStubBuilder::GenerateCircuit()
 {
-#ifndef USE_CMC_GC
     GateRef glue = PtrArgument(0);
     GateRef dstObj = PtrArgument(1);
     GateRef dstAddr = PtrArgument(2);
     GateRef taggedValueCount = TaggedArgument(3);
     BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
     barrierBuilder.DoReverseBarrier();
-#endif
     Return();
 }
 
 void MoveBarrierInRegionStubBuilder::GenerateCircuit()
 {
-#ifndef USE_CMC_GC
     GateRef glue = PtrArgument(0);
     GateRef dstObj = PtrArgument(1);
     GateRef dstAddr = PtrArgument(2);
@@ -1472,13 +1465,11 @@ void MoveBarrierInRegionStubBuilder::GenerateCircuit()
     GateRef srcAddr = PtrArgument(4);
     BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, count);
     barrierBuilder.DoMoveBarrierInRegion(srcAddr);
-#endif
     Return();
 }
 
 void MoveBarrierCrossRegionStubBuilder::GenerateCircuit()
 {
-#ifndef USE_CMC_GC
     GateRef glue = PtrArgument(0);
     GateRef dstObj = PtrArgument(1);
     GateRef dstAddr = PtrArgument(2);
@@ -1487,7 +1478,6 @@ void MoveBarrierCrossRegionStubBuilder::GenerateCircuit()
     GateRef srcObj = PtrArgument(5);
     BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, count);
     barrierBuilder.DoMoveBarrierCrossRegion(srcAddr, srcObj);
-#endif
     Return();
 }
 

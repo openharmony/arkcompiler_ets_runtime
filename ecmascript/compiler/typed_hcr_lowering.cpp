@@ -35,10 +35,10 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerBuiltinPrototypeHClassCheck(gate);
             break;
         case OpCode::STABLE_ARRAY_CHECK:
-            LowerStableArrayCheck(glue, gate);
+            LowerStableArrayCheck(gate);
             break;
         case OpCode::TYPED_ARRAY_CHECK:
-            LowerTypedArrayCheck(glue, gate);
+            LowerTypedArrayCheck(gate);
             break;
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate, glue);
@@ -47,7 +47,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerInternStringCheck(gate, glue);
             break;
         case OpCode::ECMA_MAP_CHECK:
-            LowerEcmaMapCheck(glue, gate);
+            LowerEcmaMapCheck(gate);
             break;
         case OpCode::FLATTEN_TREE_STRING_CHECK:
             LowerFlattenTreeStringCheck(gate, glue);
@@ -62,7 +62,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerLoadTypedArrayLength(gate);
             break;
         case OpCode::OBJECT_TYPE_CHECK:
-            LowerObjectTypeCheck(glue, gate);
+            LowerObjectTypeCheck(gate);
             break;
         case OpCode::RANGE_CHECK_PREDICATE:
             LowerRangeCheckPredicate(gate);
@@ -124,13 +124,13 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerTypedSuperAllocateThis(gate, glue);
             break;
         case OpCode::GET_SUPER_CONSTRUCTOR:
-            LowerGetSuperConstructor(glue, gate);
+            LowerGetSuperConstructor(gate);
             break;
         case OpCode::COW_ARRAY_CHECK:
             LowerCowArrayCheck(gate, glue);
             break;
         case OpCode::LOOK_UP_HOLDER:
-            LowerLookupHolder(glue, gate);
+            LowerLookupHolder(gate);
             break;
         case OpCode::LOAD_GETTER:
             LowerLoadGetter(gate, glue);
@@ -139,7 +139,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerLoadSetter(gate, glue);
             break;
         case OpCode::PROTOTYPE_CHECK:
-            LowerPrototypeCheck(glue, gate);
+            LowerPrototypeCheck(gate);
             break;
         case OpCode::STRING_EQUAL:
             LowerStringEqual(gate, glue);
@@ -181,13 +181,13 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerOrdinaryHasInstance(gate, glue);
             break;
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
-            LowerProtoChangeMarkerCheck(glue, gate);
+            LowerProtoChangeMarkerCheck(gate);
             break;
         case OpCode::MONO_CALL_GETTER_ON_PROTO:
             LowerMonoCallGetterOnProto(gate, glue);
             break;
         case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
-            LowerMonoLoadPropertyOnProto(glue, gate);
+            LowerMonoLoadPropertyOnProto(gate);
             break;
         case OpCode::MONO_STORE_PROPERTY_LOOK_UP_PROTO:
             LowerMonoStorePropertyLookUpProto(gate, glue);
@@ -211,7 +211,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerEcmaObjectCheck(gate);
             break;
         case OpCode::ELEMENTSKIND_CHECK:
-            LowerElementskindCheck(glue, gate);
+            LowerElementskindCheck(gate);
             break;
         default:
             break;
@@ -319,7 +319,7 @@ void TypedHCRLowering::LowerBooleanCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerStableArrayCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerStableArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
@@ -327,7 +327,8 @@ void TypedHCRLowering::LowerStableArrayCheck(GateRef glue, GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
 
-    GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+    GateRef receiverHClass = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
     builder_.HClassStableArrayCheck(receiverHClass, frameState, accessor);
     builder_.ArrayGuardianCheck(frameState);
@@ -390,7 +391,7 @@ void TypedHCRLowering::SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &
     }
 }
 
-void TypedHCRLowering::LowerTypedArrayCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(gate);
@@ -406,7 +407,7 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef glue, GateRef gate)
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
-    GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+    GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
     if (OnHeap::IsOnHeap(onHeapMode)) {
@@ -452,14 +453,14 @@ void TypedHCRLowering::LowerInternStringCheck(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerEcmaMapCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
 
-    GateRef hclass = builder_.LoadHClassByConstOffset(glue, receiver);
+    GateRef hclass = builder_.LoadHClassByConstOffset(receiver);
 
     size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
@@ -536,21 +537,21 @@ void TypedHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
 
-void TypedHCRLowering::LowerObjectTypeCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerObjectTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    LowerSimpleHClassCheck(glue, gate);
+    LowerSimpleHClassCheck(gate);
 }
 
-void TypedHCRLowering::LowerSimpleHClassCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerSimpleHClassCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
-    GateRef compare = BuildCompareHClass(glue, gate, frameState);
+    GateRef compare = BuildCompareHClass(gate, frameState);
     builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS6);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-GateRef TypedHCRLowering::BuildCompareHClass(GateRef glue, GateRef gate, GateRef frameState)
+GateRef TypedHCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
 {
     GateRef receiver = acc_.GetValueIn(gate, 0);
     bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
@@ -562,7 +563,8 @@ GateRef TypedHCRLowering::BuildCompareHClass(GateRef glue, GateRef gate, GateRef
     ArgumentAccessor argAcc(circuit_);
     GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
-    GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+    GateRef receiverHClass = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
 }
 
@@ -611,7 +613,7 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
         if (Elements::IsGeneric(kind)) {
             auto index = compilationEnv_->GetArrayHClassIndex(kind, false);
             auto protoIndex = compilationEnv_->GetArrayHClassIndex(kind, true);
-            GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             // If the Elements kind is Generic, hclass comparison is required. Other kinds can ensure that hclass has
             // not been modified.
             ihcMatches = LogicOrBuilder(env)
@@ -624,7 +626,7 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
                 .Or(builder_.NotEqual(elementsKind, builder_.Int32(Elements::ToUint(ElementsKind::GENERIC))))
                 .Done();
         } else {
-            GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+            GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
             ihcMatches =
                 builder_.NotEqual(elementsKind, builder_.Int32(Elements::ToUint(ElementsKind::GENERIC)));
@@ -632,7 +634,7 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
     } else {
         size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env->IsArch32Bit());
         GateRef initialIhcAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, ihcOffset);
-        GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
         if (IsTypedArrayType(type)) {
              // check IHC onHeap hclass
             size_t ihcOnHeapOffset = JSThread::GlueData::GetBuiltinExtraHClassOffset(type, env->IsArch32Bit());
@@ -1215,7 +1217,7 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef glue, GateRef recei
     DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     DEFVALUE(result, (&builder_), type, builder_.Double(0));
 
-    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(glue, receiver));
+    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(receiver));
     BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
     {
@@ -1404,7 +1406,7 @@ void TypedHCRLowering::BuildTypedArrayStoreElement(GateRef glue, GateRef receive
 {
     GateRef byteArrayOrArrayBuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
                                                               JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(glue, receiver));
+    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(receiver));
     DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
@@ -1707,11 +1709,11 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }
 
-void TypedHCRLowering::LowerGetSuperConstructor(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerGetSuperConstructor(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateRef hclass = builder_.LoadHClassByConstOffset(glue, ctor);
+    GateRef hclass = builder_.LoadHClassByConstOffset(ctor);
     GateRef superCtor = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
@@ -1769,7 +1771,7 @@ void TypedHCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef g
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
 
-void TypedHCRLowering::LowerLookupHolder(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerLookupHolder(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, holderHC, jsFunc
@@ -1787,7 +1789,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef glue, GateRef gate)
 
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*holder), frameState, DeoptType::INCONSISTENTHCLASS13);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *holder);
+    auto curHC = builder_.LoadHClassByConstOffset(*holder);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
@@ -1840,7 +1842,7 @@ void TypedHCRLowering::LowerLoadSetter(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), setter);
 }
 
-void TypedHCRLowering::LowerPrototypeCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef unsharedConstPool = acc_.GetValueIn(gate, 0);
@@ -1850,7 +1852,7 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef glue, GateRef gate)
     auto expectedReceiverHC = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
 
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
-    auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
+    auto protoHClass = builder_.LoadHClassByConstOffset(prototype);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED1);
     auto check = LogicAndBuilder(&env)
@@ -2643,7 +2645,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                     }
                     builder_.Bind(&objectNotIsJsProxy);
                     {
-                        GateRef objHClass = builder_.LoadHClassByConstOffset(glue, *object);
+                        GateRef objHClass = builder_.LoadHClassByConstOffset(*object);
                         object = builder_.LoadPrototype(objHClass);
                         builder_.Jump(&shouldContinue);
                     }
@@ -2664,14 +2666,14 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
     ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    auto hclass = builder_.LoadHClassByConstOffset(glue, receiver);
+    auto hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
-    auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
+    auto protoHClass = builder_.LoadConstOffset(VariableType::JS_POINTER(), prototype, TaggedObject::HCLASS_OFFSET);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     auto notNull = builder_.TaggedIsNotNull(marker);
     builder_.DeoptCheck(notNull, frameState, DeoptType::PROTOTYPECHANGED2);
@@ -2680,7 +2682,7 @@ void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = acc_.GetFrameState(gate);
@@ -2692,7 +2694,7 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate)
     GateRef result = Circuit::NullGate();
     ASSERT(plr.IsLocal() || plr.IsFunction());
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
@@ -2706,7 +2708,7 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate)
 
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS8);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
@@ -2732,7 +2734,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     GateRef accessor = Circuit::NullGate();
     GateRef holder = Circuit::NullGate();
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
@@ -2746,7 +2748,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
 
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS9);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
@@ -2824,7 +2826,7 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     bool noBarrier = acc_.IsNoBarrier(gate);
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
     // lookup from receiver for holder
     auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
@@ -2837,7 +2839,8 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
 
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS10);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
+    auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
+                                          TaggedObject::HCLASS_OFFSET);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
@@ -2891,7 +2894,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     bool isPrototype = acc_.TryGetValue(acc_.GetValueIn(gate, 6)); // 6: proto flag Index
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     bool noBarrier = acc_.IsNoBarrier(gate);
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
+    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     // transition happened
     Label exit(&builder_);
     Label notProto(&builder_);
@@ -2917,7 +2920,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         builder_.Bind(&notProto);
     }
     MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
-    builder_.TransitionHClass(glue, receiver, newHolderHC, mAttr);
+    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
     if (!plr.IsInlinedProps()) {
         auto properties =
             builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
@@ -3037,7 +3040,7 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef oldObj = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, builder_.TruncInt64ToInt32(index),
                                                             ConstPoolType::OBJECT_LITERAL);
-    GateRef hclass = builder_.LoadHClassByConstOffset(glue, oldObj);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef objectSize = builder_.GetObjectSizeFromHClass(hclass);
     BRANCH_CIR(builder_.Equal(objectSize, objSize), &equal, &notEqual);
@@ -3045,7 +3048,8 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     {
         builder_.StartAllocate();
         GateRef newObj = builder_.HeapAlloc(glue, objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-        builder_.StoreHClass(glue, newObj, hclass, MemoryAttribute::NeedBarrierAndAtomic());
+        builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass,
+                                  MemoryAttribute::NeedBarrierAndAtomic());
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
             JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
         builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);
@@ -3260,7 +3264,7 @@ void TypedHCRLowering::LowerEcmaObjectCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerElementskindCheck(GateRef glue, GateRef gate)
+void TypedHCRLowering::LowerElementskindCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = acc_.GetFrameState(gate);
@@ -3268,7 +3272,7 @@ void TypedHCRLowering::LowerElementskindCheck(GateRef glue, GateRef gate)
     ElementsKind kind = accessor.GetElementsKind();
     GateRef check = Circuit::NullGate();
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef hclass = builder_.LoadHClassByConstOffset(glue, receiver);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
 
     if (Elements::IsComplex(kind)) {
         check = builder_.Int32GreaterThanOrEqual(builder_.Int32(Elements::ToUint(kind)),

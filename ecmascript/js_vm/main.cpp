@@ -16,7 +16,7 @@
 #include <csignal>
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/platform/os.h"
 

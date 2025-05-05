@@ -48,7 +48,6 @@ group("ark_deopt_test") {
       "restore_vregs",
     ]
   }
-
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

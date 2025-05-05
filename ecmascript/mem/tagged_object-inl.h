@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_TAGGED_OBJECT_HEADER_INL_H
 #define ECMASCRIPT_TAGGED_OBJECT_HEADER_INL_H
 
-#include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/mem/tagged_object.h"
 
 #include <atomic>
@@ -28,55 +27,29 @@
 namespace panda::ecmascript {
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
 {
-    state_ = 0;
-    TransitionClassWithoutBarrier(hclass);
-}
-
-inline void TaggedObject::TransitionClassWithoutBarrier(JSHClass *hclass)
-{
-    reinterpret_cast<TaggedStateWord *>(this)->SetClass(reinterpret_cast<uintptr_t>(hclass));
-}
-
-inline void TaggedObject::SetFreeObjectClass(JSHClass *hclass)
-{
-    ASSERT(hclass->IsFreeObject());
-    StateWordType state = static_cast<StateWordType>(ToUintPtr(hclass));
-    reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetGCStateWord(state);
+    class_ = reinterpret_cast<MarkWordType>(hclass);
 }
 
 inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
 {
-#ifndef ARK_USE_SATB_BARRIER
-    SetClassWithoutBarrier(hclass);
-    WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
-#else
-    WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
-    SetClassWithoutBarrier(hclass);
-#endif
+    Barriers::SetObject<true>(thread, this, 0, JSTaggedValue(hclass).GetRawData());
 }
 
-inline void TaggedObject::SynchronizedTransitionClass(const JSThread *thread, JSHClass *hclass)
+inline void TaggedObject::SetClass(const JSThread *thread, JSHandle<JSHClass> hclass)
 {
-#ifndef ARK_USE_SATB_BARRIER
-    reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetClass(reinterpret_cast<uintptr_t>(hclass));
-    WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
-#else
-    WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
-    reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetClass(reinterpret_cast<uintptr_t>(hclass));
-#endif
+    SetClass(thread, *hclass);
+}
+
+inline void TaggedObject::SynchronizedSetClass(const JSThread *thread, JSHClass *hclass)
+{
+    Barriers::SynchronizedSetClass(thread, this, JSTaggedValue(hclass).GetRawData());
 }
 
 inline JSHClass *TaggedObject::SynchronizedGetClass() const
 {
-    return reinterpret_cast<JSHClass *>(reinterpret_cast<const TaggedStateWord *>(this)->SynchronizedGetClass());
+    return reinterpret_cast<JSHClass *>(
+        reinterpret_cast<volatile std::atomic<MarkWordType> *>(ToUintPtr(this))->load(std::memory_order_acquire));
 }
-
-#ifdef USE_CMC_GC
-inline bool TaggedObject::IsInSharedHeap() const
-{
-    return GetClass()->IsJSShared();
-}
-#endif
 }  //  namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_TAGGED_OBJECT_HEADER_INL_H

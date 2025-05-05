@@ -397,17 +397,7 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> barrierBBGates;
     std::vector<GateRef> endBBGates;
-#ifndef ARK_USE_SATB_BARRIER
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
-#else
-    GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
-    MemoryAttribute::Barrier kind = GetBarrierKind(gate);
-    if(acc_.GetMachineType(value) == MachineType::ANYVALUE ||
-       acc_.GetMachineType(value) == MachineType::ARCH ||
-       acc_.GetMachineType(value) == MachineType::I64) {
-        kind = MemoryAttribute::Barrier::NEED_BARRIER;
-    }
-#endif
     switch (kind) {
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER: {
             LoweringStoreUnknownBarrierAndPrepareScheduleGate(gate, currentBBGates, barrierBBGates, endBBGates);
@@ -481,10 +471,10 @@ void PostSchedule::LoweringStoreNoBarrierAndPrepareScheduleGate(GateRef gate, st
 
     GateRef base = acc_.GetValueIn(gate, 1);   // 1: object
     GateRef offset = acc_.GetValueIn(gate, 2); // 2: offset
+    GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
-    GateRef compValue = acc_.GetValueIn(gate, 4);  // 3: value
-    VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
-    builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
     {
         PrepareToScheduleNewGate(store, currentBBGates);
@@ -498,7 +488,7 @@ MemoryAttribute::ShareFlag PostSchedule::GetShareKind(panda::ecmascript::kungfu:
     MemoryAttribute mAttr = acc_.GetMemoryAttribute(gate);
     return mAttr.GetShare();
 }
-#ifndef ARK_USE_SATB_BARRIER
+
 void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
 {
     Environment env(gate, circuit_, &builder_);
@@ -507,11 +497,9 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef base = acc_.GetValueIn(gate, 1);   // 1: object
     GateRef offset = acc_.GetValueIn(gate, 2); // 2: offset
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
-    GateRef compValue = acc_.GetValueIn(gate, 4);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
-    // If value isn't equal to compValue, It uses to store compress pointer.
-    VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
-    builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
     MemoryAttribute::ShareFlag share = GetShareKind(gate);
     std::string_view comment;
@@ -535,58 +523,7 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
-#else
-void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
-{
-    Environment env(gate, circuit_, &builder_);
 
-    GateRef glue = acc_.GetValueIn(gate, 0);
-    GateRef base = acc_.GetValueIn(gate, 1);   // 1: object
-    GateRef offset = acc_.GetValueIn(gate, 2); // 2: offset
-    GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
-    GateRef hole = circuit_->GetConstantGateWithoutCache(
-        MachineType::I64, JSTaggedValue::VALUE_HOLE, GateType::TaggedValue());
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), hole);
-    GateRef addr = builder_.PtrAdd(base, offset);
-    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    MemoryAttribute::ShareFlag share = GetShareKind(gate);
-    std::string_view comment;
-    int index;
-    const CallSignature* cs = nullptr;
-    index = SelectBarrier(share, cs, comment);
-    ASSERT(cs && (cs->IsCommonStub() || cs->IsASMCallBarrierStub()) && "Invalid call signature for barrier");
-    GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
-    GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    bool isfloat32 = acc_.GetMachineType(value) == F32;
-
-    GateRef newvalue;
-    if (isfloat32) {
-        newvalue = builder_.ExtFloat32ToDouble(value);
-        result = newvalue;
-    } else {
-        result = value;
-    }
-    GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                         {glue, base, offset, *result, reseverdFrameArgs, reseverdPc},
-                                         Circuit::NullGate(), comment.data());
-    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
-    GateRef store = builder_.GetDepend();
-    {
-        PrepareToScheduleNewGate(store, currentBBGates);
-        PrepareToScheduleNewGate(storeBarrier, currentBBGates);
-        if (isfloat32) {
-            PrepareToScheduleNewGate(newvalue, currentBBGates);
-        }
-        PrepareToScheduleNewGate(reseverdPc, currentBBGates);
-        PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
-        PrepareToScheduleNewGate(target, currentBBGates);
-        PrepareToScheduleNewGate(addr, currentBBGates);
-        PrepareToScheduleNewGate(hole, currentBBGates);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-#endif
 void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gate,
                                                                      std::vector<GateRef> &currentBBGates,
                                                                      std::vector<GateRef> &barrierBBGates,
@@ -598,10 +535,9 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     GateRef base = acc_.GetValueIn(gate, 1);   // 1: object
     GateRef offset = acc_.GetValueIn(gate, 2); // 2: offset
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
-    GateRef compValue = acc_.GetValueIn(gate, 4);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
-    VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
-    builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
 
     GateRef intVal = builder_.ChangeTaggedPointerToInt64(value);
@@ -676,17 +612,8 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     std::vector<GateRef> currentBBGates;
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
     switch (kind) {
-#ifdef USE_READ_BARRIER
-        case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
-        case MemoryAttribute::Barrier::NEED_BARRIER: {
-            LoweringLoadWithBarrierAndPrepareScheduleGate(gate, currentBBGates);
-            ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-            return false;
-        }
-#else
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
         case MemoryAttribute::Barrier::NEED_BARRIER:
-#endif
         case MemoryAttribute::Barrier::NO_BARRIER: {
             LoweringLoadNoBarrierAndPrepareScheduleGate(gate, currentBBGates);
             ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
@@ -706,7 +633,7 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, s
     GateRef glue = acc_.GetValueIn(gate, 0);
     GateRef addr = acc_.GetValueIn(gate, 1);
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-
+    
     // Directly call ReadBarrier, to be optimized
     int index = CommonStubCSigns::GetValueWithBarrier;
     const CallSignature *cs = CommonStubCSigns::Get(index);

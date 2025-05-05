@@ -263,15 +263,6 @@ GateRef CallStubBuilder::JSCallDispatch()
 
     this->result_ = &result;
 
-#ifdef USE_READ_BARRIER
-    // func_ should be ToSpace Reference
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
-    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
-        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
-    }
-#endif
-
     // 1. call initialize
     Label funcIsHeapObject(env);
     Label funcIsCallable(env);

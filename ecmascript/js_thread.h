@@ -35,12 +35,6 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
-#ifdef USE_CMC_GC
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/thread/base_thread.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "ecmascript/crt.h"
-#endif
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
@@ -99,18 +93,6 @@ enum ThreadType : uint8_t {
     DAEMON_THREAD,
 };
 
-
-#ifdef USE_CMC_GC
-using BaseThread = panda::BaseThread;
-using BaseThreadType = panda::BaseThreadType;
-using ThreadHolder = panda::ThreadHolder;
-using ThreadFlag = panda::ThreadFlag;
-using ThreadState = panda::ThreadState;
-using ThreadStateAndFlags = panda::ThreadStateAndFlags;
-using CommonRootVisitor = panda::CommonRootVisitor;
-static constexpr uint32_t THREAD_STATE_OFFSET = panda::THREAD_STATE_OFFSET;
-static constexpr uint32_t THREAD_FLAGS_MASK = panda::THREAD_FLAGS_MASK;
-#else
 enum ThreadFlag : uint16_t {
     NO_FLAGS = 0 << 0,
     SUSPEND_REQUEST = 1 << 0,
@@ -144,47 +126,10 @@ union ThreadStateAndFlags {
 private:
     NO_COPY_SEMANTIC(ThreadStateAndFlags);
 };
-#endif
-
-class SuspendBarrier {
-public:
-    SuspendBarrier() : passBarrierCount_(0)
-    {
-    }
-
-    explicit SuspendBarrier(int32_t count) : passBarrierCount_(count)
-    {
-    }
-
-    void Wait();
-
-    void PassStrongly()
-    {
-        [[maybe_unused]] int32_t oldCount = passBarrierCount_.fetch_sub(1, std::memory_order_seq_cst);
-#if defined(PANDA_USE_FUTEX)
-        if (oldCount == 1) {
-            int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);
-            futex(addr, FUTEX_WAKE_PRIVATE, INT_MAX, nullptr, nullptr, 0);
-        }
-#endif
-    }
-
-    void Initialize(int32_t count)
-    {
-        passBarrierCount_.store(count, std::memory_order_relaxed);
-    }
-
-private:
-    std::atomic<int32_t> passBarrierCount_;
-};
 
 static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 
-#if defined(USE_CMC_GC) && defined(IMPOSSIBLE)
-class JSThread : public BaseThread {
-#else
 class JSThread {
-#endif
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
     static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
@@ -235,7 +180,6 @@ public:
     }
 
     static JSThread *Create(EcmaVM *vm);
-
     static JSThread *GetCurrent();
 
     int GetNestedLevel() const
@@ -528,10 +472,6 @@ public:
     void PostFork();
 
     static ThreadId GetCurrentThreadId();
-
-#ifdef USE_CMC_GC
-    void IterateWeakEcmaGlobalStorage(WeakVisitor &visitor);
-#endif
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 
@@ -1068,7 +1008,6 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
@@ -1108,7 +1047,6 @@ public:
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
-            BaseAddressIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
             SOldSpaceAllocationTopAddressIndex,
@@ -1141,11 +1079,7 @@ public:
             UnsharedConstpoolsArrayLenIndex,
             UnsharedConstpoolsIndex,
             RandomStatePtrIndex,
-#ifdef USE_CMC_GC
-            ThreadHolderIndex,
-#else
             StateAndFlagsIndex,
-#endif
             TaskInfoIndex,
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
@@ -1167,11 +1101,6 @@ public:
         static size_t GetArrayElementsGuardiansOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ArrayElementsGuardiansIndex)>(isArch32);
-        }
-
-        static size_t GetBaseAddressOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::BaseAddressIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -1370,17 +1299,10 @@ public:
             return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsArrayLenIndex)>(isArch32);
         }
 
-#ifdef USE_CMC_GC
-        static size_t GetThreadHolderOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
-        }
-#else
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
         }
-#endif
 
         static size_t GetRandomStatePtrOffset(bool isArch32)
         {
@@ -1414,7 +1336,6 @@ public:
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
-        alignas(EAS) JSTaggedType baseAddress_ {0};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
@@ -1447,11 +1368,7 @@ public:
         alignas(EAS) uint32_t unsharedConstpoolsArrayLen_ {0};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
-#ifdef USE_CMC_GC
-        alignas(EAS) uintptr_t threadHolder_ {0};
-#else
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
-#endif
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
@@ -1545,76 +1462,39 @@ public:
 
     bool IsSuspended() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         bool f = ReadFlag(ThreadFlag::SUSPEND_REQUEST);
         bool s = (GetState() != ThreadState::RUNNING);
         return f && s;
-#endif
     }
 
     inline bool HasSuspendRequest() const
     {
-#ifdef USE_CMC_GC
-        return GetThreadHolder()->HasSuspendRequest();
-#else
         return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
-#endif
     }
 
     void CheckSafepointIfSuspended()
     {
-#ifdef USE_CMC_GC
-        GetThreadHolder()->CheckSafepointIfSuspended();
-#else
         if (HasSuspendRequest()) {
             WaitSuspension();
         }
-#endif
     }
 
     bool IsInSuspendedState() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         return GetState() == ThreadState::IS_SUSPENDED;
-#endif
     }
 
     bool IsInRunningState() const
     {
-#ifdef USE_CMC_GC
-        return GetThreadHolder()->IsInRunningState();
-#else
         return GetState() == ThreadState::RUNNING;
-#endif
     }
 
     bool IsInRunningStateOrProfiling() const;
 
-#ifdef USE_CMC_GC
-    ThreadHolder *GetThreadHolder() const
-    {
-        return reinterpret_cast<ThreadHolder *>(glueData_.threadHolder_);
-    }
-
-    // TODO: to impl
-    void Visit(CommonRootVisitor visitor)
-    {
-        visitor(nullptr);
-    }
-#endif
-
     ThreadState GetState() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
-        return static_cast<ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
-#endif
+        return static_cast<enum ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
     }
     void PUBLIC_API UpdateState(ThreadState newState);
     void SuspendThread(bool internalSuspend, SuspendBarrier* barrier = nullptr);
@@ -1782,31 +1662,19 @@ private:
 
     bool ReadFlag(ThreadFlag flag) const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         uint16_t flags = (stateAndFlags & THREAD_FLAGS_MASK);
         return (flags & static_cast<uint16_t>(flag)) != 0;
-#endif
     }
 
     void SetFlag(ThreadFlag flag)
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
-#endif
     }
 
     void ClearFlag(ThreadFlag flag)
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
         glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
-#endif
     }
 
     void DumpStack() DUMP_API_ATTR;
@@ -1908,7 +1776,6 @@ private:
     friend class EcmaVM;
     friend class EcmaContext;
     friend class JitVM;
-    friend class DaemonThread;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H
