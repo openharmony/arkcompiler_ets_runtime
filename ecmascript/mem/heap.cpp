@@ -1257,6 +1257,9 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
+#ifdef USE_CMC_GC
+    ASSERT("CollectGarbageImpl should not be called" && false);
+#endif
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -1465,8 +1468,22 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
+#ifdef USE_CMC_GC
+    GcType type = GcType::ASYNC;
+    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
+        gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+        reason == GCReason::ALLOCATION_FAILED) {
+        type = GcType::FULL;
+    }
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+    return;
+#endif
     CollectGarbageImpl(gcType, reason);
+    ProcessGCCallback();
+}
 
+void Heap::ProcessGCCallback()
+{
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
     thread_->InvokeWeakNodeNativeFinalizeCallback();
@@ -2007,6 +2024,9 @@ bool Heap::CheckCanTriggerConcurrentMarking()
 
 void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
 {
+#ifdef USE_CMC_GC
+    return;
+#endif
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
     // When the size of old space or global space reaches the limit, isFullMarkNeeded will be set to true.
     // If the predicted duration of current full mark may not result in the new and old spaces reaching their limit,
@@ -2658,7 +2678,7 @@ size_t Heap::GetLiveObjectSize() const
     size_t objectSize = 0;
     sweeper_->EnsureAllTaskFinished();
     this->IterateOverObjects([&objectSize]([[maybe_unused]] TaggedObject *obj) {
-        objectSize += obj->GetClass()->SizeFromJSHClass(obj);
+        objectSize += obj->GetSize();
     });
     return objectSize;
 }
