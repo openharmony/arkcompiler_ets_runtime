@@ -49,38 +49,6 @@ bool Elements::IsHole(ElementsKind kind)
     return ToUint(kind) % EVEN_NUMBER == 1;
 }
 
-ConstantIndex Elements::GetGlobalContantIndexByKind(ElementsKind kind)
-{
-    switch (kind) {
-        case ElementsKind::NONE:
-            return ConstantIndex::ELEMENT_NONE_HCLASS_INDEX;
-        case ElementsKind::INT:
-            return ConstantIndex::ELEMENT_INT_HCLASS_INDEX;
-        case ElementsKind::NUMBER:
-            return ConstantIndex::ELEMENT_NUMBER_HCLASS_INDEX;
-        case ElementsKind::STRING:
-            return ConstantIndex::ELEMENT_STRING_HCLASS_INDEX;
-        case ElementsKind::OBJECT:
-            return ConstantIndex::ELEMENT_OBJECT_HCLASS_INDEX;
-        case ElementsKind::TAGGED:
-            return ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX;
-        case ElementsKind::HOLE:
-            return ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX;
-        case ElementsKind::HOLE_INT:
-            return ConstantIndex::ELEMENT_HOLE_INT_HCLASS_INDEX;
-        case ElementsKind::HOLE_NUMBER:
-            return ConstantIndex::ELEMENT_HOLE_NUMBER_HCLASS_INDEX;
-        case ElementsKind::HOLE_STRING:
-            return ConstantIndex::ELEMENT_HOLE_STRING_HCLASS_INDEX;
-        case ElementsKind::HOLE_OBJECT:
-            return ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX;
-        case ElementsKind::HOLE_TAGGED:
-            return ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX;
-        default:
-            LOG_ECMA(FATAL) << "Unknown elementsKind when getting constantIndx: " << ToUint(kind);
-    }
-}
-
 ElementsKind Elements::MergeElementsKind(ElementsKind curKind, ElementsKind newKind)
 {
     auto result = ElementsKind(static_cast<uint8_t>(curKind) | static_cast<uint8_t>(newKind));

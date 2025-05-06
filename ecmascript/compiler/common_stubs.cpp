@@ -474,8 +474,9 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     // 2. Construct RestArguments object.
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                  ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                                             static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
     arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
 
     GateRef args = GetArgumentsElements(glue, argvTaggedArray, *argv);

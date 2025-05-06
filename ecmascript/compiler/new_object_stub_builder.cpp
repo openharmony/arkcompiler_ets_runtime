@@ -78,13 +78,16 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
         BRANCH(Equal(TruncInt64ToInt32(size), Int32(0)), &initObj, &notEmptyArray);
         Bind(&notEmptyArray);
         {
+            GateRef globalEnv = GetGlobalEnv(glue_);
             #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-            GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
-                                                                ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+            GateRef holeKindArrayClass =
+                GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                    static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
             StoreHClass(glue_, result, holeKindArrayClass);
             #else
-            GateRef holeKindArrayClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
-                                                                ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX);
+            GateRef holeKindArrayClass =
+                GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                    static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_HCLASS_INDEX));
             StoreHClass(glue_, result, holeKindArrayClass);
             #endif
             Jump(&initObj);
@@ -2059,24 +2062,22 @@ GateRef NewObjectStubBuilder::LoadArrayHClassSlowPath(
         }
 
         GateRef hcIndex = LoadHCIndexFromConstPool(hcIndexInfos, indexInfosLength, traceId, &originLoad);
-        GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
-            IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
-        GateRef offset = Int32Mul(Int32(sizeof(JSTaggedValue)), hcIndex);
-        ret = Load(VariableType::JS_POINTER(), gConstAddr, offset);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        ret = GetGlobalEnvValue(VariableType::JS_POINTER(), globalEnv, static_cast<size_t>(hcIndex));
         Jump(&exit);
     }
     Bind(&originLoad);
     {
         // emptyarray
         if (arrayLiteral == Circuit::NullGate()) {
+            GateRef globalEnv = GetGlobalEnv(glue);
             if (callback.IsEmpty()) {
-                GateRef globalEnv = GetGlobalEnv(glue);
                 auto arrayFunc =
                     GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
                 ret = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
             } else {
-                ret =
-                    GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+                ret = GetGlobalEnvValue(VariableType::JS_POINTER(), globalEnv,
+                    static_cast<size_t>(GlobalEnvField::ELEMENT_NONE_HCLASS_INDEX));
             }
         } else {
             ret = LoadHClass(arrayLiteral);

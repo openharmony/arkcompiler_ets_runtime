@@ -41,7 +41,7 @@ JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
     return hostThread_->GetEcmaVM()->GetJSOptions();
 }
 
-ConstantIndex JitCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
+GlobalEnvField JitCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
 {
     return hostThread_->GetArrayInstanceHClassIndex(kind, isProtoType);
 }

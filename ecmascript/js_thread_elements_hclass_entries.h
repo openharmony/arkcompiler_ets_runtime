@@ -22,8 +22,8 @@ namespace panda::ecmascript {
 struct ElementsHClassEntries {
     static constexpr size_t N_ENTRIES = static_cast<size_t>(Elements::KIND_COUNT);
     struct Entry {
-        ConstantIndex hclassIdx = ConstantIndex::INVALID;
-        ConstantIndex hclassWithProtoIdx = ConstantIndex::INVALID;
+        GlobalEnvField hclassIdx = GlobalEnvField::INVALID;
+        GlobalEnvField hclassWithProtoIdx = GlobalEnvField::INVALID;
     };
     Entry entries[N_ENTRIES];
 
@@ -34,21 +34,21 @@ struct ElementsHClassEntries {
     {
         for (uint32_t i = 0; i < Elements::KIND_COUNT; ++i) {
             if ((i & 1) != 0) {
-                entries[i].hclassIdx = ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX;
-                entries[i].hclassWithProtoIdx = ConstantIndex::ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX;
+                entries[i].hclassIdx = GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX;
+                entries[i].hclassWithProtoIdx = GlobalEnvField::ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX;
             } else {
-                entries[i].hclassIdx = ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX;
-                entries[i].hclassWithProtoIdx = ConstantIndex::ELEMENT_TAGGED_PROTO_HCLASS_INDEX;
+                entries[i].hclassIdx = GlobalEnvField::ELEMENT_TAGGED_HCLASS_INDEX;
+                entries[i].hclassWithProtoIdx = GlobalEnvField::ELEMENT_TAGGED_PROTO_HCLASS_INDEX;
             }
         }
 #define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                                       \
         entries[Elements::ToUint(ElementsKind::name)] =                                                            \
-            {ConstantIndex::ELEMENT_##name##_HCLASS_INDEX, ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX};
+            {GlobalEnvField::ELEMENT_##name##_HCLASS_INDEX, GlobalEnvField::ELEMENT_##name##_PROTO_HCLASS_INDEX};
         ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
 #undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
     }
 
-    ConstantIndex GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
+    GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {
         ASSERT(Elements::ToUint(kind) <= Elements::ToUint(ElementsKind::GENERIC));
         auto entry = entries[Elements::ToUint(kind)];

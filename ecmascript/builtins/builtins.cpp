@@ -2170,21 +2170,18 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     //  Array.prototype_or_hclass
     JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
-    arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
+    arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(env, arrFuncPrototypeValue));
     env->SetArrayClass(thread_, arrFuncInstanceHClass);
-    auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    if (!isRealm) {
-        globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
-    }
+    env->InitElementKindHClass(thread_, arrFuncInstanceHClass);
     if (thread_->GetEcmaVM()->IsEnableElementsKind()) {
         // for all JSArray, the initial ElementsKind should be NONE
         // For PGO, currently we do not support elementsKind for builtins
         #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-        auto index = static_cast<size_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+        auto index = static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
         #else
-        auto index = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+        auto index = static_cast<size_t>(GlobalEnvField::ELEMENT_NONE_HCLASS_INDEX);
         #endif
-        auto hclassVal = globalConstant->GetGlobalConstantObject(index);
+        auto hclassVal = env->GetGlobalEnvObjectByIndex(index).GetTaggedValue();
         arrFuncInstanceHClass.Update(hclassVal);
     }
 

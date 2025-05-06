@@ -647,9 +647,12 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             // If the Elements kind is Generic, hclass comparison is required. Other kinds can ensure that hclass has
             // not been modified.
+            GateRef globalEnv = builder_.GetGlobalEnv(glue);
             ihcMatches = LogicOrBuilder(env)
-                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(index)))
-                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(protoIndex)))
+                .Or(builder_.Equal(receiverHClass,
+                    builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, static_cast<size_t>(index))))
+                .Or(builder_.Equal(receiverHClass,
+                    builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, static_cast<size_t>(protoIndex))))
                 .Done();
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
             ihcMatches = LogicOrBuilder(env)

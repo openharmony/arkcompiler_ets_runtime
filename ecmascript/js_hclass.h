@@ -66,6 +66,8 @@ class SharedHeap;
 class JSSharedArray;
 class LayoutInfo;
 class NameDictionary;
+class ObjectFactory;
+class GlobalEnv;
 namespace pgo {
     class HClassLayoutDesc;
     class PGOHClassTreeDesc;
@@ -2057,10 +2059,12 @@ public:
                                        const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto, bool isChangeProto = false);
+    void SetPrototype(const JSThread *thread, const JSHandle<GlobalEnv> &env,
+                      JSTaggedValue proto, bool isChangeProto = false);
     void PUBLIC_API SetPrototype(const JSThread *thread,
                                  const JSHandle<JSTaggedValue> &proto,
                                  bool isChangeProto = false);
-    static void OptimizePrototypeForIC(const JSThread *thread,
+    static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<GlobalEnv> &env,
                                        const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
     inline JSTaggedValue GetPrototype() const
@@ -2109,8 +2113,8 @@ public:
 
 private:
 
-    static inline bool ProtoIsFastJSArray(const JSThread *thread, const JSHandle<JSTaggedValue> proto,
-                                          const JSHandle<JSHClass> hclass);
+    static inline bool ProtoIsFastJSArray(const JSHandle<GlobalEnv> &env,
+                                          const JSHandle<JSTaggedValue> proto, const JSHandle<JSHClass> hclass);
 
     static void CreateSInlinedLayout(JSThread *thread,
                                      const std::vector<PropertyDescriptor> &descs,

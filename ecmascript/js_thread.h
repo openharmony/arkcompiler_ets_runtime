@@ -352,16 +352,9 @@ public:
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
 
-    JSHClass* GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
-    {
-        ConstantIndex index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
-        auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
-        auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
-        ASSERT(exceptRecvHClass->IsJSArray());
-        return exceptRecvHClass;
-    }
+    JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
 
-    ConstantIndex GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
+    GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {
         return glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
     }

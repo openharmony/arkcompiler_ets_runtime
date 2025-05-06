@@ -656,6 +656,9 @@ public:
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
                                      const JSHandle<JSTaggedValue> &prototype);
+    JSHandle<JSHClass> NewEcmaHClass(const JSHandle<GlobalEnv> &env,
+                                     uint32_t size, uint32_t inlinedProps, JSType type,
+                                     const JSHandle<JSTaggedValue> &prototype);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> PUBLIC_API NewEcmaHClass(uint32_t size, JSType type,
@@ -1005,7 +1008,7 @@ private:
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
 
-    JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
+    JSHandle<JSHClass> CreateJSArrayInstanceClass(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> proto,
                                                   uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);

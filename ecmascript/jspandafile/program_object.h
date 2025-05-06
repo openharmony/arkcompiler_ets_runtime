@@ -619,9 +619,9 @@ public:
                         // for all JSArray, the initial ElementsKind should be NONE
                         // Because AOT Stable Array Deopt check, we have support arrayLiteral elementskind
                         // If array is loaded from AOT, no need to do migration.
-                        auto globalConstant = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-                        auto classIndex = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
-                        auto hclassVal = globalConstant->GetGlobalConstantObject(classIndex);
+                        JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+                        auto classIndex = static_cast<size_t>(GlobalEnvField::ELEMENT_NONE_HCLASS_INDEX);
+                        auto hclassVal = globalEnv->GetGlobalEnvObjectByIndex(classIndex).GetTaggedValue();
                         arr->SynchronizedSetClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
