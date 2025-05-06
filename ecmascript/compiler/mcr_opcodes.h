@@ -57,7 +57,7 @@ namespace panda::ecmascript::kungfu {
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                                                \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)                            \
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 3)                                \
-    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)                            \
+    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::NO_WRITE, 1, 1, 2)                             \
     V(ArrayConstructorCheck, ARRAY_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                               \
     V(ObjectConstructorCheck, OBJECT_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                             \
     V(BooleanConstructorCheck, BOOLEAN_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
@@ -167,6 +167,8 @@ namespace panda::ecmascript::kungfu {
     V(ArrayPush, ARRAY_PUSH, GateFlags::NONE_FLAG, 1, 1, 2)                                                        \
     V(ArraySlice, ARRAY_SLICE, GateFlags::NONE_FLAG, 1, 1, 4)                                                      \
     V(ArraySort, ARRAY_SORT, GateFlags::NONE_FLAG, 1, 1, 2)                                                        \
+    V(InlineSuperCtorCheck, INLINE_SUPER_CTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                                \
+    V(CheckConstructor, CHECK_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 3)                                           \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \

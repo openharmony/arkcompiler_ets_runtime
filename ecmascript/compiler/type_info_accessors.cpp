@@ -487,6 +487,7 @@ InlineTypeInfoAccessor::InlineTypeInfoAccessor(
             plr_ = GetAccessorPlrInJIT();
         }
     }
+    thisObj_ = Circuit::NullGate();
 }
 bool InlineTypeInfoAccessor::InitPropAndCheck(JSTaggedValue& prop) const
 {
@@ -567,7 +568,7 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlrInJIT() const
 uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
 {
     uint32_t methodOffset = 0;
-    if (IsNormalCall() && IsValidCallMethodId()) {
+    if ((IsNormalCall() || IsSuperCall()) && IsValidCallMethodId()) {
         methodOffset = GetFuncMethodOffsetFromPGO();
     }
     if (IsCallAccessor()) {

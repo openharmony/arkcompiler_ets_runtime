@@ -760,6 +760,8 @@ bool BytecodeMetaData::InitCallBCKind(EcmaOpcode &opcode, BytecodeKind &kind)
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             kind = BytecodeKind::CALL_BC;
             return true;
         default:

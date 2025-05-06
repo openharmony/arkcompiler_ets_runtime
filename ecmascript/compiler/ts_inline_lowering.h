@@ -112,7 +112,7 @@ private:
         MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral *method, InlineTypeInfoAccessor &info);
     void ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
-    void ReplaceReturnGate(GateRef callGate);
+    void ReplaceReturnGate(InlineTypeInfoAccessor &info);
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
     bool CheckParameter(GateRef gate, InlineTypeInfoAccessor &info, MethodLiteral* method);
@@ -127,6 +127,7 @@ private:
     bool IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset);
     void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
+    void CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void InlineAccessorCheck(const InlineTypeInfoAccessor &info);
     void InlineAccessorCheckInJIT(const InlineTypeInfoAccessor &info);
     void InlineCheck(InlineTypeInfoAccessor &info);
@@ -141,6 +142,8 @@ private:
     uint32_t GetAccessorConstpoolId(InlineTypeInfoAccessor &info);
     bool CalleePFIProcess(uint32_t methodOffset);
     void UpdateCallMethodFlagMap(uint32_t methodOffset, const MethodLiteral *method);
+    void InlineSuperCallCheck(InlineTypeInfoAccessor &info);
+    void ReplaceSuperCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method);
 
     Circuit *circuit_ {nullptr};
     CompilationEnv *compilationEnv_ {nullptr};

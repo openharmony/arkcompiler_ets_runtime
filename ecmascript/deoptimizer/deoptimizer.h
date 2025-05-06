@@ -173,7 +173,7 @@ private:
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
     void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth);
-    size_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
+    int64_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
     void ClearCompiledCodeStatusWhenDeopt(JSFunction *fun, Method *method);
     void ResetJitHotness(JSFunction *jsFunc) const;
     JSThread *thread_ {nullptr};
