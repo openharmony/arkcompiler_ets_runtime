@@ -14,6 +14,10 @@
  */
 
 #include "ecmascript/dfx/native_module_failure_info.h"
+#include "ecmascript/mem/barriers.h"
+#ifdef USE_CMC_GC
+#include "ecmascript/crt.h"
+#endif
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -558,7 +562,9 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     }
 
     if (type == MemSpaceType::NON_MOVABLE && !object->GetElements().IsCOWArray()) {
+#ifndef USE_CMC_GC
         ASSERT(!Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
+#endif
         // Set the first shared elements into the old object.
         object->SetElements(thread_, cloneObject->GetElements());
     }
@@ -581,7 +587,9 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     }
 
     if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties().IsCOWArray()) {
+#ifndef USE_CMC_GC
         ASSERT(!Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
+#endif
         // Set the first shared properties into the old object.
         object->SetProperties(thread_, cloneObject->GetProperties());
     }
@@ -1748,7 +1756,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             UNREACHABLE();
     }
 }
+template FreeObject* ObjectFactory::FillFreeObject<true>(uintptr_t, size_t, RemoveSlots, uintptr_t);
+template FreeObject* ObjectFactory::FillFreeObject<false>(uintptr_t, size_t, RemoveSlots, uintptr_t);
 
+template <bool needBarrier>
 FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots,
                                           uintptr_t hugeObjectHead)
 {
@@ -1756,12 +1767,12 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     if (size >= FreeObject::SIZE_OFFSET && size < FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
+            object->SetFreeObjectClass(JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
         object->SetNext(INVALID_OBJECT);
     } else if (size >= FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(
-            JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
+            object->SetFreeObjectClass(
+                JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
         object->SetAvailable(size);
         object->SetNext(INVALID_OBJECT);
         if (UNLIKELY(heap_->ShouldVerifyHeap())) {
@@ -1769,12 +1780,23 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
         }
     } else if (size == FreeObject::NEXT_OFFSET) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(
-            JSHClass::Cast(globalConst->GetFreeObjectWithNoneFieldClass().GetTaggedObject()));
+            object->SetFreeObjectClass(
+                JSHClass::Cast(globalConst->GetFreeObjectWithNoneFieldClass().GetTaggedObject()));
     } else {
         LOG_ECMA(DEBUG) << "Fill free object size is smaller";
     }
 
+#ifdef ARK_USE_SATB_BARRIER
+    // SATB relies on the overwriting of old values to ensure the accuracy of marking
+    if constexpr (needBarrier) {
+        // SATB must rely on WriteBarrier to record the old value.
+        int step = 8;
+        ASSERT(size % step == 0);
+        for (uintptr_t i = 0; i < size; i += step) {
+            Barriers::CMCWriteBarrier(thread_, reinterpret_cast<void*>(address), i, JSTaggedValue::Hole().GetRawData());
+        }
+    }
+#endif
     if (removeSlots == RemoveSlots::YES) {
         // For huge object, the region of `object` might not be its 1st region. Use `hugeObjectHead` instead.
         Region *region = Region::ObjectAddressToRange(hugeObjectHead == 0 ? object :
@@ -3316,7 +3338,14 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     ASSERT(capacity >= end);
     JSHandle<LayoutInfo> newArr = CreateLayoutInfo(capacity);
     Span<struct Properties> sp(old->GetProperties(), end);
+    void *propertiesObj = reinterpret_cast<void *>(old->GetProperties());
+    size_t keyOffset = 0;
+    size_t attrOffset = sizeof(JSTaggedType);
     for (int i = 0; i < end; i++) {
+        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) + keyOffset));
+        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) + attrOffset));
+        sp[i].key_ = propKey;
+        sp[i].attr_ = propValue;
         newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
     }
 
@@ -3590,12 +3619,16 @@ void ObjectFactory::NewObjectHook() const
 {
     CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized() &&
+    if (vm_->GetJSOptions().EnableForceGC() && Runtime::GetInstance()->SharedConstInited() &&
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
+#ifdef USE_CMC_GC
+           BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);
+#else
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);
             vm_->CollectGarbage(TriggerGCType::FULL_GC);
+#endif
         } else {
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);
