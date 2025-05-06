@@ -16,7 +16,6 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/aot_file/aot_checksum_helper.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/log_wrapper.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {

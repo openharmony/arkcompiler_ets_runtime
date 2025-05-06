@@ -23,7 +23,7 @@
 
 #include "common_components/common_runtime/src/common/runtime.h"
 #include "common_components/common_runtime/src/base/globals.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 

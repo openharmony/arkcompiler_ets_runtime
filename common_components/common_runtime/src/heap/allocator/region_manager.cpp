@@ -34,7 +34,7 @@
 #if defined(ARKCOMMON_TSAN_SUPPORT)
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
 #endif
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 uintptr_t RegionDesc::UnitInfo::totalUnitCount = 0;

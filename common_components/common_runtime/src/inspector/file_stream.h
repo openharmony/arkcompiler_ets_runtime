@@ -22,7 +22,7 @@
 #include <utility>
 
 #include "common_components/common_runtime/src/inspector/stream.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 class StreamWriter {

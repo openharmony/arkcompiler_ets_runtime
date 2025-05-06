@@ -246,6 +246,7 @@ ohos_static_library("ark_runtime_host_unittest") {
 
 config("ark_jsruntime_public_config") {
   configs = [
+    "$ark_root/common_interfaces:common_interfaces_public_config",
     "$ark_root/libpandabase:arkbase_public_config",
     "$ark_root/libpandafile:arkfile_public_config",
     "$ark_third_party_root/icu/icu4c:icu_config",
@@ -255,7 +256,6 @@ config("ark_jsruntime_public_config") {
   include_dirs = [
     "$js_root",
     "$js_root/ecmascript/napi/include",
-    "$ark_root/common_interfaces",
   ]
 
   defines = []
@@ -387,6 +387,7 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-lambda-capture",
     "-Wno-unused-function",
     "-Wno-unused-variable",
+    "-Wno-unused-but-set-variable",
   ]
   cflags_c = []
 
@@ -1291,8 +1292,11 @@ ohos_source_set("libcommon_components_set") {
   deps = []
   external_deps = []
 
-  deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-
+  if (!is_arkui_x) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
   deps += [ "common_components/common_runtime/src:libarkcommon-runtime" ]
 
   # hiviewdfx libraries

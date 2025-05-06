@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "common_interfaces/base/common.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"

@@ -15,7 +15,7 @@
 #ifndef ARK_COMMON_SCOPED_LOCK_OBJECT_H
 #define ARK_COMMON_SCOPED_LOCK_OBJECT_H
 #include "common_components/common_runtime/src/common/base_object.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 namespace panda {
 class ScopedObjectLock {
 public:

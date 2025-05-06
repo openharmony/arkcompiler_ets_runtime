@@ -19,7 +19,7 @@
 #include <atomic>
 #include <pthread.h>
 
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 class RwLock {

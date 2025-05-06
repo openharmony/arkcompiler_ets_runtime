@@ -18,8 +18,8 @@
 #include <algorithm>
 
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
+#include "common_components/log/log.h"
 #include "common_interfaces/thread/thread_holder-inl.h"
-#include "log/log.h"
 
 namespace panda {
 using MutatorManager = panda::MutatorManager;

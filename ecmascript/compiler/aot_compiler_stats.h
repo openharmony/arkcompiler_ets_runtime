@@ -17,7 +17,6 @@
 #define ECMASCRIPT_AOT_COMPILER_STATS_H
 
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/log_wrapper.h"
 
 #include <ctime>
 #include <chrono>

@@ -35,7 +35,7 @@
 #endif
 #include "common_components/common_runtime/src/heap/allocator/region_space.h"
 #include "common_components/common_runtime/src/common_runtime_api.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 #ifdef __cplusplus

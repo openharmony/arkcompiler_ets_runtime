@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 #include "generated/base_options.h"
 #include "libpandabase/utils/logger.h"

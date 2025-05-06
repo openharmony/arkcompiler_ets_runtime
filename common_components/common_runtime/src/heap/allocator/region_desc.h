@@ -35,7 +35,7 @@
 #include "common_components/common_runtime/src/heap/collector/copy_data_manager.h"
 #include "common_components/common_runtime/src/heap/collector/gc_infos.h"
 #include "common_components/common_runtime/src/heap/collector/region_bitmap.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 #include "securec.h"
 #ifdef ARKCOMMON_ASAN_SUPPORT
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"

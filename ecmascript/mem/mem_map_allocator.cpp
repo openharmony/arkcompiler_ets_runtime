@@ -79,7 +79,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 
 void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 {
-    size_t initialNonmovableObjectCapacity = INITIAL_NONMOVALBE_OBJECT_CAPACITY + 4_GB;
+    size_t initialNonmovableObjectCapacity = INITIAL_NONMOVALBE_OBJECT_CAPACITY + static_cast<size_t>(4_GB);
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
@@ -107,9 +107,9 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap)
 {
     uintptr_t leftUnmapAddr = ToUintPtr(memMap.GetMem());
-    auto remainderAddr = AlignUp(leftUnmapAddr, 4_GB);
+    auto remainderAddr = AlignUp(leftUnmapAddr, static_cast<size_t>(4_GB));
     size_t leftUnMapSize = remainderAddr - leftUnmapAddr;
-    size_t rightUnMapSize = 4_GB - leftUnMapSize;
+    size_t rightUnMapSize = static_cast<size_t>(4_GB) - leftUnMapSize;
     uintptr_t rightUnmapAddr = remainderAddr + INITIAL_NONMOVALBE_OBJECT_CAPACITY;
 
     static constexpr uint64_t mask = 0xFFFFFFFF;
