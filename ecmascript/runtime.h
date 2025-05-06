@@ -80,6 +80,16 @@ public:
         }
     }
 
+    void SetEnableLargeHeap(bool value)
+    {
+        enableLargeHeap_ = value;
+    }
+
+    bool GetEnableLargeHeap() const
+    {
+        return enableLargeHeap_;
+    }
+
     // Result may be inaccurate, just an approximate value.
     size_t ApproximateThreadListSize()
     {
@@ -288,7 +298,7 @@ private:
     uint32_t suspendNewCount_ {0};
     uint32_t serializeDataIndex_ {0};
     MutatorLock mutatorLock_;
-
+    std::atomic<bool> enableLargeHeap_ {false};
     bool sharedConstInited_ {false};
     GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};

@@ -60,6 +60,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
                                                       options.GetPGOHotnessThreshold());
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
+        instance_->SetEnableLargeHeap(options.GetLargeHeap());
         SharedHeap::CreateNewInstance();
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;

@@ -750,6 +750,16 @@ public:
         return enableAsyncCopyToFort_;
     }
 
+    void SetLargeHeap(bool largeHeap)
+    {
+        enableLargeHeap_ = largeHeap;
+    }
+
+    bool GetLargeHeap() const
+    {
+        return enableLargeHeap_;
+    }
+
     void ParseAsmInterOption()
     {
         asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
@@ -2328,6 +2338,7 @@ private:
     bool enableJitFort_ {true};
     bool enableAsyncCopyToFort_ {true};
     bool enableBaselinePgo_ {false};
+    bool enableLargeHeap_ {false};
     bool asyncLoadAbc_ {true};
     bool asyncLoadAbcTest_ {false};
     bool forceDump_ {true};

@@ -66,6 +66,9 @@ void SharedHeap::CreateNewInstance()
     size_t heapShared = 0;
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     heapShared = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.sharedsize", 0) * 1_MB;
+    if (Runtime::GetInstance()->GetEnableLargeHeap()) {
+        heapShared = panda::ecmascript::MAX_SHARED_HEAP_SIZE;
+    }
 #endif
     EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
         MemMapAllocator::GetInstance()->GetCapacity(), heapShared);
@@ -911,6 +914,48 @@ void Heap::Initialize()
     nativeSizeOvershoot_ = config_.GetNativeSizeOvershoot();
     asyncClearNativePointerThreshold_ = config_.GetAsyncClearNativePointerThreshold();
     idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_, GetEcmaVM()->GetJSOptions().EnableOptionalLog());
+}
+
+void Heap::ResetLargeCapacity()
+{
+    size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    size_t nonMovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
+    if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) {
+        nonMovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
+    }
+    size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
+    size_t capacities = minSemiSpaceCapacity * 2 + nonMovableSpaceCapacity +
+        machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    if (MAX_HEAP_SIZE < capacities || MAX_HEAP_SIZE - capacities < MIN_OLD_SPACE_LIMIT) {
+        LOG_ECMA_MEM(FATAL) << "Capacities is too big to reset oldspace: " << capacities;
+    }
+    size_t newOldCapacity = MAX_HEAP_SIZE - capacities;
+    LOG_ECMA(INFO) << "Main thread heap reset old capacity size: " << newOldCapacity;
+    oldSpace_->SetInitialCapacity(newOldCapacity);
+    oldSpace_->SetMaximumCapacity(newOldCapacity);
+    compressSpace_->SetInitialCapacity(newOldCapacity);
+    compressSpace_->SetMaximumCapacity(newOldCapacity);
+    hugeObjectSpace_->SetInitialCapacity(newOldCapacity);
+    hugeObjectSpace_->SetMaximumCapacity(newOldCapacity);
+}
+
+void SharedHeap::ResetLargeCapacity()
+{
+    size_t nonMovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    size_t capacities = nonMovableSpaceCapacity + readOnlySpaceCapacity;
+    if (MAX_SHARED_HEAP_SIZE < capacities || MAX_SHARED_HEAP_SIZE - capacities < MIN_OLD_SPACE_LIMIT) {
+        LOG_ECMA_MEM(FATAL) << "Shared capacities is too big to reset oldspace: " << capacities;
+    }
+    size_t newOldCapacity = AlignUp((MAX_SHARED_HEAP_SIZE - capacities) / 2, DEFAULT_REGION_SIZE);
+    LOG_ECMA(INFO) << "Shared heap reset old capacity size: " << newOldCapacity;
+    sOldSpace_->SetInitialCapacity(newOldCapacity);
+    sOldSpace_->SetMaximumCapacity(newOldCapacity);
+    sCompressSpace_->SetInitialCapacity(newOldCapacity);
+    sCompressSpace_->SetMaximumCapacity(newOldCapacity);
+    sHugeObjectSpace_->SetInitialCapacity(newOldCapacity);
+    sHugeObjectSpace_->SetMaximumCapacity(newOldCapacity);
 }
 
 void Heap::ResetTlab()

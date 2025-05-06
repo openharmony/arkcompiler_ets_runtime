@@ -24,11 +24,12 @@
 
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 448_MB;                 // Recommended range: 128-448MB
+static constexpr size_t MAX_HEAP_SIZE = 1024_MB;
 static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
 static constexpr size_t MAX_WORKER_HEAP_SIZE = 1024_MB;
 static constexpr size_t DEFAULT_SHARED_HEAP_SIZE = 778_MB;
 static constexpr size_t MAX_SHARED_HEAP_SIZE = 2048_MB;
-static constexpr size_t MAX_HEAP_SIZE = 1024_MB;
+static constexpr uint64_t LARGE_HEAP_POOL_SIZE = 4096_MB;
 
 class EcmaParamConfiguration {
 public:

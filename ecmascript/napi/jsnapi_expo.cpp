@@ -4360,6 +4360,14 @@ void JSNApi::ClearCurrentTaskInfo(const EcmaVM *vm)
     thread->SetIsInConcurrentScope(false);
 }
 
+void JSNApi::SetLargeHeap(bool isLargeHeap)
+{
+    LOG_ECMA(INFO) << "Set large heap: " << isLargeHeap;
+    auto instance = ecmascript::Runtime::GetInstance();
+    ASSERT(instance != nullptr);
+    instance->SetEnableLargeHeap(isLargeHeap);
+}
+
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
 {
     ecmascript::CString name = bundleName.c_str();
@@ -4514,6 +4522,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     // Dfx
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
+    runtimeOptions.SetLargeHeap(option.GetLargeHeap());
     return CreateEcmaVM(runtimeOptions);
 }
 

@@ -292,6 +292,16 @@ public:
         enableBaselineJIT_ = value;
     }
 
+    void SetLargeHeap(bool largeHeap)
+    {
+        enableLargeHeap_ = largeHeap;
+    }
+
+    bool GetLargeHeap() const
+    {
+        return enableLargeHeap_;
+    }
+
     void SetAOTCompileStatusMap(const std::map<std::string, int32_t> &value)
     {
         aotCompileStatusMap_ = value;
@@ -457,6 +467,7 @@ private:
     bool enableFastJIT_ {false};
     bool enableDFXHiSysEvent_ {true};
     bool enableBaselineJIT_ {false};
+    bool enableLargeHeap_ {false};
     std::map<std::string, int32_t> aotCompileStatusMap_;
     friend JSNApi;
 };
