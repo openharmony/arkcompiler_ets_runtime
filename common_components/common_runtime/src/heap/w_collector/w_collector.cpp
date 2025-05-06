@@ -16,7 +16,7 @@
 
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
 #include "common_interfaces/heap/heap_visitor.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 #include "common_interfaces/objects/ref_field.h"
 #include "verification.h"
 

@@ -29,7 +29,7 @@
 #include "common_components/common_runtime/src/mutator/safepoint_page_manager.h"
 #endif
 #include "common_components/common_runtime/src/mutator/thread_local.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 const uint64_t WAIT_LOCK_INTERVAL = 5000; // 5us

@@ -18,7 +18,7 @@
 #include "allocator/region_space.h"
 #include "common/mark_work_stack.h"
 #include "common/type_def.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 #include "common_interfaces/objects/base_object.h"
 #include "common_interfaces/objects/ref_field.h"
 #include "common_interfaces/objects/state_word.h"

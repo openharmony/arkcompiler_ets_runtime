@@ -15,7 +15,7 @@
 #ifndef ARK_COMMON_RUN_TYPE_H
 #define ARK_COMMON_RUN_TYPE_H
 
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 // slot with size no more than RUN_ALLOC_SMALL_SIZE is small slot.

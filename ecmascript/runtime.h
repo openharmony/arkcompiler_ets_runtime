@@ -15,8 +15,9 @@
 
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
-#include "common_interfaces/base_runtime.h"
+
 #ifdef USE_CMC_GC
+#include "common_interfaces/base_runtime.h"
 #include "ecmascript/crt.h"
 #endif
 #include "ecmascript/ecma_string_table.h"

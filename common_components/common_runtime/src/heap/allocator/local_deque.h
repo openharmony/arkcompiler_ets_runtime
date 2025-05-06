@@ -19,7 +19,7 @@
 #include <cstdint>
 
 #include "common_components/common_runtime/src/heap/allocator/memory_map.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 #define DEBUG_DEQUE false
 #if DEBUG_DEQUE

@@ -20,7 +20,7 @@
 
 #include "common_components/common_runtime/src/base/log_file.h"
 #include "common_components/common_runtime/src/heap/allocator/local_deque.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 #ifndef NDEBUG
 #define CTREE_ASSERT(cond, msg) ASSERT_LOGF(cond, msg)

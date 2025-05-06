@@ -17,7 +17,7 @@
 
 #include "common_components/common_runtime/src/common/page_pool.h"
 #include "common_components/common_runtime/src/common/mark_work_stack.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 // snapshot at the beginning buffer

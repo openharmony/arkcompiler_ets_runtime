@@ -23,7 +23,7 @@
 #include "common_components/common_runtime/src/common/page_allocator.h"
 #include "common_components/common_runtime/src/heap/collector/gc_request.h"
 #include "common_components/common_runtime/src/heap/heap.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 // gc task and task queue implementation
 namespace panda {

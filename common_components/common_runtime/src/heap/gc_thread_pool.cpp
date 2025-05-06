@@ -21,7 +21,7 @@
 
 #include "common_components/common_runtime/src/base/sys_call.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 #include "securec.h"
 
 // thread pool implementation

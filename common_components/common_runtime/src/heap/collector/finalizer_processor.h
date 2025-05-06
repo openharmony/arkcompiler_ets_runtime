@@ -23,7 +23,7 @@
 #include "common_components/common_runtime/src/common/page_allocator.h"
 #include "common_components/common_runtime/src/common/type_def.h"
 #include "common_components/common_runtime/src/heap/collector/collector.h"
-#include "common_interfaces/log/log.h"
+#include "common_components/log/log.h"
 
 namespace panda {
 template<typename T>

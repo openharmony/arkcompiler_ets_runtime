@@ -131,7 +131,6 @@ using ecmascript::DebugInfoExtractor;
 using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
-using ecmascript::PatchErrorCode;
 using ecmascript::RegExpParser;
 using ecmascript::base::NumberHelper;
 template <typename T>

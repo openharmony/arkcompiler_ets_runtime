@@ -34,11 +34,14 @@ config("aot_compiler_service_config") {
 
 ohos_shared_library("libcompiler_service") {
   public_configs = [ ":aot_compiler_service_config" ]
-  configs = [ "$js_root:ark_jsruntime_public_config" ]
+  configs = [
+    "$js_root:ark_jsruntime_public_config",
+    "$js_root:ark_jsruntime_common_config",
+  ]
   shlib_type = "sa"
   version_script = "libaot_compiler_service.map"
   sources = [
-    "${js_root}/ecmascript/log.cpp",
+    "${js_root}/common_components/log/log.cpp",
     "interface/aot_compiler_interface_proxy.cpp",
     "interface/aot_compiler_interface_stub.cpp",
     "src/aot_compiler_client.cpp",

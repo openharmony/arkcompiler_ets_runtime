@@ -126,7 +126,6 @@ using ecmascript::JSNumberFormat;
 #endif
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
-using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
 using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
