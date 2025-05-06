@@ -17,6 +17,9 @@
 #define ECMASCRIPT_CHECKPOINT_THREAD_STATE_TRANSITION_H
 
 #include "ecmascript/runtime.h"
+#ifdef USE_CMC_GC
+#include "ecmascript/crt.h"
+#endif
 
 namespace panda::ecmascript {
 
@@ -29,6 +32,13 @@ public:
         : self_(self)
         {
             ASSERT(self_ != nullptr);
+#if USE_CMC_GC
+            if constexpr (newState == ThreadState::RUNNING) {
+                hasSwitchState_ = self_->GetThreadHolder()->TransferToRunningIfInNative();
+            } else {
+                hasSwitchState_ = self_->GetThreadHolder()->TransferToNativeIfInRunning();
+            }
+#else
             oldState_ = self_->GetState();
             if constexpr (std::is_same_v<DaemonThread, T>) {
                 if (oldState_ != newState) {
@@ -59,10 +69,20 @@ public:
                     self_->UpdateState(newState);
                 }
             }
+#endif
         }
 
     ~ThreadStateTransitionScope()
     {
+#if USE_CMC_GC
+        if (hasSwitchState_) {
+            if constexpr (newState == ThreadState::RUNNING) {
+                self_->GetThreadHolder()->TransferToNative();
+            } else {
+                self_->GetThreadHolder()->TransferToRunning();
+            }
+        }
+#else
         if (hasSwitchState_) {
             if constexpr (std::is_same_v<DaemonThread, T>) {
                 if (oldState_ == ThreadState::RUNNING) {
@@ -74,6 +94,7 @@ public:
                 self_->UpdateState(oldState_);
             }
         }
+#endif
     }
 
 private:
@@ -87,7 +108,11 @@ class ThreadSuspensionScope final {
 public:
     explicit ThreadSuspensionScope(JSThread* self) : scope_(self)
     {
+#if USE_CMC_GC
+        ASSERT(!self->IsInRunningState());
+#else
         ASSERT(self->GetState() == ThreadState::IS_SUSPENDED);
+#endif
     }
 
     ~ThreadSuspensionScope() = default;
@@ -101,7 +126,7 @@ class ThreadNativeScope final {
 public:
     explicit ThreadNativeScope(JSThread* self) : scope_(self)
     {
-        ASSERT(self->GetState() == ThreadState::NATIVE);
+        ASSERT(!self->IsInRunningState());
     }
 
     ~ThreadNativeScope() = default;
