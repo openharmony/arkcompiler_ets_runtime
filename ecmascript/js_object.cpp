@@ -220,13 +220,20 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
 
     receiver->SetProperties(thread, dict);
     ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
+#ifndef USE_CMC_GC
     // change HClass
     JSHClass::TransitionToDictionary(thread, receiver);
     JSObject::TryMigrateToGenericKindForJSObject(thread, receiver, oldKind);
 
     // trim in-obj properties space
     TrimInlinePropsSpace(thread, receiver, numberInlinedProps);
-
+#else
+    JSObject::TryMigrateToGenericKindForJSObject(thread, receiver, oldKind);
+    // trim in-obj properties space
+    TrimInlinePropsSpace(thread, receiver, numberInlinedProps);
+    // change HClass
+    JSHClass::TransitionToDictionary(thread, receiver);
+#endif
     return dict;
 }
 
@@ -1641,7 +1648,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
 #endif
         ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
         JSHClass::RestoreElementsKindToGeneric(*newHclass);
-        obj->SynchronizedSetClass(thread, *newHclass);
+        obj->SynchronizedTransitionClass(thread, *newHclass);
         TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
     }
 
@@ -1974,7 +1981,7 @@ bool JSObject::FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &ob
             newLayoutInfo->AddKey(thread, i, key, attr);
         }
         newClass->SetLayout(thread, newLayoutInfo);
-        obj->SynchronizedSetClass(thread, *newClass);
+        obj->SynchronizedTransitionClass(thread, *newClass);
     } else {
         auto dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
         dict->UpdateAllAttributesToNoWitable(thread);
@@ -2927,16 +2934,23 @@ void JSObject::TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObj
 {
     if (numberInlinedProps > 0) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+#ifndef USE_CMC_GC
         uint32_t newSize = object->GetClass()->GetObjectSize();
+#else
+        uint32_t newSize = JSHClass::GetCloneSize(object->GetClass());
+#endif
         size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
+#ifndef USE_CMC_GC
         factory->FillFreeObject(ToUintPtr(*object) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*object));
+#else
+        factory->FillFreeObject<true>(ToUintPtr(*object) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*object));
+#endif
     }
 }
-
 // The hash field may be a hash value, FunctionExtraInfo(JSNativePointer) or TaggedArray
 void ECMAObject::SetHash(const JSThread *thread, int32_t hash, const JSHandle<ECMAObject> &obj)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
         // Hash position reserve in advance.
@@ -2962,7 +2976,7 @@ void ECMAObject::SetHash(const JSThread *thread, int32_t hash, const JSHandle<EC
 
 int32_t ECMAObject::GetHash() const
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsHeapObject()) {
         if (value.IsTaggedArray()) {
@@ -2978,7 +2992,7 @@ int32_t ECMAObject::GetHash() const
 
 bool ECMAObject::HasHash() const
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsInt() && value.GetInt() == 0) {
         return false;
@@ -2988,7 +3002,7 @@ bool ECMAObject::HasHash() const
 
 void *ECMAObject::GetNativePointerField(int32_t index) const
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
         auto array = TaggedArray::Cast(value);
@@ -3010,7 +3024,7 @@ void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JS
                                        void *nativePointer, const NativePointerCallback &callBack, void *data,
                                        size_t nativeBindingsize, Concurrent isConcurrent)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
         JSHandle<TaggedArray> array(thread, value);
@@ -3037,7 +3051,7 @@ void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JS
 int32_t ECMAObject::GetNativePointerFieldCount() const
 {
     int32_t len = 0;
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
         TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
@@ -3052,7 +3066,7 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, const JSHand
     if (count == 0) {
         return;
     }
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(*obj, HASH_OFFSET);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
     JSHandle<JSTaggedValue> object(obj);
     bool isShared = object->IsJSShared();

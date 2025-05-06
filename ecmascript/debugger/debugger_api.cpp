@@ -1307,6 +1307,9 @@ void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
 DebuggerApi::DebuggerNativeScope::DebuggerNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
+#ifdef USE_CMC_GC
+    hasSwitchState_ = thread_->GetThreadHolder()->TransferToNativeIfInRunning();
+#else
     ecmascript::ThreadState oldState = thread_->GetState();
     if (oldState != ecmascript::ThreadState::RUNNING) {
         return;
@@ -1314,18 +1317,26 @@ DebuggerApi::DebuggerNativeScope::DebuggerNativeScope(const EcmaVM *vm)
     oldThreadState_ = static_cast<uint16_t>(oldState);
     hasSwitchState_ = true;
     thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+#endif
 }
 
 DebuggerApi::DebuggerNativeScope::~DebuggerNativeScope()
 {
     if (hasSwitchState_) {
+#ifdef USE_CMC_GC
+        thread_->GetThreadHolder()->TransferToRunning();
+#else
         thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+#endif
     }
 }
 
 DebuggerApi::DebuggerManagedScope::DebuggerManagedScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
+#ifdef USE_CMC_GC
+    hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
+#else
     ecmascript::ThreadState oldState = thread_->GetState();
     if (oldState == ecmascript::ThreadState::RUNNING) {
         return;
@@ -1333,12 +1344,17 @@ DebuggerApi::DebuggerManagedScope::DebuggerManagedScope(const EcmaVM *vm)
     oldThreadState_ = static_cast<uint16_t>(oldState);
     hasSwitchState_ = true;
     thread_->UpdateState(ecmascript::ThreadState::RUNNING);
+#endif
 }
 
 DebuggerApi::DebuggerManagedScope::~DebuggerManagedScope()
 {
     if (hasSwitchState_) {
+#ifdef USE_CMC_GC
+        thread_->GetThreadHolder()->TransferToNative();
+#else
         thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+#endif
     }
 }
 }  // namespace panda::ecmascript::tooling

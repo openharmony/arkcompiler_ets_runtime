@@ -599,7 +599,16 @@ void EcmaContext::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minC
         UNREACHABLE();
     }
     std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
-    std::copy(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), newUnsharedConstpools);
+    int32_t copyLen = GetUnsharedConstpoolsArrayLen();
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
+    } else {
+        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+    }
+#else
+    std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+#endif
     ClearUnsharedConstpoolArray();
     unsharedConstpools_ = newUnsharedConstpools;
     thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
@@ -888,6 +897,22 @@ void EcmaContext::Iterate(RootVisitor &v)
         v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&joinStack_.front())),
             ObjectSlot(ToUintPtr(&joinStack_.back()) + JSTaggedValue::TaggedTypeSize()));
     }
+
+#ifdef ARK_USE_SATB_BARRIER
+    auto iterator = cachedSharedConstpools_.begin();
+    while (iterator != cachedSharedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constpoolIter->second)));
+            }
+            ++constpoolIter;
+        }
+        ++iterator;
+    }
+#endif
 
     auto start = ObjectSlot(ToUintPtr(unsharedConstpools_));
     auto end = ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +

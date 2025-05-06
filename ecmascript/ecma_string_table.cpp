@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_string_table.h"
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
@@ -198,7 +199,17 @@ void EcmaStringTable::InternStringThreadUnsafe(EcmaString *string, uint32_t hash
     ASSERT(!EcmaStringAccessor(string).IsInternString());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     // Strings in string table should not be in the young space.
+#ifdef USE_CMC_GC
+    ASSERT(string->IsInSharedHeap());
+#else
     ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+#endif
+    if (EcmaStringAccessor(string).IsInternString()) {
+        return;
+    }
+#ifdef USE_CMC_GC
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+#endif
     stringTable_[GetTableId(hashcode)].table_.emplace(hashcode, string);
     EcmaStringAccessor(string).SetInternString();
 }
@@ -347,7 +358,11 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16
 void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode)
 {
     // Strings in string table should not be in the young space.
+#ifdef USE_CMC_GC
+    ASSERT(string->IsInSharedHeap());
+#else
     ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+#endif
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     ASSERT(EcmaStringAccessor(string).GetHashcode() == hashcode);
     stringTable_[GetTableId(hashcode)].table_.emplace(hashcode, string);
@@ -443,7 +458,11 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tabl
     for (auto it = table.begin(); it != table.end();) {
         auto *object = it->second;
         auto fwd = visitor(object);
-        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
+#ifdef USE_CMC_GC
+        ASSERT(object->IsInSharedHeap());
+#else
+        ASSERT(Region::ObjectAddressToRange((object))->InSharedHeap());
+#endif
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             it = table.erase(it);
@@ -456,6 +475,26 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tabl
         }
     }
 }
+
+#ifdef USE_CMC_GC
+void EcmaStringTable::IterWeakRoot(WeakVisitor &visitor)
+{
+    // iter by cmc
+    for (uint32_t tableId = 0; tableId < stringTable_.size(); ++tableId) {
+        ASSERT(tableId >= 0 && tableId < stringTable_.size());
+        auto &table = stringTable_[tableId].table_;
+        for (auto it = table.begin(); it != table.end();) {
+            ObjectSlot slot(reinterpret_cast<uintptr_t>(&(it->second)));
+            bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
+            if (!isAlive) {
+                it = table.erase(it);
+            } else {
+                it++;
+            }
+        }
+    }
+}
+#endif
 
 bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
 {
