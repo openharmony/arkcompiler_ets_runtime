@@ -2846,14 +2846,17 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         }
         if (hclass->IsAOT()) {
             if (CheckPropertiesForRep(properties, propsLen, hclass)) {
-                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
+                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass,
+                                                           TrackTypeUpdateMode::DISABLE);
             } else if (!isLiteral) {
                 hclass = factory->GetObjectLiteralHClass(properties, propsLen);
                 // if check failed, get literal object again
-                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
+                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass,
+                                                           TrackTypeUpdateMode::DISABLE);
             }
         }
-        return CreateObjectFromProperties(thread, hclass, properties, propsLen);
+        return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass,
+                                                   TrackTypeUpdateMode::ENABLE);
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
         ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
@@ -2878,51 +2881,28 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
 }
 
-JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread,
-                                                        const JSHandle<JSHClass> &hclass,
-                                                        const JSHandle<TaggedArray> &properties,
-                                                        uint32_t propsLen)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(hclass);
-    ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-
-    if (thread->IsPGOProfilerEnable()) {
-        // PGO need to track TrackType
-        JSHClass *oldHC = obj->GetJSHClass();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(oldHC->GetLayout().GetTaggedObject());
-        for (size_t i = 0; i < propsLen; i++) {
-            auto value = properties->Get(i * 2 + 1);
-            auto attr = layoutInfo->GetAttr(i);
-            if (attr.UpdateTrackType(value) && !oldHC->IsJSShared()) {
-                layoutInfo->SetNormalAttr(thread, i, attr);
-            }
-            obj->SetPropertyInlinedProps(thread, i, value);
-        }
-    } else {
-        for (size_t i = 0; i < propsLen; i++) {
-            // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
-        }
-    }
-    return obj;
-}
-
 JSHandle<JSObject> JSObject::CreateObjectFromPropertiesByIHClass(const JSThread *thread,
                                                                  const JSHandle<TaggedArray> &properties,
                                                                  uint32_t propsLen,
-                                                                 const JSHandle<JSHClass> &ihc)
+                                                                 const JSHandle<JSHClass> &ihc,
+                                                                 TrackTypeUpdateMode trackMode)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(ihc);
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-    auto layout = LayoutInfo::Cast(ihc->GetLayout().GetTaggedObject());
+    bool needTrack = (trackMode == TrackTypeUpdateMode::ENABLE) && thread->IsPGOProfilerEnable();
+    JSHClass *layoutHClass = obj->GetJSHClass();
+    bool isShared = layoutHClass->IsJSShared();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(layoutHClass->GetLayout().GetTaggedObject());
     for (size_t i = 0; i < propsLen; i++) {
-        auto attr = layout->GetAttr(i);
-        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(i * 2 + 1));
-        ASSERT(value.first);
-        obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
+        auto attr = layoutInfo->GetAttr(i);
+        auto value = properties->Get(i * JSObject::PAIR_SIZE + JSObject::VALUE_OFFSET);
+        if (needTrack && attr.UpdateTrackType(value) && !isShared) {
+            layoutInfo->SetNormalAttr(thread, i, attr);
+        }
+        auto converted = JSObject::ConvertValueWithRep(attr, value);
+        ASSERT(converted.first);
+        obj->SetPropertyInlinedPropsWithRep(thread, i, converted.second);
     }
     return obj;
 }

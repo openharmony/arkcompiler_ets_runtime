@@ -55,6 +55,8 @@ enum IntegrityLevel { SEALED, FROZEN };
 enum PositionKind { UNKNOWN = 0, INDEXED_PROPERTY = 1, INLINE_NAMED_PROPERTY = 2, OUT_NAMED_PROPERTY = 3 };
 enum PropertyKind { KEY = 0, VALUE, KEY_VALUE };
 
+enum class TrackTypeUpdateMode { ENABLE, DISABLE };
+
 // ecma6.0 6.2.4 The Property Descriptor Specification Type
 class PropertyDescriptor final {
 public:
@@ -414,6 +416,8 @@ public:
     static constexpr int MAX_ELEMENTS_HINT_LENGTH = 2_MB;
     static constexpr int ELEMENTS_HINT_FACTOR = 8;
     static constexpr int SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR = 2;
+    static constexpr size_t PAIR_SIZE = 2;
+    static constexpr size_t VALUE_OFFSET = 1;
 
     CAST_CHECK(JSObject, IsECMAObject);
 
@@ -664,14 +668,11 @@ public:
     static PUBLIC_API JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
                                                                     const JSHandle<TaggedArray> &properties,
                                                          JSTaggedValue ihc = JSTaggedValue::Undefined());
-    static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
-                                                         const JSHandle<JSHClass> &hclass,
-                                                         const JSHandle<TaggedArray> &properties,
-                                                         uint32_t propsLen);
     static JSHandle<JSObject> CreateObjectFromPropertiesByIHClass(const JSThread *thread,
                                                                   const JSHandle<TaggedArray> &properties,
                                                                   uint32_t propsLen,
-                                                                  const JSHandle<JSHClass> &ihc);
+                                                                  const JSHandle<JSHClass> &ihc,
+                                                                  TrackTypeUpdateMode trackMode);
     static bool CheckPropertiesForRep(
         const JSHandle<TaggedArray> &properties, uint32_t propsLen, const JSHandle<JSHClass> &ihc);
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
