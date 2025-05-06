@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_thread.h"
 
+#include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/js_date.h"
@@ -41,10 +42,48 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/jit/jit.h"
+#ifdef USE_CMC_GC
+#include "common_interfaces/thread/thread_holder_manager.h"
+#endif
 
 namespace panda::ecmascript {
+uintptr_t TaggedStateWord::BASE_ADDRESS = 0;
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
+
+#ifdef USE_CMC_GC
+extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
+{
+    reinterpret_cast<JSThread *>(jsThread)->Visit(visitor);
+}
+#endif
+
+#ifndef USE_CMC_GC
+void SuspendBarrier::Wait()
+{
+    while (true) {
+        int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
+        if (LIKELY(curCount > 0)) {
+#if defined(PANDA_USE_FUTEX)
+            int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);
+            if (futex(addr, FUTEX_WAIT_PRIVATE, curCount, nullptr, nullptr, 0) != 0) {
+                if (errno != EAGAIN && errno != EINTR) {
+                    LOG_GC(FATAL) << "SuspendBarrier::Wait failed, errno = " << errno;
+                    UNREACHABLE();
+                }
+            }
+#else
+            sched_yield();
+#endif
+        } else {
+            // Use seq_cst to synchronize memory.
+            curCount = passBarrierCount_.load(std::memory_order_seq_cst);
+            ASSERT(curCount == 0);
+            break;
+        }
+    }
+}
+#endif
 
 thread_local JSThread *currentThread = nullptr;
 
@@ -60,19 +99,31 @@ void JSThread::RegisterThread(JSThread *jsThread)
     // If it is not true, we created a new thread for future fork
     if (currentThread == nullptr) {
         currentThread = jsThread;
+#if USE_CMC_GC
+        jsThread->GetThreadHolder()->TransferToNative();
+#else
         jsThread->UpdateState(ThreadState::NATIVE);
+#endif
     }
 }
 
 void JSThread::UnregisterThread(JSThread *jsThread)
 {
     if (currentThread == jsThread) {
+#if USE_CMC_GC
+        jsThread->GetThreadHolder()->TransferToNative();
+#else
         jsThread->UpdateState(ThreadState::TERMINATED);
+#endif
         currentThread = nullptr;
     } else {
+#if USE_CMC_GC
+        jsThread->GetThreadHolder()->TransferToNative();
+#else
         // We have created this JSThread instance but hadn't forked it.
         ASSERT(jsThread->GetState() == ThreadState::CREATED);
         jsThread->UpdateState(ThreadState::TERMINATED);
+#endif
     }
     Runtime::GetInstance()->UnregisterThread(jsThread);
 }
@@ -102,11 +153,21 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.IsEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->SetThreadId();
 
+#ifdef USE_CMC_GC
+    jsThread->glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(vm));
+#endif
+
     RegisterThread(jsThread);
     return jsThread;
 }
 
+
+#if defined(USE_CMC_GC) && defined(IMPOSSIBLE)
+JSThread::JSThread(EcmaVM *vm) : BaseThread(BaseThreadType::JS_THREAD, new ThreadHolder()),
+                                 id_(os::thread::GetCurrentThreadId()), vm_(vm)
+#else
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
+#endif
 {
     auto chunk = vm->GetChunk();
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
@@ -143,18 +204,33 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     glueData_.moduleManager_ = new ModuleManager(vm_);
 
     glueData_.globalConst_ = new GlobalEnvConstants();
+    glueData_.baseAddress_ = TaggedStateWord::BASE_ADDRESS;
 }
 
+#if defined(USE_CMC_GC) && defined(IMPOSSIBLE)
+JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : BaseThread(BaseThreadType::JS_THREAD, new ThreadHolder()),
+                                                        id_(os::thread::GetCurrentThreadId()),
+                                                        vm_(vm), threadType_(threadType)
+#else
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
                                                         vm_(vm), threadType_(threadType)
+#endif
 {
     ASSERT(threadType == ThreadType::JIT_THREAD);
     // jit thread no need GCIterating
     readyForGCIterating_ = false;
+#ifdef USE_CMC_GC
+    glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr));
+#endif
     RegisterThread(this);
 };
 
+#if defined(USE_CMC_GC) && defined(IMPOSSIBLE)
+JSThread::JSThread(ThreadType threadType) : BaseThread(BaseThreadType::JS_THREAD, new ThreadHolder()),
+                                            threadType_(threadType)
+#else
 JSThread::JSThread(ThreadType threadType) : threadType_(threadType)
+#endif
 {
     ASSERT(threadType == ThreadType::DAEMON_THREAD);
     // daemon thread no need GCIterating
@@ -540,6 +616,40 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
     }
 }
 
+#ifdef USE_CMC_GC
+void JSThread::IterateWeakEcmaGlobalStorage(WeakVisitor &visitor)
+{
+    auto callBack = [this, &visitor](WeakNode *node) {
+        JSTaggedValue value(node->GetObject());
+        if (!value.IsHeapObject()) {
+            return;
+        };
+        bool isAlive = visitor.VisitRoot(Root::ROOT_VM, ecmascript::ObjectSlot(node->GetObjectAddress()));
+        if (!isAlive) {
+            node->SetObject(JSTaggedValue::Undefined().GetRawData());
+            auto nativeFinalizeCallback = node->GetNativeFinalizeCallback();
+            if (nativeFinalizeCallback) {
+                weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
+                                                                          node->GetReference()));
+            }
+            auto freeGlobalCallBack = node->GetFreeGlobalCallback();
+            if (!freeGlobalCallBack) {
+                // If no callback, dispose global immediately
+                DisposeGlobalHandle(ToUintPtr(node));
+            } else {
+                weakNodeFreeGlobalCallbacks_.push_back(std::make_pair(freeGlobalCallBack, node->GetReference()));
+            }
+        }
+    };
+
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->IterateWeakUsageGlobal(callBack);
+    } else {
+        globalDebugStorage_->IterateWeakUsageGlobal(callBack);
+    }
+}
+#endif
+
 void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind)
 {
     auto callBack = [this, visitor, gcKind](WeakNode *node) {
@@ -687,16 +797,6 @@ JSHClass *JSThread::GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) con
     return glueData_.builtinHClassEntries_.entries[index].prototypeOfPrototypeHClass;
 }
 
-size_t JSThread::GetBuiltinHClassOffset(BuiltinTypeId type, bool isArch32)
-{
-    return GetGlueDataOffset() + GlueData::GetBuiltinHClassOffset(type, isArch32);
-}
-
-size_t JSThread::GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch32)
-{
-    return GetGlueDataOffset() + GlueData::GetBuiltinPrototypeHClassOffset(type, isArch32);
-}
-
 void JSThread::CheckSwitchDebuggerBCStub()
 {
     auto isDebug = vm_->GetJsDebuggerManager()->IsDebugMode();
@@ -780,11 +880,15 @@ void JSThread::TerminateExecution()
 
 void JSThread::CheckAndPassActiveBarrier()
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ThreadStateAndFlags oldStateAndFlags;
     oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
     if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
         PassSuspendBarrier();
     }
+#endif
 }
 
 bool JSThread::PassSuspendBarrier()
@@ -840,7 +944,11 @@ bool JSThread::CheckSafepoint()
     bool gcTriggered = false;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
+#ifdef USE_CMC_GC
+        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::SYNC);  // Trigger Full CMC here
+#else
         vm_->CollectGarbage(TriggerGCType::FULL_GC);
+#endif
         gcTriggered = true;
     }
 #endif
@@ -1169,6 +1277,9 @@ bool JSThread::IsPropertyCacheCleared() const
 
 void JSThread::UpdateState(ThreadState newState)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ThreadState oldState = GetState();
     if (oldState == ThreadState::RUNNING && newState != ThreadState::RUNNING) {
         TransferFromRunningToSuspended(newState);
@@ -1178,10 +1289,14 @@ void JSThread::UpdateState(ThreadState newState)
         // Here can be some extra checks...
         StoreState(newState);
     }
+#endif
 }
 
 void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     LockHolder lock(suspendLock_);
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
@@ -1199,10 +1314,14 @@ void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
         SetFlag(ThreadFlag::ACTIVE_BARRIER);
         SetCheckSafePointStatus();
     }
+#endif
 }
 
 void JSThread::ResumeThread(bool internalSuspend)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     LockHolder lock(suspendLock_);
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
@@ -1215,10 +1334,14 @@ void JSThread::ResumeThread(bool internalSuspend)
         }
     }
     suspendCondVar_.Signal();
+#endif
 }
 
 void JSThread::WaitSuspension()
 {
+#ifdef USE_CMC_GC
+    GetThreadHolder()->WaitSuspension();
+#else
     constexpr int TIMEOUT = 100;
     ThreadState oldState = GetState();
     UpdateState(ThreadState::IS_SUSPENDED);
@@ -1232,25 +1355,38 @@ void JSThread::WaitSuspension()
         ASSERT(!HasSuspendRequest());
     }
     UpdateState(oldState);
+#endif
 }
 
 void JSThread::ManagedCodeBegin()
 {
     ASSERT(!IsInManagedState());
+#if USE_CMC_GC
+    GetThreadHolder()->TransferToRunning();
+#else
     UpdateState(ThreadState::RUNNING);
+#endif
 }
 
 void JSThread::ManagedCodeEnd()
 {
     ASSERT(IsInManagedState());
+#if USE_CMC_GC
+    GetThreadHolder()->TransferToNative();
+#else
     UpdateState(ThreadState::NATIVE);
+#endif
 }
 
 void JSThread::TransferFromRunningToSuspended(ThreadState newState)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ASSERT(currentThread == this);
     StoreSuspendedState(newState);
     CheckAndPassActiveBarrier();
+#endif
 }
 
 void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
@@ -1296,6 +1432,9 @@ void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
 
 void JSThread::TransferToRunning()
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ASSERT(!IsDaemonThread());
     ASSERT(currentThread == this);
     StoreRunningState(ThreadState::RUNNING);
@@ -1306,17 +1445,25 @@ void JSThread::TransferToRunning()
     if (fullMarkRequest_) {
         fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
     }
+#endif
 }
 
 void JSThread::TransferDaemonThreadToRunning()
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ASSERT(IsDaemonThread());
     ASSERT(currentThread == this);
     StoreRunningState(ThreadState::RUNNING);
+#endif
 }
 
 inline void JSThread::StoreState(ThreadState newState)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
@@ -1332,10 +1479,14 @@ inline void JSThread::StoreState(ThreadState newState)
             break;
         }
     }
+#endif
 }
 
-void JSThread::StoreRunningState(ThreadState newState)
+void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ASSERT(newState == ThreadState::RUNNING);
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
@@ -1364,12 +1515,17 @@ void JSThread::StoreRunningState(ThreadState newState)
             ASSERT(!HasSuspendRequest());
         }
     }
+#endif
 }
 
 inline void JSThread::StoreSuspendedState(ThreadState newState)
 {
+#ifdef USE_CMC_GC
+    std::abort();
+#else
     ASSERT(newState != ThreadState::RUNNING);
     StoreState(newState);
+#endif
 }
 
 void JSThread::PostFork()
@@ -1377,19 +1533,27 @@ void JSThread::PostFork()
     SetThreadId();
     if (currentThread == nullptr) {
         currentThread = this;
+#ifdef USE_CMC_GC
+        GetThreadHolder()->TransferToNative();
+#else
         ASSERT(GetState() == ThreadState::CREATED);
         UpdateState(ThreadState::NATIVE);
+#endif
     } else {
         // We tried to call fork in the same thread
         ASSERT(currentThread == this);
+#ifdef USE_CMC_GC
+        GetThreadHolder()->TransferToNative();
+#else
         ASSERT(GetState() == ThreadState::NATIVE);
+#endif
     }
 }
 #ifndef NDEBUG
 bool JSThread::IsInManagedState() const
 {
     ASSERT(this == JSThread::GetCurrent());
-    return GetState() == ThreadState::RUNNING;
+    return IsInRunningState();
 }
 
 MutatorLock::MutatorLockState JSThread::GetMutatorLockState() const
