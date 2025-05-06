@@ -112,13 +112,25 @@ void StubBuilder::LoopBegin(Label *loopHead)
 
 GateRef StubBuilder::CheckSuspend(GateRef glue)
 {
+#ifdef USE_CMC_GC
+    GateRef threadHolderOffset = IntPtr(JSThread::GlueData::GetThreadHolderOffset(env_->IsArch32Bit()));
+    GateRef threadHolder = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, threadHolderOffset);
+    GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), threadHolder, IntPtr(0));
+    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
+#else
     GateRef stateAndFlagsOffset = IntPtr(JSThread::GlueData::GetStateAndFlagsOffset(env_->IsArch32Bit()));
     GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), glue, stateAndFlagsOffset);
-    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(SUSPEND_REQUEST));
+    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
+#endif
 }
 
 void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue)
 {
+#ifdef USE_CMC_GC
+    // TODO: remove this after CheckSuspend is done.
+    CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});
+    LoopEnd(loopHead);
+#else
     Label loopEnd(env);
     Label needSuspend(env);
     BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
@@ -129,6 +141,7 @@ void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, G
     }
     Bind(&loopEnd);
     LoopEnd(loopHead);
+#endif
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
@@ -1036,7 +1049,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     ObjectOperatorStubBuilder opStubBuilder(this);
 
     IsNotPropertyKey(TaggedIsPropertyKey(glue, key));
-    
+
     // 1. handle property key
     opStubBuilder.HandleKey(glue, key, &propKey, &elemKey, &isProperty, &isElement, &exit, hir);
 
@@ -1045,7 +1058,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     {
         Label holderUpdated(env);
         opStubBuilder.UpdateHolder<false>(glue, &holder, *propKey, &holderUpdated);
-        
+
         Bind(&holderUpdated);
         opStubBuilder.LookupProperty<false>(glue, &holder, *propKey, &isJSProxy, &ifFound, &notFound, hir);
     }
@@ -1106,7 +1119,7 @@ GateRef StubBuilder::JSObjectGetProperty(GateRef glue, GateRef obj, GateRef hcla
         {
             // compute outOfLineProp offset, get it and return
             GateRef array =
-                LoadPrimitive(VariableType::INT64(), obj, IntPtr(JSObject::PROPERTIES_OFFSET));
+                Load(VariableType::JS_ANY(), glue, obj, IntPtr(JSObject::PROPERTIES_OFFSET));
             result = GetValueFromTaggedArray(glue, array, Int32Sub(attrOffset,
                 GetInlinedPropertiesFromHClass(hclass)));
             Jump(&post);
@@ -1451,7 +1464,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         Bind(&endSetPrototypeCheck);
         GateRef oldKind = GetElementsKindFromHClass(LoadHClass(glue, receiver));
         RestoreElementsKindToGeneric(glue, newClass);
-        StoreHClass(glue, receiver, newClass);
+        TransitionHClass(glue, receiver, newClass);
 #if ECMASCRIPT_ENABLE_IC
         Label needUpdateAOTHClass(env);
         Label normalNotify(env);
@@ -1496,7 +1509,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 #endif
         // Because we currently only supports Fast ElementsKind
         RestoreElementsKindToGeneric(glue, newJshclass);
-        StoreHClass(glue, receiver, newJshclass);
+        TransitionHClass(glue, receiver, newJshclass);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1765,7 +1778,7 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
         auto bit = LoadStoreAccessor::ToValue(mAttr);
         GateRef result = env_->GetCircuit()->NewGate(
             env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
-            { depend, glue, base, offset, value }, type.GetGateType());
+            { depend, glue, base, offset, value, value }, type.GetGateType());
         env_->GetCurrentLabel()->SetDepend(result);
     }
 }
@@ -1894,6 +1907,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+#ifndef USE_CMC_GC
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
@@ -1948,6 +1962,10 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
         default:
             UNREACHABLE();
     }
+#else
+    CallNGCRuntime(glue, RTSTUB_ID(CMCGCMarkingBarrier), {glue, obj, offset, value});
+    Jump(&exit);
+#endif
     Bind(&exit);
     env->SubCfgExit();
 }
@@ -2116,7 +2134,7 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     }
     Bind(&isHeapObject);
     {
-        result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });;
+        result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });
         Jump(&exit);
     }
     
@@ -3247,7 +3265,7 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     // Because we currently only supports Fast ElementsKind
     GateRef oldKind = GetElementsKindFromHClass(LoadHClass(glue, receiver));
     RestoreElementsKindToGeneric(glue, newHClass);
-    StoreHClass(glue, receiver, newHClass);
+    TransitionHClass(glue, receiver, newHClass);
     TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
     BRANCH(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
@@ -4010,7 +4028,7 @@ void StubBuilder::TransitionForRepChange(GateRef glue, GateRef receiver, GateRef
     // Because we currently only supports Fast ElementsKind
     GateRef oldKind = GetElementsKindFromHClass(LoadHClass(glue, receiver));
     RestoreElementsKindToGeneric(glue, newJshclass);
-    StoreHClass(glue, receiver, newJshclass);
+    TransitionHClass(glue, receiver, newJshclass);
     TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
     env->SubCfgExit();
 }
@@ -12732,12 +12750,22 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
                             GateRef dstAddr, GateRef taggedValueCount, GateRef needBarrier,
                             CopyKind copyKind)
 {
+#ifdef USE_CMC_GC
+    (void)srcObj;
+    (void)dstObj;
+    (void)needBarrier;
+    (void)copyKind;
+#endif
+
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
+#ifndef USE_CMC_GC
     Label exit(env);
+#endif
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
+#ifndef USE_CMC_GC
     Label handleBarrier(env);
     BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
     Bind(&handleBarrier);
@@ -12759,6 +12787,7 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
         Jump(&exit);
     }
     Bind(&exit);
+#endif
     env->SubCfgExit();
 }
 
@@ -12803,6 +12832,7 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, Gate
     index = Int32Add(*index, Int32(1));
     LoopEnd(&begin);
     Bind(&loopExit);
+#ifndef USE_CMC_GC
     BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
     Bind(&handleBarrier);
     {
@@ -12812,6 +12842,9 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, Gate
 
         Jump(&exit);
     }
+#else
+    Jump(&exit);
+#endif
     Bind(&exit);
     env->SubCfgExit();
 }

@@ -1607,10 +1607,11 @@ DEF_CALL_SIGNATURE(ResumeRspAndReturn)
 DEF_CALL_SIGNATURE(ResumeRspAndReturnBaseline)
 {
     // 4 : 4 input parameters
-    CallSignature resumeRspAndReturnBaseline("ResumeRspAndReturnBaseline", 0, 4,
+    CallSignature resumeRspAndReturnBaseline("ResumeRspAndReturnBaseline", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = resumeRspAndReturnBaseline;
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
+    std::array<VariableType, 5> params = { // 5 : 5 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),            // %r13 - acc
         VariableType::NATIVE_POINTER(),    // %rbp - prevSp
         VariableType::NATIVE_POINTER(),    // %r12 - sp
@@ -2664,6 +2665,23 @@ DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(CMCGCMarkingBarrier)
+{
+    // 4 : 4 input parameters
+    CallSignature index("CMCGCMarkingBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(GetValueWithBarrier)
 {
     CallSignature getValueWithBarrier("GetValueWithBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
@@ -2687,6 +2705,37 @@ DEF_CALL_SIGNATURE(ReadBarrier)
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(CopyCallTarget)
+{
+    // 2 : 2 input parameters
+    CallSignature copyCallTarget("CopyCallTarget", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = copyCallTarget;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(CopyArgvArray)
+{
+    // 3 : 3 input parameters
+    CallSignature copyArgvArray("CopyArgvArray", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = copyArgvArray;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT64()
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

@@ -459,7 +459,10 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     Label lCallNativeCpp;
     Label lNotClass;
 
-    __ Ldr(Register(X5), MemoryOperand(jsfunc, 0));
+    __ Ldr(Register(X5, W), MemoryOperand(jsfunc, JSFunction::HCLASS_OFFSET));
+    Register baseAddrRegister(X3);
+    __ Ldr(baseAddrRegister, MemoryOperand(glue, JSThread::GlueData::GetBaseAddressOffset(false)));
+    __ Add(Register(X5), Register(X5), baseAddrRegister);
     __ Ldr(Register(X5), MemoryOperand(Register(X5), JSHClass::BIT_FIELD_OFFSET));
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, 0));
@@ -869,7 +872,12 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, R
     __ Cbnz(taggedValue, nonCallable);
 
     Register jshclass(X2);
-    __ Ldr(jshclass, MemoryOperand(jsfunc, JSFunction::HCLASS_OFFSET));
+    Register glue(X0);
+    Register jshclassW(X2, W);
+    __ Ldr(jshclassW, MemoryOperand(jsfunc, JSFunction::HCLASS_OFFSET));
+    Register baseAddrRegister(X3);
+    __ Ldr(baseAddrRegister, MemoryOperand(glue, JSThread::GlueData::GetBaseAddressOffset(false)));
+    __ Add(jshclass, jshclass, baseAddrRegister);
     Register bitfield(X2);
     __ Ldr(bitfield, MemoryOperand(jshclass, JSHClass::BIT_FIELD_OFFSET));
     __ Tbz(bitfield, JSHClass::CallableBit::START_BIT, nonCallable);
@@ -975,7 +983,11 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     }
     JSCallCheck(assembler, boundTarget, Register(X9), &slowCall, &slowCall);
     Register hclass = __ AvailableRegister2();
-    __ Ldr(hclass, MemoryOperand(boundTarget, 0));
+    Register hclassW(__ AvailableRegister2().GetId(), W);
+    __ Ldr(hclassW, MemoryOperand(boundTarget, JSFunction::HCLASS_OFFSET));
+    Register baseAddrRegister(X3);
+    __ Ldr(baseAddrRegister, MemoryOperand(glue, JSThread::GlueData::GetBaseAddressOffset(false)));
+    __ Add(hclass, hclass, baseAddrRegister);
     __ Ldr(hclass, MemoryOperand(hclass, JSHClass::BIT_FIELD_OFFSET));
     __ Tbz(hclass, JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &notClass);
     __ Tbnz(hclass, JSHClass::ConstructorBit::START_BIT, &slowCall);
