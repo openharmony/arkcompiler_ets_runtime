@@ -107,8 +107,10 @@ private:
     void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
 
     void AllocateToDifferentSpaces();
-    void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
-    void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
+    void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                             SerializedObjectSpace spaceType);
+    void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                                   SerializedObjectSpace spaceType);
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
@@ -231,7 +233,6 @@ private:
     size_t machineCodeRegionIndex_ {0};
     size_t sOldRegionIndex_ {0};
     size_t sNonMovableRegionIndex_ {0};
-    size_t regionRemainSizeIndex_ {0};
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};
