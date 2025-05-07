@@ -98,8 +98,8 @@
       panda::JSExecutionScope::*;
 
       panda::ecmascript::AotCrashInfo*;
-      panda::ecmascript::Log::*;
-      panda::ecmascript::AndroidLog*;
+      panda::Log::*;
+      panda::AndroidLog*;
       panda::ecmascript::Method::*;
       panda::ecmascript::JSPandaFileManager::*;
       panda::ecmascript::DebugInfoExtractor::*;

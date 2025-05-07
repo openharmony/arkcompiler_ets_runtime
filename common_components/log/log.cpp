@@ -63,7 +63,7 @@ namespace panda {
     }
     }  // namespace
     #endif
-    
+
     Level Log::level_ = Level::ERROR;
     ComponentMark Log::components_ = Component::ALL;
     
