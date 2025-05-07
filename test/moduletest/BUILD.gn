@@ -175,6 +175,7 @@ module_test_list = [
   "sharedJSON",
   "sharedic",
   "sendable",
+  "sendablearray",
   "sharedobjectstorebarrier_treestring",
 ]
 
@@ -523,6 +524,7 @@ group("ark_asm_single_step_test") {
     "sharedmap",
     "sharedJSON",
     "sendable",
+    "sendablearray",
     "sharedobjectstorebarrier_treestring",
   ]
 
