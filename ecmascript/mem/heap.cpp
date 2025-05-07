@@ -771,7 +771,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid())) {
+    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         return;
     }
@@ -1654,7 +1654,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid())) {
+    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         return;
     }
@@ -2872,7 +2872,7 @@ void Heap::ThresholdReachedDump()
             base::BlockHookScope blockScope;
             HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
             AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-            if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid())) {
+            if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid(), true)) {
                 LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
             } else {
                 LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";

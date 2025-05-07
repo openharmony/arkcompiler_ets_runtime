@@ -1031,6 +1031,11 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         if (dumpOption.isSync) {
             return DoDump(stream, progress, dumpOption);
         }
+        AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+        if (appfreezeCallback != nullptr && !appfreezeCallback(getpid(), false)) {
+            LOG_ECMA(ERROR) << "failed to set appfreeze filter";
+            return false;
+        }
         // hidumper do fork and fillmap.
         if (dumpOption.isBeforeFill) {
             FillIdMap();
