@@ -27,7 +27,7 @@ MemMapAllocator *MemMapAllocator::GetInstance()
 void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignment)
 {
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
-    size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
+    uint64_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
     size_t i = 0;
     while (i < MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(REGULAR_OBJECT_MEM_MAP_BEGIN_ADDR)) +
@@ -50,7 +50,7 @@ void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignme
 
 void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 {
-    size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
+    uint64_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {

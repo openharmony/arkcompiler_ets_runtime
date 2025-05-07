@@ -1797,6 +1797,7 @@ public:
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
+    static void SetLargeHeap(bool isLargeHeap);
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
     static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);

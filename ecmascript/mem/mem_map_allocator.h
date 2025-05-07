@@ -264,9 +264,14 @@ public:
         memMapPool_.Finalize();
     }
 
-    size_t GetCapacity()
+    uint64_t GetCapacity()
     {
         return capacity_;
+    }
+
+    void ResetLargePoolSize()
+    {
+        capacity_ = LARGE_HEAP_POOL_SIZE;
     }
 
     void IncreaseMemMapTotalSize(size_t bytes)
@@ -326,7 +331,7 @@ private:
     MemMapPool memMapPool_;
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};
-    size_t capacity_ {0};
+    uint64_t capacity_ {0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MEM_MAP_ALLOCATOR_H

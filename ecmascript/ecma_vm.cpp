@@ -75,9 +75,15 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     switch (heapType) {
         case EcmaParamConfiguration::HeapType::WORKER_HEAP:
             heapSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.workersize", 0) * 1_MB;
+            if (Runtime::GetInstance()->GetEnableLargeHeap()) {
+                heapSize = panda::ecmascript::MAX_WORKER_HEAP_SIZE;
+            }
             break;
         default:
             heapSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.defaultsize", 0) * 1_MB;
+            if (Runtime::GetInstance()->GetEnableLargeHeap()) {
+                heapSize = panda::ecmascript::MAX_HEAP_SIZE;
+            }
             break;
     }
 #endif
@@ -132,6 +138,12 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
+    if (Runtime::GetInstance()->GetEnableLargeHeap()) {
+        // when enable large heap, reset some heap param which has initialized in appspawn
+        MemMapAllocator::GetInstance()->ResetLargePoolSize();
+        SharedHeap::GetInstance()->ResetLargeCapacity();
+        heap_->ResetLargeCapacity();
+    }
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();

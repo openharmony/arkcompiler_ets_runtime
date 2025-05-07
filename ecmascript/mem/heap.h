@@ -463,6 +463,8 @@ public:
 
     inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
+    void ResetLargeCapacity();
+
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
@@ -975,6 +977,7 @@ public:
     void Destroy() override;
     void Prepare();
     void GetHeapPrepare();
+    void ResetLargeCapacity();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
     void CompactHeapBeforeFork();
