@@ -383,14 +383,6 @@ void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
     });
 }
 
-void Jit::ClearTask(EcmaContext *ecmaContext)
-{
-    ClearTask([ecmaContext](Task *task) {
-        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
-        return ecmaContext == asyncTask->GetEcmaContext();
-    });
-}
-
 void Jit::ClearTaskWithVm(EcmaVM *vm)
 {
     ClearTask([vm](Task *task) {

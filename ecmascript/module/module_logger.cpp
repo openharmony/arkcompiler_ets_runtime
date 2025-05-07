@@ -15,7 +15,6 @@
 
 #include "ecmascript/module/module_logger.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/parameters.h"
 #include "ecmascript/runtime_lock.h"

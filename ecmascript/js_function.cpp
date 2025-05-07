@@ -16,7 +16,6 @@
 #include "ecmascript/js_function.h"
 
 #include "ecmascript/debugger/js_debugger_manager.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"

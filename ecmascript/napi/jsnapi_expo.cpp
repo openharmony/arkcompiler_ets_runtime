@@ -127,7 +127,6 @@ using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
 #endif
 using ecmascript::DebugInfoExtractor;
-using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
 using ecmascript::Log;
@@ -2038,7 +2037,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2065,7 +2064,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2093,7 +2092,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2121,7 +2120,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -3626,7 +3625,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
@@ -3681,7 +3680,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
         thread->CheckJSTaggedType(result.GetRawData());
 #endif
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
-        thread->GetCurrentEcmaContext()->ClearKeptObjects();
+        EcmaVM::ClearKeptObjects(thread);
         if (isDebugApp && dm->IsMixedDebugEnabled()) {
             dm->NotifyReturnNative();
         }
@@ -4525,27 +4524,6 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     return CreateEcmaVM(runtimeOptions);
 }
 
-EcmaContext *JSNApi::CreateJSContext(EcmaVM *vm)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    return EcmaContext::CreateAndInitialize(thread);
-}
-
-void JSNApi::SwitchCurrentContext(EcmaVM *vm, EcmaContext *context)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    thread->SwitchCurrentContext(context);
-}
-
-void JSNApi::DestroyJSContext(EcmaVM *vm, EcmaContext *context)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    EcmaContext::CheckAndDestroy(thread, context);
-}
-
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     return EcmaVM::Create(options);
@@ -5259,7 +5237,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
         return;
     }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName, cb);
+    vm->LoadAOTFiles(aotFileName, cb);
 }
 #endif
 

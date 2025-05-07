@@ -28,9 +28,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
 using SnapshotGlobalData = kungfu::SnapshotGlobalData;
 
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 JsAotReaderCallback AOTFileManager::jsAotReader_ = nullptr;
-#endif
 
 void AOTLiteralInfo::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength)
 {
@@ -58,7 +56,6 @@ void AOTFileManager::Iterate(RootVisitor &v)
     }
 }
 
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 void AOTFileManager::SetJsAotReader(JsAotReaderCallback cb)
 {
     jsAotReader_ = cb;
@@ -68,7 +65,6 @@ JsAotReaderCallback AOTFileManager::GetJsAotReader()
 {
     return jsAotReader_;
 }
-#endif
 
 bool AOTFileManager::AOTFileExist(const std::string &aotFileName, const std::string &extension)
 {

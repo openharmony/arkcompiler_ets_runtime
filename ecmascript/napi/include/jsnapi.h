@@ -67,7 +67,6 @@ class BufferRef;
 namespace ecmascript {
 class EcmaVM;
 class JSTaggedValue;
-class EcmaContext;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
@@ -81,7 +80,6 @@ struct AlignedPointer;
 
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
-using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);

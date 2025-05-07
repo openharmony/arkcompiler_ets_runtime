@@ -189,10 +189,6 @@ JSThread::~JSThread()
         glueData_.propertiesCache_ = nullptr;
     }
 
-    for (auto item : contexts_) {
-        delete item;
-    }
-    contexts_.clear();
     if (threadType_ == ThreadType::JS_THREAD) {
         GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
                                        vm_->GetEcmaParamConfiguration().GetMaxStackSize());
@@ -1006,47 +1002,6 @@ bool JSThread::IsMainThread()
 #else
     return true;
 #endif
-}
-
-void JSThread::PushContext(EcmaContext *context)
-{
-    const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
-    contexts_.emplace_back(context);
-
-    if (!glueData_.currentContext_) {
-        // The first context in ecma vm.
-        glueData_.currentContext_ = context;
-    }
-}
-
-void JSThread::PopContext()
-{
-    contexts_.pop_back();
-    glueData_.currentContext_ = contexts_.back();
-}
-
-void JSThread::SwitchCurrentContext(EcmaContext *currentContext, [[maybe_unused]] bool isInIterate)
-{
-    ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
-    glueData_.currentContext_ = currentContext;
-}
-
-bool JSThread::EraseContext(EcmaContext *context)
-{
-    const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
-    bool isCurrentContext = false;
-    auto iter = std::find(contexts_.begin(), contexts_.end(), context);
-    if (*iter == context) {
-        if (glueData_.currentContext_ == context) {
-            isCurrentContext = true;
-        }
-        contexts_.erase(iter);
-        if (isCurrentContext) {
-            SwitchCurrentContext(contexts_.back());
-        }
-        return true;
-    }
-    return false;
 }
 
 void JSThread::ClearVMCachedConstantPool()

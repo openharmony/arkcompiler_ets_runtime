@@ -15,7 +15,6 @@
 
 #include "ecmascript/ecma_handle_scope.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_vm.h"
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/dfx/hprof/heap_profiler.h"

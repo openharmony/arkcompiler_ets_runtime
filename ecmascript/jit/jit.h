@@ -81,7 +81,6 @@ public:
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(JSThread *jsThread);
     void ClearTask(const std::function<bool(Task *task)> &checkClear);
-    void ClearTask(EcmaContext *ecmaContext);
     void ClearTaskWithVm(EcmaVM *vm);
     void Destroy();
     uint32_t GetRunningTaskCnt(EcmaVM *vm);

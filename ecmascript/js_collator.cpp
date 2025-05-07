@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_collator.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ecma_string-inl.h"

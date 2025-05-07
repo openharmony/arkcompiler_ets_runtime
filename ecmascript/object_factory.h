@@ -1046,7 +1046,6 @@ private:
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
-    friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
     friend class panda::FunctionRef;
 };

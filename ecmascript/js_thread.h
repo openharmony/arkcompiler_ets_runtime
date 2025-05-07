@@ -45,7 +45,6 @@
 
 namespace panda::ecmascript {
 class DateUtils;
-class EcmaContext;
 class EcmaVM;
 class GlobalIndex;
 class HeapRegionAllocator;
@@ -999,7 +998,6 @@ public:
                                                  base::AlignedBool,
                                                  base::AlignedBool,
                                                  base::AlignedUint32,
-                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
@@ -1054,7 +1052,6 @@ public:
             IsFrameDroppedIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
-            CurrentContextIndex,
             BuiltinEntriesIndex,
             IsTracingIndex,
             UnsharedConstpoolsArrayLenIndex,
@@ -1256,11 +1253,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
         }
 
-        static size_t GetCurrentContextOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
-        }
-
         static size_t GetBuiltinEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::BuiltinEntriesIndex)>(isArch32);
@@ -1381,7 +1373,6 @@ public:
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
-        alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_ {};
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uint32_t unsharedConstpoolsArrayLen_ {0};
@@ -1405,14 +1396,6 @@ public:
         alignas(EAS) ModuleManager *moduleManager_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
-
-    void PushContext(EcmaContext *context);
-    void PopContext();
-
-    EcmaContext *GetCurrentEcmaContext() const
-    {
-        return glueData_.currentContext_;
-    }
 
     JSTaggedValue GetSingleCharTable() const
     {
@@ -1445,13 +1428,6 @@ public:
         return glueData_.moduleManager_;
     }
 
-    void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
-
-    CVector<EcmaContext *> GetEcmaContexts()
-    {
-        return contexts_;
-    }
-
     bool IsInSubStack() const
     {
         return isInSubStack_;
@@ -1464,7 +1440,6 @@ public:
 
     bool IsPropertyCacheCleared() const;
 
-    bool EraseContext(EcmaContext *context);
     void ClearVMCachedConstantPool();
 
     bool IsReadyToUpdateDetector() const;
@@ -1736,10 +1711,6 @@ private:
     {
         glueData_.globalConst_ = globalConst;
     }
-    void SetCurrentEcmaContext(EcmaContext *context)
-    {
-        glueData_.currentContext_ = context;
-    }
 
     void TransferFromRunningToSuspended(ThreadState newState);
 
@@ -1830,10 +1801,8 @@ private:
 
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
-    CVector<EcmaContext *> contexts_;
     bool isInSubStack_ {false};
     StackInfo mainStackInfo_ { 0ULL, 0ULL };
-    EcmaContext *currentContext_ {nullptr};
 
     Mutex suspendLock_;
     int32_t suspendCount_ {0};
@@ -1863,7 +1832,6 @@ private:
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;
-    friend class EcmaContext;
     friend class JitVM;
 };
 class SaveEnv {
