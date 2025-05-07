@@ -21,7 +21,7 @@
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/base_object.h"
 #include "common_interfaces/objects/ref_field.h"
-#include "common_interfaces/objects/state_word.h"
+#include "common_interfaces/objects/base_state_word.h"
 #include "mutator/mutator_manager.h"
 #include "w_collector/w_collector.h"
 #include <unordered_set>
