@@ -220,6 +220,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
     JSType type = hCls->GetObjectType();
     switch (type) {
         case JSType::TAGGED_ARRAY:
+        case JSType::JS_SHARED_TYPED_ARRAY:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
@@ -551,6 +552,68 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("CJS Require");
         case JSType::METHOD:
             return GetString("Method");
+        case JSType::CELL_RECORD:
+            return GetString("CellRecord");
+        case JSType::JS_WEAK_REF:
+            return GetString("WeakRef");
+        case JSType::JS_FINALIZATION_REGISTRY:
+            return GetString("JSFinalizationRegistry");
+        case JSType::JS_ASYNCITERATOR:
+            return GetString("AsyncIterator");
+        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+            return GetString("AsyncFromSyncIterator");
+        case JSType::JS_API_LINKED_LIST_ITERATOR:
+            return GetString("LinkedListIterator");
+        case JSType::JS_API_LIST_ITERATOR:
+            return GetString("ListIterator");
+        case JSType::JS_SHARED_ARRAY_ITERATOR:
+            return GetString("SharedArrayIterator");
+        case JSType::JS_SHARED_INT8_ARRAY:
+            return GetString("Shared Int8 Array");
+        case JSType::JS_SHARED_UINT8_ARRAY:
+            return GetString("Shared Uint8 Array");
+        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+            return GetString("Shared Uint8 Clamped Array");
+        case JSType::JS_SHARED_INT16_ARRAY:
+            return GetString("Shared Int16 Array");
+        case JSType::JS_SHARED_UINT16_ARRAY:
+            return GetString("Shared Uint16 Array");
+        case JSType::JS_SHARED_INT32_ARRAY:
+            return GetString("Shared Int32 Array");
+        case JSType::JS_SHARED_UINT32_ARRAY:
+            return GetString("Shared Uint32 Array");
+        case JSType::JS_SHARED_FLOAT32_ARRAY:
+            return GetString("Shared Float32 Array");
+        case JSType::JS_SHARED_FLOAT64_ARRAY:
+            return GetString("Shared Float64 Array");
+        case JSType::JS_SHARED_BIGINT64_ARRAY:
+            return GetString("Shared BigInt64 Array");
+        case JSType::JS_SHARED_BIGUINT64_ARRAY:
+            return GetString("Shared BigUint64 Array");
+        case JSType::NATIVE_MODULE_FAILURE_INFO:
+            return GetString("NativeModuleFailureInfo");
+        case JSType::MUTANT_TAGGED_ARRAY:
+            return GetString("MutantTaggedArray");
+        case JSType::BYTE_ARRAY:
+            return GetString("ByteArray");
+        case JSType::COW_MUTANT_TAGGED_ARRAY:
+            return GetString("COWMutantTaggedArray");
+        case JSType::RB_TREENODE:
+            return GetString("RBTreeNode");
+        case JSType::ENUM_CACHE:
+            return GetString("EnumCache");
+        case JSType::CLASS_LITERAL:
+            return GetString("ClassLiteral");
+        case JSType::ASYNC_ITERATOR_RECORD:
+            return GetString("AsyncIteratorRecord");
+        case JSType::MODULE_RECORD:
+            return GetString("ModuleRecord");
+        case JSType::PROFILE_TYPE_INFO_CELL_0:
+        case JSType::PROFILE_TYPE_INFO_CELL_1:
+        case JSType::PROFILE_TYPE_INFO_CELL_N:
+            return GetString("ProfileTypeInfoCell");
+        case JSType::EXTRA_PROFILE_TYPE_INFO:
+            return GetString("ExtraProfileTypeInfo");
         default:
             break;
     }

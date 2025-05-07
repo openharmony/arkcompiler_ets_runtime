@@ -212,6 +212,82 @@ public:
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(handleTagValFunc), handleTagValFunc));
     }
 
+    JSHandle<JSSharedTypedArray> CreateNumberSharedTypedArray(JSType jsType)
+    {
+        JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> handleTagValFunc = env->GetSharedInt8ArrayFunction();
+        switch (jsType) {
+            case JSType::JS_SHARED_INT8_ARRAY:
+                break;
+            case JSType::JS_SHARED_UINT8_ARRAY:
+                handleTagValFunc = env->GetSharedUint8ArrayFunction();
+                break;
+            case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
+                handleTagValFunc = env->GetSharedUint8ClampedArrayFunction();
+                break;
+            case JSType::JS_SHARED_INT16_ARRAY:
+                handleTagValFunc = env->GetSharedInt16ArrayFunction();
+                break;
+            case JSType::JS_SHARED_UINT16_ARRAY:
+                handleTagValFunc = env->GetSharedUint16ArrayFunction();
+                break;
+            case JSType::JS_SHARED_INT32_ARRAY:
+                handleTagValFunc = env->GetSharedInt32ArrayFunction();
+                break;
+            case JSType::JS_SHARED_UINT32_ARRAY:
+                handleTagValFunc = env->GetSharedUint32ArrayFunction();
+                break;
+            case JSType::JS_SHARED_FLOAT32_ARRAY:
+                handleTagValFunc = env->GetSharedFloat32ArrayFunction();
+                break;
+            case JSType::JS_SHARED_FLOAT64_ARRAY:
+                handleTagValFunc = env->GetSharedFloat64ArrayFunction();
+                break;
+            case JSType::JS_SHARED_BIGINT64_ARRAY:
+                handleTagValFunc = env->GetSharedBigInt64ArrayFunction();
+                break;
+            case JSType::JS_SHARED_BIGUINT64_ARRAY:
+                handleTagValFunc = env->GetSharedBigUint64ArrayFunction();
+                break;
+            default:
+                ASSERT_PRINT(false, "wrong jsType used in CreateNumberTypedArray function");
+                break;
+        }
+        return JSHandle<JSSharedTypedArray>::Cast(
+            factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(handleTagValFunc), handleTagValFunc));
+    }
+
+    JSHandle<TaggedArray> NewSharedTypedArray()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<TaggedArray> array(factory->NewTaggedArray(11)); // 11: elements
+        // 0: JS_SHARED_INT8_ARRAY
+        array->Set(thread, 0, CreateNumberSharedTypedArray(JSType::JS_SHARED_INT8_ARRAY));
+        // 1: JS_SHARED_UINT8_ARRAY
+        array->Set(thread, 1, CreateNumberSharedTypedArray(JSType::JS_SHARED_UINT8_ARRAY));
+        // 2: JS_SHARED_UINT8_CLAMPED_ARRAY
+        array->Set(thread, 2, CreateNumberSharedTypedArray(JSType::JS_SHARED_UINT8_CLAMPED_ARRAY));
+        // 3: JS_SHARED_INT16_ARRAY
+        array->Set(thread, 3, CreateNumberSharedTypedArray(JSType::JS_SHARED_INT16_ARRAY));
+        // 4: JS_SHARED_UINT16_ARRAY
+        array->Set(thread, 4, CreateNumberSharedTypedArray(JSType::JS_SHARED_UINT16_ARRAY));
+        // 5: JS_SHARED_INT32_ARRAY
+        array->Set(thread, 5, CreateNumberSharedTypedArray(JSType::JS_SHARED_INT32_ARRAY));
+        // 6: JS_SHARED_UINT32_ARRAY
+        array->Set(thread, 6, CreateNumberSharedTypedArray(JSType::JS_SHARED_UINT32_ARRAY));
+        // 7: JS_SHARED_FLOAT32_ARRAY
+        array->Set(thread, 7, CreateNumberSharedTypedArray(JSType::JS_SHARED_FLOAT32_ARRAY));
+        // 8: JS_SHARED_FLOAT64_ARRAY
+        array->Set(thread, 8, CreateNumberSharedTypedArray(JSType::JS_SHARED_FLOAT64_ARRAY));
+        // 9: JS_SHARED_BIGINT64_ARRAY
+        array->Set(thread, 9, CreateNumberSharedTypedArray(JSType::JS_SHARED_BIGINT64_ARRAY));
+        // 10: JS_SHARED_BIGUINT64_ARRAY
+        array->Set(thread, 10, CreateNumberSharedTypedArray(JSType::JS_SHARED_BIGUINT64_ARRAY));
+        return array;
+    }
+
     JSHandle<JSObject> NewObject(uint32_t size, JSType type, JSHandle<JSTaggedValue> proto)
     {
         ObjectFactory *factory = instance->GetFactory();
@@ -539,6 +615,125 @@ public:
         return jsAPIVector;
     }
 
+    // JS_WEAK_REF
+    JSHandle<JSWeakRef> NewJSWeakRef()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsWeakRefObject = NewObject(JSWeakRef::SIZE, JSType::JS_WEAK_REF, proto);
+        JSHandle<JSWeakRef> jsWeakRef = JSHandle<JSWeakRef>::Cast(jsWeakRefObject);
+        return jsWeakRef;
+    }
+
+    // JS_FINALIZATION_REGISTRY
+    JSHandle<JSFinalizationRegistry> NewJSFinalizationRegistry()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsFinalizationRegistryObject =
+            NewObject(JSFinalizationRegistry::SIZE, JSType::JS_FINALIZATION_REGISTRY, proto);
+        JSHandle<JSFinalizationRegistry> jsFinalizationRegistry =
+            JSHandle<JSFinalizationRegistry>::Cast(jsFinalizationRegistryObject);
+        return jsFinalizationRegistry;
+    }
+
+    // JS_ASYNC_FROM_SYNC_ITERATOR
+    JSHandle<JSAsyncFromSyncIterator> NewJSAsyncFromSyncIterator()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAsyncFromSyncIteratorObject =
+            NewObject(JSAsyncFromSyncIterator::SIZE, JSType::JS_ASYNC_FROM_SYNC_ITERATOR, proto);
+        JSHandle<JSAsyncFromSyncIterator> jsAsyncFromSyncIterator =
+            JSHandle<JSAsyncFromSyncIterator>::Cast(jsAsyncFromSyncIteratorObject);
+        return jsAsyncFromSyncIterator;
+    }
+
+    // JS_API_LINKED_LIST_ITERATOR
+    JSHandle<JSAPILinkedListIterator> NewJSAPILinkedListIterator()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSAPILinkedList> jsAPILinkedList = NewJSAPILinkedList();
+        JSHandle<JSAPILinkedListIterator> jsAPILinkedListIter =
+            factory->NewJSAPILinkedListIterator(jsAPILinkedList);
+        return jsAPILinkedListIter;
+    }
+
+    // JS_API_LIST_ITERATOR
+    JSHandle<JSAPIListIterator> NewJSAPIListIterator()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSAPIList> jsAPIList = NewJSAPIList();
+        JSHandle<JSAPIListIterator> jsAPIListIter = factory->NewJSAPIListIterator(jsAPIList);
+        return jsAPIListIter;
+    }
+
+    // JS_SHARED_ARRAY_ITERATOR
+    JSHandle<JSSharedArrayIterator> NewJSSharedArrayIterator()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSSharedArrayIterator> sharedArrayIter = factory->NewJSSharedArrayIterator(
+            JSHandle<JSObject>::Cast(factory->NewJSSArray()), IterationKind::KEY);
+        return sharedArrayIter;
+    }
+
+    // BYTE_ARRAY
+    JSHandle<ByteArray> NewByteArray()
+    {
+        uint8_t value = 255; // 255 : test case
+        int byteArrayLength = 10; // 10: arrayLength
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<ByteArray> byteArray = factory->NewByteArray(byteArrayLength, sizeof(value));
+        return byteArray;
+    }
+
+    // RB_TREENODE
+    JSHandle<RBTreeNode> NewRBTreeNode()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSThread *thread = instance->GetJSThread();
+        std::string k("testKey");
+        std::string v("testValue");
+        JSHandle<JSTaggedValue> key(thread, factory->NewFromStdString(k).GetTaggedValue());
+        JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(v).GetTaggedValue());
+        int hash = TaggedNode::Hash(thread, factory->NewFromStdString(k).GetTaggedValue());
+        JSHandle<RBTreeNode> newNode = factory->NewTreeNode(hash, key, value);
+        return newNode;
+    }
+
+    // CLASS_LITERAL
+    JSHandle<ClassLiteral> NewClassLiteral()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> classLiteralObject = NewObject(ClassLiteral::SIZE, JSType::CLASS_LITERAL, proto);
+        JSHandle<ClassLiteral> classLiteral = JSHandle<ClassLiteral>::Cast(classLiteralObject);
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<TaggedArray> emptyArray = factory->EmptyArray();
+
+        classLiteral->SetArray(instance->GetJSThread(), emptyArray);
+        classLiteral->SetIsAOTUsed(false);
+        return classLiteral;
+    }
+
+    // ASYNC_ITERATOR_RECORD
+    JSHandle<AsyncIteratorRecord> NewAsyncIteratorRecord()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsObject = NewObject(JSObject::SIZE, JSType::JS_OBJECT, proto);
+        JSHandle<JSTaggedValue> emptyObj(jsObject);
+        JSHandle<JSTaggedValue> emptyMethod(jsObject);
+        JSHandle<AsyncIteratorRecord> asyncIteratorRecord =
+            factory->NewAsyncIteratorRecord(emptyObj, emptyMethod, false);
+        return asyncIteratorRecord;
+    }
+
+    // PROFILE_TYPE_INFO_CELL
+    JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+        JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
+            instance->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
+        return newProfileTypeInfoCell;
+    }
 private:
     EcmaVM *instance {nullptr};
 };
@@ -1131,6 +1326,88 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName9)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"LinkedList\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArray\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArrayIterator\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName10)
+{
+    auto factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // JS_WEAK_REF
+    tester.NewJSWeakRef();
+    // JS_FINALIZATION_REGISTRY
+    tester.NewJSFinalizationRegistry();
+    // JS_ASYNC_FROM_SYNC_ITERATOR
+    tester.NewJSAsyncFromSyncIterator();
+    // JS_API_LINKED_LIST_ITERATOR
+    tester.NewJSAPILinkedListIterator();
+    // JS_API_LIST_ITERATOR
+    tester.NewJSAPIListIterator();
+    // JS_SHARED_ARRAY_ITERATOR
+    tester.NewJSSharedArrayIterator();
+    // JS_SHARED_INT8_ARRAY
+    // JS_SHARED_UINT8_ARRAY
+    // JS_SHARED_UINT8_CLAMPED_ARRAY
+    // JS_SHARED_INT16_ARRAY
+    // JS_SHARED_UINT16_ARRAY
+    // JS_SHARED_INT32_ARRAY
+    // JS_SHARED_UINT32_ARRAY
+    // JS_SHARED_FLOAT32_ARRAY
+    // JS_SHARED_FLOAT64_ARRAY
+    // JS_SHARED_BIGINT64_ARRAY
+    // JS_SHARED_BIGUINT64_ARRAY
+    tester.NewSharedTypedArray();
+    // BYTE_ARRAY
+    tester.NewByteArray();
+    // RB_TREENODE
+    tester.NewRBTreeNode();
+    // ENUM_CACHE
+    factory->NewEnumCache();
+    // CLASS_LITERAL
+    factory->NewClassLiteral();
+    // ASYNC_ITERATOR_RECORD
+    tester.NewAsyncIteratorRecord();
+    // PROFILE_TYPE_INFO_CELL
+    tester.NewProfileTypeInfoCell();
+    // CELL_RECORD
+    factory->NewCellRecord();
+    // NATIVE_MODULE_FAILURE_INFO
+    factory->NewNativeModuleFailureInfo();
+    // MUTANT_TAGGED_ARRAY
+    factory->NewMutantTaggedArray(10); // 10: arrayLength
+    // COW_MUTANT_TAGGED_ARRAY
+    factory->NewCOWMutantTaggedArray(10); // 10: arrayLength
+    // EXTRA_PROFILE_TYPE_INFO
+    factory->NewExtraProfileTypeInfo();
+
+    tester.GenerateSnapShot("testGenerateNodeName_10.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"WeakRef\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"JSFinalizationRegistry\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"AsyncFromSyncIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"LinkedListIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"ListIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"SharedArrayIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"ByteArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"RBTreeNode\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"EnumCache\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"ClassLiteral\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"AsyncIteratorRecord\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"ProfileTypeInfoCell\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"CellRecord\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"NativeModuleFailureInfo\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"MutantTaggedArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"COWMutantTaggedArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"ExtraProfileTypeInfo\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Int8 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Uint8 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Uint8 Clamped Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Int16 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Uint16 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Int32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Uint32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Float32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared Float64 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared BigInt64 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared BigUint64 Array\""));
 }
 
 #ifdef PANDA_TARGET_ARM32
