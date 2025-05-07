@@ -79,15 +79,20 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 
 void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 {
-    size_t initialNonmovableObjectCapacity = INITIAL_NONMOVALBE_OBJECT_CAPACITY + static_cast<size_t>(4_GB);
+    size_t initialNonmovableObjectCapacity = std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY);
+#if defined(PANDA_TARGET_64)
+    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity + 4_GB;
+#else
+    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity;
+#endif
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
             i * STEP_INCREASE_MEM_MAP_ADDR);
-        MemMap memMap = PageMap(initialNonmovableObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        MemMap memMap = PageMap(alignNonmovableObjectCapacity, PAGE_PROT_NONE, alignment, addr);
         if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
-            memMap = AlignMemMapTo4G(memMap);
+            memMap = AlignMemMapTo4G(memMap, initialNonmovableObjectCapacity);
             compressMemMapPool_.InsertMemMap(memMap);
             compressMemMapPool_.SplitMemMapToCache(memMap);
             break;
@@ -98,30 +103,38 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
         i++;
     }
 #else
-    MemMap hugeMemMap = PageMap(initialNonmovableObjectCapacity, PAGE_PROT_NONE, alignment);
-    hugeMemMap = AlignMemMapTo4G(hugeMemMap);
-    memMapFreeList_.Initialize(hugeMemMap, capacity_);
+    MemMap memMap = PageMap(alignNonmovableObjectCapacity, PAGE_PROT_NONE, alignment);
+    memMap = AlignMemMapTo4G(memMap, initialNonmovableObjectCapacity);
+    compressMemMapPool_.InsertMemMap(memMap);
+    compressMemMapPool_.SplitMemMapToCache(memMap);
 #endif
 }
 
-MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap)
+MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
 {
+#if defined(PANDA_TARGET_64)
     uintptr_t leftUnmapAddr = ToUintPtr(memMap.GetMem());
-    auto remainderAddr = AlignUp(leftUnmapAddr, static_cast<size_t>(4_GB));
+    auto remainderAddr = AlignUp(leftUnmapAddr, 4_GB);
     size_t leftUnMapSize = remainderAddr - leftUnmapAddr;
     size_t rightUnMapSize = static_cast<size_t>(4_GB) - leftUnMapSize;
-    uintptr_t rightUnmapAddr = remainderAddr + INITIAL_NONMOVALBE_OBJECT_CAPACITY;
+    uintptr_t rightUnmapAddr = remainderAddr + targetSize;
 
     static constexpr uint64_t mask = 0xFFFFFFFF;
     TaggedStateWord::BASE_ADDRESS = remainderAddr & (mask << 32);
 
-    MemMap reminderMemMap(ToVoidPtr(remainderAddr), INITIAL_NONMOVALBE_OBJECT_CAPACITY);
+    MemMap reminderMemMap(ToVoidPtr(remainderAddr), targetSize);
     PageTag(reminderMemMap.GetOriginAddr(), reminderMemMap.GetSize(), PageTagType::HEAP);
     PageRelease(reminderMemMap.GetMem(), reminderMemMap.GetSize());
 
     PageUnmap(MemMap(ToVoidPtr(leftUnmapAddr), leftUnMapSize));
     PageUnmap(MemMap(ToVoidPtr(rightUnmapAddr), rightUnMapSize));
     return reminderMemMap;
+#else
+    TaggedStateWord::BASE_ADDRESS = 0;
+    PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
+    PageRelease(memMap.GetMem(), memMap.GetSize());
+    return memMap;
+#endif
 }
 
 static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[maybe_unused]] bool isEnableJitFort)

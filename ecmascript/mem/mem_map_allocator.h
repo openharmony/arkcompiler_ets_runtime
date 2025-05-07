@@ -321,7 +321,7 @@ private:
                                bool shouldPageTag, PageTagType type);
     MemMap InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
                           bool isMachineCode, bool isEnableJitFort, bool shouldPageTag, PageTagType type);
-    MemMap AlignMemMapTo4G(const MemMap &memMap);
+    MemMap AlignMemMapTo4G(const MemMap &memMap, size_t targetSize);
     // Random generate big mem map addr to avoid js heap is written by others
     void *RandomGenerateBigAddr(uint64_t addr)
     {

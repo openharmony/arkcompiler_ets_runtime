@@ -85,7 +85,11 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
 
     void* mappedAddr = nullptr;
     reqSize = AllocUtilRndUp<size_t>(reqSize, ALLOC_UTIL_PAGE_SIZE);
+#ifdef PANDA_TARGET_64
     size_t needReqSize = reqSize + MAX_SUPPORT_CAPACITY;
+#else
+    size_t needReqSize = reqSize;
+#endif
 
 #ifdef _WIN64
     // Windows don`t support to map a non-access memory, and virtualProtect() only can change page protections on
@@ -99,6 +103,7 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     mappedAddr = mmap(opt.reqBase, needReqSize, PROT_NONE, opt.flags, -1, 0);
 #endif
 
+#ifdef PANDA_TARGET_64
     auto alignResult = AllocUtilRndUp(reinterpret_cast<uintptr_t>(mappedAddr), MAX_SUPPORT_CAPACITY);
     size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(mappedAddr);
     size_t rightSize = MAX_SUPPORT_CAPACITY - leftSize;
@@ -115,6 +120,9 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     munmap(alignEndResult, rightSize);
 #endif
     mappedAddr = reinterpret_cast<void *>(alignResult);
+#else
+    g_setBaseAddrHook(0x0);
+#endif
 
     bool failure = false;
 #if defined(_WIN64) || defined(__APPLE__)
