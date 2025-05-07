@@ -18,7 +18,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 /*

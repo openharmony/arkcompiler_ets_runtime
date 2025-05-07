@@ -21,6 +21,8 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/js_tagged_value_internals.h"
+#include "libpandabase/mem/mem.h"
+
 namespace panda::ecmascript {
 class JSArray;
 class JSObject;

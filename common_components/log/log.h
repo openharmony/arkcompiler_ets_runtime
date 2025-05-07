@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_LOG_H
-#define ECMASCRIPT_LOG_H
+#ifndef COMMON_COMPONENTS_LOG_LOG_H
+#define COMMON_COMPONENTS_LOG_LOG_H
 
-#include <cstdint>
-#include <iostream>
-#include <sstream>
-
-#include "common_interfaces/base/common.h"
+#include "common_components/log/log_base.h"
 
 #ifdef ENABLE_HILOG
 #if defined(__clang__)
@@ -49,51 +45,7 @@
     #define OHOS_HITRACE_COUNT(name, count)
 #endif
 
-enum Level {
-    VERBOSE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL_WITHOUT_ABORT,
-    FATAL,
-};
-
-using ComponentMark = uint64_t;
-enum Component {
-    NONE = 0ULL,
-    GC = 1ULL << 0ULL,
-    INTERPRETER = 1ULL << 1ULL,
-    COMPILER = 1ULL << 2ULL,
-    DEBUGGER = 1ULL << 3ULL,
-    ECMASCRIPT = 1ULL << 4ULL,
-    BUILTINS = 1ULL << 5ULL,
-    TRACE = 1ULL << 6ULL,
-    JIT = 1UL << 7ULL,
-    BASELINEJIT = 1UL << 8ULL,
-    SA = 1ULL << 9ULL,
-    PGO = 1ULL << 10ULL,
-    COMMON = 1ULL << 11ULL,
-    NO_TAG = 0xFFFFFFFFULL >> 1ULL,
-    ALL = 0xFFFFFFFFULL,
-};
-
 namespace panda {
-#ifdef ENABLE_HILOG
-
-#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
-// print Debug level log if enable Verbose log
-#define LOG_VERBOSE LOG_DEBUG
-#else
-#define LOG_VERBOSE LOG_LEVEL_MIN
-#endif
-#endif  // ENABLE_HILOG
-
-struct LogOptions {
-    Level level;
-    ComponentMark component;
-};
-
 class PUBLIC_API Log {
 public:
     static void Initialize(const LogOptions &options);
@@ -102,9 +54,9 @@ public:
         switch (component)
         {
             case Component::SA:
-                return ((components_ & component) != 0ULL);
+                return ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
             default:
-                return (level >= level_) && ((components_ & component) != 0ULL);
+                return (level >= level_) && ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
         }
     }
     static inline std::string GetComponentStr(Component component)
@@ -223,13 +175,13 @@ public:
     }
     ~StdLog()
     {
-        if constexpr (level >= ERROR) {
+        if constexpr (level >= Level::ERROR) {
             std::cerr << stream_.str().c_str() << std::endl;
         } else {
             std::cout << stream_.str().c_str() << std::endl;
         }
 
-        if constexpr (level == FATAL) {
+        if constexpr (level == Level::FATAL) {
             std::abort();
         }
     }
@@ -247,17 +199,18 @@ private:
 #endif
 
 #if defined(ENABLE_HILOG)
-#define ARK_LOG(level, component) panda::Log::LogIsLoggable(level, component) && \
+#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
                                   panda::HiLog<LOG_##level, (component)>()
 #elif defined(ENABLE_ANLOG)
-#define ARK_LOG(level, component) panda::AndroidLog<(level)>()
+#define ARK_LOG(level, component) panda::AndroidLog<(Level::level)>()
 #else
 #if defined(OHOS_UNIT_TEST)
-#define ARK_LOG(level, component) ((level >= INFO) || panda::Log::LogIsLoggable(level, component)) && \
-                                  panda::StdLog<(level), (component)>()
+#define ARK_LOG(level, component) ((Level::level >= Level::INFO) ||                      \
+                                  panda::Log::LogIsLoggable(Level::level, component)) && \
+                                  panda::StdLog<(Level::level), (component)>()
 #else
-#define ARK_LOG(level, component) panda::Log::LogIsLoggable(level, component) && \
-                                  panda::StdLog<(level), (component)>()
+#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
+                                  panda::StdLog<(Level::level), (component)>()
 #endif
 #endif
 
@@ -292,4 +245,4 @@ private:
     } while (false)
 
 }  // namespace panda
-#endif  // ECMASCRIPT_LOG_H
+#endif  // COMMON_COMPONENTS_LOG_LOG_H

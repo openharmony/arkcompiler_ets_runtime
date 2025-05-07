@@ -71,8 +71,6 @@ namespace panda {
         static void Create();
 
         static void Destroy();
-        // regionManager.GetLargeObjectThreshold(), assign to MAX_REGULAR_HEAP_OBJECT_SIZE
-        static size_t LARGE_OBJECT_THRESHOLD;
 
         void Init();
         void Fini();

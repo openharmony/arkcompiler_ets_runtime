@@ -198,10 +198,7 @@ void WriteLog(bool addPrefix, LogType type, const char* format, ...) noexcept
 }
 
 // Orders of magnitudes.  Note: The upperbound of uint64_t is 16E (16 * (1024 ^ 6))
-const char* ORDERS_OF_MAGNITUDE[] = { "", "K", "M", "G", "T", "P", "E" };
-
-// Orders of magnitudes.  Note: The upperbound of uint64_t is 16E (16 * (1024 ^ 6))
-const char* ORDERS_OF_MAGNITUDE_FROM_NANO[] = { "n", "u", "m", nullptr };
+const char* g_orderOfMagnitudeFromNano[] = { "n", "u", "m", nullptr };
 
 // number of digits in a pretty format segment (100,000,000 each has three digits)
 constexpr int NUM_DIGITS_PER_SEGMENT = 3;
@@ -240,12 +237,12 @@ CString PrettyOrderMathNano(uint64_t number, const char* unit)
     size_t order = 0;
     const uint64_t factor = 1000; // show in us if under 10ms
 
-    while (number > factor && ORDERS_OF_MAGNITUDE_FROM_NANO[order] != nullptr) {
+    while (number > factor && g_orderOfMagnitudeFromNano[order] != nullptr) {
         number /= factor;
         order += 1;
     }
 
-    const char* prefix = ORDERS_OF_MAGNITUDE_FROM_NANO[order];
+    const char* prefix = g_orderOfMagnitudeFromNano[order];
     if (prefix == nullptr) {
         prefix = "";
     }

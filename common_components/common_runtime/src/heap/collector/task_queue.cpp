@@ -12,14 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "common_components/common_runtime/src/heap/collector/task_queue.h"
 
 #include "common_components/common_runtime/src/heap/collector/collector_proxy.h"
-#ifdef COV_SIGNALHANDLE
-extern "C" void __gcov_flush(void);
-#endif
-namespace panda {
 
+namespace panda {
 bool GCRunner::Execute(void* owner)
 {
     ASSERT_LOGF(owner != nullptr, "task queue owner ptr should not be null!");

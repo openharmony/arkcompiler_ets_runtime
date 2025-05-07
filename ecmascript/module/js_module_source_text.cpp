@@ -2020,9 +2020,9 @@ void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &cir
         requiredModuleName = requiredModule->GetEcmaModuleRecordNameString();
         referenceList.push_back(requiredModuleName);
         if (requiredModuleName == circularModuleRecordName) {
-            PrintCircular(referenceList, ERROR);
+            PrintCircular(referenceList, Level::ERROR);
         } else if (printOtherCircular && IsCircular(referenceList, requiredModuleName)) {
-            PrintCircular(referenceList, WARN);
+            PrintCircular(referenceList, Level::WARN);
         } else {
             SourceTextModule::SearchCircularImport(thread, circularModuleRecordName,
                 requiredModule, referenceList, requiredModuleName, printOtherCircular);
