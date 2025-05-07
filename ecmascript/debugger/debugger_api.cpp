@@ -345,6 +345,16 @@ void DebuggerApi::DisableFirstTimeFlag(JSDebugger *debugger)
     return debugger->DisableFirstTimeFlag();
 }
 
+void DebuggerApi::SetSymbolicBreakpoint(JSDebugger *debugger, const std::unordered_set<std::string> &functionNamesSet)
+{
+    return debugger->SetSymbolicBreakpoint(functionNamesSet);
+}
+
+void DebuggerApi::RemoveSymbolicBreakpoint(JSDebugger* debugger, const std::string &functionName)
+{
+    return debugger->RemoveSymbolicBreakpoint(functionName);
+}
+
 // ScopeInfo
 Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
                                              int32_t level, uint32_t slot)

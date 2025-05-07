@@ -157,6 +157,8 @@ public:
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
     static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
     static void DisableFirstTimeFlag(JSDebugger *debugger);
+    static void SetSymbolicBreakpoint(JSDebugger *debugger, const std::unordered_set<std::string> &functionNamesSet);
+    static void RemoveSymbolicBreakpoint(JSDebugger *debugger, const std::string &functionName);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);
