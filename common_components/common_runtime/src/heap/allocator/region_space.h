@@ -15,7 +15,7 @@
 #ifndef ARK_COMMON_REGION_SPACE_H
 #define ARK_COMMON_REGION_SPACE_H
 
-#include <assert.h>
+#include <cassert>
 #include <list>
 #include <map>
 #include <set>

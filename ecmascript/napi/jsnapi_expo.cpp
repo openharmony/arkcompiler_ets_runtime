@@ -4642,7 +4642,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
             type = GcType::FULL;
         }
         panda::BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
-#else  // TODO: add ALL_GC_TYPE here for toolchain
+#else  // add ALL_GC_TYPE here for toolchain
         auto sHeap = ecmascript::SharedHeap::GetInstance();
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:

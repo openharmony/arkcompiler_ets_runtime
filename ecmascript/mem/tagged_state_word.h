@@ -54,7 +54,8 @@ public:
         class_.class_ = cls;
     }
 
-    inline void SynchronizedSetClass(ClassWordType cls) {
+    inline void SynchronizedSetClass(ClassWordType cls)
+    {
         reinterpret_cast<volatile std::atomic<ClassWordType> *>(&class_)->store(cls, std::memory_order_release);
     }
 
@@ -84,7 +85,8 @@ public:
     static PUBLIC_API uintptr_t BASE_ADDRESS;
 
 private:
-    inline void SynchronizedSetGCStateWord(GCStateWord state) {
+    inline void SynchronizedSetGCStateWord(GCStateWord state)
+    {
         reinterpret_cast<volatile std::atomic<GCStateWord> *>(&state_)->store(state, std::memory_order_release);
     }
 

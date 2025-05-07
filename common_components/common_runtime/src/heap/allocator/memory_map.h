@@ -50,7 +50,8 @@ public:
         bool protAll;       // applying prot to all pages in range
     };
     // by default, it tries to map memory in low addr space, with a random start
-    static constexpr Option DEFAULT_OPTIONS = { "arkcommon_unnamed", nullptr, DEFAULT_MEM_FLAGS, DEFAULT_MEM_PROT, false };
+    static constexpr Option DEFAULT_OPTIONS = { "arkcommon_unnamed", nullptr, DEFAULT_MEM_FLAGS,
+                                                DEFAULT_MEM_PROT, false };
 
     // the only way to get a MemoryMap
     static MemoryMap* MapMemory(size_t reqSize, size_t initSize, const Option& opt = DEFAULT_OPTIONS);

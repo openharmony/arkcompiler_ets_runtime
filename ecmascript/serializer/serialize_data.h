@@ -480,7 +480,7 @@ private:
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
-#ifdef USE_CMC_GC 
+#ifdef USE_CMC_GC
     std::vector<size_t> regularRemainSizeVector_ {};
     std::vector<size_t> pinRemainSizeVector_ {};
 #else

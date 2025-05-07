@@ -145,7 +145,7 @@ public:
     inline JSHandle<type> Get##name() const                                                             \
     {                                                                                                   \
         /* every GLOBAL_ENV_FIELD is JSTaggedValue */                                                   \
-        size_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                          \
+        size_t offset = HEADER_SIZE + (index) * JSTaggedValue::TaggedTypeSize();                        \
         const uintptr_t address = reinterpret_cast<uintptr_t>(this) + offset;                           \
         JSTaggedType value = Barriers::GetTaggedValue(address);                                         \
         *reinterpret_cast<JSTaggedType *>(address) = value;                                             \

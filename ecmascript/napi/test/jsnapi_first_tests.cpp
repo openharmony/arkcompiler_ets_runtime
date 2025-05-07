@@ -1402,7 +1402,7 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     delete ref2;
 }
 
-// TODO: CMC-GC support evacuate all region
+// CMC-GC support evacuate all region
 #ifndef USE_CMC_GC
 /**
  * @tc.number: ffi_interface_api_027

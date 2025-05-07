@@ -3332,8 +3332,10 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     size_t keyOffset = 0;
     size_t attrOffset = sizeof(JSTaggedType);
     for (int i = 0; i < end; i++) {
-        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) + keyOffset));
-        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) + attrOffset));
+        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+                                                       keyOffset));
+        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) +
+                                                         i * sizeof(Properties) + attrOffset));
         sp[i].key_ = propKey;
         sp[i].attr_ = propValue;
         newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));

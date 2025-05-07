@@ -38,7 +38,8 @@ public:
         Update(static_cast<JSTaggedType>(ToUintPtr(header)));
     }
 
-    uintptr_t* GetRefFieldAddr() {
+    uintptr_t* GetRefFieldAddr()
+    {
         return reinterpret_cast<uintptr_t*>(slotAddress_);
     }
 

@@ -2041,7 +2041,7 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Bind(&notCOWArray);
     GateRef thisLen = GetArrayLength(thisValue);
     GateRef thisArrLen = ZExtInt32ToInt64(thisLen);
-// TODO: CMC-GC may need to fix it later
+// CMC-GC may need to fix it later
 #ifndef USE_CMC_GC
 #if ENABLE_NEXT_OPTIMIZATION
      Label useReversBarrier(env);

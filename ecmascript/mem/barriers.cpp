@@ -122,11 +122,11 @@ void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset,
 
 void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void* dst, size_t count)
 {
-    // TODO: need opt
+    // need opt
     (void)thread;
     uintptr_t *dstPtr = reinterpret_cast<uintptr_t *>(dst);
-    uintptr_t *srcPtr= reinterpret_cast<uintptr_t *>(src);
-    for(size_t i = 0; i < count; i++) {
+    uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
+    for (size_t i = 0; i < count; i++) {
         uintptr_t offset = i * sizeof(uintptr_t);
         uintptr_t value = srcPtr[i];
         BaseRuntime::WriteBarrier(dst, (void *)((uintptr_t)dst + offset), (void*)value);

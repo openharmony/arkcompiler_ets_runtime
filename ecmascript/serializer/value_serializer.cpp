@@ -194,7 +194,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
         objClass->IsJSSharedAsyncFunction() ||
 #ifdef USE_CMC_GC
-        // TODO add shared read only
+        // add shared read only
         (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
 #else
         region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {

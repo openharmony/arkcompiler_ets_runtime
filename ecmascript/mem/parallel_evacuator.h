@@ -68,7 +68,8 @@ private:
         explicit SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator);
         ~SetObjectFieldRSetVisitor() = default;
 
-        void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+                                  VisitObjectArea area) override;
     private:
         ParallelEvacuator *evacuator_ {nullptr};
     };

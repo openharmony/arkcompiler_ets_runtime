@@ -127,7 +127,7 @@ static bool MaybeRotate(size_t curPos, size_t maxSize, FILE* file)
     if (curPos < maxSize) {
         return false;
     }
-    fflush(file);
+    (void)fflush(file);
     (void)ftruncate(fileno(file), ftell(file));
     rewind(file);
     return true;

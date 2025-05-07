@@ -4481,8 +4481,6 @@ void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t cou
 #ifdef USE_READ_BARRIER
     Barriers::CopyObject<true, true>(
         nullptr, nullptr, reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
-   // TODO:waitopt
-   // std::copy_n(src, count, dst);
 #else
     std::copy_n(src, count, dst);
 #endif

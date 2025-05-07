@@ -937,7 +937,6 @@ public:
         MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef LoadWithoutBarrier(VariableType type, GateRef addr, MemoryAttribute mAttr = MemoryAttribute::Default());
 
-
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                MemoryAttribute mAttr = MemoryAttribute::Default());
     void StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, GateRef compValue,

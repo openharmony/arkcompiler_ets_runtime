@@ -440,7 +440,7 @@ public:
             RegionDesc* region = regionBuffer.GetRegion();
             if (region != RegionDesc::NullRegion()) {
                 region->SetCopyLine();
-            }            
+            }
         };
         Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
     }
@@ -456,7 +456,7 @@ public:
         }
 
         RegionDesc* region = nullptr;
-        // TODO: works only on single thread senario
+        // works only on single thread senario
         region = recentPinnedRegionList_.GetHeadRegion();
         if (region != nullptr && region != RegionDesc::NullRegion()) {
             region->SetFixLine();

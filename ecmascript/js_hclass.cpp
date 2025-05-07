@@ -209,8 +209,10 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
 }
 
 
-size_t JSHClass::GetCloneSize(JSHClass* jshclass) {
-    return IsJSTypeObject(jshclass->GetObjectType()) ? jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
+size_t JSHClass::GetCloneSize(JSHClass* jshclass)
+{
+    return IsJSTypeObject(jshclass->GetObjectType()) ? jshclass->GetInlinedPropsStartSize() :
+                                                       jshclass->GetObjectSize();
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,

@@ -568,16 +568,16 @@ BaseObject* WCollector::TryForwardObject(BaseObject* obj)
 // ConcurrentGC
 BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
 {
-    // CHECK_CC(GetGCPhase() == GCPhase::GC_PHASE_PRECOPY || GetGCPhase() == GCPhase::GC_PHASE_COPY);
-    // TODO: reconsider phase difference between mutator and GC thread during transition.
+    // reconsider phase difference between mutator and GC thread during transition.
     if (IsGcThread()) {
-        CHECK_CC(GetGCPhase() == GCPhase::GC_PHASE_PRECOPY || GetGCPhase() == GCPhase::GC_PHASE_COPY || GetGCPhase() == GCPhase::GC_PHASE_FIX);
+        CHECK_CC(GetGCPhase() == GCPhase::GC_PHASE_PRECOPY || GetGCPhase() == GCPhase::GC_PHASE_COPY ||
+                 GetGCPhase() == GCPhase::GC_PHASE_FIX);
     } else {
         auto phase = Mutator::GetMutator()->GetMutatorPhase();
-        CHECK_CC(phase == GCPhase::GC_PHASE_PRECOPY || phase == GCPhase::GC_PHASE_COPY || phase == GCPhase::GC_PHASE_FIX);
+        CHECK_CC(phase == GCPhase::GC_PHASE_PRECOPY || phase == GCPhase::GC_PHASE_COPY ||
+                 phase == GCPhase::GC_PHASE_FIX);
     }
 
-    // ASSERT_LOGF(IsGhostFromObject(obj), "expect from-objecct");
     do {
         BaseStateWord oldWord = obj->GetBaseStateWord();
 

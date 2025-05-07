@@ -41,7 +41,7 @@ void IsValidObject(BaseObject *obj)
 
     ASSERT_LOGF(!obj->IsForwarding() && !obj->IsForwarded(), "object is not in valid state");
 
-    // TODO: check type info of object, but currently there is no common interface available
+    // check type info of object, but currently there is no common interface available
 
     ASSERT_LOGF(obj->GetSize() != 0, "object size is zero");
 }
@@ -98,7 +98,7 @@ public:
 
 class VerifyIterator {
 public:
-    VerifyIterator(RegionSpace &space) : space_(space) {}
+    explicit VerifyIterator(RegionSpace &space) : space_(space) {}
 
     void IterateFromSpace(VerifyVisitor &visitor)
     {
@@ -167,10 +167,8 @@ public:
             marked.insert(obj);
             visitor.VisitObject(obj);
             count_++;
-
             obj->ForEachRefField([&markStack](RefField<> &field) {
                 auto value = field.GetFieldValue();
-
                 if (Heap::IsTaggedObject(value)) {
                     markStack.push_back(field.GetTargetObject());
                 }
@@ -222,8 +220,6 @@ void WVerify::VerifyAfterMarkInternal(RegionSpace &space)
     iter.IterateRetraced(visitor);
 
     VLOG(DEBUGY, "VerifyMark: verified %d objects", iter.IterCount());
-
-    // TODO: check colored pointer
 }
 
 void WVerify::VerifyAfterMark(WCollector &collector)

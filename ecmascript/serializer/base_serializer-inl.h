@@ -38,11 +38,13 @@ void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRang
             }
             break;
         case VisitObjectArea::IN_OBJECT: {
-            serializer_->SerializeInObjField(TaggedObject::Cast(rootObject), ObjectSlot(startAddr), ObjectSlot(endAddr));
+            serializer_->SerializeInObjField(TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
+                                             ObjectSlot(endAddr));
             break;
         }
         default:
-            serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr), ObjectSlot(endAddr));
+            serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
+                                                 ObjectSlot(endAddr));
             break;
     }
 }

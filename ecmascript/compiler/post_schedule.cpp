@@ -402,9 +402,9 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
 #else
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
-    if(acc_.GetMachineType(value) == MachineType::ANYVALUE ||
-       acc_.GetMachineType(value) == MachineType::ARCH ||
-       acc_.GetMachineType(value) == MachineType::I64) {
+    if (acc_.GetMachineType(value) == MachineType::ANYVALUE ||
+        acc_.GetMachineType(value) == MachineType::ARCH ||
+        acc_.GetMachineType(value) == MachineType::I64) {
         kind = MemoryAttribute::Barrier::NEED_BARRIER;
     }
 #endif

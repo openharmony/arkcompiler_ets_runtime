@@ -273,7 +273,7 @@ private:
 #define LOGF_CHECK(cond) LOGF_IF(!(cond))
 
 #ifndef NDEBUG
-#define ASSERT_LOGF(cond, msg) LOGF_IF(!(cond)) << msg
+#define ASSERT_LOGF(cond, msg) LOGF_IF(!(cond)) << (msg)
 #else  // NDEBUG
 #define ASSERT_LOGF(cond, msg)
 #endif  // NDEBUG

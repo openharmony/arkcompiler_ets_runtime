@@ -123,7 +123,6 @@ public:
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined();
         }
-        // return *(reinterpret_cast<JSTaggedValue *>(GetAddress()));  // NOLINT(clang-analyzer-core.NullDereference)
         // temporarily add ReadBarrier for JSHandle
         return JSTaggedValue(Barriers::GetTaggedValue(GetAddress()));
     }
@@ -134,7 +133,6 @@ public:
         if (GetAddress() == 0U) {
             return JSTaggedValue::Undefined().GetRawData();
         }
-        // return *reinterpret_cast<JSTaggedType *>(GetAddress());  // NOLINT(clang-analyzer-core.NullDereference)
         // temporarily add ReadBarrier for JSHandle
         return Barriers::GetTaggedValue(GetAddress());
     }

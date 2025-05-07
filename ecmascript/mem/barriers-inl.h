@@ -180,7 +180,7 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     }
 
 #ifdef USE_CMC_GC
-    Barriers::CMCArrayCopyWriteBarrier(thread, (void*)srcAddr, (void*)dstAddr , count);
+    Barriers::CMCArrayCopyWriteBarrier(thread, (void*)srcAddr, (void*)dstAddr, count);
     return;
 #endif
 

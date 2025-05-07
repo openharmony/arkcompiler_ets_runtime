@@ -62,14 +62,10 @@ public:
 
     virtual void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] uintptr_t startAddr,
                                       [[maybe_unused]] uintptr_t endAddr, [[maybe_unused]] VisitObjectArea area)
-    {
-        // UNREACHABLE();
-    }
+    {}
 
     virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *hclass)
-    {
-        // UNREACHABLE();
-    }
+    {}
 };
 
 class RootVisitor {
