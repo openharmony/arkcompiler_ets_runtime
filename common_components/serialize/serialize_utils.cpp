@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/serialize/serialize_utils.h"
+#include "common_components/serialize/serialize_utils.h"
 
 #include "common_components/common_runtime/src/heap/allocator/region_desc.h"
 

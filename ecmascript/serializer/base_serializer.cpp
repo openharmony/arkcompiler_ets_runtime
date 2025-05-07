@@ -14,7 +14,7 @@
  */
 
 #ifdef USE_CMC_GC
-#include "common_interfaces/serialize/serialize_utils.h"
+#include "common_components/serialize/serialize_utils.h"
 #endif
 #include "ecmascript/serializer/base_serializer-inl.h"
 
