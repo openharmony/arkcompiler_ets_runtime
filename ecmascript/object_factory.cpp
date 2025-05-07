@@ -3621,7 +3621,8 @@ void ObjectFactory::NewObjectHook() const
 {
     CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && Runtime::GetInstance()->SharedConstInited() &&
+    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() &&
+        thread_->IsAllContextsInitialized() && Runtime::GetInstance()->SharedConstInited() &&
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
 #ifdef USE_CMC_GC

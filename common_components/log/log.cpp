@@ -65,7 +65,7 @@ namespace panda {
     #endif
 
     Level Log::level_ = Level::ERROR;
-    ComponentMark Log::components_ = Component::ALL;
+    ComponentMark Log::components_ = static_cast<ComponentMark>(Component::ALL);
     
     Level Log::ConvertFromRuntime(LOG_LEVEL level)
     {

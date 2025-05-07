@@ -21,8 +21,8 @@
 #include <string_view>
 #include <vector>
 
+#include "common_components/log/log_base.h"
 #include "common_interfaces/base/common.h"
-#include "common_components/log/log.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
@@ -252,19 +252,19 @@ public:
         LogOptions option;
         // For ArkTS runtime log
         if (WasSetLogFatal()) {
-            option.level = FATAL;
+            option.level = Level::FATAL;
             option.component = GetLogComponentFromString(GetLogFatal());
         } else if (WasSetLogError()) {
-            option.level = ERROR;
+            option.level = Level::ERROR;
             option.component = GetLogComponentFromString(GetLogError());
         } else if (WasSetLogWarning()) {
-            option.level = WARN;
+            option.level = Level::WARN;
             option.component = GetLogComponentFromString(GetLogWarning());
         } else if (WasSetLogInfo()) {
-            option.level = INFO;
+            option.level = Level::INFO;
             option.component = GetLogComponentFromString(GetLogInfo());
         } else if (WasSetLogDebug()) {
-            option.level = DEBUG;
+            option.level = Level::DEBUG;
             option.component = GetLogComponentFromString(GetLogDebug());
         } else {
             option.level = GetLogLevelFromString(GetLogLevel());
@@ -2238,54 +2238,54 @@ private:
 
     static ComponentMark GetLogComponentFromString(const std::vector<std::string>& components)
     {
-        ComponentMark componentMark = Component::NONE;
+        ComponentMark componentMark = static_cast<ComponentMark>(Component::NONE);
         for (const auto &component : components) {
             if (component == "all") {
-                componentMark = Component::ALL;
+                componentMark = static_cast<ComponentMark>(Component::ALL);
                 return componentMark;
             }
             if (component == "gc") {
-                componentMark |= Component::GC;
+                componentMark |= static_cast<ComponentMark>(Component::GC);
                 continue;
             }
             if (component == "ecmascript") {
-                componentMark |= Component::ECMASCRIPT;
+                componentMark |= static_cast<ComponentMark>(Component::ECMASCRIPT);
                 continue;
             }
             if (component == "pgo") {
-                componentMark |= Component::PGO;
+                componentMark |= static_cast<ComponentMark>(Component::PGO);
                 continue;
             }
             if (component == "interpreter") {
-                componentMark |= Component::INTERPRETER;
+                componentMark |= static_cast<ComponentMark>(Component::INTERPRETER);
                 continue;
             }
             if (component == "debugger") {
-                componentMark |= Component::DEBUGGER;
+                componentMark |= static_cast<ComponentMark>(Component::DEBUGGER);
                 continue;
             }
             if (component == "compiler") {
-                componentMark |= Component::COMPILER;
+                componentMark |= static_cast<ComponentMark>(Component::COMPILER);
                 continue;
             }
             if (component == "builtins") {
-                componentMark |= Component::BUILTINS;
+                componentMark |= static_cast<ComponentMark>(Component::BUILTINS);
                 continue;
             }
             if (component == "jit") {
-                componentMark |= Component::JIT;
+                componentMark |= static_cast<ComponentMark>(Component::JIT);
                 continue;
             }
             if (component == "baselinejit") {
-                componentMark |= Component::BASELINEJIT;
+                componentMark |= static_cast<ComponentMark>(Component::BASELINEJIT);
                 continue;
             }
             if (component == "trace") {
-                componentMark |= Component::TRACE;
+                componentMark |= static_cast<ComponentMark>(Component::TRACE);
                 continue;
             }
             if (component == "sa") {
-                componentMark |= Component::SA;
+                componentMark |= static_cast<ComponentMark>(Component::SA);
                 continue;
             }
         }
@@ -2295,24 +2295,24 @@ private:
     static Level GetLogLevelFromString(const std::string& level)
     {
         if (level == "fatal") {
-            return FATAL;
+            return Level::FATAL;
         }
         if (level == "error") {
-            return ERROR;
+            return Level::ERROR;
         }
         if (level == "warning") {
-            return WARN;
+            return Level::WARN;
         }
         if (level == "info") {
-            return INFO;
+            return Level::INFO;
         }
         if (level == "debug") {
-            return DEBUG;
+            return Level::DEBUG;
         }
         if (level == "verbose") {
-            return VERBOSE;
+            return Level::VERBOSE;
         }
-        return DEBUG;
+        return Level::DEBUG;
     }
 
     bool ParseBoolParam(bool* argBool);

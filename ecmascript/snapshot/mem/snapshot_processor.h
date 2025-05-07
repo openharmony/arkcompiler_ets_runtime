@@ -115,7 +115,8 @@ private:
             CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
         ~SerializeObjectVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr,
+                                  uintptr_t endAddr, VisitObjectArea area) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
         uintptr_t snapshotObj_ {-1};

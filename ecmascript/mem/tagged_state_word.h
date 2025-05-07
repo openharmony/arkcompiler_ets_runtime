@@ -36,8 +36,8 @@ public:
 
     struct ClassStateWord {
         ClassWordType class_ : 32;
-        StateWordType padding_ : 28;
-        StateWordType remainded_ : 4;
+        ClassWordType padding_ : 28;
+        ClassWordType remainded_ : 4;
     };
 
     inline void SynchronizedSetGCStateWord(StateWordType address, StateWordType padding = 0,

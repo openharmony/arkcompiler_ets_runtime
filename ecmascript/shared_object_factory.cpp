@@ -28,7 +28,8 @@ void ObjectFactory::NewSObjectHook() const
     static std::atomic<uint32_t> count = 0;
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
     static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
-    if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !Runtime::GetInstance()->SharedConstInited()) {
+    if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
+        !thread_->IsAllContextsInitialized() || !Runtime::GetInstance()->SharedConstInited()) {
         return;
     }
 #ifdef USE_CMC_GC

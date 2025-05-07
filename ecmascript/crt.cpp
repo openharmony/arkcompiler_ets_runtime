@@ -23,15 +23,11 @@
 #include "ecmascript/mem/cmc_gc/gc_hooks.h"
 
 namespace panda {
-
 CommonRuntime* CommonRuntime::instance_ = nullptr;
-size_t CommonRuntime::LARGE_OBJECT_THRESHOLD = 0;
 
 void CommonRuntime::Create()
 {
     instance_ = new CommonRuntime();
-
-    LARGE_OBJECT_THRESHOLD = RegionDesc::LARGE_OBJECT_DEFAULT_THRESHOLD;
 }
 
 void CommonRuntime::Destroy()

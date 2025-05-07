@@ -20,6 +20,7 @@
 #include <map>
 
 #include "ecmascript/platform/mutex.h"
+#include "libpandabase/mem/mem.h"
 #include "securec.h"
 
 #include "ecmascript/mem/mem.h"

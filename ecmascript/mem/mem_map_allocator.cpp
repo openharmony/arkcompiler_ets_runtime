@@ -17,6 +17,7 @@
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/platform/parameters.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 MemMapAllocator *MemMapAllocator::GetInstance()
@@ -119,8 +120,8 @@ MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
     size_t rightUnMapSize = static_cast<size_t>(4_GB) - leftUnMapSize;
     uintptr_t rightUnmapAddr = remainderAddr + targetSize;
 
-    static constexpr uint64_t mask = 0xFFFFFFFF;
-    TaggedStateWord::BASE_ADDRESS = remainderAddr & (mask << 32);
+    static constexpr uint64_t mask = 0xFFFFFFFF00000000;
+    TaggedStateWord::BASE_ADDRESS = remainderAddr & mask;
 
     MemMap reminderMemMap(ToVoidPtr(remainderAddr), targetSize);
     PageTag(reminderMemMap.GetOriginAddr(), reminderMemMap.GetSize(), PageTagType::HEAP);

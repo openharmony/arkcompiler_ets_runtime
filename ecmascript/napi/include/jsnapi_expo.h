@@ -1555,7 +1555,7 @@ public:
         bool isFaApp = false;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
-
+    using PatchErrorCode = panda::PatchErrorCode;
     using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 
     struct NativeBindingInfo {

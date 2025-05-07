@@ -20,6 +20,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
+#include "libpandabase/mem/mem.h"
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
 #endif
