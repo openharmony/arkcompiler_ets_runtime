@@ -727,7 +727,7 @@ size_t RegionManager::CollectPinnedGarbage()
 
 static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
-    // TODO: use fixline to skip new region after fix
+    // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
     region->VisitAllObjectsBeforeFix([&collector, region](BaseObject* object) {
         if (region->IsNewObjectSinceForward(object)) {
@@ -740,7 +740,7 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
             }
         } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
-        } else { // todo: handle dead objects in tl-regions for concurrent gc.
+        } else { // handle dead objects in tl-regions for concurrent gc.
             g_fillFreeObjectHook(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
@@ -1051,6 +1051,7 @@ void RegionManager::RequestForRegion(size_t size)
     double allocRate = std::max(
         static_cast<double>(ArkCommonRuntime::GetHeapParam().allocationRate) * MB / SECOND_TO_NANO_SECOND,
         heuAllocRate);
+    ASSERT_LOGF(allocRate > 0.00001, "allocRate is zero"); // If it is less than 0.00001, it is considered as 0
     size_t waitTime = static_cast<size_t>(size / allocRate);
     uint64_t now = TimeUtil::NanoSeconds();
     if (prevRegionAllocTime_ + waitTime <= now) {

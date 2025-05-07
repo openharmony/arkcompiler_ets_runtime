@@ -455,7 +455,7 @@ void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index
 {
     GCIterateThreadList([jsPandaFile, index, constpoolIndex](JSThread* thread) {
 #ifndef USE_CMC_GC
-        // TODO: adapt state to saferegion
+        // adapt state to saferegion
         ASSERT(!thread->IsInRunningState());
 #endif
         auto vm = thread->GetEcmaVM();

@@ -43,7 +43,7 @@ public:
     template<>
     inline void SetPrimitive(void *obj, size_t offset, JSTaggedType value)
     {
-        // TODO: NOT USE IN Concrruent Enum Barrier
+        // NOT USE IN Concrruent Enum Barrier
         CMCWriteBarrier(nullptr, obj, offset, JSTaggedValue::Hole().GetRawData());
         auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset);
         // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
@@ -93,7 +93,8 @@ public:
 #ifdef USE_READ_BARRIER
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
         if (value.IsHeapObject()) {
-            return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset)));
+            return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier(const_cast<void*>(obj),
+                                                                           (void*)(ToUintPtr(obj) + offset)));
         }
         return value.GetRawData();
 #else
@@ -117,14 +118,17 @@ public:
     static inline JSTaggedType GetTaggedValueAtomic(const void *obj, size_t offset)
     {
 #ifdef USE_READ_BARRIER
-        JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) + offset)->load(std::memory_order_acquire);
+        JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
+            offset)->load(std::memory_order_acquire);
         if (value.IsHeapObject()) {
             return reinterpret_cast<JSTaggedType>(
-                BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset), std::memory_order_acquire));
+                BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset),
+                                               std::memory_order_acquire));
         }
         return value.GetRawData();
 #else
-        return reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->load(std::memory_order_acquire);
+        return reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + \
+            offset)->load(std::memory_order_acquire);
 #endif
     }
 

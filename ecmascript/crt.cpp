@@ -37,6 +37,7 @@ void CommonRuntime::Create()
 void CommonRuntime::Destroy()
 {
     delete instance_;
+    instance_ = nullptr;
 }
 
 void CommonRuntime::Init()

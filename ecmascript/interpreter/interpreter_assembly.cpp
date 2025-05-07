@@ -324,8 +324,10 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     }
 #ifdef USE_READ_BARRIER
     if (true) { // IsConcurrentCopying
-        base::GCHelper::CopyCallTarget(func.GetTaggedObject()); // func should be ToSpace Reference
-        base::GCHelper::CopyGeneratorContext(context.GetObject<GeneratorContext>()); // context should be ToSpace Reference
+        // func should be ToSpace Reference
+        base::GCHelper::CopyCallTarget(func.GetTaggedObject());
+        // context should be ToSpace Reference
+        base::GCHelper::CopyGeneratorContext(context.GetObject<GeneratorContext>());
     }
 #endif
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());

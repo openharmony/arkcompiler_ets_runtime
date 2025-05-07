@@ -25,7 +25,9 @@ void DynamicObjectOperator::Initialize()
     BaseObject::RegisterDynamic(&dynOperator_);
 }
 
-void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) {
+void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
+                                                 uintptr_t endAddr, VisitObjectArea area)
+{
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -39,16 +41,19 @@ void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t sta
     }
 }
 
-void RefFieldObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass) {
+void RefFieldObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
+{
     visitor_(reinterpret_cast<RefField<>&>(hclass));
 }
 
-void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj) {
+void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
+{
     VisitObjectHClassImpl(obj->GetClass());
     ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), *this);
 }
 
-void RefFieldObjectVisitor::visit(ObjectSlot slot) {
+void RefFieldObjectVisitor::visit(ObjectSlot slot)
+{
     visitor_(reinterpret_cast<RefField<>&>(*(slot.GetRefFieldAddr())));
 }
 

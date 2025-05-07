@@ -302,7 +302,8 @@ public:
                     const std::string &spaceName, bool regular, bool isCompress, bool isMachineCode,
                     bool isEnableJitFort, bool shouldPageTag);
 
-    void CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize, bool shouldPageTag, bool skipCache);
+    void CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize,
+                     bool shouldPageTag, bool skipCache);
 
     // This is only used when allocating region failed during GC, since it's unsafe to do HeapDump or throw OOM,
     // just make MemMapAllocator infinite to complete this GC, this will temporarily lead that all JSThread could

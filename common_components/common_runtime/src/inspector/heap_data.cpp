@@ -777,7 +777,9 @@ void ArkHeapData::AddStringId(ArkHeapData::ArkHeapDataStringId value) { AddID(st
 void ArkHeapData::EndRecord()
 {
     const char* ptr = reinterpret_cast<const char*>(buffer.data());
-    fwrite(ptr, length, 1, fp);
+    if (fwrite(ptr, length, 1, fp) < 1) {
+        LOG_COMMON(ERROR) << "Failed to write heap dump file.";
+    }
     length = 0;
     std::vector<uint8_t>().swap(buffer);
 }

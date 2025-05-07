@@ -67,7 +67,6 @@ class PageAllocator {
     // the free slot list and other infomation are also in
     // page header
     class Page {
-
     public:
         // get a slot from the free slot list
         inline void* Allocate()

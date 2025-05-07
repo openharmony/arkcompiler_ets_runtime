@@ -36,11 +36,11 @@ namespace panda {
     using panda::ecmascript::TaggedObject;
     using WorkStackAddHookType = void (*)(void *workStack, TaggedObject *obj);
     using AllocBufferAddHookType = void (*)(uint64_t *obj);
-    using EnumThreadStackRootHookType = void (*)(void* vm, AllocBufferAddHookType hook);
+    using EnumThreadStackRootHookType = void (*)(void *vm, AllocBufferAddHookType hook);
     using EnumStaticRootsHookType = void (*)(void *workStack, WorkStackAddHookType hook);
     using FillFreeObjectHookType = void (*)(void *object, size_t size);
     using JSGCCallbackHookType = void (*)(void *ecmaVM);
-    using ForwardUpdateRawRefHookType = void (*)(void *collector, TaggedObject * obj);
+    using ForwardUpdateRawRefHookType = void (*)(void *collector, TaggedObject *obj);
     using ForwardUpdateWeakRawRefHookType = bool (*)(void *collector, TaggedObject *obj);
     using PreforwardStaticRootsHookType =
         void (*)(void *collector, ForwardUpdateRawRefHookType hook, ForwardUpdateWeakRawRefHookType weakHook);
@@ -71,8 +71,8 @@ namespace panda {
         static void Create();
 
         static void Destroy();
-
-        /*const*/static size_t LARGE_OBJECT_THRESHOLD; // regionManager.GetLargeObjectThreshold(), TODO: assign to MAX_REGULAR_HEAP_OBJECT_SIZE
+        // regionManager.GetLargeObjectThreshold(), assign to MAX_REGULAR_HEAP_OBJECT_SIZE
+        static size_t LARGE_OBJECT_THRESHOLD;
 
         void Init();
         void Fini();

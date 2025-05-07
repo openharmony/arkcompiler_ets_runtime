@@ -268,7 +268,7 @@ void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *objec
 uintptr_t Heap::AllocateYoungSync(size_t size)
 {
 #ifdef USE_CMC_GC
-    // TODO: check sync
+    // check sync
     return HeapAllocator::Allocate(size);
 #else
     return activeSemiSpace_->AllocateSync(size);
@@ -465,7 +465,7 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
 #ifdef USE_CMC_GC
-    // TODO: check why shareheap allocate in readonly
+    // check why shareheap allocate in readonly
     auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size));
 #else
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
@@ -603,7 +603,6 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
 #ifdef USE_CMC_GC
-    // ASSERT(false);
     return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInNonmove(size));
 #endif
 
@@ -645,7 +644,6 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
 TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
 {
 #ifdef USE_CMC_GC
-    // ASSERT(false);
     // will invoked by asm interpreter stub AllocateInSOld
     return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size));
 #endif

@@ -1657,7 +1657,7 @@ public:
         return reinterpret_cast<ThreadHolder *>(glueData_.threadHolder_);
     }
 
-    // TODO: to impl
+    // to impl
     void Visit(CommonRootVisitor visitor)
     {
         visitor(nullptr);

@@ -49,8 +49,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
     }
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
-        ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode, Jit::GetInstance()->IsEnableJitFort(),
-        shouldPageTag);
+        ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
+        Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (heap->InGC()) {

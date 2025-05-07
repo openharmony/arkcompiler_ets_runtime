@@ -136,7 +136,7 @@ void EcmaVM::PreFork()
     sHeap->CompactHeapBeforeFork(thread_);
 #endif
 
-    // TODO: CommonRuntime threads and GC Taskpool Thread should be merged together.
+    // CommonRuntime threads and GC Taskpool Thread should be merged together.
     heap_->DisableParallelGC();
     sHeap->DisableParallelGC(thread_);
     heap_->GetWorkManager()->FinishInPreFork();

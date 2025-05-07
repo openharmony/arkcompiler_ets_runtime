@@ -599,12 +599,12 @@ void BaseDeserializer::AllocateToDifferentSpaces()
 #ifdef USE_CMC_GC
     size_t regularSpaceSize = data_->GetRegularSpaceSize();
     if (regularSpaceSize > 0) {
-        // TODO: statistic object size
+        // statistic object size
         AllocateToRegularSpace(regularSpaceSize);
     }
     size_t pinSpaceSize = data_->GetPinSpaceSize();
     if (pinSpaceSize > 0) {
-        // TODO: statistic object size
+        // statistic object size
         AllocateToPinSpace(pinSpaceSize);
     }
 #else
@@ -642,7 +642,8 @@ void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
     if (regularSpaceSize <= ArkGetRegionSize()) {
         currentRegularObjectAddr_ = HeapAllocator::AllocateNoGC(regularSpaceSize);
     } else {
-        currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_, RegionType::RegularRegion);
+        currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_,
+                                                           RegionType::RegularRegion);
     }
     currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
     if (currentRegularObjectAddr_ == 0U) {

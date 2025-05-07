@@ -79,7 +79,8 @@ public:
     explicit SharedFullGCMarkObjectVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
     ~SharedFullGCMarkObjectVisitor() override = default;
 
-    void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+    void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+                              VisitObjectArea area) override;
 
     void VisitObjectHClassImpl(BaseObject *hclass) override;
 private:

@@ -2647,12 +2647,14 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion1)
 HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion2)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole()); // 10 * 1024: array length
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(3 * 1024, // 10 * 1024: array length
+        JSTaggedValue::Hole());
     for (int i = 0; i < 5; i++) {
         JSHandle<TaggedArray> element = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole());
         array->Set(thread, i, element);
     }
-    JSHandle<TaggedArray> array1 = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole(), true); // 10 * 1024: array length
+    JSHandle<TaggedArray> array1 = factory->NewTaggedArray(3 * 1024, // 10 * 1024: array length
+        JSTaggedValue::Hole(), true);
     for (int i = 0; i < 5; i++) {
         JSHandle<TaggedArray> element = factory->NewTaggedArray(3 * 1024, JSTaggedValue::Hole(), true);
         array1->Set(thread, i, element);

@@ -19,8 +19,6 @@ namespace panda {
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {
     VisitDynamicRoots(visitor, isMark);
-    // TODO: Visit static roots
-    // VisitStaticRoots(visitor);
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)

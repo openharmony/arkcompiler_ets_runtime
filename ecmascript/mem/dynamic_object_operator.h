@@ -39,7 +39,8 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
     void visit(ObjectSlot slot);
 
     template <class Callback>
-    void VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback &&cb) {
+    void VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback &&cb)
+    {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
 
@@ -94,7 +95,7 @@ public:
         auto taggedObject = TaggedObject::Cast(object);
         JSHClass *jsHclass = taggedObject->GetClass();
         size_t size = jsHclass->SizeFromJSHClass(taggedObject);
-        return AlignUp<size_t>(size, 8);
+        return AlignUp<size_t>(size, 8); // 8 Byte alignment
     }
 
     BaseObject *GetForwardingPointer(const BaseObject *object) const override

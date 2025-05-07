@@ -128,7 +128,8 @@ private:
         explicit DeserializeFieldVisitor(SnapshotProcessor *processor);
         ~DeserializeFieldVisitor() override = default;
 
-        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+                                  VisitObjectArea area) override;
     private:
         SnapshotProcessor *processor_ {nullptr};
     };
