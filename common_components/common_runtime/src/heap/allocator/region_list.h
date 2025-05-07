@@ -16,6 +16,7 @@
 #define ARK_COMMON_REGION_LIST_H
 
 #include "common_components/common_runtime/src/heap/allocator/region_desc.h"
+#include "common_components/common_runtime/src/heap/allocator/slot_list.h"
 
 namespace panda {
 class RegionList {
@@ -143,6 +144,15 @@ public:
         dstList.listTail_ = this->listTail_;
         dstList.regionCount_ = this->regionCount_;
         dstList.unitCount_ = this->unitCount_;
+    }
+
+    uintptr_t AllocFromFreeListInLock()
+    {
+        RegionDesc* region = GetHeadRegion();
+        if (region == nullptr) {
+            return 0;
+        }
+        return region->AllocPinnedFromFreeList();
     }
 
 protected:

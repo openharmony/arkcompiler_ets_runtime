@@ -211,7 +211,7 @@ HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize, AllocType allocT
         addr = AllocateImpl(totalSize, allocType);
     }
 
-    DLOG(ALLOC, "alloc 0x%zx(%zu)", addr, totalSize);
+    DLOG(ALLOC, "alloc to 0x%zx(%zu)", addr, totalSize);
     tlRegion_->SetToSpaceRegion(true);
     return addr;
 }

@@ -165,7 +165,6 @@ protected:
         RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
         GCStats& stats = GetGCStats();
         stats.pinnedSpaceSize = space.PinnedSpaceSize();
-        stats.pinnedGarbageSize = space.CollectPinnedGarbage();
         stats.collectedBytes += stats.pinnedGarbageSize;
     }
 
