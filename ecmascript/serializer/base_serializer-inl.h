@@ -42,10 +42,15 @@ void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRang
                                              ObjectSlot(endAddr));
             break;
         }
-        default:
+        default: {
+            ObjectSlot end = ObjectSlot(endAddr);
+            for (ObjectSlot slot = ObjectSlot(startAddr); slot < end; slot++) {
+                [[maybe_unused]] JSTaggedValue value = JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress()));
+            }
             serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
                                                  ObjectSlot(endAddr));
             break;
+        }
     }
 }
 
