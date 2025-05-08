@@ -146,6 +146,63 @@ static inline bool IsHexDigits(uint16_t ch)
     return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f');
 }
 
+// Convert a char representing hex digit to the value it represents
+static inline size_t HexChar16Value(uint16_t ch)
+{
+    // Converting table:
+    // +------+-------+-------+
+    // | Char | ASCII | Value |
+    // +------+-------+-------+
+    // | '0'  | 0x30  |   0   |
+    // |        ...           |
+    // | '9'  | 0x39  |   9   |
+    // | 'A'  | 0x41  |  10   |
+    // |        ...           |
+    // | 'F'  | 0x46  |  15   |
+    // | 'a'  | 0x61  |  10   |
+    // |        ...           |
+    // | 'f'  | 0x66  |  15   |
+    // +------+-------+-------+
+    ASSERT(IsHexDigits(ch));
+    size_t res = ch - '0'; // res in [0x0, 0x9], [0x11, 0x16], [0x31, 0x36]
+
+    if (res > 9) { // 9: res in [0x11, 0x16], [0x31, 0x36], which means ch in ['A', 'F'], ['a', 'f']
+        res |= 0x20; // 0x20: [0x11, 0x16] -> [0x31, 0x36], converting ['A' - '0', 'F' - '0'] to ['a' - '0', 'f' - '0']
+        // res = [0x31, 0x36]
+        res -= ('a' - '0'); // res = [0x0, 0x5]
+        res += 10; // 10: res = [10, 15], successfully converts ['A', 'F'] and ['a', 'f'] to [10, 15]
+    }
+
+    return res;
+}
+
+// Convert a hex value to the char representing it
+static inline uint16_t GetHexChar16(uint8_t val)
+{
+    // Converting table:
+    // +------+-------+-------+
+    // | Value | ASCII | Char |
+    // +------+-------+-------+
+    // |   0   | 0x30  | '0'  |
+    // |        ...           |
+    // |   9   | 0x39  | '9'  |
+    // |  10   | 0x41  | 'A'  |
+    // |        ...           |
+    // |  15   | 0x46  | 'F'  |
+    // +------+-------+-------+
+    if (val < 10) { // 10: val in [0x0, 0x9], convert to ['0', '9']
+        return val + '0';
+    }
+    return val - 0xA + 'A'; // 0xA: val in [0xA, 0xF], convert to ['A', 'F']
+}
+
+static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind)
+{
+    size_t high = HexChar16Value(front);
+    size_t low = HexChar16Value(behind);
+    uint8_t res = ((high << 4U) | low) & base::utf_helper::BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
+    return res;
+}
 }  // namespace panda::ecmascript::base::utf_helper
 
 #endif  // ECMASCRIPT_BASE_UTF_HELPER_H

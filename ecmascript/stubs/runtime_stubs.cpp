@@ -3272,6 +3272,7 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
         auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
         auto parentStrAcc = EcmaStringAccessor(parent);
         auto startIndex = SlicedString::Cast(string.GetTaggedValue())->GetStartIndex();
+#if !ENABLE_NEXT_OPTIMIZATION
         if (parentStrAcc.IsLineString()) {
             if (parentStrAcc.IsUtf8()) {
                 result = RuntimeDecodeURIComponent<uint8_t>(thread, string,
@@ -3280,6 +3281,10 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
                 result = RuntimeDecodeURIComponent<uint16_t>(thread, string,
                                                              parentStrAcc.GetDataUtf16() + startIndex);
             }
+#else // ENABLE_NEXT_OPTIMIZATION
+        if (parentStrAcc.IsLineString() && !parentStrAcc.IsUtf8()) {
+            result = RuntimeDecodeURIComponent<uint16_t>(thread, string, parentStrAcc.GetDataUtf16() + startIndex);
+#endif // ENABLE_NEXT_OPTIMIZATION
         } else {
             result = RuntimeDecodeURIComponent<uint8_t>(thread, string, parentStrAcc.GetDataUtf8() + startIndex);
         }

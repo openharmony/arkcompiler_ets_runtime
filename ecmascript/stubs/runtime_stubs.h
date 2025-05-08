@@ -531,14 +531,14 @@ private:
     static inline uint16_t GetCodeUnit(Span<T> &sp, int32_t index, int32_t length);
     template <typename T>
     static inline JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
-                                                      int32_t strLen, std::u16string &sStr, Span<T> &sp);
+                                                      int32_t strLen, std::u16string &resStr, Span<T> &sp);
     template <typename T>
     static inline JSTaggedValue DecodePercentEncoding(JSThread *thread, int32_t &n, int32_t &k,
                                                       const JSHandle<EcmaString> &str, uint8_t &bb,
                                                       std::vector<uint8_t> &oct, Span<T> &sp,
                                                       int32_t strLen);
     static inline JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, const std::vector<uint8_t> &oct,
-                                                     const JSHandle<EcmaString> &str, std::u16string &sStr);
+                                                     const JSHandle<EcmaString> &str, std::u16string &resStr);
     static inline bool IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue);
 
     static inline RememberedSet* CreateLocalToShare(Region *region);
