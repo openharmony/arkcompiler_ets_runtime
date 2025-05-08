@@ -150,7 +150,7 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 JSType type = kclass->GetObjectType();
                 if ((serializeSharedEvent_ > 0) &&
                     (type == JSType::JS_SHARED_OBJECT || type == JSType::JS_SHARED_FUNCTION)) {
-                    SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                    SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 } else {
                     SerializeObjectProto(kclass, proto);
                 }
@@ -173,7 +173,7 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -209,7 +209,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -253,7 +253,7 @@ void BaseSerializer::SerializeLexicalEnvFieldIndividually(TaggedObject *root, Ob
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -276,7 +276,7 @@ void BaseSerializer::SerializeSendableEnvFieldIndividually(TaggedObject *root, O
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -318,7 +318,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -344,7 +344,7 @@ void BaseSerializer::SerializeTaggedObjField(SerializeType serializeType, Tagged
     if (serializeType != SerializeType::VALUE_SERIALIZE
         || !SerializeSpecialObjIndividually(objectType, root, start, end)) {
         for (ObjectSlot slot = start; slot < end; slot++) {
-            SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
         }
     }
 }
@@ -361,7 +361,7 @@ void BaseSerializer::SerializeInObjField(TaggedObject *object, ObjectSlot start,
             data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
             data_->WriteRawData(reinterpret_cast<uint8_t *>(fieldAddr), sizeof(JSTaggedType));
         } else {
-            SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
         }
     }
 }
