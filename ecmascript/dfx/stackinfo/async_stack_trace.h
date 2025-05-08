@@ -173,7 +173,7 @@ private:
     CMap<uint32_t, std::pair<std::string, int64_t>> asyncStackTrace_;
 
     std::vector<std::shared_ptr<AsyncStack>> currentAsyncParent_;
-    CMap<int32_t, std::shared_ptr<AsyncStack>> asyncTaskStacks_;
+    CMap<uint32_t, std::shared_ptr<AsyncStack>> asyncTaskStacks_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STACKINFO_STACK_TRACE_H
