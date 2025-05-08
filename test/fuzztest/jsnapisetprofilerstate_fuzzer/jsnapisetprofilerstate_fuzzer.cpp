@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapisetprofilerstate_fuzzer.h"
 

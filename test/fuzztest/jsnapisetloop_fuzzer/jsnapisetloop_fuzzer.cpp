@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapisetloop_fuzzer.h"
 
 using namespace panda;
