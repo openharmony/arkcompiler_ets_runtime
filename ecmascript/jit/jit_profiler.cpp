@@ -225,7 +225,8 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
                 if (!useRawProfileTypeInfo) {
                     profileTypeInfo_ = *profileTypeInfo;
@@ -391,14 +392,16 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
         Method *calleeMethod = Method::Cast(callee->GetMethod());
         calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         if (compilationEnv_->SupportHeapConstant() &&
-            calleeMethod->GetMethodLiteral()->IsTypedCall() &&
             calleeMethod->GetFunctionKind() != FunctionKind::ARROW_FUNCTION &&
-            callee->IsCallable() &&
-            callee->IsCompiledCode()) {
+            callee->IsCallable()) {
             auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
             JSHandle<JSTaggedValue> calleeHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(callee));
             auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
-            jitCompilationEnv->RecordCallMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
+            if (calleeMethod->GetMethodLiteral()->IsTypedCall() && callee->IsCompiledCode()) {
+                jitCompilationEnv->RecordCallMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
+            } else {
+                jitCompilationEnv->RecordOnlyInlineMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
+            }
         }
         calleeAbcId = PGOProfiler::GetMethodAbcId(callee);
         static_cast<JitCompilationEnv *>(compilationEnv_)

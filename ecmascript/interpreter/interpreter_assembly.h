@@ -28,6 +28,7 @@
 namespace panda::ecmascript {
 using DispatchEntryPoint =
     void (*)(JSThread *, const uint8_t *, JSTaggedType *, JSTaggedValue, JSTaggedValue, JSTaggedValue, int16_t);
+using EcmaOpcode = BytecodeInstruction::Opcode;
 class ConstantPool;
 class ECMAObject;
 class GeneratorContext;
@@ -56,6 +57,7 @@ public:
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
     static bool AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
+    static PUBLIC_API int64_t GetCallSize(EcmaOpcode opcode);
 
 #ifndef EXCLUDE_C_INTERPRETER
 #define DEF_HANDLER(name)                                                    \

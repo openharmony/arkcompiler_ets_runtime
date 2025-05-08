@@ -16,6 +16,7 @@
 
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -605,12 +606,11 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
 }
 
 // call instructions need compute jumpSize
-size_t Deoptimizier::GetCallSize(size_t curDepth, const uint8_t *resumePc)
+int64_t Deoptimizier::GetCallSize(size_t curDepth, const uint8_t *resumePc)
 {
     if (inlineDepth_ > 0 && curDepth != inlineDepth_) {
         auto op = BytecodeInstruction(resumePc).GetOpcode();
-        size_t jumpSize = BytecodeInstruction::Size(op);
-        return jumpSize;
+        return InterpreterAssembly::GetCallSize(op);
     }
     return 0;
 }

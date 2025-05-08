@@ -1556,7 +1556,7 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
         GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
         BRANCH(TaggedIsException(srcElements), &isException, &noException);
         Bind(&noException);
-        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
+        GateRef jumpSize = IntPtr(InterpreterAssembly::GetCallSize(EcmaOpcode::SUPERCALLSPREAD_IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(superCtor);
         GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));
         JSCallArgs callArgs(JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV);
@@ -3553,7 +3553,7 @@ DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
         }
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(ZExtInt16ToPtr(v0), IntPtr(JSTaggedValue::TaggedTypeSize()))); // skip function
-        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
+        GateRef jumpSize = IntPtr(InterpreterAssembly::GetCallSize(EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(superCtor);
         JSCallArgs callArgs(JSCallMode::SUPER_CALL_WITH_ARGV);
         callArgs.superCallArgs = {
@@ -4653,7 +4653,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
-        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
+        GateRef jumpSize = IntPtr(InterpreterAssembly::GetCallSize(EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
         METHOD_ENTRY_ENV_DEFINED(ctor);
         JSCallArgs callArgs(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
         callArgs.callConstructorArgs = { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj };
@@ -4798,7 +4798,7 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
-        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
+        GateRef jumpSize = IntPtr(InterpreterAssembly::GetCallSize(EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8));
         JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV);
         callArgs.callConstructorArgs = { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj };
         CallStubBuilder callBuilder(this, glue, ctor, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs,
