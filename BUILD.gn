@@ -1264,6 +1264,7 @@ if (enable_target_compilation) {
   ecma_platform_source += [ "ecmascript/platform/unix/directory.cpp" ]
 }
 
+# Only use when cmc-gc enable
 ohos_source_set("libcommon_components_set") {
   sources = [
     "common_components/base_runtime/base_runtime.cpp",
