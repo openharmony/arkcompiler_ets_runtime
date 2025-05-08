@@ -626,6 +626,13 @@ HWTEST_F_L0(InstructionCombineTests, Int64DivTest)
         EXPECT_EQ(m_right.Opcode(), OpCode::SDIV);
         EXPECT_EQ(m_right.Right().ResolvedValue(), 5);
     }
+
+    // test x / -9,223,372,036,854,775,808
+    {
+        auto x = b.Arguments(2);
+        auto result = instcombie.VisitGate(b.Int64Div(x, b.Int64(std::numeric_limits<int64_t>::min())));
+        EXPECT_EQ(result, Circuit::NullGate());
+    }
 }
 
 HWTEST_F_L0(InstructionCombineTests, Int32DivTest)
