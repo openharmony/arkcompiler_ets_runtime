@@ -46,13 +46,14 @@ public:
 
 protected:
     template <SerializeType serializeType>
-    class SerializeObjectFieldVisitor final :
-        public EcmaObjectRangeVisitor<SerializeObjectFieldVisitor<serializeType>> {
+    class SerializeObjectFieldVisitor final : public BaseObjectVisitor<SerializeObjectFieldVisitor<serializeType>> {
     public:
         explicit SerializeObjectFieldVisitor(BaseSerializer *serializer);
         ~SerializeObjectFieldVisitor() override = default;
 
-        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+        void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+                                  VisitObjectArea area) override;
+        void VisitObjectHClassImpl(BaseObject *hclass) override;
     private:
         BaseSerializer *serializer_ {nullptr};
     };

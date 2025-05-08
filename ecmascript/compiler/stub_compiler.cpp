@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/stub.h"
+#include "ecmascript/js_runtime_options.h"
 
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
@@ -186,7 +187,7 @@ int main(const int argc, const char **argv)
         return 1;
     }
 
-    panda::ecmascript::Log::Initialize(runtimeOptions);
+    panda::Log::Initialize(runtimeOptions.GetLogOptions());
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();

@@ -21,7 +21,7 @@
 #include "cpu_collector_client.h"
 #endif
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;

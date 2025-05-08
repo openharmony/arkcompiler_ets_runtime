@@ -25,26 +25,34 @@ BaseSerializer::SerializeObjectFieldVisitor<serializeType>::SerializeObjectField
     : serializer_(serializer) {}
 
 template <SerializeType serializeType>
-void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRangeImpl(TaggedObject *root,
-    ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRangeImpl(BaseObject *rootObject,
+    uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
 {
     switch (area) {
         case VisitObjectArea::RAW_DATA:
-            serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
+            serializer_->WriteMultiRawData(startAddr, endAddr - startAddr);
             break;
         case VisitObjectArea::NATIVE_POINTER:
             if (serializeType == SerializeType::VALUE_SERIALIZE) {
-                serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
+                serializer_->WriteMultiRawData(startAddr, endAddr - startAddr);
             }
             break;
         case VisitObjectArea::IN_OBJECT: {
-            serializer_->SerializeInObjField(root, start, end);
+            serializer_->SerializeInObjField(TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
+                                             ObjectSlot(endAddr));
             break;
         }
         default:
-            serializer_->SerializeTaggedObjField(serializeType, root, start, end);
+            serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
+                                                 ObjectSlot(endAddr));
             break;
     }
+}
+
+template <SerializeType serializeType>
+void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectHClassImpl(BaseObject *hclass)
+{
+    serializer_->SerializeJSTaggedValue(JSTaggedValue(TaggedObject::Cast(hclass)));
 }
 
 template<SerializeType serializeType>
@@ -57,8 +65,7 @@ void BaseSerializer::SerializeObjectField(TaggedObject *object)
 template<SerializeType serializeType>
 void BaseSerializer::SerializeTaggedObject(TaggedObject *object)
 {
-    JSHClass *hclass = object->GetClass();
-    size_t objectSize = hclass->SizeFromJSHClass(object);
+    size_t objectSize = object->GetSize();
     SerializedObjectSpace space = GetSerializedObjectSpace(object);
     data_->WriteUint8(SerializeData::EncodeNewObject(space));
     data_->WriteUint32(objectSize);

@@ -187,12 +187,18 @@ GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
     // ReadBarrier is not need for loading hClass as long as it is non-movable
     // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    return Load(VariableType::JS_POINTER(), glue, object, offset);
+    GateRef lowAddress = Load(VariableType::INT32(), glue, object, offset);
+    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
+    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 
-GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef object)
+GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
 {
-    return LoadConstOffset(VariableType::JS_POINTER(), object, TaggedObject::HCLASS_OFFSET);
+    GateRef lowAddress = LoadConstOffset(VariableType::INT32(), object, TaggedObject::HCLASS_OFFSET);
+    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
+    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 
 GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
@@ -202,16 +208,16 @@ GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
 
 GateRef CircuitBuilder::LoadPrototypeHClass(GateRef glue, GateRef object)
 {
-    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectHClass = LoadHClassByConstOffset(glue, object);
     GateRef objectPrototype = LoadPrototype(objectHClass);
     return LoadHClass(glue, objectPrototype);
 }
 
 GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef object)
 {
-    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectHClass = LoadHClassByConstOffset(glue, object);
     GateRef objectPrototype = LoadPrototype(objectHClass);
-    GateRef objectPrototypeHClass = LoadHClassByConstOffset(objectPrototype);
+    GateRef objectPrototypeHClass = LoadHClassByConstOffset(glue, objectPrototype);
     GateRef objectPrototypeOfPrototype = LoadPrototype(objectPrototypeHClass);
     return LoadHClass(glue, objectPrototypeOfPrototype);
 }
@@ -236,16 +242,17 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
         Int32(0));
 }
 
-void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
-          MemoryAttribute::NeedBarrier());
+    Store(VariableType::INT32(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET), Int32(0));
+    TransitionHClass(glue, object, hClass, mAttr);
 }
 
-void CircuitBuilder::StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass)
+void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
-          MemoryAttribute::NoBarrier());
+    GateRef compValue = TruncInt64ToInt32(TaggedPointerToInt64(hClass));
+    StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+        compValue, mAttr);
 }
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)

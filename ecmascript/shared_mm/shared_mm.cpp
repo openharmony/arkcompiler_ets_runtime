@@ -14,9 +14,12 @@
  */
 
 #include "ecmascript/shared_mm/shared_mm.h"
+
 #if ECMASCRIPT_ENABLE_ZAP_MEM
 #include "securec.h"
 #endif
+#include "libpandabase/mem/mem.h"
+
 namespace panda::ecmascript {
 static constexpr size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
 

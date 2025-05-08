@@ -73,7 +73,7 @@ public:
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
         *(--newSp) = numActualArgs;
-        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+        *(--newSp) = ToUintPtr(thread);
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }

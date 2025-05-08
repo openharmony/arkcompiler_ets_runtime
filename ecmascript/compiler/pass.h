@@ -578,8 +578,8 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableArrayBoundsCheckElimination = passOptions->EnableArrayBoundsCheckElimination();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, enableArrayBoundsCheckElimination,
-                                data->GetMethodName(), &chunk).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), data->GetCompilerConfig(), enableLog,
+                                enableArrayBoundsCheckElimination, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
@@ -750,8 +750,12 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
+#ifndef USE_CMC_GC
 #if ENABLE_NEXT_OPTIMIZATION
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+#else
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
+#endif
 #else
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
 #endif

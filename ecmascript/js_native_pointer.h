@@ -17,12 +17,13 @@
 #define ECMASCRIPT_JSNATIVEPOINTER_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/barriers.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/mem/barriers.h"
+#include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/mem/visitor.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 namespace panda::ecmascript {
 // Used for the requirement of ACE that wants to associated a registered C++ resource with a JSObject.

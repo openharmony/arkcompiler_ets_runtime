@@ -111,7 +111,7 @@ public:
     // For work serialize, remove old value from snapshot env map
     bool RemoveValueFromSnapshotEnv(SnapshotEnv *snapshotEnv, JSTaggedValue value, uint32_t offset)
     {
-        JSTaggedValue oldValue(Barriers::GetValue<JSTaggedType>(this, offset));
+        JSTaggedValue oldValue(Barriers::GetTaggedValue(this, offset));
         if (oldValue == value) {
             return false;
         }
@@ -144,8 +144,11 @@ public:
 #define GLOBAL_ENV_FIELD_ACCESSORS(type, name, index)                                                   \
     inline JSHandle<type> Get##name() const                                                             \
     {                                                                                                   \
-        const uintptr_t address =                                                                       \
-            reinterpret_cast<uintptr_t>(this) + HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();  \
+        /* every GLOBAL_ENV_FIELD is JSTaggedValue */                                                   \
+        size_t offset = HEADER_SIZE + (index) * JSTaggedValue::TaggedTypeSize();                        \
+        const uintptr_t address = reinterpret_cast<uintptr_t>(this) + offset;                           \
+        JSTaggedType value = Barriers::GetTaggedValue(address);                                         \
+        *reinterpret_cast<JSTaggedType *>(address) = value;                                             \
         JSHandle<type> result(address);                                                                 \
         if (result.GetTaggedValue().IsInternalAccessor()) {                                             \
             JSThread *thread = GetJSThread();                                                           \
@@ -157,7 +160,7 @@ public:
     inline JSTaggedValue GetTagged##name() const                                                        \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
-        JSTaggedValue result(Barriers::GetValue<JSTaggedType>(this, offset));                           \
+        JSTaggedValue result(Barriers::GetTaggedValue(this, offset));                                   \
         if (result.IsInternalAccessor()) {                                                              \
             JSThread *thread = GetJSThread();                                                           \
             AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());                      \

@@ -55,7 +55,7 @@ namespace OHOS {
         const uint8_t testDecodedSize = 2;
         int32_t numActualArgs = argvLength / testDecodedSize + 1;
         JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        
+
         size_t frameSize = 0;
         if (thread->IsAsmInterpreter()) {
             frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
@@ -68,7 +68,7 @@ namespace OHOS {
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
         *(--newSp) = numActualArgs;
-        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+        *(--newSp) = ToUintPtr(thread);
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }
@@ -90,7 +90,7 @@ namespace OHOS {
 
         return result;
     }
-    
+
     JSHandle<JSAPIList> CreateJSAPIList(JSThread *thread)
     {
         JSHandle<JSFunction> newTarget(thread, InitializeContainersList(thread));
@@ -106,7 +106,7 @@ namespace OHOS {
     void ContainerslistConvertToArrayFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

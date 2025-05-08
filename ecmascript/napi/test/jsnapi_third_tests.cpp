@@ -86,7 +86,7 @@ public:
     void SetUp() override
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
@@ -394,7 +394,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
     std::thread t1([&](){
         EcmaVM *vm1_ = nullptr;
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         vm1_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm1_ != nullptr) << "Cannot create Runtime";
         vm1_->SetEnableForceGC(true);
@@ -1703,12 +1703,12 @@ HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
         weakRefArray->Set(thread_, 0, xRefArray.GetTaggedValue().CreateAndGetWeakRef());
         weakRefArray->Set(thread_, 1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
     }
-    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    vm_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     EXPECT_TRUE(!weakRefArray->Get(0).IsUndefined());
     EXPECT_TRUE(weakRefArray->Get(1).IsUndefined());
 
     JSNApiDisposeXRefGlobalHandleAddr(vm_, xRefArrayAddress);
-    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    vm_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     vm_->SetEnableForceGC(true);
     EXPECT_TRUE(weakRefArray->Get(0).IsUndefined());
 }

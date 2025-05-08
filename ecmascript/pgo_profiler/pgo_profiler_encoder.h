@@ -20,7 +20,7 @@
 #include <memory>
 #include <utility>
 
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 #include "ecmascript/pgo_profiler/pgo_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"

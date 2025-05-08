@@ -13,15 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_LOG_H
-#define ECMASCRIPT_LOG_H
+#ifndef COMMON_COMPONENTS_LOG_LOG_H
+#define COMMON_COMPONENTS_LOG_LOG_H
 
-#include <cstdint>
-#include <iostream>
-#include <sstream>
-
-#include "ecmascript/common.h"
-#include "ecmascript/napi/include/jsnapi.h"
+#include "common_components/log/log_base.h"
 
 #ifdef ENABLE_HILOG
 #if defined(__clang__)
@@ -36,58 +31,32 @@
 #define LOG_TAG "ArkCompiler"
 #endif
 
+#if defined(ENABLE_HITRACE)
+    #include "hitrace_meter.h"
 
-using LOG_LEVEL = panda::RuntimeOption::LOG_LEVEL;
-enum Level {
-    VERBOSE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL,
-};
-
-using ComponentMark = uint64_t;
-enum Component {
-    NONE = 0ULL,
-    GC = 1ULL << 0ULL,
-    INTERPRETER = 1ULL << 1ULL,
-    COMPILER = 1ULL << 2ULL,
-    DEBUGGER = 1ULL << 3ULL,
-    ECMASCRIPT = 1ULL << 4ULL,
-    BUILTINS = 1ULL << 5ULL,
-    TRACE = 1ULL << 6ULL,
-    JIT = 1UL << 7ULL,
-    BASELINEJIT = 1UL << 8ULL,
-    SA = 1ULL << 9ULL,
-    PGO = 1ULL << 10ULL,
-    NO_TAG = 0xFFFFFFFFULL >> 1ULL,
-    ALL = 0xFFFFFFFFULL,
-};
-
-namespace panda::ecmascript {
-#ifdef ENABLE_HILOG
-
-#if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
-// print Debug level log if enable Verbose log
-#define LOG_VERBOSE LOG_DEBUG
+    #define OHOS_HITRACE(name)                      HITRACE_METER_NAME(HITRACE_TAG_ARK, name)
+    #define OHOS_HITRACE_START(name)                StartTrace(HITRACE_TAG_ARK, name)
+    #define OHOS_HITRACE_FINISH()                   FinishTrace(HITRACE_TAG_ARK)
+    #define OHOS_HITRACE_COUNT(name, count)         CountTrace(HITRACE_TAG_ARK, name, count)
 #else
-#define LOG_VERBOSE LOG_LEVEL_MIN
+    #define OHOS_HITRACE(name)
+    #define OHOS_HITRACE_START(name)
+    #define OHOS_HITRACE_FINISH()
+    #define OHOS_HITRACE_COUNT(name, count)
 #endif
-#endif  // ENABLE_HILOG
 
-class JSRuntimeOptions;
+namespace panda {
 class PUBLIC_API Log {
 public:
-    static void Initialize(const JSRuntimeOptions &options);
+    static void Initialize(const LogOptions &options);
     static inline bool LogIsLoggable(Level level, Component component)
     {
         switch (component)
         {
             case Component::SA:
-                return ((components_ & component) != 0ULL);
+                return ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
             default:
-                return (level >= level_) && ((components_ & component) != 0ULL);
+                return (level >= level_) && ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
         }
     }
     static inline std::string GetComponentStr(Component component)
@@ -118,6 +87,8 @@ public:
                 return "[baselinejit] ";
             case Component::SA:
                 return "[sa] ";
+            case Component::COMMON:
+                return "[common] ";
             case Component::ALL:
                 return "[default] ";
             default:
@@ -128,8 +99,6 @@ public:
     static Level ConvertFromRuntime(LOG_LEVEL level);
 
 private:
-    static void SetLogLevelFromString(const std::string& level);
-    static void SetLogComponentFromString(const std::vector<std::string>& components);
     static int32_t PrintLogger(int32_t, int32_t level, const char *, const char *, const char *message);
 
     static Level level_;
@@ -159,7 +128,9 @@ public:
             HILOG_ERROR(LOG_CORE, "%{public}s", stream_.str().c_str());
         } else {
             HILOG_FATAL(LOG_CORE, "%{public}s", stream_.str().c_str());
-            std::abort();
+            if (level == LOG_FATAL) {
+                std::abort();
+            }
         }
     }
     template<class type>
@@ -204,13 +175,13 @@ public:
     }
     ~StdLog()
     {
-        if constexpr (level == FATAL || level == ERROR) {
+        if constexpr (level >= Level::ERROR) {
             std::cerr << stream_.str().c_str() << std::endl;
         } else {
             std::cout << stream_.str().c_str() << std::endl;
         }
 
-        if constexpr (level == FATAL) {
+        if constexpr (level == Level::FATAL) {
             std::abort();
         }
     }
@@ -228,18 +199,50 @@ private:
 #endif
 
 #if defined(ENABLE_HILOG)
-#define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
-                                  panda::ecmascript::HiLog<LOG_##level, (component)>()
+#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
+                                  panda::HiLog<LOG_##level, (component)>()
 #elif defined(ENABLE_ANLOG)
-#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()
+#define ARK_LOG(level, component) panda::AndroidLog<(Level::level)>()
 #else
 #if defined(OHOS_UNIT_TEST)
-#define ARK_LOG(level, component) ((level >= INFO) || panda::ecmascript::Log::LogIsLoggable(level, component)) && \
-                                  panda::ecmascript::StdLog<(level), (component)>()
+#define ARK_LOG(level, component) ((Level::level >= Level::INFO) ||                      \
+                                  panda::Log::LogIsLoggable(Level::level, component)) && \
+                                  panda::StdLog<(Level::level), (component)>()
 #else
-#define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
-                                  panda::ecmascript::StdLog<(level), (component)>()
+#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
+                                  panda::StdLog<(Level::level), (component)>()
 #endif
 #endif
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_LOG_H
+
+#define LOG_COMMON(level) ARK_LOG(level, Component::COMMON)
+
+#define LOGD_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(DEBUG)
+#define LOGI_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(INFO)
+#define LOGW_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(WARN)
+#define LOGE_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(ERROR)
+#define LOGF_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(ERROR) << "Check failed: " << #cond && LOG_COMMON(FATAL)
+
+#define CHECKF(cond) (UNLIKELY_CC(!(cond))) && LOG_COMMON(FATAL) << "Check failed: " << #cond
+#define LOGF_CHECK(cond) LOGF_IF(!(cond))
+
+#ifndef NDEBUG
+#define ASSERT_LOGF(cond, msg) LOGF_IF(!(cond)) << (msg)
+#else  // NDEBUG
+#define ASSERT_LOGF(cond, msg)
+#endif  // NDEBUG
+
+#define CHECK_CALL(call, args, what)        \
+    do {                                    \
+        int rc = call args;                 \
+        if (UNLIKELY_CC(rc != 0)) {            \
+            errno = rc;                     \
+            LOG_COMMON(FATAL) << #call <<   \
+                " failed for " <<           \
+                (what) <<" reason " <<      \
+                 strerror(errno) <<         \
+                 " return " << errno;       \
+        }                                   \
+    } while (false)
+
+}  // namespace panda
+#endif  // COMMON_COMPONENTS_LOG_LOG_H

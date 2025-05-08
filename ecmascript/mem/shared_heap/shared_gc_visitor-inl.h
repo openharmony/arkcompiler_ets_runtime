@@ -66,12 +66,14 @@ void SharedGCMarkRootVisitor::MarkObject(TaggedObject *object)
 SharedGCMarkObjectVisitor::SharedGCMarkObjectVisitor(SharedGCWorkManager *sWorkManager, uint32_t threadId)
     : sWorkManager_(sWorkManager), threadId_(threadId) {}
 
-void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
                                                      VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
+    ObjectSlot start(startAddr);
+    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        JSHClass *hclass = root->SynchronizedGetClass();
+        JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
@@ -91,13 +93,13 @@ void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectS
     }
 }
 
-void SharedGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
+void SharedGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
 {
-    ASSERT(hclass->GetClass()->IsHClass());
+    ASSERT(TaggedObject::Cast(hclass)->GetClass()->IsHClass());
     Region *hclassRegion = Region::ObjectAddressToRange(hclass);
     if (hclassRegion->InSharedSweepableSpace()) {
         ASSERT(hclassRegion->InSharedNonMovableSpace());
-        MarkAndPush(hclass, hclassRegion);
+        MarkAndPush(TaggedObject::Cast(hclass), hclassRegion);
     }
 }
 

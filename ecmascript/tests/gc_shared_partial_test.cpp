@@ -73,7 +73,7 @@ private:
 void SharedPartialGCTest::InitTaggedArray(TaggedObject *obj, size_t arrayLen)
 {
     JSHClass *arrayClass = JSHClass::Cast(thread->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
-    obj->SynchronizedSetClass(thread, arrayClass);
+    obj->SetClassWithoutBarrier(arrayClass);
     TaggedArray::Cast(obj)->InitializeWithSpecialValue(JSTaggedValue::Undefined(), arrayLen);
 }
 

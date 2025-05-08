@@ -71,9 +71,12 @@ void OldGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
 
 OldGCMarkObjectVisitor::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
 
-void OldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
                                                   VisitObjectArea area)
 {
+    ObjectSlot startSlot(start);
+    ObjectSlot endSlot(end);
+    auto root = TaggedObject::Cast(rootObject);
     Region *rootRegion = Region::ObjectAddressToRange(root);
     bool rootNeedEvacuate = rootRegion->InYoungSpaceOrCSet();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -81,10 +84,10 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-        ObjectSlot realEnd = start;
+        ObjectSlot realEnd(start);
         realEnd += layout->GetPropertiesCapacity();
-        end = end > realEnd ? realEnd : end;
-        for (ObjectSlot slot = start; slot < end; slot++) {
+        endSlot = endSlot > realEnd ? realEnd : endSlot;
+        for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
             PropertyAttributes attr = layout->GetAttr(index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot, rootRegion, rootNeedEvacuate);
@@ -92,13 +95,14 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot
         }
         return;
     }
-    for (ObjectSlot slot = start; slot < end; slot++) {
+    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
         HandleSlot(slot, rootRegion, rootNeedEvacuate);
     }
 }
 
-void OldGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
+void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
 {
+    auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     ASSERT(hclass->GetClass()->IsHClass());
     Region *hclassRegion = Region::ObjectAddressToRange(hclass);
     if (!hclassRegion->InSharedHeap()) {

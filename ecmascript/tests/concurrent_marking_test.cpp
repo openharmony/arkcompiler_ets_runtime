@@ -151,7 +151,7 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
         obj->InitializeHash();
         obj->SetElements(thread, emptyArray, SKIP_BARRIER);
         obj->SetProperties(thread, emptyArray, SKIP_BARRIER);
-        obj->SynchronizedSetClass(thread, *hclass);
+        obj->SetClassWithoutBarrier(*hclass);
 
         arr->Set(thread, 0, JSTaggedValue(obj));
 

@@ -14,8 +14,10 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/platform/parameters.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 MemMapAllocator *MemMapAllocator::GetInstance()
@@ -76,6 +78,66 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 #endif
 }
 
+void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
+{
+    size_t initialNonmovableObjectCapacity = std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY);
+#if defined(PANDA_TARGET_64)
+    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity + 4_GB;
+#else
+    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity;
+#endif
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
+    size_t i = 0;
+    while (i <= MEM_MAP_RETRY_NUM) {
+        void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
+            i * STEP_INCREASE_MEM_MAP_ADDR);
+        MemMap memMap = PageMap(alignNonmovableObjectCapacity, PAGE_PROT_NONE, alignment, addr);
+        if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
+            memMap = AlignMemMapTo4G(memMap, initialNonmovableObjectCapacity);
+            compressMemMapPool_.InsertMemMap(memMap);
+            compressMemMapPool_.SplitMemMapToCache(memMap);
+            break;
+        } else {
+            PageUnmap(memMap);
+            LOG_ECMA(ERROR) << "Huge object mem map big addr fail: " << errno;
+        }
+        i++;
+    }
+#else
+    MemMap memMap = PageMap(alignNonmovableObjectCapacity, PAGE_PROT_NONE, alignment);
+    memMap = AlignMemMapTo4G(memMap, initialNonmovableObjectCapacity);
+    compressMemMapPool_.InsertMemMap(memMap);
+    compressMemMapPool_.SplitMemMapToCache(memMap);
+#endif
+}
+
+MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
+{
+#if defined(PANDA_TARGET_64)
+    uintptr_t leftUnmapAddr = ToUintPtr(memMap.GetMem());
+    auto remainderAddr = AlignUp(leftUnmapAddr, 4_GB);
+    size_t leftUnMapSize = remainderAddr - leftUnmapAddr;
+    size_t rightUnMapSize = static_cast<size_t>(4_GB) - leftUnMapSize;
+    uintptr_t rightUnmapAddr = remainderAddr + targetSize;
+
+    static constexpr uint64_t mask = 0xFFFFFFFF00000000;
+    TaggedStateWord::BASE_ADDRESS = remainderAddr & mask;
+
+    MemMap reminderMemMap(ToVoidPtr(remainderAddr), targetSize);
+    PageTag(reminderMemMap.GetOriginAddr(), reminderMemMap.GetSize(), PageTagType::HEAP);
+    PageRelease(reminderMemMap.GetMem(), reminderMemMap.GetSize());
+
+    PageUnmap(MemMap(ToVoidPtr(leftUnmapAddr), leftUnMapSize));
+    PageUnmap(MemMap(ToVoidPtr(rightUnmapAddr), rightUnMapSize));
+    return reminderMemMap;
+#else
+    TaggedStateWord::BASE_ADDRESS = 0;
+    PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
+    PageRelease(memMap.GetMem(), memMap.GetSize());
+    return memMap;
+#endif
+}
+
 static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[maybe_unused]] bool isEnableJitFort)
 {
     int prot = machineCodeSpace ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
@@ -104,82 +166,97 @@ static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[mayb
 }
 
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                                 const std::string &spaceName, bool regular, bool isMachineCode, bool isEnableJitFort,
-                                 bool shouldPageTag)
+                                 const std::string &spaceName, bool regular, bool isCompress, bool isMachineCode,
+                                 bool isEnableJitFort, bool shouldPageTag)
 {
-    MemMap mem;
     PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
 
     if (regular) {
-        mem = memMapPool_.GetRegularMemFromCommitted(size);
-        if (mem.GetMem() != nullptr) {
-            bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
-            if (!res) {
-                return MemMap();
-            }
-            if (shouldPageTag) {
-                PageTag(mem.GetMem(), size, type, spaceName, threadId);
-            }
-            return mem;
+        if (isCompress) {
+            return AllocateFromMemPool(compressMemMapPool_, threadId, size, alignment, spaceName, isMachineCode,
+                isEnableJitFort, shouldPageTag, type);
+        } else {
+            return AllocateFromMemPool(memMapPool_, threadId, size, alignment, spaceName, isMachineCode,
+                isEnableJitFort, shouldPageTag, type);
         }
-        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
-            LOG_GC(ERROR) << "memory map overflow";
-            return MemMap();
-        }
-        mem = memMapPool_.GetMemFromCache(size);
-        if (mem.GetMem() != nullptr) {
-            memMapTotalSize_ += size;
-            bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
-            if (!res) {
-                return MemMap();
-            }
-            if (shouldPageTag) {
-                PageTag(mem.GetMem(), size, type, spaceName, threadId);
-            }
-            return mem;
-        }
-        mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
-        memMapPool_.InsertMemMap(mem);
-        mem = memMapPool_.SplitMemFromCache(mem);
     } else {
         if (UNLIKELY(memMapTotalSize_ + size > capacity_)) { // LCOV_EXCL_BR_LINE
             LOG_GC(ERROR) << "memory map overflow";
             return MemMap();
         }
-        mem = memMapFreeList_.GetMemFromList(size);
+        MemMap mem = memMapFreeList_.GetMemFromList(size);
+        if (mem.GetMem() != nullptr) {
+            InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+            memMapTotalSize_ += mem.GetSize();
+        }
+        return mem;
     }
+}
+
+MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t threadId, size_t size, size_t alignment,
+                                            const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
+                                            bool shouldPageTag, PageTagType type)
+{
+    MemMap mem = pool.GetRegularMemFromCommitted(size);
     if (mem.GetMem() != nullptr) {
-        bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
-        if (!res) {
-            return MemMap();
-        }
-        if (shouldPageTag) {
-            PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
-        }
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        return mem;
+    }
+    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+        LOG_GC(ERROR) << "memory map overflow";
+        return MemMap();
+    }
+
+    mem = pool.GetMemFromCache(size);
+    if (mem.GetMem() != nullptr) {
+        memMapTotalSize_ += size;
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        return mem;
+    }
+
+    mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
+    pool.InsertMemMap(mem);
+    mem = pool.SplitMemFromCache(mem);
+    if (mem.GetMem() != nullptr) {
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
 }
 
-void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag,
-                                  bool skipCache)
+MemMap MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
+                                       bool isMachineCode, bool isEnableJitFort,
+                                       bool shouldPageTag, PageTagType type)
+{
+    bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
+    if (!res) {
+        return MemMap();
+    }
+    if (shouldPageTag) {
+        PageTag(mem.GetMem(), size, type, spaceName, threadId);
+    }
+    return mem;
+}
+
+void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize,
+                                  bool shouldPageTag, bool skipCache)
 {
     // Clear ThreadId tag and tag the mem with ARKTS HEAP.
     if (shouldPageTag) {
         PageTag(mem, size, PageTagType::HEAP);
     }
-    if (!skipCache && isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
+    if (!skipCache && isRegular && !isCompress && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
         // Cache regions to accelerate allocation.
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }
-    Free(mem, size, isRegular);
-    if (!skipCache && isRegular && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
+    Free(mem, size, isRegular, isCompress);
+    if (!skipCache && isRegular && !isCompress && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
         int freeNum = memMapPool_.ShouldFreeMore(cachedSize);
         for (int i = 0; i < freeNum; i++) {
             void *freeMem = memMapPool_.GetRegularMemFromCommitted(size).GetMem();
             if (freeMem != nullptr) {
-                Free(freeMem, size, isRegular);
+                Free(freeMem, size, isRegular, isCompress);
             } else {
                 return;
             }
@@ -187,7 +264,7 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
     }
 }
 
-void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
+void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompress)
 {
     memMapTotalSize_ -= size;
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
@@ -195,7 +272,11 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
     }
     PageRelease(mem, size);
     if (isRegular) {
-        memMapPool_.AddMemToCache(mem, size);
+        if (isCompress) {
+            compressMemMapPool_.AddMemToCache(mem, size);
+        } else {
+            memMapPool_.AddMemToCache(mem, size);
+        }
     } else {
         memMapFreeList_.AddMemToList(MemMap(mem, size));
     }

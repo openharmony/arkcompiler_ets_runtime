@@ -1512,7 +1512,7 @@ void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profile
     {
         auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                                 ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
-        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        TransitionHClass(glue, profileTypeInfoCell, profileTypeInfoCell1Class, MemoryAttribute::NoBarrier());
         Jump(&endProfileTypeInfoCellType);
     }
     Bind(&notProfileTypeInfoCell0);
@@ -1522,7 +1522,7 @@ void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profile
     {
         auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                                 ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
-        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        TransitionHClass(glue, profileTypeInfoCell, profileTypeInfoCellNClass, MemoryAttribute::NoBarrier());
         Jump(&endProfileTypeInfoCellType);
     }
     Bind(&endProfileTypeInfoCellType);
@@ -1618,7 +1618,7 @@ GateRef CircuitBuilder::IsStableArrayLengthWriteable(GateRef glue, GateRef array
     Label entry(env_);
     env_->SubCfgEntry(&entry);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
-    GateRef hClass = LoadHClassByConstOffset(array);
+    GateRef hClass = LoadHClassByConstOffset(glue, array);
     GateRef attrOffset = IntPtr(JSHClass::LAYOUT_OFFSET);
     GateRef layout = Load(VariableType::JS_POINTER(), glue, hClass, attrOffset);
     GateRef entryHandler = Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX);

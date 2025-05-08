@@ -77,6 +77,9 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
 #define DECL_GET_IMPL_STRING(Name, Index, Token) DECL_GET_IMPL_COMMON(JSTaggedValue, Name, Index)
 #define DECL_GET_IMPL_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_IMPL_COMMON(Type, Name, Index)
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
+#ifdef USE_CMC_GC
+    SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(DECL_GET_IMPL_WITH_TYPE)    // NOLINT(readability-const-return-type)
+#endif
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE);  // NOLINT(readability-const-return-type)

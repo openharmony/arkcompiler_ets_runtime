@@ -16,10 +16,12 @@
 #ifndef ECMASCRIPT_COMMON_H
 #define ECMASCRIPT_COMMON_H
 
+#include <cstddef>
+#include <cstdint>
 #include <limits>
 
-#include "libpandabase/macros.h"
 #include "ecmascript/common_enum.h"
+
 namespace panda {
 namespace ecmascript {
 
@@ -131,7 +133,11 @@ constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 
 using Address = uintptr_t;
 
-#define PUBLIC_API PANDA_PUBLIC_API
+#ifndef PANDA_TARGET_WINDOWS
+#define PUBLIC_API __attribute__((visibility ("default")))
+#else
+#define PUBLIC_API __declspec(dllexport)
+#endif
 
 #ifdef NDEBUG
 #define DUMP_API_ATTR __attribute__((unused))

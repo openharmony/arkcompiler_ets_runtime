@@ -754,7 +754,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
 #endif
-    TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
+    TaggedObject::Cast(*typedArray)->SynchronizedTransitionClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
 }
@@ -786,7 +786,7 @@ JSTaggedValue JSSharedTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHan
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
 #endif
-    TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
+    TaggedObject::Cast(*typedArray)->SynchronizedTransitionClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
 }

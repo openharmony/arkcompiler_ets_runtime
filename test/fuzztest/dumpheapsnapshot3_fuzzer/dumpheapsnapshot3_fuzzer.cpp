@@ -33,7 +33,7 @@ namespace OHOS {
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         size_t maxEnumNum = static_cast<size_t>(DumpFormat::OTHER) + 1;
         DumpFormat dumpFormat = static_cast<DumpFormat>(size % maxEnumNum);

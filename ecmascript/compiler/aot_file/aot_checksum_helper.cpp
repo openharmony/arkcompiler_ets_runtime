@@ -15,9 +15,8 @@
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/aot_file/aot_checksum_helper.h"
-#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 

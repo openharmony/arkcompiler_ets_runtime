@@ -29,9 +29,12 @@ void ObjectFactory::NewSObjectHook() const
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
     static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
-        !thread_->IsAllContextsInitialized()) {
+        !thread_->IsAllContextsInitialized() || !Runtime::GetInstance()->SharedConstInited()) {
         return;
     }
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);
+#else
     if (count++ % frequency == 0) {
         if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
@@ -47,6 +50,7 @@ void ObjectFactory::NewSObjectHook() const
             }
         }
     }
+#endif
 #endif
 }
 
@@ -162,6 +166,17 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlyHClass(JSHClass *hclass, uint3
     newClass->Initialize(thread_, size, type, inlinedProps, thread_->GlobalConstants()->GetHandledEmptySLayoutInfo());
     return JSHandle<JSHClass>(thread_, newClass);
 }
+
+#ifdef USE_CMC_GC
+JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
+                                                               uint32_t inlinedProps)
+{
+    JSHandle<JSHClass> newClass = NewSEcmaReadOnlyHClass(hclass, size, type, inlinedProps);
+    newClass->SetIsJSShared(true);
+    ASSERT(newClass->IsInSharedHeap());
+    return newClass;
+}
+#endif
 
 JSHandle<JSHClass> ObjectFactory::InitSClassClass()
 {
@@ -367,7 +382,11 @@ JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old
     ASSERT(!old->GetClass()->IsMutantTaggedArray());
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
+#ifdef USE_CMC_GC
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject());
+#else
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
+#endif
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(newLength);
@@ -377,6 +396,9 @@ JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old
         newArray->Set(thread_, i, old->Get(i));
     }
 
+#ifdef USE_CMC_GC
+    ASSERT(newArray->IsInSharedHeap());
+#endif
     return newArray;
 }
 
@@ -389,7 +411,11 @@ JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &o
     JSHClass *arrayClass = nullptr;
     // Shared-array does not support Mutantarray yet.
     ASSERT(!old->GetClass()->IsMutantTaggedArray());
+#ifdef USE_CMC_GC
+    arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject());
+#else
     arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
+#endif
 
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
     JSHandle<TaggedArray> newArray(thread_, header);
@@ -403,6 +429,9 @@ JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &o
     for (uint32_t i = oldLength; i < length; i++) {
         newArray->Set(thread_, i, initVal);
     }
+#ifdef USE_CMC_GC
+    ASSERT(newArray->IsInSharedHeap());
+#endif
     return newArray;
 }
 
@@ -411,7 +440,11 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length,
     NewSObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     TaggedObject *header;
+#ifdef USE_CMC_GC
+    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject());
+#else
     auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
+#endif
     switch (spaceType) {
         case MemSpaceType::SHARED_OLD_SPACE:
             header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
@@ -425,6 +458,9 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length,
     }
     JSHandle<TaggedArray> array(thread_, header);
     array->SetLength(length);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -471,7 +507,16 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSortSLayoutInfo(const JSHandle<Layo
     ASSERT(capacity >= end);
     JSHandle<LayoutInfo> newArr = CreateSLayoutInfo(capacity);
     Span<struct Properties> sp(old->GetProperties(), end);
+    void *propertiesObj = reinterpret_cast<void *>(old->GetProperties());
+    size_t keyOffset = 0;
+    size_t attrOffset = sizeof(JSTaggedType);
     for (int i = 0; i < end; i++) {
+        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+                                                       keyOffset));
+        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+                                                         attrOffset));
+        sp[i].key_ = propKey;
+        sp[i].attr_ = propValue;
         newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
     }
     return newArr;
@@ -483,9 +528,16 @@ JSHandle<TaggedArray> ObjectFactory::NewSDictionaryArray(uint32_t length)
     ASSERT(length > 0);
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     auto header = sHeap_->AllocateOldOrHugeObject(
+#ifdef USE_CMC_GC
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSharedDictionaryClass().GetTaggedObject()), size);
+#else
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetDictionaryClass().GetTaggedObject()), size);
+#endif
     JSHandle<TaggedArray> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -531,10 +583,17 @@ JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 {
     NewSObjectHook();
     auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+#ifdef USE_CMC_GC
+        JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+#else
         JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+#endif
     JSHandle<TaggedArray> array(thread_, header);
     array->SetLength(0);
     array->SetExtraLength(0);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -542,10 +601,18 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewSEmptyMutantArray()
 {
     NewSObjectHook();
     auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
+#ifdef USE_CMC_GC
+        JSHClass::Cast(thread_->GlobalConstants()->GetSharedMutantTaggedArrayClass().GetTaggedObject()),
+        TaggedArray::SIZE);
+#else
         JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+#endif
     JSHandle<MutantTaggedArray> array(thread_, header);
     array->SetLength(0);
     array->SetExtraLength(0);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -588,6 +655,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
             sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::NATIVE_LIMIT>(thread_);
         }
     }
+#ifdef USE_CMC_GC
+    ASSERT(obj->IsInSharedHeap());
+#endif
     return obj;
 }
 
@@ -604,6 +674,9 @@ JSHandle<JSNativePointer> ObjectFactory::NewSReadOnlyJSNativePointer(void* exter
     obj->SetData(nullptr);
     obj->SetBindingSize(0U);
     obj->SetNativeFlag(NativeFlag::NO_DIV);
+#ifdef USE_CMC_GC
+    ASSERT(obj->IsInSharedHeap());
+#endif
     return obj;
 }
 
@@ -624,9 +697,16 @@ JSHandle<ConstantPool> ObjectFactory::NewSConstantPool(uint32_t capacity)
     NewSObjectHook();
     size_t size = ConstantPool::ComputeSize(capacity);
     auto header = sHeap_->AllocateOldOrHugeObject(
+#ifdef USE_CMC_GC
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetSharedConstantPoolClass().GetTaggedObject()), size);
+#else
         thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetConstantPoolClass().GetTaggedObject()), size);
+#endif
     JSHandle<ConstantPool> array(thread_, header);
     array->InitializeWithSpecialValue(thread_, JSTaggedValue::Hole(), capacity);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -637,9 +717,16 @@ JSHandle<COWTaggedArray> ObjectFactory::NewSCOWTaggedArray(uint32_t length, JSTa
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     auto header = sHeap_->AllocateNonMovableOrHugeObject(
+#ifdef USE_CMC_GC
+        thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetSharedCOWArrayClass().GetTaggedObject()), size);
+#else
         thread_, JSHClass::Cast(sHeap_->GetGlobalConst()->GetCOWArrayClass().GetTaggedObject()), size);
+#endif
     JSHandle<COWTaggedArray> cowArray(thread_, header);
     cowArray->InitializeWithSpecialValue(initVal, length);
+#ifdef USE_CMC_GC
+    ASSERT(cowArray->IsInSharedHeap());
+#endif
     return cowArray;
 }
 
@@ -690,7 +777,11 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedVa
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     TaggedObject *header = nullptr;
+#ifdef USE_CMC_GC
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject());
+#else
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
+#endif
     switch (spaceType) {
         case MemSpaceType::SHARED_OLD_SPACE:
             header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
@@ -705,6 +796,9 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedVa
 
     JSHandle<TaggedArray> array(thread_, header);
     array->InitializeWithSpecialValue(initVal, length);
+#ifdef USE_CMC_GC
+    ASSERT(array->IsInSharedHeap());
+#endif
     return array;
 }
 
@@ -960,7 +1054,11 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewSAOTLiteralInfo(uint32_t length, JSTa
     NewObjectHook();
     size_t size = AOTLiteralInfo::ComputeSize(length);
     auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+#ifdef USE_CMC_GC
+        JSHClass::Cast(sHeap_->GetGlobalConst()->GetSharedAOTLiteralInfoClass().GetTaggedObject()), size);
+#else
         JSHClass::Cast(sHeap_->GetGlobalConst()->GetAOTLiteralInfoClass().GetTaggedObject()), size);
+#endif
 
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);

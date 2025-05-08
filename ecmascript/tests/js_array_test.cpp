@@ -219,7 +219,7 @@ HWTEST_F_L0(JSArrayTest, TrackInfo)
     }
     JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
     auto hClass = thread->GetArrayInstanceHClass(ElementsKind::INT, false);
-    array->SynchronizedSetClass(thread, hClass);
+    array->SynchronizedTransitionClass(thread, hClass);
     auto trackInfoHclass = JSHandle<JSHClass>::Cast(constants->GetHandledTrackInfoClass());
     auto trackInfo = TrackInfo::Cast(factory->NewObject(trackInfoHclass));
     trackInfo->SetCachedHClass(thread, constants->GetUndefined());

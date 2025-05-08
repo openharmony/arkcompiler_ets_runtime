@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <atomic>
 
+#include "ecmascript/mem/tagged_state_word.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda {
@@ -73,7 +74,7 @@ public:
 
     JSHClass *GetJSHClass() const
     {
-        return reinterpret_cast<JSHClass *>(value_ & (~TAG_MARK_BIT));
+        return reinterpret_cast<JSHClass *>((value_ & 0xFFFFFFFD) + TaggedStateWord::BASE_ADDRESS);
     }
 
 private:

@@ -20,6 +20,12 @@ namespace panda::ecmascript {
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                       Region *valueRegion, WriteBarrierType writeType)
 {
+#ifdef USE_CMC_GC
+    // Ignore barrier for cmc gc allocation
+    (void)thread;
+    return;
+#endif
+
     if (valueRegion->InSharedHeap()) {
         return;
     }
@@ -47,6 +53,12 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
 void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                             Region *valueRegion)
 {
+#ifdef USE_CMC_GC
+    // Ignore barrier for cmc gc allocation
+    (void)thread;
+    return;
+#endif
+
     ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
     ASSERT(valueRegion->InSharedSweepableSpace());
     if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
@@ -61,7 +73,6 @@ void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *
         SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);
     }
 }
-
 
 template <Region::RegionSpaceKind kind>
 ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* objectRegion, JSTaggedValue* dst,
@@ -100,6 +111,30 @@ ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* o
     }
     return allValueNotHeap;
 }
+
+#ifdef USE_CMC_GC
+void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
+{
+    (void)thread;
+    BaseRuntime::WriteBarrier(obj, (void *)((uintptr_t)obj + offset), (void*)value);
+    return;
+}
+
+void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void* dst, size_t count)
+{
+    // need opt
+    (void)thread;
+    uintptr_t *dstPtr = reinterpret_cast<uintptr_t *>(dst);
+    uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
+    for (size_t i = 0; i < count; i++) {
+        uintptr_t offset = i * sizeof(uintptr_t);
+        uintptr_t value = srcPtr[i];
+        BaseRuntime::WriteBarrier(dst, (void *)((uintptr_t)dst + offset), (void*)value);
+    }
+    return;
+}
+
+#endif
 
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);

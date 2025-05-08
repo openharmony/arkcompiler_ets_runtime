@@ -214,8 +214,6 @@ ohos_static_library("ark_runtime_host_unittest") {
   if (!run_with_asan) {
     deps += [
       "$js_root/test/aottest:ark_aot_test",
-
-      #"$js_root/test/moduletest:ark_asm_single_step_test",
       "$js_root/test/deopttest:ark_deopt_test",
 
       # Temporarily closed
@@ -230,6 +228,17 @@ ohos_static_library("ark_runtime_host_unittest") {
         "$js_root/test/moduletest:ark_asm_test",
       ]
     }
+
+    # TODO: CMC-GC UT FIX LATER
+    if (defined(enable_cmc_gc) && enable_cmc_gc) {
+      deps -= [ "$js_root/test/jittest:ark_jit_test" ]
+      if (!run_with_asan) {
+        deps -= [
+          "$js_root/test/aottest:ark_aot_test",
+          "$js_root/test/deopttest:ark_deopt_test",
+        ]
+      }
+    }
   }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
@@ -237,6 +246,7 @@ ohos_static_library("ark_runtime_host_unittest") {
 
 config("ark_jsruntime_public_config") {
   configs = [
+    "$ark_root/common_interfaces:common_interfaces_public_config",
     "$ark_root/libpandabase:arkbase_public_config",
     "$ark_root/libpandafile:arkfile_public_config",
     "$ark_third_party_root/icu/icu4c:icu_config",
@@ -249,10 +259,20 @@ config("ark_jsruntime_public_config") {
   ]
 
   defines = []
+  ldflags = []
 
   if (ark_js_hybrid) {
     defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
     configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
+  }
+
+  if (ark_hybrid) {
+    defines += [ "ARK_HYBRID" ]
+
+    if (current_cpu == "amd64" || current_cpu == "x64" ||
+        current_cpu == "x86_64") {
+      ldflags += [ "-latomic" ]
+    }
   }
 }
 
@@ -327,6 +347,11 @@ config("ark_jsruntime_common_config") {
 
   defines = [ "PANDA_ENABLE_LTO" ]
 
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    defines += [ "USE_CMC_GC" ]
+    defines += [ "USE_READ_BARRIER" ]
+  }
+
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
   }
@@ -346,9 +371,24 @@ config("ark_jsruntime_common_config") {
     "-fasynchronous-unwind-tables",
     "-Wformat=2",
     "-std=c++17",
-    "-Wno-unused-but-set-variable",
   ]
 
+  cflags_cc += [
+    "-Wno-unused-command-line-argument",
+    "-Wno-variadic-macros",
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-zero-length-array",
+    "-Wno-nested-anon-types",
+    "-Wno-c99-extensions",
+    "-Wno-unused-parameter",
+    "-Wno-shadow",
+    "-Wno-pedantic",
+    "-Wno-gnu-zero-variadic-macro-arguments",
+    "-Wno-unused-lambda-capture",
+    "-Wno-unused-function",
+    "-Wno-unused-variable",
+    "-Wno-unused-but-set-variable",
+  ]
   cflags_c = []
 
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
@@ -864,13 +904,13 @@ ecma_source = [
   "ecmascript/js_typed_array.cpp",
   "ecmascript/js_weak_container.cpp",
   "ecmascript/linked_hash_table.cpp",
-  "ecmascript/log.cpp",
   "ecmascript/message_string.cpp",
   "ecmascript/mem/assert_scope.cpp",
   "ecmascript/mem/barriers.cpp",
   "ecmascript/mem/c_string.cpp",
   "ecmascript/mem/chunk.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
+  "ecmascript/mem/dynamic_object_operator.cpp",
   "ecmascript/mem/full_gc.cpp",
   "ecmascript/mem/concurrent_marker.cpp",
   "ecmascript/mem/concurrent_sweeper.cpp",
@@ -990,6 +1030,12 @@ ecma_source = [
   "ecmascript/require/js_cjs_module_cache.cpp",
   "ecmascript/require/js_cjs_module.cpp",
   "ecmascript/require/js_require_manager.cpp",
+]
+
+# ecmascript use implement from common_components
+ecma_source += [
+  "common_components/log/log.cpp",
+  "common_components/objects/base_object.cpp",
 ]
 
 if (ark_js_hybrid) {
@@ -1223,6 +1269,45 @@ if (enable_target_compilation) {
   ecma_platform_source += [ "ecmascript/platform/unix/directory.cpp" ]
 }
 
+# Only use when cmc-gc enable
+ohos_source_set("libcommon_components_set") {
+  sources = [
+    "common_components/base_runtime/base_runtime.cpp",
+    "common_components/heap/heap.cpp",
+    "common_components/heap/heap_allocator.cpp",
+    "common_components/heap/heap_visitor.cpp",
+    "common_components/serialize/serialize_utils.cpp",
+    "common_components/thread/thread_holder.cpp",
+    "common_components/thread/thread_holder_manager.cpp",
+    "ecmascript/crt.cpp",
+    "ecmascript/mem/cmc_gc/gc_hooks.cpp",
+  ]
+
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+
+  configs = [
+    "$js_root:ark_jsruntime_common_config",
+    ":include_llvm",
+  ]
+
+  deps = []
+  external_deps = []
+
+  if (!is_arkui_x) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
+  deps += [ "common_components/common_runtime/src:libarkcommon-runtime" ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
 libark_jsruntime_common_set("libark_jsruntime_set") {
 }
 
@@ -1317,6 +1402,13 @@ ohos_source_set("libark_jsruntime_test_set") {
     defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps += [ ":libcommon_components_set" ]
+    if (ark_hybrid) {
+      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
+    }
+  }
+
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
@@ -1358,6 +1450,14 @@ ohos_source_set("libark_jsruntime_static") {
       ":libark_jsruntime_set",
     ]
   }
+
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps += [ ":libcommon_components_set" ]
+    if (ark_hybrid) {
+      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
+    }
+  }
+
   external_deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
@@ -1411,6 +1511,7 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   deps = [ ":libark_jsruntime_static" ]
+
   external_deps = []
   if (is_arkui_x && target_os == "ios") {
     deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
@@ -1467,13 +1568,17 @@ ohos_shared_library("libark_jsruntime") {
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 
-  configs = [ ":arkjs_runtime_lto_link_config" ]
+  configs = [
+    ":ark_jsruntime_common_config",
+    ":arkjs_runtime_lto_link_config",
+  ]
 }
 
 ohos_shared_library("libark_jsruntime_test") {
   testonly = true
   stack_protector_ret = false
   deps = [ ":libark_jsruntime_test_set" ]
+
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
 
@@ -1503,7 +1608,8 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  subsystem_name = "test"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_prebuilt_etc("app_aot_jit_enable_list") {

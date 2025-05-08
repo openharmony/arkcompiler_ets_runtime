@@ -15,6 +15,7 @@
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_H
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
@@ -38,10 +39,6 @@ enum class Triple {
     TRIPLE_AARCH64,
     TRIPLE_ARM32,
 };
-
-#define TARGET_X64 "x86_64-unknown-linux-gnu"
-#define TARGET_AARCH64 "aarch64-unknown-linux-gnu"
-#define TARGET_ARM32 "arm-unknown-linux-gnu"
 
 class GCStackMapRegisters {
 public:

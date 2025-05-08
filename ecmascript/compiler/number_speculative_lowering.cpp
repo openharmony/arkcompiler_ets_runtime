@@ -1000,9 +1000,10 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         GateRef unsharedConstPool = acc_.GetValueIn(gate, 3); // 3: constpool
         PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
         GateRef result = Circuit::NullGate();
+        GateRef glue = acc_.GetGlueFromArgList();
         ASSERT(plr.IsLocal() || plr.IsFunction());
 
-        auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+        auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
         auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
@@ -1015,7 +1016,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
 
         builder_.LoopBegin(&loopHead);
         builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS7);
-        auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+        auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
         BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
         builder_.Bind(&lookUpProto);
