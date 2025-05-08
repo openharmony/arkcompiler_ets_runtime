@@ -4240,9 +4240,10 @@ inline GateRef StubBuilder::GetLengthOfJSArray(GateRef array)
     return env_->GetBuilder()->GetLengthOfJSArray(array);
 }
 
-inline void StubBuilder::ResolvedModuleMustBeSourceTextModule([[maybe_unused]] GateRef resolvedModule)
+inline void StubBuilder::ResolvedModuleMustBeSourceTextModule([[maybe_unused]] GateRef glue,
+    [[maybe_unused]] GateRef resolvedModule)
 {
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentModuleNotSourceTextModule), IsSourceTextModule(resolvedModule));
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentModuleNotSourceTextModule), IsSourceTextModule(glue, resolvedModule));
 }
 
 inline void StubBuilder::ModuleEnvMustBeDefined([[maybe_unused]] GateRef curEnv)
@@ -4255,9 +4256,9 @@ inline void StubBuilder::CheckIsResolvedIndexBinding([[maybe_unused]] GateRef gl
     ASM_ASSERT(GET_MESSAGE_STRING_ID(CheckIsResolvedIndexBinding), IsResolvedIndexBinding(glue, resolution));
 }
 
-inline void StubBuilder::RecordNameMustBeString([[maybe_unused]] GateRef recordName)
+inline void StubBuilder::RecordNameMustBeString([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef recordName)
 {
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(RecordNameMustBeString), TaggedIsString(recordName));
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(RecordNameMustBeString), TaggedIsString(glue, recordName));
 }
 
 inline GateRef StubBuilder::GetNameDictionary(GateRef glue, GateRef module)

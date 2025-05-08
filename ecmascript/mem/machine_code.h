@@ -274,8 +274,8 @@ public:
         }
         if constexpr (visitType == VisitType::OLD_GC_VISIT) {
             visitor(this,
-                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr())),
-                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize()),
+                    static_cast<uintptr_t>(GetHeapConstantTableAddr()),
+                    static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize(),
                     VisitObjectArea::NORMAL);
             this->ProcessMarkObject();
         }

@@ -17,7 +17,7 @@
 
 
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/log.h"
+#include "common_components/log/log.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {

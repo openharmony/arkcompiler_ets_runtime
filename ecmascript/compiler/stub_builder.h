@@ -1103,10 +1103,10 @@ public:
 
     // start: Fast path of Loading Module variable.
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
-    inline void ResolvedModuleMustBeSourceTextModule(GateRef resolvedModule);
+    inline void ResolvedModuleMustBeSourceTextModule(GateRef glue, GateRef resolvedModule);
     inline void ModuleEnvMustBeDefined(GateRef curEnv);
     inline void CheckIsResolvedIndexBinding(GateRef glue, GateRef resolution);
-    inline void RecordNameMustBeString(GateRef recordName);
+    inline void RecordNameMustBeString(GateRef glue, GateRef recordName);
     inline GateRef GetNameDictionary(GateRef glue, GateRef module);
     inline GateRef GetCurrentModuleEnv(GateRef glue, GateRef curModule);
     inline GateRef GetBitFieldFromSourceTextModule(GateRef curModule);

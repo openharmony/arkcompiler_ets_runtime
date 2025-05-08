@@ -11871,7 +11871,7 @@ GateRef StubBuilder::UpdateBindingAndGetModuleValue(GateRef glue, GateRef module
 GateRef StubBuilder::GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
 {
     GateRef recordName = GetModuleRecord(glue, resolvedBinding);
-    RecordNameMustBeString(recordName);
+    RecordNameMustBeString(glue, recordName);
     GateRef moduleManager = GetModuleManager(glue);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordIndexBindingModule),
                                  {module, resolvedBinding, moduleManager, recordName});
@@ -11881,7 +11881,7 @@ GateRef StubBuilder::GetResolvedRecordIndexBindingModule(GateRef glue, GateRef m
 GateRef StubBuilder::GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
 {
     GateRef recordName = GetModuleRecord(glue, resolvedBinding);
-    RecordNameMustBeString(recordName);
+    RecordNameMustBeString(glue, recordName);
     GateRef moduleManager = GetModuleManager(glue);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordBindingModule),
                                  {module, moduleManager, recordName});
@@ -11937,7 +11937,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             Label notLdEndExecPatchMain(env);
             Label notHole(env);
             GateRef resolvedModule = GetResolveModuleFromResolvedIndexBinding(glue, resolvedBinding);
-            ResolvedModuleMustBeSourceTextModule(resolvedModule);
+            ResolvedModuleMustBeSourceTextModule(glue, resolvedModule);
             GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
             BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
 
@@ -11964,7 +11964,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
         Bind(&isResolvedBinding);
         {
             GateRef resolvedModule = GetResolveModuleFromResolvedBinding(glue, resolvedBinding);
-            ResolvedModuleMustBeSourceTextModule(resolvedModule);
+            ResolvedModuleMustBeSourceTextModule(glue, resolvedModule);
             Label isNativeOrCjsModule(env);
             GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(resolvedModule), IsCjsModule(resolvedModule));
             BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &misstakenResolvedBinding);

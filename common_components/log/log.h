@@ -25,11 +25,11 @@
 #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
 #include "hilog/log.h"
+#endif
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD003F00
 #undef LOG_TAG
 #define LOG_TAG "ArkCompiler"
-#endif
 
 #if defined(ENABLE_HITRACE)
     #include "hitrace_meter.h"

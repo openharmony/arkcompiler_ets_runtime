@@ -1084,7 +1084,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         AddProfiling(gate);
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);
-        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
         GateRef globalEnvObj = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(index));
         builder_.DeoptCheck(builder_.Equal(receiverHClass, globalEnvObj), frameState,
                             DeoptType::INCONSISTENTHCLASS12);

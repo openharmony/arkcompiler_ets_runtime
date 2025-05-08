@@ -187,7 +187,7 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         MemMap mem = memMapFreeList_.GetMemFromList(size);
         if (mem.GetMem() != nullptr) {
             InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
-            memMapTotalSize_ += mem.GetSize();
+            IncreaseMemMapTotalSize(size);
         }
         return mem;
     }
@@ -209,8 +209,8 @@ MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t thr
 
     mem = pool.GetMemFromCache(size);
     if (mem.GetMem() != nullptr) {
-        memMapTotalSize_ += size;
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        IncreaseMemMapTotalSize(size);
         return mem;
     }
 
@@ -219,7 +219,7 @@ MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t thr
     mem = pool.SplitMemFromCache(mem);
     if (mem.GetMem() != nullptr) {
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
-        memMapTotalSize_ += mem.GetSize();
+        IncreaseMemMapTotalSize(size);
     }
     return mem;
 }
@@ -235,7 +235,6 @@ MemMap MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, siz
     if (shouldPageTag) {
         PageTag(mem.GetMem(), size, type, spaceName, threadId);
     }
-    IncreaseMemMapTotalSize(mem.GetSize());
     return mem;
 }
 

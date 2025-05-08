@@ -252,9 +252,6 @@ private:
     // SerializationChunk store shared objects which have been serialized
     SerializationChunk *sharedObjChunk_ {nullptr};
     CVector<JSTaggedType> objectVector_;
-#ifndef USE_CMC_GC
-    size_t regionRemainSizeIndex_ {0};
-#endif
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};

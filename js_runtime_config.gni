@@ -63,6 +63,7 @@ declare_args() {
   # Default false.
   ets_runtime_feature_enable_list = false
   enable_gc_dfx_options = false
+  ark_js_hybrid = false
 }
 
 if (target_cpu == "arm64") {
