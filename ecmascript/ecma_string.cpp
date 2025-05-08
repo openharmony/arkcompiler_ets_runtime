@@ -516,6 +516,16 @@ std::u16string EcmaString::ToU16String(uint32_t len)
 }
 
 // static
+#if ENABLE_NEXT_OPTIMIZATION
+template<typename T1, typename T2>
+uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
+                                                 const T2 *dataSecond, size_t sizeSecond)
+{
+    uint32_t totalHash = ComputeHashForData(dataFirst, sizeFirst, 0);
+    totalHash = ComputeHashForData(dataSecond, sizeSecond, totalHash);
+    return totalHash;
+}
+#else
 template<typename T1, typename T2>
 uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
                                                  const T2 *dataSecond, size_t sizeSecond)
@@ -531,6 +541,7 @@ uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t siz
     }
     return totalHash;
 }
+#endif
 
 // static
 uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstString,
