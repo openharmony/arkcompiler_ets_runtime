@@ -123,7 +123,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     if (IsMegaIC() && receiver->IsHeapObject()) {
         MegaICCache *cache = thread_->GetLoadMegaICCache();
         ASSERT(cache != nullptr);
-        cache->Set(receiver->GetTaggedObject()->GetClass(), key.GetTaggedValue(), handlerValue.GetTaggedValue(),
+        cache->Set(hclass.GetObject<JSHClass>(), key.GetTaggedValue(), handlerValue.GetTaggedValue(),
                    thread_);
         return;
     }
