@@ -198,6 +198,9 @@ void WriteLog(bool addPrefix, LogType type, const char* format, ...) noexcept
 }
 
 // Orders of magnitudes.  Note: The upperbound of uint64_t is 16E (16 * (1024 ^ 6))
+const char* g_orderOfMagnitude[] = { "", "K", "M", "G", "T", "P", "E" };
+
+// Orders of magnitudes.  Note: The upperbound of uint64_t is 16E (16 * (1024 ^ 6))
 const char* g_orderOfMagnitudeFromNano[] = { "n", "u", "m", nullptr };
 
 // number of digits in a pretty format segment (100,000,000 each has three digits)
@@ -225,7 +228,7 @@ CString PrettyOrderInfo(uint64_t number, const char* unit)
         order += 1;
     }
 
-    const char* prefix = ORDERS_OF_MAGNITUDE[order];
+    const char* prefix = g_orderOfMagnitude[order];
     const char* infix = order > 0 ? "i" : ""; // 1KiB = 1024B, but there is no "1iB"
 
     return CString(number) + prefix + infix + unit;
@@ -270,35 +273,35 @@ Level InitLogLevel()
 {
     auto env = CString(std::getenv("ARK_LOG_LEVEL"));
     if (env.Str() == nullptr) {
-        return ERROR;
+        return Level::ERROR;
     }
 
     CString logLevel = env.RemoveBlankSpace();
     if (logLevel.Length() != 1) {
         LOG_COMMON(ERROR) << "Unsupported in ARK_LOG_LEVEL length. Valid length must be 1."
                     " Valid ARK_LOG_LEVEL must be in ['v', 'd', 'i', 'w', 'e', 'f' 's'].";
-        return ERROR;
+        return Level::ERROR;
     }
 
     switch (logLevel.Str()[0]) {
         case 'v':
-            return VERBOSE;
+            return Level::VERBOSE;
         case 'd':
-            return DEBUG;
+            return Level::DEBUG;
         case 'i':
-            return INFO;
+            return Level::INFO;
         case 'w':
-            return WARN;
+            return Level::WARN;
         case 'e':
-            return ERROR;
+            return Level::ERROR;
         case 'f':
-            return FATAL;
+            return Level::FATAL;
         case 's':
-            return FATAL_WITHOUT_ABORT;
+            return Level::FATAL_WITHOUT_ABORT;
         default:
             LOG_COMMON(ERROR) << "Unsupported in ARK_LOG_LEVEL. Valid ARK_LOG_LEVEL must be in"
                 "['v', 'd', 'i', 'w', 'e', 'f' 's'].\n";
     }
-    return ERROR;
+    return Level::ERROR;
 }
 } // namespace panda

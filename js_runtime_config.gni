@@ -19,6 +19,10 @@ if (!defined(ark_hybrid)) {
   ark_hybrid = false
 }
 
+if (!defined(enable_cmc_gc)) {
+  enable_cmc_gc = false
+}
+
 declare_args() {
   # If true, use icu to implement Intl APIs.
   # If false, use @ohos.intl APIs to implement Intl APIs.
