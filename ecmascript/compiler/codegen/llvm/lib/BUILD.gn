@@ -149,6 +149,7 @@ ohos_shared_library("libark_llvmcodegen") {
   foreach(symbol, _used_symbols) {
     ldflags += [ "-Wl,-u," + symbol ]
   }
+  ldflags += [ "-Wl,-mllvm,-import-instr-limit=0" ]
   install_enable = true
   if (!is_mingw && !is_mac) {
     output_extension = "so"
