@@ -54,6 +54,7 @@ enum class NodeType {
     SLICEDSTRING,
     SYMBOL,
     BIGINT,
+    FRAMEWORK,
     DEFAULT = NATIVE,
 };
 
@@ -100,6 +101,10 @@ public:
     NodeType GetType() const
     {
         return type_;
+    }
+    void SetType(NodeType type)
+    {
+        type_ = type;
     }
     size_t GetSelfSize() const
     {

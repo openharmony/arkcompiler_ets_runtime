@@ -45,6 +45,7 @@ public:
      * Get string by its hash key
      */
     std::string GetStringByKey(StringKey key) const;
+    StringKey GetKeyByStringId(StringId stringId) const;
     StringId InsertStrAndGetStringId(const std::string &cstrArg);
     size_t GetCapcity() const
     {
@@ -53,6 +54,9 @@ public:
 
 private:
     StringKey GenerateStringKey(const std::string &cstr) const;
+
+    static constexpr uint32_t CUSTOM_STRID_START = 3;
+
     std::vector<StringKey> orderedKey_;  // Used for Serialize Order
     size_t index_ {2};  // 2: Offset the String-Table Header
     std::unordered_map<StringKey, StringId> indexMap_;
