@@ -15,15 +15,16 @@
 
 #include "ecmascript/builtins/builtins_global.h"
 
-
+#include "ecmascript/base/utf_helper.h"
+#include "ecmascript/builtins/builtins_global_uri-inl.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_deregister.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/module/js_module_manager.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
@@ -110,30 +111,7 @@ JSTaggedValue BuiltinsGlobal::IsNaN(EcmaRuntimeCallInfo *msg)
     return GetTaggedBoolean(false);
 }
 
-bool BuiltinsGlobal::IsUnescapedURI(uint16_t ch)
-{
-    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) {
-        return true;
-    }
-    return IsInMarkURISet(ch);
-}
-
-bool BuiltinsGlobal::IsInUnescapedURISet(uint16_t ch)
-{
-    if (ch == '#') {
-        return true;
-    }
-    return IsUnescapedURI(ch) || IsReservedURI(ch);
-}
-
-bool BuiltinsGlobal::IsInReservedURISet(uint16_t ch)
-{
-    if (ch == '#') {
-        return true;
-    }
-    return IsReservedURI(ch);
-}
-
+#if !ENABLE_NEXT_OPTIMIZATION
 bool BuiltinsGlobal::IsReservedURI(uint16_t ch)
 {
     std::u16string str(u";/?:@&=+$,");
@@ -152,6 +130,7 @@ bool BuiltinsGlobal::IsHexDigits(uint16_t ch)
 {
     return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f');
 }
+#endif // ENABLE_NEXT_OPTIMIZATION
 
 // 18.2.6
 JSTaggedValue BuiltinsGlobal::DecodeURI(EcmaRuntimeCallInfo *msg)
@@ -219,6 +198,7 @@ JSTaggedValue BuiltinsGlobal::EncodeURIComponent(EcmaRuntimeCallInfo *msg)
     return Encode(thread, componentString, IsUnescapedURI);
 }
 
+#if !ENABLE_NEXT_OPTIMIZATION
 // Runtime Semantics
 JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
@@ -338,6 +318,22 @@ uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &strin
     }
     return ret;
 }
+#else // ENABLE_NEXT_OPTIMIZATION
+uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &string)
+{
+    auto stringAcc = EcmaStringAccessor(string);
+    uint32_t size = stringAcc.GetLength();
+    ASSERT(size > 0 && size <= 4); // NOLINT 4: means 4 hex digits
+
+    uint16_t ret = 0;
+    for (uint32_t i = 0; i < size; ++i) {
+        uint16_t ch = stringAcc.Get(i);
+        size_t val = base::utf_helper::HexChar16Value(ch);
+        ret = ((ret << 4U) | val) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
+    }
+    return ret;
+}
+#endif // ENABLE_NEXT_OPTIMIZATION
 
 // 22.1.3.17.2 StringPad ( S, maxLength, fillString, placement )
 EcmaString *BuiltinsGlobal::StringPad(JSThread *thread, const JSHandle<EcmaString> &source,
@@ -445,6 +441,7 @@ EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<
     return *codePointsString;
 }
 
+#if !ENABLE_NEXT_OPTIMIZATION
 // Runtime Semantics
 JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
@@ -514,7 +511,6 @@ void BuiltinsGlobal::HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
             EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
     }
 }
-
 
 JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
                                                     judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr)
@@ -653,6 +649,7 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
     }
     return JSTaggedValue::True();
 }
+#endif // ENABLE_NEXT_OPTIMIZATION
 
 void BuiltinsGlobal::PrintString([[maybe_unused]] JSThread *thread, EcmaString *string)
 {
@@ -951,10 +948,17 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 uint16_t c3 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET3);
                 uint16_t c4 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET4);
                 uint16_t c5 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET5);
+#if !ENABLE_NEXT_OPTIMIZATION
                 bool c2IsHexDigits = IsHexDigits(c2);
                 bool c3IsHexDigits = IsHexDigits(c3);
                 bool c4IsHexDigits = IsHexDigits(c4);
                 bool c5IsHexDigits = IsHexDigits(c5);
+#else // ENABLE_NEXT_OPTIMIZATION
+                bool c2IsHexDigits = base::utf_helper::IsHexDigits(c2);
+                bool c3IsHexDigits = base::utf_helper::IsHexDigits(c3);
+                bool c4IsHexDigits = base::utf_helper::IsHexDigits(c4);
+                bool c5IsHexDigits = base::utf_helper::IsHexDigits(c5);
+#endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c2IsHexDigits && c3IsHexDigits && c4IsHexDigits && c5IsHexDigits;
                 if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c2];
@@ -965,8 +969,13 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 }
             } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
                 uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+#if !ENABLE_NEXT_OPTIMIZATION
                 bool c1IsHexDigits = IsHexDigits(c1);
                 bool c2IsHexDigits = IsHexDigits(c2);
+#else // ENABLE_NEXT_OPTIMIZATION
+                bool c1IsHexDigits = base::utf_helper::IsHexDigits(c1);
+                bool c2IsHexDigits = base::utf_helper::IsHexDigits(c2);
+#endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c1IsHexDigits && c2IsHexDigits;
                 if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c1];

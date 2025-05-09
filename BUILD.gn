@@ -654,6 +654,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_gc.cpp",
   "ecmascript/builtins/builtins_generator.cpp",
   "ecmascript/builtins/builtins_global.cpp",
+  "ecmascript/builtins/builtins_global_uri.cpp",
   "ecmascript/builtins/builtins_iterator.cpp",
   "ecmascript/builtins/builtins_async_iterator.cpp",
   "ecmascript/builtins/builtins_json.cpp",

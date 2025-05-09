@@ -53,7 +53,11 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, int32_t &n, 
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
+#if !ENABLE_NEXT_OPTIMIZATION
         bb = GetValueFromTwoHex(frontChart, behindChart);
+#else
+        bb = base::utf_helper::GetValueFromTwoHex(frontChart, behindChart);
+#endif
         // e. If the two most significant bits in B are not 10, throw a URIError exception.
         if (!((bb & base::utf_helper::BIT_MASK_2) == base::utf_helper::BIT_MASK_1)) {
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
@@ -67,7 +71,7 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, int32_t &n, 
 }
 
 JSTaggedValue RuntimeStubs::UTF16EncodeCodePoint(JSThread *thread, const std::vector<uint8_t> &oct,
-                                                 const JSHandle<EcmaString> &str, std::u16string &sStr)
+                                                 const JSHandle<EcmaString> &str, std::u16string &resStr)
 {
     if (!base::utf_helper::IsValidUTF8(oct)) {
         CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
@@ -75,22 +79,34 @@ JSTaggedValue RuntimeStubs::UTF16EncodeCodePoint(JSThread *thread, const std::ve
     }
     uint32_t vv = base::StringHelper::Utf8ToU32String(oct);
     if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
-        sStr = base::StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
+#if !ENABLE_NEXT_OPTIMIZATION
+        resStr = base::StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
     } else {
         uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & base::utf_helper::BIT16_MASK) +
             base::utf_helper::DECODE_TRAIL_LOW);
         // NOLINT
         uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & base::utf_helper::BIT16_MASK) +
             base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
-        sStr = base::StringHelper::Append(base::StringHelper::Utf16ToU16String(&hv, 1),
-                                          base::StringHelper::Utf16ToU16String(&lv, 1));
+        resStr = base::StringHelper::Append(base::StringHelper::Utf16ToU16String(&hv, 1),
+                                            base::StringHelper::Utf16ToU16String(&lv, 1));
+#else
+        resStr.append(base::StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1));
+    } else {
+        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & base::utf_helper::BIT16_MASK) +
+            base::utf_helper::DECODE_TRAIL_LOW);
+        // NOLINT
+        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & base::utf_helper::BIT16_MASK) +
+            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        resStr.push_back(static_cast<const char16_t>(hv));
+        resStr.push_back(static_cast<const char16_t>(lv));
+#endif
     }
     return JSTaggedValue::True();
 }
 
 template <typename T>
 JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
-                                                  int32_t strLen, std::u16string &sStr, Span<T> &sp)
+                                                  int32_t strLen, std::u16string &resStr, Span<T> &sp)
 {
     [[maybe_unused]] uint32_t start = static_cast<uint32_t>(k);
     CString errorMsg;
@@ -107,10 +123,17 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, const JSHand
         errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
+#if !ENABLE_NEXT_OPTIMIZATION
     uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
     if ((bb & base::utf_helper::BIT_MASK_1) == 0) {
-        sStr = base::StringHelper::Utf8ToU16String(&bb, 1);
+        resStr = base::StringHelper::Utf8ToU16String(&bb, 1);
+#else
+    uint8_t bb = base::utf_helper::GetValueFromTwoHex(frontChar, behindChar);
+    k += 2;  // 2: means plus 2
+    if ((bb & base::utf_helper::BIT_MASK_1) == 0) {
+        resStr.push_back(bb);
+#endif
     } else {
         // vii. Else the most significant bit in B is 1,
         //   1. Let n be the smallest nonnegative integer such that (B << n) & 0x80 is equal to 0.
@@ -156,7 +179,7 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, const JSHand
         }
         DecodePercentEncoding<T>(thread, n, k, str, bb, oct, sp, strLen);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        UTF16EncodeCodePoint(thread, oct, str, sStr);
+        UTF16EncodeCodePoint(thread, oct, str, resStr);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return JSTaggedValue::True();
@@ -173,6 +196,9 @@ JSTaggedValue RuntimeStubs::RuntimeDecodeURIComponent(JSThread *thread, const JS
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;
+#if ENABLE_NEXT_OPTIMIZATION
+    resStr.reserve(strLen);
+#endif
     std::vector<T> tmpVec;
     tmpVec.resize(strLen);
     if (LIKELY(strLen != 0)) {
@@ -207,6 +233,7 @@ JSTaggedValue RuntimeStubs::RuntimeDecodeURIComponent(JSThread *thread, const JS
         //      3. Else C is in reservedSet,
         //         a. Let S be the substring of string from index start to index k inclusive.
         uint16_t cc = GetCodeUnit<T>(sp, k, strLen);
+#if !ENABLE_NEXT_OPTIMIZATION
         std::u16string sStr;
         if (cc != '%') {
             if (cc == 0 && strLen == 1) {
@@ -219,10 +246,23 @@ JSTaggedValue RuntimeStubs::RuntimeDecodeURIComponent(JSThread *thread, const JS
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         resStr += sStr;
+#else // ENABLE_NEXT_OPTIMIZATION
+        if (cc != '%') {
+            if (cc == 0 && strLen == 1) {
+                JSHandle<EcmaString> tmpEcmaString = factory->NewFromUtf16Literal(&cc, 1);
+                return tmpEcmaString.GetTaggedValue();
+            }
+            resStr.push_back(cc);
+        } else {
+            DecodePercentEncoding<T>(thread, string, k, strLen, resStr, sp);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+#endif // ENABLE_NEXT_OPTIMIZATION
         k++;
     }
 }
 
+#if !ENABLE_NEXT_OPTIMIZATION
 uint8_t RuntimeStubs::GetValueFromTwoHex(uint8_t front, uint8_t behind)
 {
     std::string hexString("0123456789ABCDEF");
@@ -232,5 +272,6 @@ uint8_t RuntimeStubs::GetValueFromTwoHex(uint8_t front, uint8_t behind)
     uint8_t res = ((idxf << 4U) | idxb) & base::utf_helper::BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
     return res;
 }
+#endif // ENABLE_NEXT_OPTIMIZATION
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_OPTIMIZED_STUBS_INL_H
