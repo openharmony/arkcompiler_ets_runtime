@@ -56,6 +56,11 @@ void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
 
 void RefFieldObjectVisitor::visit(ObjectSlot slot)
 {
+#ifdef USE_CMC_GC
+    if (!slot.GetTaggedValue().IsHeapObject()) {
+        return;
+    }
+#endif
     visitor_(reinterpret_cast<RefField<>&>(*(slot.GetRefFieldAddr())));
 }
 

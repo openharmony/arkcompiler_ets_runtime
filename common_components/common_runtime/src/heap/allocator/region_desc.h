@@ -22,6 +22,7 @@
 #include <set>
 #include <thread>
 #include <vector>
+#include "macros.h"
 #ifdef _WIN64
 #include <memoryapi.h>
 #include <errhandlingapi.h>
@@ -102,6 +103,7 @@ public:
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
         metadata.fixLine = std::numeric_limits<uintptr_t>::max();
         metadata.freeSlot = nullptr;
+        metadata.regionStart = reinterpret_cast<uintptr_t>(nullptr);
         metadata.regionEnd = reinterpret_cast<uintptr_t>(nullptr);
         metadata.toSpaceRegion = false;
     }
@@ -119,8 +121,20 @@ public:
         }
         return liveInfo;
     }
-
-    RegionLiveDesc* GetOrAllocLiveInfo()
+    NO_INLINE RegionLiveDesc* AllocLiveInfo(RegionLiveDesc* liveInfo)
+    {
+        RegionLiveDesc* newValue = reinterpret_cast<RegionLiveDesc*>(RegionLiveDesc::TEMPORARY_PTR);
+        if (__atomic_compare_exchange_n(&metadata.liveInfo, &liveInfo, newValue, false, std::memory_order_seq_cst,
+                                        std::memory_order_relaxed)) {
+            RegionLiveDesc* allocatedLiveInfo = HeapBitmapManager::GetHeapBitmapManager().AllocateRegionLiveDesc();
+            allocatedLiveInfo->relatedRegion = this;
+            __atomic_store_n(&metadata.liveInfo, allocatedLiveInfo, std::memory_order_release);
+            DLOG(REGION, "region %p@%#zx alloc liveinfo %p", this, GetRegionStart(), metadata.liveInfo);
+            return allocatedLiveInfo;
+        }
+        return nullptr;
+    }
+    ALWAYS_INLINE RegionLiveDesc* GetOrAllocLiveInfo()
     {
         do {
             RegionLiveDesc* liveInfo = __atomic_load_n(&metadata.liveInfo, std::memory_order_acquire);
@@ -130,17 +144,11 @@ public:
             if (LIKELY_CC(liveInfo != nullptr)) {
                 return liveInfo;
             }
-            RegionLiveDesc* newValue = reinterpret_cast<RegionLiveDesc*>(RegionLiveDesc::TEMPORARY_PTR);
-            if (__atomic_compare_exchange_n(&metadata.liveInfo, &liveInfo, newValue, false, std::memory_order_seq_cst,
-                                            std::memory_order_relaxed)) {
-                RegionLiveDesc* allocatedLiveInfo = HeapBitmapManager::GetHeapBitmapManager().AllocateRegionLiveDesc();
-                allocatedLiveInfo->relatedRegion = this;
-                __atomic_store_n(&metadata.liveInfo, allocatedLiveInfo, std::memory_order_release);
-                DLOG(REGION, "region %p@%#zx alloc liveinfo %p", this, GetRegionStart(), metadata.liveInfo);
-                return allocatedLiveInfo;
+            liveInfo = AllocLiveInfo(liveInfo);
+            if(liveInfo != nullptr) {
+                return liveInfo;
             }
         } while (true);
-
         return nullptr;
     }
 
@@ -157,7 +165,21 @@ public:
         return bitmap;
     }
 
-    RegionBitmap* GetOrAllocMarkBitmap()
+    NO_INLINE RegionBitmap* AllocMarkBitmap(RegionLiveDesc* liveInfo, RegionBitmap* bitmap)
+    {
+        RegionBitmap* newValue = reinterpret_cast<RegionBitmap*>(RegionLiveDesc::TEMPORARY_PTR);
+        if (__atomic_compare_exchange_n(&liveInfo->markBitmap, &bitmap, newValue, false, std::memory_order_seq_cst,
+                                        std::memory_order_relaxed)) {
+            RegionBitmap* allocated =
+                HeapBitmapManager::GetHeapBitmapManager().AllocateRegionBitmap(GetRegionSize());
+            __atomic_store_n(&liveInfo->markBitmap, allocated, std::memory_order_release);
+            DLOG(REGION, "region %p@%#zx liveinfo %p alloc markbitmap %p",
+                 this, GetRegionStart(), metadata.liveInfo, metadata.liveInfo->markBitmap);
+            return allocated;
+        }
+        return nullptr;
+    }
+    ALWAYS_INLINE RegionBitmap* GetOrAllocMarkBitmap()
     {
         RegionLiveDesc* liveInfo = GetOrAllocLiveInfo();
         do {
@@ -168,15 +190,9 @@ public:
             if (LIKELY_CC(bitmap != nullptr)) {
                 return bitmap;
             }
-            RegionBitmap* newValue = reinterpret_cast<RegionBitmap*>(RegionLiveDesc::TEMPORARY_PTR);
-            if (__atomic_compare_exchange_n(&liveInfo->markBitmap, &bitmap, newValue, false, std::memory_order_seq_cst,
-                                            std::memory_order_relaxed)) {
-                RegionBitmap* allocated =
-                    HeapBitmapManager::GetHeapBitmapManager().AllocateRegionBitmap(GetRegionSize());
-                __atomic_store_n(&liveInfo->markBitmap, allocated, std::memory_order_release);
-                DLOG(REGION, "region %p@%#zx liveinfo %p alloc markbitmap %p",
-                     this, GetRegionStart(), metadata.liveInfo, metadata.liveInfo->markBitmap);
-                return allocated;
+            bitmap = AllocMarkBitmap(liveInfo, bitmap);
+            if (bitmap != nullptr) {
+                return bitmap;
             }
         } while (true);
 
@@ -268,14 +284,18 @@ public:
         SetResurrectedRegionFlag(0);
     }
 
-    bool MarkObject(const BaseObject* obj)
+    NO_INLINE bool MarkObjectForLargeRegion(const BaseObject* obj)
+    {
+        if (metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_MARKED_REGION, 1) != 1) {
+            SetMarkedRegionFlag(1);
+            return false;
+        }
+        return true;
+    }
+    ALWAYS_INLINE bool MarkObject(const BaseObject* obj)
     {
         if (IsLargeRegion()) {
-            if (metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_MARKED_REGION, 1) != 1) {
-                SetMarkedRegionFlag(1);
-                return false;
-            }
-            return true;
+            return MarkObjectForLargeRegion(obj);
         }
         // top1 issue
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
@@ -363,7 +383,7 @@ public:
     ALWAYS_INLINE_CC size_t GetAddressOffset(HeapAddress address)
     {
         DCHECK_CC(GetRegionStart() <= address);
-        return (address - GetRegionStart());
+        return (address - metadata.regionStart);
     }
 
     enum class UnitRole : uint8_t {
@@ -417,6 +437,7 @@ public:
     static RegionDesc* GetRegionDesc(uint32_t idx)
     {
         UnitInfo* unit = RegionDesc::UnitInfo::GetUnitInfo(idx);
+        ASSERT(((uintptr_t)unit % 8 == 0));
         if (static_cast<UnitRole>(unit->GetMetadata().unitRole) == UnitRole::SUBORDINATE_UNIT) {
             return unit->GetMetadata().ownerRegion;
         } else {
@@ -426,7 +447,10 @@ public:
 
     static RegionDesc* GetRegionDescAt(uintptr_t allocAddr)
     {
-        UnitInfo* unit = RegionDesc::UnitInfo::GetUnitInfoAt(allocAddr);
+        UnitInfo* unit = reinterpret_cast<UnitInfo*>(UnitInfo::heapStartAddress -
+                                                     (((allocAddr - UnitInfo::heapStartAddress) / UNIT_SIZE) + 1) *
+                                                         sizeof(RegionDesc));
+        ASSERT(((uintptr_t)unit % 8 == 0));
         if (static_cast<UnitRole>(unit->GetMetadata().unitRole) == UnitRole::SUBORDINATE_UNIT) {
             return unit->GetMetadata().ownerRegion;
         } else {
@@ -523,7 +547,7 @@ public:
     void InitFreeUnits()
     {
         size_t nUnit = GetUnitCount();
-        UnitInfo* unit = reinterpret_cast<UnitInfo*>(this);
+        UnitInfo* unit = reinterpret_cast<UnitInfo*>(this) - (nUnit - 1);
         for (size_t i = 0; i < nUnit; ++i) {
             unit[i].ToFreeRegion();
         }
@@ -744,7 +768,7 @@ public:
     // copyable during concurrent copying gc.
     bool IsSmallRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::SMALL_SIZED_UNITS; }
 
-    bool IsLargeRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::LARGE_SIZED_UNITS; }
+    ALWAYS_INLINE bool IsLargeRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::LARGE_SIZED_UNITS; }
 
     bool IsFixedRegion() const
     {
@@ -932,6 +956,7 @@ private:
             uintptr_t forwardLine;
             uintptr_t fixLine;
             ObjectSlot* freeSlot;
+            uintptr_t regionStart;
             uintptr_t regionEnd;
 
             uint32_t nextRegionIdx;
@@ -995,7 +1020,10 @@ private:
             UNREACHABLE_CC();
         }
 
-        static UnitInfo* GetUnitInfoAt(uintptr_t allocAddr) { return GetUnitInfo(GetUnitIdxAt(allocAddr)); }
+        static UnitInfo* GetUnitInfoAt(uintptr_t allocAddr)
+        {
+            return GetUnitInfo(GetUnitIdxAt(allocAddr));
+        }
 
         // the start address for allocation
         static HeapAddress GetUnitAddress(size_t idx)
@@ -1007,19 +1035,14 @@ private:
         static UnitInfo* GetUnitInfo(size_t idx)
         {
             CHECK_CC(idx < totalUnitCount);
-            return reinterpret_cast<UnitInfo*>(unitInfoStart + idx * sizeof(UnitInfo));
+            return reinterpret_cast<UnitInfo*>(heapStartAddress - (idx + 1) * sizeof(UnitInfo));
         }
 
         static size_t GetUnitIdx(const UnitInfo* unit)
         {
             uintptr_t ptr = reinterpret_cast<uintptr_t>(unit);
-            if (unitInfoStart <= ptr && ptr < heapStartAddress) {
-                return (ptr - unitInfoStart) / sizeof(UnitInfo);
-            }
-
-            LOG_COMMON(FATAL) << "UnitInfo::GetUnitIdx() Should not execute here, abort.";
-            UNREACHABLE_CC();
-            return 0;
+            ASSERT(unitInfoStart <= ptr && ptr < heapStartAddress);
+            return ((heapStartAddress - ptr) / sizeof(UnitInfo)) - 1;
         }
 
         UnitInfo() = delete;
@@ -1074,6 +1097,7 @@ private:
     {
         metadata.toSpaceRegion = false;
         metadata.allocPtr = GetRegionStart();
+        metadata.regionStart = GetRegionStart();
         metadata.regionEnd = metadata.allocPtr + nUnit * RegionDesc::UNIT_SIZE;
         metadata.prevRegionIdx = NULLPTR_IDX;
         metadata.nextRegionIdx = NULLPTR_IDX;
@@ -1094,8 +1118,8 @@ private:
         InitRegionDesc(nUnit, uClass);
 
         // initialize region's subordinate units.
-        UnitInfo* unit = reinterpret_cast<UnitInfo*>(this);
-        for (size_t i = 1; i < nUnit; i++) {
+        UnitInfo* unit = reinterpret_cast<UnitInfo*>(this) - (nUnit - 1);
+        for (size_t i = 0; i < nUnit - 1; i++) {
             unit[i].InitSubordinateUnit(this);
         }
     }
