@@ -178,10 +178,8 @@ public:
             // get next object from work stack.
             BaseObject* obj = workStack.back();
             workStack.pop_back();
-
-            bool wasMarked = collector.MarkObject(obj);
-            if (!wasMarked) {
-                nNewlyMarked++;
+            auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
+            region->AddLiveByteCount(obj->GetSize());
 #ifndef USE_CMC_GC
                 if (!obj->HasRefField()) {
                     continue;
@@ -191,17 +189,15 @@ public:
 #else
                 auto beforeSize = workStack.count();
                 collector.TraceObjectRefFields(obj, workStack, weakStack);
-                VLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
+                DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
                      beforeSize, workStack.count(), workStack.count() - beforeSize);
 #endif
-            }
             // try to fork new task if needed.
             if (threadPool != nullptr) {
                 TryForkTask();
             }
         } // end of mark loop.
         // newly marked statistics.
-        (void)collector.markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
         collector.MergeWeakStack(weakStack);
     }
 
@@ -378,9 +374,11 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
         while (!remarkStack.empty()) {
             BaseObject* obj = remarkStack.back();
             remarkStack.pop_back();
-            if (Heap::IsHeapAddress(obj) && !this->IsMarkedObject(obj)) {
-                workStack.push_back(obj);
-                DLOG(TRACE, "satb buffer add obj %p", obj);
+            if (Heap::IsHeapAddress(obj)) {
+                if (!this->MarkObject(obj)) {
+                    workStack.push_back(obj);
+                    DLOG(TRACE, "satb buffer add obj %p", obj);
+                }
             }
         }
     };
@@ -426,8 +424,10 @@ void TraceCollector::DoResurrection(WorkStack& workStack)
         RefField<> tmpField(refField);
         BaseObject* finalizerObj = tmpField.GetTargetObject();
         if (!IsMarkedObject(finalizerObj)) {
-            DLOG(TRACE, "resurrectable obj @%p:%p", &ref, finalizerObj);
-            workStack.push_back(finalizerObj);
+            if (!MarkObject(finalizerObj)) {
+                DLOG(TRACE, "resurrectable obj @%p:%p", &ref, finalizerObj);
+                workStack.push_back(finalizerObj);
+            }
         }
         RefField<> newField = GetAndTryTagRefField(finalizerObj);
         if (tmpField.GetFieldValue() != newField.GetFieldValue() &&
@@ -442,11 +442,9 @@ void TraceCollector::DoResurrection(WorkStack& workStack)
     while (!workStack.empty()) {
         BaseObject* obj = workStack.back();
         workStack.pop_back();
-
+        auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
+        region->AddLiveByteCount(obj->GetSize());
         // skip if the object already marked.
-        if (IsSurvivedObject(obj)) {
-            continue;
-        }
 
         ++resurrectdObjects;
         ResurrectObject(obj);
@@ -563,11 +561,17 @@ void TraceCollector::EnumerateAllRootsImpl(GCThreadPool* threadPool, RootSet& ro
     threadPool->WaitFinish();
 
     MergeMutatorRoots(rootSet);
-
+    WorkStack tempStack = NewWorkStack();
     for (size_t i = 0; i < threadCount; ++i) {
-        rootSet.insert(rootSets[i]);
+        tempStack.insert(rootSets[i]);
     }
-
+    while(!tempStack.empty()) {
+        auto temp = tempStack.back();
+        tempStack.pop_back();
+        if(!this->MarkObject(temp)) {
+            rootSet.push_back(temp);
+        }
+    }
     VLOG(REPORT, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
 
