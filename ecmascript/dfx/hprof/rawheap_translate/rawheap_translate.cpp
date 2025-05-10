@@ -313,6 +313,12 @@ void RawHeapTranslate::FillNodes(const std::shared_ptr<Node> &node, char *hclass
         std::string name = meta_->GetTypeNameFromHClass(hclass);
         std::transform(name.begin(), name.end(), name.begin(), ::tolower);
         node->strId = strTable_->InsertStrAndGetStringId(name);
+    } else if (!meta_->IsString(hclass)) {
+        StringKey stringKey = strTable_->GetKeyByStringId(node->strId);
+        std::string nodeName = strTable_->GetStringByKey(stringKey);
+        if (nodeName.find("_GLOBAL") != std::string::npos) {
+            node->type = FRAMEWORK_NODETYPE;
+        }
     }
 }
 
