@@ -914,7 +914,7 @@ public:
         isEnableOsr_ = state;
     }
 
-    AOTFileManager *GetAOTFileManager() const
+    PUBLIC_API AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
     }

@@ -189,3 +189,19 @@ function testNoneToNone(){
 }
 print(ArkTools.isAOTCompiled(testNoneToNone));
 testNoneToNone();
+
+Math.atan2(Map, Map);
+const v82 = [1, 2];
+let a = 10;
+const v83 = [0, -1, 1, -1, -1, 2, -2, 2, 3];
+for (let i100 = 1, i101 = 10; -7033n < i101; i101--) {
+  let v108 = i100 & i101;
+  [v108, i100] = "fill";
+}
+for (let i117 = 0, i118 = 1;
+  i117 < i118;
+  (() => {
+    i118--;
+    v82.length;
+    print("hello world");
+  })()) {}
