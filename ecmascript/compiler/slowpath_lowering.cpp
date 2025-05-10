@@ -3323,7 +3323,7 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
         }
     }
     builder_.Bind(&notFastCall);
-    BRANCH_CIR(builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
+    BRANCH_CIR(builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT),
         &slowCall, &slowPath);
     builder_.Bind(&slowCall);
     {
