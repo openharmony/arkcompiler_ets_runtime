@@ -116,7 +116,7 @@ void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, ui
             HandleNativeOut();
             HandleStep(method, bcOffset);
         }
-    } else  {
+    } else {
         if (!HandleStep(method, bcOffset)) {
             HandleBreakpoint(method, bcOffset);
         }
@@ -328,6 +328,15 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
     // scriptParsed for sendable object
     if (method->IsSendableMethod()) {
         hooks_->SendableMethodEntry(method);
+    }
+
+    // pause for symbolicBreakpoints
+    if (symbolicBreakpoints_.empty()) {
+        return;
+    }
+    auto symbolicBreakpoint = symbolicBreakpoints_.find(method->ParseFunctionName());
+    if (symbolicBreakpoint != symbolicBreakpoints_.end()) {
+        hooks_->HitSymbolicBreakpoint();
     }
 }
 
