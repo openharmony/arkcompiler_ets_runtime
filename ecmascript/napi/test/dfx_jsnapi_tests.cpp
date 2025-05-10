@@ -750,4 +750,11 @@ HWTEST_F_L0(DFXJSNApiTests, GetObjectHashCode_4)
     auto hash = DFXJSNApi::GetObjectHashCode(vm_, object);
     ASSERT_TRUE(hash != 0);
 }
+
+HWTEST_F_L0(DFXJSNApiTests, GetMainThreadStackTrace_1)
+{
+    std::string stackTraceStr;
+    DFXJSNApi::GetMainThreadStackTrace(vm_, stackTraceStr);
+    ASSERT_TRUE(stackTraceStr.empty());
+}
 } // namespace panda::test

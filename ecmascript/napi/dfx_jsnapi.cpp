@@ -1055,4 +1055,23 @@ void DFXJSNApi::RegisterAsyncDetectCallBack(const EcmaVM *vm)
 {
     vm->GetAsyncStackTrace()->RegisterAsyncDetectCallBack();
 }
+
+void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
+{
+    auto thread = vm->GetJSThread();
+    if (thread->IsMainThread()) {
+        stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
+            thread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
+    } else {
+        ecmascript::ThreadManagedScope runningScope(thread);
+        ecmascript::SuspendAllScope suspendScope(thread);
+        auto mainThread = ecmascript::Runtime::GetInstance()->GetMainThread();
+        stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
+            mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
+    }
+    auto sourceMapcb = vm->GetSourceMapCallback();
+    if (sourceMapcb != nullptr && !stackTraceStr.empty()) {
+        stackTraceStr = sourceMapcb(stackTraceStr);
+    }
+}
 } // namespace panda
