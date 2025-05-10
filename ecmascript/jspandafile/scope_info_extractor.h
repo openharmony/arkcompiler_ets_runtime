@@ -20,7 +20,7 @@
 
 namespace panda::ecmascript {
 struct ScopeDebugInfo {
-    CUnorderedMap<CString, uint32_t> scopeInfo;
+    CUnorderedMultiMap<CString, uint32_t> scopeInfo;
 };
 
 class ScopeInfoExtractor {
