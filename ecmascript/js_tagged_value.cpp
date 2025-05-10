@@ -20,6 +20,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_list.h"
@@ -1780,6 +1781,9 @@ OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle
             case JSType::JS_API_BITVECTOR: {
                 return JSAPIBitVector::GetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key);
             }
+            case JSType::JS_API_FAST_BUFFER: {
+                return JSAPIFastBuffer::GetProperty(thread, JSHandle<JSAPIFastBuffer>::Cast(obj), key);
+            }
             default: {
                 return JSObject::GetProperty(thread, JSHandle<JSObject>(obj), key);
             }
@@ -1825,6 +1829,9 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
             }
             case JSType::JS_API_BITVECTOR: {
                 return JSAPIBitVector::SetProperty(thread, JSHandle<JSAPIBitVector>::Cast(obj), key, value);
+            }
+            case JSType::JS_API_FAST_BUFFER: {
+                return JSAPIFastBuffer::SetProperty(thread, JSHandle<JSAPIFastBuffer>::Cast(obj), key, value);
             }
             default: {
                 return JSObject::SetProperty(thread, JSHandle<JSObject>::Cast(obj), key, value);

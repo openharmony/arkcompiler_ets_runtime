@@ -1239,6 +1239,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::JS_API_BITVECTOR_ITERATOR: {
                 break;
             }
+            case JSType::JS_API_FAST_BUFFER: {
+                break;
+            }
             case JSType::LINKED_NODE: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), LinkedNode::SIZE, 4U);
                 break;

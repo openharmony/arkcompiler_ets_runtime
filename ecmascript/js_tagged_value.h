@@ -657,6 +657,7 @@ public:
     bool IsJSAPIVectorIterator() const;
     bool IsJSAPIBitVector() const;
     bool IsJSAPIBitVectorIterator() const;
+    bool IsJSAPIBuffer() const;
     bool IsJSAPIQueue() const;
     bool IsJSAPIQueueIterator() const;
     bool IsJSAPIPlainArray() const;

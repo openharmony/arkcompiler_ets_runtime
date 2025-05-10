@@ -300,6 +300,14 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 SerializeJSONObject(valHandle, replacer);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 return tagValue;
+            } case JSType::JS_API_FAST_BUFFER: {
+                JSHandle bufferHandle = JSHandle<JSTaggedValue>(thread_, tagValue);
+                CheckStackPushSameValue(valHandle);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                valHandle = JSHandle<JSTaggedValue>(thread_, JSAPIFastBuffer::FromBufferToArray(thread_, bufferHandle));
+                SerializeJSONObject(valHandle, replacer);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                return tagValue;
             }
             // If Type(value) is String, return QuoteJSONString(value).
             case JSType::LINE_STRING:

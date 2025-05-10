@@ -16,6 +16,7 @@ BusinessError: Container is empty
 BusinessError: Container is empty
 Test ArrayList success!!!
 BusinessError: The forEach method cannot be bound
+Test Buffer success!!!
 Test Deque success!!!
 {}
 BusinessError: Container is empty
@@ -50,6 +51,7 @@ Test TreeSet success!!!
 226,195,156,20
 Test Vector success!!!
 Test ArrayList
+Test Buffer done
 Test Deque done
 Test hashmap done
 Test hashset done

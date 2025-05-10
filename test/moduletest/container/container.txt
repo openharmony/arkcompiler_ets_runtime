@@ -1,4 +1,5 @@
 container_arraylist.js;container_arraylist;esm;container_arraylist.js;xxcontainer_arraylistxx
+container_buffer.js;container_buffer;esm;container_buffer.js;xxcontainer_bufferxx
 container_deque.js;container_deque;esm;container_deque.js;xxcontainer_dequexx
 container_hashmap.js;container_hashmap;esm;container_hashmap.js;xxcontainer_hashmapxx
 container_hashset.js;container_hashset;esm;container_hashset.js;xxcontainer_hashsetxx

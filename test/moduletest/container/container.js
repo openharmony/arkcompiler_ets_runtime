@@ -20,6 +20,7 @@
  * @tc.require: issueI5NO8G
  */
 import {arraylistRes} from './container_arraylist'
+import {bufferRes} from './container_buffer'
 import {dequeRes} from './container_deque'
 import {hashmapRes} from './container_hashmap'
 import {hashsetRes} from './container_hashset'
@@ -34,6 +35,7 @@ import {treemapRes} from './container_treemap'
 import {treesetRes} from './container_treeset'
 import {vectorRes} from './container_vector'
 print(arraylistRes);
+print(bufferRes);
 print(dequeRes);
 print(hashmapRes);
 print(hashsetRes);
