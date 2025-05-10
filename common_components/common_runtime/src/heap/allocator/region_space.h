@@ -32,6 +32,8 @@
 #include "common_interfaces/base_runtime.h"
 
 namespace panda {
+class Taskpool;
+
 // RegionSpace aims to be the API for other components of runtime
 // the complication of implementation is delegated to RegionManager
 // allocator should not depend on any assumptions on the details of RegionManager
@@ -149,7 +151,7 @@ public:
 
     // void ClearAllLiveInfo() { regionManager_.ClearAllLiveInfo(); }
 
-    void CopyFromSpace(GCThreadPool* threadPool)
+    void CopyFromSpace(Taskpool *threadPool)
     {
         ARK_COMMON_PHASE_TIMER("CopyFromRegions");
         regionManager_.CopyFromRegions(threadPool);

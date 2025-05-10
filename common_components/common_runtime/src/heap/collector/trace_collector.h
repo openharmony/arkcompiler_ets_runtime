@@ -26,6 +26,7 @@
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
 
 namespace panda {
+class GlobalWorkStackQueue;
 
 // number of nanoseconds in a microsecond.
 constexpr uint64_t NS_PER_US = 1000;
@@ -154,6 +155,11 @@ public:
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return request.ShouldBeIgnored(); }
 
+    void ProcessMarkStack(uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
+                          GlobalWorkStackQueue &globalQueue);
+
+    void TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue);
+
     // live but not resurrected object.
     bool IsMarkedObject(const BaseObject* obj) const { return RegionSpace::IsMarkedObject(obj); }
 
@@ -267,7 +273,7 @@ protected:
         // if heap is marked and tracing result will be used during next gc, we should not reset liveInfo.
     }
 
-    int32_t GetGCThreadCount(const bool isConcurrent) const
+    uint32_t GetGCThreadCount(const bool isConcurrent) const
     {
         return collectorResources_.GetGCThreadCount(isConcurrent);
     }
@@ -280,9 +286,9 @@ protected:
 
     inline void SetGCReason(const GCReason reason) { gcReason_ = reason; }
 
-    GCThreadPool* GetThreadPool() const { return collectorResources_.GetThreadPool(); }
+    Taskpool *GetThreadPool() const { return collectorResources_.GetThreadPool(); }
     // enum all roots.
-    void EnumerateAllRootsImpl(GCThreadPool* threadPool, RootSet& rootSet);
+    void EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet);
 
     // let finalizerProcessor process finalizers, and mark resurrected if in stw gc
     virtual void ProcessWeakReferences() {}
@@ -298,7 +304,7 @@ protected:
     // concurrent marking.
     void TracingImpl(WorkStack& workStack, bool parallel);
 
-    bool AddConcurrentTracingWork(RootSet& rs);
+    bool AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue, size_t threadCount);
     virtual void EnumAndTagRawRoot(ObjectRef& root, RootSet& rootSet) const
     {
         LOG_COMMON(FATAL) << "Unresolved fatal";
