@@ -230,7 +230,7 @@ ohos_static_library("ark_runtime_host_unittest") {
     }
 
     # TODO: CMC-GC UT FIX LATER
-    if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    if (ets_runtime_enable_cmc_gc) {
       deps -= [ "$js_root/test/jittest:ark_jit_test" ]
       if (!run_with_asan) {
         deps -= [
@@ -347,9 +347,12 @@ config("ark_jsruntime_common_config") {
 
   defines = [ "PANDA_ENABLE_LTO" ]
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
+    print("########## ets_runtime enable cmc-gc ##############")
     defines += [ "USE_CMC_GC" ]
     defines += [ "USE_READ_BARRIER" ]
+  } else {
+    print("########## ets_runtime disable cmc-gc ##############")
   }
 
   if (ark_standalone_build) {
@@ -1038,6 +1041,12 @@ ecma_source += [
   "common_components/taskpool/task_queue.cpp",
 ]
 
+if (ets_runtime_enable_cmc_gc) {
+  ecma_source += [
+    "ecmascript/mem/cmc_gc/gc_hooks.cpp",
+  ]
+}
+
 if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
 }
@@ -1285,7 +1294,6 @@ ohos_source_set("libcommon_components_set") {
     "common_components/thread/thread_holder.cpp",
     "common_components/thread/thread_holder_manager.cpp",
     "ecmascript/crt.cpp",
-    "ecmascript/mem/cmc_gc/gc_hooks.cpp",
   ]
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
@@ -1407,7 +1415,7 @@ ohos_source_set("libark_jsruntime_test_set") {
     defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps += [ ":libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
@@ -1456,7 +1464,7 @@ ohos_source_set("libark_jsruntime_static") {
     ]
   }
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps += [ ":libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]

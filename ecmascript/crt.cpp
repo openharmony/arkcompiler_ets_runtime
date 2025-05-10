@@ -19,7 +19,6 @@
 #include <cstdint>
 #include <dlfcn.h>
 
-#include "common_components/common_runtime/src/heap/allocator/region_desc.h"
 #include "ecmascript/mem/cmc_gc/gc_hooks.h"
 
 namespace panda {

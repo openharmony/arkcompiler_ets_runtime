@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
 module_test_list = [
   "addelementinternal",
   "allocatearraybuffer",
@@ -176,7 +178,7 @@ module_test_list = [
 ]
 
 # TODO: CMC-GC UT FIX LATER
-if (defined(enable_cmc_gc) && enable_cmc_gc) {
+if (ets_runtime_enable_cmc_gc) {
   module_test_list -= [
     "allocatearraybuffer",
     "builtins",
@@ -404,7 +406,7 @@ group("ark_asm_assert_test") {
     ]
 
     # TODO: CMC-GC UT FIX LATER
-    if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    if (ets_runtime_enable_cmc_gc) {
       release_test_assert_list -= [ "hugearray" ]
     }
 

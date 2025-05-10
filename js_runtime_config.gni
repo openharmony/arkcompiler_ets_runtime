@@ -19,10 +19,6 @@ if (!defined(ark_hybrid)) {
   ark_hybrid = false
 }
 
-if (!defined(enable_cmc_gc)) {
-  enable_cmc_gc = false
-}
-
 declare_args() {
   # If true, use icu to implement Intl APIs.
   # If false, use @ohos.intl APIs to implement Intl APIs.
@@ -67,6 +63,12 @@ declare_args() {
 
   # NOTE(ipetrov): Need to enable for mac previewer
   ark_js_hybrid = !ark_standalone_build && !is_mac
+
+  ets_runtime_enable_cmc_gc = false
+}
+
+if (defined(enable_cmc_gc) && !ets_runtime_enable_cmc_gc) {
+  ets_runtime_enable_cmc_gc = enable_cmc_gc
 }
 
 if (target_cpu == "arm64") {

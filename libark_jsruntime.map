@@ -96,6 +96,10 @@
       panda::JsiNativeScope::*;
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
+      panda::BaseRuntime::*;
+      panda::VisitDynamicRoots*;
+      panda::VisitDynamicWeakRoots*;
+      panda::BaseObject::*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::Log::*;

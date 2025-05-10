@@ -299,6 +299,7 @@ HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotifyThenResume)
         auto profiler = std::make_shared<PGOProfilerMock>(vm, true);
         state->SuspendByGC();
         state->ResumeByGC(profiler.get());
+        profiler.reset();
         JSNApi::DestroyJSVM(vm);
     });
 

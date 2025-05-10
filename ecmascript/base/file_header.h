@@ -19,7 +19,6 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/log_wrapper.h"
 #include "utils/bit_utils.h"
-#include "zlib.h"
 
 #include <array>
 #include <optional>
