@@ -18,6 +18,7 @@
 #include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
+#include "zlib.h"
 
 namespace panda::ecmascript::pgo {
 

@@ -56,11 +56,11 @@ obj/arkcompiler/ets_runtime/test/aottest/vtable/break_inherit_info/break_inherit
 obj/arkcompiler/ets_runtime/test/aottest/webkit_call_convention/webkit_call_convention/SlowPath/LiteCG
 obj/arkcompiler/ets_runtime/test/deopttest/elements_kind/elements_kind/SlowPath/LiteCG
 obj/arkcompiler/ets_runtime/test/deopttest/newobjrange_nodeopt/newobjrange_nodeopt/LiteCG
-obj/arkcompiler/ets_runtime/ecmascript/compiler/aot_file/tests/AOTFileTest/aot_file_test.o
+obj/arkcompiler/ets_runtime/ecmascript/compiler/aot_file/tests/AOTFileTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWithQemu
-obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerThirdTest/heap_tracker_third_test.o
+obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerThirdTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest/heap_dump_test.o
-obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerSecondTest/heap_tracker_second_test.o
+obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerSecondTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapSnapShotTest/heap_snapshot_test.o
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerFirstTest/heap_tracker_first_test.o
 obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_DateTimeFormat_Second_TestWithQemu
@@ -77,7 +77,7 @@ obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_String_TestWithQe
 tests/unittest/ets_runtime/ExtractorToolTest
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest/pgo_profiler_test.o
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_Sendable_Test/jsnapi_sendable_tests.o
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne/pgo_profiler_test_one.o
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOneWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/platform/unix/ohos/tests/BacktraceTestWithQemu
 tests/unittest/ets_runtime/Jsnapi_002_Test

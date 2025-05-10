@@ -23,10 +23,6 @@
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
 // `WorkStack` Should be moved to BaseRT and panda namespace later
 namespace panda {
-
-void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
-void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
-
 // register this function to arkcommon
 void FillFreeObject(void *object, size_t size);
 void SetBaseAddress(uintptr_t base);

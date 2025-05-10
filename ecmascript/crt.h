@@ -58,9 +58,8 @@ namespace panda {
     // forward static root
     extern "C" void RegisterPreforwardStaticRootsHook(PreforwardStaticRootsHookType);
 
-    extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
+    PUBLIC_API extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
     extern "C" void VisitCoroutine(void *coroutine, CommonRootVisitor visitor);
-
     class CommonRuntime {
     public:
         CommonRuntime() = default;

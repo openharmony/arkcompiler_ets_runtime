@@ -64,6 +64,12 @@ declare_args() {
   ets_runtime_feature_enable_list = false
   enable_gc_dfx_options = false
   ark_js_hybrid = false
+
+  ets_runtime_enable_cmc_gc = false
+}
+
+if (defined(enable_cmc_gc) && !ets_runtime_enable_cmc_gc) {
+  ets_runtime_enable_cmc_gc = enable_cmc_gc
 }
 
 if (target_cpu == "arm64") {

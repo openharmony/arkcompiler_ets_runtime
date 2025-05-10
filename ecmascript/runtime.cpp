@@ -183,6 +183,7 @@ void Runtime::RegisterThread(JSThread* newThread)
         threads_.emplace_back(newThread);
     }
 #ifdef USE_CMC_GC
+    newThread->GetThreadHolder()->BindMutator();
     newThread->GetThreadHolder()->RegisterJSThread(newThread);
 #else
     // send all current suspended requests to the new thread
@@ -206,6 +207,7 @@ void Runtime::UnregisterThread(JSThread* thread)
     void *mutator = holder->GetMutator();
     ASSERT(mutator != nullptr);
     holder->UnregisterJSThread(thread);
+    holder->UnbindMutator();
 #endif
 }
 

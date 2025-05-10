@@ -105,9 +105,9 @@ public:
         return TaggedObject::Cast(object)->GetForwardingPointer();
     }
 
-    void SetForwardingPointerExclusive(BaseObject *object, BaseObject *fwdPtr) override
+    void SetForwardingPointerAfterExclusive(BaseObject *object, BaseObject *fwdPtr) override
     {
-        TaggedObject::Cast(object)->SetForwardingPointerExclusive(fwdPtr);
+        TaggedObject::Cast(object)->SetForwardingPointerAfterExclusive(fwdPtr);
     }
 
 private:

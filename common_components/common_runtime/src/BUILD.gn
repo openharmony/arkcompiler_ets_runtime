@@ -69,6 +69,11 @@ ohos_source_set("libarkcommon-runtime") {
     "../../..:ark_jsruntime_public_config",
     "../../..:ark_jsruntime_common_config",
   ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps = hiviewdfx_deps
+
   include_dirs = []
   cflags_cc = [ "-Wno-unused-lambda-capture" ]
   sources = [
@@ -89,4 +94,7 @@ ohos_source_set("libarkcommon-runtime") {
 
     "heap",
   ]
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
