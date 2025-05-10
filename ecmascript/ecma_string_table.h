@@ -17,13 +17,13 @@
 #define ECMASCRIPT_STRING_TABLE_H
 
 #include <array>
+#include "common_components/taskpool/task.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
-#include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 class EcmaString;

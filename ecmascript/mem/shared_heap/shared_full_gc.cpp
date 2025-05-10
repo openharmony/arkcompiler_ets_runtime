@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"

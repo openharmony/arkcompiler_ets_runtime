@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,21 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TASKPOOL_RUNNER_H
-#define ECMASCRIPT_TASKPOOL_RUNNER_H
+#ifndef COMMON_COMPONENTS_TASKPOOL_RUNNER_H
+#define COMMON_COMPONENTS_TASKPOOL_RUNNER_H
 
 #include <array>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include <functional>
 
-#include "ecmascript/common.h"
-#include "ecmascript/taskpool/task_queue.h"
-#include "ecmascript/platform/mutex.h"
+#include "common_components/taskpool/task_queue.h"
+#include "common_interfaces/base/common.h"
+#include "libpandabase/macros.h"
 #include "libpandabase/os/thread.h"
 
-namespace panda::ecmascript {
+namespace panda {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
 static constexpr uint32_t MAX_TASKPOOL_THREAD_NUM = 5;
 static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
@@ -70,7 +71,7 @@ public:
 
     bool IsInThreadPool(std::thread::id id)
     {
-        LockHolder holder(mtxPool_);
+        std::lock_guard<std::mutex> guard(mtxPool_);
         for (auto &thread : threadPool_) {
             if (thread->get_id() == id) {
                 return true;
@@ -102,11 +103,11 @@ private:
     std::array<Task*, MAX_TASKPOOL_THREAD_NUM + 1> runningTask_;
     uint32_t totalThreadNum_ {0};
     std::vector<uint32_t> gcThreadId_ {};
-    Mutex mtx_;
-    Mutex mtxPool_;
+    std::mutex mtx_;
+    std::mutex mtxPool_;
 
     std::function<void(os::thread::native_handle_type)> prologueHook_;
     std::function<void(os::thread::native_handle_type)> epilogueHook_;
 };
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_TASKPOOL_RUNNER_H
+}  // namespace panda
+#endif  // COMMON_COMPONENTS_TASKPOOL_RUNNER_H

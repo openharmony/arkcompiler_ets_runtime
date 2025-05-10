@@ -16,6 +16,7 @@
 #define ECMASCRIPT_JIT_PROFILER_H
 #include <chrono>
 #include <memory>
+#include "common_components/taskpool/task.h"
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_env.h"
@@ -33,7 +34,6 @@
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/taskpool/task.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 namespace panda::ecmascript {
 using namespace pgo;

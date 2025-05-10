@@ -19,12 +19,12 @@
 #include <array>
 #include <atomic>
 
+#include "common_components/taskpool/task.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
-#include "ecmascript/taskpool/task.h"
 
 #include "ecmascript/platform/mutex.h"
 
@@ -46,20 +46,7 @@ public:
     ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type);
     ~ConcurrentMarker() = default;
 
-    static bool TryIncreaseTaskCounts()
-    {
-        size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-        {
-            LockHolder holder(taskCountMutex_);
-            // total counts of running concurrent mark tasks should be less than taskPoolSize
-            if (taskCounts_ + 1 < taskPoolSize) {
-                taskCounts_++;
-                return true;
-            }
-        }
-        LOG_FULL(INFO) << "Concurrent mark tasks in taskPool are full";
-        return false;
-    }
+    static bool TryIncreaseTaskCounts();
 
     static void DecreaseTaskCounts()
     {

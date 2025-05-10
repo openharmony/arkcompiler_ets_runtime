@@ -32,7 +32,6 @@
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"

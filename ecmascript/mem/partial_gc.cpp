@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/partial_gc.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_evacuator.h"

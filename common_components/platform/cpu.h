@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,21 +13,13 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/regexp_cached_chunk.h"
-
-
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/heap.h"
-
-
-namespace panda::ecmascript {
-
-RegExpCachedChunk::RegExpCachedChunk(JSThread *JSThread) : jsThread_(JSThread)
-{
-    ASSERT(jsThread_ != nullptr);
-    allocator_ = jsThread_->GetNativeAreaAllocator();
-    currentArea_ = jsThread_->GetOrCreateRegExpCache();
-    ptr_ = currentArea_->GetBegin();
-    end_ = currentArea_->GetEnd();
-}
-}  // namespace panda::ecmascript
+ #ifndef COMMON_COMPONENTS_PLATFORM_OS_H
+ #define COMMON_COMPONENTS_PLATFORM_OS_H
+ 
+ #include <cstdint>
+ 
+ namespace panda {
+ uint32_t NumberOfCpuCore();
+ }  // namespace panda
+ #endif  // COMMON_COMPONENTS_PLATFORM_OS_H
+ 

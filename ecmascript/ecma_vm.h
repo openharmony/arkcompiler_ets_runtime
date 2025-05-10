@@ -24,6 +24,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
@@ -32,7 +33,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
-#include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/platform/mutex.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 #ifdef USE_CMC_GC

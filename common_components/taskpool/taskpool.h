@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TASKPOOL_TASKPOOL_H
-#define ECMASCRIPT_TASKPOOL_TASKPOOL_H
+#ifndef COMMON_COMPONENTS_TASKPOOL_TASKPOOL_H
+#define COMMON_COMPONENTS_TASKPOOL_TASKPOOL_H
 
 #include <memory>
+#include <mutex>
 
-#include "ecmascript/common.h"
-#include "ecmascript/taskpool/runner.h"
-#include "ecmascript/platform/mutex.h"
-#include "ecmascript/daemon/daemon_thread.h"
+#include "common_components/taskpool/runner.h"
+#include "common_interfaces/base/common.h"
+#include "libpandabase/macros.h"
 
-namespace panda::ecmascript {
+namespace panda {
 class PUBLIC_API Taskpool {
 public:
     PUBLIC_API static Taskpool *GetCurrentTaskpool();
@@ -31,7 +31,7 @@ public:
     Taskpool() = default;
     PUBLIC_API ~Taskpool()
     {
-        LockHolder lock(mutex_);
+        std::lock_guard<std::mutex> guard(mutex_);
         runner_->TerminateThread();
         isInitialized_ = 0;
     }
@@ -71,13 +71,6 @@ public:
         return runner_->IsInThreadPool(id);
     }
 
-    bool IsDaemonThreadOrInThreadPool(std::thread::id id) const
-    {
-        DaemonThread *dThread = DaemonThread::GetInstance();
-        return IsInThreadPool(id) || (dThread != nullptr
-            && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
-    }
-
     void SetThreadPriority(PriorityMode mode)
     {
         runner_->SetQosPriority(mode);
@@ -90,7 +83,7 @@ private:
 
     std::unique_ptr<Runner> runner_;
     volatile int isInitialized_ = 0;
-    Mutex mutex_;
+    std::mutex mutex_;
 };
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PALTFORM_PLATFORM_H
+}  // namespace panda
+#endif  // COMMON_COMPONENTS_TASKPOOL_TASKPOOL_H
