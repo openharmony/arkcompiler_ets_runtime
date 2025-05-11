@@ -29,8 +29,8 @@ export class DataManager {
 
     insertEvent() {
         let promise = this.dataHelper.getDsHelper()
-        let env = ArkTools.getLexicalEnv(this.dataHelper.getDsHelper)
-        if (env !== undefined) {
+        let res = ArkTools.currentEnvIsGlobal(this.dataHelper.getDsHelper)
+        if (res !== true) {
             print("lexical env of async function should not be changed!")
         }
         promise.then((dsHelper) => {

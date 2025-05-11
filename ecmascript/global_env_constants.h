@@ -51,7 +51,8 @@ class ObjectFactory;
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, SJSNativePointerClass, SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                 \
-    V(JSTaggedValue, EnvClass, ENV_CLASS_INDEX, ecma_roots_class)                                                     \
+    V(JSTaggedValue, LexicalEnvClass, LEXICAL_ENV_CLASS_INDEX, ecma_roots_class)                                      \
+    V(JSTaggedValue, SFunctionEnvClass, SFUNCTION_ENV_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, SymbolClass, SYMBOL_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, AccessorDataClass, ACCESSOR_DATA_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, InternalAccessorClass, INTERNAL_ACCESSOR_CLASS_INDEX, ecma_roots_class)                          \
@@ -581,6 +582,7 @@ class ObjectFactory;
     V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                              \
     V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)                     \
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, EmptySFunctionEnv, EMPTY_SFUNCTION_ENV_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)                     \
     V(JSTaggedValue, ProxyMethod, PROXY_METHOD_INDEX, ecma_roots_special)                                       \
     V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                              \
@@ -747,11 +749,11 @@ public:
 private:
     void InitSharedStrings(ObjectFactory *factory);
     void InitSharedRootsClasses(ObjectFactory *factory);
-    void InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory);
+    void InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);
     void InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory);
     void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
-    void InitMiscellanious(JSThread *thread, ObjectFactory *factory);
+    void InitMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
 
     JSTaggedValue constants_[static_cast<int>(ConstantIndex::CONSTANT_COUNT)];  // NOLINT(modernize-avoid-c-arrays)

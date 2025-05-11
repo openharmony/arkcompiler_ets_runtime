@@ -17,6 +17,7 @@
 #define ECMASCRIPT_GLOBAL_ENV_H
 
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/base_env.h"
 #include "ecmascript/js_global_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -26,7 +27,7 @@
 
 namespace panda::ecmascript {
 class JSThread;
-class GlobalEnv : public TaggedObject {
+class GlobalEnv : public BaseEnv {
 public:
     using Field = GlobalEnvField;
 
@@ -235,7 +236,7 @@ public:
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ACCESSORS)
 #undef GLOBAL_ENV_FIELD_ACCESSORS
 
-    static constexpr size_t HEADER_SIZE = TaggedObjectSize();
+    static constexpr size_t HEADER_SIZE = BaseEnv::DATA_OFFSET;
     static constexpr size_t DATA_SIZE = HEADER_SIZE + FINAL_INDEX * JSTaggedValue::TaggedTypeSize();
     static constexpr size_t BIT_FIELD_OFFSET = DATA_SIZE + RESERVED_LENGTH * JSTaggedValue::TaggedTypeSize();
 

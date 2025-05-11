@@ -39,7 +39,7 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
     Label hasPendingException(env);
     Label noException(env);
     auto hclass = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue_, ConstantIndex::ENV_CLASS_INDEX);
+        VariableType::JS_POINTER(), glue_, ConstantIndex::LEXICAL_ENV_CLASS_INDEX);
     AllocateInYoung(result, &hasPendingException, &noException, hclass);
     Bind(&noException);
     {
@@ -52,6 +52,18 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
             glue_, result->ReadVariable(), Int32(LexicalEnv::SCOPE_INFO_INDEX), Hole());
         SetValueToTaggedArray(VariableType::JS_POINTER(),
             glue_, result->ReadVariable(), Int32(LexicalEnv::PARENT_ENV_INDEX), parent);
+        // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
+        Label isEnv(env);
+        Label notEnv(env);
+        BRANCH_LIKELY(TaggedIsHeapObject(parent), &isEnv, &notEnv);
+        Bind(&isEnv);
+        GateRef globalEnv = GetValueFromTaggedArray(parent, Int32(BaseEnv::GLOBAL_ENV_INDEX));
+        SetValueToTaggedArray(VariableType::JS_POINTER(),
+            glue_, result->ReadVariable(), Int32(LexicalEnv::GLOBAL_ENV_INDEX), globalEnv);
+        Jump(exit);
+        Bind(&notEnv);
+        SetValueToTaggedArray(VariableType::INT64(),
+            glue_, result->ReadVariable(), Int32(LexicalEnv::GLOBAL_ENV_INDEX), Hole());
         Jump(exit);
     }
     Bind(&hasPendingException);

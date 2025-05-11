@@ -2221,10 +2221,12 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnv(JSThread *thread, uint16_t numV
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
-
-    JSTaggedValue currentLexenv = thread->GetCurrentLexenv();
-    newEnv->SetParentEnv(thread, currentLexenv);
-    newEnv->SetScopeInfo(thread, JSTaggedValue::Hole());
+    JSTaggedValue currentEnv = thread->GetCurrentLexenv();
+    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
+    if LIKELY(currentEnv.IsHeapObject()) {
+        newEnv->SetGlobalEnv(thread, BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv());
+    }
+    newEnv->SetParentEnv(thread, currentEnv);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return newEnv.GetTaggedValue();
 }
@@ -2476,8 +2478,8 @@ JSTaggedValue RuntimeStubs::RuntimeLdSendableClass(const JSHandle<JSTaggedValue>
         ASSERT(currentEnv.IsLexicalEnv());
         currentEnv = LexicalEnv::Cast(currentEnv.GetTaggedObject())->GetParentEnv();
     }
-    ASSERT(currentEnv.IsJSSharedFunction());
-    return currentEnv;
+    ASSERT(currentEnv.IsSFunctionEnv());
+    return SFunctionEnv::Cast(currentEnv.GetTaggedObject())->GetConstructor();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
@@ -2696,9 +2698,12 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint1
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
-
-    JSTaggedValue currentLexenv = thread->GetCurrentLexenv();
-    newEnv->SetParentEnv(thread, currentLexenv);
+    JSTaggedValue currentEnv = thread->GetCurrentLexenv();
+    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
+    if LIKELY(currentEnv.IsHeapObject()) {
+        newEnv->SetGlobalEnv(thread, BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv());
+    }
+    newEnv->SetParentEnv(thread, currentEnv);
     JSTaggedValue scopeInfo = ScopeInfoExtractor::GenerateScopeInfo(thread, scopeId);
     newEnv->SetScopeInfo(thread, scopeInfo);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2762,13 +2767,17 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId,
-                                                            JSHandle<JSTaggedValue> &currentLexEnv,
+                                                            JSHandle<JSTaggedValue> &currentEnv,
                                                             JSHandle<JSTaggedValue> &func)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
-
-    newEnv->SetParentEnv(thread, currentLexEnv.GetTaggedValue());
+    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
+    if LIKELY(currentEnv->IsHeapObject()) {
+        TaggedObject* obj = currentEnv.GetTaggedValue().GetTaggedObject();
+        newEnv->SetGlobalEnv(thread, BaseEnv::Cast(obj)->GetGlobalEnv());
+    }
+    newEnv->SetParentEnv(thread, currentEnv.GetTaggedValue());
     JSTaggedValue scopeInfo = RuntimeOptGenerateScopeInfo(thread, scopeId, func.GetTaggedValue());
     newEnv->SetScopeInfo(thread, scopeInfo);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -1037,7 +1037,7 @@ public:
             {JSType::COW_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
             {JSType::FUNCTION_TEMPLATE, {"TAGGED_OBJECT"}},
-            {JSType::GLOBAL_ENV, {"TAGGED_OBJECT"}},
+            {JSType::GLOBAL_ENV, {"TAGGED_ARRAY"}},
             {JSType::IMPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INDIRECT_EXPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INTERNAL_ACCESSOR, {"RECORD"}},

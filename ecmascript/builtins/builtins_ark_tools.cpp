@@ -254,6 +254,24 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Null();
 }
 
+JSTaggedValue BuiltinsArkTools::CurrentEnvIsGlobal(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    if (object->IsHeapObject() && object->IsJSFunction()) {
+        JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(object);
+        if (function->GetLexicalEnv().IsJSGlobalEnv()) {
+            return JSTaggedValue::True();
+        }
+    }
+    return JSTaggedValue::False();
+}
+
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

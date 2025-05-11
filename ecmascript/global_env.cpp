@@ -27,6 +27,7 @@
 namespace panda::ecmascript {
 void GlobalEnv::Init(JSThread *thread)
 {
+    SetGlobalEnv(thread, JSTaggedValue(this));
     SetRegisterSymbols(thread, SymbolTable::Create(thread));
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
     auto* vm = thread->GetEcmaVM();

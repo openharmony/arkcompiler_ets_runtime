@@ -1080,45 +1080,9 @@ JSHandle<JSObject> ObjectFactory::CreateNapiObject()
     return jsObject;
 }
 
-JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<GlobalEnv> &env,
     const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
 {
-    if (!constructor->HasFunctionPrototype() ||
-        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
-        JSHandle<JSHClass> jshclass;
-        if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
-            jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
-        } else {
-            jshclass = NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT,
-                                     env->GetObjectFunctionPrototype());
-        }
-        JSHandle<JSObject> obj;
-        if (jshclass->IsJSSharedObject()) {
-            obj = NewSharedOldSpaceJSObject(jshclass);
-            if (jshclass->IsDictionaryMode()) {
-                auto fieldLayout = jshclass->GetLayout();
-                ASSERT(fieldLayout.IsDictionary());
-                auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
-                auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
-                obj->SetProperties(thread_, properties);
-            }
-        } else {
-            obj = NewJSObjectWithInit(jshclass);
-        }
-        return obj;
-    }
-    JSHandle<JSObject> result =
-        NewJSObjectByConstructor(JSHandle<JSFunction>(env->GetObjectFunction()), JSHandle<JSTaggedValue>(constructor));
-    if (thread_->HasPendingException()) {
-        LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
-    }
-    return result;
-}
-
-JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
-                                                           uint32_t inlinedProps)
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
         JSHandle<JSHClass> jshclass;
@@ -1161,6 +1125,13 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
         LOG_FULL(FATAL) << "NewJSObjectByConstructor should not throw Exception! ";
     }
     return result;
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
+                                                           uint32_t inlinedProps)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    return NewJSObjectByConstructor(env, constructor, inlinedProps);
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
@@ -2547,7 +2518,7 @@ JSHandle<LexicalEnv> ObjectFactory::NewLexicalEnv(int numSlots)
     NewObjectHook();
     size_t size = LexicalEnv::ComputeSize(numSlots);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetEnvClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetLexicalEnvClass().GetTaggedObject()), size);
     JSHandle<LexicalEnv> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots + LexicalEnv::RESERVED_ENV_LENGTH);
     return array;
@@ -3788,6 +3759,7 @@ JSHandle<JSPromiseReactionsFunction> ObjectFactory::CreateJSPromiseReactionsFunc
     JSFunction::InitializeJSFunction(thread_, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
     reactionsFunction->SetMethod(thread_, method);
+    reactionsFunction->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(reactionsFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(1));
     return reactionsFunction;
@@ -3804,6 +3776,7 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     JSFunction::InitializeJSFunction(thread_, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_EXECUTOR));
     executorFunction->SetMethod(thread_, method);
+    executorFunction->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(executorFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::TWO));
     return executorFunction;
@@ -3851,6 +3824,7 @@ JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResol
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(thread_, JSTaggedValue::Undefined());
     function->SetValues(thread_, JSTaggedValue::Undefined());
@@ -3871,6 +3845,7 @@ JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyReject
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetErrors(thread_, JSTaggedValue::Undefined());
@@ -3891,6 +3866,7 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetValues(thread_, JSTaggedValue::Undefined());
@@ -3911,6 +3887,7 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetValues(thread_, JSTaggedValue::Undefined());
@@ -3931,6 +3908,7 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunctio
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
     function->SetOnFinally(thread_, JSTaggedValue::Undefined());
@@ -3948,6 +3926,7 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
     function->SetOnFinally(thread_, JSTaggedValue::Undefined());
@@ -4014,6 +3993,7 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueT
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
@@ -4029,6 +4009,7 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseThrowe
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
     function->SetMethod(thread_, method);
+    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));

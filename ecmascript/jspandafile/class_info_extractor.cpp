@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/class_info_extractor.h"
 
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
@@ -784,7 +785,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
             if (propValue->IsFunctionTemplate() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
                 auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
                 propValue.Update(
-                    CreateSFunctionFromTemplate(thread, literalFunc, prototype, JSHandle<JSTaggedValue>(constructor)));
+                    CreateSFunctionFromTemplate(thread, literalFunc, prototype, constructor));
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), constructor);
             }
@@ -810,7 +811,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
             if (propValue->IsFunctionTemplate()) {
                 auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
                 propValue.Update(CreateSFunctionFromTemplate(
-                    thread, literalFunc, JSHandle<JSObject>(constructor), JSHandle<JSTaggedValue>(constructor)));
+                    thread, literalFunc, JSHandle<JSObject>(constructor), constructor));
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), constructor);
             }
@@ -840,7 +841,9 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     prototype->GetJSHClass()->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
-    constructor->SetLexicalEnv(thread, constructor);
+    JSHandle<SFunctionEnv> sFunctionEnv = factory->NewSFunctionEnv();
+    sFunctionEnv->SetConstructor(thread, constructor.GetTaggedValue());
+    constructor->SetLexicalEnv(thread, sFunctionEnv);
     return constructor;
 }
 
@@ -915,7 +918,7 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
         }
         if (propValue->IsFunctionTemplate()) {
             auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
-            propValue.Update(CreateSFunctionFromTemplate(thread, literalFunc, object, JSHandle<JSTaggedValue>(ctor)));
+            propValue.Update(CreateSFunctionFromTemplate(thread, literalFunc, object, ctor));
         } else if (propValue->IsAccessorData()) {
             UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), ctor);
         }
@@ -928,12 +931,14 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
 JSHandle<JSFunction> SendableClassDefiner::CreateSFunctionFromTemplate(JSThread *thread,
                                                                        const JSHandle<FunctionTemplate> &funcTemp,
                                                                        const JSHandle<JSObject> &homeObject,
-                                                                       const JSHandle<JSTaggedValue> &lexenv)
+                                                                       const JSHandle<JSFunction> &ctor)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> propFunc = factory->CreateSFunctionFromTemplate(funcTemp);
     propFunc->SetHomeObject(thread, homeObject);
-    propFunc->SetLexicalEnv(thread, lexenv);
+    JSHandle<SFunctionEnv> sFunctionEnv = factory->NewSFunctionEnv();
+    sFunctionEnv->SetConstructor(thread, ctor.GetTaggedValue());
+    propFunc->SetLexicalEnv(thread, sFunctionEnv);
     ASSERT(!propFunc->GetClass()->IsExtensible());
     return propFunc;
 }
@@ -1162,14 +1167,14 @@ void SendableClassDefiner::UpdateAccessorFunction(JSThread *thread, const JSMuta
     if (getter.IsFunctionTemplate()) {
         auto funcTemp = JSHandle<FunctionTemplate>(thread, getter);
         auto propFunc = CreateSFunctionFromTemplate(
-            thread, funcTemp, JSHandle<JSObject>(homeObject), JSHandle<JSTaggedValue>(ctor));
+            thread, funcTemp, JSHandle<JSObject>(homeObject), ctor);
         accessor->SetGetter(thread, propFunc);
     }
     auto setter = accessor->GetSetter();
     if (setter.IsFunctionTemplate()) {
         auto funcTemp = JSHandle<FunctionTemplate>(thread, setter);
         auto propFunc = CreateSFunctionFromTemplate(
-            thread, funcTemp, JSHandle<JSObject>(homeObject), JSHandle<JSTaggedValue>(ctor));
+            thread, funcTemp, JSHandle<JSObject>(homeObject), ctor);
         accessor->SetSetter(thread, propFunc);
     }
 }

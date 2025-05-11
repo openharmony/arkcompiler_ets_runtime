@@ -426,7 +426,7 @@ void JSThread::Iterate(RootVisitor &visitor)
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    if (!glueData_.exception_.IsHole()) {
+    if (!glueData_.currentEnv_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));
     }
     visitor.VisitRangeRoot(Root::ROOT_VM,

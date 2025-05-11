@@ -459,7 +459,7 @@ private:
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,
                                                                const JSHandle<TaggedArray> &argumentsList);
     static inline JSTaggedValue RuntimeOptNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId,
-                                                                JSHandle<JSTaggedValue> &currentLexEnv,
+                                                                JSHandle<JSTaggedValue> &currentEnv,
                                                                 JSHandle<JSTaggedValue> &func);
     static inline JSTaggedValue RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex);
     static inline JSTaggedValue RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
