@@ -1435,6 +1435,7 @@
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/heapdump.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/heapdump1.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/allocation.abc -> /data/test" src="out"/>
         </preparer>
     </target>
