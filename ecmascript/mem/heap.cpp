@@ -143,12 +143,14 @@ bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 
 bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 {
+    if (sHugeObjectSpace_->CheckOOM(size)) {
+        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
+        return true;
+    }
     if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
         return false;
     }
-    size_t sharedGCThreshold = globalSpaceAllocLimit_ + spaceOvershoot_.load(std::memory_order_relaxed);
-    if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > sharedGCThreshold) &&
-        !NeedStopCollection()) {
+    if (GetHeapObjectSize() > globalSpaceAllocLimit_ && !NeedStopCollection()) {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
         return true;
     }

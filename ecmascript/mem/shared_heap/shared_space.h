@@ -266,6 +266,12 @@ public:
         return committedSize_ + size >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }
 
+    bool CheckOOM(size_t size) const
+    {
+        size_t alignedSize = AlignUp(size + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+        return CommittedSizeExceed(alignedSize);
+    }
+
     void CheckAndTriggerLocalFullMark(JSThread *thread, size_t size);
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
