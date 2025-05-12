@@ -28,6 +28,9 @@ declare_args() {
   # Enable pgo for building.
   ets_runtime_feature_enable_pgo = false
 
+  # Enable pgo for building.
+  ets_runtime_feature_enable_codemerge = false
+
   # Set pgo profdata path.
   ets_runtime_feature_pgo_path = ""
 
