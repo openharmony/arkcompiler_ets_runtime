@@ -529,7 +529,7 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
     GateRef glue = acc_.GetGlueFromArgList();
     GateRef function = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
     GateRef nativeCode = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), function,
-                                       builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));
+        builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));
     std::vector<GateRef> args(static_cast<size_t>(BuiltinsArgs::NUM_OF_INPUTS), builder_.Undefined());
     args[static_cast<size_t>(BuiltinsArgs::GLUE)] = glue;
     args[static_cast<size_t>(BuiltinsArgs::NATIVECODE)] = nativeCode;

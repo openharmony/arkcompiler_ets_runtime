@@ -1048,7 +1048,8 @@ public:
     GateRef ToNumber(GateRef glue, GateRef tagged);
     inline GateRef LoadPfHeaderFromConstPool(GateRef glue, GateRef jsFunc);
     GateRef RemoveTaggedWeakTag(GateRef weak);
-    inline GateRef LoadHCIndexFromConstPool(GateRef glue, GateRef cachedArray, GateRef cachedLength, GateRef traceId, Label *miss);
+    inline GateRef LoadHCIndexFromConstPool(GateRef glue, GateRef cachedArray, GateRef cachedLength, GateRef traceId,
+        Label *miss);
     inline GateRef LoadHCIndexInfosFromConstPool(GateRef glue, GateRef jsFunc);
     inline GateRef GetAttrIndex(GateRef index);
     inline GateRef GetAttr(GateRef glue, GateRef layoutInfo, GateRef index);

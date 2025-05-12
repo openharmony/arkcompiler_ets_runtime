@@ -675,7 +675,8 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
         mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, glueGlobalEnv,
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
-    GateRef newTargetHClass = Load(VariableType::JS_ANY(),  glue_, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef newTargetHClass =
+        Load(VariableType::JS_ANY(),  glue_, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(glue_, newTargetHClass)).Done(),
         &fastGetHClass, &slowPath);
 

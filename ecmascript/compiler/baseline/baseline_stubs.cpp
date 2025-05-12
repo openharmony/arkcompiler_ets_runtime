@@ -206,7 +206,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
         GateRef firstValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);                                 \
         BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);                                \
         Bind(&firstValueHeapObject);                                                                                 \
-        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                  \
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &whichPath, &hclassNotHit);                         \
     }                                                                                                                \
     Bind(&hclassNotHit);                                                                                             \
@@ -217,7 +217,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     Jump(&loopHead);                                                                                                 \
     LoopBegin(&loopHead);                                                                                            \
     {                                                                                                                \
-        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                  \
         GateRef jsType = GetObjectType(hclass);                                                                      \
         Label findProperty(env);                                                                                     \
         BRANCH(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);                                               \
@@ -227,13 +227,13 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
         BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);                                           \
         Bind(&isDicMode);                                                                                            \
         {                                                                                                            \
-            GateRef array = GetPropertiesArray(glue, *holder);                                                             \
+            GateRef array = GetPropertiesArray(glue, *holder);                                                       \
             GateRef entry = FindEntryFromHashTable<NameDictionary>(glue, array, propKey);                            \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
         }                                                                                                            \
         Bind(&notDicMode);                                                                                           \
         {                                                                                                            \
-            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);                                                        \
+            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);                                                  \
             GateRef propsNum = GetNumberOfPropsFromHClass(hclass);                                                   \
             GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);                       \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
@@ -5687,7 +5687,7 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
     Bind(&tryContinue);
     GateRef currentSp = *varSp;
     varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
-                 IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
+        IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef maybeFrameType = LoadZeroOffsetPrimitive(VariableType::INT64(), typePos);

@@ -881,7 +881,8 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate)
     acc_.SetDep(gate, acc_.GetDep(saveRegister));
     builder_.SetDepend(acc_.GetDep(saveRegister));
     GateRef context =
-        builder_.Load(VariableType::JS_POINTER(), glue_, genObj, builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
+        builder_.Load(VariableType::JS_POINTER(), glue_, genObj,
+                      builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
     // new tagged array
     auto method = methodLiteral_;
     const size_t arrLength = method->GetNumberVRegs() + 1; // 1: env vreg
@@ -2773,7 +2774,7 @@ void SlowPathLowering::LowerStSendableVar(GateRef gate)
     if (constLevel == 0) {
         builder_.Jump(&exit);
     } else if (constLevel == 1) {
-        currentEnv = builder_.GetValueFromTaggedArray(glue_,*currentEnv, index);
+        currentEnv = builder_.GetValueFromTaggedArray(glue_, *currentEnv, index);
         builder_.Jump(&exit);
     } else {
         DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
@@ -3719,7 +3720,7 @@ void SlowPathLowering::LowerGetUnsharedConstPool(GateRef gate)
     }
     GateRef sharedConstPool = acc_.GetValueIn(gate, 0);
     GateRef constPoolSize = builder_.LoadWithoutBarrier(VariableType::INT32(), sharedConstPool,
-                                          builder_.IntPtr(TaggedArray::LENGTH_OFFSET), sharedConstPool);
+        builder_.IntPtr(TaggedArray::LENGTH_OFFSET), sharedConstPool);
     GateRef unshareIdx = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::UNSHARED_CONSTPOOL_INDEX));
     GateRef offset =
         builder_.PtrMul(builder_.ZExtInt32ToPtr(unshareIdx), builder_.IntPtr(JSTaggedValue::TaggedTypeSize()));

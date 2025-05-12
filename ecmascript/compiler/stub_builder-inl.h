@@ -368,7 +368,7 @@ void StubBuilder::SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef h
 
 // memory
 inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, GateRef offset,
-                                  [[maybe_unused]] MemoryAttribute mAttr)
+                                 [[maybe_unused]] MemoryAttribute mAttr)
 {
     if (type == VariableType::NATIVE_POINTER()) {
         type = env_->IsArch64Bit() ? VariableType::INT64() : VariableType::INT32();
@@ -380,7 +380,7 @@ inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, 
 }
 
 inline GateRef StubBuilder::LoadZeroOffset(VariableType type, GateRef glue, GateRef base,
-                                  MemoryAttribute mAttr)
+                                           MemoryAttribute mAttr)
 {
     return Load(type, glue, base, IntPtr(0), mAttr);
 }
@@ -2124,7 +2124,7 @@ inline GateRef StubBuilder::IsInvalidPropertyBox(GateRef glue, GateRef obj)
     return TaggedIsHole(value);
 }
 
-inline GateRef StubBuilder::IsAccessorPropertyBox(GateRef glue,GateRef obj)
+inline GateRef StubBuilder::IsAccessorPropertyBox(GateRef glue, GateRef obj)
 {
     GateRef valueOffset = IntPtr(PropertyBox::VALUE_OFFSET);
     GateRef value = Load(VariableType::JS_ANY(), glue, obj, valueOffset);
@@ -2340,8 +2340,7 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
                                                  GateRef attrOffset, VariableType type, MemoryAttribute mAttr)
 {
     ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(IsNotDictionaryMode), BoolNot(IsDictionaryModeByHClass(hClass)), glue);
-    GateRef bitfield = LoadPrimitive(VariableType::INT32(), hClass,
-                            IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef bitfield = LoadPrimitive(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
     GateRef inlinedPropsStart = Int32And(Int32LSR(bitfield,
         Int32(JSHClass::InlinedPropsStartBits::START_BIT)),
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
@@ -3219,7 +3218,8 @@ inline GateRef StubBuilder::GetPropertiesFromSendableEnv(GateRef glue, GateRef o
     return env_->GetBuilder()->GetPropertiesFromSendableEnv(glue, object, index);
 }
 
-inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef glue, GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
+inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef glue, GateRef lexicalEnv, GateRef levelIndex,
+    GateRef slotIndex)
 {
     return env_->GetBuilder()->GetKeyFromLexivalEnv(glue, lexicalEnv, levelIndex, slotIndex);
 }
@@ -4077,13 +4077,13 @@ inline GateRef StubBuilder::GetViewedArrayBuffer(GateRef glue, GateRef dataView)
 inline GateRef StubBuilder::GetByteOffset(GateRef dataView)
 {
     return LoadPrimitive(VariableType::INT32(), dataView,
-                IntPtr(JSDataView::BYTE_OFFSET_OFFSET));
+        IntPtr(JSDataView::BYTE_OFFSET_OFFSET));
 }
 
 inline GateRef StubBuilder::GetByteLength(GateRef dataView)
 {
     return LoadPrimitive(VariableType::INT32(), dataView,
-                IntPtr(JSDataView::BYTE_LENGTH_OFFSET));
+        IntPtr(JSDataView::BYTE_LENGTH_OFFSET));
 }
 
 inline GateRef StubBuilder::GetArrayBufferData(GateRef glue, GateRef buffer)

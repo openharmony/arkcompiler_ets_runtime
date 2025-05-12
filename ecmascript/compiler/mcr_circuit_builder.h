@@ -70,7 +70,8 @@ GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj)
 
 GateRef CircuitBuilder::TaggedObjectIsShared(GateRef glue, GateRef obj)
 {
-    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), LoadHClass(glue, obj), IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), LoadHClass(glue, obj),
+        IntPtr(JSHClass::BIT_FIELD_OFFSET));
     return Int32NotEqual(
         Int32And(Int32LSR(bitfield, Int32(JSHClass::IsJSSharedBit::START_BIT)),
                  Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
@@ -360,7 +361,7 @@ GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef glue, GateRef obj)
 {
     GateRef jsType = GetObjectType(LoadHClass(glue, obj));
     return BitAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
+                  Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
 }
 
 GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef glue, GateRef obj)
@@ -513,7 +514,8 @@ GateRef CircuitBuilder::TaggedIsStoreAOTHandler(GateRef glue, GateRef x)
 
 GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::TRANS_WITH_PROTO_HANDLER)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x))
+        .And(IsJsType(glue, x, JSType::TRANS_WITH_PROTO_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)

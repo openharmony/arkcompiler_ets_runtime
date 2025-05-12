@@ -950,14 +950,16 @@ public:
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     GateRef Load(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef depend,
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
-    GateRef LoadFromAddress(VariableType type, GateRef glue, GateRef addr, MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef LoadFromAddress(VariableType type, GateRef glue, GateRef addr,
+        MemoryAttribute mAttr = MemoryAttribute::Default());
 
     // LoadWithoutBarrier
     GateRef LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset,
         MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef depend,
         MemoryAttribute mAttr = MemoryAttribute::Default());
-    GateRef LoadFromAddressWithoutBarrier(VariableType type, GateRef addr, MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef LoadFromAddressWithoutBarrier(VariableType type, GateRef addr,
+        MemoryAttribute mAttr = MemoryAttribute::Default());
 
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                MemoryAttribute mAttr = MemoryAttribute::Default());

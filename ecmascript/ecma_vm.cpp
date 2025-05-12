@@ -1679,8 +1679,6 @@ void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapaci
 #else
     std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
 #endif
-
-
     ClearUnsharedConstpoolArray();
     unsharedConstpools_ = newUnsharedConstpools;
     thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));

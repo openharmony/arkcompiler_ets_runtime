@@ -109,7 +109,7 @@ GateRef InterpreterStubBuilder::ReadInst4_3(GateRef pc)
 {
     // 2 : skip 1 byte of bytecode
     return Int8And(
-        Int8LSR(LoadPrimitive(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));  // 4 : read 4 byte of bytecode
+        Int8LSR(LoadPrimitive(VariableType::INT8(), pc, IntPtr(2)), Int8(4)), Int8(0xf));  // 4 : 4 byte of bytecode
 }
 
 GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
@@ -520,7 +520,7 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef glue, GateRef sp, 
     numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
                                          Int64((1LLU << MethodLiteral::NumArgsBits::SIZE) - 1)));
     GateRef fp = LoadPrimitive(VariableType::NATIVE_POINTER(), state,
-                      IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
+        IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
     Label actualEqualDeclared(env);
     Label actualNotEqualDeclared(env);
     BRANCH(Int32UnsignedGreaterThan(ChangeIntPtrToInt32(PtrSub(fp, sp)),

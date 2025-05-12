@@ -715,8 +715,8 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, s
     GateRef reservedFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef reservedPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef loadWithBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                        { glue, addr, reservedFrameArgs, reservedPc },
-                                        Circuit::NullGate(), "load barrier");
+                                            { glue, addr, reservedFrameArgs, reservedPc },
+                                            Circuit::NullGate(), "load barrier");
     {
         PrepareToScheduleNewGate(loadWithBarrier, currentBBGates);
         PrepareToScheduleNewGate(reservedPc, currentBBGates);

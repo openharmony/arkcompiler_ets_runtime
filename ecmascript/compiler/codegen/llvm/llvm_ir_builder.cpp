@@ -1127,7 +1127,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
                     LLVMBuildZExtOrBitCast(builder_, GetLValue(gateTmp), GetInt64T(), ""),
                 paramType, ""));
 #endif
- 
             } else {
 #ifndef ARK_USE_SATB_BARRIER
                 params.push_back(LLVMBuildBitCast(builder_, GetLValue(gateTmp), paramType, ""));

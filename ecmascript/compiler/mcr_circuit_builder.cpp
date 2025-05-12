@@ -1403,7 +1403,8 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label storeHash(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
-    GateRef hashCode = ZExtInt32ToInt64(LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
+    GateRef hashCode =
+        ZExtInt32ToInt64(LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
     BRANCH(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {

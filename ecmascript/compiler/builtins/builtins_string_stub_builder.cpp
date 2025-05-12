@@ -833,7 +833,8 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
             GateRef replaceTag = GetCallArg1(numArgs);
             BRANCH(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
             Bind(&replaceIsHeapObj);
-            BRANCH(LogicOrBuilder(env).Or(IsJSRegExp(glue, searchTag)).Or(IsEcmaObject(glue, searchTag)).Done(), slowPath, &next);
+            BRANCH(LogicOrBuilder(env).Or(IsJSRegExp(glue, searchTag)).Or(IsEcmaObject(glue, searchTag)).Done(),
+                slowPath, &next);
             Bind(&next);
             {
                 Label allAreStrings(env);
@@ -2565,7 +2566,7 @@ GateRef BuiltinsStringStubBuilder::IsSpecialSlicedString(GateRef glue, GateRef o
     builder_.Bind(&isSlicedStr);
     {
         GateRef hasBackingStore = builder_.LoadWithoutBarrier(VariableType::INT32(), obj,
-                                                builder_.IntPtr(SlicedString::BACKING_STORE_FLAG));
+            builder_.IntPtr(SlicedString::BACKING_STORE_FLAG));
         result = builder_.Int32Equal(hasBackingStore, builder_.Int32(EcmaString::HAS_BACKING_STORE));
         builder_.Jump(&exit);
     }
@@ -2857,7 +2858,7 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         Label afterFlat(env);
         Label getStringFromSingleCharTable(env);
         GateRef position = LoadPrimitive(VariableType::INT32(), thisValue,
-                                IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
+            IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
         GateRef len = GetLengthFromString(str);
         BRANCH(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
         Bind(&getFirst);
@@ -3293,7 +3294,8 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
                                 {
                                     StringInfoGateRef thisStringInfoGate(&thisFlat);
                                     StringInfoGateRef searchStringInfoGate(&searchFlat);
-                                    GateRef result = IsSubStringAt(glue, thisStringInfoGate, searchStringInfoGate, *startPos);
+                                    GateRef result =
+                                        IsSubStringAt(glue, thisStringInfoGate, searchStringInfoGate, *startPos);
                                     res->WriteVariable(result);
                                     Jump(exit);
                                 }
