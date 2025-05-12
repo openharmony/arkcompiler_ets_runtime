@@ -16,6 +16,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 #include "common_components/taskpool/taskpool.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 
@@ -254,7 +255,7 @@ bool PGOProfilerManager::InitializeData()
     return true;
 }
 
-void PGOProfilerManager::Destroy(std::shared_ptr<PGOProfiler>& profiler)
+void PGOProfilerManager::Destroy(JSThread *thread, std::shared_ptr<PGOProfiler>& profiler)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerManager::Destroy");
     LOG_PGO(INFO) << "attempting to destroy pgo profiler: " << profiler;
@@ -264,8 +265,11 @@ void PGOProfilerManager::Destroy(std::shared_ptr<PGOProfiler>& profiler)
             LockHolder lock(profilersMutex_);
             profilers_.erase(profiler);
         }
-        profiler->DumpBeforeDestroy();
-        profiler.reset();
+        profiler->DumpBeforeDestroy(thread);
+        {
+            ThreadNativeScope scope(thread);
+            profiler.reset();
+        }
         LOG_PGO(INFO) << "pgo profiler destroyed";
     }
 }

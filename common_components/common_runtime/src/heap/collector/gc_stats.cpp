@@ -15,8 +15,8 @@
 #include "common_components/common_runtime/src/heap/collector/gc_stats.h"
 
 #include "common_components/common_runtime/src/base/log_file.h"
-#include "common_components/common_runtime/src/common_runtime.h"
 #include "common_components/common_runtime/src/heap/heap.h"
+#include "common_interfaces/base_runtime.h"
 
 namespace panda {
 size_t g_gcCount = 0;
@@ -53,7 +53,7 @@ void GCStats::Init()
     collectionRate = 0.0;
 
     // 20 MB:set 20 MB as intial value
-    heapThreshold = std::min(ArkCommonRuntime::GetGCParam().gcThreshold, 20 * MB);
+    heapThreshold = std::min(BaseRuntime::GetInstance()->GetGCParam().gcThreshold, 20 * MB);
     // 0.2:set 20% heap size as intial value
     heapThreshold = std::min(static_cast<size_t>(Heap::GetHeap().GetMaxCapacity() * 0.2), heapThreshold);
 }

@@ -78,8 +78,6 @@ ohos_source_set("libarkcommon-runtime") {
   include_dirs = []
   cflags_cc = [ "-Wno-unused-lambda-capture" ]
   sources = [
-    "common_runtime.cpp",
-    "common_runtime_api.cpp",
     "heap_manager.cpp",
     "log_manager.cpp",
   ]

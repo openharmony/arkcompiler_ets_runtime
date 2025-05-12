@@ -20,7 +20,6 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#include "ecmascript/crt.h"
 #endif
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
@@ -125,7 +124,7 @@ void EcmaVM::PreFork()
     sHeap->CompactHeapBeforeFork(thread_);
 #endif
 
-    // CommonRuntime threads and GC Taskpool Thread should be merged together.
+    // CMC-GC threads and GC Taskpool Thread should be merged together.
     heap_->DisableParallelGC();
     sHeap->DisableParallelGC(thread_);
     heap_->GetWorkManager()->FinishInPreFork();
@@ -363,15 +362,15 @@ EcmaVM::~EcmaVM()
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         GetJit()->ClearTaskWithVm(this);
     }
+    // Destroy pgoProfiler should add after JIT::ClearTaskWithVm, and before ClearBufferData
+    if (pgoProfiler_ != nullptr) {
+        PGOProfilerManager::GetInstance()->Destroy(thread_, pgoProfiler_);
+        pgoProfiler_ = nullptr;
+    }
     // clear c_address: c++ pointer delete
     ClearBufferData();
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
-
-    if (pgoProfiler_ != nullptr) {
-        PGOProfilerManager::GetInstance()->Destroy(pgoProfiler_);
-        pgoProfiler_ = nullptr;
-    }
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     DumpCallTimeInfo();
@@ -758,7 +757,7 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
         reason == GCReason::ALLOCATION_FAILED) {
         type = GcType::FULL;
     }
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+    BaseRuntime::RequestGC(type);
     return;
 #endif
     heap_->CollectGarbage(gcType, reason);

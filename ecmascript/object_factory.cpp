@@ -15,9 +15,6 @@
 
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/mem/barriers.h"
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -3603,7 +3600,7 @@ void ObjectFactory::NewObjectHook() const
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
 #ifdef USE_CMC_GC
-           BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);
+           BaseRuntime::RequestGC(GcType::ASYNC);
 #else
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);

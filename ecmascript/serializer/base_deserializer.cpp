@@ -389,7 +389,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
     switch (space) {
 #ifdef USE_CMC_GC
         case SerializedObjectSpace::REGULAR_SPACE: {
-            if (currentRegularObjectAddr_ + objSize > currentRegularRegionBeginAddr_ + ArkGetRegionSize()) {
+            if (currentRegularObjectAddr_ + objSize >
+                    currentRegularRegionBeginAddr_ + SerializeUtils::GetRegionSize()) {
                 ASSERT(regularRegionIndex_ < regionVector_.size());
                 currentRegularObjectAddr_ = regionVector_[regularRegionIndex_++];
                 currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
@@ -399,7 +400,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             break;
         }
         case SerializedObjectSpace::PIN_SPACE: {
-            if (currentPinObjectAddr_ + objSize > currentPinRegionBeginAddr_ + ArkGetRegionSize()) {
+            if (currentPinObjectAddr_ + objSize > currentPinRegionBeginAddr_ + SerializeUtils::GetRegionSize()) {
                 ASSERT(pinRegionIndex_ < regionVector_.size());
                 currentPinObjectAddr_ = regionVector_[pinRegionIndex_++];
                 currentPinRegionBeginAddr_ = currentPinObjectAddr_;
@@ -639,7 +640,7 @@ void BaseDeserializer::AllocateToDifferentSpaces()
 #ifdef USE_CMC_GC
 void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 {
-    if (regularSpaceSize <= ArkGetRegionSize()) {
+    if (regularSpaceSize <= SerializeUtils::GetRegionSize()) {
         currentRegularObjectAddr_ = HeapAllocator::AllocateNoGC(regularSpaceSize);
     } else {
         currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_,
@@ -652,7 +653,7 @@ void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 }
 void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 {
-    if (pinSpaceSize <= ArkGetRegionSize()) {
+    if (pinSpaceSize <= SerializeUtils::GetRegionSize()) {
         currentPinObjectAddr_ = HeapAllocator::AllocatePinNoGC(pinSpaceSize);
     } else {
         currentPinObjectAddr_ = AllocateMultiCMCRegion(pinSpaceSize, pinRegionIndex_, RegionType::PinRegion);
@@ -665,7 +666,7 @@ void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 
 uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType)
 {
-    size_t regionSize = ArkGetRegionSize();
+    size_t regionSize = SerializeUtils::GetRegionSize();
     ASSERT(spaceObjSize > regionSize);
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = AlignUp(spaceObjSize, regionSize);

@@ -45,7 +45,7 @@ public:
     void Destroy();
     std::shared_ptr<PGOProfiler> BuildProfiler(EcmaVM* vm, bool isEnable);
     bool IsEnable() const;
-    void Destroy(std::shared_ptr<PGOProfiler>& profiler);
+    void Destroy(JSThread *thread, std::shared_ptr<PGOProfiler>& profiler);
     void Reset(const std::shared_ptr<PGOProfiler>& profiler, bool isEnable);
     void SamplePandaFileInfo(uint32_t checksum, const CString& abcName);
     void SetModuleName(const std::string& moduleName);

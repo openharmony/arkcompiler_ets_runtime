@@ -28,10 +28,6 @@
 #include "common_interfaces/thread/thread_holder.h"
 
 namespace panda {
-using JSGCCallbackHookType = void (*)(void *ecmaVM);
-
-extern "C" PUBLIC_API void ArkRegisterJSGCCallbackHook(JSGCCallbackHookType hook);
-
 class Mutator {
 public:
     using SuspensionType = MutatorBase::SuspensionType;
@@ -108,19 +104,6 @@ public:
     }
 
     // This interface can only be invoked in current thread environment.
-#ifdef _WIN64
-    __attribute__((always_inline)) void UpdateUnwindContext()
-    {
-        Runtime& runtime = Runtime::Current();
-        WinModuleManager& winModuleManager = runtime.GetWinModuleManager();
-        uintptr_t rip = 0;
-        uintptr_t rsp = 0;
-        GetContextWin64(&rip, &rsp);
-        FrameInfo curFrame = GetCurFrameInfo(winModuleManager, rip, rsp);
-        UnwindContextStatus ucs = uwContext.GetUnwindContextStatus();
-        uwContext.frameInfo = GetCallerFrameInfo(winModuleManager, curFrame.mFrame, ucs);
-    }
-#else
     __attribute__((always_inline)) void UpdateUnwindContext()
     {
         // void* ip = __builtin_return_address(0)
@@ -128,7 +111,6 @@ public:
         // uwContext.frameInfo.mFrame.SetIP(static_cast<uint32_t*>(ip))
         // uwContext.frameInfo.mFrame.SetFA(static_cast<FrameAddress*>(fa)->callerFrameAddress)
     }
-#endif
 
     // Force current mutator enter saferegion, internal use only.
     __attribute__((always_inline)) inline void DoEnterSaferegion();
@@ -329,13 +311,9 @@ private:
 
 // This function is mainly used to initialize the context of mutator.
 // Ensured that updated fa is the caller layer of the managed function to be called.
-extern "C" void ArkCommonPreRunManagedCode(Mutator* mutator, int layers,
-                                           ThreadLocalData* threadData);
+void PreRunManagedCode(Mutator* mutator, int layers, ThreadLocalData* threadData);
 
-using AllocBufferAddHookType = void (*)(uint64_t *obj);
-using EnumThreadStackRootType = void (*)(void* vm, AllocBufferAddHookType hook);
-extern "C" PUBLIC_API void ArkRegisterEnumThreadStackRootHook(EnumThreadStackRootType hook);
-ThreadLocalData *ArkCommonGetThreadLocalData();
+ThreadLocalData *GetThreadLocalData();
 } // namespace panda
 
 #endif // ARK_COMMON_MUTATOR_H

@@ -22,9 +22,6 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
@@ -4642,7 +4639,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
             reason == ecmascript::GCReason::ALLOCATION_FAILED) {
             type = GcType::FULL;
         }
-        panda::BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+        panda::BaseRuntime::RequestGC(type);
 #else  // add ALL_GC_TYPE here for toolchain
         auto sHeap = ecmascript::SharedHeap::GetInstance();
         switch (gcType) {

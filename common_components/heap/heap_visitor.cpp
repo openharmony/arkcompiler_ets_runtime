@@ -15,6 +15,8 @@
 
 #include "common_interfaces/heap/heap_visitor.h"
 
+#include "common_components/base_runtime/hooks.h"
+
 namespace panda {
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {

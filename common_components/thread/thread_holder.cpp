@@ -15,14 +15,14 @@
 
 #include "common_interfaces/thread/thread_holder-inl.h"
 
+#include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/mutator/mutator.h"
-#include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/base_runtime.h"
+#include "common_interfaces/thread/base_thread.h"
+#include "common_interfaces/thread/thread_holder_manager.h"
 
 namespace panda {
 thread_local ThreadHolder *currentThreadHolder = nullptr;
-
-extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 
 ThreadHolder *ThreadHolder::CreateAndRegisterNewThreadHolder(void *vm)
 {

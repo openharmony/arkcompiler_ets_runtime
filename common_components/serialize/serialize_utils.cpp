@@ -16,6 +16,7 @@
 #include "common_components/serialize/serialize_utils.h"
 
 #include "common_components/common_runtime/src/heap/allocator/region_desc.h"
+#include "common_interfaces/base_runtime.h"
 
 namespace panda {
 SerializedObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
@@ -43,4 +44,8 @@ SerializedObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
     }
 }
 
+size_t SerializeUtils::GetRegionSize()
+{
+    return BaseRuntime::GetInstance()->GetHeapParam().regionSize * KB;
+}
 }  // namespace panda

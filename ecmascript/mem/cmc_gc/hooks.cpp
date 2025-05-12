@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/cmc_gc/gc_hooks.h"
+#include "common_components/base_runtime/hooks.h"
 
 #include <cstdint>
 
@@ -112,7 +112,10 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
         auto vm = thread->GetEcmaVM();
         ObjectXRay::VisitVMRoots(vm, visitor, type);
 
-        vm->GetPGOProfiler()->IteratePGOPreFuncList(visitor);
+        auto profiler = vm->GetPGOProfiler();
+        if (profiler != nullptr) {
+            profiler->IteratePGOPreFuncList(visitor);
+        }
     });
 }
 
@@ -133,6 +136,11 @@ void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
         thread->ClearContextCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
     });
+}
+
+void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
+{
+    reinterpret_cast<JSThread *>(jsThread)->Visit(visitor);
 }
 
 void FillFreeObject(void *object, size_t size)

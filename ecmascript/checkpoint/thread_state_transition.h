@@ -17,9 +17,6 @@
 #define ECMASCRIPT_CHECKPOINT_THREAD_STATE_TRANSITION_H
 
 #include "ecmascript/runtime.h"
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
 
 namespace panda::ecmascript {
 

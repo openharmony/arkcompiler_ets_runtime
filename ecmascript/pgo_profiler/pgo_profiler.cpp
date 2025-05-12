@@ -504,13 +504,13 @@ void PGOProfiler::ProcessExtraProfileTypeInfo(JSFunction *func, ApEntityId abcId
     UpdateExtraProfileTypeInfo(abcId, recordName, methodId, current);
 }
 
-void PGOProfiler::DumpBeforeDestroy()
+void PGOProfiler::DumpBeforeDestroy(JSThread *thread)
 {
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
-    state_->StartDumpBeforeDestroy();
+    state_->StartDumpBeforeDestroy(thread);
     HandlePGODumpByDumpThread();
     HandlePGOPreDump();
     state_->SetStopAndNotify();
