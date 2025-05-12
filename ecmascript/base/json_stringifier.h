@@ -30,8 +30,17 @@ class JsonStringifier {
 public:
     JsonStringifier() = default;
 
+#if ENABLE_NEXT_OPTIMIZATION
+    explicit JsonStringifier(JSThread *thread, TransformType transformType = TransformType::NORMAL)
+        : thread_(thread), transformType_(transformType)
+    {
+        encoding_ = Encoding::ONE_BYTE_ENCODING;
+        indent_ = 0;
+    }
+#else
     explicit JsonStringifier(JSThread *thread, TransformType transformType = TransformType::NORMAL)
         : thread_(thread), transformType_(transformType) {}
+#endif
 
     ~JsonStringifier() = default;
     NO_COPY_SEMANTIC(JsonStringifier);
@@ -85,9 +94,48 @@ private:
     JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
                                             const JSHandle<JSTaggedValue> &value);
     bool CheckStackPushSameValue(JSHandle<JSTaggedValue> value);
+
+#if ENABLE_NEXT_OPTIMIZATION
+    inline void Indent()
+    {
+        indent_++;
+    }
+
+    inline void Unindent()
+    {
+        indent_--;
+    }
+
+    inline void NewLine();
+
+    void ChangeEncoding();
+
+    template <size_t N>
+    inline void AppendLiteral(const char(&src)[N]);
+
+    inline void AppendChar(const char src);
+
+    inline void AppendNumberToResult(const JSHandle<JSTaggedValue> &value);
+    inline void AppendIntToResult(int32_t key);
+    inline void AppendEcmaStringToResult(JSHandle<EcmaString> &string);
+    inline void AppendBigIntToResult(JSHandle<JSTaggedValue> &valHandle);
+    inline void PopBack();
+
+    enum class Encoding {
+        ONE_BYTE_ENCODING,
+        TWO_BYTE_ENCODING
+    };
+    Encoding encoding_;
+    CString oneByteResult_;
+    C16String twoBytesResult_;
+    C16String gap_;
+    int indent_;
+#else
     CString gap_;
     CString result_;
     CString indent_;
+#endif
+
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     CVector<JSHandle<JSTaggedValue>> stack_;

@@ -33,16 +33,6 @@ uint32_t UTF16Decode(uint16_t lead, uint16_t trail)
     return cp;
 }
 
-bool IsUTF16HighSurrogate(uint16_t ch)
-{
-    return DECODE_LEAD_LOW <= ch && ch <= DECODE_LEAD_HIGH;
-}
-
-bool IsUTF16LowSurrogate(uint16_t ch)
-{
-    return DECODE_TRAIL_LOW <= ch && ch <= DECODE_TRAIL_HIGH;
-}
-
 // Methods for decode utf16 to unicode
 uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8)
 {

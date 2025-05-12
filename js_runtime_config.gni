@@ -52,6 +52,9 @@ declare_args() {
     timeout = 1200
   }
 
+  # Turn off next optimization features if set to false
+  enable_next_optimization = true
+
   # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.
   ets_runtime_feature_enable_list = false

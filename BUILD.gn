@@ -323,6 +323,10 @@ config("ark_jsruntime_common_config") {
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
   }
+  
+  if (enable_next_optimization) {
+    defines += [ "NEXT_OPTIMIZATION_MACRO" ]
+  }
 
   cflags_cc = [
     "-Wall",
@@ -624,7 +628,6 @@ ecma_source = [
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/json_helper.cpp",
   "ecmascript/base/json_parser.cpp",
-  "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
   "ecmascript/base/sort_helper.cpp",
@@ -976,6 +979,12 @@ ecma_source = [
   "ecmascript/require/js_cjs_module.cpp",
   "ecmascript/require/js_require_manager.cpp",
 ]
+
+if (enable_next_optimization) {
+  ecma_source += [ "ecmascript/base/json_stringifier_optimized.cpp" ]
+} else {
+  ecma_source += [ "ecmascript/base/json_stringifier.cpp" ]
+}
 
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {

@@ -28,7 +28,7 @@ class EcmaString;
 class JSTaggedValue;
 
 using CString = std::basic_string<char, std::char_traits<char>, CAddressAllocator<char>>;
-using CS16tring = std::basic_string<char16_t, std::char_traits<char16_t>, CAddressAllocator<char16_t>>;
+using C16String = std::basic_string<char16_t, std::char_traits<char16_t>, CAddressAllocator<char16_t>>;
 using CStringStream = std::basic_stringstream<char, std::char_traits<char>, CAddressAllocator<char>>;
 
 struct CStringHash {
@@ -60,15 +60,71 @@ std::string PUBLIC_API ConvertToStdString(const CString &str);
 CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 
-bool AppendSpecialDouble(CString &str, double d);
+#if ENABLE_NEXT_OPTIMIZATION
+template <typename DstType>
+bool AppendSpecialDouble(DstType &str, double d);
+template <typename DstType>
+void AppendDoubleToString(DstType &str, double d);
+template <typename DstType>
+void AppendIntToCString(DstType &str, int number);
+template <typename DstType>
+void ConvertNumberToCStringAndAppend(DstType &str, JSTaggedValue num);
+void ConvertQuotedAndAppendToCString(CString &str, const EcmaString *s);
+void ConvertQuotedAndAppendToC16String(C16String &str, const EcmaString *s);
+#endif
 
-void AppendDoubleToString(CString &str, double d);
-
-void ConvertToCStringAndAppend(CString &str, JSTaggedValue num);
-
-void ConvertQuotedAndAppendToString(CString &str, const ecmascript::EcmaString *s,
-                                    StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 CString ConvertToString(ecmascript::JSTaggedValue key);
+
+// append char to CString to C16String.
+// char16_t to CString needs to be converted, which is time-consuming. So this way is not allowed.
+template <typename DstType>
+inline void AppendString(DstType &dst, const char *src, uint32_t len)
+{
+    if constexpr (sizeof(typename DstType::value_type) == 1) {
+        dst.append(src, len);
+    } else {
+        for (uint32_t i = 0; i < len; ++i) {
+            dst += static_cast<char16_t>(src[i]);
+        }
+    }
+}
+
+template <typename DstType>
+inline void AppendString(DstType &dst, const char *src)
+{
+    if constexpr (sizeof(typename DstType::value_type) == 1) {
+        dst.append(src);
+    } else {
+        while (*src != '\0') {
+            dst += static_cast<char16_t>(*src);
+            ++src;
+        }
+    }
+}
+
+template <typename DstType, typename SrcType>
+inline void AppendChar(DstType &dst, const SrcType src)
+{
+    auto c = static_cast<typename DstType::value_type>(src);
+    dst += c;
+}
+
+template <typename DstType, typename SrcType>
+inline void AppendCString(DstType &dst, SrcType &src)
+{
+    static_assert(sizeof(typename DstType::value_type) >= sizeof(typename SrcType::value_type));
+    if constexpr (sizeof(typename DstType::value_type) == 1) {
+        dst += src;
+    } else {
+        if constexpr (sizeof(typename SrcType::value_type) == 1) {
+            for (const auto &c : src) {
+                dst += static_cast<char16_t>(c);
+            }
+        } else {
+            dst += src;
+        }
+    }
+}
 
 template<class T>
 std::enable_if_t<std::is_floating_point_v<T>, CString> FloatToCString(T number)
@@ -99,27 +155,6 @@ std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
         buf[--position] = '-';
     }
     return CString(&buf[position]);
-}
-
-template<class T>
-void AppendToCString(CString &str, T number)
-{
-    static_assert(std::is_integral_v<T>);
-    int64_t n = static_cast<int64_t>(number);
-    uint32_t preSize = str.size();
-    bool isNeg = true;
-    if (n >= 0) {
-        n = -n;
-        isNeg = false;
-    }
-    do {
-        str.push_back(static_cast<int8_t>('0' - (n % DEC_BASE)));
-        n /= DEC_BASE;
-    } while (n);
-    if (isNeg) {
-        str.push_back('-');
-    }
-    std::reverse(str.begin() + preSize, str.end());
 }
 }  // namespace panda::ecmascript
 

@@ -311,7 +311,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }
-#elif
+#else
     if (!op.IsFastMode()) {
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
