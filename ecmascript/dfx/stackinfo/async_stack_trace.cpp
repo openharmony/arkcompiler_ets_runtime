@@ -40,15 +40,15 @@ bool AsyncStackTrace::InsertAsyncStackTrace(const JSHandle<JSPromise> &promise)
     }
     auto now = std::chrono::system_clock::now();
     auto currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    asyncStackTrace_.emplace(static_cast<uint32_t>(promise->GetAsyncTaskId()), std::make_pair(stack, currentTime));
+    asyncStackTrace_.emplace(promise->GetAsyncTaskId(), std::make_pair(stack, currentTime));
     return true;
 }
 
 bool AsyncStackTrace::RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise)
 {
-    auto asyncStackTrace = asyncStackTrace_.find(static_cast<uint32_t>(promise->GetAsyncTaskId()));
+    auto asyncStackTrace = asyncStackTrace_.find(promise->GetAsyncTaskId());
     if (asyncStackTrace == asyncStackTrace_.end()) {
-        LOG_ECMA(INFO) << "Not find promise: " << static_cast<uint32_t>(promise->GetAsyncTaskId());
+        LOG_ECMA(INFO) << "Not find promise: " << promise->GetAsyncTaskId();
         return false;
     }
     asyncStackTrace_.erase(asyncStackTrace);
@@ -62,7 +62,7 @@ std::shared_ptr<AsyncStack> AsyncStackTrace::GetCurrentAsyncParent()
 
 bool AsyncStackTrace::InsertAsyncTaskStacks(const JSHandle<JSPromise> &promise, const std::string &description)
 {
-    int32_t asyncTaskId = promise->GetAsyncTaskId();
+    uint32_t asyncTaskId = promise->GetAsyncTaskId();
     std::shared_ptr<AsyncStack> asyncStack = std::make_shared<AsyncStack>();
     auto notificationManager = vm_->GetJsDebuggerManager()->GetNotificationManager();
     // await need to skip top frame
@@ -85,7 +85,7 @@ bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseRe
     if (PromiseReaction.IsPromiseReaction()) {
         JSTaggedValue promiseCapability = PromiseReaction::Cast(PromiseReaction)->GetPromiseCapability();
         JSTaggedValue promise = PromiseCapability::Cast(promiseCapability)->GetPromise();
-        int32_t asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
+        uint32_t asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
         auto stackIt = asyncTaskStacks_.find(asyncTaskId);
         if (stackIt != asyncTaskStacks_.end()) {
             currentAsyncParent_.emplace_back(stackIt->second);
