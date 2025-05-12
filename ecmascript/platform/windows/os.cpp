@@ -27,13 +27,6 @@ size_t MallocUsableSize(void *ptr)
     return _msize(ptr);
 }
 
-uint32_t NumberOfCpuCore()
-{
-    SYSTEM_INFO info;
-    GetSystemInfo(&info);
-    return info.dwNumberOfProcessors;
-}
-
 size_t PhysicalSize()
 {
     MEMORYSTATUSEX status;

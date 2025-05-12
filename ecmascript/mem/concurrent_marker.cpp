@@ -15,8 +15,10 @@
 
 #include "ecmascript/mem/concurrent_marker.h"
 
-#include "ecmascript/mem/parallel_marker.h"
+#include "common_components/taskpool/taskpool.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
+#include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/young_gc_visitor-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
@@ -32,6 +34,21 @@ ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)
       enableMarkType_(type)
 {
     thread_->SetMarkStatus(MarkStatus::READY_TO_MARK);
+}
+
+bool ConcurrentMarker::TryIncreaseTaskCounts()
+{
+    size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    {
+        LockHolder holder(taskCountMutex_);
+        // total counts of running concurrent mark tasks should be less than taskPoolSize
+        if (taskCounts_ + 1 < taskPoolSize) {
+            taskCounts_++;
+            return true;
+        }
+    }
+    LOG_FULL(INFO) << "Concurrent mark tasks in taskPool are full";
+    return false;
 }
 
 void ConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType type)

@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
@@ -67,6 +68,7 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
+
 AOTFileManager *JsStackInfo::loader = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
@@ -649,7 +651,9 @@ void EcmaVM::CheckThread() const
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
         UNREACHABLE();
     }
-    if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+        !(dThread != nullptr && dThread->GetThreadId() == JSThread::GetCurrentThreadId()) &&
         thread_->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()

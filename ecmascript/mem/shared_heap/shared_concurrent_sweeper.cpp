@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+
+#include "common_components/taskpool/taskpool.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {

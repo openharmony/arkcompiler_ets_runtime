@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 

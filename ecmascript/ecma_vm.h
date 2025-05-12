@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/global_handle_collection.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
@@ -32,7 +33,7 @@
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
-#include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/platform/mutex.h"
 #include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 

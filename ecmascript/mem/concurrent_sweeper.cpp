@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/mem/concurrent_sweeper.h"
+
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/runtime_call_id.h"

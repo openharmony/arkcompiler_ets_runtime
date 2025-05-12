@@ -16,13 +16,13 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 
+#include "common_components/taskpool/task.h"
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/taskpool/task.h"
 
 #include "libpandafile/file-inl.h"
 #include "libpandafile/file_items.h"

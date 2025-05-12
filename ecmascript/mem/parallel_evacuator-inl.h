@@ -18,10 +18,10 @@
 
 #include "ecmascript/mem/parallel_evacuator.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/region-inl.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 ParallelEvacuator::ParallelEvacuator(Heap *heap) : heap_(heap), updateRootVisitor_(this),

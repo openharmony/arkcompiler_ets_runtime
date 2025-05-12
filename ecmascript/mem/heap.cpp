@@ -18,6 +18,8 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 
+#include "common_components/taskpool/taskpool.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"

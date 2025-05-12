@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,21 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TASKPOOL_TASK_QUEUE_H
-#define ECMASCRIPT_TASKPOOL_TASK_QUEUE_H
+#ifndef COMMON_COMPONENTS_TASKPOOL_TASK_QUEUE_H
+#define COMMON_COMPONENTS_TASKPOOL_TASK_QUEUE_H
 
 #include <algorithm>
 #include <atomic>
-#include <deque>
-#include <map>
 #include <chrono>
-#include <memory>
+#include <deque>
 #include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <condition_variable>
 
-#include "ecmascript/taskpool/task.h"
-#include "ecmascript/platform/mutex.h"
+#include "common_components/taskpool/task.h"
+#include "libpandabase/macros.h"
 
-namespace panda::ecmascript {
+namespace panda {
 using SteadyTimePoint = std::chrono::steady_clock::time_point;
 class TaskQueue {
 public:
@@ -46,8 +48,8 @@ public:
     void ForEachTask(const std::function<void(Task*)> &f);
 
 private:
-    void MoveExpiredTask();
-    void WaitForTask();
+    void MoveExpiredTask(std::unique_lock<std::mutex> &lock);
+    void WaitForTask(std::unique_lock<std::mutex> &lock);
 
     std::deque<std::unique_ptr<Task>> tasks_;
 
@@ -61,8 +63,8 @@ private:
     std::multimap<SteadyTimePoint, std::unique_ptr<Task>, DelayedTaskCompare> delayedTasks_;
 
     std::atomic_bool terminate_ = false;
-    Mutex mtx_;
-    ConditionVariable cv_;
+    std::mutex mtx_;
+    std::condition_variable cv_;
 };
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_TASKPOOL_TASK_QUEUE_H
+}  // namespace panda
+#endif  // COMMON_COMPONENTS_TASKPOOL_TASK_QUEUE_H

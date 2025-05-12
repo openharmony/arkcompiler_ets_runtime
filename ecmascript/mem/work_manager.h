@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_MEM_WORK_MANAGER_H
 #define ECMASCRIPT_MEM_WORK_MANAGER_H
 
+#include "common_components/taskpool/runner.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/work_space_chunk.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 using SlotNeedUpdate = std::pair<TaggedObject *, ObjectSlot>;
