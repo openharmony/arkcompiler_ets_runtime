@@ -18,6 +18,8 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 
+#include "common_components/taskpool/taskpool.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
@@ -1877,6 +1879,18 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
             break;
     }
     return false;
+}
+
+bool Heap::CheckOngoingConcurrentMarking()
+{
+    return CheckOngoingConcurrentMarkingImpl(ThreadType::JS_THREAD, MAIN_THREAD_INDEX,
+                                             "Heap::CheckOngoingConcurrentMarking");
+}
+
+bool Heap::DaemonCheckOngoingConcurrentMarking()
+{
+    return CheckOngoingConcurrentMarkingImpl(ThreadType::DAEMON_THREAD, DAEMON_THREAD_INDEX,
+                                             "Heap::DaemonCheckOngoingConcurrentMarking");
 }
 
 bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,

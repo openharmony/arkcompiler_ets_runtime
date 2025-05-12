@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TASKPOOL_TASK_H
-#define ECMASCRIPT_TASKPOOL_TASK_H
+#ifndef COMMON_COMPONENTS_TASKPOOL_TASK_H
+#define COMMON_COMPONENTS_TASKPOOL_TASK_H
 
 #include "libpandabase/macros.h"
 
-namespace panda::ecmascript {
+namespace panda {
 enum class TaskType : uint8_t {
     PGO_SAVE_TASK,
     PGO_RESET_OUT_PATH_TASK,
@@ -63,5 +63,5 @@ private:
     int32_t id_ {0};
     volatile bool terminate_ {false};
 };
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_TASKPOOL_TASK_H
+}  // namespace panda
+#endif  // COMMON_COMPONENTS_TASKPOOL_TASK_H

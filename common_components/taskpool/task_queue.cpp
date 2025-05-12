@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,47 +13,47 @@
  * limitations under the License.
  */
 
-#include "ecmascript/taskpool/task_queue.h"
+#include "common_components/taskpool/task_queue.h"
 
-namespace panda::ecmascript {
+namespace panda {
 void TaskQueue::PostTask(std::unique_ptr<Task> task)
 {
-    LockHolder holder(mtx_);
+    std::lock_guard<std::mutex> guard(mtx_);
     ASSERT(!terminate_);
     tasks_.push_back(std::move(task));
-    cv_.Signal();
+    cv_.notify_one();
 }
 
 void TaskQueue::PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds)
 {
-    LockHolder holder(mtx_);
+    std::lock_guard<std::mutex> guard(mtx_);
     ASSERT(!terminate_);
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMilliseconds);
     delayedTasks_.insert({deadline, std::move(task)});
-    cv_.Signal();
+    cv_.notify_one();
 }
 
 std::unique_ptr<Task> TaskQueue::PopTask()
 {
-    LockHolder holder(mtx_);
+    std::unique_lock<std::mutex> lock(mtx_);
     while (true) {
-        MoveExpiredTask();
+        MoveExpiredTask(lock);
         if (!tasks_.empty()) {
             std::unique_ptr<Task> task = std::move(tasks_.front());
             tasks_.pop_front();
             return task;
         }
         if (terminate_) {
-            cv_.SignalAll();
+            cv_.notify_all();
             return nullptr;
         }
-        WaitForTask();
+        WaitForTask(lock);
     }
 }
 
 void TaskQueue::TerminateTask(int32_t id, TaskType type)
 {
-    LockHolder holder(mtx_);
+    std::lock_guard<std::mutex> guard(mtx_);
     for (auto &task : tasks_) {
         if (id != ALL_TASK_ID && id != task->GetId()) {
             continue;
@@ -76,14 +76,14 @@ void TaskQueue::TerminateTask(int32_t id, TaskType type)
 
 void TaskQueue::Terminate()
 {
-    LockHolder holder(mtx_);
+    std::lock_guard<std::mutex> guard(mtx_);
     terminate_ = true;
-    cv_.SignalAll();
+    cv_.notify_all();
 }
 
 void TaskQueue::ForEachTask(const std::function<void(Task*)> &f)
 {
-    LockHolder holder(mtx_);
+    std::lock_guard<std::mutex> guard(mtx_);
     for (auto &task : tasks_) {
         if (task.get() != nullptr) {
             f(task.get());
@@ -91,9 +91,9 @@ void TaskQueue::ForEachTask(const std::function<void(Task*)> &f)
     }
 }
 
-void TaskQueue::MoveExpiredTask()
+void TaskQueue::MoveExpiredTask(std::unique_lock<std::mutex> &lock)
 {
-    ASSERT(!mtx_.TryLock());
+    ASSERT(!mtx_.try_lock());
     while (!delayedTasks_.empty()) {
         auto it = delayedTasks_.begin();
         auto currentTime = std::chrono::steady_clock::now();
@@ -105,9 +105,9 @@ void TaskQueue::MoveExpiredTask()
     }
 }
 
-void TaskQueue::WaitForTask()
+void TaskQueue::WaitForTask(std::unique_lock<std::mutex> &lock)
 {
-    ASSERT(!mtx_.TryLock());
+    ASSERT(!mtx_.try_lock());
     if (!delayedTasks_.empty()) {
         auto it = delayedTasks_.begin();
         auto currentTime = std::chrono::steady_clock::now();
@@ -115,9 +115,9 @@ void TaskQueue::WaitForTask()
             return;
         }
         auto waitingTime = std::chrono::duration_cast<std::chrono::milliseconds>(it->first - currentTime);
-        cv_.TimedWait(&mtx_, static_cast<uint64_t>(waitingTime.count()));
+        cv_.wait_for(lock, waitingTime);
     } else {
-        cv_.Wait(&mtx_);
+        cv_.wait(lock);
     }
 }
-}  // namespace panda::ecmascript
+}  // namespace panda

@@ -14,13 +14,14 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
+
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::pgo {
-
 bool PGOProfilerEncoder::Save(const std::shared_ptr<PGOInfo> pgoInfo)
 {
     return InternalSave(pgoInfo);

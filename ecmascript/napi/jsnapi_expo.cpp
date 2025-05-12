@@ -31,6 +31,7 @@
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)

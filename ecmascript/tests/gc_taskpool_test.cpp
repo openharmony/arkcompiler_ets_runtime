@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/taskpool/taskpool.h"
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;

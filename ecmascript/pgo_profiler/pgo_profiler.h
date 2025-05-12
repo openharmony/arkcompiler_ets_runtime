@@ -19,6 +19,7 @@
 #include <chrono>
 #include <memory>
 
+#include "common_components/taskpool/task.h"
 #include "ecmascript/common.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/global_index.h"
@@ -36,7 +37,6 @@
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 class ProfileTypeInfo;

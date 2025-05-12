@@ -30,11 +30,6 @@ size_t MallocUsableSize(void *p)
     return malloc_size(p);
 }
 
-uint32_t NumberOfCpuCore()
-{
-    return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
-}
-
 size_t PhysicalSize()
 {
     static constexpr int MIB_LENGTH = 2;

@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/full_gc.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/partial_gc.h"
