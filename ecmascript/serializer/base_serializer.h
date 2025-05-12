@@ -71,6 +71,7 @@ protected:
     void SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSFunctionModule(JSFunction *func);
     void SerializeLexicalEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
+    void SerializeSFunctionEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeSendableEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeAsyncFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end);
     void SerializeObjectProto(JSHClass *kclass, JSTaggedValue proto);
@@ -85,8 +86,20 @@ protected:
     std::unique_ptr<SerializationChunk> sharedObjChunk_;
     CUnorderedMap<TaggedObject *, uint32_t> referenceMap_;
     size_t objectIndex_ {0};
-    static constexpr size_t PARENT_ENV_SLOT = sizeof(TaggedObject);
-    static constexpr size_t SCOPE_INFO_SLOT = PARENT_ENV_SLOT * 2; // 2: the second object slot of lexical env
+    static constexpr size_t LEXICALENV_GLOBAL_ENV_SLOT =
+        LexicalEnv::DATA_OFFSET + LexicalEnv::GLOBAL_ENV_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t LEXICALENV_PARENT_ENV_SLOT =
+        LexicalEnv::DATA_OFFSET + LexicalEnv::PARENT_ENV_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t LEXICALENV_SCOPE_INFO_SLOT =
+        LexicalEnv::DATA_OFFSET + LexicalEnv::SCOPE_INFO_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t SFUNCTIONENV_GLOBAL_ENV_SLOT =
+        SFunctionEnv::DATA_OFFSET + SFunctionEnv::GLOBAL_ENV_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t SFUNCTIONENV_CONSTRUCTOR_SLOT =
+        SFunctionEnv::DATA_OFFSET + SFunctionEnv::CONSTRUCTOR_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t SENDABLEENV_PARENT_ENV_SLOT =
+        SendableEnv::DATA_OFFSET + SendableEnv::SENDABLE_PARENT_ENV_INDEX * sizeof(JSTaggedValue);
+    static constexpr size_t SENDABLEENV_SCOPE_INFO_SLOT =
+        SendableEnv::DATA_OFFSET + SendableEnv::SENDABLE_SCOPE_INFO_INDEX * sizeof(JSTaggedValue);
     int32_t serializeSharedEvent_ = 0;
 };
 }

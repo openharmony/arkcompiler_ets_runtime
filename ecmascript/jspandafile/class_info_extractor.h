@@ -197,7 +197,7 @@ private:
     static JSHandle<JSFunction> CreateSFunctionFromTemplate(JSThread *thread,
                                                             const JSHandle<FunctionTemplate> &funcTemp,
                                                             const JSHandle<JSObject> &homeObject,
-                                                            const JSHandle<JSTaggedValue> &lexenv);
+                                                            const JSHandle<JSFunction> &ctor);
 
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);

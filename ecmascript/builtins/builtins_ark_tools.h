@@ -31,6 +31,7 @@
     V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
+    V("currentEnvIsGlobal",             CurrentEnvIsGlobal,             1, INVALID)       \
     V("isSlicedString",                 IsSlicedString,                 1, INVALID)       \
     V("isTreeString",                   IsTreeString,                   1, INVALID)       \
     V("hiddenStackSourceFile",          HiddenStackSourceFile,          0, INVALID)       \
@@ -191,6 +192,8 @@ public:
     static JSTaggedValue ExcutePendingJob(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue GetLexicalEnv(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CurrentEnvIsGlobal(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue CompareHClass(EcmaRuntimeCallInfo *info);
 

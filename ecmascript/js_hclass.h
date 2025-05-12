@@ -240,6 +240,7 @@ struct Reference;
         MUTANT_TAGGED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         BYTE_ARRAY,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        SFUNCTION_ENV, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         SENDABLE_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */\
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -703,6 +704,7 @@ public:
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
+            case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::CONSTANT_POOL:
             case JSType::PROFILE_TYPE_INFO:
@@ -721,6 +723,12 @@ public:
     {
         return GetObjectType() == JSType::LEXICAL_ENV;
     }
+
+    inline bool IsSFunctionEnv() const
+    {
+        return GetObjectType() == JSType::SFUNCTION_ENV;
+    }
+
     inline bool IsByteArray() const
     {
         return GetObjectType() == JSType::BYTE_ARRAY;

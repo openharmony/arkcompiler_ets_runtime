@@ -29,6 +29,7 @@
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
@@ -110,6 +111,7 @@ using ecmascript::OperationResult;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
 using ecmascript::Region;
+using ecmascript::SFunctionEnv;
 using ecmascript::TaggedArray;
 using ecmascript::base::BuiltinsBase;
 using ecmascript::base::JsonStringifier;
@@ -3570,7 +3572,9 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     prototypeHClass->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
-    constructor->SetLexicalEnv(thread, constructor);
+    JSHandle<SFunctionEnv> sFunctionEnv = factory->NewSFunctionEnv();
+    sFunctionEnv->SetConstructor(thread, constructor.GetTaggedValue());
+    constructor->SetLexicalEnv(thread, sFunctionEnv);
     constructor->SetCallNapi(callNapi);
     JSFunction::SetSFunctionExtraInfo(thread, constructor, nullptr, deleter, data, nativeBindingSize);
 

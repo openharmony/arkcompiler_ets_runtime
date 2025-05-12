@@ -18,6 +18,9 @@
 
 #include <cstdint>
 
+#define GLOBAL_ENV_SELF_FIELD(V)                                                                    \
+    V(JSTaggedValue, GlobalEnv, GLOBAL_ENV_INDEX)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_COMMON_FIELDS(V)                                                                 \
     /* Function */                                                                                  \
@@ -380,6 +383,7 @@
 
 
 #define GLOBAL_ENV_FIELDS(V)                                \
+    GLOBAL_ENV_SELF_FIELD(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
     GLOBAL_ENV_CONTAINER_ITERATORS(V)

@@ -53,6 +53,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class SFunctionEnv;
 class SendableEnv;
 class JSDate;
 class JSProxy;
@@ -593,8 +594,9 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> PUBLIC_API NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            const JSHandle<JSTaggedValue> &newTarget);
-    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
-        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
+    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<GlobalEnv> &env,
+                                                const JSHandle<JSFunction> &constructor,
+                                                uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
@@ -799,6 +801,10 @@ public:
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<TaggedArray> SharedEmptyArray() const;
+
+    JSHandle<SFunctionEnv> NewEmptySFunctionEnv();
+
+    JSHandle<SFunctionEnv> NewSFunctionEnv(int numSlots = 0);
 
     JSHandle<TaggedArray> CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
                                                JSTaggedValue initVal = JSTaggedValue::Hole(),

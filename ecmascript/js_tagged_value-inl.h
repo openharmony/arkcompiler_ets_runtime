@@ -253,6 +253,11 @@ inline bool JSTaggedValue::IsLexicalEnv() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLexicalEnv();
 }
 
+inline bool JSTaggedValue::IsSFunctionEnv() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsSFunctionEnv();
+}
+
 inline bool JSTaggedValue::IsDictionary() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsDictionary();
