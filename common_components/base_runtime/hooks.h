@@ -24,14 +24,14 @@
 // `WorkStack` Should be moved to BaseRT and panda namespace later
 namespace panda {
 // Dynamic VM Roots scanning
-void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
-void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
+PUBLIC_API void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
 
-void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
+PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 
 // CMC-GC dependent interface
-void FillFreeObject(void *object, size_t size);
-void SetBaseAddress(uintptr_t base);
-void JSGCCallback(void *ecmaVM);
+PUBLIC_API void FillFreeObject(void *object, size_t size);
+PUBLIC_API void SetBaseAddress(uintptr_t base);
+PUBLIC_API void JSGCCallback(void *ecmaVM);
 } // namespace panda
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H
