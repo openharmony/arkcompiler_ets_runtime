@@ -164,6 +164,11 @@ public:
         freeList_.clear();
     }
 
+    void ResetCapacity(size_t capacity)
+    {
+        capacity_ = capacity;
+    }
+
     NO_COPY_SEMANTIC(MemMapFreeList);
     NO_MOVE_SEMANTIC(MemMapFreeList);
 
@@ -248,9 +253,9 @@ public:
     NO_COPY_SEMANTIC(MemMapAllocator);
     NO_MOVE_SEMANTIC(MemMapAllocator);
 
-    void Initialize(size_t alignment)
+    void Initialize(size_t alignment, bool isLargeHeap)
     {
-        AdapterSuitablePoolCapacity();
+        AdapterSuitablePoolCapacity(isLargeHeap);
         memMapTotalSize_ = 0;
         InitializeHugeRegionMap(alignment);
         InitializeRegularRegionMap(alignment);
@@ -264,7 +269,7 @@ public:
         memMapPool_.Finalize();
     }
 
-    uint64_t GetCapacity()
+    size_t GetCapacity()
     {
         return capacity_;
     }
@@ -272,6 +277,7 @@ public:
     void ResetLargePoolSize()
     {
         capacity_ = LARGE_HEAP_POOL_SIZE;
+        memMapFreeList_.ResetCapacity(capacity_);
     }
 
     void IncreaseMemMapTotalSize(size_t bytes)
@@ -326,12 +332,12 @@ private:
     static constexpr size_t RANDOM_SHIFT_BIT = 28;
     static constexpr size_t MEM_MAP_RETRY_NUM = 10;
 
-    void AdapterSuitablePoolCapacity();
+    void AdapterSuitablePoolCapacity(bool isLargeHeap);
     void Free(void *mem, size_t size, bool isRegular);
     MemMapPool memMapPool_;
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};
-    uint64_t capacity_ {0};
+    size_t capacity_ {0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MEM_MAP_ALLOCATOR_H

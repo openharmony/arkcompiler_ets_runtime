@@ -55,7 +55,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
     if (!firstVmCreated_) {
         Log::Initialize(options);
         EcmaVM::InitializeIcuData(options);
-        MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
+        MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE, options.GetLargeHeap());
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
         ASSERT(instance_ == nullptr);
