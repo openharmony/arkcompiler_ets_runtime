@@ -87,7 +87,9 @@ public:
 
     size_t GetSize(const BaseObject *object) const override
     {
+#ifdef USE_CMC_GC
         ASSERT(!object->IsForwarded());
+#endif
         auto freeObject = FreeObject::Cast(reinterpret_cast<uintptr_t>(object));
         if (freeObject->IsFreeObject()) {
             return freeObject->Available();

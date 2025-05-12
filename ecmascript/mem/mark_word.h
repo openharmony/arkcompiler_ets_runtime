@@ -72,11 +72,17 @@ public:
         return value_;
     }
 
+#ifdef USE_CMC_GC
     JSHClass *GetJSHClass() const
     {
         return reinterpret_cast<JSHClass *>((value_ & 0xFFFFFFFD) + TaggedStateWord::BASE_ADDRESS);
     }
-
+#else
+    JSHClass *GetJSHClass() const
+    {
+        return reinterpret_cast<JSHClass *>(value_ & (~TAG_MARK_BIT));
+    }
+#endif
 private:
     MarkWordType value_ {0};
 };

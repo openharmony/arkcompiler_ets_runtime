@@ -12,21 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef USE_CMC_GC
+#include "ecmascript/mem/tagged_object.h"
 
-#include "common_interfaces/objects/base_object.h"
+#include "ecmascript/js_hclass-inl.h"
 
-namespace panda {
-#ifdef USE_CMC_GC
-BaseObjectOperator BaseObject::operator_;
-
-void BaseObject::RegisterDynamic(BaseObjectOperatorInterfaces *dynamicObjOp)
+namespace panda::ecmascript {
+size_t TaggedObject::GetSize()
 {
-    operator_.dynamicObjOp_ = dynamicObjOp;
+    ASSERT(!GetClass()->IsFreeObject());
+    size_t size = GetClass()->SizeFromJSHClass(this);
+    return size;
 }
-
-void BaseObject::RegisterStatic(BaseObjectOperatorInterfaces *staticObjOp)
-{
-    operator_.staticObjOp_ = staticObjOp;
-}
+}  // namespace panda::ecmascript
 #endif
-}  // namespace panda

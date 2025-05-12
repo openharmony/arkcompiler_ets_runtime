@@ -182,6 +182,7 @@ GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef glue, GateRef x)
     return isAOTLiteralInfoObj;
 }
 
+#ifdef USE_CMC_GC
 GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
 {
     // ReadBarrier is not need for loading hClass as long as it is non-movable
@@ -200,7 +201,18 @@ GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
     GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
     return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
+#else
+GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
+{
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
+    return Load(VariableType::JS_POINTER(), glue, object, offset);
+}
 
+GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
+{
+    return LoadConstOffset(VariableType::JS_POINTER(), object, TaggedObject::HCLASS_OFFSET);
+}
+#endif
 GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
 {
     return LoadConstOffset(VariableType::JS_POINTER(), hclass, JSHClass::PROTOTYPE_OFFSET);
@@ -268,6 +280,7 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
         Int32(0));
 }
 
+#ifdef USE_CMC_GC
 void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
     Store(VariableType::INT32(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET), Int32(0));
@@ -280,6 +293,17 @@ void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hCla
     StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
         compValue, mAttr);
 }
+#else
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+{
+    TransitionHClass(glue, object, hClass, mAttr);
+}
+
+void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass, mAttr);
+}
+#endif
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
 {
