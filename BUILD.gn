@@ -355,6 +355,8 @@ config("ark_jsruntime_common_config") {
         "-Wno-error=backend-plugin",
         "-Wno-profile-instr-out-of-date",
         "-Wno-profile-instr-unprofiled",
+        "-mllvm",
+        "-enable-partial-inlining",
       ]
     }
   }
@@ -1373,7 +1375,10 @@ config("arkjs_runtime_lto_link_config") {
       ldflags += [ "-Wl,-Bsymbolic" ]
     }
     if (ets_runtime_feature_enable_pgo && enable_enhanced_opt) {
-      ldflags += [ "-Wl,--aarch64-inline-plt" ]
+      ldflags += [
+          "-Wl,--aarch64-inline-plt",
+          "-Wl,-mllvm,-enable-partial-inlining",
+      ]
       if (ets_runtime_feature_enable_codemerge) {
         ldflags += [
           "-Wl,-plugin-opt=-split-machine-functions",
