@@ -2010,7 +2010,8 @@ GateRef NewObjectStubBuilder::CreateEmptyObject(GateRef glue)
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef objectFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+    GateRef objectFunc =
+        GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
     GateRef hclass = Load(VariableType::JS_POINTER(), glue, objectFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     return NewJSObject(glue, hclass);
 }

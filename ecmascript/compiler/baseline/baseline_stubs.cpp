@@ -3409,7 +3409,7 @@ void BaselineReturnStubBuilder::GenerateCircuit()
 
     GateRef currentSp = *varSp;
     varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
-                 IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
+        IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef maybeFrameType = LoadZeroOffsetPrimitive(VariableType::INT64(), typePos);

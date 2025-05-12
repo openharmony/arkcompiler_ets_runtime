@@ -1256,9 +1256,9 @@ void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
     // Return bigint, if bigint == 0
     GateRef isZeroBigInt = LogicAndBuilder(&env)
         .And(builder_.Int32Equal(builder_.LoadWithoutBarrier(VariableType::INT32(), bigint,
-                                 builder_.IntPtr(BigInt::LENGTH_OFFSET)), builder_.Int32(1)))
+            builder_.IntPtr(BigInt::LENGTH_OFFSET)), builder_.Int32(1)))
         .And(builder_.Int32Equal(builder_.LoadWithoutBarrier(VariableType::INT32(), bigint,
-                                 builder_.IntPtr(BigInt::DATA_OFFSET)), builder_.Int32(0)))
+            builder_.IntPtr(BigInt::DATA_OFFSET)), builder_.Int32(0)))
         .Done();
     BRANCH_CIR(isZeroBigInt, &returnBigInt, &notZeroBigInt);
 
