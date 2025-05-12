@@ -30,7 +30,7 @@ static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
     }
 #ifndef NDEBUG
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);  // Trigger CMC FULL GC
+    BaseRuntime::RequestGC(GcType::ASYNC);  // Trigger CMC FULL GC
 #else
     SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 #endif

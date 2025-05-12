@@ -22,17 +22,13 @@
 #include <memoryapi.h>
 #endif
 
+#include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/base/log_file.h"
 #include "common_components/common_runtime/src/base/sys_call.h"
 #include "common_components/log/log.h"
 
 namespace panda {
 using namespace std;
-
-SetBaseAddrHookType g_setBaseAddrHook = nullptr;
-extern "C" PUBLIC_API void ArkRegisterSetBaseAddrHook(SetBaseAddrHookType hook) {
-    g_setBaseAddrHook = hook;
-}
 
 // not thread safe, do not call from multiple threads
 MemoryMap* MemoryMap::MapMemory(size_t reqSize, size_t initSize, const Option& opt)
@@ -110,7 +106,7 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     void *alignEndResult = reinterpret_cast<void *>(alignResult + reqSize);
 
     static constexpr uint64_t mask = 0xFFFFFFFF;
-    g_setBaseAddrHook(alignResult & (mask << 32));
+    SetBaseAddress(alignResult & (mask << 32));
 
 #ifdef _WIN64
     VirtualFree(mappedAddr, leftSize, MEM_DECOMMIT);
@@ -121,7 +117,7 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
 #endif
     mappedAddr = reinterpret_cast<void *>(alignResult);
 #else
-    g_setBaseAddrHook(0x0);
+    SetBaseAddress(0x0);
 #endif
 
     bool failure = false;

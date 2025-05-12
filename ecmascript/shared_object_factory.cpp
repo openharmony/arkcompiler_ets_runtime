@@ -34,7 +34,7 @@ void ObjectFactory::NewSObjectHook() const
         return;
     }
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);
+    BaseRuntime::RequestGC(GcType::ASYNC);
 #else
     if (count++ % frequency == 0) {
         if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {

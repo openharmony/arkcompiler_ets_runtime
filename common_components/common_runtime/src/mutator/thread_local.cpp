@@ -25,29 +25,4 @@ ThreadLocalData* ThreadLocal::GetThreadLocalData()
 {
     return &threadLocalData;
 }
-
-extern "C" void MCC_CheckThreadLocalDataOffset()
-{
-    static_assert(offsetof(ThreadLocalData, buffer) == 0,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, mutator) == sizeof(void*),
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, thread) == sizeof(void*) * 2,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, schedule) == sizeof(void*) * 3,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, preemptFlag) == sizeof(void*) * 4,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, protectAddr) == sizeof(void*) * 5,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, safepointState) == sizeof(void*) * 6,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, tid) == sizeof(void*) * 7,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(offsetof(ThreadLocalData, foreignThread) == sizeof(void*) * 8,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-    static_assert(sizeof(ThreadLocalData) == sizeof(void*) * 10,
-                  "need to modify the offset of this value in llvm-project and thread at the same time");
-}
-
 } // namespace panda

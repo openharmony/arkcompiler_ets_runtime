@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "common_components/base_runtime/base_runtime_param.h"
+
 #include <condition_variable>
 #include <thread>
 #include <set>
@@ -24,90 +26,44 @@
 #include "sys/sysinfo.h"
 #endif
 
-#include "common_components/common_runtime/src/mutator/mutator.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
-#include "common_components/common_runtime/src/heap/collector/collector_resources.h"
 #include "common_components/common_runtime/src/heap_manager.h"
-#ifndef _WIN64
-#endif
-#if defined(ARKCOMMON_SANITIZER_SUPPORT)
-#include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
-#endif
-#include "common_components/common_runtime/src/heap/allocator/region_space.h"
-#include "common_components/common_runtime/src/common_runtime_api.h"
+#include "common_components/common_runtime/src/log_manager.h"
 #include "common_components/log/log.h"
 
 namespace panda {
-#ifdef __cplusplus
-extern "C" {
-#endif
+size_t BaseRuntimeParam::sysMemSize_ = 1 * GB;
 
-static size_t g_initStackSize = 0;
-static size_t g_sysmemSize = 1 * GB;
-
-enum TimeUnit : uint32_t {
-    SECOND = 0,
-    MILLI_SECOND = 1,
-    MICRO_SECOND = 2,
-    NANO_SECOND = 3,
-};
-
-static std::atomic_bool g_runtimeInited = ATOMIC_VAR_INIT(false);
-static std::atomic_bool g_runtimeFinished = ATOMIC_VAR_INIT(false);
-
-
-bool SetRuntimeInitFlag()
-{
-    if (g_runtimeInited.load()) {
-        // Fatal when support arkcommon finish
-        LOG_COMMON(WARN) << "Arkcommon runtime has been initialized and don't need init again.";
-        return true;
-    }
-    g_runtimeInited.store(true);
-    return true;
-}
-
-bool SetRuntimeFiniFlag()
-{
-    if (!g_runtimeInited.load()) {
-        LOG_COMMON(ERROR) << "Arkcommon runtime has not been initialized when executing finish.";
-        return false;
-    }
-
-    g_runtimeFinished.store(true);
-    return true;
-}
-
-static void CheckSysmemSize()
+void BaseRuntimeParam::CheckSysmemSize()
 {
 #if defined(_WIN64)
     MEMORYSTATUSEX memInfo;
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
     bool ret = GlobalMemoryStatusEx(&memInfo);
     if (ret) {
-        g_sysmemSize = memInfo.ullTotalPhys;
+        sysMemSize_ = memInfo.ullTotalPhys;
     } else {
         LOG_COMMON(ERROR) << "Get system memory failed.\n";
     }
 #elif defined(__APPLE__)
     const int sz = 2;
     int mib[sz];
-    size_t length = sizeof(g_sysmemSize);
+    size_t length = sizeof(sysMemSize_);
     mib[0] = CTL_HW;
     mib[1] = HW_MEMSIZE;
-    sysctl(mib, sz, &g_sysmemSize, &length, nullptr, 0);
+    sysctl(mib, sz, &sysMemSize_, &length, nullptr, 0);
 #else
     struct sysinfo memInfo;
     int ret = sysinfo(&memInfo);
     if (ret == 0) {
-        g_sysmemSize = memInfo.totalram * memInfo.mem_unit;
+        sysMemSize_ = memInfo.totalram * memInfo.mem_unit;
     } else {
         LOG_COMMON(ERROR) << "Get system memory failed. msg: " << strerror(errno);
     }
 #endif
 }
 
-static size_t InitHeapSize(size_t defaultParam)
+size_t BaseRuntimeParam::InitHeapSize(size_t defaultParam)
 {
     auto env = std::getenv("arkHeapSize");
     if (env == nullptr) {
@@ -122,7 +78,7 @@ static size_t InitHeapSize(size_t defaultParam)
     // 4UL * KB: The minimum heap size, measured in KB, the value is 4MB.
     size_t minSize = 4UL * KB;
 #endif
-    size_t maxSize = g_sysmemSize / KB;
+    size_t maxSize = sysMemSize_ / KB;
     if (size >= minSize && size <= maxSize) {
         return size;
     } else {
@@ -133,7 +89,7 @@ static size_t InitHeapSize(size_t defaultParam)
     return defaultParam;
 }
 
-static size_t InitRegionSize(size_t defaultParam)
+size_t BaseRuntimeParam::InitRegionSize(size_t defaultParam)
 {
     auto env = std::getenv("arkRegionSize");
     if (env == nullptr) {
@@ -153,7 +109,7 @@ static size_t InitRegionSize(size_t defaultParam)
     return defaultParam;
 }
 
-static double InitGarbageRatio(double defaultParam)
+double BaseRuntimeParam::InitGarbageRatio(double defaultParam)
 {
     auto env = std::getenv("arkGarbageThreshold");
     if (env == nullptr) {
@@ -173,7 +129,7 @@ static double InitGarbageRatio(double defaultParam)
     return defaultParam;
 }
 
-static double InitPercentParameter(const char* name, double minSize, double maxSize, double defaultParam)
+double BaseRuntimeParam::InitPercentParameter(const char* name, double minSize, double maxSize, double defaultParam)
 {
     auto env = std::getenv(name);
     if (env != nullptr) {
@@ -188,7 +144,7 @@ static double InitPercentParameter(const char* name, double minSize, double maxS
     return defaultParam;
 }
 
-static size_t InitSizeParameter(const char* name, size_t minSize, size_t defaultParam)
+size_t BaseRuntimeParam::InitSizeParameter(const char* name, size_t minSize, size_t defaultParam)
 {
     auto env = std::getenv(name);
     if (env != nullptr) {
@@ -203,7 +159,7 @@ static size_t InitSizeParameter(const char* name, size_t minSize, size_t default
     return defaultParam;
 }
 
-static size_t InitTimeParameter(const char* name, size_t minSize, size_t defaultParam)
+size_t BaseRuntimeParam::InitTimeParameter(const char* name, size_t minSize, size_t defaultParam)
 {
     auto env = std::getenv(name);
     if (env != nullptr) {
@@ -218,7 +174,7 @@ static size_t InitTimeParameter(const char* name, size_t minSize, size_t default
     return defaultParam;
 }
 
-static double InitDecParameter(const char* name, double minSize, double defaultParam)
+double BaseRuntimeParam::InitDecParameter(const char* name, double minSize, double defaultParam)
 {
     auto env = std::getenv(name);
     if (env != nullptr) {
@@ -238,11 +194,11 @@ static double InitDecParameter(const char* name, double minSize, double defaultP
  * If system memory size is less then 1GB, heap size is 64MB and stack size is 64KB.
  * Otherwise heap size is 256MB and stack size is 1MB.
  */
-static RuntimeParam InitRuntimeParam()
+RuntimeParam BaseRuntimeParam::InitRuntimeParam()
 {
     CheckSysmemSize();
     // For address aligns inner 4G range, max capacity must smaller than 4G. Because of metadata.
-    size_t initHeapSize = InitHeapSize(g_sysmemSize > 1 * GB ? 3.9 * MB : 64 * KB);
+    size_t initHeapSize = InitHeapSize(sysMemSize_ > 1 * GB ? 3.6 * MB : 64 * KB);
     RuntimeParam param = {
         .heapParam = {
 #if defined(PANDA_TARGET_OHOS)
@@ -288,32 +244,4 @@ static RuntimeParam InitRuntimeParam()
     };
     return param;
 }
-
-void ArkCommonRuntimeInit()
-{
-    RuntimeParam param = InitRuntimeParam();
-    ArkCommonRuntime::CreateAndInit(param);
-    bool ret = SetRuntimeInitFlag();
-    if (!ret) {
-        LOG_COMMON(FATAL) << "Init ark runtime failed";
-    }
-}
-
-void ArkCommonRuntimeFini()
-{
-    ArkCommonRuntime::FiniAndDelete();
-    bool ret = SetRuntimeFiniFlag();
-    if (!ret) {
-        LOG_COMMON(FATAL) << "Fini ark runtime failed";
-    }
-}
-
-size_t ArkGetRegionSize()
-{
-    return ArkCommonRuntime::GetHeapParam().regionSize * KB;
-}
-
-#ifdef __cplusplus
-};
-#endif
 } // namespace panda

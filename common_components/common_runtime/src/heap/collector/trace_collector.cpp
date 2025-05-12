@@ -15,18 +15,11 @@
 #include "common_components/common_runtime/src/heap/collector/trace_collector.h"
 #include <new>
 
-#include "common_components/common_runtime/src/common/runtime.h"
 #include "common_components/common_runtime/src/heap/allocator/alloc_buffer.h"
 
 namespace panda {
 const size_t TraceCollector::MAX_MARKING_WORK_SIZE = 16; // fork task if bigger
 const size_t TraceCollector::MIN_MARKING_WORK_SIZE = 8;  // forbid forking task if smaller
-
-EnumStaticRootsHookType g_enumStaticRootsHook = nullptr;
-
-extern "C" PUBLIC_API void ArkRegisterEnumStaticRootsHook(EnumStaticRootsHookType hook) {
-    g_enumStaticRootsHook = hook;
-}
 
 // Fill gc roots entry to buckets
 void StaticRootTable::RegisterRoots(StaticRootArray* addr, uint32_t size)
@@ -324,7 +317,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         ConcurrentReMark(workStack, maxWorkers > 0);
         ProcessWeakReferences();
 #else
-        if (!Runtime::Current().GetMutatorManager().WorldStopped()) {
+        if (!BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped()) {
             ARK_COMMON_PHASE_TIMER("STW re-marking");
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
             EnumerateAllRoots(workStack);
@@ -593,7 +586,7 @@ void TraceCollector::UpdateGCStats()
     size_t survivedBytes = space.GetSurvivedSize();
 
     // 4 ways to estimate heap next threshold.
-    double heapGrowth = 1 + (ArkCommonRuntime::GetHeapParam().heapGrowth);
+    double heapGrowth = 1 + (BaseRuntime::GetInstance()->GetHeapParam().heapGrowth);
     size_t threshold1 = survivedBytes * heapGrowth;
     size_t threshold2 = oldThreshold * heapGrowth;
     size_t threshold3 = survivedBytes * 1.2 / (1.0 + gcStats.garbageRatio);
@@ -602,8 +595,8 @@ void TraceCollector::UpdateGCStats()
 
     // 0.98: make sure new threshold does not exceed reasonable limit.
     gcStats.heapThreshold = std::min(newThreshold, static_cast<size_t>(space.GetMaxCapacity() * 0.98));
-    gcStats.heapThreshold = std::min(gcStats.heapThreshold, ArkCommonRuntime::GetGCParam().gcThreshold);
-    g_gcRequests[GC_REASON_HEU].SetMinInterval(ArkCommonRuntime::GetGCParam().gcInterval);
+    gcStats.heapThreshold = std::min(gcStats.heapThreshold, BaseRuntime::GetInstance()->GetGCParam().gcThreshold);
+    g_gcRequests[GC_REASON_HEU].SetMinInterval(BaseRuntime::GetInstance()->GetGCParam().gcInterval);
     VLOG(REPORT, "live bytes %zu (survived %zu, recent-allocated %zu), update gc threshold %zu -> %zu", liveBytes,
          survivedBytes, recentBytes, oldThreshold, gcStats.heapThreshold);
     OHOS_HITRACE_COUNT("ARK_RT_post_GC_HeapSize", Heap::GetHeap().GetAllocatedSize());

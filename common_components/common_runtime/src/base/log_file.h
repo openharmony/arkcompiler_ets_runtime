@@ -196,8 +196,6 @@ void WriteLog(bool addPrefix, LogType type, const char* format, ...) noexcept;
         WriteLog(true, type, format); \
     }
 #endif
-// Macro for thread log and use it after ENABLE_LOG for judgment.
-#define VLOG_ARKTHREAD(format...) WriteLog(true, ARKTHREAD, format)
 
 constexpr size_t DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 constexpr size_t LOG_BUFFER_SIZE = 1024;

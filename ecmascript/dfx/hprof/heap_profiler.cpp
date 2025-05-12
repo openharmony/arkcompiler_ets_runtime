@@ -31,10 +31,6 @@
 #include "heap_profiler.h"
 #endif
 
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
-
 namespace panda::ecmascript {
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
@@ -1017,7 +1013,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     {
         if (dumpOption.isFullGC) {
 #ifdef USE_CMC_GC
-            BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
+            BaseRuntime::RequestGC(GcType::FULL);
 #else
             [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
             ForceSharedGC();
@@ -1082,7 +1078,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
                                      bool traceAllocation, bool newThread)
 {
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
+    BaseRuntime::RequestGC(GcType::FULL);
 #else
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
     ForceSharedGC();
@@ -1119,7 +1115,7 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 
     {
 #ifdef USE_CMC_GC
-        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
+        BaseRuntime::RequestGC(GcType::FULL);
 #else
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
@@ -1158,7 +1154,7 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
     }
     {
 #ifdef USE_CMC_GC
-        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
+        BaseRuntime::RequestGC(GcType::FULL);
 #else
         ForceSharedGC();
 #endif

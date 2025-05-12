@@ -82,7 +82,7 @@ static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 // region as the border of regular objects.
 static constexpr size_t MAX_32BIT_OBJECT_SPACE_SIZE = 1_GB;
 #ifdef USE_CMC_GC
-static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32_KB; // initialize from CommonRuntime
+static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32_KB; // initialize from CMC-GC
 #else
 static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 / 3;
 #endif

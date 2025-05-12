@@ -568,10 +568,5 @@ private:
 
     friend class VerifyIterator;
 };
-
-using FillFreeObjectHookType = void (*)(void *object, size_t size);
-
-extern "C" PUBLIC_API void ArkRegisterFillFreeObjectHook(FillFreeObjectHookType hook);
-
 } // namespace panda
 #endif // ARK_COMMON_REGION_MANAGER_H
