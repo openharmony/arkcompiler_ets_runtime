@@ -573,10 +573,6 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t moduleRequestsLen = moduleRequests->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
-        JSHandle<TaggedArray> sharedRequestedModules(thread, thread->GlobalConstants()->GetUndefined());
-        if (isShared) {
-            sharedRequestedModules = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(moduleRequestsLen);
-        }
         for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
             required.Update(moduleRequests->Get(idx));
             JSHandle<JSTaggedValue> requiredModule =
@@ -588,18 +584,8 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
                 JSHandle<EcmaString> requireModuleName =
                     thread->GetEcmaVM()->GetFactory()->NewFromUtf8(GetModuleName(requiredModule.GetTaggedValue()));
                 requestedModules->Set(thread, idx, requireModuleName.GetTaggedValue());
-                sharedRequestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
             }
-        }
-        // In case of circularImport, we need resolve separately.
-        if (isShared) {
-            requestedModules = sharedRequestedModules;
-        }
-        size_t requestedModulesLen = requestedModules->GetLength();
-        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            JSHandle<SourceTextModule> requestedModule = GetRequestedModuleFromCache(thread, requestedModules, idx);
-            ASSERT(requestedModule.GetTaggedValue().IsSourceTextModule());
-            PreModuleInstantiation(thread, requestedModule, executeType);
+            PreModuleInstantiation(thread, JSHandle<SourceTextModule>::Cast(requiredModule), executeType);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         }
     }
