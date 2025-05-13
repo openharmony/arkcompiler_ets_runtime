@@ -92,7 +92,7 @@ void BuiltinsProxyStubBuilder::CheckGetTrapResult(GateRef target, GateRef key, V
         GateRef rAttr = attr.ReadVariable();
         GateRef rValue = value.ReadVariable();
         GateRef rResult = result->ReadVariable();
-        GateRef getter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::GETTER_OFFSET));
+        GateRef getter = Load(VariableType::JS_ANY(), glue_, rValue, IntPtr(AccessorData::GETTER_OFFSET));
         GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
                                                       .And(TaggedIsUndefined(getter))
                                                       .And(BoolNot(TaggedIsUndefined(rResult)))
@@ -149,7 +149,7 @@ void BuiltinsProxyStubBuilder::CheckSetTrapResult(GateRef target, GateRef key, G
         Label trapResultIsNotUndefined(env);
         GateRef rAttr = attr.ReadVariable();
         GateRef rValue = tValue.ReadVariable();
-        GateRef setter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::SETTER_OFFSET));
+        GateRef setter = Load(VariableType::JS_ANY(), glue_, rValue, IntPtr(AccessorData::SETTER_OFFSET));
         GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
                                                       .And(TaggedIsUndefined(setter))
                                                       .Done();

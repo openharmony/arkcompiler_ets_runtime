@@ -3899,7 +3899,7 @@ void StubBuilder::CallGetterIfAccessor(GateRef glue, GateRef holder, Variable *v
     Bind(&isAccessor);
     {
         Label isAccessorInternal(env);
-        BRANCH_UNLIKELY(IsAccessorInternal(valueVal), &isAccessorInternal, isFoundAccessor);
+        BRANCH_UNLIKELY(IsAccessorInternal(glue, valueVal), &isAccessorInternal, isFoundAccessor);
         Bind(&isAccessorInternal);
         {
             value->WriteVariable(CallGetterHelper(glue, holder, holder, valueVal, ProfileOperation()));
@@ -3916,7 +3916,7 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
     Label exit(env);
     Label findProperty(env);
     Label found(env);
-    GateRef hclass = LoadHClass(holder);
+    GateRef hclass = LoadHClass(glue, holder);
     GateRef jsType = GetObjectType(hclass);
     Label isSIndexObj(env);
     Label notSIndexObj(env);
@@ -3928,7 +3928,7 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
         BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
         Bind(&notDicMode);
         {
-            GateRef layOutInfo = GetLayoutFromHClass(hclass);
+            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);
             GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
             // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
             GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum, hir);
@@ -3938,8 +3938,8 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
             Bind(&hasEntry);
             {
                 // PropertyAttributes attr(layoutInfo->GetAttr(entry))
-                GateRef attr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
-                GateRef value = JSObjectGetProperty(holder, hclass, attr);
+                GateRef attr = GetPropAttrFromLayoutInfo(glue, layOutInfo, entryA);
+                GateRef value = JSObjectGetProperty(glue, holder, hclass, attr);
                 Label notHole(env);
                 BRANCH(TaggedIsHole(value), notFound, &notHole);
                 Bind(&notHole);
@@ -3952,7 +3952,7 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
         }
         Bind(&isDicMode);
         {
-            GateRef array = GetPropertiesArray(holder);
+            GateRef array = GetPropertiesArray(glue, holder);
             // int entry = dict->FindEntry(key)
             GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, key, hir);
             Label notNegtiveOne(env);
@@ -3961,9 +3961,9 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
             Bind(&notNegtiveOne);
             {
                 // auto value = dict->GetValue(entry)
-                rAttr->WriteVariable(GetAttributesFromDictionary<NameDictionary>(array, entryB));
+                rAttr->WriteVariable(GetAttributesFromDictionary<NameDictionary>(glue, array, entryB));
                 // auto attr = dict->GetAttributes(entry)
-                rValue->WriteVariable(GetValueFromDictionary<NameDictionary>(array, entryB));
+                rValue->WriteVariable(GetValueFromDictionary<NameDictionary>(glue, array, entryB));
                 Jump(&found);
             }
         }

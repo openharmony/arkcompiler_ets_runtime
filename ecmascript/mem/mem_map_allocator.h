@@ -261,7 +261,6 @@ public:
 #ifndef USE_CMC_GC
         InitializeHugeRegionMap(alignment);
         InitializeRegularRegionMap(alignment);
-        InitializeCompressRegionMap(alignment);
 #endif
     }
 
@@ -345,7 +344,7 @@ private:
     static constexpr size_t RANDOM_SHIFT_BIT = 28;
     static constexpr size_t MEM_MAP_RETRY_NUM = 10;
 
-    void AdapterSuitablePoolCapacity(isLargeHeap);
+    void AdapterSuitablePoolCapacity(bool isLargeHeap);
     void Free(void *mem, size_t size, bool isRegular, bool isCompress);
     MemMapPool memMapPool_;
     MemMapPool compressMemMapPool_;

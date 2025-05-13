@@ -166,19 +166,14 @@ static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[mayb
 }
 
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                                 const std::string &spaceName, bool regular, bool isCompress, bool isMachineCode,
-                                 bool isEnableJitFort, bool shouldPageTag)
+                                 const std::string &spaceName, bool regular, [[maybe_unused]]bool isCompress,
+                                 bool isMachineCode, bool isEnableJitFort, bool shouldPageTag)
 {
     PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
 
     if (regular) {
-        if (isCompress) {
-            return AllocateFromMemPool(compressMemMapPool_, threadId, size, alignment, spaceName, isMachineCode,
-                isEnableJitFort, shouldPageTag, type);
-        } else {
-            return AllocateFromMemPool(memMapPool_, threadId, size, alignment, spaceName, isMachineCode,
-                isEnableJitFort, shouldPageTag, type);
-        }
+        return AllocateFromMemPool(memMapPool_, threadId, size, alignment, spaceName, isMachineCode,
+            isEnableJitFort, shouldPageTag, type);
     } else {
         if (UNLIKELY(memMapTotalSize_ + size > capacity_)) { // LCOV_EXCL_BR_LINE
             LOG_GC(ERROR) << "memory map overflow";
@@ -264,7 +259,7 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool i
     }
 }
 
-void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompress)
+void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, [[maybe_unused]]bool isCompress)
 {
     DecreaseMemMapTotalSize(size);
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
@@ -272,11 +267,7 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompre
     }
     PageRelease(mem, size);
     if (isRegular) {
-        if (isCompress) {
-            compressMemMapPool_.AddMemToCache(mem, size);
-        } else {
-            memMapPool_.AddMemToCache(mem, size);
-        }
+        memMapPool_.AddMemToCache(mem, size);
     } else {
         memMapFreeList_.AddMemToList(MemMap(mem, size));
     }
