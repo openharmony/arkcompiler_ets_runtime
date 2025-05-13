@@ -159,6 +159,7 @@ public:
 
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
+    static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
 };
 }
 #endif
