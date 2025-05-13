@@ -491,8 +491,7 @@ void BytecodeMetaData::InitNoGCFlag(EcmaOpcode &opcode, uint32_t &flags)
     }
 }
 
-void BytecodeMetaData::InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags)
-{
+bool BytecodeMetaData::IsBytecodeNoThrow(EcmaOpcode &opcode) {
     switch (opcode) {
         case EcmaOpcode::MOV_V4_V4:
         case EcmaOpcode::MOV_V8_V8:
@@ -569,10 +568,16 @@ void BytecodeMetaData::InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags)
         case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::NOP:
-            flags |= BytecodeFlags::NO_THROW;
-            break;
+            return true;
         default:
-            break;
+            return false;
+    }
+}
+
+void BytecodeMetaData::InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    if(IsBytecodeNoThrow(opcode)) {
+        flags |= BytecodeFlags::NO_THROW;
     }
 }
 

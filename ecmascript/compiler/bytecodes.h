@@ -239,6 +239,7 @@ public:
     {
         return VRegCountField::Get(value_);
     }
+    static bool IsBytecodeNoThrow(EcmaOpcode &opcode);
 
 private:
     BytecodeMetaData() = default;
