@@ -149,6 +149,15 @@ HWTEST_F_L0(EcmaVMTest, DumpExceptionObject)
     JSNApi::DestroyJSVM(ecmaVm);
 }
 
+HWTEST_F_L0(EcmaVMTest, LargeHeap)
+{
+    RuntimeOption option;
+    option.SetLargeHeap(true);
+    EcmaVM *ecmaVm = JSNApi::CreateJSVM(option);
+    EXPECT_TRUE(ecmaVm->GetJSOptions().GetLargeHeap());
+    JSNApi::DestroyJSVM(ecmaVm);
+}
+
 HWTEST_F_L0(EcmaVMTest, TestHandleAlocate)
 {
     RuntimeOption option;
