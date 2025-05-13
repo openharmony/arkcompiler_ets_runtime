@@ -123,7 +123,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         JSFunction::Call(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -138,7 +138,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         EXPECT_TRUE(res.GetInt() == i);
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -153,7 +153,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         EXPECT_TRUE(res.IsTrue());
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
 }
