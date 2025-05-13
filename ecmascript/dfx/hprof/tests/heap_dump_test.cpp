@@ -924,7 +924,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
         if (strMatched && funcTempMatched) {
             break;
         }
-        if (line == "\"heapdump greet(line:98)\",") {
+        if (line.find("heapdump.js#greet(line:98)") != std::string::npos) {
             strMatched = true;
             continue;
         }
@@ -935,6 +935,75 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
     }
     ASSERT_TRUE(strMatched);
     ASSERT_TRUE(funcTempMatched);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionAndObject)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"heapdump1.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "heapdump1");
+    EXPECT_TRUE(result);
+    ecmaVm_->SetBundleName("com.example.testFunctionAndObject");
+    HeapDumpTestHelper tester(ecmaVm_);
+    tester.GenerateSnapShot("testFunctionAndObject.heapsnapshot");
+
+    // match function url
+    std::string line;
+    std::ifstream inputStream("testFunctionAndObject.heapsnapshot");
+    bool strMatched = false;
+    bool strMatched1 = false;
+    bool strMatched2 = false;
+    bool strMatched3 = false;
+    bool strMatched4 = false;
+    bool strMatched5 = false;
+    bool strMatched6 = false;
+    bool strMatched7 = false;
+    while (getline(inputStream, line)) {
+        if (strMatched && strMatched1 && strMatched2 && strMatched3 &&
+            strMatched4 && strMatched5 && strMatched6 && strMatched7) {
+            break;
+        }
+        if (line.find("heapdump1.js#anonymous(line:19)") != std::string::npos) {
+            strMatched = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#test(line:25)") != std::string::npos) {
+            strMatched1 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#ObjectFun(line:30)") != std::string::npos) {
+            strMatched2 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#Person(line:35)") != std::string::npos) {
+            strMatched3 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#greet(line:40)") != std::string::npos) {
+            strMatched4 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#testObject(line:51)") != std::string::npos) {
+            strMatched5 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#Student(line:62)") != std::string::npos) {
+            strMatched6 = true;
+            continue;
+        }
+        if (line.find("heapdump1.js#getMessage(line:67)") != std::string::npos) {
+            strMatched7 = true;
+            continue;
+        }
+    }
+    ASSERT_TRUE(strMatched);
+    ASSERT_TRUE(strMatched1);
+    ASSERT_TRUE(strMatched2);
+    ASSERT_TRUE(strMatched3);
+    ASSERT_TRUE(strMatched4);
+    ASSERT_TRUE(strMatched5);
+    ASSERT_TRUE(strMatched6);
+    ASSERT_TRUE(strMatched7);
 }
 
 HWTEST_F_L0(HeapDumpTest, DISABLED_TestAllocationMassiveMoveNode)

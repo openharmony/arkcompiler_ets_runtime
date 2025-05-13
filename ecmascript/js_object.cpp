@@ -2526,23 +2526,68 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
     const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
     const CString &moduleStr = method->GetRecordNameStr();
-
-    if (!moduleStr.empty()) {
-        result.append(moduleStr).append(" ");
-    }
-    if (nameStr.empty()) {
-        result.append("JSObject");
-    } else {
-        result.append(nameStr);
-    }
     DebugInfoExtractor *debugExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     if (debugExtractor == nullptr) {
+        return "JSObject";
+    }
+    // fileName: module|referencedModule|version/filePath
+    CString fileName = CString(debugExtractor->GetSourceFile(methodId));
+    int32_t line = debugExtractor->GetFristLine(methodId);
+    CString defaultName = "JSObject";
+    return ExtractFilePath(thread, nameStr, moduleStr, defaultName, fileName, line);
+}
+
+const CString JSObject::ExtractFilePath(JSThread *thread, CString name, CString moduleName,
+                                        CString defaultName, CString fileName, int32_t line)
+{
+    CString result = "";
+    if (moduleName.find("_GLOBAL") != std::string::npos) {
+        result.append(moduleName).append(" ").append(fileName).append("#");
+        if (name.empty()) {
+            result.append(defaultName);
+        } else {
+            result.append(name);
+        }
+        result.append("(line:").append(std::to_string(line)).append(")");
         return result;
     }
-    int32_t line = debugExtractor->GetFristLine(methodId);
-    std::string fileName = debugExtractor->GetSourceFile(methodId);
-    return result.append("(").append(fileName).append(std::to_string(line)).append(")");
+    CString bundleName = thread->GetEcmaVM()->GetBundleName();
+    if (!bundleName.empty()) {
+        result.append(bundleName).append("/");
+    }
+    std::string module;
+    std::string referencedModule;
+    std::string version;
+    size_t pos = fileName.find('|');
+    if (pos!= std::string::npos) {
+        module = fileName.substr(0, pos);
+        fileName.erase(0, pos + 1);
+        size_t pos1 = fileName.find('|');
+        if (pos1 != std::string::npos) {
+            referencedModule = fileName.substr(0, pos1);
+            fileName.erase(0, pos1 + 1);
+            size_t pos2 = fileName.find('|');
+            if (pos2 != std::string::npos) {
+                version = fileName.substr(0, pos2);
+                fileName.erase(0, pos2 + 1);
+                result.append(referencedModule).append("@").append(version).append("/");
+            }
+        }
+    }
+    result.append(fileName).append("#");
+    if (name.empty()) {
+        result.append(defaultName);
+    } else {
+        result.append(name);
+    }
+
+    result.append("(line:").append(std::to_string(line)).append(")");
+    if (!module.empty()) {
+        result.append("[").append(module).append("]");
+    }
+    // result: bundleName/referencedModule&version/filePath#functionName(line:xxx)[module]
+    return result;
 }
 
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
