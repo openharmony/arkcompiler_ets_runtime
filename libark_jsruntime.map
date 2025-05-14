@@ -237,6 +237,7 @@
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
       panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::ecmascript::JitThread::GetHostThread*;
+      panda::ecmascript::Jit::TimeScope::TimeScope*;
       panda::ecmascript::Jit::TimeScope::~TimeScope*;
       panda::ecmascript::Jit::GetInstance*;
       panda::ecmascript::Jit::IsEnableJitFort*;
