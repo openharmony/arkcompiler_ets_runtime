@@ -510,6 +510,7 @@ void PGOProfiler::DumpBeforeDestroy()
         return;
     }
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
+    ThreadNativeScope nativeScope(vm_->GetJSThread());
     state_->StartDumpBeforeDestroy();
     HandlePGODump();
     HandlePGOPreDump();
