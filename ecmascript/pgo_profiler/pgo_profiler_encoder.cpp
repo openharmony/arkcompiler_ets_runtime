@@ -31,7 +31,7 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename");
     LOG_PGO(INFO) << "start save and rename ap file to " << path_;
     ClockScope start;
-    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); // ensure the permission os ap file is -rw-------
     static const char* tempSuffix = ".tmp";
     auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
     std::fstream fileStream(tmpOutPath.c_str(),
@@ -54,6 +54,7 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
         AddChecksum(fileStream);
     }
     fileStream.close();
+    umask(0); // unset umask to avoid affecting other file permissions in the process
     if (task && task->IsTerminate()) {
         return false;
     }
