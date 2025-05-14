@@ -23,66 +23,70 @@
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define COMMON_MESSAGE_STRING_LIST(V)                                                        \
-    V(SetReadOnlyProperty, "Cannot assign to read only property")                            \
-    V(SetTypeMismatchedSharedProperty, "Cannot set sendable property with mismatched type")  \
-    V(CreateObjectWithSendableProto, "Cannot create object with sendable proto")             \
-    V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                \
-    V(SetProtoWithSendable, "Cannot set proto with sendable object")                         \
-    V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                 \
-    V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")        \
-    V(FunctionCallNotConstructor, "class constructor cannot call")                           \
-    V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")             \
-    V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                            \
-    V(CanNotSetPropertyOnContainer, "Cannot set property on Container")                      \
-    V(NonCallable, "CallObj is NonCallable")                                                 \
-    V(ASM_INTERPRETER_STUB_NAME, "ASM_INTERPRETER stub name: ")                              \
-    V(OPCODE_OVERFLOW, "opcode overflow!")                                                   \
-    V(INT32_VALUE, "value: %ld")                                                             \
-    V(TargetTypeNotObject, "Type of target is not Object")                                   \
-    V(TargetTypeNotTypedArray, "The O is not a TypedArray.")                                 \
-    V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
-    V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                         \
-    V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")      \
-    V(ApplyTargetNotCallable, "apply target is not callable")                                \
-    V(TargetNotStableJSArray, "target not stable JSArray")                                   \
-    V(LenGreaterThanMax, "len is bigger than 2^32 - 1")                                      \
-    V(ElementTypeNoElementTypes, "CreateListFromArrayLike: not an element of elementTypes")  \
-    V(TargetIsDetachedBuffer, "Is Detached Buffer")                                          \
-    V(ThisBranchIsUnreachable, "this branch is unreachable")                                 \
-    V(CanNotConvertNotUndefinedObject, "Cannot convert a UNDEFINED value to a JSObject")     \
-    V(CanNotConvertNotNullObject, "Cannot convert a NULL value to a JSObject")               \
-    V(CanNotConvertNotHoleObject, "Cannot convert a HOLE value to a JSObject")               \
-    V(CanNotConvertUnknowObject, "Cannot convert a Unknown object value to a JSObject")      \
-    V(CanNotConvertNotValidObject, "Obj is not a valid object")                              \
-    V(CanNotConvertContainerObject, "Can not delete property in Container Object")           \
-    V(InvalidStringLength, "Invalid string length")                                          \
-    V(InvalidNewTarget, "new.target is not an object")                                       \
-    V(ObjIsNotCallable, "obj is not Callable")                                               \
-    V(SharedObjectRefersLocalObject, "shared object refers a local object")                  \
-    V(InvalidRadixLength, "radix must be 2 to 36")                                           \
-    V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")                          \
-    V(ReviverOnlySupportUndefined, "reviver only supports undefined for SENDABLE_JSON")      \
-    V(DefineFieldField, "DefineField: obj is not Object")                                    \
-    V(IsNotPropertyKey, "key is not a property key")                                         \
-    V(CreateDataPropertyFailed, "failed to create data property")                            \
-    V(ValueIsNonSObject, "value is not a shared object")                                     \
-    V(MapIteratorTypeError, "this value is not a map iterator")                              \
-    V(SetIteratorTypeError, "this value is not a set iterator")                              \
-    V(LengthError, "length must be positive integer")                                        \
-    V(IterNotObject, "JSIterator::GetIterator: iter is not object")                          \
-    V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")       \
-    V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")        \
-    V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")  \
-    V(ProxyGetPropertyHandlerIsNull, "JSProxy::GetProperty: handler is Null")                \
-    V(ProxySetPropertyHandlerIsNull, "JSProxy::SetProperty: handler is Null")                \
-    V(ProxySetPropertyReturnFalse, "JSProxy::SetProperty: 'set' return false")               \
-    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")                       \
-    V(CurrentModuleUndefined, "GetModuleValueOutter currentModule failed")                   \
-    V(MisstakenResolvedBinding, "Get module value failed, mistaken ResolvedBinding")         \
-    V(CurrentModuleNotSourceTextModule, "Current module is not SourceTextModule")            \
-    V(ModuleEnvMustBeDefined, "Environment of current module must not be undefined")         \
-    V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")        \
+#define COMMON_MESSAGE_STRING_LIST(V)                                                               \
+    V(SetReadOnlyProperty, "Cannot assign to read only property")                                   \
+    V(SetTypeMismatchedSharedProperty, "Cannot set sendable property with mismatched type")         \
+    V(CreateObjectWithSendableProto, "Cannot create object with sendable proto")                    \
+    V(UpdateSendableAttributes, "Cannot update sendable object's attributes")                       \
+    V(SetProtoWithSendable, "Cannot set proto with sendable object")                                \
+    V(ClassNotDerivedFromShared, "Class not derived from a sendable object")                        \
+    V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")               \
+    V(FunctionCallNotConstructor, "class constructor cannot call")                                  \
+    V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")                    \
+    V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                                   \
+    V(CanNotSetPropertyOnContainer, "Cannot set property on Container")                             \
+    V(NonCallable, "CallObj is NonCallable")                                                        \
+    V(ASM_INTERPRETER_STUB_NAME, "ASM_INTERPRETER stub name: ")                                     \
+    V(OPCODE_OVERFLOW, "opcode overflow!")                                                          \
+    V(INT32_VALUE, "value: %ld")                                                                    \
+    V(TargetTypeNotObject, "Type of target is not Object")                                          \
+    V(TargetTypeNotTypedArray, "The O is not a TypedArray.")                                        \
+    V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                           \
+    V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                                \
+    V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")             \
+    V(ApplyTargetNotCallable, "apply target is not callable")                                       \
+    V(TargetNotStableJSArray, "target not stable JSArray")                                          \
+    V(LenGreaterThanMax, "len is bigger than 2^32 - 1")                                             \
+    V(ElementTypeNoElementTypes, "CreateListFromArrayLike: not an element of elementTypes")         \
+    V(TargetIsDetachedBuffer, "Is Detached Buffer")                                                 \
+    V(ThisBranchIsUnreachable, "this branch is unreachable")                                        \
+    V(CanNotConvertNotUndefinedObject, "Cannot convert a UNDEFINED value to a JSObject")            \
+    V(CanNotConvertNotNullObject, "Cannot convert a NULL value to a JSObject")                      \
+    V(CanNotConvertNotHoleObject, "Cannot convert a HOLE value to a JSObject")                      \
+    V(CanNotConvertUnknowObject, "Cannot convert a Unknown object value to a JSObject")             \
+    V(CanNotConvertNotValidObject, "Obj is not a valid object")                                     \
+    V(CanNotConvertContainerObject, "Can not delete property in Container Object")                  \
+    V(InvalidStringLength, "Invalid string length")                                                 \
+    V(InvalidNewTarget, "new.target is not an object")                                              \
+    V(ObjIsNotCallable, "obj is not Callable")                                                      \
+    V(SharedObjectRefersLocalObject, "shared object refers a local object")                         \
+    V(InvalidRadixLength, "radix must be 2 to 36")                                                  \
+    V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")                                 \
+    V(ReviverOnlySupportUndefined, "reviver only supports undefined for SENDABLE_JSON")             \
+    V(DefineFieldField, "DefineField: obj is not Object")                                           \
+    V(IsNotPropertyKey, "key is not a property key")                                                \
+    V(CreateDataPropertyFailed, "failed to create data property")                                   \
+    V(ValueIsNonSObject, "value is not a shared object")                                            \
+    V(MapIteratorTypeError, "this value is not a map iterator")                                     \
+    V(SetIteratorTypeError, "this value is not a set iterator")                                     \
+    V(LengthError, "length must be positive integer")                                               \
+    V(IterNotObject, "JSIterator::GetIterator: iter is not object")                                 \
+    V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")              \
+    V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")               \
+    V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")         \
+    V(ProxyGetPropertyHandlerIsNull, "JSProxy::GetProperty: handler is Null")                       \
+    V(ProxyGetPropertyResultTypeError, "JSProxy::GetProperty: TypeError of trapResult")             \
+    V(ProxyGetPropertyResultNotUndefined, "JSProxy::GetProperty: trapResult is not undefined")      \
+    V(ProxySetPropertyHandlerIsNull, "JSProxy::SetProperty: handler is Null")                       \
+    V(ProxySetPropertyReturnFalse, "JSProxy::SetProperty: 'set' return false")                      \
+    V(ProxySetPropertyResultTypeError, "JSProxy::SetProperty: TypeError of trapResult")             \
+    V(ProxySetPropertyResultNotAccessor, "JSProxy::SetProperty: TypeError of AccessorDescriptor")   \
+    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")                              \
+    V(CurrentModuleUndefined, "GetModuleValueOutter currentModule failed")                          \
+    V(MisstakenResolvedBinding, "Get module value failed, mistaken ResolvedBinding")                \
+    V(CurrentModuleNotSourceTextModule, "Current module is not SourceTextModule")                   \
+    V(ModuleEnvMustBeDefined, "Environment of current module must not be undefined")                \
+    V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")               \
     V(RecordNameMustBeString, "RecordName must be string")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
