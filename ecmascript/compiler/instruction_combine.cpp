@@ -666,7 +666,8 @@ GateRef InstructionCombine::ReduceInt64Div(GateRef gate)
     //  x/-K => 0-(x/K)
     if (m.Right().HasResolvedValue()) {
         int64_t const divisor = m.Right().ResolvedValue();
-        if (divisor < 0) {
+        // If K is the minimum value -9,223,372,036,854,775,808, converting it will exceed the boundary
+        if (divisor < 0 && divisor != std::numeric_limits<int64_t>::min()) {
             auto newDiv = builder_.Int64Div(m.Left().Gate(), builder_.Int64(abs(m.Right().ResolvedValue())));
             auto newGate = builder_.Int64Sub(builder_.Int64(0), newDiv);
             return ReplaceOld(gate, newGate);
@@ -703,7 +704,8 @@ GateRef InstructionCombine::ReduceInt32Div(GateRef gate)
     //  x/-K => 0-(x/K)
     if (m.Right().HasResolvedValue()) {
         int32_t const divisor = m.Right().ResolvedValue();
-        if (divisor < 0) {
+        // If K is the minimum value -2147483648, converting it to 2147483648 will exceed the boundary
+        if (divisor < 0 && divisor != std::numeric_limits<std::int32_t>::min()) {
             auto newDiv = builder_.Int32Div(m.Left().Gate(), builder_.Int32(abs(m.Right().ResolvedValue())));
             auto newGate = builder_.Int32Sub(builder_.Int32(0), newDiv);
             return ReplaceOld(gate, newGate);
