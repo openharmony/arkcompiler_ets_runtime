@@ -49,8 +49,8 @@ enum class ContainersType : uint8_t {
 
 class ContainersCommonStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersCommonStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersCommonStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersCommonStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersCommonStubBuilder);
     NO_COPY_SEMANTIC(ContainersCommonStubBuilder);

@@ -31,7 +31,7 @@ void BuiltinsStubCSigns::Initialize()
     [](void* env) {                                                         \
         return static_cast<void*>(                                          \
             new name##StubBuilder(&callSigns_[ID::name],                    \
-                static_cast<Environment*>(env)));                           \
+                static_cast<Environment*>(env), Gate::InvalidGateRef));     \
     });
 
 #define INIT_BUILTINS_METHOD(name)                                          \

@@ -1465,6 +1465,11 @@ inline GateRef StubBuilder::IsSendableFunctionModule([[maybe_unused]] GateRef gl
         Int32(static_cast<int32_t>(SharedTypes::SENDABLE_FUNCTION_MODULE)));
 }
 
+inline GateRef StubBuilder::GetFunctionLexicalEnv(GateRef glue, GateRef function)
+{
+    return env_->GetBuilder()->GetFunctionLexicalEnv(glue, function);
+}
+
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef glue, GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedIsHeapObject(obj));
@@ -1584,6 +1589,12 @@ inline GateRef StubBuilder::IsJSGlobalObject(GateRef glue, GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
+}
+
+inline GateRef StubBuilder::IsGlobalEnv(GateRef glue, GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::GLOBAL_ENV)));
 }
 
 inline GateRef StubBuilder::IsNativeModuleFailureInfo(GateRef glue, GateRef obj)

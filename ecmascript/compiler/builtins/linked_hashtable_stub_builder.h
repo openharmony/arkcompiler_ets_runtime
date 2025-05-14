@@ -22,8 +22,8 @@ namespace panda::ecmascript::kungfu {
 template<typename LinkedHashTableType, typename LinkedHashTableObject>
 class LinkedHashTableStubBuilder : public StubBuilder {
 public:
-    explicit LinkedHashTableStubBuilder(StubBuilder *parent, GateRef glue)
-        : StubBuilder(parent), glue_(glue) {}
+    explicit LinkedHashTableStubBuilder(StubBuilder *parent, GateRef glue, GateRef globalEnv)
+        : StubBuilder(parent), glue_(glue), globalEnv_(globalEnv) {}
     ~LinkedHashTableStubBuilder() override = default;
     NO_MOVE_SEMANTIC(LinkedHashTableStubBuilder);
     NO_COPY_SEMANTIC(LinkedHashTableStubBuilder);
@@ -212,6 +212,7 @@ private:
     GateRef GetLinkedOffset();
 
     GateRef glue_;
+    GateRef globalEnv_{Gate::InvalidGateRef};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_LINKED_HASHTABLE_STUB_BUILDER_H

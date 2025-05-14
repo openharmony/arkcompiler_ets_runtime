@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersPlainArrayStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersPlainArrayStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersPlainArrayStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersPlainArrayStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersPlainArrayStubBuilder);
     NO_COPY_SEMANTIC(ContainersPlainArrayStubBuilder);

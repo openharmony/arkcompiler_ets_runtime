@@ -24,11 +24,11 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsStubBuilder : public StubBuilder {
 public:
-    explicit BuiltinsStubBuilder(StubBuilder *parent)
-        :StubBuilder(parent) {}
-    BuiltinsStubBuilder(CallSignature *callSignature, Environment *env)
-        : StubBuilder(callSignature, env) {}
-    BuiltinsStubBuilder(Environment* env): StubBuilder(env) {}
+    explicit BuiltinsStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        :StubBuilder(parent), globalEnv_(globalEnv) {}
+    BuiltinsStubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)
+        : StubBuilder(callSignature, env), globalEnv_(globalEnv) {}
+    BuiltinsStubBuilder(Environment* env, GateRef globalEnv): StubBuilder(env), globalEnv_(globalEnv) {}
     ~BuiltinsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStubBuilder);
@@ -67,6 +67,7 @@ public:
     GateRef GetCallArg0(GateRef numArg);
     GateRef GetCallArg1(GateRef numArg);
     GateRef GetCallArg2(GateRef numArg);
+    GateRef GetGlobalEnvFromFunction(GateRef glue, GateRef func);
 
     inline GateRef GetArgv()
     {
@@ -83,13 +84,23 @@ public:
         GateRef condition = BitAnd(TaggedIsNumber(year), TaggedIsNumber(month));
         return BitAnd(condition, TaggedIsNumber(day));
     }
+    inline GateRef GetCurrentGlobalEnv()
+    {
+        if (globalEnv_ == Gate::InvalidGateRef) {
+            LOG_FULL(FATAL) << "globalEnv_ is InvalidGateRef";
+            UNREACHABLE();
+        }
+        return globalEnv_;
+    }
+private:
+    const GateRef globalEnv_{Gate::InvalidGateRef};
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \
     class name##StubBuilder : public BuiltinsStubBuilder {                                          \
     public:                                                                                         \
-        name##StubBuilder(CallSignature *callSignature, Environment *env)                           \
-            : BuiltinsStubBuilder(callSignature, env) {}                                            \
+        name##StubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)      \
+            : BuiltinsStubBuilder(callSignature, env, globalEnv) {}                               \
         ~name##StubBuilder() = default;                                                             \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                        \
         NO_COPY_SEMANTIC(name##StubBuilder);                                                        \
@@ -104,8 +115,8 @@ public:
 #define DECLARE_BUILTINS_STUB_CLASS_DYN(name, type, ...)                                            \
     class type##name##StubBuilder : public BuiltinsStubBuilder {                                    \
     public:                                                                                         \
-        type##name##StubBuilder(CallSignature *callSignature, Environment *env)                     \
-            : BuiltinsStubBuilder(callSignature, env) {}                                            \
+        type##name##StubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)\
+            : BuiltinsStubBuilder(callSignature, env, globalEnv) {}                               \
         ~type##name##StubBuilder() = default;                                                       \
         NO_MOVE_SEMANTIC(type##name##StubBuilder);                                                  \
         NO_COPY_SEMANTIC(type##name##StubBuilder);                                                  \

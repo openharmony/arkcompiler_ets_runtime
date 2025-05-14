@@ -117,7 +117,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerLoadArrayLength(gate);
             break;
         case OpCode::LOAD_ELEMENT:
-            LowerLoadElement(gate);
+            LowerLoadElement(gate, glue);
             break;
         case OpCode::STORE_ELEMENT:
             LowerStoreElement(gate, glue);
@@ -1112,7 +1112,7 @@ VariableType TypedHCRLowering::GetVariableType(BuiltinTypeId id)
     return type;
 }
 
-void TypedHCRLowering::LowerLoadElement(GateRef gate)
+void TypedHCRLowering::LowerLoadElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     LoadElementAccessor accessor = acc_.GetLoadElementAccessor(gate);
@@ -1157,7 +1157,7 @@ void TypedHCRLowering::LowerLoadElement(GateRef gate)
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::FLOAT64_ARRAY);
             break;
         case TypedLoadOp::STRING_LOAD_ELEMENT:
-            LowerStringLoadElement(gate);
+            LowerStringLoadElement(gate, glue);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1320,18 +1320,17 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef glue, GateRef recei
     return *result;
 }
 
-void TypedHCRLowering::LowerStringLoadElement(GateRef gate)
+void TypedHCRLowering::LowerStringLoadElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef glue = acc_.GetGlueFromArgList();
     GateRef result = Circuit::NullGate();
     if (compilationEnv_->IsJitCompiler()) {
         result = builder_.CallStub(glue, gate, CommonStubCSigns::StringLoadElement,
                                    { glue, receiver, index }, "StringLoadElement stub");
     } else {
-        BuiltinsStringStubBuilder builder(&env);
+        BuiltinsStringStubBuilder builder(&env, builder_.GetGlobalEnv(glue));
         result = builder.GetSingleCharCodeByIndex(glue, receiver, index);
     }
 

@@ -22,8 +22,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersHashSetStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersHashSetStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersHashSetStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersHashSetStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersHashSetStubBuilder);
     NO_COPY_SEMANTIC(ContainersHashSetStubBuilder);

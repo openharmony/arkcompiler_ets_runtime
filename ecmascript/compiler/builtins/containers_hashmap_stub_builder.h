@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersHashMapStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersHashMapStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersHashMapStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersHashMapStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersHashMapStubBuilder);
     NO_COPY_SEMANTIC(ContainersHashMapStubBuilder);

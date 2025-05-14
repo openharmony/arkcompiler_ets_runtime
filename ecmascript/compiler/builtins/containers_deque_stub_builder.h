@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersDequeStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersDequeStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersDequeStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersDequeStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersDequeStubBuilder);
     NO_COPY_SEMANTIC(ContainersDequeStubBuilder);

@@ -499,7 +499,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
             BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
-            BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
+            BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
             GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
             GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
             BRANCH_CIR(builder_.Int64NotEqual(res, builder_.Int64(-1)), &isInteger, &notLineUtf8String);

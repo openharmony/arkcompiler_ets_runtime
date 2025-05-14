@@ -665,13 +665,12 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Bind(&newTargetFunction);
     Label fastGetHClass(env);
     Label intialHClassIsHClass(env);
-    GateRef globalEnv = GetGlobalEnv(glue_);
     GateRef mapOrSetFunc;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv_,
                                          GlobalEnv::BUILTINS_MAP_FUNCTION_INDEX);
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv_,
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
     GateRef newTargetHClass =

@@ -28,7 +28,8 @@ template <typename IteratorType>
 class BuiltinsCollectionIteratorStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsCollectionIteratorStubBuilder(StubBuilder *parent, GateRef glue, GateRef thisValue,
-        GateRef numArgs) : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
+        GateRef numArgs, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsCollectionIteratorStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsCollectionIteratorStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsCollectionIteratorStubBuilder);
@@ -94,10 +95,10 @@ private:
     GateRef GetNextTable(GateRef iteratedLinkedObj)
     {
         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
-            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
             return linkedHashTableStubBuilder.GetNextTable(iteratedLinkedObj);
         } else {
-            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
             return linkedHashTableStubBuilder.GetNextTable(iteratedLinkedObj);
         }
     }

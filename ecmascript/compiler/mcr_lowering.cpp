@@ -368,7 +368,7 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
                 if (env_->IsJitCompiler()) {
                     result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToString, {glue, value });
                 } else {
-                    BuiltinsStringStubBuilder builder(&env);
+                    BuiltinsStringStubBuilder builder(&env, builder_.GetGlobalEnv(glue));
                     result = builder.CreateStringBySingleCharCode(glue, value);
                 }
             } else if (dstType == ValueType::INT32) {

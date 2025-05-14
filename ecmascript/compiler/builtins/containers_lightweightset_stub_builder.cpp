@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 void ContainersLightWeightSetStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,
                                                   Label *exit, Label *slowPath)
 {
-    ContainersCommonStubBuilder commonBuilder(this);
+    ContainersCommonStubBuilder commonBuilder(this, GetCurrentGlobalEnv());
     commonBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, result, exit, slowPath,
                                             ContainersType::LIGHTWEIGHTSET_FOREACH);
 }

@@ -79,11 +79,11 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
     {
         DEFVARIABLE(index, VariableType::INT32(), GetNextIndex());
         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
-            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
             totalElements = Int32Add(linkedHashTableStubBuilder.GetNumberOfElements(*iteratedLinkedObj),
                                      linkedHashTableStubBuilder.GetNumberOfDeletedElements(*iteratedLinkedObj));
         } else {
-            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
             totalElements = Int32Add(linkedHashTableStubBuilder.GetNumberOfElements(*iteratedLinkedObj),
                                      linkedHashTableStubBuilder.GetNumberOfDeletedElements(*iteratedLinkedObj));
         }
@@ -100,11 +100,11 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
             {
                 if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
                     LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this,
-                                                                                                              glue_);
+                                                                                                              glue_, GetCurrentGlobalEnv());
                     key = linkedHashTableStubBuilder.GetKey(*iteratedLinkedObj, *index);
                 } else {
                     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this,
-                                                                                                              glue_);
+                                                                                                              glue_, GetCurrentGlobalEnv());
                     key = linkedHashTableStubBuilder.GetKey(*iteratedLinkedObj, *index);
                 }
                 BRANCH(TaggedIsHole(*key), &loopEnd, &keyIsNotHole);
@@ -136,7 +136,7 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
                         isDone = TaggedFalse();
                         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
                             LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
-                                this, glue_);
+                                this, glue_, GetCurrentGlobalEnv());
                             iterValue = linkedHashTableStubBuilder.GetValue(*iteratedLinkedObj, *index);
                         } else {
                             iterValue = *key;
@@ -152,7 +152,7 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
                         DEFVARIABLE(value, VariableType::JS_ANY(), TaggedUndefined());
                         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
                             LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
-                                this, glue_);
+                                this, glue_, GetCurrentGlobalEnv());
                             value = linkedHashTableStubBuilder.GetValue(*iteratedLinkedObj, *index);
                         } else {
                             value = *key;
@@ -240,11 +240,11 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::UpdateIter(Label *iter
                 DEFVARIABLE(DeletedElementsAt, VariableType::INT32(), Int32(0));
                 if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
                     LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this,
-                                                                                                              glue_);
+                                                                                                              glue_, GetCurrentGlobalEnv());
                     DeletedElementsAt = linkedHashTableStubBuilder.GetDeletedElementsAt(*iteratedLinkedObj, *index);
                 } else {
                     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this,
-                                                                                                              glue_);
+                                                                                                              glue_, GetCurrentGlobalEnv());
                     DeletedElementsAt = linkedHashTableStubBuilder.GetDeletedElementsAt(*iteratedLinkedObj, *index);
                 }
                 index = Int32Sub(*index, *DeletedElementsAt);

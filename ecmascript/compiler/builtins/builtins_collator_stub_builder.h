@@ -22,7 +22,8 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsCollatorStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsCollatorStubBuilder(BuiltinsStubBuilder *parent) : BuiltinsStubBuilder(parent) {}
+    explicit BuiltinsCollatorStubBuilder(BuiltinsStubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~BuiltinsCollatorStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsCollatorStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsCollatorStubBuilder);

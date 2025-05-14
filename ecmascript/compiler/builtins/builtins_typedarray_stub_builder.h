@@ -37,8 +37,8 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsTypedArrayStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsTypedArrayStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit BuiltinsTypedArrayStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~BuiltinsTypedArrayStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsTypedArrayStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsTypedArrayStubBuilder);

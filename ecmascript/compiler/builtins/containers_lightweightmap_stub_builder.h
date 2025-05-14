@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersLightWeightMapStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersLightWeightMapStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersLightWeightMapStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersLightWeightMapStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersLightWeightMapStubBuilder);
     NO_COPY_SEMANTIC(ContainersLightWeightMapStubBuilder);

@@ -155,6 +155,35 @@ GateRef BuiltinsStubBuilder::GetCallArg2(GateRef numArg)
     return res;
 }
 
+GateRef BuiltinsStubBuilder::GetGlobalEnvFromFunction(GateRef glue, GateRef func) {
+    auto env0 = GetEnvironment();
+    Label subentry(env0);
+    env0->SubCfgEntry(&subentry);
+    Label exit(env0);
+    Label isUndefined(env0);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef lexicalEnv = GetFunctionLexicalEnv(glue, func);
+    {
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(LexicalEnvIsUndefined),
+                   BitOr(TaggedIsSharedObj(glue, func),
+                       LogicAndBuilder(env0).
+                       And(TaggedIsHeapObject(lexicalEnv)).
+                       And(IsGlobalEnv(glue, lexicalEnv)).
+                       Done()));
+    }
+    result = lexicalEnv;
+    BRANCH_UNLIKELY(TaggedIsUndefined(lexicalEnv), &isUndefined, &exit);
+    Bind(&isUndefined);
+    {
+        result = GetGlobalEnv(glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto res = *result;
+    env0->SubCfgExit();
+    return res;
+}
+
 GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef glue, GateRef index, GateRef numArgs, bool needCheck)
 {
     if (!needCheck) {
@@ -248,7 +277,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
     Label exit(env);                                                                                \
     Label slowPath(env);                                                                            \
-    Builtins##type##StubBuilder builder(this);                                                      \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    Builtins##type##StubBuilder builder(this, globalEnv);                                           \
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -267,7 +297,8 @@ DECLARE_BUILTINS(type##method)                                                  
     Label thisCollectionObj(env);                                                                   \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    Builtins##type##StubBuilder builder(this, glue, thisValue, numArgs);                            \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    Builtins##type##StubBuilder builder(this, glue, thisValue, numArgs, globalEnv);                 \
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -286,7 +317,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                      \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs, globalEnv);     \
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -305,7 +337,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                        \
     Label slowPath(env);                                                                              \
     Label exit(env);                                                                                  \
-    BuiltinsDataViewStubBuilder builder(this);                                                        \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                         \
+    BuiltinsDataViewStubBuilder builder(this, globalEnv);                                             \
     builder.function<DataViewType::numType>(glue, thisValue, numArgs, &res, &exit, &slowPath);        \
     Bind(&slowPath);                                                                                  \
     {                                                                                                 \
@@ -354,7 +387,8 @@ DECLARE_BUILTINS(stubName)                                                      
     DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
     Label exit(env);                                                                                \
     Label slowPath(env);                                                                            \
-    Builtins##type##StubBuilder builder(this);                                                      \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    Builtins##type##StubBuilder builder(this, globalEnv);                                           \
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -375,7 +409,8 @@ DECLARE_BUILTINS(stubName)                                                      
     auto env = GetEnvironment();                                                                               \
     DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                                 \
     Label exit(env);                                                                                           \
-    BuiltinsCollectionIteratorStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                   \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                                  \
+    BuiltinsCollectionIteratorStubBuilder<JS##type> builder(this, glue, thisValue, numArgs, globalEnv);        \
     builder.method(&res, &exit);                                                                               \
     Bind(&exit);                                                                                               \
     Return(*res);                                                                                              \
@@ -410,7 +445,8 @@ DECLARE_BUILTINS(type##method)                                                  
     DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
     Label exit(env);                                                                                \
     Label slowPath(env);                                                                            \
-    Containers##type##StubBuilder builder(this);                                                      \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    Containers##type##StubBuilder builder(this, globalEnv);                                         \
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -571,32 +607,37 @@ DECLARE_BUILTINS(DateConstructor)
 
 DECLARE_BUILTINS(NumberConstructor)
 {
-    BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs);
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs, globalEnv);
     builder.GenNumberConstructor(nativeCode, func, newTarget);
 }
 
 DECLARE_BUILTINS(ProxyConstructor)
 {
-    BuiltinsProxyStubBuilder builder(this, glue, thisValue, numArgs);
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    BuiltinsProxyStubBuilder builder(this, glue, thisValue, numArgs, globalEnv);
     builder.GenProxyConstructor(nativeCode, func, newTarget);
 }
 
 DECLARE_BUILTINS(ArrayConstructor)
 {
-    BuiltinsArrayStubBuilder builder(this);
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    BuiltinsArrayStubBuilder builder(this, globalEnv);
     builder.GenArrayConstructor(glue, nativeCode, func, newTarget, thisValue, numArgs);
 }
 
 DECLARE_BUILTINS(MapConstructor)
 {
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue, globalEnv);
     GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 
 DECLARE_BUILTINS(SetConstructor)
 {
-    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue, globalEnv);
     GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
@@ -606,7 +647,8 @@ DECLARE_BUILTINS(type##ArrayConstructor)                                        
 {                                                                                                   \
     GateRef ctorName = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,                     \
                                               ConstantIndex::TYPE##_ARRAY_STRING_INDEX);            \
-    BuiltinsTypedArrayStubBuilder builtinsTypedArrayStubBuilder(this);                              \
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
+    BuiltinsTypedArrayStubBuilder builtinsTypedArrayStubBuilder(this, globalEnv);                   \
     builtinsTypedArrayStubBuilder.GenTypedArrayConstructor(glue, nativeCode, func, newTarget,       \
         thisValue, numArgs, ctorName, DataViewType::TYPE);                                          \
 }

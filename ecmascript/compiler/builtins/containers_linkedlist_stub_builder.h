@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class ContainersLinkedListStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersLinkedListStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit ContainersLinkedListStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~ContainersLinkedListStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersLinkedListStubBuilder);
     NO_COPY_SEMANTIC(ContainersLinkedListStubBuilder);

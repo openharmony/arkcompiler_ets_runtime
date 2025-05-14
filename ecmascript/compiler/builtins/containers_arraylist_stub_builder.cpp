@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 void ContainersArrayListStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,
                                              Label *exit, Label *slowPath)
 {
-    ContainersCommonStubBuilder commonBuilder(this);
+    ContainersCommonStubBuilder commonBuilder(this, GetCurrentGlobalEnv());
     commonBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, result, exit, slowPath,
                                            ContainersType::ARRAYLIST_FOREACH);
 }
@@ -32,7 +32,7 @@ void ContainersArrayListStubBuilder::ForEach(GateRef glue, GateRef thisValue, Ga
 void ContainersArrayListStubBuilder::ReplaceAllElements(GateRef glue, GateRef thisValue, GateRef numArgs,
                                                         Variable *result, Label *exit, Label *slowPath)
 {
-    ContainersCommonStubBuilder commonBuilder(this);
+    ContainersCommonStubBuilder commonBuilder(this, GetCurrentGlobalEnv());
     commonBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, result, exit, slowPath,
                                            ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
 }
