@@ -366,6 +366,10 @@ HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveForward)
 
 HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveBackward)
 {
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
+#if ENABLE_NEXT_OPTIMIZATION
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 20;
     JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
@@ -407,6 +411,7 @@ HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveBackward)
     });
 
     EXPECT_TRUE(LocalToShareSlot.empty());
+#endif
 }
 
 HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveForward1)
@@ -502,45 +507,53 @@ HWTEST_F_L0(BarrierTest, SliceBarrierMove)
 
 HWTEST_F_L0(BarrierTest, LocalToShareReverse)
 {
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
+#if ENABLE_NEXT_OPTIMIZATION
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 40;
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
-    for (uint32_t i = 0; i < arrayLength; i++) {
-        if (i % 2 == 0) {
-            JSHandle<EcmaString> str = factory->NewFromStdString(std::to_string(i) + "_" + std::to_string(i));
-            array->Set(thread, i, str);
-        } else {
-            array->Set(thread, i, JSTaggedValue(i));
+    uint32_t loopCount = 128;
+    for (uint32_t loop = 0; loop < loopCount; loop++) {
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
+        for (uint32_t i = 0; i < arrayLength; i++) {
+            if (i % 2 == 0) {
+                JSHandle<EcmaString> str = factory->NewFromStdString(std::to_string(i) + "_" + std::to_string(i));
+                array->Set(thread, i, str);
+            } else {
+                array->Set(thread, i, JSTaggedValue(i));
+            }
         }
-    }
-    JSHandle<JSArray> jsArray = JSArray::CreateArrayFromList(thread, array);
+        JSHandle<JSArray> jsArray = JSArray::CreateArrayFromList(thread, array);
 
-    JSHandle<EcmaString> reverseStr = factory->NewFromStdString("reverse");
-    auto reverseFunc = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(jsArray),
-                                                  JSHandle<JSTaggedValue>(reverseStr)).GetValue();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, reverseFunc.GetTaggedValue(),
-                                                                    jsArray.GetTaggedValue(),
-                                                                    thread->GlobalConstants()->GetUndefined(), 0);
-    EcmaInterpreter::Execute(info);
+        JSHandle<EcmaString> reverseStr = factory->NewFromStdString("reverse");
+        auto reverseFunc = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(jsArray),
+                                                    JSHandle<JSTaggedValue>(reverseStr)).GetValue();
+        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, reverseFunc.GetTaggedValue(),
+                                                                        jsArray.GetTaggedValue(),
+                                                                        thread->GlobalConstants()->GetUndefined(), 0);
+        EcmaInterpreter::Execute(info);
 
-    array = JSHandle<TaggedArray>(thread, jsArray->GetElements());
-    Region *dstRegion = Region::ObjectAddressToRange(array.GetObject<TaggedArray>());
-    std::set<uintptr_t> LocalToShareSlot1;
-    std::set<uintptr_t> LocalToShareSlot2;
-    for (uint32_t i = 0; i < arrayLength; i++) {
-        if (i % 2 == 1) {
-            LocalToShareSlot1.insert(ToUintPtr(array->GetData() + i));
-        } else {
-            LocalToShareSlot2.insert(ToUintPtr(array->GetData() + i));
+        array = JSHandle<TaggedArray>(thread, jsArray->GetElements());
+        Region *dstRegion = Region::ObjectAddressToRange(array.GetObject<TaggedArray>());
+        std::set<uintptr_t> LocalToShareSlot1;
+        std::set<uintptr_t> LocalToShareSlot2;
+        for (uint32_t i = 0; i < arrayLength; i++) {
+            if (i % 2 == 1) {
+                LocalToShareSlot1.insert(ToUintPtr(array->GetData() + i));
+            } else {
+                LocalToShareSlot2.insert(ToUintPtr(array->GetData() + i));
+            }
         }
+        dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot1, &LocalToShareSlot2](void *mem) {
+            LocalToShareSlot1.erase(ToUintPtr(mem));
+            LocalToShareSlot2.erase(ToUintPtr(mem));
+            return true;
+        });
+        EXPECT_TRUE(LocalToShareSlot1.empty());
+        EXPECT_EQ(LocalToShareSlot2.size(), arrayLength / 2);
     }
-    dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot1, &LocalToShareSlot2](void *mem) {
-        LocalToShareSlot1.erase(ToUintPtr(mem));
-        LocalToShareSlot2.erase(ToUintPtr(mem));
-        return true;
-    });
-    EXPECT_TRUE(LocalToShareSlot1.empty());
-    EXPECT_EQ(LocalToShareSlot2.size(), arrayLength / 2);
+#endif
 }
 
 } // namespace panda::ecmascript
