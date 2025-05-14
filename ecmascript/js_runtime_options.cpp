@@ -18,6 +18,8 @@
 #include <getopt.h>
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/platform/os.h"
 
@@ -1593,6 +1595,39 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetFastAOTCompileMode(true);
         SetOptLevel(DEFAULT_OPT_LEVEL);
         SetEnableLoweringBuiltin(false);
+    }
+}
+
+void JSRuntimeOptions::ParseAsmInterOption()
+{
+    asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
+    std::string strAsmOpcodeDisableRange = asmOpcodeDisableRange_;
+    if (strAsmOpcodeDisableRange.empty()) {
+        return;
+    }
+
+    // asm interpreter handle disable range
+    size_t pos = strAsmOpcodeDisableRange.find(",");
+    if (pos != std::string::npos) {
+        std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
+        std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
+        int64_t inputStart;
+        int64_t inputEnd;
+        if (!StringToInt64(strStart, inputStart)) {
+            inputStart = 0;
+            LOG_ECMA_IF(!strStart.empty(), INFO) << "when get start, strStart is " << strStart;
+        }
+        if (!StringToInt64(strEnd, inputEnd)) {
+            inputEnd = kungfu::BYTECODE_STUB_END_ID;
+            LOG_ECMA_IF(!strEnd.empty(), INFO) << "when get end, strEnd is " << strEnd;
+        }
+        int start = static_cast<int>(inputStart);
+        int end = static_cast<int>(inputEnd);
+        if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && end >= 0 &&
+            end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && start <= end) {
+            asmInterParsedOption_.handleStart = start;
+            asmInterParsedOption_.handleEnd = end;
+        }
     }
 }
 }

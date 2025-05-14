@@ -18,6 +18,8 @@
 
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/shared_heap/shared_value_helper.h"
+#include "common_interfaces/objects/base_object.h"
+#include "ecmascript/mem/tagged_state_word.h"
 
 namespace panda::ecmascript {
 class JSHClass;
@@ -25,22 +27,57 @@ template<typename T>
 class JSHandle;
 class JSThread;
 
-class TaggedObject {
+class TaggedObject : public BaseObject {
 public:
+    static TaggedObject *Cast(const BaseObject *header)
+    {
+        return static_cast<TaggedObject *>(const_cast<BaseObject *>(header));
+    }
+
     static TaggedObject *Cast(TaggedObject *header)
     {
         return static_cast<TaggedObject *>(header);
     }
-    TaggedObject(): class_(0) {}
+    TaggedObject() = default;
 
-    void SynchronizedSetClass(const JSThread *thread, JSHClass *hclass);
-    JSHClass *SynchronizedGetClass() const;
+    void SynchronizedTransitionClass(const JSThread *thread, JSHClass *hclass);
     void SetClassWithoutBarrier(JSHClass *hclass);
+    void SetFreeObjectClass(JSHClass *hclass);
+    void TransitionClassWithoutBarrier(JSHClass *hclass);
 
+    JSHClass *SynchronizedGetClass() const;
+#ifdef USE_CMC_GC
+    void SetForwardingPointerExclusive(BaseObject *fwdPtr)
+    {
+        reinterpret_cast<TaggedStateWord *>(this)->SetForwardingAddress(reinterpret_cast<uintptr_t>(fwdPtr));
+    }
+
+    BaseObject *GetForwardingPointer() const
+    {
+        return reinterpret_cast<BaseObject *>(reinterpret_cast<const TaggedStateWord *>(this)->GetForwardingAddress());
+    }
+
+    JSHClass *GetClass() const
+    {
+        return reinterpret_cast<JSHClass *>(reinterpret_cast<const TaggedStateWord *>(this)->GetClass());
+    }
+
+    bool IsInSharedHeap() const;
+#else
     JSHClass *GetClass() const
     {
         return reinterpret_cast<JSHClass *>(class_);
     }
+
+    size_t GetSize();
+
+    void SetForwardingPointerExclusive([[maybe_unused]]BaseObject *fwdPtr) {}
+
+    BaseObject *GetForwardingPointer() const
+    {
+        return nullptr;
+    }
+#endif
 
     // Size of object header
     static constexpr size_t TaggedObjectSize()
@@ -49,13 +86,14 @@ public:
     }
 
     static constexpr int HCLASS_OFFSET = 0;
-    static constexpr int SIZE = sizeof(MarkWordType);
+    static constexpr int SIZE = sizeof(TaggedStateWord);
 
 private:
     void SetClass(const JSThread *thread, JSHClass *hclass);
-    void SetClass(const JSThread *thread, JSHandle<JSHClass> hclass);
 
+#ifndef USE_CMC_GC
     MarkWordType class_;
+#endif
 
     friend class BaseHeap;
     friend class Heap;
@@ -63,7 +101,7 @@ private:
     friend class ObjectFactory;
     friend class EcmaString;
 };
-static_assert(TaggedObject::TaggedObjectSize() == sizeof(MarkWordType));
+static_assert(TaggedObject::TaggedObjectSize() == sizeof(TaggedStateWord));
 }  //  namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_TAGGED_OBJECT_HEADER_H

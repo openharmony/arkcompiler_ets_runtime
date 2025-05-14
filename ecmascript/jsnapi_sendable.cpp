@@ -14,9 +14,11 @@
  */
 
 #include "ecmascript/jsnapi_sendable.h"
+
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/napi/include/jsnapi_internals.h"
 #include "ecmascript/napi/jsnapi_helper.h"
-#include "js_function.h"
 
 namespace panda::ecmascript {
 

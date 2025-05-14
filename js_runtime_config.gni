@@ -15,6 +15,10 @@ if (!defined(ark_standalone_build)) {
   ark_standalone_build = false
 }
 
+if (!defined(ark_hybrid)) {
+  ark_hybrid = false
+}
+
 declare_args() {
   # If true, use icu to implement Intl APIs.
   # If false, use @ohos.intl APIs to implement Intl APIs.
@@ -59,6 +63,7 @@ declare_args() {
   # Default false.
   ets_runtime_feature_enable_list = false
   enable_gc_dfx_options = false
+  ark_js_hybrid = false
 }
 
 if (target_cpu == "arm64") {

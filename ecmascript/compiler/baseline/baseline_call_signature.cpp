@@ -849,11 +849,12 @@ DEF_CALL_SIGNATURE(BaselineStricteqImm8V8)
 DEF_CALL_SIGNATURE(BaselineIstrue)
 {
     // 1 : 1 input parameters
-    CallSignature signature("BaselineIstrue", 0, 1,
+    CallSignature signature("BaselineIstrue", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
     // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
@@ -861,12 +862,13 @@ DEF_CALL_SIGNATURE(BaselineIstrue)
 
 DEF_CALL_SIGNATURE(BaselineIsfalse)
 {
-    // 1 : 1 input parameters
-    CallSignature signature("BaselineIsfalse", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature signature("BaselineIsfalse", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
@@ -1346,12 +1348,13 @@ DEF_CALL_SIGNATURE(BaselineResumegenerator)
 
 DEF_CALL_SIGNATURE(BaselineGetresumemod)
 {
-    // 1 : 1 input parameters
-    CallSignature signature("BaselineGetresumemod", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature signature("BaselineGetresumemod", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
@@ -1812,12 +1815,13 @@ DEF_CALL_SIGNATURE(BaselineCopyrestargsImm8)
 
 DEF_CALL_SIGNATURE(BaselineLdlexvarImm4Imm4)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("BaselineLdlexvarImm4Imm4", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineLdlexvarImm4Imm4", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT32(),
         VariableType::INT32(),
@@ -2266,15 +2270,16 @@ DEF_CALL_SIGNATURE(BaselineReturn)
 }
 
 
-// ACC, LEVEL, SLOT, FRAME
+// GLUE, LEVEL, SLOT, FRAME
 DEF_CALL_SIGNATURE(BaselineLdlexvarImm8Imm8)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("BaselineLdlexvarImm8Imm8", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineLdlexvarImm8Imm8", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::INT32(),
         VariableType::INT32(),
         VariableType::NATIVE_POINTER(),
@@ -2419,15 +2424,16 @@ DEF_CALL_SIGNATURE(BaselineTestInImm8Imm16Imm16)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
-// SP
+// GLUE, SP
 DEF_CALL_SIGNATURE(BaselineDeprecatedLdlexenvPrefNone)
 {
-    // 1 : 1 input parameters
-    CallSignature signature("BaselineDeprecatedLdlexenvPrefNone", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature signature("BaselineDeprecatedLdlexenvPrefNone", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
@@ -3040,15 +3046,16 @@ DEF_CALL_SIGNATURE(BaselineDeprecatedCallarg1PrefV8V8)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
-// SP, LEVEL, SLOT
+// GLUE, SP, LEVEL, SLOT
 DEF_CALL_SIGNATURE(BaselineWideLdlexvarPrefImm16Imm16)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("BaselineWideLdlexvarPrefImm16Imm16", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineWideLdlexvarPrefImm16Imm16", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT32(),
         VariableType::INT32(),
@@ -3296,15 +3303,16 @@ DEF_CALL_SIGNATURE(BaselineWideStpatchvarPrefImm16)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
-// SP, ACC, V0
+// GLUE, SP, ACC, V0
 DEF_CALL_SIGNATURE(BaselineDeprecatedGetresumemodePrefV8)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("BaselineDeprecatedGetresumemodePrefV8", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature signature("BaselineDeprecatedGetresumemodePrefV8", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT8(),
@@ -3706,15 +3714,16 @@ DEF_CALL_SIGNATURE(BaselineDeprecatedStclasstoglobalrecordPrefId32)
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
 
-// SP
+// GLUE, SP
 DEF_CALL_SIGNATURE(BaselineDeprecatedLdhomeobjectPrefNone)
 {
-    // 1 : 1 input parameters
-    CallSignature signature("BaselineDeprecatedLdhomeobjectPrefNone", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature signature("BaselineDeprecatedLdhomeobjectPrefNone", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();

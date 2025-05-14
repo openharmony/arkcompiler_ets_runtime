@@ -132,15 +132,15 @@ private:
     void LowerNumberCheck(GateRef gate);
     void LowerBooleanCheck(GateRef gate);
     void LowerIndexCheck(GateRef gate);
-    void LowerObjectTypeCheck(GateRef gate);
-    void LowerSimpleHClassCheck(GateRef gate);
-    void LowerStableArrayCheck(GateRef gate);
-    void LowerTypedArrayCheck(GateRef gate);
-    void LowerEcmaStringCheck(GateRef gate);
-    void LowerStringKeyCheck(GateRef gate);
-    void LowerInternStringKeyCheck(GateRef gate);
-    void LowerInternStringCheck(GateRef gate);
-    void LowerEcmaMapCheck(GateRef gate);
+    void LowerObjectTypeCheck(GateRef glue, GateRef gate);
+    void LowerSimpleHClassCheck(GateRef glue, GateRef gate);
+    void LowerStableArrayCheck(GateRef glue, GateRef gate);
+    void LowerTypedArrayCheck(GateRef glue, GateRef gate);
+    void LowerEcmaStringCheck(GateRef gate, GateRef glue);
+    void LowerStringKeyCheck(GateRef gate, GateRef glue);
+    void LowerInternStringKeyCheck(GateRef gate, GateRef glue);
+    void LowerInternStringCheck(GateRef gate, GateRef glue);
+    void LowerEcmaMapCheck(GateRef glue, GateRef gate);
     void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
@@ -171,43 +171,43 @@ private:
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerStringLoadElement(GateRef gate);
-    GateRef BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
-    GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
-    GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
-                                       Label *isArrayBuffer, Label *exit);
+    GateRef BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
+    GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
+    GateRef BuildTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type,
+                                       Label *isByteArray, Label *isArrayBuffer, Label *exit);
     void LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp kind);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
-    void OptStoreElementByOnHeapMode(GateRef gate, GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
-                                     Label *isArrayBuffer, Label *exit);
+    void OptStoreElementByOnHeapMode(GateRef gate, GateRef glue, GateRef receiver, GateRef offset, GateRef value,
+                                     Label *isByteArray, Label *isArrayBuffer, Label *exit);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
-    void BuildNotOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
-    void BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
+    void BuildNotOnHeapTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset, GateRef value);
+    void BuildTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
                                      Label *isArrayBuffer, Label *exit);
     void LowerUInt8ClampedArrayStoreElement(GateRef gate);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
-    void LowerJSCallTargetCheck(GateRef gate);
+    void LowerJSCallTargetCheck(GateRef gate, GateRef glue);
     void LowerCallTargetIsCompiledCheck(GateRef gate);
     void CallTargetIsCompiledCheck(GateRef func, GateRef frameState, Label *checkAlreadyDeopt, Label *exit);
     void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);
-    void LowerJSCallTargetTypeCheck(GateRef gate);
-    void LowerJSFastCallTargetTypeCheck(GateRef gate);
-    void LowerJSCallThisTargetTypeCheck(GateRef gate);
-    void LowerJSFastCallThisTargetTypeCheck(GateRef gate);
-    void LowerJSNoGCCallThisTargetTypeCheck(GateRef gate);
-    void LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate);
-    void LowerJSNewObjRangeCallTargetCheck(GateRef gate);
+    void LowerJSCallTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSFastCallTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSCallThisTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSFastCallThisTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSNoGCCallThisTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate, GateRef glue);
+    void LowerJSNewObjRangeCallTargetCheck(GateRef gate, GateRef glue);
     void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
-    void LowerGetSuperConstructor(GateRef gate);
-    void LowerJSInlineTargetTypeCheck(GateRef gate);
+    void LowerGetSuperConstructor(GateRef glue, GateRef gate);
+    void LowerJSInlineTargetTypeCheck(GateRef gate, GateRef glue);
     void LowerJSInlineTargetHeapConstantCheck(GateRef gate);
     void SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
-    void LowerLookupHolder(GateRef gate);
-    void LowerLoadGetter(GateRef gate);
-    void LowerLoadSetter(GateRef gate);
-    void LowerPrototypeCheck(GateRef gate);
+    void LowerLookupHolder(GateRef glue, GateRef gate);
+    void LowerLoadGetter(GateRef gate, GateRef glue);
+    void LowerLoadSetter(GateRef gate, GateRef glue);
+    void LowerPrototypeCheck(GateRef glue, GateRef gate);
     void LowerStringEqual(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
@@ -226,16 +226,16 @@ private:
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
-    void LowerProtoChangeMarkerCheck(GateRef gate);
+    void LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate);
     void LowerMonoCallGetterOnProto(GateRef gate, GateRef glue);
-    void LowerMonoLoadPropertyOnProto(GateRef gate);
+    void LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate);
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);
     void LowerMonoStoreProperty(GateRef gate, GateRef glue);
     void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
-    void LowerMigrateArrayWithKind(GateRef gate);
+    void LowerMigrateArrayWithKind(GateRef gate, GateRef glue);
     void LowerEcmaObjectCheck(GateRef gate);
-    void LowerElementskindCheck(GateRef gate);
-    void LowerInlineSuperCtorCheck(GateRef gate);
+    void LowerElementskindCheck(GateRef glue, GateRef gate);
+    void LowerInlineSuperCtorCheck(GateRef gate, GateRef glue);
     void LowerCheckConstructor(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
@@ -270,7 +270,7 @@ private:
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
-    GateRef LoadFromConstPool(GateRef unsharedConstPool, size_t index, size_t valVecType);
+    GateRef LoadFromConstPool(GateRef glue, GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef GetLengthFromString(GateRef gate);
     GateRef LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr);
     void StorePropertyOnHolder(GateRef holder, GateRef value, PropertyLookupResult plr, bool needBarrier);

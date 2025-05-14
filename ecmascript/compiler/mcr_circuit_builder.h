@@ -55,57 +55,58 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
-GateRef CircuitBuilder::TaggedIsNumeric(GateRef x)
+GateRef CircuitBuilder::TaggedIsNumeric(GateRef glue, GateRef x)
 {
-    return LogicOrBuilder(env_).Or(TaggedIsNumber(x)).Or(TaggedIsBigInt(x)).Done();
+    return LogicOrBuilder(env_).Or(TaggedIsNumber(x)).Or(TaggedIsBigInt(glue, x)).Done();
 }
 
-GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return BitAnd(
         Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_LAST))),
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsShared(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsShared(GateRef glue, GateRef obj)
 {
-    GateRef bitfield = Load(VariableType::INT32(), LoadHClass(obj), IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), LoadHClass(glue, obj),
+        IntPtr(JSHClass::BIT_FIELD_OFFSET));
     return Int32NotEqual(
         Int32And(Int32LSR(bitfield, Int32(JSHClass::IsJSSharedBit::START_BIT)),
                  Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
         Int32(0));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return BitAnd(
         Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST))),
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsByteArray(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsMap(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsMap(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsDataView(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_DATA_VIEW)));
 }
 
-GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
+GateRef CircuitBuilder::IsSpecialSlicedString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     GateRef isSlicedString = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -125,7 +126,7 @@ GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsArrayIterator(GateRef obj)
+GateRef CircuitBuilder::TaggedIsArrayIterator(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -135,7 +136,7 @@ GateRef CircuitBuilder::TaggedIsArrayIterator(GateRef obj)
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+        result = Int32Equal(GetObjectType(LoadHClass(glue, obj)),
                             Int32(static_cast<int32_t>(JSType::JS_ARRAY_ITERATOR)));
         Jump(&exit);
     }
@@ -145,7 +146,7 @@ GateRef CircuitBuilder::TaggedIsArrayIterator(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
+GateRef CircuitBuilder::TaggedIsBigInt(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -155,7 +156,7 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+        result = Int32Equal(GetObjectType(LoadHClass(glue, obj)),
                             Int32(static_cast<int32_t>(JSType::BIGINT)));
         Jump(&exit);
     }
@@ -165,7 +166,7 @@ GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsString(GateRef obj)
+GateRef CircuitBuilder::TaggedIsString(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -175,7 +176,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = TaggedObjectIsString(obj);
+        result = TaggedObjectIsString(glue, obj);
         Jump(&exit);
     }
     Bind(&exit);
@@ -184,7 +185,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
+GateRef CircuitBuilder::TaggedIsStringIterator(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -194,7 +195,7 @@ GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+        result = Int32Equal(GetObjectType(LoadHClass(glue, obj)),
                             Int32(static_cast<int32_t>(JSType::JS_STRING_ITERATOR)));
         Jump(&exit);
     }
@@ -204,7 +205,7 @@ GateRef CircuitBuilder::TaggedIsStringIterator(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsSharedObj(GateRef obj)
+GateRef CircuitBuilder::TaggedIsSharedObj(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -214,7 +215,7 @@ GateRef CircuitBuilder::TaggedIsSharedObj(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = TaggedObjectIsShared(obj);
+        result = TaggedObjectIsShared(glue, obj);
         Jump(&exit);
     }
     Bind(&exit);
@@ -235,12 +236,12 @@ GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
     Bind(&targetIsHeapObject);
     {
-        GateRef jsHclass = LoadHClass(obj);
+        GateRef jsHclass = LoadHClass(glue, obj);
         BRANCH(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
             GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef glueGlobalEnv = LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
             result = GetArrayElementsGuardians(glueGlobalEnv);
             Jump(&exit);
         }
@@ -251,7 +252,7 @@ GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
     return res;
 }
 
-GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
+GateRef CircuitBuilder::TaggedIsSymbol(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -261,7 +262,7 @@ GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        GateRef objType = GetObjectType(LoadHClass(obj));
+        GateRef objType = GetObjectType(LoadHClass(glue, obj));
         result = Equal(objType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
         Jump(&exit);
     }
@@ -271,7 +272,7 @@ GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
+GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -281,13 +282,13 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = TaggedObjectIsString(obj);
+        result = TaggedObjectIsString(glue, obj);
         Label isString(env_);
         Label notString(env_);
         BRANCH(*result, &exit, &notString);
         Bind(&notString);
         {
-            GateRef objType = GetObjectType(LoadHClass(obj));
+            GateRef objType = GetObjectType(LoadHClass(glue, obj));
             result = Equal(objType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
             Jump(&exit);
         }
@@ -298,7 +299,7 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsEnumCache(GateRef obj)
+GateRef CircuitBuilder::TaggedIsEnumCache(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -308,7 +309,7 @@ GateRef CircuitBuilder::TaggedIsEnumCache(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        GateRef objType = GetObjectType(LoadHClass(obj));
+        GateRef objType = GetObjectType(LoadHClass(glue, obj));
         result = Equal(objType, Int32(static_cast<int32_t>(JSType::ENUM_CACHE)));
         Jump(&exit);
     }
@@ -318,7 +319,7 @@ GateRef CircuitBuilder::TaggedIsEnumCache(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
+GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef glue, GateRef obj)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -328,7 +329,7 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        GateRef objType = GetObjectType(LoadHClass(obj));
+        GateRef objType = GetObjectType(LoadHClass(glue, obj));
         result = Equal(objType, Int32(static_cast<int32_t>(JSType::PROTO_CHANGE_MARKER)));
         Jump(&exit);
     }
@@ -338,47 +339,47 @@ GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
     return ret;
 }
 
-GateRef CircuitBuilder::TaggedObjectIsJSMap(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSMap(GateRef glue, GateRef obj)
 {
-    GateRef objType = GetObjectType(LoadHClass(obj));
+    GateRef objType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_MAP)));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSSet(GateRef glue, GateRef obj)
 {
-    GateRef objType = GetObjectType(LoadHClass(obj));
+    GateRef objType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_SET)));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef glue, GateRef obj)
 {
-    GateRef objType = GetObjectType(LoadHClass(obj));
+    GateRef objType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_DATE)));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef glue, GateRef obj)
 {
-    GateRef jsType = GetObjectType(LoadHClass(obj));
+    GateRef jsType = GetObjectType(LoadHClass(glue, obj));
     return BitAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
 }
 
-GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef obj)
+GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef glue, GateRef obj)
 {
-    GateRef objType = GetObjectType(LoadHClass(obj));
+    GateRef objType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
-GateRef CircuitBuilder::TaggedIsBoundFunction(GateRef obj)
+GateRef CircuitBuilder::TaggedIsBoundFunction(GateRef glue, GateRef obj)
 {
-    GateRef objType = GetObjectType(LoadHClass(obj));
+    GateRef objType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objType, Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
 }
 
 inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type)
 {
     GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
-    GateRef bitField = Load(VariableType::INT32(), jsFunc, bitFieldOffset);
+    GateRef bitField = LoadWithoutBarrier(VariableType::INT32(), jsFunc, bitFieldOffset);
     switch (type) {
         case JudgeMethodType::HAS_AOT: {
             return Int32NotEqual(
@@ -406,10 +407,10 @@ inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodTy
     }
 }
 
-GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
+GateRef CircuitBuilder::BothAreString(GateRef glue, GateRef x, GateRef y)
 {
     return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(TaggedIsHeapObject(y))
-        .And(TaggedObjectIsString(x)).And(TaggedObjectIsString(y)).Done();
+        .And(TaggedObjectIsString(glue, x)).And(TaggedObjectIsString(glue, y)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
@@ -463,29 +464,29 @@ GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
     return Equal(t, Int64(0), "checkHeapObject");
 }
 
-GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
+GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_ASYNC_GENERATOR_OBJECT)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_ASYNC_GENERATOR_OBJECT)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsJSGlobalObject(GateRef x)
+GateRef CircuitBuilder::TaggedIsJSGlobalObject(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_GLOBAL_OBJECT)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_GLOBAL_OBJECT)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
+GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_GENERATOR_OBJECT)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_GENERATOR_OBJECT)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsJSArray(GateRef x)
+GateRef CircuitBuilder::TaggedIsJSArray(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_ARRAY)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_ARRAY)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
+GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::PROPERTY_BOX)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::PROPERTY_BOX)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
@@ -496,24 +497,25 @@ GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
         .Done();
 }
 
-GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
+GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::PROTOTYPE_HANDLER)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::PROTOTYPE_HANDLER)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
+GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::TRANSITION_HANDLER)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::TRANSITION_HANDLER)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsStoreAOTHandler(GateRef x)
+GateRef CircuitBuilder::TaggedIsStoreAOTHandler(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::STORE_TS_HANDLER)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::STORE_TS_HANDLER)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x))
+        .And(IsJsType(glue, x, JSType::TRANS_WITH_PROTO_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
@@ -589,11 +591,11 @@ GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
     return BitOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
-GateRef CircuitBuilder::TaggedIsNativePointer(GateRef x)
+GateRef CircuitBuilder::TaggedIsNativePointer(GateRef glue, GateRef x)
 {
     return LogicAndBuilder(env_)
         .And(TaggedIsHeapObject(x))
-        .And(IsJsType(x, JSType::JS_NATIVE_POINTER)).Done();
+        .And(IsJsType(glue, x, JSType::JS_NATIVE_POINTER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
@@ -744,44 +746,46 @@ GateRef CircuitBuilder::StoreToTaggedArray(GateRef array, size_t index, GateRef 
     return StoreConstOffset(VariableType::JS_ANY(), array, dataOffset, value);
 }
 
-GateRef CircuitBuilder::TreeStringIsFlat(GateRef string)
+GateRef CircuitBuilder::TreeStringIsFlat(GateRef glue, GateRef string)
 {
-    GateRef second = GetSecondFromTreeString(string);
+    GateRef second = GetSecondFromTreeString(glue, string);
     GateRef len = GetLengthFromString(second);
     return Int32Equal(len, Int32(0));
 }
 
-GateRef CircuitBuilder::GetFirstFromTreeString(GateRef string)
+GateRef CircuitBuilder::GetFirstFromTreeString(GateRef glue, GateRef string)
 {
     GateRef offset = IntPtr(TreeEcmaString::FIRST_OFFSET);
-    return Load(VariableType::JS_POINTER(), string, offset);
+    return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 
-GateRef CircuitBuilder::GetSecondFromTreeString(GateRef string)
+GateRef CircuitBuilder::GetSecondFromTreeString(GateRef glue, GateRef string)
 {
     GateRef offset = IntPtr(TreeEcmaString::SECOND_OFFSET);
-    return Load(VariableType::JS_POINTER(), string, offset);
+    return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 
-GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
+GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index)
 {
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    return Load(VariableType::JS_ANY(), array, dataOffset);
+    return Load(VariableType::JS_ANY(), glue, array, dataOffset);
 }
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index)
 {
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    return Load(valType, array, dataOffset);
+    // valType is all PrimitiveType, barrier is not needed
+    return LoadWithoutBarrier(valType, array, dataOffset);
 }
 
 GateRef CircuitBuilder::GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index)
 {
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    return Load(type, array, dataOffset);
+    // valType is all PrimitiveType, barrier is not needed
+    return LoadWithoutBarrier(type, array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,
@@ -795,7 +799,7 @@ void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,
 GateRef CircuitBuilder::GetArrayElementsGuardians(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)),
         Int32((1LU << GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1)));
@@ -804,7 +808,7 @@ GateRef CircuitBuilder::GetArrayElementsGuardians(GateRef env)
 GateRef CircuitBuilder::GetMapIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::MapIteratorDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::MapIteratorDetectorBits::SIZE) - 1)));
@@ -813,7 +817,7 @@ GateRef CircuitBuilder::GetMapIteratorDetector(GateRef env)
 GateRef CircuitBuilder::GetSetIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::SetIteratorDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::SetIteratorDetectorBits::SIZE) - 1)));
@@ -822,7 +826,7 @@ GateRef CircuitBuilder::GetSetIteratorDetector(GateRef env)
 GateRef CircuitBuilder::GetStringIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::StringIteratorDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::StringIteratorDetectorBits::SIZE) - 1)));
@@ -831,7 +835,7 @@ GateRef CircuitBuilder::GetStringIteratorDetector(GateRef env)
 GateRef CircuitBuilder::GetArrayIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::ArrayIteratorDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::ArrayIteratorDetectorBits::SIZE) - 1)));
@@ -840,7 +844,7 @@ GateRef CircuitBuilder::GetArrayIteratorDetector(GateRef env)
 GateRef CircuitBuilder::GetTypedArrayIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::TypedArrayIteratorDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::TypedArrayIteratorDetectorBits::SIZE) - 1)));
@@ -849,7 +853,7 @@ GateRef CircuitBuilder::GetTypedArrayIteratorDetector(GateRef env)
 GateRef CircuitBuilder::GetTypedArraySpeciesProtectDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
         Int32(GlobalEnv::TypedArraySpeciesProtectDetectorBits::START_BIT)),
         Int32((1LU << GlobalEnv::TypedArraySpeciesProtectDetectorBits::SIZE) - 1)));

@@ -16,11 +16,15 @@
 #ifndef ECMASCRIPT_STACKINFO_STACK_TRACE_H
 #define ECMASCRIPT_STACKINFO_STACK_TRACE_H
 
+#include <memory>
 #include <string>
+
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
 class JSPromise;
+class EcmaVM;
+class JSTaggedValue;
 
 // for async stack trace
 static constexpr int32_t MAX_CALL_STACK_SIZE_TO_CAPTURE = 200;

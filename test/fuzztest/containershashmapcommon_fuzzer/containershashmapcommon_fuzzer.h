@@ -82,7 +82,7 @@ public:
                                    JSThread *&thread)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         vm = JSNApi::CreateJSVM(option);
         thread = vm->GetAssociatedJSThread();
         if (vm == nullptr || thread == nullptr) {

@@ -22,14 +22,14 @@
 #include <memory>
 
 #include "ecmascript/common.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pool_template.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::pgo {
 class PGOProfilerHeader;

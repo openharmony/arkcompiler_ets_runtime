@@ -109,9 +109,11 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     ASSERT(NumberOfElements() >= propertiesNumber);
     const int MAX_ELEMENTS_LINER_SEARCH = 9; // 9: Builtins Object properties number is nine;
     if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
-        Span<struct Properties> sp(GetProperties(), propertiesNumber);
+        void *properties = reinterpret_cast<void *>(GetProperties());
+        size_t keyOffset = 0;
         for (int i = 0; i < propertiesNumber; i++) {
-            if (sp[i].key_ == key) {
+            JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
+            if (propKey == key) {
                 return i;
             }
         }

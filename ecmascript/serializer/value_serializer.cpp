@@ -188,11 +188,17 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     if (SerializeReference(object) || SerializeRootObject(object)) {
         return;
     }
-    Region *region = Region::ObjectAddressToRange(object);
+
+    [[maybe_unused]] Region *region = Region::ObjectAddressToRange(object);
     JSHClass *objClass = object->GetClass();
     if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
-        objClass->IsJSSharedAsyncFunction() || region->InSharedReadOnlySpace() ||
-        (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+        objClass->IsJSSharedAsyncFunction() ||
+#ifdef USE_CMC_GC
+        // add shared read only
+        (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
+#else
+        region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+#endif
         SerializeSharedObject(object);
         return;
     }
@@ -237,7 +243,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         }
         case JSType::JS_OBJECT: {
-            hashfield = Barriers::GetValue<JSTaggedType>(object, JSObject::HASH_OFFSET);
+            hashfield = Barriers::GetTaggedValue(object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
             break;
         }

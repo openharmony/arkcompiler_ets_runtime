@@ -265,17 +265,17 @@ public:
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
     template <VisitType visitType, class DerivedVisitor>
-    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
+    void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)
     {
         ASSERT(visitType == VisitType::ALL_VISIT || visitType == VisitType::OLD_GC_VISIT);
         if constexpr (visitType == VisitType::ALL_VISIT) {
-            visitor(this, ObjectSlot(ToUintPtr(this)),
-                ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
+            visitor(this, ToUintPtr(this),
+                ToUintPtr(this) + GetMachineCodeObjectSize(), VisitObjectArea::RAW_DATA);
         }
         if constexpr (visitType == VisitType::OLD_GC_VISIT) {
             visitor(this,
-                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr())),
-                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize()),
+                    static_cast<uintptr_t>(GetHeapConstantTableAddr()),
+                    static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize(),
                     VisitObjectArea::NORMAL);
             this->ProcessMarkObject();
         }

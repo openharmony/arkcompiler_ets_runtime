@@ -14,11 +14,13 @@
  */
 
 #include "ecmascript/compiler/aot_file/gdb_jit.h"
-#include "llvm/BinaryFormat/ELF.h"
-#include "ecmascript/log_wrapper.h"
 
 #include <securec.h>
 #include <mutex>
+
+#include "ecmascript/log_wrapper.h"
+#include "libpandabase/macros.h"
+#include "llvm/BinaryFormat/ELF.h"
 
 #ifndef PANDA_TARGET_MACOS
 // Keep in sync with gdb/gdb/jit.h

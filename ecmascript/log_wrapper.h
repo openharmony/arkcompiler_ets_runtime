@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_LOG_WRAPPER_H
 #define ECMASCRIPT_LOG_WRAPPER_H
 
-#include "ecmascript/log.h"
+#include "common_components/log/log.h"
 
 // NO_TAG means not print any tag
 #define LOG_NO_TAG(level) ARK_LOG(level, Component::NO_TAG)

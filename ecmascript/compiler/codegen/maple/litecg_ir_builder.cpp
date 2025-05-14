@@ -414,9 +414,9 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 HandleCmp(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FCMP);
                 break;
-            case OpCode::LOAD:
+            case OpCode::LOAD_WITHOUT_BARRIER:
                 HandleLoad(gate);
-                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOAD);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOAD_WITHOUT_BARRIER);
                 break;
             case OpCode::STORE_WITHOUT_BARRIER:
                 HandleStore(gate);
@@ -1017,7 +1017,7 @@ void LiteCGIRBuilder::AddDerivedrefGate(GateRef gate, Expr result)
     acc_.GetOuts(gate, outGates);
     for (GateRef outGate : outGates) {
         auto op = acc_.GetOpCode(outGate);
-        if (op != OpCode::LOAD && op != OpCode::STORE_WITHOUT_BARRIER) {
+        if (op != OpCode::LOAD_WITHOUT_BARRIER && op != OpCode::STORE_WITHOUT_BARRIER) {
             shouldSkip = false;
             break;
         }

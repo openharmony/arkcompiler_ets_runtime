@@ -16,8 +16,13 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#ifdef USE_CMC_GC
+#include "common_interfaces/base_runtime.h"
+#include "ecmascript/crt.h"
+#endif
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -122,17 +127,22 @@ bool EcmaVM::Destroy(EcmaVM *vm)
 
 void EcmaVM::PreFork()
 {
+    Runtime::GetInstance()->PreFork(thread_);
+    auto sHeap = SharedHeap::GetInstance();
+#ifndef USE_CMC_GC
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
-    heap_->DisableParallelGC();
-    SetPostForked(false);
-
-    auto sHeap = SharedHeap::GetInstance();
     sHeap->CompactHeapBeforeFork(thread_);
+#endif
+
+    // CommonRuntime threads and GC Taskpool Thread should be merged together.
+    heap_->DisableParallelGC();
     sHeap->DisableParallelGC(thread_);
     heap_->GetWorkManager()->FinishInPreFork();
     sHeap->GetWorkManager()->FinishInPreFork();
+
+    SetPostForked(false);
     Jit::GetInstance()->PreFork();
 }
 
@@ -144,6 +154,7 @@ void EcmaVM::PostFork()
         SharedHeap::GetInstance()->ResetLargeCapacity();
         heap_->ResetLargeCapacity();
     }
+    Runtime::GetInstance()->PostFork();
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
@@ -152,11 +163,12 @@ void EcmaVM::PostFork()
     heap_->GetWorkManager()->InitializeInPostFork();
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetWorkManager()->InitializeInPostFork();
-    SetPostForked(true);
-    LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
-    SignalAllReg();
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
+    SetPostForked(true);
+
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
+    SignalAllReg();
     options_.SetPgoForceDump(false);
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
@@ -442,6 +454,7 @@ EcmaVM::~EcmaVM()
         sustainingJSHandleList_ = nullptr;
     }
 
+#ifndef USE_CMC_GC
     SharedHeap *sHeap = SharedHeap::GetInstance();
     const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
     if (IsWorkerThread() && Runtime::SharedGCRequest()) {
@@ -453,6 +466,7 @@ EcmaVM::~EcmaVM()
             sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
         }
     }
+#endif
 
     intlCache_.ClearIcuCache(this);
 
@@ -811,6 +825,16 @@ void EcmaVM::ClearBufferData()
 
 void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason reason) const
 {
+#ifdef USE_CMC_GC
+    GcType type = GcType::ASYNC;
+    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
+        gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+        reason == GCReason::ALLOCATION_FAILED) {
+        type = GcType::FULL;
+    }
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+    return;
+#endif
     heap_->CollectGarbage(gcType, reason);
 }
 
@@ -864,6 +888,21 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (ptManager_) {
         ptManager_->Iterate(v);
     }
+#ifdef ARK_USE_SATB_BARRIER
+    auto iterator = cachedSharedConstpools_.begin();
+    while (iterator != cachedSharedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constpoolIter->second)));
+            }
+            ++constpoolIter;
+        }
+        ++iterator;
+    }
+#endif
 }
 
 size_t EcmaVM::IterateHandle(RootVisitor &visitor)
@@ -1630,7 +1669,16 @@ void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapaci
         UNREACHABLE();
     }
     std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
-    std::copy(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), newUnsharedConstpools);
+    int32_t copyLen = GetUnsharedConstpoolsArrayLen();
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
+    } else {
+        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+    }
+#else
+    std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+#endif
     ClearUnsharedConstpoolArray();
     unsharedConstpools_ = newUnsharedConstpools;
     thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));

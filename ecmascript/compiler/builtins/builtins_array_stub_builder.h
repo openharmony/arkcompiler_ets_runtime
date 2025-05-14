@@ -87,15 +87,15 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
     GateRef MakeFromIndex(GateRef input, GateRef len, bool reversedOrder);
     // For all the IndexOf* members below: fromIndex is int64; len is int32.
     GateRef IndexOfTaggedUndefined(
-        GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options);
+        GateRef glue, GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfTaggedZero(
-        GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options);
+        GateRef glue, GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfTaggedIntElements(
-        GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
+        GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfTaggedIntTarget(
-        GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
+        GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfTaggedNumber(
-        GateRef elements, GateRef target, GateRef fromIndex, GateRef len,
+        GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len,
         IndexOfOptions options, bool targetIsAlwaysDouble);
     GateRef IndexOfStringElements(
         GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len,
@@ -106,7 +106,7 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
         GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
     // Including true, false, null.
     GateRef IndexOfObject(
-        GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
+        GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfBigIntOrObjectElements(
         GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
     GateRef IndexOfBigIntOrObjectTarget(
@@ -202,7 +202,8 @@ private:
                           Label *exit, Label *slowPath, IndexOfOptions options);
     void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
-    GateRef CalEleKindForNewArrayNoHole(GateRef thisValue, GateRef thisLen, GateRef actualIndex, GateRef insertVal);
+    GateRef CalEleKindForNewArrayNoHole(GateRef glue, GateRef thisValue, GateRef thisLen, GateRef actualIndex,
+        GateRef insertVal);
     void FastArrayWith(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualIndex, GateRef insertValue,
                        GateRef newArrEleKind);
     void WithOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
@@ -212,7 +213,7 @@ private:
     GateRef MakeFromIndexWithInt(GateRef intValue, GateRef length, bool reversedOrder);
     GateRef MakeFromIndexWithDouble(GateRef doubleValue, GateRef length, bool reversedOrder);
     template <class Predicate>
-    GateRef IndexOfElements(GateRef elements, Predicate predicate, GateRef fromIndex, GateRef len,
+    GateRef IndexOfElements(GateRef glue, GateRef elements, Predicate predicate, GateRef fromIndex, GateRef len,
                             IndexOfOptions options);
     GateRef StringEqual(GateRef glue, GateRef left, GateRef right, StringElementsCondition rightCondition);
     GateRef BigIntEqual(GateRef glue, GateRef left, GateRef right);

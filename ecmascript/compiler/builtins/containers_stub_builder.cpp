@@ -47,14 +47,14 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIVector, &valueNotJSAPIVector);
+    BRANCH(IsContainer(glue, *thisObj, type), &valueIsJSAPIVector, &valueNotJSAPIVector);
     Bind(&valueNotJSAPIVector);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPIVector, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsContainer(glue, tempObj, type), &objIsJSAPIVector, slowPath);
             Bind(&objIsJSAPIVector);
             {
                 thisObj = tempObj;
@@ -77,7 +77,7 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -93,7 +93,7 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
     }
     Bind(&nextCount);
     {
-        length = ContainerGetSize(*thisObj, type);
+        length = ContainerGetSize(glue, *thisObj, type);
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
@@ -104,9 +104,9 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
             BRANCH(Int32LessThan(*k, *length), &next, &afterLoop);
             Bind(&next);
             {
-                kValue = ContainerGetValue(*thisObj, *k, type);
+                kValue = ContainerGetValue(glue, *thisObj, *k, type);
                 if (IsPlainArray(type)) {
-                    key = PlainArrayGetKey(*thisObj, *k);
+                    key = PlainArrayGetKey(glue, *thisObj, *k);
                 } else {
                     key = IntToTaggedInt(*k);
                 }
@@ -122,7 +122,7 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
                     Jump(exit);
                 }
                 Bind(&notHasException);
-                GateRef tempLen = ContainerGetSize(*thisObj, type);
+                GateRef tempLen = ContainerGetSize(glue, *thisObj, type);
                 BRANCH(Int32NotEqual(tempLen, *length), &lenChange, &setValue);
                 Bind(&lenChange);
                 if (!IsArrayListReplaceAllelements(type)) {
@@ -132,7 +132,7 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
                 Bind(&setValue);
                 if (IsReplaceAllElements(type)) {
                     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-                    GateRef elements = Load(VariableType::JS_POINTER(), *thisObj, elementsOffset);
+                    GateRef elements = Load(VariableType::JS_POINTER(), glue, *thisObj, elementsOffset);
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *k, retValue);
                 }
                 Jump(&loopEnd);
@@ -175,14 +175,14 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPILightWeight, &valueNotJSAPILightWeight);
+    BRANCH(IsContainer(glue, *thisObj, type), &valueIsJSAPILightWeight, &valueNotJSAPILightWeight);
     Bind(&valueNotJSAPILightWeight);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPILightWeight, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsContainer(glue, tempObj, type), &objIsJSAPILightWeight, slowPath);
             Bind(&objIsJSAPILightWeight);
             {
                 thisObj = tempObj;
@@ -205,7 +205,7 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -221,7 +221,7 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
     }
     Bind(&nextCount);
     {
-        length = ContainerGetSize(*thisObj, type);
+        length = ContainerGetSize(glue, *thisObj, type);
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
@@ -231,8 +231,8 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
             BRANCH(Int32LessThan(*index, *length), &next, &afterLoop);
             Bind(&next);
             {
-                value = ContainerGetValue(*thisObj, *index, type);
-                key = ContainerGetKey(*thisObj, *index, type);
+                value = ContainerGetValue(glue, *thisObj, *index, type);
+                key = ContainerGetKey(glue, *thisObj, *index, type);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *value, *key, *thisObj };
                 CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
@@ -245,7 +245,7 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
                     Jump(exit);
                 }
                 Bind(&notHasException);
-                GateRef currentLen = ContainerGetSize(*thisObj, type);
+                GateRef currentLen = ContainerGetSize(glue, *thisObj, type);
                 BRANCH(Int32NotEqual(currentLen, *length), &lenChange, &loopEnd);
                 Bind(&lenChange);
                 length = currentLen;
@@ -293,14 +293,14 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIHash, &valueNotJSAPIHash);
+    BRANCH(IsContainer(glue, *thisObj, type), &valueIsJSAPIHash, &valueNotJSAPIHash);
     Bind(&valueNotJSAPIHash);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPIHash, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsContainer(glue, tempObj, type), &objIsJSAPIHash, slowPath);
             Bind(&objIsJSAPIHash);
             {
                 thisObj = tempObj;
@@ -323,7 +323,7 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -339,7 +339,7 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
     }
     Bind(&nextCount);
     {
-        length = ContainerGetSize(*thisObj, type);
+        length = ContainerGetSize(glue, *thisObj, type);
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
@@ -350,15 +350,15 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
             BRANCH(Int32LessThan(*index, *length), &next, &afterLoop);
             Bind(&next);
             {
-                node = ContainerGetNode(*thisObj, *index, type);
+                node = ContainerGetNode(glue, *thisObj, *index, type);
                 BRANCH(TaggedIsHole(*node), &loopEnd, &nodeNotHole);
                 Bind(&nodeNotHole);
-                BRANCH(IsLinkedNode(*node), &nodeIsLinked, &nodeIsRBTree);
+                BRANCH(IsLinkedNode(glue, *node), &nodeIsLinked, &nodeIsRBTree);
                 LoopBegin(&nodeIsLinked);
                 {
-                    value = Load(VariableType::JS_POINTER(), *node, IntPtr(
+                    value = Load(VariableType::JS_POINTER(), glue, *node, IntPtr(
                         type == ContainersType::HASHSET_FOREACH ? LinkedNode::KEY_OFFSET : LinkedNode::VALUE_OFFSET));
-                    key = Load(VariableType::JS_POINTER(), *node, IntPtr(LinkedNode::KEY_OFFSET));
+                    key = Load(VariableType::JS_POINTER(), glue, *node, IntPtr(LinkedNode::KEY_OFFSET));
                     JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                     callArgs.callThisArg3WithReturnArgs = { *thisArg, *value, *key, *thisObj };
                     CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
@@ -371,7 +371,7 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
                         Jump(exit);
                     }
                     Bind(&notHasExceptionLinked);
-                    node = Load(VariableType::JS_POINTER(), *node, IntPtr(LinkedNode::NEXT_OFFSET));
+                    node = Load(VariableType::JS_POINTER(), glue, *node, IntPtr(LinkedNode::NEXT_OFFSET));
                     BRANCH(TaggedIsHole(*node), &loopEnd, &loopLinked);
                 }
                 Bind(&loopLinked);
@@ -431,14 +431,14 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPILinkedList, &valueNotJSAPILinkedList);
+    BRANCH(IsContainer(glue, *thisObj, type), &valueIsJSAPILinkedList, &valueNotJSAPILinkedList);
     Bind(&valueNotJSAPILinkedList);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPILinkedList, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsContainer(glue, tempObj, type), &objIsJSAPILinkedList, slowPath);
             Bind(&objIsJSAPILinkedList);
             {
                 thisObj = tempObj;
@@ -461,7 +461,7 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -477,7 +477,7 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
     }
     Bind(&nextCount);
     {
-        length = ContainerGetSize(*thisObj, type);
+        length = ContainerGetSize(glue, *thisObj, type);
         valueNode = Int32(TaggedList<TaggedArray>::ELEMENTS_START_INDEX);
         Jump(&loopHead);
         LoopBegin(&loopHead);
@@ -487,9 +487,9 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
             BRANCH(Int32LessThan(*index, *length), &next, &afterLoop);
             Bind(&next);
             {
-                valueNode = TaggedGetInt(ContainerGetNode(*thisObj,
+                valueNode = TaggedGetInt(ContainerGetNode(glue, *thisObj,
                     Int32Add(*valueNode, Int32(TaggedList<TaggedArray>::NEXT_PTR_OFFSET)), type));
-                value = ContainerGetNode(*thisObj, *valueNode, type);
+                value = ContainerGetNode(glue, *thisObj, *valueNode, type);
                 BRANCH(TaggedIsHole(*value), &loopEnd, &valueNotHole);
                 Bind(&valueNotHole);
                 key = IntToTaggedInt(*index);

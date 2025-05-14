@@ -30,6 +30,12 @@ namespace panda::ecmascript {
 template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
 static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
+#ifdef USE_CMC_GC
+    BaseRuntime::WriteBarrier(obj, (void *)((long)obj + offset), (void*)value);
+    // Ignore barrier for cmc gc allocation
+    return;
+#endif
+
     // NOTE: The logic in WriteBarrier should be synced with CopyObject.
     // if any new feature/bugfix be added in WriteBarrier, it should also be added to CopyObject.
     ASSERT(value != JSTaggedValue::VALUE_UNDEFINED);
@@ -82,49 +88,84 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 }
 
+/* template<bool atomic>
+static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset)
+{
+} */
+
 template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
+#ifndef ARK_USE_SATB_BARRIER
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
     if constexpr (needWriteBarrier) {
         WriteBarrier(thread, obj, offset, value);
     }
+#else
+    WriteBarrier(thread, obj, offset, value);
+    *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
+#endif
 }
 
-inline void Barriers::SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value)
-{
-    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(obj)->store(value, std::memory_order_release);
-    WriteBarrier(thread, obj, 0, value);
-}
+#ifdef USE_CMC_GC
+// explicit Instantiation to avoid compile optimization
+template void Barriers::SetObject<true>(const JSThread*, void*, size_t, JSTaggedType);
+template void Barriers::SetObject<false>(const JSThread*, void*, size_t, JSTaggedType);
+#endif
 
 inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                             bool isPrimitive)
 {
+#ifndef ARK_USE_SATB_BARRIER
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
         std::memory_order_release);
     if (!isPrimitive) {
         WriteBarrier(thread, obj, offset, value);
     }
+#else
+    WriteBarrier(thread, obj, offset, value);
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
+        std::memory_order_release);
+#endif
 }
 
-static inline void CopyMaybeOverlap(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
+static inline void CopyBackward(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
-    if (dst > src && dst < src + count) {
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        for (size_t i = count; i > 0; i--) {
+            JSTaggedType valueToRef = Barriers::GetTaggedValue(src, (i - 1) * sizeof(JSTaggedType));
+            Barriers::SetObject<false>(nullptr, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
+        }
+    } else {
         std::copy_backward(src, src + count, dst + count);
+    }
+#else
+    std::copy_backward(src, src + count, dst + count);
+#endif
+}
+
+static inline void CopyForward(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
+{
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        for (size_t i = 0; i < count; i++) {
+            JSTaggedType valueToRef = Barriers::GetTaggedValue(src, i * sizeof(JSTaggedType));
+            Barriers::SetObject<false>(nullptr, dst, i * sizeof(JSTaggedType), valueToRef);
+        }
     } else {
         std::copy_n(src, count, dst);
     }
-}
-
-static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, const JSTaggedValue* __restrict__ src, size_t count)
-{
+#else
     std::copy_n(src, count, dst);
+#endif
 }
 
 template <Region::RegionSpaceKind kind>
 ARK_NOINLINE bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count);
 
+// to remove parameter dstObj, maybe thread also
 template <bool needWriteBarrier, bool maybeOverlap>
 void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
                           const JSTaggedValue *srcAddr, size_t count)
@@ -137,6 +178,12 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     if constexpr (!needWriteBarrier) {
         return;
     }
+
+#ifdef USE_CMC_GC
+    Barriers::CMCArrayCopyWriteBarrier(thread, (void*)srcAddr, (void*)dstAddr, count);
+    return;
+#endif
+
     // step 2. According to object region, update the corresponding bit set batch.
     Region* objectRegion = Region::ObjectAddressToRange(ToUintPtr(dstObj));
     if (!objectRegion->InSharedHeap()) {
@@ -183,10 +230,14 @@ inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValu
 {
     // Copy Primitive value don't need thread.
     ASSERT((ToUintPtr(dst) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
-    if constexpr (maybeOverlap) {
-        CopyMaybeOverlap(dst, src, count);
+    if constexpr (maybeOverlap == false) {
+        CopyForward(dst, src, count);
+        return;
+    }
+    if (dst > src && dst < src + count) {
+        CopyBackward(dst, src, count);
     } else {
-        CopyNoOverlap(dst, src, count);
+        CopyForward(dst, src, count);
     }
 }
 } // namespace panda::ecmascript

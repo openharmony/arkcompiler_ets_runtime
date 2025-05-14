@@ -29,7 +29,7 @@ public:
                           bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), builder_(circuit, cmpCfg), enableLog_(enableLog),
           accessor_(circuit), argAccessor_(circuit), stateEntry_(GetEntryBBStateOut()),
-          dependEntry_(GetEntryBBDependOut()), methodName_(name)
+          dependEntry_(GetEntryBBDependOut()), methodName_(name), glue_(GateAccessor(circuit).GetGlueFromArgList())
     {
     }
 
@@ -77,6 +77,7 @@ private:
     GateRef stateEntry_ {Circuit::NullGate()};
     GateRef dependEntry_ {Circuit::NullGate()};
     std::string methodName_;
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 

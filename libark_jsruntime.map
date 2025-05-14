@@ -97,8 +97,8 @@
       panda::JSExecutionScope::*;
 
       panda::ecmascript::AotCrashInfo*;
-      panda::ecmascript::Log::*;
-      panda::ecmascript::AndroidLog*;
+      panda::Log::*;
+      panda::AndroidLog*;
       panda::ecmascript::Method::*;
       panda::ecmascript::JSPandaFileManager::*;
       panda::ecmascript::DebugInfoExtractor::*;
@@ -111,6 +111,7 @@
       panda::ecmascript::pgo::PGOProfilerEncoder::*;
       panda::ecmascript::pgo::ProfileType::PROFILE_TYPE_NONE;
       panda::ecmascript::containers::ContainerError::*;
+      panda::ecmascript::TaggedStateWord::BASE_ADDRESS;
       panda::ecmascript::NativeAreaAllocator::*;
       panda::ecmascript::StackFrame::*;
       panda::ecmascript::AsyncStack::*;

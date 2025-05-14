@@ -254,12 +254,14 @@ void ParallelEvacuator::UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &s
 ParallelEvacuator::SetObjectFieldRSetVisitor::SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator)
     : evacuator_(evacuator) {}
 
-void ParallelEvacuator::SetObjectFieldRSetVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
-    ObjectSlot end, VisitObjectArea area)
+void ParallelEvacuator::SetObjectFieldRSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
+    uintptr_t endAddr, VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
+    ObjectSlot start(startAddr);
+    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        JSHClass *hclass = root->GetClass();
+        JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         TaggedObject *dst = hclass->GetLayout().GetTaggedObject();

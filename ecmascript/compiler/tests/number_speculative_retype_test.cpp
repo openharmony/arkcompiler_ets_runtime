@@ -71,7 +71,7 @@ HWTEST_F_L0(NumberSpeculativeRetypeTests, ConvertTest)
     auto value2 = builder.Int32(-1234567);
     auto ecma_object_check_gate = circuit.NewGate(circuit.EcmaObjectCheck(), MachineType::I1,
         {Circuit::NullGate(), Circuit::NullGate(), value2, Circuit::NullGate()}, GateType::NJSValue());
-    
+
     ChunkVector<TypeInfo> typeInfo(&chunk);
     auto maxId = circuit.GetMaxGateId();
     typeInfo.resize(maxId + 1, TypeInfo::NONE);
@@ -145,7 +145,7 @@ HWTEST_F_L0(NumberSpeculativeRetypeTests, ReTypeTest)
                                             &convert, NumberSpeculativeRetype::State::Convert);
 
     // lowering phase
-    NumberSpeculativeLowering lowering(&circuit, &chunk, typeInfo, rangeInfos);
+    NumberSpeculativeLowering lowering(&circuit, nullptr, &chunk, typeInfo, rangeInfos);
 
     {
         retypePhase.VisitGate(acc.GetValueIn(value_selector_gate, 0));

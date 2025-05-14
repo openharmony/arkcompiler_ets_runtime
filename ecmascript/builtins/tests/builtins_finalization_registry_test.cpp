@@ -174,7 +174,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register2)
         std::vector<JSTaggedValue> args{target, JSTaggedValue(10), target};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args, 10);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -210,7 +210,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register3)
         std::vector<JSTaggedValue> args1{target1, JSTaggedValue(10), target1};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args, 10);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -247,7 +247,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register4)
         std::vector<JSTaggedValue> args1{target1, JSTaggedValue(10), target1};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry1, args, 10);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -281,7 +281,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register5)
         std::vector<JSTaggedValue> args1{target1, JSTaggedValue(10), target};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args, 10);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -331,7 +331,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Unregister2)
         std::vector<JSTaggedValue> args1{target};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args1, 6, true);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -362,7 +362,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, RegisterTargetSymbol)
         std::vector<JSTaggedValue> args1{target1, JSTaggedValue(10), target1};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args1, 10);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
@@ -390,7 +390,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, UnregisterTokenSymbol)
         std::vector<JSTaggedValue> args1{target};
         RegisterUnRegisterCommon(thread, jsfinalizationRegistry, args1, 6, true);
     }
-    vm->CollectGarbage(TriggerGCType::FULL_GC);
+    vm->CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }

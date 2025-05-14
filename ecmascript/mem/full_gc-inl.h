@@ -57,16 +57,17 @@ void FullGCRunner::HandleMarkingSlot(ObjectSlot slot)
 }
 
 template <class Callback>
-void FullGCRunner::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback &&cb)
+void FullGCRunner::VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t endAddr, Callback &&cb)
 {
-    JSHClass *hclass = root->SynchronizedGetClass();
+    JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
     ASSERT(!hclass->IsAllTaggedProp());
     int index = 0;
     LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-    ObjectSlot realEnd = start;
+    ObjectSlot realEnd(start);
     realEnd += layout->GetPropertiesCapacity();
+    ObjectSlot end(endAddr);
     end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot = start; slot < end; slot++) {
+    for (ObjectSlot slot(start); slot < end; slot++) {
         PropertyAttributes attr = layout->GetAttr(index++);
         if (attr.IsTaggedRep()) {
             cb(slot);
@@ -79,8 +80,7 @@ void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (!NeedEvacuate(objectRegion)) {
         if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
-            JSHClass *hclass = object->GetClass();
-            size_t size = hclass->SizeFromJSHClass(object);
+            size_t size = object->GetSize();
             objectRegion->IncreaseAliveObject(size);
             PushObject(object);
         }
@@ -227,7 +227,7 @@ void FullGCMarkRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type, 
 
 FullGCMarkObjectVisitor::FullGCMarkObjectVisitor(FullGCRunner *runner) : runner_(runner) {}
 
-void FullGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void FullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                                    VisitObjectArea area)
 {
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -236,7 +236,9 @@ void FullGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlo
         });
         return;
     }
-    for (ObjectSlot slot = start; slot < end; slot++) {
+    ObjectSlot startSlot(start);
+    ObjectSlot endSlot(end);
+    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
         runner_->HandleMarkingSlot(slot);
     }
 }
@@ -249,7 +251,7 @@ void FullGCMarkObjectVisitor::VisitHClassSlot(ObjectSlot slot, TaggedObject *hcl
 
 FullGCUpdateLocalToShareRSetVisitor::FullGCUpdateLocalToShareRSetVisitor(FullGCRunner *runner) : runner_(runner) {}
 
-void FullGCUpdateLocalToShareRSetVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void FullGCUpdateLocalToShareRSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                                                VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
@@ -260,7 +262,9 @@ void FullGCUpdateLocalToShareRSetVisitor::VisitObjectRangeImpl(TaggedObject *roo
         });
         return;
     }
-    for (ObjectSlot slot = start; slot < end; slot++) {
+    ObjectSlot startSlot(start);
+    ObjectSlot endSlot(end);
+    for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
         SetLocalToShareRSet(slot, rootRegion);
     }
 }

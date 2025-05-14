@@ -110,7 +110,7 @@ public:
     virtual void GenerateCircuit() override = 0;
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
-    inline GateRef GetVregValue(GateRef sp, GateRef idx);
+    inline GateRef GetVregValue(GateRef glue, GateRef sp, GateRef idx);
     inline GateRef ReadInst4_0(GateRef pc);
     inline GateRef ReadInst4_1(GateRef pc);
     inline GateRef ReadInst4_2(GateRef pc);
@@ -147,18 +147,18 @@ public:
     inline GateRef GetCurrentFrame(GateRef glue);
     inline GateRef GetPcFromFrame(GateRef frame);
     inline GateRef GetCallSizeFromFrame(GateRef frame);
-    inline GateRef GetFunctionFromFrame(GateRef frame);
-    inline GateRef GetNewTarget(GateRef sp);
-    inline GateRef GetThisFromFrame(GateRef frame);
-    inline GateRef GetAccFromFrame(GateRef frame);
-    inline GateRef GetEnvFromFrame(GateRef frame);
-    inline GateRef GetEnvFromFunction(GateRef frame);
-    inline GateRef GetConstpoolFromMethod(GateRef function);
-    inline GateRef GetModule(GateRef sp);
-    inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
-    inline GateRef GetModuleFromFunction(GateRef function);
-    inline GateRef GetSendableEnvFromModule(GateRef function);
-    inline GateRef GetHomeObjectFromFunction(GateRef function);
+    inline GateRef GetFunctionFromFrame(GateRef glue, GateRef frame);
+    inline GateRef GetNewTarget(GateRef glue, GateRef sp);
+    inline GateRef GetThisFromFrame(GateRef glue, GateRef frame);
+    inline GateRef GetAccFromFrame(GateRef glue, GateRef frame);
+    inline GateRef GetEnvFromFrame(GateRef glue, GateRef frame);
+    inline GateRef GetEnvFromFunction(GateRef glue, GateRef frame);
+    inline GateRef GetConstpoolFromMethod(GateRef glue, GateRef function);
+    inline GateRef GetModule(GateRef glue, GateRef sp);
+    inline GateRef GetProfileTypeInfoFromFunction(GateRef glue, GateRef function);
+    inline GateRef GetModuleFromFunction(GateRef glue, GateRef function);
+    inline GateRef GetSendableEnvFromModule(GateRef glue, GateRef module);
+    inline GateRef GetHomeObjectFromFunction(GateRef glue, GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
@@ -194,7 +194,7 @@ public:
     inline GateRef PushArg(GateRef glue, GateRef sp, GateRef value);
     inline GateRef PushUndefined(GateRef glue, GateRef sp, GateRef num);
     inline GateRef PushRange(GateRef glue, GateRef sp, GateRef array, GateRef startIndex, GateRef endIndex);
-    inline GateRef GetStartIdxAndNumArgs(GateRef sp, GateRef restIdx);
+    inline GateRef GetStartIdxAndNumArgs(GateRef glue, GateRef sp, GateRef restIdx);
     inline void Dispatch(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                          GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter, GateRef format);
     inline void DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,

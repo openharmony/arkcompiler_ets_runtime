@@ -39,6 +39,7 @@ enum class MemAlignmentLog2 : uint8_t {
 
 static constexpr size_t INITIAL_REGULAR_OBJECT_CAPACITY = 1024_MB;
 static constexpr size_t INITIAL_HUGE_OBJECT_CAPACITY = 1024_MB;
+static constexpr size_t INITIAL_NONMOVALBE_OBJECT_CAPACITY = 1024_MB;
 static constexpr size_t INCREMENT_HUGE_OBJECT_CAPACITY = 128_MB;
 static constexpr size_t LARGE_POOL_SIZE = 480_MB;
 static constexpr size_t MEDIUM_POOL_SIZE = 256_MB;
@@ -80,7 +81,11 @@ static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 // They will never be moved to huge object space. So we take half of a regular
 // region as the border of regular objects.
 static constexpr size_t MAX_32BIT_OBJECT_SPACE_SIZE = 1_GB;
+#ifdef USE_CMC_GC
+static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32_KB; // initialize from CommonRuntime
+#else
 static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 / 3;
+#endif
 // internal allocator
 static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;

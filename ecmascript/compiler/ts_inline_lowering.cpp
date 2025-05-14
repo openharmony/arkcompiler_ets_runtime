@@ -818,7 +818,7 @@ void TSInlineLowering::InlineSuperCallCheck(InlineTypeInfoAccessor &info)
     GateRef gate = info.GetCallGate();
     Environment env(gate, circuit_, &builder_);
     GateRef thisFunc = info.GetReceiver();
-    GateRef hclass = builder_.LoadHClassByConstOffset(thisFunc);
+    GateRef hclass = builder_.LoadHClassByConstOffset(glue_, thisFunc);
     GateRef superCtor = builder_.LoadPrototype(hclass);
     info.UpdateReceiver(superCtor);
     uint32_t methodOffset = info.GetCallMethodId();

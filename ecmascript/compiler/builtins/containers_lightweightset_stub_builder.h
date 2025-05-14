@@ -35,19 +35,19 @@ BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER(DECLARE_CONTAINERS_LIGHTWEI
 
     GateRef GetSize(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPILightWeightSet::LENGTH_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPILightWeightSet::LENGTH_OFFSET));
     }
 
-    GateRef GetKey(GateRef obj, GateRef index)
+    GateRef GetKey(GateRef glue, GateRef obj, GateRef index)
     {
-        return GetValue(obj, index);
+        return GetValue(glue, obj, index);
     }
 
-    GateRef GetValue(GateRef obj, GateRef index)
+    GateRef GetValue(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef valuesOffset = IntPtr(JSAPILightWeightSet::VALUES_OFFSET);
-        GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
-        return GetValueFromTaggedArray(values, index);
+        GateRef values = Load(VariableType::JS_POINTER(), glue, obj, valuesOffset);
+        return GetValueFromTaggedArray(glue, values, index);
     }
 };
 }  // namespace panda::ecmascript::kungfu

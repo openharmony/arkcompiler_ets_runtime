@@ -214,8 +214,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)
 
     CreateJSPandaFileAndConstpool(instance);
     // Remove 'instance' and JSPandafile when trigger GC.
-    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(instance->GetJSThread());
-    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(instance->GetJSThread());
+    JSThread *thread = instance->GetJSThread();
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
     std::shared_ptr<JSPandaFile> afterRemovePf = pfManager->FindJSPandaFile(filename);
     EXPECT_EQ(afterRemovePf, nullptr);
 }

@@ -23,10 +23,15 @@
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/shared_heap/shared_space.h"
 #include "ecmascript/mem/sparse_space.h"
+#include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
+
+#ifdef USE_CMC_GC
+#include "ecmascript/crt.h"
+#endif
 
 namespace panda::test {
 class GCTest_CallbackTask_Test;
@@ -70,6 +75,10 @@ class DaemonThread;
 class GlobalEnvConstants;
 class SharedMemController;
 class IdleGCTrigger;
+
+#ifdef USE_CMC_GC
+using namespace panda;
+#endif
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -878,6 +887,9 @@ public:
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
+#ifdef USE_CMC_GC
+    inline void IteratorNativePointerList(WeakVisitor &visitor);
+#endif
 
     void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
 
@@ -897,7 +909,7 @@ public:
 private:
     void ProcessAllGCListeners();
     void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
-    
+
     void MoveOldSpaceToAppspawn();
 
     void ReclaimRegions(TriggerGCType type);
@@ -1176,9 +1188,10 @@ public:
     inline TaggedObject *AllocateInYoungSpace(size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateYoungOrHugeObject(size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size);
-    inline TaggedObject *AllocateYoungOrHugeObject(size_t size);
+    inline TaggedObject *AllocateReadOnlyOrHugeObject(size_t size);
     inline uintptr_t AllocateYoungSync(size_t size);
     inline TaggedObject *TryAllocateYoungGeneration(JSHClass *hclass, size_t size);
     // Old
@@ -1209,6 +1222,7 @@ public:
      * GC triggers.
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
+    void ProcessGCCallback();
     bool CheckAndTriggerOldGC(size_t size = 0);
     bool CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason = GCReason::OTHER);
     TriggerGCType SelectGCType() const;
@@ -1642,6 +1656,9 @@ public:
     inline void PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent);
     inline void RemoveFromNativePointerList(const JSNativePointer* pointer);
     inline void ClearNativePointerList();
+#ifdef USE_CMC_GC
+    inline void IteratorNativePointerList(WeakVisitor &vistor);
+#endif
 
     size_t GetNativePointerListSize() const
     {

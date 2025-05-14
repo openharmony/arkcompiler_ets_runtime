@@ -56,7 +56,7 @@ private:
     GateRef GetIteratedLinkedObj()
     {
         GateRef iteratedLinkedObjOffset = GetIteratedLinkedObjOffset();
-        return Load(VariableType::JS_ANY(), thisValue_, iteratedLinkedObjOffset);
+        return Load(VariableType::JS_ANY(), glue_, thisValue_, iteratedLinkedObjOffset);
     }
 
     void SetIteratedLinkedObj(GateRef newLinkedObj)
@@ -73,7 +73,7 @@ private:
     GateRef GetNextIndex()
     {
         GateRef nextIndexOffset = GetNextIndexOffset();
-        return Load(VariableType::INT32(), thisValue_, nextIndexOffset);
+        return LoadPrimitive(VariableType::INT32(), thisValue_, nextIndexOffset);
     }
 
     void SetNextIndex(GateRef newNextIndex)
@@ -85,7 +85,7 @@ private:
     GateRef GetIterationKind()
     {
         GateRef bitFieldOffset = IntPtr(IteratorType::BIT_FIELD_OFFSET);
-        GateRef bitField = Load(VariableType::INT32(), thisValue_, bitFieldOffset);
+        GateRef bitField = LoadPrimitive(VariableType::INT32(), thisValue_, bitFieldOffset);
         // decode
         GateRef mask = Int32((1LLU << IteratorType::ITERATION_KIND_BITS) - 1);
         return Int32And(bitField, mask);

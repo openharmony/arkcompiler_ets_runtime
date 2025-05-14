@@ -18,6 +18,7 @@
 #include "ecmascript/ic/ic_runtime_stub-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_async_generator_object.h"
+#include "ecmascript/base/gc_helper.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -257,6 +258,12 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         JSTaggedValue env = func->GetLexicalEnv();
         MethodEntry(thread, method, env);
     }
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        base::GCHelper::CopyCallTarget(callTarget); // callTarget should be ToSpace Reference
+        method = callTarget->GetCallTarget();
+    }
+#endif
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
 
@@ -315,6 +322,14 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
         MethodEntry(thread, method, env);
     }
+#ifdef USE_READ_BARRIER
+    if (true) { // IsConcurrentCopying
+        // func should be ToSpace Reference
+        base::GCHelper::CopyCallTarget(func.GetTaggedObject());
+        // context should be ToSpace Reference
+        base::GCHelper::CopyGeneratorContext(context.GetObject<GeneratorContext>());
+    }
+#endif
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);
 }

@@ -18,6 +18,9 @@
 
 #include <limits>
 
+#ifdef USE_CMC_GC
+#include "common_components/serialize/serialize_utils.h"
+#endif
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/runtime.h"
@@ -72,15 +75,17 @@ enum class EncodeFlag : uint8_t {
     LAST
 };
 
+#ifndef USE_CMC_GC
 enum class SerializedObjectSpace : uint8_t {
-    OLD_SPACE = 0,
+    OLD_SPACE,
     NON_MOVABLE_SPACE,
     MACHINE_CODE_SPACE,
     HUGE_SPACE,
     SHARED_OLD_SPACE,
     SHARED_NON_MOVABLE_SPACE,
-    SHARED_HUGE_SPACE
+    SHARED_HUGE_SPACE,
 };
+#endif
 
 enum class SerializeType : uint8_t {
     VALUE_SERIALIZE,
@@ -125,11 +130,19 @@ public:
 
     static size_t AlignUpRegionAvailableSize(size_t size)
     {
+#ifdef USE_CMC_GC
+        size_t regionSize = ArkGetRegionSize();
+        if (size == 0) {
+            return regionSize;
+        }
+        return ((size - 1) / regionSize + 1) * regionSize; // 1: align up
+#else
         if (size == 0) {
             return Region::GetRegionAvailableSize();
         }
         size_t regionAvailableSize = Region::GetRegionAvailableSize();
         return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
+#endif
     }
 
     bool ExpandBuffer(size_t requestedSize)
@@ -319,9 +332,30 @@ public:
         return incompleteData_;
     }
 
+#ifdef USE_CMC_GC
+    const std::vector<size_t>& GetRegularRemainSizeVector() const
+    {
+        return regularRemainSizeVector_;
+    }
+    const std::vector<size_t>& GetPinRemainSizeVector() const
+    {
+        return pinRemainSizeVector_;
+    }
+#else
     const std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM>& GetRegionRemainSizeVectors() const
     {
         return regionRemainSizeVectors_;
+    }
+#endif
+
+    size_t GetRegularSpaceSize() const
+    {
+        return regularSpaceSize_;
+    }
+
+    size_t GetPinSpaceSize() const
+    {
+        return pinSpaceSize_;
     }
 
     size_t GetOldSpaceSize() const
@@ -352,6 +386,14 @@ public:
     void CalculateSerializedObjectSize(SerializedObjectSpace space, size_t objectSize)
     {
         switch (space) {
+#ifdef USE_CMC_GC
+            case SerializedObjectSpace::REGULAR_SPACE:
+                AlignSpaceObjectSize(regularRemainSizeVector_, regularSpaceSize_, objectSize);
+                break;
+            case SerializedObjectSpace::PIN_SPACE:
+                AlignSpaceObjectSize(pinRemainSizeVector_, pinSpaceSize_, objectSize);
+                break;
+#else
             case SerializedObjectSpace::OLD_SPACE:
                 AlignSpaceObjectSize(oldSpaceSize_, objectSize, SerializedObjectSpace::OLD_SPACE);
                 break;
@@ -368,11 +410,13 @@ public:
                 AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize,
                                      SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE);
                 break;
+#endif
             default:
                 break;
         }
     }
 
+#ifndef USE_CMC_GC
     void AlignSpaceObjectSize(size_t &spaceSize, size_t objectSize, SerializedObjectSpace spaceType)
     {
         size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
@@ -383,6 +427,18 @@ public:
         spaceSize += objectSize;
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
     }
+#else
+    void AlignSpaceObjectSize(std::vector<size_t> &remainSizeVec, size_t &spaceSize, size_t objectSize)
+    {
+        size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
+        if (UNLIKELY(spaceSize + objectSize > alignRegionSize)) {
+            remainSizeVec.push_back(alignRegionSize - spaceSize);
+            spaceSize = alignRegionSize;
+        }
+        spaceSize += objectSize;
+        ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
+    }
+#endif
 
     void DecreaseSharedArrayBufferReference()
     {
@@ -425,13 +481,20 @@ private:
     uint64_t sizeLimit_ {0};
     size_t bufferSize_ {0};
     size_t bufferCapacity_ {0};
+    size_t regularSpaceSize_ {0};
+    size_t pinSpaceSize_ {0};
     size_t oldSpaceSize_ {0};
     size_t nonMovableSpaceSize_ {0};
     size_t machineCodeSpaceSize_ {0};
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
+#ifdef USE_CMC_GC
+    std::vector<size_t> regularRemainSizeVector_ {};
+    std::vector<size_t> pinRemainSizeVector_ {};
+#else
     std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM> regionRemainSizeVectors_ {};
+#endif
     std::set<uintptr_t> sharedArrayBufferSet_ {};
     std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
 };

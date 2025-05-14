@@ -148,8 +148,14 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
+#ifdef USE_CMC_GC
+    SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+    ASSERT(GetSJSNativePointerClass().IsInSharedHeap());
+#else
     SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+#endif
     SetConstant(ConstantIndex::ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
@@ -242,6 +248,37 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
     SetConstant(ConstantIndex::SENDABLE_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SENDABLE_ENV));
+#ifdef USE_CMC_GC
+    SetConstant(ConstantIndex::SHARED_TAGGED_ARRAY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_ARRAY));
+    ASSERT(GetSharedTaggedArrayClass().IsInSharedHeap());
+
+    SetConstant(ConstantIndex::SHARED_CONSTANT_POOL_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::CONSTANT_POOL));
+    ASSERT(GetSharedConstantPoolClass().IsInSharedHeap());
+
+    SetConstant(ConstantIndex::SHARED_AOT_LITERAL_INFO_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
+    ASSERT(GetSharedAOTLiteralInfoClass().IsInSharedHeap());
+
+    // ProfileTypeInfo only in local now
+
+    // VTable only in local now
+
+    // COWMutantTaggedArray only in local now
+
+    SetConstant(ConstantIndex::SHARED_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
+    ASSERT(GetSharedMutantTaggedArrayClass().IsInSharedHeap());
+
+    SetConstant(ConstantIndex::SHARED_DICTIONARY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
+    ASSERT(GetSharedDictionaryClass().IsInSharedHeap());
+
+    SetConstant(ConstantIndex::SHARED_COW_ARRAY_CLASS_INDEX,
+        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
+    ASSERT(GetSharedCOWArrayClass().IsInSharedHeap());
+#endif
 }
 
 void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)

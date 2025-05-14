@@ -1,0 +1,92 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+#import("$build_root/toolchain/toolchain.gni")
+
+if (!ark_standalone_build && is_ohos) {
+  import("//build/ohos.gni")
+}
+
+source_Base = [
+  "base/sys_call.cpp",
+  "base/c_string.cpp",
+  "base/time_utils.cpp",
+  "base/log_file.cpp",
+  "base/mem_utils.cpp",
+]
+source_Common = [ "common/run_type.cpp" ]
+
+source_Heap = [
+  "heap/gc_thread_pool.cpp",
+  "heap/heap.cpp",
+  "heap/allocator/allocator.cpp",
+  "heap/allocator/treap.cpp",
+  "heap/allocator/memory_map.cpp",
+  "heap/allocator/region_manager.cpp",
+  "heap/allocator/region_space.cpp",
+  "heap/barrier/barrier.cpp",
+  "heap/verification.cpp",
+  "heap/collector/collector.cpp",
+  "heap/collector/collector_proxy.cpp",
+  "heap/collector/collector_resources.cpp",
+  "heap/collector/finalizer_processor.cpp",
+  "heap/collector/gc_request.cpp",
+  "heap/collector/gc_stats.cpp",
+  "heap/collector/task_queue.cpp",
+  "heap/collector/copy_data_manager.cpp",
+  "heap/w_collector/w_collector.cpp",
+  "heap/w_collector/copy_barrier.cpp",
+  "heap/w_collector/idle_barrier.cpp",
+  "heap/w_collector/enum_barrier.cpp",
+  "heap/w_collector/trace_barrier.cpp",
+  "heap/w_collector/preforward_barrier.cpp",
+  "heap/w_collector/post_trace_barrier.cpp",
+  "heap/collector/trace_collector.cpp",
+  "common/page_cache.cpp",
+]
+
+source_Mutator = [
+  "mutator/mutator.cpp",
+  "mutator/satb_buffer.cpp",
+  "mutator/mutator_manager.cpp",
+  "mutator/thread_local.cpp",
+]
+
+ohos_source_set("libarkcommon-runtime") {
+  configs = [
+    "../../..:ark_jsruntime_public_config",
+    "../../..:ark_jsruntime_common_config",
+  ]
+  include_dirs = []
+  cflags_cc = [ "-Wno-unused-lambda-capture" ]
+  sources = [
+    "common_runtime.cpp",
+    "common_runtime_api.cpp",
+    "heap_manager.cpp",
+    "log_manager.cpp",
+  ]
+  sources += source_Base
+  sources += source_Common
+
+  sources += source_Heap
+
+  sources += source_Mutator
+
+  include_dirs += [
+    "./",
+
+    "heap",
+  ]
+}

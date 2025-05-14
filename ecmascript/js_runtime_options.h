@@ -21,11 +21,12 @@
 #include <string_view>
 #include <vector>
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/bc_call_signature.h"
+#include "common_components/log/log_base.h"
+#include "common_interfaces/base/common.h"
+#include "ecmascript/base/config.h"
+#include "ecmascript/common.h"
 #include "ecmascript/mem/mem_common.h"
 #include "libpandabase/os/file.h"
-#include "ecmascript/base/number_helper.h"
 
 namespace {
 constexpr size_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
@@ -245,6 +246,33 @@ public:
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
+
+    LogOptions GetLogOptions() const
+    {
+        LogOptions option;
+        // For ArkTS runtime log
+        if (WasSetLogFatal()) {
+            option.level = Level::FATAL;
+            option.component = GetLogComponentFromString(GetLogFatal());
+        } else if (WasSetLogError()) {
+            option.level = Level::ERROR;
+            option.component = GetLogComponentFromString(GetLogError());
+        } else if (WasSetLogWarning()) {
+            option.level = Level::WARN;
+            option.component = GetLogComponentFromString(GetLogWarning());
+        } else if (WasSetLogInfo()) {
+            option.level = Level::INFO;
+            option.component = GetLogComponentFromString(GetLogInfo());
+        } else if (WasSetLogDebug()) {
+            option.level = Level::DEBUG;
+            option.component = GetLogComponentFromString(GetLogDebug());
+        } else {
+            option.level = GetLogLevelFromString(GetLogLevel());
+            option.component = GetLogComponentFromString(GetLogComponents());
+        }
+
+        return option;
+    }
 
     bool ParseCommand(const int argc, const char** argv);
     bool SetDefaultValue(char* argv);
@@ -762,38 +790,7 @@ public:
         return enableLargeHeap_;
     }
 
-    void ParseAsmInterOption()
-    {
-        asmInterParsedOption_.enableAsm = enableAsmInterpreter_;
-        std::string strAsmOpcodeDisableRange = asmOpcodeDisableRange_;
-        if (strAsmOpcodeDisableRange.empty()) {
-            return;
-        }
-
-        // asm interpreter handle disable range
-        size_t pos = strAsmOpcodeDisableRange.find(",");
-        if (pos != std::string::npos) {
-            std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
-            std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
-            int64_t inputStart;
-            int64_t inputEnd;
-            if (!base::NumberHelper::StringToInt64(strStart, inputStart)) {
-                inputStart = 0;
-                LOG_ECMA_IF(!strStart.empty(), INFO) << "when get start, strStart is " << strStart;
-            }
-            if (!base::NumberHelper::StringToInt64(strEnd, inputEnd)) {
-                inputEnd = kungfu::BYTECODE_STUB_END_ID;
-                LOG_ECMA_IF(!strEnd.empty(), INFO) << "when get end, strEnd is " << strEnd;
-            }
-            int start = static_cast<int>(inputStart);
-            int end = static_cast<int>(inputEnd);
-            if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && end >= 0 &&
-                end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && start <= end) {
-                asmInterParsedOption_.handleStart = start;
-                asmInterParsedOption_.handleEnd = end;
-            }
-        }
-    }
+    void ParseAsmInterOption();
 
     AsmInterParsedOption GetAsmInterParsedOption() const
     {
@@ -2213,6 +2210,111 @@ private:
         return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_TWO)) & wasSetPartThree_) != 0;
     }
 
+    bool StringToInt64(const std::string& str, int64_t& value)
+    {
+        if (str.empty()) {
+            return false;
+        }
+
+        char *end;
+        errno = 0;
+        value = std::strtoll(str.c_str(), &end, 0); // Automatic check of the number system
+
+        // If no number is converted
+        if (end == str.c_str()) {
+            return false;
+        }
+        // If there is a range error (too large or to small)
+        if (errno == ERANGE && (value == LLONG_MAX || value == LLONG_MIN)) {
+            return false;
+        }
+        // If the character string contains non-digit chaaracters
+        if (*end != '\0') {
+            return false;
+        }
+
+        return true;
+    }
+
+    static ComponentMark GetLogComponentFromString(const std::vector<std::string>& components)
+    {
+        ComponentMark componentMark = static_cast<ComponentMark>(Component::NONE);
+        for (const auto &component : components) {
+            if (component == "all") {
+                componentMark = static_cast<ComponentMark>(Component::ALL);
+                return componentMark;
+            }
+            if (component == "gc") {
+                componentMark |= static_cast<ComponentMark>(Component::GC);
+                continue;
+            }
+            if (component == "ecmascript") {
+                componentMark |= static_cast<ComponentMark>(Component::ECMASCRIPT);
+                continue;
+            }
+            if (component == "pgo") {
+                componentMark |= static_cast<ComponentMark>(Component::PGO);
+                continue;
+            }
+            if (component == "interpreter") {
+                componentMark |= static_cast<ComponentMark>(Component::INTERPRETER);
+                continue;
+            }
+            if (component == "debugger") {
+                componentMark |= static_cast<ComponentMark>(Component::DEBUGGER);
+                continue;
+            }
+            if (component == "compiler") {
+                componentMark |= static_cast<ComponentMark>(Component::COMPILER);
+                continue;
+            }
+            if (component == "builtins") {
+                componentMark |= static_cast<ComponentMark>(Component::BUILTINS);
+                continue;
+            }
+            if (component == "jit") {
+                componentMark |= static_cast<ComponentMark>(Component::JIT);
+                continue;
+            }
+            if (component == "baselinejit") {
+                componentMark |= static_cast<ComponentMark>(Component::BASELINEJIT);
+                continue;
+            }
+            if (component == "trace") {
+                componentMark |= static_cast<ComponentMark>(Component::TRACE);
+                continue;
+            }
+            if (component == "sa") {
+                componentMark |= static_cast<ComponentMark>(Component::SA);
+                continue;
+            }
+        }
+        return componentMark;
+    }
+
+    static Level GetLogLevelFromString(const std::string& level)
+    {
+        if (level == "fatal") {
+            return Level::FATAL;
+        }
+        if (level == "error") {
+            return Level::ERROR;
+        }
+        if (level == "warning") {
+            return Level::WARN;
+        }
+        if (level == "info") {
+            return Level::INFO;
+        }
+        if (level == "debug") {
+            return Level::DEBUG;
+        }
+        if (level == "verbose") {
+            return Level::VERBOSE;
+        }
+        return Level::DEBUG;
+    }
+
     bool ParseBoolParam(bool* argBool);
     bool ParseDoubleParam(const std::string& option, double* argDouble);
     bool ParseIntParam(const std::string& option, int* argInt);
@@ -2377,8 +2479,12 @@ private:
     bool concurrentCompile {true};
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
-    bool storeBarrierOpt_ {true};
     bool enableLdObjValueOpt_ {true};
+#ifndef USE_CMC_GC
+    bool storeBarrierOpt_ {true};
+#else
+    bool storeBarrierOpt_ {false};
+#endif
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};

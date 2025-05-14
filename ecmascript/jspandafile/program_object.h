@@ -267,7 +267,7 @@ public:
 
     inline int32_t GetUnsharedConstpoolIndex() const
     {
-        return Barriers::GetValue<JSTaggedValue>(GetData(), GetUnsharedConstpoolIndexOffset()).GetInt();
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetUnsharedConstpoolIndexOffset())).GetInt();
     }
 
     inline void SetSharedConstpoolId(const JSTaggedValue index)
@@ -277,7 +277,7 @@ public:
 
     inline JSTaggedValue GetSharedConstpoolId() const
     {
-        return Barriers::GetValue<JSTaggedValue>(GetData(), GetSharedConstpoolIdOffset());
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetSharedConstpoolIdOffset()));
     }
 
     panda_file::File::EntityId GetEntityId(uint32_t index) const
@@ -376,7 +376,7 @@ public:
 
     inline JSTaggedValue GetConstantIndexInfo() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetConstantIndexInfoOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetConstantIndexInfoOffset()));
     }
 
     inline void SetAotArrayInfo(const JSThread *thread, JSTaggedValue info)
@@ -386,17 +386,17 @@ public:
 
     inline JSTaggedValue GetAotArrayInfo() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotArrayInfoOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetAotArrayInfoOffset()));
     }
 
     inline JSTaggedValue GetAotSymbolInfo() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotSymbolInfoOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetAotSymbolInfoOffset()));
     }
 
     inline JSTaggedValue GetProtoTransTableInfo() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetProtoTransTableInfoOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetProtoTransTableInfoOffset()));
     }
 
     static JSTaggedValue GetSymbolFromSymbolInfo(JSHandle<TaggedArray> symbolInfoHandler, uint64_t id)
@@ -433,7 +433,7 @@ public:
 
     inline JSTaggedValue GetAotHClassInfo() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotHClassInfoOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetAotHClassInfoOffset()));
     }
 
     inline void SetAotSymbolInfo(const JSThread *thread, JSTaggedValue info)
@@ -621,7 +621,7 @@ public:
                         auto globalConstant = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
                         auto classIndex = static_cast<size_t>(ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
                         auto hclassVal = globalConstant->GetGlobalConstantObject(classIndex);
-                        arr->SynchronizedSetClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
+                        arr->SynchronizedTransitionClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
                         ElementsKind newKind = arr->GetClass()->GetElementsKind();

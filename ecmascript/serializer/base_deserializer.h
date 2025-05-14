@@ -107,6 +107,15 @@ private:
     void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
 
     void AllocateToDifferentSpaces();
+#ifdef USE_CMC_GC
+    enum class RegionType : uint8_t {
+        RegularRegion,
+        PinRegion,
+    };
+    void AllocateToRegularSpace(size_t regularSpaceSize);
+    void AllocateToPinSpace(size_t pinSpaceSize);
+    uintptr_t AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType);
+#else
     void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                              SerializedObjectSpace spaceType);
     void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
@@ -116,7 +125,7 @@ private:
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
     void AllocateToSharedOldSpace(size_t sOldSpaceSize);
     void AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize);
-
+#endif
     bool GetAndResetWeak()
     {
         bool isWeak = isWeak_;
@@ -217,22 +226,32 @@ private:
     JSThread *thread_;
     Heap *heap_;
     SharedHeap *sheap_;
-    SerializeData* data_;
+    SerializeData *data_;
     void *engine_;
+#ifdef USE_CMC_GC
+    uintptr_t currentRegularObjectAddr_ {0};
+    uintptr_t currentRegularRegionBeginAddr_ {0};
+    uintptr_t currentPinObjectAddr_ {0};
+    uintptr_t currentPinRegionBeginAddr_ {0};
+    size_t regularRegionIndex_ {0};
+    size_t pinRegionIndex_ {0};
+    CVector<uintptr_t> regionVector_;
+#else
     uintptr_t oldSpaceBeginAddr_ {0};
     uintptr_t nonMovableSpaceBeginAddr_ {0};
     uintptr_t machineCodeSpaceBeginAddr_ {0};
     uintptr_t sOldSpaceBeginAddr_ {0};
     uintptr_t sNonMovableSpaceBeginAddr_ {0};
-    // SerializationChunk store shared objects which have been serialized
-    SerializationChunk *sharedObjChunk_ {nullptr};
-    CVector<JSTaggedType> objectVector_;
-    CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
     size_t nonMovableRegionIndex_ {0};
     size_t machineCodeRegionIndex_ {0};
     size_t sOldRegionIndex_ {0};
     size_t sNonMovableRegionIndex_ {0};
+    CVector<Region *> regionVector_;
+#endif
+    // SerializationChunk store shared objects which have been serialized
+    SerializationChunk *sharedObjChunk_ {nullptr};
+    CVector<JSTaggedType> objectVector_;
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};

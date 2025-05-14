@@ -49,10 +49,10 @@ public:
         Store(VariableType::JS_ANY(), glue, proxy, offset, target);
     }
 
-    GateRef GetHandler(GateRef proxy)
+    GateRef GetHandler(GateRef glue, GateRef proxy)
     {
         GateRef offset = IntPtr(JSProxy::HANDLER_OFFSET);
-        return Load(VariableType::JS_ANY(), proxy, offset);
+        return Load(VariableType::JS_ANY(), glue, proxy, offset);
     }
 
     void SetHandler(GateRef glue, GateRef proxy, GateRef handler)
@@ -71,7 +71,7 @@ public:
     {
         GateRef oldValue = ZExtInt1ToInt32(value);
         GateRef offset = IntPtr(JSProxy::BIT_FIELD_OFFSET);
-        GateRef bitfield = Load(VariableType::INT32(), proxy, offset);
+        GateRef bitfield = LoadPrimitive(VariableType::INT32(), proxy, offset);
         GateRef mask = Int32LSL(
             Int32((1LU << JSProxy::IsRevokedBits::SIZE) - 1),
             Int32(JSProxy::IsRevokedBits::START_BIT));

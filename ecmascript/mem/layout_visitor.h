@@ -26,7 +26,7 @@ template <VisitType visitType, size_t size>
 class JSObjectBodyIterator {
 public:
     template <class DerivedVisitor>
-    static inline void IterateBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
+    static inline void IterateBody(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor)
     {
         auto hclass = root->SynchronizedGetClass();
         auto objSize = hclass->GetObjectSize();
@@ -39,11 +39,11 @@ public:
         }
     }
 
-    template<class DerivedVisitor>
-    static inline void IteratorRange(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
+    template <class DerivedVisitor>
+    static inline void IteratorRange(TaggedObject *root, BaseObjectVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end, VisitObjectArea area)
     {
-        visitor(root, ObjectSlot(ToUintPtr(root) + start), ObjectSlot(ToUintPtr(root) + end), area);
+        visitor(root, ToUintPtr(root) + start, ToUintPtr(root) + end, area);
     }
 };
 }  // namespace panda::ecmascript

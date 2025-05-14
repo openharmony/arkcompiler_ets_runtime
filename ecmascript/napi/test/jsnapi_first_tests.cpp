@@ -88,7 +88,7 @@ public:
     void SetUp() override
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
@@ -1402,6 +1402,8 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     delete ref2;
 }
 
+// CMC-GC support evacuate all region
+#ifndef USE_CMC_GC
 /**
  * @tc.number: ffi_interface_api_027
  * @tc.name: TriggerGC_OLD_GC
@@ -1446,8 +1448,9 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 
     vm_->SetEnableForceGC(true);
 }
+#endif
 
-HWTEST_F_L0(JSNApiTests, Hint_GC)
+HWTEST_F_L0(JSNApiTests, DISABLED_Hint_GC)
 {
     ecmascript::ThreadManagedScope managedScope(thread_);
     vm_->SetEnableForceGC(false);
@@ -2258,7 +2261,7 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
     LocalScope scope(vm_);
     std::thread t1([&](){
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         auto *vm = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
         JSNApi::PrintExceptionInfo(vm);

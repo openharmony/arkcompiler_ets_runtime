@@ -33,12 +33,12 @@ void BuiltinsProxyStubBuilder::GenProxyConstructor(GateRef nativeCode, GateRef f
     BRANCH(TaggedIsUndefined(newTarget), &slowPath, &newTargetNotUndefined);
     Bind(&newTargetNotUndefined);
 
-    GateRef target = GetArgFromArgv(IntPtr(0), numArgs_, true);
-    GateRef handler = GetArgFromArgv(IntPtr(1), numArgs_, true);
+    GateRef target = GetArgFromArgv(glue_, IntPtr(0), numArgs_, true);
+    GateRef handler = GetArgFromArgv(glue_, IntPtr(1), numArgs_, true);
 
-    BRANCH(IsEcmaObject(target), &targetIsEcma, &slowPath);
+    BRANCH(IsEcmaObject(glue_, target), &targetIsEcma, &slowPath);
     Bind(&targetIsEcma);
-    BRANCH(IsEcmaObject(handler), &handleIsEcma, &slowPath);
+    BRANCH(IsEcmaObject(glue_, handler), &handleIsEcma, &slowPath);
     Bind(&handleIsEcma);
     {
         NewObjectStubBuilder newBuilder(this);
@@ -92,7 +92,7 @@ void BuiltinsProxyStubBuilder::CheckGetTrapResult(GateRef target, GateRef key, V
         GateRef rAttr = attr.ReadVariable();
         GateRef rValue = value.ReadVariable();
         GateRef rResult = result->ReadVariable();
-        GateRef getter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::GETTER_OFFSET));
+        GateRef getter = Load(VariableType::JS_ANY(), glue_, rValue, IntPtr(AccessorData::GETTER_OFFSET));
         GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
                                                       .And(TaggedIsUndefined(getter))
                                                       .And(BoolNot(TaggedIsUndefined(rResult)))
@@ -149,7 +149,7 @@ void BuiltinsProxyStubBuilder::CheckSetTrapResult(GateRef target, GateRef key, G
         Label trapResultIsNotUndefined(env);
         GateRef rAttr = attr.ReadVariable();
         GateRef rValue = tValue.ReadVariable();
-        GateRef setter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::SETTER_OFFSET));
+        GateRef setter = Load(VariableType::JS_ANY(), glue_, rValue, IntPtr(AccessorData::SETTER_OFFSET));
         GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
                                                       .And(TaggedIsUndefined(setter))
                                                       .Done();
@@ -181,7 +181,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     Label slowPath(env);
     Label trapIsCallable(env);
     Label trapIsNotUndefinedOrNullOrHole(env);
-    GateRef handler = GetHandler(proxy);
+    GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
     {
@@ -192,14 +192,14 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     }
     Bind(&handlerIsNotNull);
     {
-        GateRef target = GetTarget(proxy);
+        GateRef target = GetTarget(glue_, proxy);
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::GET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name, ProfileOperation(), True());
         BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
         Bind(&trapIsNotUndefinedOrNullOrHole);
         {
-            BRANCH(IsCallable(trap), &trapIsCallable, &slowPath);
+            BRANCH(IsCallable(glue_, trap), &trapIsCallable, &slowPath);
             Bind(&trapIsCallable);
             {
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
@@ -238,7 +238,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
     Label slowPath(env);
     Label trapIsCallable(env);
     Label trapIsNotUndefinedOrNullOrHole(env);
-    GateRef handler = GetHandler(proxy);
+    GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
     {
@@ -249,14 +249,14 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
     }
     Bind(&handlerIsNotNull);
     {
-        GateRef target = GetTarget(proxy);
+        GateRef target = GetTarget(glue_, proxy);
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::SET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name, ProfileOperation(), True());
         BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
         Bind(&trapIsNotUndefinedOrNullOrHole);
         {
-            BRANCH(IsCallable(trap), &trapIsCallable, &slowPath);
+            BRANCH(IsCallable(glue_, trap), &trapIsCallable, &slowPath);
             Bind(&trapIsCallable);
             {
                 GateRef argsLength = Int32(4);
@@ -276,7 +276,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
                 CallStubBuilder callBuilder(this, glue_, trap, argsLength, 0, nullptr,
                     Circuit::NullGate(), callArgs);
                 GateRef trapResult = callBuilder.JSCallDispatch();
-                BRANCH(TaggedIsFalse(FastToBoolean(trapResult)), &trapResultIsFalse, &checkSetTrapResult);
+                BRANCH(TaggedIsFalse(FastToBoolean(glue_, trapResult)), &trapResultIsFalse, &checkSetTrapResult);
                 Bind(&trapResultIsFalse);
                 {
                     GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyReturnFalse));

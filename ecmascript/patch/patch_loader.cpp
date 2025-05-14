@@ -17,6 +17,10 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/module/module_resolver.h"
 
+#ifdef USE_CMC_GC
+#include "common_interfaces/base_runtime.h"
+#endif
+
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
                                               const JSPandaFile *patchFile, PatchInfo &patchInfo,
@@ -243,9 +247,12 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
 void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
 {
     auto &replacedPatchMethods = patchInfo.replacedPatchMethods;
-    const Heap *heap = thread->GetEcmaVM()->GetHeap();
-    heap->GetSweeper()->EnsureAllTaskFinished();
-    heap->IterateOverObjects([&replacedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
+#ifdef USE_CMC_GC
+    auto heapVisitor = [&replacedPatchMethods, thread]([[maybe_unused]] BaseObject *baseObj) {
+        TaggedObject *obj = static_cast<TaggedObject *>(baseObj);
+#else
+    auto heapVisitor = [&replacedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
+#endif
         if (JSTaggedValue(obj).IsJSFunction()) {
             JSFunction *function = JSFunction::Cast(obj);
             EntityId methodId = Method::Cast(function->GetMethod())->GetMethodId();
@@ -279,14 +286,24 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
                                                 SKIP_BARRIER);
             }
         }
-    });
+    };
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().ForEachObj(heapVisitor, false);
+#else
+    const Heap *heap = thread->GetEcmaVM()->GetHeap();
+    heap->GetSweeper()->EnsureAllTaskFinished();
+    heap->IterateOverObjects(heapVisitor);
+#endif
 }
 
 void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, CString &recordName, bool hasModule)
 {
-    const Heap *heap = thread->GetEcmaVM()->GetHeap();
-    heap->GetSweeper()->EnsureAllTaskFinished();
-    heap->IterateOverObjects([methodId, &recordName, hasModule, thread]([[maybe_unused]] TaggedObject *obj) {
+#ifdef USE_CMC_GC
+    auto heapVisitor = [methodId, &recordName, hasModule, thread]([[maybe_unused]] BaseObject *baseObj) {
+        TaggedObject *obj = static_cast<TaggedObject *>(baseObj);
+#else
+    auto heapVisitor = [methodId, &recordName, hasModule, thread]([[maybe_unused]] TaggedObject *obj) {
+#endif
         if (JSTaggedValue(obj).IsJSFunction()) {
             JSFunction *function = nullptr;
             function = JSFunction::Cast(obj);
@@ -313,7 +330,14 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
                 }
             }
         }
-    });
+    };
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().ForEachObj(heapVisitor, false);
+#else
+    const Heap *heap = thread->GetEcmaVM()->GetHeap();
+    heap->GetSweeper()->EnsureAllTaskFinished();
+    heap->IterateOverObjects(heapVisitor);
+#endif
 }
 
 void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *baseFile,

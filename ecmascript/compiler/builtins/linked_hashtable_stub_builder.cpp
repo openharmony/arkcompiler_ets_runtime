@@ -660,23 +660,24 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     BRANCH(TaggedIsHeapObject(newTarget), &newTargetObject, &newTargetNotObject);
 
     Bind(&newTargetObject);
-    BRANCH(IsJSFunction(newTarget), &newTargetFunction, &slowPath);
+    BRANCH(IsJSFunction(glue_, newTarget), &newTargetFunction, &slowPath);
 
     Bind(&newTargetFunction);
     Label fastGetHClass(env);
     Label intialHClassIsHClass(env);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
     GateRef mapOrSetFunc;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, glueGlobalEnv,
                                          GlobalEnv::BUILTINS_MAP_FUNCTION_INDEX);
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, glueGlobalEnv,
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
-    GateRef newTargetHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(newTargetHClass)).Done(),
+    GateRef newTargetHClass =
+        Load(VariableType::JS_ANY(),  glue_, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(glue_, newTargetHClass)).Done(),
         &fastGetHClass, &slowPath);
 
     Bind(&fastGetHClass);
@@ -713,7 +714,7 @@ template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetLinked(GateRef jsThis)
 {
     GateRef linkedTableOffset = GetLinkedOffset();
-    return Load(VariableType::JS_ANY(), jsThis, linkedTableOffset);
+    return Load(VariableType::JS_ANY(), glue_, jsThis, linkedTableOffset);
 }
 
 template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GetLinked(

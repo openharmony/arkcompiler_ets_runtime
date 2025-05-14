@@ -30,14 +30,14 @@ GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
     return Equal(x, specialValue);
 }
 
-inline GateRef CircuitBuilder::IsJSHClass(GateRef obj)
+inline GateRef CircuitBuilder::IsJSHClass(GateRef glue, GateRef obj)
 {
-    return Int32Equal(GetObjectType(LoadHClass(obj)), Int32(static_cast<int32_t>(JSType::HCLASS)));
+    return Int32Equal(GetObjectType(LoadHClass(glue, obj)), Int32(static_cast<int32_t>(JSType::HCLASS)));
 }
 
-inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
+inline GateRef CircuitBuilder::IsJSFunction(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     GateRef greater = Int32GreaterThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
     GateRef less = Int32LessThanOrEqual(objectType,
@@ -45,13 +45,13 @@ inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
     return BitAnd(greater, less);
 }
 
-GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
+GateRef CircuitBuilder::IsJsType(GateRef glue, GateRef obj, JSType type)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Equal(objectType, Int32(static_cast<int32_t>(type)));
 }
 
-GateRef CircuitBuilder::IsJSObject(GateRef obj)
+GateRef CircuitBuilder::IsJSObject(GateRef glue, GateRef obj)
 {
     Label entryPass(env_);
     SubCfgEntry(&entryPass);
@@ -62,7 +62,7 @@ GateRef CircuitBuilder::IsJSObject(GateRef obj)
     BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
     {
-        GateRef objectType = GetObjectType(LoadHClass(obj));
+        GateRef objectType = GetObjectType(LoadHClass(glue, obj));
         result = BitAnd(
             Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST))),
             Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST))));
@@ -82,18 +82,18 @@ GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)
         Int32(0));
 }
 
-GateRef CircuitBuilder::IsCallable(GateRef obj)
+GateRef CircuitBuilder::IsCallable(GateRef glue, GateRef obj)
 {
-    GateRef hClass = LoadHClass(obj);
+    GateRef hClass = LoadHClass(glue, obj);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
 }
 
 GateRef CircuitBuilder::AlreadyDeopt(GateRef method)
 {
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    GateRef extraLiteralInfo = LoadWithoutBarrier(VariableType::INT64(), method, extraLiteralInfoOffset);
     return AlreadyDeoptFromExtraLiteralInfo(extraLiteralInfo);
 }
 
@@ -112,27 +112,27 @@ GateRef CircuitBuilder::IsPrototypeHClass(GateRef hClass)
         Int32((1LU << JSHClass::IsPrototypeBit::SIZE) - 1)));
 }
 
-GateRef CircuitBuilder::IsJsProxy(GateRef obj)
+GateRef CircuitBuilder::IsJsProxy(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
-GateRef CircuitBuilder::IsTreeString(GateRef obj)
+GateRef CircuitBuilder::IsTreeString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TREE_STRING)));
 }
 
-GateRef CircuitBuilder::IsSlicedString(GateRef obj)
+GateRef CircuitBuilder::IsSlicedString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
 }
 
-GateRef CircuitBuilder::IsLineString(GateRef obj)
+GateRef CircuitBuilder::IsLineString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
 }
 
@@ -152,9 +152,9 @@ GateRef CircuitBuilder::AlignUp(GateRef x, GateRef alignment)
     return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
 }
 
-inline GateRef CircuitBuilder::IsDictionaryMode(GateRef object)
+inline GateRef CircuitBuilder::IsDictionaryMode(GateRef glue, GateRef object)
 {
-    GateRef type = GetObjectType(LoadHClass(object));
+    GateRef type = GetObjectType(LoadHClass(glue, object));
     return Int32Equal(type, Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY)));
 }
 
@@ -174,68 +174,88 @@ GateRef CircuitBuilder::IsStableArray(GateRef hClass)
     return BitAnd(isStableElements, isJsArray);
 }
 
-GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef x)
+GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef glue, GateRef x)
 {
-    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef objType = GetObjectType(LoadHClass(glue, x));
     GateRef isAOTLiteralInfoObj = Equal(objType,
         Int32(static_cast<int32_t>(JSType::AOT_LITERAL_INFO)));
     return isAOTLiteralInfoObj;
 }
 
-GateRef CircuitBuilder::LoadHClass(GateRef object)
+#ifdef USE_CMC_GC
+GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
 {
+    // ReadBarrier is not need for loading hClass as long as it is non-movable
+    // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    return Load(VariableType::JS_POINTER(), object, offset);
+    GateRef lowAddress = Load(VariableType::INT32(), glue, object, offset);
+    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
+    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 
-GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef object)
+GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
+{
+    GateRef lowAddress = LoadConstOffset(VariableType::INT32(), object, TaggedObject::HCLASS_OFFSET);
+    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
+    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
+}
+#else
+GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
+{
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
+    return Load(VariableType::JS_POINTER(), glue, object, offset);
+}
+
+GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
 {
     return LoadConstOffset(VariableType::JS_POINTER(), object, TaggedObject::HCLASS_OFFSET);
 }
-
+#endif
 GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
 {
     return LoadConstOffset(VariableType::JS_POINTER(), hclass, JSHClass::PROTOTYPE_OFFSET);
 }
 
-GateRef CircuitBuilder::LoadPrototypeHClass(GateRef object)
+GateRef CircuitBuilder::LoadPrototypeHClass(GateRef glue, GateRef object)
 {
-    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectHClass = LoadHClassByConstOffset(glue, object);
     GateRef objectPrototype = LoadPrototype(objectHClass);
-    return LoadHClass(objectPrototype);
+    return LoadHClass(glue, objectPrototype);
 }
 
-GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef object)
+GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef object)
 {
-    GateRef objectHClass = LoadHClassByConstOffset(object);
+    GateRef objectHClass = LoadHClassByConstOffset(glue, object);
     GateRef objectPrototype = LoadPrototype(objectHClass);
-    GateRef objectPrototypeHClass = LoadHClassByConstOffset(objectPrototype);
+    GateRef objectPrototypeHClass = LoadHClassByConstOffset(glue, objectPrototype);
     GateRef objectPrototypeOfPrototype = LoadPrototype(objectPrototypeHClass);
-    return LoadHClass(objectPrototypeOfPrototype);
+    return LoadHClass(glue, objectPrototypeOfPrototype);
 }
 
 GateRef CircuitBuilder::GetEnumCacheKindFromEnumCache(GateRef enumCache)
 {
-    GateRef enumCacheKind = Load(VariableType::INT32(), enumCache, IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET));
+    GateRef enumCacheKind = LoadWithoutBarrier(VariableType::INT32(), enumCache, IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET));
     return enumCacheKind;
 }
 
-GateRef CircuitBuilder::GetEnumCacheOwnFromEnumCache(GateRef enumCache)
+GateRef CircuitBuilder::GetEnumCacheOwnFromEnumCache(GateRef glue, GateRef enumCache)
 {
-    GateRef enumCacheOwn = Load(VariableType::JS_ANY(), enumCache,
+    GateRef enumCacheOwn = Load(VariableType::JS_ANY(), glue, enumCache,
         IntPtr(EnumCache::ENUM_CACHE_OWN_OFFSET));
     return enumCacheOwn;
 }
 
-GateRef CircuitBuilder::GetEnumCacheAllFromEnumCache(GateRef enumCache)
+GateRef CircuitBuilder::GetEnumCacheAllFromEnumCache(GateRef glue, GateRef enumCache)
 {
-    GateRef enumCacheAll = Load(VariableType::JS_ANY(), enumCache, IntPtr(EnumCache::ENUM_CACHE_ALL_OFFSET));
+    GateRef enumCacheAll = Load(VariableType::JS_ANY(), glue, enumCache, IntPtr(EnumCache::ENUM_CACHE_ALL_OFFSET));
     return enumCacheAll;
 }
 
-GateRef CircuitBuilder::GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCache)
+GateRef CircuitBuilder::GetProtoChainInfoEnumCacheFromEnumCache(GateRef glue, GateRef enumCache)
 {
-    GateRef protoChainInfoEnumCache = Load(VariableType::JS_ANY(), enumCache,
+    GateRef protoChainInfoEnumCache = Load(VariableType::JS_ANY(), glue, enumCache,
         IntPtr(EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET));
     return protoChainInfoEnumCache;
 }
@@ -243,7 +263,7 @@ GateRef CircuitBuilder::GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCach
 GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     // NOTE: check for special case of string and TAGGED_ARRAY
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
     GateRef objectSizeInWords = Int32And(Int32LSR(bitfield,
         Int32(JSHClass::ObjectSizeInWordsBits::START_BIT)),
         Int32((1LU << JSHClass::ObjectSizeInWordsBits::SIZE) - 1));
@@ -253,24 +273,37 @@ GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsDictionaryBit::START_BIT)),
         Int32((1LU << JSHClass::IsDictionaryBit::SIZE) - 1)),
         Int32(0));
 }
 
-void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+#ifdef USE_CMC_GC
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
-          MemoryAttribute::NeedBarrier());
+    Store(VariableType::INT32(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET), Int32(0));
+    TransitionHClass(glue, object, hClass, mAttr);
 }
 
-void CircuitBuilder::StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass)
+void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
-          MemoryAttribute::NoBarrier());
+    GateRef compValue = TruncInt64ToInt32(TaggedPointerToInt64(hClass));
+    StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
+        compValue, mAttr);
 }
+#else
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+{
+    TransitionHClass(glue, object, hClass, mAttr);
+}
+
+void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass, mAttr);
+}
+#endif
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
 {
@@ -280,14 +313,14 @@ void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef protot
 GateRef CircuitBuilder::GetObjectType(GateRef hClass)
 {
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return Int32And(bitfield, Int32((1LU << JSHClass::ObjectTypeBits::SIZE) - 1));
 }
 
 inline GateRef CircuitBuilder::CanFastCall(GateRef jsFunc)
 {
     GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
-    GateRef bitField = Load(VariableType::INT32(), jsFunc, bitFieldOffset);
+    GateRef bitField = LoadWithoutBarrier(VariableType::INT32(), jsFunc, bitFieldOffset);
     return Int32NotEqual(
         Int32And(
             Int32LSR(bitField, Int32(JSFunctionBase::IsFastCallBit::START_BIT)),
@@ -298,7 +331,7 @@ inline GateRef CircuitBuilder::CanFastCall(GateRef jsFunc)
 GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
 {
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::ElementsKindBits::START_BIT)),
         Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
@@ -307,7 +340,7 @@ GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
 GateRef CircuitBuilder::HasConstructorByHClass(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::HasConstructorBits::START_BIT)),
         Int32((1LU << JSHClass::HasConstructorBits::SIZE) - 1)),
@@ -317,7 +350,7 @@ GateRef CircuitBuilder::HasConstructorByHClass(GateRef hClass)
 GateRef CircuitBuilder::IsDictionaryElement(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::DictionaryElementBits::START_BIT)),
         Int32((1LU << JSHClass::DictionaryElementBits::SIZE) - 1)),
@@ -327,7 +360,7 @@ GateRef CircuitBuilder::IsDictionaryElement(GateRef hClass)
 GateRef CircuitBuilder::IsStableElements(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsStableElementsBit::START_BIT)),
         Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
@@ -337,24 +370,24 @@ GateRef CircuitBuilder::IsStableElements(GateRef hClass)
 GateRef CircuitBuilder::IsJSArrayPrototypeModified(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsJSArrayPrototypeModifiedBit::START_BIT)),
         Int32((1LU << JSHClass::IsJSArrayPrototypeModifiedBit::SIZE) - 1)),
         Int32(0));
 }
 
-GateRef CircuitBuilder::HasConstructor(GateRef object)
+GateRef CircuitBuilder::HasConstructor(GateRef glue, GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
+    GateRef hClass = LoadHClass(glue, object);
     return HasConstructorByHClass(hClass);
 }
 
-GateRef CircuitBuilder::IsConstructor(GateRef object)
+GateRef CircuitBuilder::IsConstructor(GateRef glue, GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
+    GateRef hClass = LoadHClass(glue, object);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     // decode
     return Int32NotEqual(
         Int32And(Int32LSR(bitfield, Int32(JSHClass::ConstructorBit::START_BIT)),
@@ -362,11 +395,11 @@ GateRef CircuitBuilder::IsConstructor(GateRef object)
         Int32(0));
 }
 
-GateRef CircuitBuilder::IsClassConstructor(GateRef object)
+GateRef CircuitBuilder::IsClassConstructor(GateRef glue, GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
+    GateRef hClass = LoadHClass(glue, object);
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return IsClassConstructorWithBitField(bitfield);
 }
 
@@ -379,22 +412,22 @@ GateRef CircuitBuilder::IsClassConstructorWithBitField(GateRef bitfield)
     return Int32Equal(classCtor, mask);
 }
 
-GateRef CircuitBuilder::IsExtensible(GateRef object)
+GateRef CircuitBuilder::IsExtensible(GateRef glue, GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
+    GateRef hClass = LoadHClass(glue, object);
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::ExtensibleBit::START_BIT)),
         Int32((1LU << JSHClass::ExtensibleBit::SIZE) - 1)),
         Int32(0));
 }
 
-GateRef CircuitBuilder::IsClassPrototype(GateRef object)
+GateRef CircuitBuilder::IsClassPrototype(GateRef glue, GateRef object)
 {
-    GateRef hClass = LoadHClass(object);
+    GateRef hClass = LoadHClass(glue, object);
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, bitfieldOffset);
     // decode
     return IsClassPrototypeWithBitField(bitfield);
 }
@@ -419,43 +452,43 @@ GateRef CircuitBuilder::LoadObjectFromWeakRef(GateRef x)
 }
 
 // ctor is base but not builtin
-inline GateRef CircuitBuilder::IsBase(GateRef ctor)
+inline GateRef CircuitBuilder::IsBase(GateRef glue, GateRef ctor)
 {
-    GateRef method = GetMethodFromFunction(ctor);
+    GateRef method = GetMethodFromFunction(glue, ctor);
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), method, extraLiteralInfoOffset);
 
     GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
                             Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
-inline GateRef CircuitBuilder::IsDerived(GateRef ctor)
+inline GateRef CircuitBuilder::IsDerived(GateRef glue, GateRef ctor)
 {
-    GateRef method = GetMethodFromFunction(ctor);
+    GateRef method = GetMethodFromFunction(glue, ctor);
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), method, extraLiteralInfoOffset);
 
     GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
                             Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
     return Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::DERIVED_CONSTRUCTOR)));
 }
 
-inline GateRef CircuitBuilder::GetMethodId(GateRef func)
+inline GateRef CircuitBuilder::GetMethodId(GateRef glue, GateRef func)
 {
-    GateRef method = GetMethodFromFunction(func);
+    GateRef method = GetMethodFromFunction(glue, func);
     GateRef literalInfoOffset = IntPtr(Method::LITERAL_INFO_OFFSET);
-    GateRef literalInfo = Load(VariableType::INT64(), method, literalInfoOffset);
+    GateRef literalInfo = LoadWithoutBarrier(VariableType::INT64(), method, literalInfoOffset);
     GateRef methodId = Int64And(Int64LSR(literalInfo, Int64(MethodLiteral::MethodIdBits::START_BIT)),
         Int64((1LLU << MethodLiteral::MethodIdBits::SIZE) - 1));
     return methodId;
 }
 
-inline GateRef CircuitBuilder::GetBuiltinsId(GateRef func)
+inline GateRef CircuitBuilder::GetBuiltinsId(GateRef glue, GateRef func)
 {
-    GateRef method = GetMethodFromFunction(func);
+    GateRef method = GetMethodFromFunction(glue, func);
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    GateRef extraLiteralInfo = LoadWithoutBarrier(VariableType::INT64(), method, extraLiteralInfoOffset);
     GateRef builtinsId = Int64And(Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
         Int64((1LLU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
     return builtinsId;

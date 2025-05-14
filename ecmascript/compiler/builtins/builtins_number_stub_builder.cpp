@@ -37,7 +37,7 @@ void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label 
         Label stringObj(env);
         BRANCH(TaggedIsHeapObject(msg), &heapObj, slowPath);
         Bind(&heapObj);
-        BRANCH(IsString(msg), &stringObj, slowPath);
+        BRANCH(IsString(glue_, msg), &stringObj, slowPath);
         Bind(&stringObj);
         {
             *result = CallNGCRuntime(glue_, RTSTUB_ID(NumberHelperStringToDouble), { msg });
@@ -57,7 +57,7 @@ void BuiltinsNumberStubBuilder::ParseInt(Variable *result, Label *exit, Label *s
     GateRef msg = GetCallArg0(numArgs_);
     GateRef arg2 = GetCallArg1(numArgs_);
     // ToString maybe throw exception.
-    Branch(TaggedIsString(msg), &msgIsString, slowPath);
+    Branch(TaggedIsString(glue_, msg), &msgIsString, slowPath);
     Bind(&msgIsString);
     Branch(TaggedIsUndefined(arg2), &radixIsSpecialInt, &radixIsSpecial);
 
@@ -251,7 +251,7 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
     BRANCH(Int64GreaterThan(numArgs_, IntPtr(0)), &hasArg, &numberCreate);
     Bind(&hasArg);
     {
-        GateRef value = GetArgFromArgv(Int32(0));
+        GateRef value = GetArgFromArgv(glue_, Int32(0));
         Label number(env);
         BRANCH(TaggedIsNumber(value), &number, &slowPath);
         Bind(&number);
@@ -268,13 +268,13 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
     BRANCH(TaggedIsUndefined(newTarget), &exit, &newObj);
     Bind(&newObj);
     {
-        BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+        BRANCH(IsJSFunction(glue_, newTarget), &newTargetIsJSFunction, &slowPath);
         Bind(&newTargetIsJSFunction);
         {
             Label intialHClassIsHClass(env);
-            GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+            GateRef intialHClass = Load(VariableType::JS_ANY(), glue_, newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
+            BRANCH(IsJSHClass(glue_, intialHClass), &intialHClassIsHClass, &slowPath1);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
@@ -387,7 +387,7 @@ GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
             Bind(&thisIsSingle);
             GateRef singleCharTable = GetSingleCharTable(glue_);
             GateRef index = ToCharCode(number);
-            result = GetValueFromTaggedArray(singleCharTable, index);
+            result = GetValueFromTaggedArray(glue_, singleCharTable, index);
             Jump(&exit);
         }
     }

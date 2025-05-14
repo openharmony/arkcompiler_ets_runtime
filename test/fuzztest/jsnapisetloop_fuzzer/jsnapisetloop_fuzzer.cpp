@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "jsnapisetloop_fuzzer.h"
 
 using namespace panda;
@@ -24,7 +25,7 @@ namespace OHOS {
     void JSNApiSetLoopFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -38,7 +39,7 @@ namespace OHOS {
     void JSNApiSynchronizVMInfoFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";

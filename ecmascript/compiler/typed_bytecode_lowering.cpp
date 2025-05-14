@@ -617,8 +617,8 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
         return;
     }
     builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
-    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
-                                               TaggedObject::HCLASS_OFFSET);
+
+    auto receiverHC = builder_.LoadHClassByConstOffset(glue_, tacc.GetReceiver());
     for (size_t i = 0; i < typeCount; ++i) {
         std::vector<Label> ifFalse;
         Label resultIsTrue(&builder_);
@@ -679,7 +679,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 
             builder_.LoopBegin(&loopHead);
             builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS2);
-            auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current, TaggedObject::HCLASS_OFFSET);
+            auto curHC = builder_.LoadHClassByConstOffset(glue_, *current);
             BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
             builder_.Bind(&lookUpProto);
@@ -716,16 +716,16 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-    GateRef key = builder_.GetKeyFromLexivalEnv(
+    GateRef key = builder_.GetKeyFromLexivalEnv(glue_,
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
     builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
-        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        builder_.DeoptCheck(builder_.IsJSFunction(glue_, key), frameState, DeoptType::NOTJSFUNCTION);
         result = builder_.CallPrivateGetter(gate, receiver, key);
         builder_.Jump(&exit);
     } else {
-        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(glue_, key), frameState, DeoptType::NOTSYMBOL);
         builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         builder_.Jump(&exit);
@@ -753,16 +753,16 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     GateRef value = tacc.GetValue();
 
     GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-    GateRef key = builder_.GetKeyFromLexivalEnv(
+    GateRef key = builder_.GetKeyFromLexivalEnv(glue_,
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
     builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
-        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        builder_.DeoptCheck(builder_.IsJSFunction(glue_, key), frameState, DeoptType::NOTJSFUNCTION);
         builder_.CallPrivateSetter(gate, receiver, key, value);
         builder_.Jump(&exit);
     } else {
-        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(glue_, key), frameState, DeoptType::NOTSYMBOL);
         builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         BuildNamedPropertyAccess(
             gate, receiver, receiver, value, tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
@@ -835,8 +835,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         return;
     }
     builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
-    auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
-                                               TaggedObject::HCLASS_OFFSET);
+    auto receiverHC = builder_.LoadHClassByConstOffset(glue_, tacc.GetReceiver());
     for (size_t i = 0; i < typeCount; ++i) {
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
@@ -861,8 +860,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 
                 builder_.LoopBegin(&loopHead);
                 builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS4);
-                auto curHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), *current,
-                                                      TaggedObject::HCLASS_OFFSET);
+                auto curHC = builder_.LoadHClassByConstOffset(glue_, *current);
                 BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
                 builder_.Bind(&lookUpProto);
@@ -922,8 +920,7 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
         builder_.Bind(&notProto);
     }
     MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
-    builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(), TaggedObject::HCLASS_OFFSET,
-                              newHolderHC, mAttr);
+    builder_.TransitionHClass(glue_, tacc.GetReceiver(), newHolderHC, mAttr);
     if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
         auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                                                    JSObject::PROPERTIES_OFFSET);
@@ -1066,7 +1063,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         AddProfiling(gate);
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);
-        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
         GateRef expectedHClass = builder_.GetGlobalConstantValue(index);
         builder_.DeoptCheck(builder_.Equal(receiverHClass, expectedHClass), frameState,
                             DeoptType::INCONSISTENTHCLASS11);
@@ -1087,7 +1084,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         AddProfiling(gate);
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);
-        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
         GateRef globalEnvObj = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(index));
         builder_.DeoptCheck(builder_.Equal(receiverHClass, globalEnvObj), frameState,
                             DeoptType::INCONSISTENTHCLASS12);
@@ -2530,8 +2527,7 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     for (size_t offset = JSObject::SIZE; offset < objectSize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
-                              MemoryAttribute::NeedBarrierAndAtomic());
+    builder_.StoreHClass(glue_, object, hclass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,

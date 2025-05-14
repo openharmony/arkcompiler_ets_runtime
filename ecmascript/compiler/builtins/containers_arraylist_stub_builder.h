@@ -33,23 +33,23 @@ public:
 BUILTINS_WITH_CONTAINERS_ARRAYLIST_STUB_BUILDER(DECLARE_CONTAINERS_ARRAYLIST_STUB_BUILDER)
 #undef DECLARE_CONTAINERS_ARRAYLIST_STUB_BUILDER
 
-    GateRef GetSize(GateRef obj)
+    GateRef GetSize(GateRef glue, GateRef obj)
     {
-        GateRef len = Load(VariableType::JS_ANY(), obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));
+        GateRef len = Load(VariableType::JS_ANY(), glue, obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));
         return TaggedGetInt(len);
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
 
     void Set(GateRef glue, GateRef obj, GateRef index, GateRef value)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
     }
 };

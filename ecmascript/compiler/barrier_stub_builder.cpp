@@ -88,7 +88,7 @@ GateRef BarrierStubBuilder::GetBitSetDataAddr(GateRef objectRegion, GateRef load
     Label exit(env);
 
     DEFVARIABLE(oldBitSet, VariableType::NATIVE_POINTER(),
-                Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset));
+                LoadPrimitive(VariableType::NATIVE_POINTER(), objectRegion, loadOffset));
 
     Label createRset(env);
     BRANCH_UNLIKELY(IntPtrEqual(*oldBitSet, IntPtr(0)), &createRset, &exit);
@@ -112,11 +112,11 @@ void BarrierStubBuilder::HandleMark()
     Label exit(env);
 
     bool isArch32 = GetEnvironment()->Is32Bit();
-    GateRef gcStateBitField = Load(VariableType::INT64(), glue_,
-                                   Int64(JSThread::GlueData::GetGCStateBitFieldOffset(isArch32)));
+    GateRef gcStateBitField = LoadPrimitive(VariableType::INT64(), glue_,
+        Int64(JSThread::GlueData::GetGCStateBitFieldOffset(isArch32)));
     GateRef gcState = Int64And(gcStateBitField, Int64(JSThread::CONCURRENT_MARKING_BITFIELD_MASK));
-    GateRef sharedGCStateBitField = Load(VariableType::INT64(), glue_,
-                                         Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(isArch32)));
+    GateRef sharedGCStateBitField = LoadPrimitive(VariableType::INT64(), glue_,
+        Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(isArch32)));
     GateRef sharedGCState = Int64And(sharedGCStateBitField, Int64(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK));
     Label needMarking(env);
     GateRef marking = Int64NotEqual(gcState, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK)));
@@ -135,7 +135,7 @@ void BarrierStubBuilder::HandleMark()
         Bind(&body);
         {
             GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
-            GateRef value = Load(VariableType::JS_ANY(), dstAddr_, offset);
+            GateRef value = Load(VariableType::JS_ANY(), glue_, dstAddr_, offset);
             Label doMarking(env);
             BRANCH_NO_WEIGHT(TaggedIsHeapObject(value), &doMarking, &endLoop);
             Bind(&doMarking);
@@ -200,7 +200,7 @@ void BarrierStubBuilder::BarrierBatchBitSet(uint8_t bitSetSelect)
             Label updateLocalToShared(env);
             Label updateOldToNew(env);
             GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
-            GateRef value = Load(VariableType::JS_ANY(), objectRegion_, offset);
+            GateRef value = Load(VariableType::JS_ANY(), glue_, objectRegion_, offset);
             Label doUpdate(env);
             BRANCH_NO_WEIGHT(TaggedIsHeapObject(value), &doUpdate, &endLoop);
             Bind(&doUpdate);
@@ -265,7 +265,7 @@ void BarrierStubBuilder::FlushBatchBitSet(uint8_t bitSetSelect, GateRef quadIdx,
             GateRef bitSetAddr = GetBitSetDataAddr(objectRegion_, loadOffset, RTSTUB_ID(CreateLocalToShare));
 
             GateRef byteIndex = Int32LSL(quadIdx, Int32(BYTE_PER_QUAD_LOG2));
-            GateRef oldValue = Load(VariableType::INT64(), bitSetAddr, ZExtInt32ToInt64(byteIndex));
+            GateRef oldValue = LoadPrimitive(VariableType::INT64(), bitSetAddr, ZExtInt32ToInt64(byteIndex));
             Store(VariableType::INT64(), glue_, bitSetAddr, ZExtInt32ToInt64(byteIndex),
                   Int64Or(oldValue, *localToShareBitSetVar), MemoryAttribute::NoBarrier());
             localToShareBitSetVar = Int64(0);
@@ -280,7 +280,7 @@ void BarrierStubBuilder::FlushBatchBitSet(uint8_t bitSetSelect, GateRef quadIdx,
             GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env->Is32Bit()));
             GateRef bitSetAddr = GetBitSetDataAddr(objectRegion_, loadOffset, RTSTUB_ID(CreateOldToNew));
             GateRef byteIndex = Int32LSL(quadIdx, Int32(BYTE_PER_QUAD_LOG2));
-            GateRef oldValue = Load(VariableType::INT64(), bitSetAddr, ZExtInt32ToInt64(byteIndex));
+            GateRef oldValue = LoadPrimitive(VariableType::INT64(), bitSetAddr, ZExtInt32ToInt64(byteIndex));
             Store(VariableType::INT64(), glue_, bitSetAddr, ZExtInt32ToInt64(byteIndex),
                   Int64Or(oldValue, *oldToNewBitSetVar), MemoryAttribute::NoBarrier());
             oldToNewBitSetVar = Int64(0);
@@ -588,7 +588,8 @@ void BarrierStubBuilder::BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBi
         GateRef bitsInCurrentQuad = ThreeInt64Min(Int64Sub(Int64(BIT_PER_QUAD), *srcBitOffset),
                                                   Int64Sub(Int64(BIT_PER_QUAD), *dstBitOffset),
                                                   *remainLength);
-        GateRef srcQuadData = Load(VariableType::INT64(), srcBitSet, Int64LSL(*srcQuad, Int64(BYTE_PER_QUAD_LOG2)));
+        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet,
+            Int64LSL(*srcQuad, Int64(BYTE_PER_QUAD_LOG2)));
         Label setValue(env);
         BRANCH_NO_WEIGHT(Int64Equal(srcQuadData, Int64(0)), &beforeEndLoop, &setValue);
         Bind(&setValue);
@@ -600,7 +601,8 @@ void BarrierStubBuilder::BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBi
             // zeroMask <- ~(srcMask << dstBitOffset);
             GateRef zeroMask = Int64Not(Int64LSL(srcMask, *dstBitOffset));
             // dstData <- load from dstBitSet offset dstQuad * 8;
-            GateRef dstData = Load(VariableType::INT64(), dstBitSet, Int64LSL(*dstQuad, Int64(BYTE_PER_QUAD_LOG2)));
+            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet,
+                Int64LSL(*dstQuad, Int64(BYTE_PER_QUAD_LOG2)));
             // newDataMask <- (srcData << dstBitOffset);
             GateRef newDataMask = Int64LSL(srcData, *dstBitOffset);
             // newData <- dstData & zeroMask | newDataMask;
@@ -680,7 +682,8 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
                                                   *remainLength);
         // srcQuadIndex <- srcEnd / 64;
         GateRef srcQuadIndex = Int64LSR(*srcEnd, Int64(BIT_PER_QUAD_LOG2));
-        GateRef srcQuadData = Load(VariableType::INT64(), srcBitSet, Int64LSL(srcQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
+        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet,
+            Int64LSL(srcQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
         Label setValue(env);
         BRANCH_NO_WEIGHT(Int64Equal(srcQuadData, Int64(0)), &beforeEndLoop, &setValue);
         Bind(&setValue);
@@ -695,7 +698,8 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
             // dstWordIndex <- dstEnd / 64;
             GateRef dstQuadIndex = Int64LSR(*dstEnd, Int64(BIT_PER_QUAD_LOG2));
             // dstData <- load from dstBitSet offset dstQuadIndex * 8
-            GateRef dstData = Load(VariableType::INT64(), dstBitSet, Int64LSL(dstQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
+            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet,
+                Int64LSL(dstQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
             // newDataMask <- (srcData << (dstBitOffset - bitsInCurrentQuad + 1))
             GateRef newDataMask = Int64LSL(srcData, Int64Add(Int64Sub(dstBitOffset, bitsInCurrentQuad), Int64(1)));
             // newData <- dstData & zeroMask | newDataMask;
@@ -884,8 +888,8 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
     // endByteIndex <- endItemIndex * 8
     GateRef endByteIndex = Int64LSL(endItemIndex, Int64(BIT_PER_BYTE_LOG2));
 
-    GateRef startItem = Load(VariableType::INT64(), bitSet, startByteIndex);
-    GateRef endItem = Load(VariableType::INT64(), bitSet, endByteIndex);
+    GateRef startItem = LoadPrimitive(VariableType::INT64(), bitSet, startByteIndex);
+    GateRef endItem = LoadPrimitive(VariableType::INT64(), bitSet, endByteIndex);
 
     // startMask <- (1 << startOf) - 1
     GateRef startMask = Int64Sub(Int64LSL(Int64(1), startOf), Int64(1));
@@ -914,8 +918,8 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
         BRANCH_LIKELY(Int64LessThanOrEqual(*vstartByteIndex, *vendByteIndex), &startReverse, &loopExit1);
         Bind(&startReverse);
         {
-            GateRef item1 = Load(VariableType::INT64(), bitSet, *vstartByteIndex);
-            GateRef item2 = Load(VariableType::INT64(), bitSet, *vendByteIndex);
+            GateRef item1 = LoadPrimitive(VariableType::INT64(), bitSet, *vstartByteIndex);
+            GateRef item2 = LoadPrimitive(VariableType::INT64(), bitSet, *vendByteIndex);
             
             // revStart <- Int64BitReverse(bitSet[vstartByteIndex])
             // revEnd <- Int64BitReverse(bitSet[vendByteIndex])
@@ -943,12 +947,12 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
     GateRef neEndMask = Int64Not(*endMask);
 
     // bitSet[startByteIndex] <- (startItem & startMask) | (startItem1 & neStartMask);
-    GateRef startItem1 = Load(VariableType::INT64(), bitSet, startByteIndex);
+    GateRef startItem1 = LoadPrimitive(VariableType::INT64(), bitSet, startByteIndex);
     GateRef resStartItem = Int64Or(Int64And(startItem, startMask), Int64And(startItem1, neStartMask));
     Store(VariableType::INT64(), glue_, bitSet, startByteIndex, resStartItem, MemoryAttribute::NoBarrier());
 
     // bitSet[endByteIndex] <- (resEndItem & endMask) | (endItem1 & neEndMask);
-    GateRef endItem1 = Load(VariableType::INT64(), bitSet, endByteIndex);
+    GateRef endItem1 = LoadPrimitive(VariableType::INT64(), bitSet, endByteIndex);
     GateRef resEndItem = Int64Or(Int64And(endItem, *endMask), Int64And(endItem1, neEndMask));
     Store(VariableType::INT64(), glue_, bitSet, endByteIndex, resEndItem, MemoryAttribute::NoBarrier());
     Jump(&exit);
@@ -960,7 +964,7 @@ GateRef BarrierStubBuilder::IsLocalToShareSwapped(GateRef region)
 {
     auto env = GetEnvironment();
     GateRef RSetSwapFlagOffset = IntPtr(Region::PackedData::GetRSetSwapFlagOffset(env->Is32Bit()));
-    GateRef RSetFlag = Load(VariableType::INT8(), region, RSetSwapFlagOffset);
+    GateRef RSetFlag = LoadPrimitive(VariableType::INT8(), region, RSetSwapFlagOffset);
     return NotEqual(Int8And(RSetFlag, Int8(LOCAL_TO_SHARE_SWAPPED_MASK)), Int8(0));
 }
 
@@ -968,7 +972,7 @@ GateRef BarrierStubBuilder::IsOldToNewSwapped(GateRef region)
 {
     auto env = GetEnvironment();
     GateRef RSetSwapFlagOffset = IntPtr(Region::PackedData::GetRSetSwapFlagOffset(env->Is32Bit()));
-    GateRef RSetFlag = Load(VariableType::INT8(), region, RSetSwapFlagOffset);
+    GateRef RSetFlag = LoadPrimitive(VariableType::INT8(), region, RSetSwapFlagOffset);
     return NotEqual(Int8And(RSetFlag, Int8(OLD_TO_NEW_SWAPPED_MASK)), Int8(0));
 }
 }

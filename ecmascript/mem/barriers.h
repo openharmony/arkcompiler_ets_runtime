@@ -20,6 +20,10 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
+#include "libpandabase/mem/mem.h"
+#ifdef USE_CMC_GC
+#include "common_interfaces/base_runtime.h"
+#endif
 
 namespace panda::ecmascript {
 class Region;
@@ -35,6 +39,19 @@ public:
         // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
         *addr = value;
     }
+
+#ifdef ARK_USE_SATB_BARRIER
+    template<>
+    inline void SetPrimitive(void *obj, size_t offset, JSTaggedType value)
+    {
+        // NOT USE IN Concrruent Enum Barrier
+        CMCWriteBarrier(nullptr, obj, offset, JSTaggedValue::Hole().GetRawData());
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset);
+        // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
+        *addr = value;
+        // thread not be used, and satb barrier don't need newvalue.
+    }
+#endif
 
     template<class T>
     static inline T AtomicSetPrimitive(volatile void *obj, size_t offset, T oldValue, T value)
@@ -62,7 +79,6 @@ public:
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template<bool maybeOverlap>
     static void CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count);
-    static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);
     static void SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                       bool isPrimitive = false);
 
@@ -73,12 +89,67 @@ public:
         return *addr;
     }
 
+    static inline JSTaggedType GetTaggedValue(const void *obj, size_t offset)
+    {
+#ifdef USE_READ_BARRIER
+        JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
+        if (value.IsHeapObject()) {
+            return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier(const_cast<void*>(obj),
+                                                                           (void*)(ToUintPtr(obj) + offset)));
+        }
+        return value.GetRawData();
+#else
+        return *reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset);
+#endif
+    }
+
+    static inline JSTaggedType GetTaggedValue(uintptr_t slotAddress)
+    {
+#ifdef USE_READ_BARRIER
+        JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
+        if (value.IsHeapObject()) {
+            return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier((void*)slotAddress));
+        }
+        return value.GetRawData();
+#else
+        return *reinterpret_cast<JSTaggedType *>(slotAddress);
+#endif
+    }
+
+    static inline JSTaggedType GetTaggedValueAtomic(const void *obj, size_t offset)
+    {
+#ifdef USE_READ_BARRIER
+        JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
+            offset)->load(std::memory_order_acquire);
+        if (value.IsHeapObject()) {
+            return reinterpret_cast<JSTaggedType>(
+                BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset),
+                                               std::memory_order_acquire));
+        }
+        return value.GetRawData();
+#else
+        return reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + \
+            offset)->load(std::memory_order_acquire);
+#endif
+    }
+
+    static inline JSTaggedType UpdateSlot(void *obj, size_t offset)
+    {
+        JSTaggedType value = GetTaggedValue(obj, offset);
+        *reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset) = value;
+        return value;
+    }
+
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                   TaggedObject *value, Region *valueRegion,
                                   WriteBarrierType writeType = WriteBarrierType::NORMAL);
 
     static void PUBLIC_API UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                         TaggedObject *value, Region *valueRegion);
+#ifdef USE_CMC_GC
+    static void PUBLIC_API CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
+    static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void* dst, size_t count);
+#endif
 };
 }  // namespace panda::ecmascript
 

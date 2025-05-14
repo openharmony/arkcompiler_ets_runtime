@@ -1849,8 +1849,10 @@ bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> reg
     }
     bool ret = false;
     if (UNLIKELY(source == StringSource::OFFHEAP_STRING)) {
+#ifndef USE_CMC_GC
 #ifndef NDEBUG
         SharedHeap::GetInstance()->PostGCTaskForTest<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+#endif
 #endif
         ThreadNativeScope scope(thread);
         ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);

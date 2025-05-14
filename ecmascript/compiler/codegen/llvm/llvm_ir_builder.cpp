@@ -184,7 +184,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
         {OpCode::ICMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::FCMP, &LLVMIRBuilder::HandleCmp},
-        {OpCode::LOAD, &LLVMIRBuilder::HandleLoad},
+        {OpCode::LOAD_WITHOUT_BARRIER, &LLVMIRBuilder::HandleLoad},
         {OpCode::STORE_WITHOUT_BARRIER, &LLVMIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeInt32ToDouble},
         {OpCode::UNSIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeUInt32ToDouble},
@@ -1118,11 +1118,21 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             const auto paramType = paramTypes.at(params.size());
             // match parameter types and function signature types
             if (IsHeapPointerType(paramType) && !IsHeapPointerType(gateTmpType)) {
+#ifndef ARK_USE_SATB_BARRIER
                 params.push_back(LLVMBuildIntToPtr(builder_,
                                                    LLVMBuildBitCast(builder_, GetLValue(gateTmp), GetInt64T(), ""),
                                                    paramType, ""));
+#else
+                params.push_back(LLVMBuildIntToPtr(builder_,
+                    LLVMBuildZExtOrBitCast(builder_, GetLValue(gateTmp), GetInt64T(), ""),
+                paramType, ""));
+#endif
             } else {
+#ifndef ARK_USE_SATB_BARRIER
                 params.push_back(LLVMBuildBitCast(builder_, GetLValue(gateTmp), paramType, ""));
+#else
+                params.push_back(LLVMBuildZExtOrBitCast(builder_, GetLValue(gateTmp), paramType, ""));
+#endif
             }
         } else {
             params.push_back(GetLValue(gateTmp));

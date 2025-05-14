@@ -15,24 +15,18 @@
 
 #include "ecmascript/serializer/base_deserializer.h"
 
-
+#ifdef USE_CMC_GC
+#include "common_interfaces/heap/heap_allocator.h"
+#endif
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 
 namespace panda::ecmascript {
-
-#define NEW_OBJECT_ALL_SPACES()                                           \
-    (uint8_t)SerializedObjectSpace::OLD_SPACE:                            \
-    case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:               \
-    case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:              \
-    case (uint8_t)SerializedObjectSpace::HUGE_SPACE:                      \
-    case (uint8_t)SerializedObjectSpace::SHARED_OLD_SPACE:                \
-    case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:        \
-    case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE
 
 BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *hint)
     : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
@@ -181,7 +175,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     if (object->GetClass()->IsJSNativePointer()) {
         JSNativePointer *nativePointer = reinterpret_cast<JSNativePointer *>(object);
         if (nativePointer->GetDeleter() != nullptr) {
-            if (!JSTaggedValue::Cast(object).IsInSharedHeap()) {
+            if (!object->GetClass()->IsJSShared()) {
                 thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
             }
         }
@@ -252,7 +246,19 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
     size_t handledFieldSize = sizeof(JSTaggedType);
     ObjectSlot slot(objAddr + fieldOffset);
     switch (encodeFlag) {
-        case NEW_OBJECT_ALL_SPACES(): {
+#ifdef USE_CMC_GC
+        case (uint8_t)SerializedObjectSpace::REGULAR_SPACE:
+        case (uint8_t)SerializedObjectSpace::PIN_SPACE:
+        case (uint8_t)SerializedObjectSpace::LARGE_SPACE: {
+#else
+        case (uint8_t)SerializedObjectSpace::OLD_SPACE:
+        case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:
+        case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:
+        case (uint8_t)SerializedObjectSpace::HUGE_SPACE:
+        case (uint8_t)SerializedObjectSpace::SHARED_OLD_SPACE:
+        case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
+        case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE: {
+#endif
             SerializedObjectSpace space = SerializeData::DecodeSpace(encodeFlag);
             HandleNewObjectEncodeFlag(space, objAddr, fieldOffset, isRoot);
             break;
@@ -381,6 +387,36 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
 {
     uintptr_t res = 0U;
     switch (space) {
+#ifdef USE_CMC_GC
+        case SerializedObjectSpace::REGULAR_SPACE: {
+            if (currentRegularObjectAddr_ + objSize > currentRegularRegionBeginAddr_ + ArkGetRegionSize()) {
+                ASSERT(regularRegionIndex_ < regionVector_.size());
+                currentRegularObjectAddr_ = regionVector_[regularRegionIndex_++];
+                currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
+            }
+            res = currentRegularObjectAddr_;
+            currentRegularObjectAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::PIN_SPACE: {
+            if (currentPinObjectAddr_ + objSize > currentPinRegionBeginAddr_ + ArkGetRegionSize()) {
+                ASSERT(pinRegionIndex_ < regionVector_.size());
+                currentPinObjectAddr_ = regionVector_[pinRegionIndex_++];
+                currentPinRegionBeginAddr_ = currentPinObjectAddr_;
+            }
+            res = currentPinObjectAddr_;
+            currentPinObjectAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::LARGE_SPACE: {
+            // no gc for this allocate
+            res = HeapAllocator::AllocateLargeRegion(objSize);
+            if (res == 0) {
+                DeserializeFatalOutOfMemory(objSize, false, false);
+            }
+            break;
+        }
+#else
         case SerializedObjectSpace::OLD_SPACE: {
             if (oldSpaceBeginAddr_ + objSize > AlignUp(oldSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(oldRegionIndex_ < regionVector_.size());
@@ -442,6 +478,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             }
             break;
         }
+#endif
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -559,6 +596,18 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
 
 void BaseDeserializer::AllocateToDifferentSpaces()
 {
+#ifdef USE_CMC_GC
+    size_t regularSpaceSize = data_->GetRegularSpaceSize();
+    if (regularSpaceSize > 0) {
+        // statistic object size
+        AllocateToRegularSpace(regularSpaceSize);
+    }
+    size_t pinSpaceSize = data_->GetPinSpaceSize();
+    if (pinSpaceSize > 0) {
+        // statistic object size
+        AllocateToPinSpace(pinSpaceSize);
+    }
+#else
     size_t oldSpaceSize = data_->GetOldSpaceSize();
     if (oldSpaceSize > 0) {
         heap_->GetOldSpace()->IncreaseLiveObjectSize(oldSpaceSize);
@@ -584,8 +633,80 @@ void BaseDeserializer::AllocateToDifferentSpaces()
         sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
         AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
     }
+#endif
 }
 
+#ifdef USE_CMC_GC
+void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
+{
+    if (regularSpaceSize <= ArkGetRegionSize()) {
+        currentRegularObjectAddr_ = HeapAllocator::AllocateNoGC(regularSpaceSize);
+    } else {
+        currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_,
+                                                           RegionType::RegularRegion);
+    }
+    currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
+    if (currentRegularObjectAddr_ == 0U) {
+        LOG_ECMA(FATAL) << "Deserialize oom error";
+    }
+}
+void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
+{
+    if (pinSpaceSize <= ArkGetRegionSize()) {
+        currentPinObjectAddr_ = HeapAllocator::AllocatePinNoGC(pinSpaceSize);
+    } else {
+        currentPinObjectAddr_ = AllocateMultiCMCRegion(pinSpaceSize, pinRegionIndex_, RegionType::PinRegion);
+    }
+    currentPinRegionBeginAddr_ = currentPinObjectAddr_;
+    if (currentPinObjectAddr_ == 0U) {
+        LOG_ECMA(FATAL) << "Deserialize oom error";
+    }
+}
+
+uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType)
+{
+    size_t regionSize = ArkGetRegionSize();
+    ASSERT(spaceObjSize > regionSize);
+    regionIndex = regionVector_.size();
+    size_t regionAlignedSize = AlignUp(spaceObjSize, regionSize);
+    size_t regionNum = regionAlignedSize / regionSize;
+    uintptr_t firstRegionAddr = 0U;
+    std::vector<size_t> regionRemainSizeVector;
+    size_t regionRemainSizeIndex = 0;
+    if (regionType == RegionType::RegularRegion) {
+        regionRemainSizeVector = data_->GetRegularRemainSizeVector();
+    } else {
+        regionRemainSizeVector = data_->GetPinRemainSizeVector();
+    }
+    while (regionNum > 0) {
+        uintptr_t regionAddr = 0U;
+        if (regionType == RegionType::RegularRegion) {
+            regionAddr = HeapAllocator::AllocateRegion();
+        } else {
+            regionAddr = HeapAllocator::AllocatePinnedRegion();
+        }
+        if (regionAddr == 0U) {
+            LOG_ECMA(FATAL) << "Deserialize allocate multi cmc region fail";
+        }
+        if (firstRegionAddr == 0U) {
+            firstRegionAddr = regionAddr;
+        } else {
+            regionVector_.push_back(regionAddr);
+        }
+        // fill region not used size
+        if (regionNum == 1) {  // last region
+            size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
+            FreeObject::FillFreeObject(heap_, regionAddr + regionSize - lastRegionRemainSize,
+                                       lastRegionRemainSize);
+        } else {
+            auto regionAliveObjSize = regionSize - regionRemainSizeVector[regionRemainSizeIndex++];
+            FreeObject::FillFreeObject(heap_, regionAddr + regionAliveObjSize, regionSize - regionAliveObjSize);
+        }
+        regionNum--;
+    }
+    return firstRegionAddr;
+}
+#else
 void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                                            SerializedObjectSpace spaceType)
 {
@@ -727,6 +848,7 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
         sNonMovableSpaceBeginAddr_ = object;
     }
 }
+#endif
 
 }  // namespace panda::ecmascript
 

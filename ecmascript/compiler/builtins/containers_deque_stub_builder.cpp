@@ -49,14 +49,14 @@ void ContainersDequeStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsJSAPIDeque(*thisObj), &isDeque, &notDeque);
+    BRANCH(IsJSAPIDeque(glue, *thisObj), &isDeque, &notDeque);
     Bind(&notDeque);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsJSAPIDeque(tempObj), &objIsJSAPIDeque, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsJSAPIDeque(glue, tempObj), &objIsJSAPIDeque, slowPath);
             Bind(&objIsJSAPIDeque);
             {
                 thisObj = tempObj;
@@ -79,7 +79,7 @@ void ContainersDequeStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -97,7 +97,7 @@ void ContainersDequeStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
     {
         first = GetFirst(*thisObj);
         GateRef last = GetLast(*thisObj);
-        GateRef capacity = GetElementsLength(*thisObj);
+        GateRef capacity = GetElementsLength(glue, *thisObj);
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
@@ -108,7 +108,7 @@ void ContainersDequeStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
             BRANCH(Int32NotEqual(*first, last), &next, &afterLoop);
             Bind(&next);
             {
-                kValue = Get(*thisObj, *index);
+                kValue = Get(glue, *thisObj, *index);
                 key = IntToTaggedInt(*index);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *kValue, *key, *thisObj };

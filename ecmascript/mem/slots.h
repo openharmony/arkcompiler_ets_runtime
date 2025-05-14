@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mem.h"
+#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 enum class SlotStatus : bool {
@@ -36,6 +37,11 @@ public:
     void Update(TaggedObject *header)
     {
         Update(static_cast<JSTaggedType>(ToUintPtr(header)));
+    }
+
+    uintptr_t* GetRefFieldAddr()
+    {
+        return reinterpret_cast<uintptr_t*>(slotAddress_);
     }
 
     void Update(JSTaggedType value)

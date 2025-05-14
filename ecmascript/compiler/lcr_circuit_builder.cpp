@@ -114,9 +114,25 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     }
     auto bit = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
-        MachineType::NOVALUE, { depend, glue, base, offset, value }, type.GetGateType());
+        MachineType::NOVALUE, { depend, glue, base, offset, value, value }, type.GetGateType());
     label->SetDepend(result);
 }
+
+#ifdef USE_CMC_GC
+void CircuitBuilder::StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
+                                 GateRef compValue, MemoryAttribute mAttr)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    if (mAttr.GetBarrier() == MemoryAttribute::Barrier::UNKNOWN_BARRIER && acc_.IsConstant(value)) {
+        mAttr.SetBarrier(MemoryAttribute::Barrier::NO_BARRIER);
+    }
+    auto bit = LoadStoreAccessor::ToValue(mAttr);
+    GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
+        MachineType::NOVALUE, { depend, glue, base, offset, value, compValue }, type.GetGateType());
+    label->SetDepend(result);
+}
+#endif
 
 void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value, MemoryAttribute mAttr)
 {
@@ -129,34 +145,67 @@ void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRe
 }
 
 // memory
-GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, MemoryAttribute mAttr)
+GateRef CircuitBuilder::Load(VariableType type, GateRef glue, GateRef base, GateRef offset, MemoryAttribute mAttr)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef val = PtrAdd(base, offset);
     auto bits = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
-                                           { depend, val }, type.GetGateType());
+                                           { depend, glue, val }, type.GetGateType());
     label->SetDepend(result);
     return result;
 }
 
-GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
+GateRef CircuitBuilder::Load(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef depend,
                              MemoryAttribute mAttr)
 {
     GateRef val = PtrAdd(base, offset);
     auto bits = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
-                                           { depend, val }, type.GetGateType());
+                                           { depend, glue, val }, type.GetGateType());
     return result;
 }
 
-GateRef CircuitBuilder::Load(VariableType type, GateRef addr, MemoryAttribute mAttr)
+GateRef CircuitBuilder::LoadFromAddress(VariableType type, GateRef glue, GateRef addr, MemoryAttribute mAttr)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     auto bits = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
+                                           { depend, glue, addr }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset, MemoryAttribute mAttr)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef val = PtrAdd(base, offset);
+    auto bits = LoadStoreAccessor::ToValue(mAttr);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadWithoutBarrier(bits), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef depend,
+    MemoryAttribute mAttr)
+{
+    GateRef val = PtrAdd(base, offset);
+    auto bits = LoadStoreAccessor::ToValue(mAttr);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadWithoutBarrier(bits), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
+    return result;
+}
+
+GateRef CircuitBuilder::LoadFromAddressWithoutBarrier(VariableType type, GateRef addr, MemoryAttribute mAttr)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    auto bits = LoadStoreAccessor::ToValue(mAttr);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadWithoutBarrier(bits), type.GetMachineType(),
                                            { depend, addr }, type.GetGateType());
     label->SetDepend(result);
     return result;

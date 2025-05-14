@@ -20,22 +20,6 @@
 #include <cstdint>
 
 namespace panda::ecmascript {
-template <class T>
-inline uintptr_t ToUintPtr(T *val)
-{
-    return reinterpret_cast<uintptr_t>(val);
-}
-
-inline uintptr_t ToUintPtr(std::nullptr_t)
-{
-    return reinterpret_cast<uintptr_t>(nullptr);
-}
-
-inline void *ToVoidPtr(uintptr_t val)
-{
-    return reinterpret_cast<void *>(val);
-}
-
 /*
     uint64_t return type usage in memory literals for giving
     compile-time error in case of integer overflow

@@ -21,7 +21,7 @@
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 enum class ModType : uint8_t {

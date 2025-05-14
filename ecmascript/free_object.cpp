@@ -27,18 +27,18 @@ FreeObject *FreeObject::FillFreeObject(BaseHeap *heap, uintptr_t address, size_t
     FreeObject *object = nullptr;
     if (size >= FreeObject::SIZE_OFFSET && size < FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(
+        object->SetFreeObjectClass(
             JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
         object->SetNext(INVALID_OBJECT);
     } else if (size >= FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(
+        object->SetFreeObjectClass(
             JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
         object->SetAvailable(size);
         object->SetNext(INVALID_OBJECT);
     } else if (size == FreeObject::NEXT_OFFSET) {
         object = reinterpret_cast<FreeObject *>(address);
-        object->SetClassWithoutBarrier(
+        object->SetFreeObjectClass(
             JSHClass::Cast(globalConst->GetFreeObjectWithNoneFieldClass().GetTaggedObject()));
     } else {
         LOG_ECMA(DEBUG) << "Fill free object size is smaller";

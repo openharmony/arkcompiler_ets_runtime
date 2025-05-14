@@ -20,7 +20,7 @@
 
 #include "ecmascript/common.h"
 #include "libpandafile/file.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/compiler/aot_file/aot_version.h"

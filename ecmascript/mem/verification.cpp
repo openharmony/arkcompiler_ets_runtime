@@ -584,7 +584,6 @@ void SharedHeapVerification::VerifySweep(bool cm) const
     VerifyVisitor verifyVisitor2(cb2);
     sHeap_->IterateOverObjects([&verifyVisitor2](TaggedObject *obj) {
         auto jsHclass = obj->GetClass();
-       
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor2);
     });
 }

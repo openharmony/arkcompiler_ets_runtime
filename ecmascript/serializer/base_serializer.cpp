@@ -13,12 +13,22 @@
  * limitations under the License.
  */
 
+#ifdef USE_CMC_GC
+#include "common_components/serialize/serialize_utils.h"
+#endif
 #include "ecmascript/serializer/base_serializer-inl.h"
 
 namespace panda::ecmascript {
 
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
+#ifdef USE_CMC_GC
+    SerializedObjectSpace spaceType = SerializeUtils::GetSerializeObjectSpace(ToUintPtr(object));
+    if (spaceType == SerializedObjectSpace::OTHER) {
+        LOG_ECMA(FATAL) << "unsupported space type";
+    }
+    return spaceType;
+#else
     auto region = Region::ObjectAddressToRange(object);
     auto flag = region->GetRegionSpaceFlag();
     switch (flag) {
@@ -44,6 +54,7 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+#endif
 }
 
 void BaseSerializer::WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize)
@@ -210,7 +221,11 @@ void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
 {
     JSTaggedValue moduleValue = func->GetModule();
     if (moduleValue.IsHeapObject()) {
+#ifdef USE_CMC_GC
+        if (!moduleValue.IsInSharedHeap()) {
+#else
         if (!Region::ObjectAddressToRange(moduleValue.GetTaggedObject())->InSharedHeap()) {
+#endif
             LOG_ECMA(ERROR) << "Shared function reference to local module";
         }
         if (!SerializeReference(moduleValue.GetTaggedObject())) {

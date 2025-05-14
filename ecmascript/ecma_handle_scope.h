@@ -20,6 +20,7 @@
 
 namespace panda::ecmascript {
 class JSThread;
+class EcmaVM;
 /*
  * Handles are only valid within a HandleScope. When a handle is created for an object a cell is allocated in the
  * current HandleScope.

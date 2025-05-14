@@ -102,7 +102,7 @@ private:
 
     GateRef GetElement(GateRef linkedTable, GateRef index)
     {
-        return GetValueFromTaggedArray(linkedTable, index);
+        return GetValueFromTaggedArray(glue_, linkedTable, index);
     }
 
     void SetElement(GateRef linkedTable, GateRef index, GateRef value)
@@ -135,7 +135,7 @@ private:
     GateRef GetCapacity(GateRef linkedTable)
     {
         GateRef capacityIndex = Int32(LinkedHashTableType::CAPACITY_INDEX);
-        GateRef capacity = GetValueFromTaggedArray(linkedTable, capacityIndex);
+        GateRef capacity = GetValueFromTaggedArray(glue_, linkedTable, capacityIndex);
         return TaggedGetInt(capacity);
     }
 
@@ -149,7 +149,7 @@ private:
     GateRef GetNumberOfElements(GateRef linkedTable)
     {
         int32_t elementsIndex = LinkedHashTableType::NUMBER_OF_ELEMENTS_INDEX;
-        GateRef tmpNumberOfElements = GetValueFromTaggedArray(linkedTable, Int32(elementsIndex));
+        GateRef tmpNumberOfElements = GetValueFromTaggedArray(glue_, linkedTable, Int32(elementsIndex));
         return TaggedGetInt(tmpNumberOfElements);
     }
 
@@ -163,7 +163,7 @@ private:
     GateRef GetNumberOfDeletedElements(GateRef linkedTable)
     {
         GateRef deletedIndex = Int32(LinkedHashTableType::NUMBER_OF_DELETED_ELEMENTS_INDEX);
-        GateRef tmpNumberOfDeletedElements = GetValueFromTaggedArray(linkedTable, deletedIndex);
+        GateRef tmpNumberOfDeletedElements = GetValueFromTaggedArray(glue_, linkedTable, deletedIndex);
         return TaggedGetInt(tmpNumberOfDeletedElements);
     }
 
@@ -176,7 +176,7 @@ private:
     GateRef GetNextTable(GateRef linkedTable)
     {
         GateRef nextTableIndex = Int32(LinkedHashTableType::NEXT_TABLE_INDEX);
-        return GetValueFromTaggedArray(linkedTable, nextTableIndex);
+        return GetValueFromTaggedArray(glue_, linkedTable, nextTableIndex);
     }
 
     void SetNextTable(GateRef linkedTable, GateRef nexTable)
