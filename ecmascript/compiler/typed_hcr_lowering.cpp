@@ -582,7 +582,31 @@ void TypedHCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 void TypedHCRLowering::LowerObjectTypeCheck(GateRef glue, GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    size_t typeCount = acc_.GetNumValueIn(gate) - 1;
+    if (typeCount == 1) {
+        GateRef frameState = GetFrameState(gate);
+        GateRef compare = BuildCompareHClass(glue, gate, frameState);
+        builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS6);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+        return;
+    }
     LowerSimpleHClassCheck(glue, gate);
+}
+
+GateRef TypedHCRLowering::BuildCompareHClass(GateRef glue, GateRef gate, GateRef frameState)
+{
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
+    if (!isHeapObject) {
+        builder_.HeapObjectCheck(receiver, frameState);
+    }
+    GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
+    auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
+    GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
+    return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
 }
 
 void TypedHCRLowering::LowerSimpleHClassCheck(GateRef glue, GateRef gate)
