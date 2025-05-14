@@ -103,6 +103,7 @@ public:
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
         metadata.fixLine = std::numeric_limits<uintptr_t>::max();
         metadata.regionStart = reinterpret_cast<uintptr_t>(nullptr);
+        metadata.freeSlot = nullptr;
         metadata.regionEnd = reinterpret_cast<uintptr_t>(nullptr);
         metadata.toSpaceRegion = false;
     }
@@ -413,6 +414,8 @@ public:
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
         RECENT_PINNED_REGION,
+        FIXED_PINNED_REGION,
+        FULL_FIXED_PINNED_REGION,
 
         // region for raw-pointer objects which are exposed to runtime thus can not be moved by any gc.
         // raw-pointer region becomes pinned region when none of its member objects are used as raw pointer.
@@ -539,6 +542,7 @@ public:
 #endif
 
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
 
@@ -670,6 +674,11 @@ public:
         metadata.fixLine = std::numeric_limits<uintptr_t>::max();
     }
 
+    void ClearFreeSlot()
+    {
+        metadata.freeSlot = nullptr;
+    }
+
     bool IsNewObjectSinceTrace(const BaseObject* obj)
     {
         return GetTraceLine() <= reinterpret_cast<uintptr_t>(obj);
@@ -771,6 +780,54 @@ public:
         return reinterpret_cast<RegionDesc*>(UnitInfo::GetUnitInfo(metadata.prevRegionIdx));
     }
 
+    bool CollectPinnedGarbage(BaseObject* obj, size_t cellCount)
+    {
+        std::lock_guard<std::mutex> lg(regionMutex);
+        if (IsFreePinnedObject(obj)) {
+            return false;
+        }
+        size_t size = (cellCount + 1) * sizeof(uint64_t);
+        ObjectSlot* head = reinterpret_cast<ObjectSlot*>(obj);
+        head->SetNext(metadata.freeSlot, size);
+        metadata.freeSlot = head;
+        return true;
+    }
+
+    HeapAddress GetFreeSlot()
+    {
+        if (metadata.freeSlot == nullptr) {
+            return 0;
+        }
+        ObjectSlot* res = metadata.freeSlot;
+        metadata.freeSlot = reinterpret_cast<ObjectSlot*>(res->next_);
+        res->next_ = 0;
+        res->isFree_ = 0;
+        return reinterpret_cast<HeapAddress>(res);
+    }
+
+    HeapAddress AllocPinnedFromFreeList()
+    {
+        std::lock_guard<std::mutex> lg(regionMutex);
+        HeapAddress addr = GetFreeSlot();
+        if (addr == 0) {
+            RegionDesc* region = GetNextRegion();
+            do {
+                if (region == nullptr) {
+                    break;
+                }
+                addr = region->GetFreeSlot();
+                region = region->GetNextRegion();
+            } while (addr == 0);
+        }
+        return addr;
+    }
+
+    bool IsFreePinnedObject(BaseObject* object)
+    {
+        ObjectSlot* slot = reinterpret_cast<ObjectSlot*>(object);
+        return slot->isFree_;
+    }
+
     void SetPrevRegion(const RegionDesc* r)
     {
         if (UNLIKELY_CC(r == nullptr)) {
@@ -857,6 +914,23 @@ private:
         BIT_OFFSET_RESURRECTED_REGION = 7
     };
 
+    struct ObjectSlot {
+        HeapAddress next_ : 48;
+        HeapAddress isFree_ : 1;
+        HeapAddress padding : 15;
+
+        void SetNext(ObjectSlot* slot, size_t size)
+        {
+            next_ = reinterpret_cast<HeapAddress>(slot);
+            isFree_ = 1;
+            size_t extraSize = size - sizeof(ObjectSlot);
+            if (extraSize > 0) {
+                uintptr_t start = reinterpret_cast<uintptr_t>(this) - sizeof(ObjectSlot);
+                LOGE_IF((memset_s(reinterpret_cast<void*>(start), extraSize, 0, extraSize) != EOK)) << "memset_s fail";
+            }
+        }
+    };
+
     struct UnitMetadata {
         struct { // basic data for RegionDesc
             // for fast allocation, always at the start.
@@ -866,6 +940,7 @@ private:
             uintptr_t forwardLine;
             uintptr_t fixLine;
             uintptr_t regionStart;
+            ObjectSlot* freeSlot;
             uintptr_t regionEnd;
 
             uint32_t nextRegionIdx;
@@ -1015,6 +1090,7 @@ private:
         metadata.nextRegionIdx = NULLPTR_IDX;
         metadata.liveByteCount = 0;
         metadata.liveInfo = nullptr;
+        metadata.freeSlot = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
         ClearTraceCopyFixLine();
@@ -1037,6 +1113,7 @@ private:
 
     static constexpr uint32_t NULLPTR_IDX = UnitInfo::INVALID_IDX;
     UnitMetadata metadata;
+    std::mutex regionMutex;
 };
 } // namespace panda
 #endif // ARK_COMMON_REGION_INFO_H

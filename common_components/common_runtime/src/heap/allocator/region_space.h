@@ -161,8 +161,6 @@ public:
 
     size_t CollectLargeGarbage() { return regionManager_.CollectLargeGarbage(); }
 
-    size_t CollectPinnedGarbage() { return regionManager_.CollectPinnedGarbage(); }
-
     void CollectFromSpaceGarbage()
     {
         regionManager_.CollectFromSpaceGarbage();
@@ -187,6 +185,7 @@ public:
 
     void PrepareTrace() { regionManager_.PrepareTrace(); }
     void PrepareForward() { regionManager_.PrepareForward(); }
+    void PrepareFixForPin() { regionManager_.PrepareFixForPin(); }
     void FeedHungryBuffers() override;
 
     // markObj

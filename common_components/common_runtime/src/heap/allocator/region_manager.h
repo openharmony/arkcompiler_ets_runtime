@@ -32,45 +32,12 @@
 namespace panda {
 class TraceCollector;
 class CompactCollector;
-
-struct FreePinnedSlotLists {
-    static constexpr size_t ATOMIC_OBJECT_SIZE = 16;
-    SlotList freeAtomicSlotList;
-    SlotList freeSyncSlotList;
-
-    uintptr_t PopFront(size_t size)
-    {
-        switch (size) {
-            case ATOMIC_OBJECT_SIZE:
-                return freeAtomicSlotList.PopFront(size);
-            default:
-                return 0;
-        }
-    }
-
-    void PushFront(BaseObject* slot)
-    {
-        size_t size = slot->GetSize();
-        switch (size) {
-            case ATOMIC_OBJECT_SIZE:
-                freeAtomicSlotList.PushFront(slot);
-                break;
-            default:
-                return;
-        }
-    }
-
-    void Clear()
-    {
-        freeAtomicSlotList.Clear();
-        freeSyncSlotList.Clear();
-    }
-};
-
 // RegionManager needs to know header size and alignment in order to iterate objects linearly
 // and thus its Alloc should be rewrite with AllocObj(objSize)
 class RegionManager {
 public:
+    constexpr static size_t FIXED_PINNED_REGION_COUNT = 128;
+    constexpr static size_t FIXED_PINNED_THRESHOLD = sizeof(uint64_t) * FIXED_PINNED_REGION_COUNT;
     /* region memory layout:
         1. region info for each region, part of heap metadata
         2. region space for allocation, i.e., the heap
@@ -107,7 +74,12 @@ public:
           recentPinnedRegionList_("recent pinned regions"), oldPinnedRegionList_("old pinned regions"),
           rawPointerRegionList_("raw pointer pinned regions"), oldLargeRegionList_("old large regions"),
           recentLargeRegionList_("recent large regions"), largeTraceRegions_("large trace regions")
-    {}
+    {
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            fixedPinnedRegionList_[i] = new RegionList("fixed recent pinned regions");
+            oldFixedPinnedRegionList_[i] = new RegionList("fixed old pinned regions");
+        }
+    }
 
     RegionManager(const RegionManager&) = delete;
 
@@ -119,6 +91,8 @@ public:
     void CopyFromRegions();
     void CopyRegion(RegionDesc* region);
     void FixAllRegionLists();
+    void FixOldPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats);
+    void FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
 
     using RootSet = MarkStack<BaseObject*>;
 
@@ -142,8 +116,19 @@ public:
         return nullptr;
     }
 
-    ~RegionManager() = default;
-
+    ~RegionManager()
+    {
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            if (fixedPinnedRegionList_[i] != nullptr) {
+                delete fixedPinnedRegionList_[i];
+                fixedPinnedRegionList_[i] = nullptr;
+            }
+            if (oldFixedPinnedRegionList_[i] != nullptr) {
+                delete oldFixedPinnedRegionList_[i];
+                oldFixedPinnedRegionList_[i] = nullptr;
+            }
+        }
+    }
     // take a region with *num* units for allocation
     RegionDesc* TakeRegion(size_t num, RegionDesc::UnitRole, bool expectPhysicalMem = false, bool allowgc = true);
 
@@ -156,6 +141,54 @@ public:
     uintptr_t AllocPinnedFromFreeList(size_t size);
 
     uintptr_t AllocPinned(size_t size, bool allowGC = true)
+    {
+        uintptr_t addr = 0;
+        if (size > FIXED_PINNED_THRESHOLD) {
+            DLOG(ALLOC, "alloc pinned obj 0x%zx(%zu)", addr, size);
+            return AllocNextFitPinned(size);
+        }
+        CHECK_CC(size % sizeof(uint64_t) == 0);
+        size_t cellCount = size / sizeof(uint64_t) - 1;
+        RegionList* list = fixedPinnedRegionList_[cellCount];
+        std::mutex& listMutex = list->GetListMutex();
+        listMutex.lock();
+        RegionDesc* headRegion = list->GetHeadRegion();
+        if (headRegion != nullptr) {
+            addr = headRegion->Alloc(size);
+        }
+        if (addr == 0) {
+            addr = AllocPinnedFromFreeList(cellCount);
+        }
+        if (addr == 0) {
+            RegionDesc* region =
+                TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
+            if (region == nullptr) {
+                listMutex.unlock();
+                return 0;
+            }
+            DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
+                 region->GetRegionAllocatedSize(),
+                 region->GetRegionType());
+            GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+            if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK ||
+                phase == GC_PHASE_REMARK_SATB || phase == GC_PHASE_POST_MARK) {
+                region->SetTraceLine();
+            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+                region->SetCopyLine();
+            } else if (phase == GC_PHASE_FIX) {
+                region->SetCopyLine();
+                region->SetFixLine();
+            }
+            // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
+            list->PrependRegionLocked(region, RegionDesc::RegionType::FIXED_PINNED_REGION);
+            addr = region->Alloc(size);
+        }
+        DLOG(ALLOC, "alloc pinned obj 0x%zx(%zu)", addr, size);
+        listMutex.unlock();
+        return addr;
+    }
+
+    uintptr_t AllocNextFitPinned(size_t size, bool allowGC = true)
     {
         uintptr_t addr = 0;
         std::mutex& regionListMutex = recentPinnedRegionList_.GetListMutex();
@@ -171,9 +204,6 @@ public:
         RegionDesc* headRegion = recentPinnedRegionList_.GetHeadRegion();
         if (headRegion != nullptr) {
             addr = headRegion->Alloc(size);
-        }
-        if (addr == 0) {
-            addr = AllocPinnedFromFreeList(size);
         }
         if (addr == 0) {
             RegionDesc* region =
@@ -321,9 +351,6 @@ public:
 
     size_t CollectLargeGarbage();
 
-    size_t CollectPinnedGarbage();
-    void CollectFreePinnedSlots(RegionDesc* region);
-
     // targetSize: size of memory which we do not release and keep it as cache for future allocation.
     size_t ReleaseGarbageRegions(size_t targetSize) { return freeRegionManager_.ReleaseGarbageRegions(targetSize); }
 
@@ -393,7 +420,13 @@ public:
 
     inline size_t GetPinnedSpaceSize() const
     {
-        return oldPinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();
+        size_t pinnedSpaceSize =
+            oldPinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            pinnedSpaceSize += fixedPinnedRegionList_[i]->GetAllocatedSize();
+            pinnedSpaceSize += oldFixedPinnedRegionList_[i]->GetAllocatedSize();
+        }
+        return pinnedSpaceSize;
     }
 
     // valid only between forwarding phase and flipping phase.
@@ -432,6 +465,12 @@ public:
         if (region != nullptr && region != RegionDesc::NullRegion()) {
             region->SetTraceLine();
         }
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            RegionDesc* region = fixedPinnedRegionList_[i]->GetHeadRegion();
+            if (region != nullptr && region != RegionDesc::NullRegion()) {
+                region->SetTraceLine();
+            }
+        }
     }
 
     void PrepareForward()
@@ -454,12 +493,19 @@ public:
                 region->SetFixLine();
             }
         }
+    }
 
-        RegionDesc* region = nullptr;
-        // works only on single thread senario
-        region = recentPinnedRegionList_.GetHeadRegion();
+    void PrepareFixForPin()
+    {
+        RegionDesc* region = recentPinnedRegionList_.GetHeadRegion();
         if (region != nullptr && region != RegionDesc::NullRegion()) {
             region->SetFixLine();
+        }
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            RegionDesc* region = fixedPinnedRegionList_[i]->GetHeadRegion();
+            if (region != nullptr && region != RegionDesc::NullRegion()) {
+                region->SetFixLine();
+            }
         }
     }
 
@@ -475,6 +521,10 @@ public:
         ClearGCInfo(recentPinnedRegionList_);
         ClearGCInfo(rawPointerRegionList_);
         ClearGCInfo(oldPinnedRegionList_);
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            ClearGCInfo(*fixedPinnedRegionList_[i]);
+            ClearGCInfo(*oldFixedPinnedRegionList_[i]);
+        }
     }
 private:
     static const size_t MAX_UNIT_COUNT_PER_REGION;
@@ -531,7 +581,9 @@ private:
     // region lists for small-sized pinned objects which are not be moved during concurrent gc, but
     // may be moved during stw-compaction.
     RegionList recentPinnedRegionList_;
+    RegionList* fixedPinnedRegionList_[FIXED_PINNED_REGION_COUNT];
     RegionList oldPinnedRegionList_;
+    RegionList* oldFixedPinnedRegionList_[FIXED_PINNED_REGION_COUNT];
 
     // region lists for small-sized raw-pointer objects (i.e. future, monitor)
     // which can not be moved ever (even during compaction).
@@ -562,10 +614,6 @@ private:
     size_t largeObjectThreshold_;
     double fromSpaceGarbageThreshold_ = 0.5; // 0.5: default garbage ratio.
     double exemptedRegionThreshold_;
-
-    std::mutex freePinnedSlotListMutex_;
-    FreePinnedSlotLists freePinnedSlotLists_;
-
     friend class VerifyIterator;
 };
 
