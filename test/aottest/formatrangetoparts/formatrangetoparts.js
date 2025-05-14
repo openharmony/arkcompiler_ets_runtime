@@ -20,7 +20,7 @@ function* zip(a, b) {
     }
   }
   
-  function compare(actual, expected, message) {
+  function compare(actual, expected) {
     for (const [i, actualEntry, expectedEntry] of zip(actual, expected)) {
       print(actualEntry.type === expectedEntry.type);
       print(actualEntry.value === expectedEntry.value);
@@ -28,11 +28,8 @@ function* zip(a, b) {
     }
   }
   
-  // Switch to a time format instead of using DateTimeFormat's default date-only format.
-  const dtf = new Intl.DateTimeFormat(undefined, {
-      hour: "numeric", minute: "numeric", second: "numeric"
-  });
+  const dtf = new Intl.DateTimeFormat("en-US");
   const date = Date.now();
-  const expected = dtf.formatRangeToParts(0, date);
+  const expected = dtf.formatRangeToParts(0,date);
   
-  compare(dtf.formatRangeToParts(-0.9, date), expected, "formatRangeToParts(-0.9)");
+  compare(dtf.formatRangeToParts(-0.1,date),expected);
