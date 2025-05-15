@@ -209,12 +209,14 @@ private:
 template <>
 inline JSTaggedValue *JSHandle<JSTaggedValue>::operator->() const
 {
+    Barriers::UpdateSlot(reinterpret_cast<JSTaggedValue*>(GetAddress()), 0);
     return reinterpret_cast<JSTaggedValue *>(GetAddress());
 }
 
 template <>
 inline JSTaggedValue *JSHandle<JSTaggedValue>::operator*() const
 {
+    Barriers::UpdateSlot(reinterpret_cast<JSTaggedValue*>(GetAddress()), 0);
     return reinterpret_cast<JSTaggedValue *>(GetAddress());
 }
 
