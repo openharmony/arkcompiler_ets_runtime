@@ -354,7 +354,7 @@ Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *ecmaVm, const FrameHa
     JSTaggedValue env = frameHandler->GetEnv();
     for (int i = 0; i < level; i++) {
         JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
-        ASSERT(!taggedParentEnv.IsUndefined());
+        ASSERT(taggedParentEnv.IsLexicalEnv());
         env = taggedParentEnv;
     }
     JSTaggedValue value = LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot);
@@ -368,7 +368,7 @@ void DebuggerApi::SetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameH
     JSTaggedValue env = frameHandler->GetEnv();
     for (int i = 0; i < level; i++) {
         JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
-        ASSERT(!taggedParentEnv.IsUndefined());
+        ASSERT(taggedParentEnv.IsLexicalEnv());
         env = taggedParentEnv;
     }
     JSTaggedValue target = JSNApiHelper::ToJSHandle(value).GetTaggedValue();
@@ -380,7 +380,7 @@ std::pair<int32_t, uint32_t> DebuggerApi::GetLevelSlot(const FrameHandler *frame
     int32_t level = 0;
     uint32_t slot = 0;
     JSTaggedValue curEnv = frameHandler->GetEnv();
-    for (; curEnv.IsTaggedArray(); curEnv = LexicalEnv::Cast(curEnv.GetTaggedObject())->GetParentEnv(), level++) {
+    for (; curEnv.IsLexicalEnv(); curEnv = LexicalEnv::Cast(curEnv.GetTaggedObject())->GetParentEnv(), level++) {
         LexicalEnv *lexicalEnv = LexicalEnv::Cast(curEnv.GetTaggedObject());
         if (lexicalEnv->GetScopeInfo().IsHole()) {
             continue;
