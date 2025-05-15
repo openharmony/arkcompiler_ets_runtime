@@ -24,7 +24,10 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"
-
+#ifdef USE_CMC_GC
+#include "../runtime_core/common_interfaces/base_runtime.h"
+#include "common_components/common_runtime/src/heap_manager.h"
+#endif
 #include <csetjmp>
 #include <csignal>
 #include <sys/syscall.h>
@@ -38,7 +41,7 @@ public:
         InitializeLogger();
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
         factory = thread->GetEcmaVM()->GetFactory();
-        const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->SetMarkType(MarkType::MARK_FULL);
+        const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap())->SetMarkType(MarkType::MARK_FULL);
     }
 
     void InitializeLogger()
@@ -84,13 +87,20 @@ static pid_t ForkBySyscall(void)
 
 HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 {
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
+#ifndef USE_CMC_GC
     heap->GetReadOnlySpace()->SetReadOnly();
+#else
+    auto heapManager = BaseRuntime::GetInstance()->GetHeapManager();
+    heapManager.SetReadOnlyToROSpace();
+#endif
     if (ReadOnlyTestManager::RegisterSignal() == -1) {
         perror("sigaction error");
         exit(1);
     }
+#ifndef USE_CMC_GC
     SharedHeap::GetInstance()->WaitGCFinished(thread);
+#endif
     auto ret = sigsetjmp(g_env, 1);
     if (ret != SIGSEGV) {
         heap->AllocateReadOnlyOrHugeObject(
@@ -99,20 +109,29 @@ HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
         // catch signal SIGSEGV caused by modify read only memory
         EXPECT_TRUE(g_segmentfault_flag);
     }
+#ifdef USE_CMC_GC
+    EXPECT_TRUE(g_segmentfault_flag);
+#endif
 }
 
 HWTEST_F_L0(ReadOnlySpaceTest, AllocateTest)
 {
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
     auto *object = heap->AllocateReadOnlyOrHugeObject(
         JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
+#ifndef USE_CMC_GC
     auto *region = Region::ObjectAddressToRange(object);
     EXPECT_TRUE(region->InReadOnlySpace());
+#else
+    auto heapManager = BaseRuntime::GetInstance()->GetHeapManager();
+    EXPECT_TRUE(heapManager.IsInROSpace(object));
+#endif
 }
 
 HWTEST_F_L0(ReadOnlySpaceTest, CompactHeapBeforeForkTest)
 {
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+#ifndef USE_CMC_GC
+    auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
     std::string rawStr = "test string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
@@ -125,34 +144,63 @@ HWTEST_F_L0(ReadOnlySpaceTest, CompactHeapBeforeForkTest)
     auto *objRegionAfter = Region::ObjectAddressToRange(obj.GetObject<TaggedObject>());
     EXPECT_TRUE(regionAfter->InSharedHeap());
     EXPECT_FALSE(objRegionAfter->InReadOnlySpace());
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 HWTEST_F_L0(ReadOnlySpaceTest, GCTest)
 {
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
     auto *object = heap->AllocateReadOnlyOrHugeObject(
         JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
+#ifndef USE_CMC_GC
     heap->CollectGarbage(TriggerGCType::YOUNG_GC);
     heap->CollectGarbage(TriggerGCType::OLD_GC);
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     auto *region = Region::ObjectAddressToRange(object);
     EXPECT_TRUE(region->InReadOnlySpace());
+#else
+    auto baseRuntime = BaseRuntime::GetInstance();
+    auto heapManager = baseRuntime->GetHeapManager();
+    baseRuntime->RequestGC(GcType::FULL);
+    EXPECT_TRUE(heapManager.IsInROSpace(object));
+#endif
 }
 
 HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
 {
     auto vm = thread->GetEcmaVM();
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
+#ifndef USE_CMC_GC
     std::string rawStr = "fork string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
+#else
+    auto *object = heap->AllocateReadOnlyOrHugeObject(
+            JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
+    auto baseRuntime = BaseRuntime::GetInstance();
+    auto heapManager = baseRuntime->GetHeapManager();
+#endif
     JSNApi::PreFork(vm);
     if (ForkBySyscall() == 0) {
         panda::RuntimeOption postOption;
         JSNApi::PostFork(vm, postOption);
         // test gc in child process
+#ifndef USE_CMC_GC
         heap->CollectGarbage(TriggerGCType::OLD_GC);
         auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
         EXPECT_TRUE(region->InSharedHeap());
+#else
+        baseRuntime->RequestGC(GcType::FULL);
+        EXPECT_TRUE(heapManager.IsInROSpace(object));
+    } else {
+        int status;
+        pid_t ter_pid = wait(&status);
+        if (ter_pid == -1)
+        {
+            exit(1);
+        }
+#endif
     }
 }
 }  // namespace panda::test

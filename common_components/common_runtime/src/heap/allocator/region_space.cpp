@@ -30,6 +30,9 @@ HeapAddress RegionSpace::TryAllocateOnce(size_t allocSize, AllocType allocType)
     if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
         return regionManager_.AllocPinned(allocSize);
     }
+    if (UNLIKELY_CC(allocType == AllocType::READ_ONLY_OBJECT)) {
+        return regionManager_.AllocReadOnly(allocSize);
+    }
     if (UNLIKELY_CC(allocSize >= regionManager_.GetLargeObjectThreshold())) {
         return regionManager_.AllocLarge(allocSize);
     }

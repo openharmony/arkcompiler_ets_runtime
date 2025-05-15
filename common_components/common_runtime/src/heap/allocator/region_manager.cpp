@@ -454,6 +454,13 @@ void RegionManager::ReassembleFromSpace()
     fromRegionList_.MergeRegionList(exemptedFromRegionList_, RegionDesc::RegionType::FROM_REGION);
 }
 
+void RegionManager::ReassembleAppspawnSpace()
+{
+    appSpawnRegionList_.MergeRegionList(toRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
+    appSpawnRegionList_.MergeRegionList(tlToRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
+    appSpawnRegionList_.MergeRegionList(exemptedFromRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
+}
+
 void RegionManager::CountLiveObject(const BaseObject* obj)
 {
     RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
@@ -874,6 +881,7 @@ void RegionManager::FixAllRegionLists()
     // fix only survived objects.
     FixOldRegionList(collector, exemptedFromRegionList_);
     FixOldRegionList(collector, oldLargeRegionList_);
+    FixOldRegionList(collector, appSpawnRegionList_);
 
     // fix survived object but should be with line judgement.
     FixRecentRegionList(collector, tlRegionList_);
@@ -1197,5 +1205,44 @@ uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
     BaseObject* object = reinterpret_cast<BaseObject*>(allocPtr);
     (reinterpret_cast<TraceCollector*>(&Heap::GetHeap().GetCollector()))->MarkObject(object, cellCount);
     return allocPtr;
+}
+
+uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
+{
+    uintptr_t addr = 0;
+    std::mutex& regionListMutex = readOnlyRegionList_.GetListMutex();
+
+    std::lock_guard<std::mutex> lock(regionListMutex);
+    RegionDesc* headRegion = readOnlyRegionList_.GetHeadRegion();
+    if (headRegion != nullptr) {
+        addr = headRegion->Alloc(size);
+    }
+    if (addr == 0) {
+        RegionDesc* region =
+            TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
+        if (region == nullptr) {
+            return 0;
+        }
+        DLOG(REGION, "alloc read only region @0x%zx+%zu type %u", region->GetRegionStart(),
+             region->GetRegionAllocatedSize(),
+             region->GetRegionType());
+        GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+        if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
+            phase == GC_PHASE_POST_MARK) {
+            region->SetTraceLine();
+        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+            region->SetCopyLine();
+        } else if (phase == GC_PHASE_FIX) {
+            region->SetCopyLine();
+            region->SetFixLine();
+        }
+
+        // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
+        readOnlyRegionList_.PrependRegionLocked(region, RegionDesc::RegionType::READ_ONLY_REGION);
+        addr = region->Alloc(size);
+    }
+
+    DLOG(ALLOC, "alloc read only obj 0x%zx(%zu)", addr, size);
+    return addr;
 }
 } // namespace panda

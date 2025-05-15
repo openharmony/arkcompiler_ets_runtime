@@ -1097,7 +1097,7 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
     }
 
 #ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInReadOnly(size, LanguageType::DYNAMIC));
+    auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
 #else
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");

@@ -113,6 +113,26 @@ public:
         return &nullRegion;
     }
 
+    void SetReadOnly()
+    {
+        constexpr int pageProtRead = 1;
+        DLOG(REPORT, "try to set readonly to %p, size is %ld", GetRegionStart(), GetRegionEnd() - GetRegionStart());
+        if (mprotect(reinterpret_cast<void *>(GetRegionStart()),
+            GetRegionEnd() - GetRegionStart(), pageProtRead) != 0) {
+            DLOG(REPORT, "set read only fail");
+        }
+    }
+
+    void ClearReadOnly()
+    {
+        constexpr int pageProtReadWrite = 3;
+        DLOG(REPORT, "try to set read & write to %p, size is %ld", GetRegionStart(), GetRegionEnd() - GetRegionStart());
+        if (mprotect(reinterpret_cast<void *>(GetRegionStart()),
+            GetRegionEnd() - GetRegionStart(), pageProtReadWrite) != 0) {
+            DLOG(REPORT, "clear read only fail");
+        }
+    }
+
     RegionLiveDesc* GetLiveInfo()
     {
         RegionLiveDesc* liveInfo = __atomic_load_n(&metadata.liveInfo, std::memory_order_acquire);
@@ -425,6 +445,8 @@ public:
         OLD_LARGE_REGION,
 
         GARBAGE_REGION,
+        READ_ONLY_REGION,
+        APPSPAWN_REGION,
     };
 
     static void Initialize(size_t nUnit, uintptr_t regionInfoAddr, uintptr_t heapAddress)
@@ -787,6 +809,11 @@ public:
                (GetRegionType()  == RegionType::RECENT_PINNED_REGION);
     }
 
+    bool IsReadOnlyRegion() const
+    {
+        return GetRegionType()  == RegionType::READ_ONLY_REGION;
+    }
+
     RegionDesc* GetPrevRegion() const
     {
         if (UNLIKELY_CC(metadata.prevRegionIdx == NULLPTR_IDX)) {
@@ -875,6 +902,8 @@ public:
     }
 
     bool IsFromRegion() const { return GetRegionType()  == RegionType::FROM_REGION; }
+
+    bool IsAppSpawnRegion() const { return GetRegionType()  == RegionType::APPSPAWN_REGION; }
 
     bool IsUnmovableFromRegion() const
     {

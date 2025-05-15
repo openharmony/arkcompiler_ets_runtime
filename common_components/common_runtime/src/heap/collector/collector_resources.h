@@ -123,6 +123,7 @@ private:
     CollectorProxy& collectorProxy_;
     FinalizerProcessor finalizerProcessor_;
     GCStats gcStats_;
+    bool hasRelease = false;
 };
 } // namespace panda
 #endif

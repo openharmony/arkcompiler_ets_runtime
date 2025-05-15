@@ -648,7 +648,12 @@ void WCollector::CollectSmallSpace()
     {
         ARK_COMMON_PHASE_TIMER("CollectFromSpaceGarbage");
         stats.collectedBytes += stats.smallGarbageSize;
-        space.CollectFromSpaceGarbage();
+        if (gcReason_ == GC_REASON_APPSPAWN) {
+            VLOG(REPORT, "APPSPAWN GC Collect");
+            space.CollectAppSpawnSpaceGarbage();
+        } else {
+            space.CollectFromSpaceGarbage();
+        }
     }
 
     size_t candidateBytes = stats.fromSpaceSize + stats.pinnedSpaceSize + stats.largeSpaceSize;
