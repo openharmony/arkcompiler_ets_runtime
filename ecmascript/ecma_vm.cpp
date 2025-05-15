@@ -353,8 +353,8 @@ bool EcmaVM::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
-        sustainingJSHandleList_ = new SustainingJSHandleList();
     }
+    sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
     regExpParserCache_ = new RegExpParserCache();
     return true;

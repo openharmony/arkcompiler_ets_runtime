@@ -2470,13 +2470,31 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
 
     BuiltinIndex& builtin = BuiltinIndex::GetInstance();
     auto index = builtin.GetBuiltinIndex(key);
-    if (index == builtin.NOT_FOUND) {
+    if (index != builtin.NOT_FOUND) {
+        AddProfiling(gate);
+        GateRef result = builder_.LoadBuiltinObject(index);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
-    AddProfiling(gate);
-    GateRef result = builder_.LoadBuiltinObject(index);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-    DeleteConstDataIfNoUser(tacc.GetKey());
+
+    if (compilationEnv_->IsJitCompiler()) {
+        uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+        uint32_t methodOffset = acc_.TryGetMethodOffset(gate);
+        uint32_t heapConstantIndex = static_cast<const JitCompilationEnv*>(compilationEnv_)->
+                GetLdGlobalByNameBcOffset2HeapConstantIndex(methodOffset, pcOffset);
+        if (heapConstantIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+            return;
+        }
+        AddProfiling(gate);
+        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+        GateRef propertyBoxConst = builder_.HeapConstant(heapConstantIndex);
+        GateRef boxValue = builder_.LoadConstOffset(
+            VariableType::JS_ANY(), propertyBoxConst, PropertyBox::VALUE_OFFSET);
+        builder_.DeoptCheck(builder_.TaggedIsNotHole(boxValue), frameState, DeoptType::PROPERTYBOXINVALID);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), boxValue);
+        DeleteConstDataIfNoUser(tacc.GetKey());
+    }
 }
 
 void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
