@@ -227,6 +227,7 @@ namespace panda::ecmascript {
     V(TypedArrayCreateSameType)                 \
     V(CallInternalGetter)                       \
     V(CallInternalSetter)                       \
+    V(CallInternalSetterNoThrow)                \
     V(CallGetPrototype)                         \
     V(RegularJSObjDeletePrototype)              \
     V(CallJSObjDeletePrototype)                 \

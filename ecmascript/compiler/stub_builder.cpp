@@ -1343,7 +1343,7 @@ GateRef StubBuilder::CallGetterHelper(
 }
 
 GateRef StubBuilder::CallSetterHelper(
-    GateRef glue, GateRef receiver, GateRef accessor, GateRef value, ProfileOperation callback)
+    GateRef glue, GateRef receiver, GateRef accessor, GateRef value, ProfileOperation callback, bool mayThrow)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -1356,7 +1356,11 @@ GateRef StubBuilder::CallSetterHelper(
     BRANCH(IsAccessorInternal(glue, accessor), &isInternal, &notInternal);
     Bind(&isInternal);
     {
-        result = CallRuntime(glue, RTSTUB_ID(CallInternalSetter), { receiver, accessor, value });
+        if (mayThrow) {
+            result = CallRuntime(glue, RTSTUB_ID(CallInternalSetter), {receiver, accessor, value});
+        } else {
+            result = CallRuntime(glue, RTSTUB_ID(CallInternalSetterNoThrow), {receiver, accessor, value});
+        }
         Jump(&exit);
     }
     Bind(&notInternal);
@@ -1368,8 +1372,12 @@ GateRef StubBuilder::CallSetterHelper(
         BRANCH(TaggedIsUndefined(setter), &objIsUndefined, &objNotUndefined);
         Bind(&objIsUndefined);
         {
-            CallRuntime(glue, RTSTUB_ID(ThrowSetterIsUndefinedException), {});
-            result = Exception();
+            if (mayThrow) {
+                CallRuntime(glue, RTSTUB_ID(ThrowSetterIsUndefinedException), {});
+                result = Exception();
+            } else {
+                result = TaggedFalse();
+            }
             Jump(&exit);
         }
         Bind(&objNotUndefined);
@@ -1389,7 +1397,11 @@ GateRef StubBuilder::CallSetterHelper(
             BRANCH(HasPendingException(glue), &exit, &noPendingException);
             Bind(&noPendingException);
             {
-                result = *tmpResult;
+                if (mayThrow) {
+                    result = *tmpResult;
+                } else {
+                    result = Undefined();
+                }
                 Jump(&exit);
             }
         }
@@ -3586,12 +3598,13 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
     return ret;
 }
 
-GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback)
+GateRef StubBuilder::GetPropertyByValue(
+    GateRef glue, GateRef target, GateRef propKey, GateRef receiver, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    DEFVARIABLE(key, VariableType::JS_ANY(), keyValue);
+    DEFVARIABLE(key, VariableType::JS_ANY(), propKey);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(isInternal, VariableType::BOOL(), True());
     Label isPropertyKey(env);
@@ -3616,7 +3629,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            result = GetPropertyByIndex(glue, receiver, index, callback);
+            result = GetPropertyByIndex(glue, target, index, callback);
             Jump(&exit);
         }
         Bind(&notValidIndex);
@@ -3662,7 +3675,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&getByName);
             {
-                result = GetPropertyByName(glue, receiver, *key, callback, *isInternal, true);
+                result = GetPropertyByName(glue, target, *key, receiver, callback, *isInternal, true);
                 Jump(&exit);
             }
         }
@@ -3673,15 +3686,20 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                                       ProfileOperation callback, GateRef isInternal,
-                                       bool canUseIsInternal, GateRef hir)
+GateRef StubBuilder::GetPropertyByName(GateRef glue,
+                                       GateRef target,
+                                       GateRef propKey,
+                                       GateRef receiver,
+                                       ProfileOperation callback,
+                                       GateRef isInternal,
+                                       bool canUseIsInternal,
+                                       GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
+    DEFVARIABLE(holder, VariableType::JS_ANY(), target);
     Label exit(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -3704,7 +3722,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                result = GetTypeArrayPropertyByName(glue, receiver, *holder, key, jsType);
+                result = GetTypeArrayPropertyByName(glue, target, *holder, propKey, jsType);
                 Label isNull(env);
                 Label notNull(env);
                 BRANCH(TaggedIsNull(*result), &isNull, &notNull);
@@ -3722,7 +3740,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Label notString(env);
             Label notJsPrimitiveRef(env);
             auto holderValue = *holder;
-            BRANCH(LogicAndBuilder(env).And(TaggedIsString(glue, holderValue)).And(TaggedIsString(glue, key)).Done(),
+            BRANCH(
+                LogicAndBuilder(env).And(TaggedIsString(glue, holderValue)).And(TaggedIsString(glue, propKey)).Done(),
                 &isString, &notString);
             Bind(&isString);
             {
@@ -3730,7 +3749,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 Label getStringPrototype(env);
                 GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                               ConstantIndex::LENGTH_STRING_INDEX);
-                BRANCH(FastStringEqual(glue, key, lengthString), &getStringLength, &getStringPrototype);
+                BRANCH(FastStringEqual(glue, propKey, lengthString), &getStringLength, &getStringPrototype);
                 Bind(&getStringLength);
                 {
                     result = IntToTaggedPtr(GetLengthFromString(*holder));
@@ -3757,7 +3776,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 Bind(&isJsProxy);
                 {
                     result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
-                                            {glue, *holder, key, receiver}, hir);
+                                            {glue, *holder, propKey, target}, hir);
                     Label isPendingException(env);
                     Label noPendingException(env);
                     BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
@@ -3796,7 +3815,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);
                 GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
                 // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
-                GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum, hir);
+                GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum, hir);
                 Label hasEntry(env);
                 Label noEntry(env);
                 // if branch condition : entry != -1
@@ -3813,7 +3832,11 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     {
                         // The getter may involve nested calls, so it is better to end (or return) early
                         EndTraceLoad(glue);
-                        result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
+                        if (receiver == Circuit::NullGate()) {
+                            result = CallGetterHelper(glue, target, *holder, value, callback, hir);
+                        } else {
+                            result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
+                        }
                         StartTraceLoadGetter(glue);
                         Jump(&exit);
                     }
@@ -3837,7 +3860,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             {
                 GateRef array = GetPropertiesArray(glue, *holder);
                 // int entry = dict->FindEntry(key)
-                GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, key, hir);
+                GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, propKey, hir);
                 Label notNegtiveOne(env);
                 Label negtiveOne(env);
                 // if branch condition : entry != -1
@@ -3855,7 +3878,11 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     {
                         // The getter may involve nested calls, so it is better to end (or return) early
                         EndTraceLoad(glue);
-                        result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
+                        if (receiver == Circuit::NullGate()) {
+                            result = CallGetterHelper(glue, target, *holder, value, callback, hir);
+                        } else {
+                            result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
+                        }
                         StartTraceLoadGetter(glue);
                         Jump(&exit);
                     }
@@ -4493,7 +4520,7 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef hclass, GateRef key, 
 }
 
 GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn,
-    ProfileOperation callback, bool defineSemantics)
+                                        ProfileOperation callback, bool defineSemantics, bool mayThrow)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4627,7 +4654,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                         BRANCH(ShouldCallSetter(glue, receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
                         Bind(&shouldCall);
                         {
-                            returnValue = CallSetterHelper(glue, receiver, accessor, value, callback);
+                            returnValue = CallSetterHelper(glue, receiver, accessor, value, callback, mayThrow);
                             Jump(&exit);
                         }
                     }
@@ -4698,9 +4725,13 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&throwNotExtensible);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        returnValue = Exception();
+        if (mayThrow) {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            returnValue = Exception();
+        } else {
+            returnValue = TaggedFalse();
+        }
         Jump(&exit);
     }
     Bind(&exit);
@@ -4878,8 +4909,16 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
-    bool useOwn, GateRef isInternal, ProfileOperation callback, bool canUseIsInternal, bool defineSemantics)
+GateRef StubBuilder::SetPropertyByName(GateRef glue,
+                                       GateRef receiver,
+                                       GateRef key,
+                                       GateRef value,
+                                       bool useOwn,
+                                       GateRef isInternal,
+                                       ProfileOperation callback,
+                                       bool canUseIsInternal,
+                                       bool defineSemantics,
+                                       bool mayThrow)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -4929,9 +4968,13 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         BRANCH(IsArrayListOrVector(jsType), &isSpecialContainer, &notSpecialContainer);
         Bind(&isSpecialContainer);
         {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotSetPropertyOnContainer));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-            result = Exception();
+            if (mayThrow) {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotSetPropertyOnContainer));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                result = Exception();
+            } else {
+                result = TaggedFalse();
+            }
             Jump(&exit);
         }
         Bind(&notSpecialContainer);
@@ -4945,18 +4988,21 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 if (defineSemantics) {
                     Jump(&exit);
                 } else {
-                    result = CallCommonStub(glue, CommonStubCSigns::JSProxySetProperty,
-                                            {glue, *holder, key, value, receiver});
-                    Label isPendingException(env);
+                    Label returnException(env);
                     Label noPendingException(env);
-                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
-                    Bind(&isPendingException);
+                    if (mayThrow) {
+                        result = CallCommonStub(glue, CommonStubCSigns::JSProxySetProperty,
+                                                {glue, *holder, key, value, receiver});
+                    } else {
+                        result = CallCommonStub(glue, CommonStubCSigns::JSProxySetPropertyNoThrow,
+                                                {glue, *holder, key, value, receiver});
+                    }
+                    BRANCH(HasPendingException(glue), &returnException, &exit);
+                    Bind(&returnException);
                     {
                         result = Exception();
                         Jump(&exit);
                     }
-                    Bind(&noPendingException);
-                    Jump(&exit);
                 }
             }
             Bind(&notJsProxy);
@@ -5011,7 +5057,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(ShouldCallSetter(glue, receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
                     Bind(&shouldCall);
                     {
-                        result = CallSetterHelper(glue, receiver, accessor, value, callback);
+                        result = CallSetterHelper(glue, receiver, accessor, value, callback, mayThrow);
                         Jump(&exit);
                     }
                 }
@@ -5024,9 +5070,13 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     if (defineSemantics) {
                         Jump(&exit);
                     } else {
-                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
-                        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                        result = Exception();
+                        if (mayThrow) {
+                            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                            result = Exception();
+                        } else {
+                            result = TaggedFalse();
+                        }
                         Jump(&exit);
                     }
                     Bind(&writable);
@@ -5125,7 +5175,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(ShouldCallSetter(glue, receiver, *holder, accessor1, attr1), &shouldCall1, &notAccessor1);
                     Bind(&shouldCall1);
                     {
-                        result = CallSetterHelper(glue, receiver, accessor1, value, callback);
+                        result = CallSetterHelper(glue, receiver, accessor1, value, callback, mayThrow);
                         Jump(&exit);
                     }
                 }
@@ -5138,9 +5188,13 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     if (defineSemantics) {
                         Jump(&exit);
                     } else {
-                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
-                        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                        result = Exception();
+                        if (mayThrow) {
+                            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                            result = Exception();
+                        } else {
+                            result = TaggedFalse();
+                        }
                         Jump(&exit);
                     }
                     Bind(&writable1);
@@ -5213,9 +5267,13 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     BRANCH(IsExtensible(glue, receiver), &extensible, &inextensible);
     Bind(&inextensible);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        result = Exception();
+        if (mayThrow) {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            result = Exception();
+        } else {
+            result = TaggedFalse();
+        }
         Jump(&exit);
     }
     Bind(&extensible);
@@ -5524,8 +5582,21 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-    ProfileOperation callback, bool defineSemantics)
+/**
+    Ruturn value: Hole means try fastPath fail, caller should go slow path, undefined is try fastPath succsee.
+    only when mayThrow, will return TaggedFalse, it means some step has exception but not throw in
+    thread, same as C interpreter SetProperty
+    In ANY situation, exception means that an error must have occurred and been thrown on the thread.
+ */
+
+GateRef StubBuilder::SetPropertyByValue(GateRef glue,
+                                        GateRef receiver,
+                                        GateRef key,
+                                        GateRef value,
+                                        bool useOwn,
+                                        ProfileOperation callback,
+                                        bool defineSemantics,
+                                        bool mayThrow)
 {
     auto env = GetEnvironment();
     Label subEntry1(env);
@@ -5555,7 +5626,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            result = SetPropertyByIndex(glue, receiver, index, value, useOwn, callback, defineSemantics);
+            result = SetPropertyByIndex(glue, receiver, index, value, useOwn, callback, defineSemantics, mayThrow);
             Jump(&exit);
         }
         Bind(&notValidIndex);
@@ -5602,8 +5673,8 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, *isInternal,
-                    callback, true, defineSemantics);
+                result = SetPropertyByName(
+                    glue, receiver, *varKey, value, useOwn, *isInternal, callback, true, defineSemantics, mayThrow);
                 Jump(&exit);
             }
         }
@@ -6074,7 +6145,7 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     BRANCH(TaggedIsHeapObject(obj), &fastpath, &slowpath);
     Bind(&fastpath);
     {
-        result = GetPropertyByName(glue, obj, key, callback, True(), false, hir);
+        result = GetPropertyByName(glue, obj, key, Circuit::NullGate(), callback, True(), false, hir);
         BRANCH(TaggedIsHole(*result), &slowpath, &exit);
     }
     Bind(&slowpath);
