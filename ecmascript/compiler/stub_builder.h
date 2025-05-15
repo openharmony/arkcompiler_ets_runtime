@@ -39,6 +39,14 @@ using namespace panda::ecmascript;
     Label nextLabel(env);                                                           \
     Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
     Bind(&nextLabel)
+#define SUBENTRY_WITH_LINE(messageId, condition, line)       \
+    GateRef glueArg = PtrArgument(0);                        \
+    auto env = GetEnvironment();                             \
+    Label subEntry(env);                                     \
+    env->SubCfgEntry(&subEntry);                             \
+    Label nextLabel(env);                                    \
+    Assert(messageId, line, glueArg, condition, &nextLabel); \
+    Bind(&nextLabel)
 #define SUBENTRY_WITH_GLUE(messageId, condition, glueArg)                           \
     auto env = GetEnvironment();                                                    \
     Label subEntry(env);                                                            \
@@ -54,6 +62,11 @@ using namespace panda::ecmascript;
         SUBENTRY(messageId, condition);                                             \
         EXITENTRY();                                                                \
     }
+#define ASM_ASSERT_WITH_LINE(messageId, condition, line)                                                     \
+    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() && !GetEnvironment()->IsBaselineBuiltin()) { \
+        SUBENTRY_WITH_LINE(messageId, condition, line);                                                      \
+        EXITENTRY();                                                                                         \
+    }
 #define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
     SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #elif defined(ENABLE_ASM_ASSERT)
@@ -68,6 +81,7 @@ using namespace panda::ecmascript;
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
 #define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
+#define ASM_ASSERT_WITH_LINE(messageId, ...) ((void)0)
 #endif
 
 #ifndef NDEBUG
@@ -372,7 +386,12 @@ public:
     void SetExtraLengthOfTaggedArray(GateRef glue, GateRef array, GateRef len);
     // object operation
     GateRef IsJSHClass(GateRef glue, GateRef obj);
+#ifndef NDEBUG
+    GateRef LoadHClassWithLineASM(GateRef glue, GateRef object, int line);
+#else
     GateRef LoadHClass(GateRef glue, GateRef object);
+#endif
+
     void CanNotConvertNotValidObject(GateRef glue, GateRef obj);
     void IsNotPropertyKey(GateRef obj);
     GateRef CreateDataProperty(GateRef glue, GateRef obj, GateRef proKey, GateRef value);

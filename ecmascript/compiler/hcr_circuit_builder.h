@@ -202,11 +202,20 @@ GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
     return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 #else
+
+#ifndef NDEBUG
+GateRef CircuitBuilder::LoadHClassWithLineASM(GateRef glue, GateRef object, [[maybe_unused]] int line)
+{
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
+    return Load(VariableType::JS_POINTER(), glue, object, offset);
+}
+#else
 GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
 {
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, object, offset);
 }
+#endif
 
 GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
 {
