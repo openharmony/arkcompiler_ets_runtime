@@ -120,6 +120,7 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
         return;
     }
     CheckAndCallScope scope(thread);
+    EcmaHandleScope handleScope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> maybeEnv(env);
     if (maybeEnv->IsHole()) {
