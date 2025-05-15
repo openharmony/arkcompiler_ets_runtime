@@ -17,6 +17,7 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/platform/os.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
@@ -55,6 +56,7 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
     jitEnable &= ohos::EnableAotJitListHelper::GetInstance()->IsEnableJit(bundleName);
     jitEnable &= !vm->GetJSOptions().GetAOTHasException();
     jitEnable &= ohos::JitTools::IsSupportJitCodeSigner();
+    jitEnable &= HasJitFortACL();
     if (jitEnable) {
         bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
         bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();

@@ -75,6 +75,12 @@ void SetSecurityLabel(const std::string& path)
     }
 }
 
+bool HasJitFortACL()
+{
+    LOG_ECMA(INFO) << "Get Jit Fort ACL in mac not support";
+    return false;
+}
+
 void InitializeMallocConfig()
 {
     LOG_ECMA(INFO) << "Initialize Malloc Config in mac not support";

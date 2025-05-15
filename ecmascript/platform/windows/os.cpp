@@ -63,6 +63,12 @@ void SetSecurityLabel([[maybe_unused]] const std::string& path)
     LOG_ECMA(INFO) << "Set Security Label in windows not support";
 }
 
+bool HasJitFortACL()
+{
+    LOG_ECMA(INFO) << "Get Jit Fort ACL in windows not support";
+    return false;
+}
+
 void InitializeMallocConfig()
 {
     LOG_ECMA(INFO) << "Initialize Malloc Config in windows not support";
