@@ -460,7 +460,7 @@ public:
                                   GateRef constPoolIndex, RegionSpaceFlag flag);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv = false);
+    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv = false, bool isFastCall = false);
     GateRef CallInternal(GateRef hirGate, std::vector<GateRef> args, uint64_t pcOffset);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef glue, GateRef ctor);

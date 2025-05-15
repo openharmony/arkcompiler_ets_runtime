@@ -402,6 +402,7 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
+        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(), calleeMethod->GetJSPandaFile());
         calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         if (compilationEnv_->SupportHeapConstant() &&
             calleeMethod->GetFunctionKind() != FunctionKind::ARROW_FUNCTION &&
@@ -440,6 +441,7 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
+        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(), calleeMethod->GetJSPandaFile());
         ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         if (compilationEnv_->SupportHeapConstant()) {
             auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);

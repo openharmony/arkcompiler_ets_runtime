@@ -298,6 +298,13 @@ bool GateAccessor::NeedPushArgv(GateRef gate) const
     return gatePtr->GetNewConstructMetaData()->NeedPushArgv();
 }
 
+bool GateAccessor::IsFastCall(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CALL_NEW);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetNewConstructMetaData()->IsFastCall();
+}
+
 CreateArgumentsAccessor GateAccessor::GetCreateArgumentsAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARGUMENTS);

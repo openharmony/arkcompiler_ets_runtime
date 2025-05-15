@@ -1908,14 +1908,14 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     size_t expectedArgc = method->GetNumArgs();
     size_t actualArgc = static_cast<size_t>(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
-    GateRef argc = builder_.Int64(actualArgc);
-    GateRef argv = builder_.IntPtr(0);
-    std::vector<GateRef> args { glue_, argc, argv, ctor, ctor, thisObj }; // func thisobj numofargs
-    for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
+    std::vector<GateRef> args {glue_,  builder_.Int64(actualArgc), builder_.IntPtr(0), ctor, ctor,
+                               thisObj};
+    for (size_t i = 1; i < range; ++i) { // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
     bool needPushArgv = (expectedArgc != actualArgc);
-    GateRef result = builder_.CallNew(gate, args, needPushArgv);
+    bool isFastCall = method->IsFastCall();
+    GateRef result = builder_.CallNew(gate, args, needPushArgv, isFastCall);
     ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

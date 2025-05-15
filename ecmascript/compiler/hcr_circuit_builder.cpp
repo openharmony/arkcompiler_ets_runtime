@@ -509,7 +509,7 @@ GateRef CircuitBuilder::CallInternal(GateRef hirGate, std::vector<GateRef> args,
 }
 
 GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
-                                bool needPushArgv)
+                                bool needPushArgv, bool isFastCall)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE ||
            acc_.GetOpCode(hirGate) == OpCode::FLOAT32_ARRAY_CONSTRUCTOR);
@@ -522,7 +522,7 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     AppendFrameState(args, hirGate);
-    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushArgv),
+    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushArgv, isFastCall),
                                           MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);

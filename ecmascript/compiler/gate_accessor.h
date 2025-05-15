@@ -422,6 +422,7 @@ public:
     LoadElementAccessor GetLoadElementAccessor(GateRef gate) const;
     StoreElementAccessor GetStoreElementAccessor(GateRef gate) const;
     bool NeedPushArgv(GateRef gate) const;
+    bool IsFastCall(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;

@@ -125,7 +125,7 @@ public:
 
 #define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                \
     const GateMetaData* NAME(uint64_t value, uint64_t pcOffset,        \
-                             bool isFastCall);
+                             bool needPushArgv, bool isFastCall);
     GATE_META_DATA_LIST_FOR_NEW(DECLARE_GATE_META_FOR_NEW)
 #undef DECLARE_GATE_META_FOR_NEW
 

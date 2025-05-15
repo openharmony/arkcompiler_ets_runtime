@@ -198,6 +198,7 @@ group("ark_aot_ts_test") {
     "intern_string_strict_equal1",
     "intern_string_strict_equal2",
     "isfalse",
+    "isfastcall",
     "isin",
     "isomorphism",
     "isprototype",
