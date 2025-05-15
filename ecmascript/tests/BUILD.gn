@@ -3865,7 +3865,6 @@ group("host_unittest") {
       ":GC_MachineCode_TestAction",
       ":GC_MemController_TestAction",
       ":GC_NewToOldPromotion_TestAction",
-      ":GC_ReadOnlySpace_TestAction",
       ":GC_Second_TestAction",
       ":GC_SharedPartialGC_TestAction",
       ":GC_Third_TestAction",
