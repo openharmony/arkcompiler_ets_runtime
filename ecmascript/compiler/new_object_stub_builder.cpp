@@ -2385,8 +2385,25 @@ GateRef NewObjectStubBuilder::NewTypedArraySameType(GateRef glue, GateRef srcTyp
     BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
     Bind(&next);
     {
+        Label passFastGuard(env);
+        Label checkSize(env);
         Label newByteArrayExit(env);
+        /* 1. HClass pointer equality guard
+         *    - if the instance already uses the canonical on-heap HClass, we can skip size comparison */
         GateRef onHeapHClass = GetOnHeapHClassFromType(glue, srcType);
+        BRANCH(Equal(hclass, onHeapHClass), &passFastGuard, &checkSize);
+
+        /* 2. size guard
+         *    - pointer differs (sub-class, etc).
+         *      ensure object size still match before staying on fast-path; otherwise fall back to slowPath. */
+        Bind(&checkSize);
+        GateRef originalSize = GetObjectSizeFromHClass(hclass);
+        GateRef onHeapSize = GetObjectSizeFromHClass(onHeapHClass);
+        BRANCH(Equal(originalSize, onHeapSize), &passFastGuard, &slowPath);
+
+        /* 3. all guards passed
+         *    - safe to stay on fast-path */
+        Bind(&passFastGuard);
         NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
         Bind(&newByteArrayExit);
         StoreHClass(glue, obj, onHeapHClass);
