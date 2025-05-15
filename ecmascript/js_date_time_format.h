@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_JS_DATE_TIME_FORMAT_H
 #define ECMASCRIPT_JS_DATE_TIME_FORMAT_H
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_locale.h"
 
 namespace panda::ecmascript {

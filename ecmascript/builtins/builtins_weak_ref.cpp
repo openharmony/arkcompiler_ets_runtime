@@ -39,7 +39,7 @@ JSTaggedValue BuiltinsWeakRef::WeakRefConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4. Perform ! AddToKeptObjects(target).
-    thread->GetCurrentEcmaContext()->AddToKeptObjects(target);
+    EcmaVM::AddToKeptObjects(thread, target);
     // 5. Set weakRef.[[WeakRefTarget]] to target.
     // 6. Return weakRef.
     JSHandle<JSWeakRef> weakRef = JSHandle<JSWeakRef>::Cast(obj);

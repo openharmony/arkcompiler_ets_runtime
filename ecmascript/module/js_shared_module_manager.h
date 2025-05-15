@@ -96,7 +96,6 @@ private:
     RecursiveMutex sharedMutex_;
 
     friend class SourceTextModule;
-    friend class EcmaContext;
     friend class ModuleManager;
 };
 } // namespace panda::ecmascript

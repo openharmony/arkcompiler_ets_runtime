@@ -22,8 +22,7 @@ namespace panda::ecmascript {
 JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFunction> &jsFunction)
     : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThreadNoCheck()), jsFunction_(jsFunction)
 {
-    if (hostThread_ != nullptr && hostThread_->GetCurrentEcmaContext() != nullptr &&
-        jsVm->GetPTManager() != nullptr) {
+    if (hostThread_ != nullptr && jsVm->GetPTManager() != nullptr) {
         ptManager_ = jsVm->GetPTManager();
     }
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
@@ -41,7 +40,7 @@ JSRuntimeOptions &JitCompilationEnv::GetJSOptions() const
     return hostThread_->GetEcmaVM()->GetJSOptions();
 }
 
-ConstantIndex JitCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
+GlobalEnvField JitCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
 {
     return hostThread_->GetArrayInstanceHClassIndex(kind, isProtoType);
 }

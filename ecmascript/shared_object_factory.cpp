@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -29,7 +30,7 @@ void ObjectFactory::NewSObjectHook() const
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
     static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
-        !thread_->IsAllContextsInitialized() || !Runtime::GetInstance()->SharedConstInited()) {
+        thread_->InGlobalEnvInitialize() || !Runtime::GetInstance()->SharedConstInited()) {
         return;
     }
 #ifdef USE_CMC_GC
@@ -365,6 +366,28 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateSObjectWithProperties(std::vector<P
 JSHandle<TaggedArray> ObjectFactory::SharedEmptyArray() const
 {
     return JSHandle<TaggedArray>(thread_->GlobalConstants()->GetHandledEmptyArray());
+}
+
+JSHandle<SFunctionEnv> ObjectFactory::NewEmptySFunctionEnv()
+{
+    NewObjectHook();
+    size_t size = SFunctionEnv::ComputeSize(0);
+    auto header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetSFunctionEnvClass().GetTaggedObject()), size);
+    JSHandle<SFunctionEnv> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), SFunctionEnv::RESERVED_ENV_LENGTH);
+    return array;
+}
+
+JSHandle<SFunctionEnv> ObjectFactory::NewSFunctionEnv(int numSlots)
+{
+    NewObjectHook();
+    size_t size = SFunctionEnv::ComputeSize(numSlots);
+    auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(thread_->GlobalConstants()->GetSFunctionEnvClass().GetTaggedObject()), size);
+    JSHandle<SFunctionEnv> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots + SFunctionEnv::RESERVED_ENV_LENGTH);
+    return array;
 }
 
 JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength,

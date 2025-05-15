@@ -116,10 +116,9 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
                 BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
                 Bind(&isHeapObject);
                 {
-                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+                    GateRef globalEnv = GetGlobalEnv(glue_);
                     auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glue_,
-                                                            glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
+                                                            globalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
                     GateRef ctorProtoOrHC =
                             Load(VariableType::JS_POINTER(), glue_, numberFunction,
                                  IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));

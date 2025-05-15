@@ -318,7 +318,10 @@ public:
         return ecmaParamConfiguration_;
     }
 
-    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const
+    {
+        return thread_->GetGlobalEnv();
+    }
 
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {
@@ -1208,6 +1211,8 @@ public:
     void LoadStubFile();
     bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string& aotFileName);
+    bool LoadAOTFiles(const std::string &aotFileName,
+                      std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
     void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
     void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
 
@@ -1246,6 +1251,9 @@ public:
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
+
+    static void ClearKeptObjects(JSThread *thread);
+    static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);
 
 private:
     void ClearBufferData();
@@ -1429,7 +1437,6 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
-    friend class EcmaContext;
     friend class JitVM;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     Mutex mutex_;

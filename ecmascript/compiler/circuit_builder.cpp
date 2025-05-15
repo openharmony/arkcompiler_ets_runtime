@@ -561,10 +561,16 @@ GateRef CircuitBuilder::IsInternString(GateRef string)
     return Int32NotEqual(Int32And(len, Int32(EcmaString::STRING_INTERN_BIT)), Int32(0));
 }
 
+GateRef CircuitBuilder::GetGlobalEnv(GateRef glue)
+{
+    GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env_->IsArch32Bit()));
+    return Load(VariableType::JS_ANY(), glue, glue, globalEnvOffset);
+}
+
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
 {
-    GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(cmpCfg_->Is32Bit()));
-    return Load(VariableType::JS_ANY(), glue, glue, offset);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    return GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::JS_GLOBAL_OBJECT_INDEX);
 }
 
 GateRef CircuitBuilder::GetMethodFromFunction(GateRef glue, GateRef function)
@@ -1223,9 +1229,8 @@ GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef glue, GateRef object
 
 GateRef CircuitBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
 {
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, index);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), glue, func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(env_);
     GateRef newObj  = newBuilder.NewJSObject(glue, protoOrHclass);

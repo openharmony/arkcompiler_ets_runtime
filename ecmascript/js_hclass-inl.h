@@ -28,22 +28,6 @@
 
 namespace panda::ecmascript {
 
-bool JSHClass::ProtoIsFastJSArray(const JSThread *thread, const JSHandle<JSTaggedValue> proto,
-                                  const JSHandle<JSHClass> hclass)
-{
-    // Since we currently only support ElementsKind for JSArray initial hclass,
-    // if an object's hclass has a non-generic ElementsKind, it must be one of the JSArray initial hclass.
-    // if an object's hclass has a Generic ElementsKind, it might be the JSArray initial generic elementskind hclass,
-    // which therefore needs further hclass comparison.
-    if (proto->IsJSArray()) {
-        JSTaggedValue genericArrayHClass = thread->GlobalConstants()->GetElementHoleTaggedClass();
-        if (!Elements::IsGeneric(hclass->GetElementsKind()) || hclass.GetTaggedValue() == genericArrayHClass) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent, const JSHandle<JSHClass> &child,
                               const JSHandle<JSTaggedValue> &key, PropertyAttributes attributes)
 {
@@ -239,6 +223,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::CONSTANT_POOL:
         case JSType::AOT_LITERAL_INFO:

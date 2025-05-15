@@ -15,7 +15,6 @@
 
 #include "ecmascript/jobs/micro_job_queue.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_promise.h"

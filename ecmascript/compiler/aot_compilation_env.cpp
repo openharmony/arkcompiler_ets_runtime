@@ -32,7 +32,7 @@ JSHandle<GlobalEnv> AOTCompilationEnv::GetGlobalEnv() const
     return vm_->GetGlobalEnv();
 }
 
-ConstantIndex AOTCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
+GlobalEnvField AOTCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
 {
     return thread_->GetArrayInstanceHClassIndex(kind, isProtoType);
 }

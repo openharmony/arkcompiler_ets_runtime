@@ -127,7 +127,6 @@ using ecmascript::JSNumberFormat;
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::base::NumberHelper;
-using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
 using ecmascript::JSSendableArrayBuffer;

@@ -134,7 +134,7 @@ public:
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget);
-    GateRef NewFloat32ArrayObj(GateRef glue, GateRef glueGlobalEnv);
+    GateRef NewFloat32ArrayObj(GateRef glue, GateRef globalEnv);
     GateRef NewFloat32ArrayWithSize(GateRef glue, GateRef size);
     GateRef NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath);
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);

@@ -122,6 +122,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
         case JSType::LEXICAL_ENV:
             SerializeLexicalEnvFieldIndividually(root, start, end);
             return true;
+        case JSType::SFUNCTION_ENV:
+            SerializeSFunctionEnvFieldIndividually(root, start, end);
+            return true;
         case JSType::SENDABLE_ENV:
             SerializeSendableEnvFieldIndividually(root, start, end);
             return true;
@@ -245,8 +248,32 @@ void BaseSerializer::SerializeLexicalEnvFieldIndividually(TaggedObject *root, Ob
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
-            case PARENT_ENV_SLOT:
-            case SCOPE_INFO_SLOT: {
+            case LEXICALENV_GLOBAL_ENV_SLOT:
+            case LEXICALENV_PARENT_ENV_SLOT:
+            case LEXICALENV_SCOPE_INFO_SLOT: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Hole());
+                slot++;
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(slot.GetTaggedType()));
+                slot++;
+                break;
+            }
+        }
+    }
+}
+
+void BaseSerializer::SerializeSFunctionEnvFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::SFUNCTION_ENV);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case SFUNCTIONENV_GLOBAL_ENV_SLOT:
+            case SFUNCTIONENV_CONSTRUCTOR_SLOT: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Hole());
                 slot++;
@@ -268,8 +295,8 @@ void BaseSerializer::SerializeSendableEnvFieldIndividually(TaggedObject *root, O
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
         switch (fieldOffset) {
-            case PARENT_ENV_SLOT:
-            case SCOPE_INFO_SLOT: {
+            case SENDABLEENV_PARENT_ENV_SLOT:
+            case SENDABLEENV_SCOPE_INFO_SLOT: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Hole());
                 slot++;

@@ -499,6 +499,7 @@ public:
     bool IsSlicedString() const;
     bool IsStringOrSymbol() const;
     bool IsLexicalEnv() const;
+    bool IsSFunctionEnv() const;
     bool PUBLIC_API IsTaggedArray() const;
     bool IsDictionary() const;
     bool IsByteArray() const;

@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_INL_H
 #define ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_INL_H
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::builtins {

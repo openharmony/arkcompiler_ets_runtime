@@ -53,6 +53,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class SFunctionEnv;
 class SendableEnv;
 class JSDate;
 class JSProxy;
@@ -216,6 +217,9 @@ public:
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
         StackCheck needCheckStack = StackCheck::YES);
 
+    JSHandle<JSObject> NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+                                  const JSHandle<EcmaString> &message, StackCheck needCheckStack);
+
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
         StackCheck needCheckStack = StackCheck::YES);
 
@@ -231,6 +235,9 @@ public:
 
     JSHandle<JSObject> NewEmptyJSObject(uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
+    JSHandle<JSObject> NewEmptyJSObject(const JSHandle<GlobalEnv> &env,
+                                        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<JSHClass> GetHClassByFunctionKind(const JSHandle<GlobalEnv> &env, FunctionKind kind);
 
     // use for others create, prototype is Function.prototype
@@ -239,6 +246,10 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                        MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+    JSHandle<JSFunction> NewJSBuiltinFunction(const JSHandle<GlobalEnv> env, const void *nativeFunc = nullptr,
+                                              FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                              kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
+                                              MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
     JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env,
                                       const void *nativeFunc = nullptr,
                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
@@ -247,6 +258,7 @@ public:
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
+    JSHandle<JSFunction> NewJSBuiltinFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
     JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle);
 
@@ -286,8 +298,7 @@ public:
                                                const JSHandle<JSTaggedValue> &object);
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(PrimitiveType type, const JSHandle<JSTaggedValue> &object);
 
-    // get JSHClass for Ecma ClassLinker
-    JSHandle<GlobalEnv> NewGlobalEnv(JSHClass *globalEnvClass);
+    JSHandle<GlobalEnv> NewGlobalEnv(bool lazyInit = false, bool isRealm = false);
 
     // get JSHClass for Ecma ClassLinker
     JSHandle<LexicalEnv> NewLexicalEnv(int numSlots);
@@ -556,15 +567,26 @@ public:
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewJSBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                      const JSHandle<Method> &method,
+                                                      const JSHandle<JSHClass> &clazz,
+                                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
     // for native function
     JSTaggedValue GetReadOnlyMethodForNativeFunction(FunctionKind kind);
     JSHandle<JSFunction> NewNativeFunctionByHClass(const JSHandle<JSHClass> &clazz,
                                                    const void *nativeFunc,
                                                    FunctionKind kind,
                                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewNativeBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                          const JSHandle<JSHClass> &clazz,
+                                                          const void *nativeFunc,
+                                                          FunctionKind kind,
+                                                          MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> CreateJSFunctionByType(const JSHandle<JSHClass> &clazz, MemSpaceType type);
+    void SetupJSFunctionByHClass(const JSHandle<JSFunction> &function, const JSHandle<Method> &method);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const void *func,
+    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const JSHandle<GlobalEnv> &env, const void *func,
         const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
@@ -576,8 +598,9 @@ public:
     // used for creating jsobject by constructor
     JSHandle<JSObject> PUBLIC_API NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            const JSHandle<JSTaggedValue> &newTarget);
-    JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
-        const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
+    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<GlobalEnv> &env,
+                                                const JSHandle<JSFunction> &constructor,
+                                                uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     void InitializeJSObject(const JSHandle<JSObject> &obj, const JSHandle<JSHClass> &jshclass);
@@ -640,6 +663,9 @@ public:
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
+                                     const JSHandle<JSTaggedValue> &prototype);
+    JSHandle<JSHClass> NewEcmaHClass(const JSHandle<GlobalEnv> &env,
+                                     uint32_t size, uint32_t inlinedProps, JSType type,
                                      const JSHandle<JSTaggedValue> &prototype);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
@@ -781,6 +807,10 @@ public:
 #endif
 
     JSHandle<TaggedArray> SharedEmptyArray() const;
+
+    JSHandle<SFunctionEnv> NewEmptySFunctionEnv();
+
+    JSHandle<SFunctionEnv> NewSFunctionEnv(int numSlots = 0);
 
     JSHandle<TaggedArray> CopySArray(const JSHandle<TaggedArray> &old, uint32_t oldLength, uint32_t newLength,
                                                JSTaggedValue initVal = JSTaggedValue::Hole(),
@@ -965,10 +995,10 @@ private:
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
-    JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
+    JSHandle<JSHClass> CreateObjectClass(const JSHandle<GlobalEnv> &env,
+                                         const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                            const JSHandle<JSTaggedValue> &prototype);
-    JSHandle<JSHClass> CreateBoundFunctionClass();
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 
@@ -995,7 +1025,7 @@ private:
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
 
-    JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
+    JSHandle<JSHClass> CreateJSArrayInstanceClass(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> proto,
                                                   uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
@@ -1033,7 +1063,6 @@ private:
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
-    friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
     friend class panda::FunctionRef;
 };

@@ -858,6 +858,7 @@ public:
     void SetByteLength(GateRef glue, GateRef typedArray, GateRef byteLength);
     void SetByteOffset(GateRef glue, GateRef typedArray, GateRef offset);
     void SetTypedArrayLength(GateRef glue, GateRef typedArray, GateRef arrayLength);
+    GateRef GetGlobalEnv(GateRef glue);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef glue, GateRef function);
     GateRef GetModuleFromFunction(GateRef glue, GateRef function);
@@ -1073,7 +1074,6 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    inline GateRef GetCurrentEcmaContext(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     inline GateRef GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind);
     inline GateRef GetModuleLogger(GateRef glue);

@@ -14,7 +14,6 @@
  */
 
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
@@ -464,6 +463,22 @@ void JSHClass::ReBuildFunctionInheritanceRelationship(const JSThread *thread,
     JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(transIhc));
 }
 
+bool JSHClass::ProtoIsFastJSArray(const JSHandle<GlobalEnv> &env,
+    const JSHandle<JSTaggedValue> proto, const JSHandle<JSHClass> hclass)
+{
+    // Since we currently only support ElementsKind for JSArray initial hclass,
+    // if an object's hclass has a non-generic ElementsKind, it must be one of the JSArray initial hclass.
+    // if an object's hclass has a Generic ElementsKind, it might be the JSArray initial generic elementskind hclass,
+    // which therefore needs further hclass comparison.
+    if (proto->IsJSArray()) {
+        JSTaggedValue genericArrayHClass = env->GetTaggedElementHOLE_TAGGEDClass();
+        if (!Elements::IsGeneric(hclass->GetElementsKind()) || hclass.GetTaggedValue() == genericArrayHClass) {
+            return true;
+        }
+    }
+    return false;
+}
+
 JSHandle<JSHClass> JSHClass::CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                const JSHandle<JSTaggedValue> &key,
                                                const JSHandle<JSTaggedValue> &proto)
@@ -500,6 +515,16 @@ void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto, bool is
     SetPrototype(thread, protoHandle, isChangeProto);
 }
 
+void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<GlobalEnv> &env,
+    JSTaggedValue proto, bool isChangeProto)
+{
+    JSHandle<JSTaggedValue> protoHandle(thread, proto);
+    if (protoHandle.GetTaggedValue().IsJSObject()) {
+        OptimizePrototypeForIC(thread, env, protoHandle, isChangeProto);
+    }
+    SetProto(thread, protoHandle);
+}
+
 JSHandle<JSHClass> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
                                                           const JSHandle<JSHClass> &hclass,
                                                           const JSHandle<JSTaggedValue> &proto,
@@ -534,12 +559,13 @@ void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue
 {
     // Because the heap-space of hclass is non-movable, this function can be non-static.
     if (proto->IsJSObject()) {
-        OptimizePrototypeForIC(thread, proto, isChangeProto);
+        OptimizePrototypeForIC(thread, thread->GetGlobalEnv(), proto, isChangeProto);
     }
     SetProto(thread, proto);
 }
 
-void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
+void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<GlobalEnv> &env,
+    const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
 #ifndef USE_CMC_GC
@@ -562,7 +588,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
             // At here, When a JSArray with initial hclass is set as a proto,
             // we substitute its hclass with preserved proto hclass.
             JSHandle<JSHClass> newProtoClass;
-            if (ProtoIsFastJSArray(thread, proto, hclass)) {
+            if (ProtoIsFastJSArray(env, proto, hclass)) {
                 newProtoClass = JSHandle<JSHClass>(thread, thread->GetArrayInstanceHClass(hclass->GetElementsKind(),
                                                                                           true));
             } else {

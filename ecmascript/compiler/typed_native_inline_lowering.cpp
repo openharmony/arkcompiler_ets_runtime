@@ -450,9 +450,8 @@ void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStub
     BRANCH_CIR(hasNoConstructor, &selfValidLabel, &selfInvalidLabel);
     builder_.Bind(&selfValidLabel);
     {
-        GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
-        GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef prototype = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue, glueGlobalEnv,
+        GateRef globalEnv = builder_.GetGlobalEnv(glue);
+        GateRef prototype = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv,
                                                        GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
 
         GateRef iteratorHClass = builder_.GetGlobalConstantValue(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX);
@@ -2473,8 +2472,7 @@ void TypedNativeInlineLowering::LowerObjectGetPrototypeOf(GateRef gate)
 
     // fast handle some primitive types
     if (TypeInfoAccessor::IsTrustedBooleanOrNumberOrStringType(compilationEnv_, circuit_, chunk_, acc_, value)) {
-        GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
-        GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef globalEnv = builder_.GetGlobalEnv(glue);
         size_t index = -1;
         if (TypeInfoAccessor::IsTrustedBooleanType(acc_, value)) {
             index = GlobalEnv::BOOLEAN_PROTOTYPE_INDEX;
@@ -2484,7 +2482,7 @@ void TypedNativeInlineLowering::LowerObjectGetPrototypeOf(GateRef gate)
             ASSERT(TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, value));
             index = GlobalEnv::STRING_PROTOTYPE_INDEX;
         }
-        result = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, index);
+        result = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     } else {
         GateRef object = builder_.ToObject(glue, value);
         result = builder_.GetPrototype(glue, object);
@@ -2840,10 +2838,9 @@ void TypedNativeInlineLowering::LowerArrayIteratorBuiltin(GateRef gate)
     IterationKind iterationKind = GetArrayIterKindFromBuilin(callID);
 
     GateRef glue = acc_.GetGlueFromArgList();
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
-    GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = builder_.GetGlobalEnv(glue);
     GateRef prototype = builder_.GetGlobalEnvValue(
-        VariableType::JS_POINTER(), glue, glueGlobalEnv, GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+        VariableType::JS_POINTER(), glue, globalEnv, GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
 
     GateRef iteratorHClass = builder_.GetGlobalConstantValue(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX);
     GateRef offset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);

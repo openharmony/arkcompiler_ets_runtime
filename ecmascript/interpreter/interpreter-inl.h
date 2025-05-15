@@ -17,7 +17,6 @@
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_INL_H
 
 #include "ecmascript/debugger/js_debugger_manager.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"

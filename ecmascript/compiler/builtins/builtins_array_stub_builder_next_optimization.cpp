@@ -824,8 +824,9 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     {
         // If the kind has hole, we know it must be transited to TAGGED kind;
         // There will be no hole in the new array because hole will be converted to undefined.
-        GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                   ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef newHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              static_cast<size_t>(GlobalEnvField::ELEMENT_TAGGED_HCLASS_INDEX));
         receiver = NewArrayWithHClass(glue, newHClass, thisArrLen);
         Jump(&next);
     }
@@ -937,7 +938,9 @@ void BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef fromArray, GateRe
 GateRef BuiltinsArrayStubBuilder::NewArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen)
 {
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-    hclass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                               GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
 #endif
     // New an array with length.
     auto env = GetEnvironment();
@@ -1127,8 +1130,10 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                     BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayToSpliced, &fastToSpliced);
                     Bind(&fastToSpliced);
                     {
-                        GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                                   ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
+                        GateRef globalEnv = GetGlobalEnv(glue);
+                        GateRef newHClass =
+                            GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                static_cast<size_t>(GlobalEnvField::ELEMENT_TAGGED_HCLASS_INDEX));
                         GateRef newArray = NewArrayWithHClass(glue, newHClass, *newLen);
                         FastToSpliced(glue, thisValue, newArray, *actualStart, *actualDeleteCount, *insertCount,
                                       GetCallArg2(numArgs));
@@ -2416,10 +2421,8 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
 {
     auto env = GetEnvironment();
     Label setProperties(env);
-    GateRef glueGlobalEnvOffset =
-        IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+    GateRef globalEnv = GetGlobalEnv(glue);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
         GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));

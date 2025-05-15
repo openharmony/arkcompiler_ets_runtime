@@ -36,7 +36,7 @@ public:
     JSRuntimeOptions &GetJSOptions() const override;
 
     // thread
-    ConstantIndex GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
+    GlobalEnvField GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
     const BuiltinHClassEntries &GetBuiltinHClassEntries() const override;
     JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const override;
 

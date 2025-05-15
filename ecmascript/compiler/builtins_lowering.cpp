@@ -257,9 +257,9 @@ GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubC
 
 GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = builder_.GetGlobalEnv();
     GateRef globalFunction =
-        builder_.GetGlobalEnvObj(glueGlobalEnv, GET_TYPED_GLOBAL_ENV_INDEX(id));
+        builder_.GetGlobalEnvObj(globalEnv, GET_TYPED_GLOBAL_ENV_INDEX(id));
     GateRef target = acc_.GetValueIn(gate, 0); // 0:target
     return builder_.Equal(target, globalFunction);
 }

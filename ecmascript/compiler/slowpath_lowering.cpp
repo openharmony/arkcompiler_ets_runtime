@@ -1302,11 +1302,9 @@ void SlowPathLowering::LowerLdSymbol(GateRef gate)
 
 void SlowPathLowering::LowerLdGlobal(GateRef gate)
 {
-    GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
-    GateRef val = builder_.Int64Add(glue_, offset);
-    auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
-    GateRef newGate = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
-        { builder_.GetDepend(), glue_, val }, VariableType::JS_ANY().GetGateType());
+    GateRef globalEnv = builder_.GetGlobalEnv(glue_);
+    GateRef newGate = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_,
+                                                 globalEnv, GlobalEnv::JS_GLOBAL_OBJECT_INDEX);
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -1620,11 +1618,9 @@ GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef a
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndex(kind, false));
-        GateRef gConstAddr = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), glue_,
-            builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
-        GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
-        GateRef hclass = builder_.Load(VariableType::JS_POINTER(), glue_, gConstAddr, constantIndex);
+        GateRef globalEnv = builder_.GetGlobalEnv(glue_);
+        size_t elementIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndex(kind, false));
+        GateRef hclass = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv, elementIndex);
         builder_.Store(VariableType::JS_POINTER(), glue_, array, builder_.IntPtr(0), hclass);
     }
     return array;

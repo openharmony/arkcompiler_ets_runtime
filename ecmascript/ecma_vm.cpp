@@ -43,8 +43,10 @@
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
@@ -315,13 +317,14 @@ bool EcmaVM::Initialize()
     abcBufferCache_ = new AbcBufferCache();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->Init(thread_);
-    auto context = new EcmaContext(thread_);
-    thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
-    context->Initialize();
+    bool builtinsLazyEnabled = GetJSOptions().IsWorker() && GetJSOptions().GetEnableBuiltinsLazy();
+    thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
+    JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(builtinsLazyEnabled);
+    thread_->SetCurrentEnv(globalEnv.GetTaggedValue());
     ptManager_ = new kungfu::PGOTypeManager(this);
     optCodeProfiler_ = new OptCodeProfiler();
     if (options_.GetTypedOpProfiler()) {
@@ -339,9 +342,6 @@ bool EcmaVM::Initialize()
     thread_->SetUnsharedConstpoolsArrayLen(unsharedConstpoolsArrayLen_);
 
     snapshotEnv_->AddGlobalConstToMap();
-    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
-    thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
-    thread_->SetCurrentEcmaContext(context);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
@@ -620,11 +620,6 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
     if (runtimeStat_ != nullptr) {
         runtimeStat_->SetRuntimeStatEnabled(flag);
     }
-}
-
-JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
-{
-    return thread_->GetCurrentEcmaContext()->GetGlobalEnv();
 }
 
 void EcmaVM::CheckThread() const
@@ -1038,6 +1033,13 @@ bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
 
 bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
 {
+    return LoadAOTFilesInternal(aotFileName);
+}
+
+bool EcmaVM::LoadAOTFiles(const std::string& aotFileName,
+    std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
+{
+    GetAOTFileManager()->SetJsAotReader(cb);
     return LoadAOTFilesInternal(aotFileName);
 }
 
@@ -2001,6 +2003,33 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
         // Collecting module.exports : exports ---> module.exports --->Module._cache
         RequireManager::CollectExecutedExp(thread_, cjsInfo);
     }
+}
+
+void EcmaVM::ClearKeptObjects(JSThread *thread)
+{
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    if (LIKELY(globalEnv->GetTaggedWeakRefKeepObjects().IsUndefined())) {
+        return;
+    }
+    globalEnv->SetWeakRefKeepObjects(thread, JSTaggedValue::Undefined());
+}
+
+void EcmaVM::AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value)
+{
+    if (value->IsInSharedHeap()) {
+        return;
+    }
+
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<LinkedHashSet> linkedSet;
+    if (globalEnv->GetWeakRefKeepObjects()->IsUndefined()) {
+        linkedSet = LinkedHashSet::Create(thread);
+    } else {
+        linkedSet = JSHandle<LinkedHashSet>(thread,
+            LinkedHashSet::Cast(globalEnv->GetWeakRefKeepObjects()->GetTaggedObject()));
+    }
+    linkedSet = LinkedHashSet::Add(thread, linkedSet, value);
+    globalEnv->SetWeakRefKeepObjects(thread, linkedSet);
 }
 
 }  // namespace panda::ecmascript

@@ -26,6 +26,7 @@
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/global_index.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
@@ -50,7 +51,6 @@
 
 namespace panda::ecmascript {
 class DateUtils;
-class EcmaContext;
 class EcmaVM;
 class GlobalIndex;
 class HeapRegionAllocator;
@@ -375,16 +375,6 @@ public:
         glueData_.exception_ = JSTaggedValue::Hole();
     }
 
-    void SetGlobalObject(JSTaggedValue globalObject)
-    {
-        glueData_.globalObject_ = globalObject;
-    }
-
-    const GlobalEnv *GetGlobalEnv() const
-    {
-        return glueData_.glueGlobalEnv_;
-    }
-
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
@@ -417,16 +407,9 @@ public:
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
 
-    JSHClass* GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
-    {
-        ConstantIndex index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
-        auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
-        auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
-        ASSERT(exceptRecvHClass->IsJSArray());
-        return exceptRecvHClass;
-    }
+    JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
 
-    ConstantIndex GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
+    GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {
         return glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
     }
@@ -714,6 +697,16 @@ public:
         return enableLazyBuiltins_;
     }
 
+    void SetInGlobalEnvInitialize(bool value)
+    {
+        inGlobalEnvInitialize_ = value;
+    }
+
+    bool InGlobalEnvInitialize() const
+    {
+        return inGlobalEnvInitialize_;
+    }
+
     void SetReadyForGCIterating(bool flag)
     {
         readyForGCIterating_ = flag;
@@ -859,15 +852,18 @@ public:
         return glueData_.stackLimit_;
     }
 
-    GlobalEnv *GetGlueGlobalEnv()
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
+
+    JSTaggedValue GetCurrentEnv() const
     {
-        return glueData_.glueGlobalEnv_;
+        // change to current
+        return glueData_.currentEnv_;
     }
 
-    void SetGlueGlobalEnv(GlobalEnv *global)
+    void SetCurrentEnv(JSTaggedValue env)
     {
-        ASSERT(global != nullptr);
-        glueData_.glueGlobalEnv_ = global;
+        ASSERT(env != JSTaggedValue::Hole());
+        glueData_.currentEnv_ = env;
     }
 
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
@@ -1034,7 +1030,6 @@ public:
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
-                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1054,9 +1049,9 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
+                                                 JSTaggedValue,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
-                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
@@ -1064,7 +1059,6 @@ public:
                                                  base::AlignedBool,
                                                  base::AlignedBool,
                                                  base::AlignedUint32,
-                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
@@ -1078,11 +1072,9 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
-#endif
                                                  ElementsHClassEntries,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
@@ -1090,7 +1082,6 @@ public:
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
-            GlobalObjIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1110,9 +1101,9 @@ public:
             GCStateBitFieldIndex,
             SharedGCStateBitFieldIndex,
             FrameBaseIndex,
+            CurrentEnvIndex,
             StackStartIndex,
             StackLimitIndex,
-            GlueGlobalEnvIndex,
             GlobalConstIndex,
             AllowCrossThreadExecutionIndex,
             InterruptVectorIndex,
@@ -1121,7 +1112,6 @@ public:
             IsFrameDroppedIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
-            CurrentContextIndex,
             BuiltinEntriesIndex,
             IsTracingIndex,
             UnsharedConstpoolsArrayLenIndex,
@@ -1138,11 +1128,9 @@ public:
             LoadMegaICCacheIndex,
             StoreMegaICCacheIndex,
             PropertiesCacheIndex,
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
             megaUpdateCountIndex,
             megaProbesCountIndex,
             megaHitCountIndex,
-#endif
             ArrayHClassIndexesIndex,
             moduleLoggerIndex,
             stageOfHotReloadIndex,
@@ -1154,11 +1142,6 @@ public:
         static size_t GetExceptionOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ExceptionIndex)>(isArch32);
-        }
-
-        static size_t GetGlobalObjOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
         }
 
         static size_t GetBaseAddressOffset(bool isArch32)
@@ -1297,9 +1280,9 @@ public:
             return GetOffset<static_cast<size_t>(Index::StackLimitIndex)>(isArch32);
         }
 
-        static size_t GetGlueGlobalEnvOffset(bool isArch32)
+        static size_t GetCurrentEnvOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::CurrentEnvIndex)>(isArch32);
         }
 
         static size_t GetAllowCrossThreadExecutionOffset(bool isArch32)
@@ -1335,11 +1318,6 @@ public:
         static size_t GetEntryFrameDroppedStateOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
-        }
-
-        static size_t GetCurrentContextOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
         }
 
         static size_t GetBuiltinEntriesOffset(bool isArch32)
@@ -1408,7 +1386,6 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::PropertiesCacheIndex)>(isArch32);
         }
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
         static size_t GetMegaProbesCountOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::megaProbesCountIndex)>(isArch32);
@@ -1418,8 +1395,6 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::megaHitCountIndex)>(isArch32);
         }
-#endif
-
         static size_t GetArrayHClassIndexesIndexOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
@@ -1442,7 +1417,6 @@ public:
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
-        alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -1462,9 +1436,9 @@ public:
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) volatile uint64_t sharedGCStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
+        alignas(EAS) JSTaggedValue currentEnv_ {JSTaggedValue::Hole()};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
-        alignas(EAS) GlobalEnv *glueGlobalEnv_ {nullptr};
         alignas(EAS) GlobalEnvConstants *globalConst_ {nullptr};
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
@@ -1473,7 +1447,6 @@ public:
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
-        alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_ {};
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uint32_t unsharedConstpoolsArrayLen_ {0};
@@ -1490,25 +1463,15 @@ public:
         alignas(EAS) MegaICCache *loadMegaICCache_ {nullptr};
         alignas(EAS) MegaICCache *storeMegaICCache_ {nullptr};
         alignas(EAS) PropertiesCache *propertiesCache_ {nullptr};
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
         alignas(EAS) uint64_t megaUpdateCount_ {0};
         alignas(EAS) uint64_t megaProbesCount_ {0};
         alignas(EAS) uint64_t megaHitCount {0};
-#endif
         alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
         alignas(EAS) ModuleLogger *moduleLogger_ {nullptr};
         alignas(EAS) StageOfHotReload stageOfHotReload_ {StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD};
         alignas(EAS) ModuleManager *moduleManager_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
-
-    void PushContext(EcmaContext *context);
-    void PopContext();
-
-    EcmaContext *GetCurrentEcmaContext() const
-    {
-        return glueData_.currentContext_;
-    }
 
     JSTaggedValue GetSingleCharTable() const
     {
@@ -1541,13 +1504,6 @@ public:
         return glueData_.moduleManager_;
     }
 
-    void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
-
-    CVector<EcmaContext *> GetEcmaContexts()
-    {
-        return contexts_;
-    }
-
     bool IsInSubStack() const
     {
         return isInSubStack_;
@@ -1560,15 +1516,13 @@ public:
 
     bool IsPropertyCacheCleared() const;
 
-    bool EraseContext(EcmaContext *context);
     void ClearVMCachedConstantPool();
 
-    bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCacheArea();
 
-    void InitializeBuiltinObject(const std::string& key);
-    void InitializeBuiltinObject();
+    void InitializeBuiltinObject(const JSHandle<GlobalEnv>& env, const std::string& key);
+    void InitializeBuiltinObject(const JSHandle<GlobalEnv>& env);
 
     bool FullMarkRequest() const
     {
@@ -1800,7 +1754,6 @@ public:
     }
 #endif
 
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
     uint64_t GetMegaProbeCount() const
     {
         return glueData_.megaProbesCount_;
@@ -1849,7 +1802,6 @@ public:
             << "---------------------------------------------------------";
         ClearMegaStat();
     }
-#endif
 
 protected:
     void SetThreadId()
@@ -1869,10 +1821,6 @@ private:
     void SetGlobalConst(GlobalEnvConstants *globalConst)
     {
         glueData_.globalConst_ = globalConst;
-    }
-    void SetCurrentEcmaContext(EcmaContext *context)
-    {
-        glueData_.currentContext_ = context;
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);
@@ -1954,6 +1902,7 @@ private:
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
+    bool inGlobalEnvInitialize_ {false};
     bool readyForGCIterating_ {false};
     bool isUncaughtExceptionRegistered_ {false};
     // CpuProfiler
@@ -1975,10 +1924,8 @@ private:
 
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
-    CVector<EcmaContext *> contexts_;
     bool isInSubStack_ {false};
     StackInfo mainStackInfo_ { 0ULL, 0ULL };
-    EcmaContext *currentContext_ {nullptr};
 
     Mutex suspendLock_;
     int32_t suspendCount_ {0};
@@ -2008,9 +1955,32 @@ private:
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;
-    friend class EcmaContext;
     friend class JitVM;
     friend class DaemonThread;
+};
+class SaveEnv {
+public:
+    explicit SaveEnv(JSThread* thread): thread_(thread)
+    {
+        env_ = JSHandle<JSTaggedValue>(thread_, thread->GetCurrentEnv());
+    }
+
+    ~SaveEnv()
+    {
+        thread_->SetCurrentEnv(env_.GetTaggedValue());
+    }
+
+private:
+    JSThread* const thread_;
+    JSHandle<JSTaggedValue> env_;
+};
+
+class SaveAndSwitchEnv : public SaveEnv {
+public:
+    SaveAndSwitchEnv(JSThread* thread, JSTaggedValue newEnv): SaveEnv(thread)
+    {
+        thread->SetCurrentEnv(newEnv);
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

@@ -63,7 +63,7 @@ void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JS
         return;
     }
     // not be set before
-    auto env = thread->GetCurrentEcmaContext()->GetGlobalEnv();
+    auto env = thread->GetGlobalEnv();
     if (env->GetObjectFunctionTsNapiClass() == env->GetObjectFunctionNapiClass()) {
         JSHandle<JSHClass> objectFunctionNapiClass(env->GetObjectFunctionNapiClass());
         objectFunctionIHC->SetPrototype(thread, objectFunctionNapiClass->GetProto());

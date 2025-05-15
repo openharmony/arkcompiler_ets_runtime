@@ -102,7 +102,7 @@ struct PatchInfo {
 
 enum class StageOfHotReload : int32_t {
     BEGIN_EXECUTE_PATCHMAIN = -1, // -1: For intercepting Evaluate()
-    INITIALIZE_STAGE_OF_HOTRELOAD, // 0 : initialize stageOfHotreload_ in ecma_context.h
+    INITIALIZE_STAGE_OF_HOTRELOAD, // 0 : initialize stageOfHotreload_ in js_thread.h
     LOAD_END_EXECUTE_PATCHMAIN, // 1: for Interceptint get module var
     UNLOAD_END_EXECUTE_PATCHMAIN // 2 :for execute abc normally
 };

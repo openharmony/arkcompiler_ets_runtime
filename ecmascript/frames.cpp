@@ -16,7 +16,6 @@
 #include "ecmascript/frames.h"
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 

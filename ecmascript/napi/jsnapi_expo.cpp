@@ -31,6 +31,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
@@ -98,6 +99,7 @@ using ecmascript::JSTaggedNumber;
 using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
+using ecmascript::JSType;
 using ecmascript::JSTypedArray;
 using ecmascript::LinkedHashMap;
 using ecmascript::LinkedHashSet;
@@ -128,7 +130,6 @@ using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
 #endif
 using ecmascript::DebugInfoExtractor;
-using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
 using ecmascript::RegExpParser;
@@ -1251,6 +1252,12 @@ void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
     }
 }
 
+bool JSValueRef::IsJsGlobalEnv(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSGlobalEnv();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
@@ -2031,7 +2038,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2058,7 +2065,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2086,7 +2093,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -2114,7 +2121,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 
     EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return true;
 }
 
@@ -3619,7 +3626,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     vm->GetJsDebuggerManager()->NotifyReturnNative();
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
@@ -3674,7 +3681,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
         thread->CheckJSTaggedType(result.GetRawData());
 #endif
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
-        thread->GetCurrentEcmaContext()->ClearKeptObjects();
+        EcmaVM::ClearKeptObjects(thread);
         if (isDebugApp && dm->IsMixedDebugEnabled()) {
             dm->NotifyReturnNative();
         }
@@ -4549,27 +4556,6 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     return CreateEcmaVM(runtimeOptions);
 }
 
-EcmaContext *JSNApi::CreateJSContext(EcmaVM *vm)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    return EcmaContext::CreateAndInitialize(thread);
-}
-
-void JSNApi::SwitchCurrentContext(EcmaVM *vm, EcmaContext *context)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    thread->SwitchCurrentContext(context);
-}
-
-void JSNApi::DestroyJSContext(EcmaVM *vm, EcmaContext *context)
-{
-    JSThread *thread = vm->GetJSThread();
-    ecmascript::ThreadManagedScope managedScope(thread);
-    EcmaContext::CheckAndDestroy(thread, context);
-}
-
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     return EcmaVM::Create(options);
@@ -5292,28 +5278,9 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
         return;
     }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName, cb);
+    vm->LoadAOTFiles(aotFileName, cb);
 }
 #endif
-
-bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
-    LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
-    ecmascript::ThreadManagedScope scope(thread);
-    EcmaContext::MountContext(thread);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
-        if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->HandleUncaughtException();
-        }
-        LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
-                        << "' with entry '" << entry << "'" << std::endl;
-        return false;
-    }
-    EcmaContext::UnmountContext(thread);
-    return true;
-}
 
 // function for bundle abc
 bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
@@ -5677,6 +5644,33 @@ void JSNApi::SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion)
 void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)
 {
     vm->GetJSThread()->UpdateStackInfo(currentStackInfo, static_cast<ecmascript::JSThread::StackInfoOpKind>(opKind));
+}
+
+Local<JSValueRef> JSNApi::CreateContext(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(globalEnv));
+}
+
+Local<JSValueRef> JSNApi::GetCurrentContext(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<GlobalEnv> currentGlobalEnv = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> envContext = JSHandle<JSTaggedValue>(currentGlobalEnv);
+    return JSNApiHelper::ToLocal<JSValueRef>(envContext);
+}
+
+void JSNApi::SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> contextValue = JSNApiHelper::ToJSHandle(context);
+    JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(contextValue);
+    thread->SetCurrentEnv(globalEnv.GetTaggedValue());
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
