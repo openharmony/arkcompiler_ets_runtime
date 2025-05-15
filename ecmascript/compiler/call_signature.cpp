@@ -402,6 +402,20 @@ DEF_CALL_SIGNATURE(ConvertCharToDouble)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(ConvertCharToString)
+{
+    // 2 : 2 input parameters
+    CallSignature temp("ConvertCharToString", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::INT32(),             // charcode
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByValue)
 {
     // 4 : 4 input parameters
@@ -470,6 +484,21 @@ DEF_CALL_SIGNATURE(Instanceof)
         VariableType::JS_ANY(),           // target
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(OrdinaryHasInstance)
+{
+    // 3 : 3 input parameters
+    CallSignature temp("OrdinaryHasInstance", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_ANY(),           // object
+        VariableType::JS_ANY(),           // target
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -2868,6 +2897,46 @@ DEF_CALL_SIGNATURE(CallThis3Stub)
         VariableType::JS_ANY(),             // a0
         VariableType::JS_ANY(),             // a1
         VariableType::JS_ANY()              // a2
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(NewFloat32ArrayWithNoArgs)
+{
+    // 1 : 1 input parameter
+    CallSignature temp("NewFloat32ArrayWithNoArgs", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 1 : 1 input parameter
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(NewFloat32Array)
+{
+    // 3 : 3 input parameters
+    CallSignature temp("NewFloat32Array", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // target
+        VariableType::JS_ANY()              // length
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(StringLoadElement)
+{
+    // 2 : 2 input parameters
+    CallSignature temp("StringLoadElement", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = temp;
+    // 2 : 2 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // string
+        VariableType::INT32()               // index
     };
     callSign->SetParameters(params.data());
 }

@@ -226,6 +226,7 @@ private:
     GateRef NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value);
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
+    void LowerOrdinaryHasInstanceForJIT(GateRef gate, GateRef glue);
     void LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate);
     void LowerMonoCallGetterOnProto(GateRef gate, GateRef glue);
     void LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate);

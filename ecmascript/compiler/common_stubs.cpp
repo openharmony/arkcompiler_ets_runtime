@@ -133,6 +133,100 @@ void CallThis3StubStubBuilder::GenerateCircuit()
     Return(callBuilder.CallStubDispatch());
 }
 
+void NewFloat32ArrayWithNoArgsStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    NewObjectStubBuilder objBuilder(env);
+    objBuilder.SetParameters(glue, 0);
+    GateRef res = objBuilder.NewFloat32ArrayWithSize(glue, Int32(0));
+    Return(res);
+}
+
+void NewFloat32ArrayStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef ctor = TaggedArgument(1);
+    GateRef arg0 = TaggedArgument(2); /* 2 : length */
+
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+
+    Label slowPath(env);
+    Label exit(env);
+    DEFVALUE(arrayLength, (env), VariableType::INT64(), Int64(0));
+    Label arrayCreateByLength(env);
+    Label argIsNumber(env);
+    BRANCH(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
+    Bind(&argIsNumber);
+    {
+        Label argIsInt(env);
+        Label argIsDouble(env);
+        BRANCH(TaggedIsInt(arg0), &argIsInt, &argIsDouble);
+        Bind(&argIsInt);
+        {
+            Label validIntLength(env);
+            GateRef intLen = GetInt64OfTInt(arg0);
+            GateRef isGEZero = Int64GreaterThanOrEqual(intLen, Int64(0));
+            GateRef isLEMaxLen = Int64LessThanOrEqual(intLen, Int64(JSObject::MAX_GAP));
+            BRANCH(BitAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+            Bind(&validIntLength);
+            {
+                arrayLength = intLen;
+                Jump(&arrayCreateByLength);
+            }
+        }
+        Bind(&argIsDouble);
+        {
+            Label validDoubleLength(env);
+            GateRef doubleLength = GetDoubleOfTDouble(arg0);
+            GateRef doubleToInt = DoubleToInt(glue, doubleLength, base::INT32_BITS);
+            GateRef intToDouble = CastInt64ToFloat64(SExtInt32ToInt64(doubleToInt));
+            GateRef doubleEqual = DoubleEqual(doubleLength, intToDouble);
+            GateRef doubleLEMaxLen = DoubleLessThanOrEqual(doubleLength, Double(JSObject::MAX_GAP));
+            BRANCH(BitAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+            Bind(&validDoubleLength);
+            {
+                arrayLength = SExtInt32ToInt64(doubleToInt);
+                Jump(&arrayCreateByLength);
+            }
+        }
+    }
+    NewObjectStubBuilder newBuilder(env);
+    newBuilder.SetParameters(glue, 0);
+    Bind(&arrayCreateByLength);
+    {
+        GateRef truncedLength = TruncInt64ToInt32(*arrayLength);
+        res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        // no need to alloc in slowpath.
+        GateRef thisObj = Undefined();
+        GateRef argc = Int64(4); // 4: means func newtarget thisObj arg0
+        GateRef argv = IntPtr(0);
+        std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
+        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
+        GateRef target = IntPtr(RTSTUB_ID(JSCallNew));
+        auto depend = env->GetCurrentLabel()->GetDepend();
+        res = env->GetBuilder()->Call(cs, glue, target, depend, args, Circuit::NullGate(), "NewFloat32Array stub slowpath");
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+void StringLoadElementStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef string = TaggedArgument(1);
+    GateRef index = Int32Argument(2);
+    BuiltinsStringStubBuilder builder(this);
+    GateRef result = builder.GetSingleCharCodeByIndex(glue, string, index);
+    Return(result);
+}
+
 void ConvertCharToInt32StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -158,6 +252,16 @@ void ConvertCharToDoubleStubBuilder::GenerateCircuit()
     result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {result, Int32(0)}, charCode);
     // get double from number
     result = GetDoubleOfTNumber(result);
+    Return(result);
+}
+
+void ConvertCharToStringStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef charCode = Int32Argument(1);
+    BuiltinsStringStubBuilder builder(this);
+    // char to string
+    GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     Return(result);
 }
 
@@ -338,6 +442,14 @@ void InstanceofStubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(4); // 4 : 5th pars
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(InstanceOf(glue, object, target, profileTypeInfo, slotId, ProfileOperation()));
+}
+
+void OrdinaryHasInstanceStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef object = TaggedArgument(1);
+    GateRef target = TaggedArgument(2); // 2: 3rd argument
+    Return(OrdinaryHasInstance(glue, target, object));
 }
 
 void IncStubBuilder::GenerateCircuit()

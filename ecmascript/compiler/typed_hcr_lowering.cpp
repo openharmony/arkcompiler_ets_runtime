@@ -187,7 +187,11 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerBooleanConstructor(gate, glue);
             break;
         case OpCode::ORDINARY_HAS_INSTANCE:
-            LowerOrdinaryHasInstance(gate, glue);
+            if (compilationEnv_->IsJitCompiler()) {
+                LowerOrdinaryHasInstanceForJIT(gate, glue);
+            } else {
+                LowerOrdinaryHasInstance(gate, glue);
+            }
             break;
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
             LowerProtoChangeMarkerCheck(glue, gate);
@@ -1314,9 +1318,14 @@ void TypedHCRLowering::LowerStringLoadElement(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef glue = acc_.GetGlueFromArgList();
-
-    BuiltinsStringStubBuilder builder(&env);
-    GateRef result = builder.GetSingleCharCodeByIndex(glue, receiver, index);
+    GateRef result = Circuit::NullGate();
+    if (compilationEnv_->IsJitCompiler()) {
+        result = builder_.CallStub(glue, gate, CommonStubCSigns::StringLoadElement,
+                                   { glue, receiver, index }, "StringLoadElement stub");
+    } else {
+        BuiltinsStringStubBuilder builder(&env);
+        result = builder.GetSingleCharCodeByIndex(glue, receiver, index);
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -2253,6 +2262,20 @@ void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variabl
 void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
+    if (compilationEnv_->IsJitCompiler()) {
+        GateRef res = Circuit::NullGate();
+        if (acc_.GetNumValueIn(gate) == 1) {
+            res = builder_.CallStub(glue, gate, CommonStubCSigns::NewFloat32ArrayWithNoArgs,
+                                    { glue }, "NewFloat32ArrayWithNoArgs stub");
+        } else {
+            ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: new target and arg0
+            res = builder_.CallStub(glue, gate, CommonStubCSigns::NewFloat32Array,
+                                    { glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) },
+                                    "NewFloat32Array stub");
+        }
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
+        return;
+    }
     if (acc_.GetNumValueIn(gate) == 1) {
         NewFloat32ArrayConstructorWithNoArgs(gate, glue);
         return;
@@ -2596,6 +2619,16 @@ void TypedHCRLowering::LowerLoadBuiltinObject(GateRef gate)
     // so we need deopt
     builder_.DeoptCheck(builtinIsNotHole, frameState, DeoptType::BUILTINISHOLE1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builtin);
+}
+
+void TypedHCRLowering::LowerOrdinaryHasInstanceForJIT(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef obj = acc_.GetValueIn(gate, 0);
+    GateRef target = acc_.GetValueIn(gate, 1);
+    auto result = builder_.CallStub(glue, gate, CommonStubCSigns::OrdinaryHasInstance,
+                                    { glue, obj, target }, "OrdinaryHasInstance stub");
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
