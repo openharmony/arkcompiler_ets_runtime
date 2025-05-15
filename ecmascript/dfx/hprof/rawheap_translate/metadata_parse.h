@@ -25,6 +25,9 @@ using JSType = uint8_t;
 using NodeType = uint8_t;
 using ObjRangeVisitor = std::function<void(std::shared_ptr<MetaData> &, uint32_t)>;
 
+static constexpr NodeType DEFAULT_NODETYPE = 8;
+static constexpr NodeType FRAMEWORK_NODETYPE = 14;
+
 struct Field {
     std::string name;
     uint32_t offset;
@@ -101,8 +104,6 @@ private:
     static bool GetString(const cJSON *json, std::string &value);
     static bool GetUInt32(const cJSON *json, const char *key, uint32_t &value);
     static bool GetUInt32(const cJSON *json, uint32_t &value);
-
-    static constexpr NodeType DEFAULT_NODETYPE = 8;
 
     std::unordered_map<std::string, std::shared_ptr<MetaData>> metadata_ {};
     std::unordered_map<std::string, JSType> enumsMapJSType_ {};

@@ -114,7 +114,9 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"bigint\"],\"string\",\"number\",\"number\",\"number\",\"number\",\"number\"],\n");  // 4.
+    writer->WriteString("\"bigint\",\"framework\"],\"string\",\"number\",\"number\",\"number\",\"number\",");
+    // NOLINTNEXTLINE(modernize-raw-string-literal)
+    writer->WriteString("\"number\"],\n");  // 4.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\n");  // 5.
     // NOLINTNEXTLINE(modernize-raw-string-literal)

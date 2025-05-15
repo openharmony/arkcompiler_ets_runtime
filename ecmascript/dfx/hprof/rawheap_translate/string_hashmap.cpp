@@ -25,6 +25,11 @@ std::string StringHashMap::GetStringByKey(StringKey key) const
     return "";
 }
 
+StringKey StringHashMap::GetKeyByStringId(StringId stringId) const
+{
+    return orderedKey_[stringId - CUSTOM_STRID_START]; // 3: index_ start from 3
+}
+
 StringId StringHashMap::InsertStrAndGetStringId(const std::string &str)
 {
     StringKey key = GenerateStringKey(str);
