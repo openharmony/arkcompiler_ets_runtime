@@ -167,37 +167,37 @@ namespace panda {
     #ifdef ENABLE_ANLOG
     const char *tag = "ArkCompiler";
     template<>
-    PUBLIC_API AndroidLog<VERBOSE>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::VERBOSE>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_VERBOSE, tag, stream_.str().c_str());
     }
     
     template<>
-    PUBLIC_API AndroidLog<DEBUG>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::DEBUG>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_DEBUG, tag, stream_.str().c_str());
     }
     
     template<>
-    PUBLIC_API AndroidLog<INFO>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::INFO>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_INFO, tag, stream_.str().c_str());
     }
     
     template<>
-    PUBLIC_API AndroidLog<WARN>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::WARN>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_WARN, tag, stream_.str().c_str());
     }
     
     template<>
-    PUBLIC_API AndroidLog<ERROR>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::ERROR>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_ERROR, tag, stream_.str().c_str());
     }
     
     template<>
-    PUBLIC_API AndroidLog<FATAL>::~AndroidLog()
+    PUBLIC_API AndroidLog<Level::FATAL>::~AndroidLog()
     {
         __android_log_write(ANDROID_LOG_FATAL, tag, stream_.str().c_str());
         std::abort();
