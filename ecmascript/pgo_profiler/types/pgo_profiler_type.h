@@ -822,7 +822,7 @@ public:
     {
         return name_;
     }
-    
+
     void Merge(const PGORWOpTemplate &type)
     {
         for (uint32_t i = 0; i < type.count_; i++) {
@@ -1198,7 +1198,7 @@ public:
         if (sampleType->GetProfileType().IsMethodId()) {
             return sampleType->GetProfileType().IsValidCallMethodId();
         }
-        if (sampleType->GetProfileType().IsClassType()) {
+        if (sampleType->GetProfileType().IsJITClassType()) {
             return sampleType->GetProfileType().IsValidClassConstructorMethodId();
         }
         return false;
@@ -1216,7 +1216,7 @@ public:
     uint32_t GetDefOpCallMethodId() const
     {
         auto sampleType = static_cast<const PGODefineOpType*>(type_);
-        if (sampleType->GetProfileType().IsClassType()) {
+        if (sampleType->GetProfileType().IsJITClassType()) {
             return sampleType->GetProfileType().GetClassConstructorMethodId();
         }
         return sampleType->GetProfileType().GetCallMethodId();

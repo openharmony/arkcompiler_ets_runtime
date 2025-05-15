@@ -81,6 +81,21 @@ public:
         return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
     }
 
+    uint32_t TryGetHeapConstantConstructorIndex(uint32_t callMethodId) const
+    {
+        if (compilationEnv_ == nullptr || !compilationEnv_->SupportHeapConstant()) {
+            return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        }
+        ASSERT(compilationEnv_->IsJitCompiler());
+        auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
+        const auto &ctorMethodId2HeapConstantIndex = jitCompilationEnv->GetCtorMethodId2HeapConstantIndex();
+        auto itr = ctorMethodId2HeapConstantIndex.find(callMethodId);
+        if (itr != ctorMethodId2HeapConstantIndex.end()) {
+            return itr->second;
+        }
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+
     static bool IsTrustedBooleanType(GateAccessor acc, GateRef gate);
 
     static bool IsTrustedNumberType(GateAccessor acc, GateRef gate);

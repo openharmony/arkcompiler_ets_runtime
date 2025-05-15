@@ -1866,10 +1866,7 @@ bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
-    if (TryLowerNewBuiltinConstructor(gate)) {
-        return;
-    }
-    if (TryLowerNewNumber(&builder_, acc_, gate)) {
+    if (TryLowerNewBuiltinConstructor(gate) || TryLowerNewNumber(&builder_, acc_, gate)) {
         return;
     }
     NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
@@ -1890,8 +1887,16 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     GateRef frameState = acc_.FindNearestFrameState(stateSplit);
     GateRef ihclass = builder_.GetHClassGateFromIndex(frameState, hclassIndex);
     GateRef size = builder_.IntPtr(hclass->GetObjectSize());
-    // call target check
-    builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JS_NEWOBJRANGE>(ctor, builder_.IntPtr(INVALID_INDEX), gate);
+
+    auto heapConstantIndex = tacc.TryGetHeapConstantConstructorIndex(methodId);
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        GateRef res = builder_.HeapConstant(heapConstantIndex);
+        builder_.DeoptCheck(builder_.Equal(ctor, res), frameState, DeoptType::NOTCALLTARGETHEAPOBJECT);
+    } else {
+        // call target check
+        builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JS_NEWOBJRANGE>(ctor,
+            builder_.IntPtr(INVALID_INDEX), gate);
+    }
     // check IHC
     GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
         JSFunction::PROTO_OR_DYNCLASS_OFFSET);
@@ -1911,8 +1916,7 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     }
     bool needPushArgv = (expectedArgc != actualArgc);
     GateRef result = builder_.CallNew(gate, args, needPushArgv);
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(),
-        builder_.GetDepend(), result);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
