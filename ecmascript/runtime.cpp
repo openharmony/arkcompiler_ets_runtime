@@ -91,6 +91,18 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 #endif
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
+    } else {
+#ifdef USE_CMC_GC
+        JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
+        ASSERT(mainThread != nullptr);
+        EcmaVM *mainVM = mainThread->GetEcmaVM();
+        ASSERT(mainVM != nullptr);
+        if (mainVM->IsPreForked() && !mainVM->IsPostForked()) {
+            LOG_ECMA(ERROR) << "create ecmavm after pre fork, but not post pork";
+            ASSERT(!DaemonThread::GetInstance()->IsRunning());
+            mainVM->PostFork();
+        }
+#endif
     }
 }
 

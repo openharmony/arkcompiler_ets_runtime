@@ -35,6 +35,7 @@ void ThreadHolderManager::RegisterThreadHolder([[maybe_unused]] ThreadHolder *ho
         std::lock_guard<std::mutex> guard(mutator_manager.allMutatorListLock_);
         mutator_manager.allMutatorList_.push_back(mutator);
     }
+    mutator->SetMutatorPhase(Heap::GetHeap().GetGCPhase());
 
     mutator_manager.MutatorManagementRUnlock();
 }

@@ -61,7 +61,6 @@ public:
         Mutator* mutator = new (std::nothrow) Mutator();
         LOGF_CHECK(mutator != nullptr) << "new Mutator failed";
         mutator->Init();
-        mutator->SetMutatorPhase(Heap::GetHeap().GetGCPhase());
         return mutator;
     }
 
@@ -181,16 +180,6 @@ public:
         return mutatorBase_.HasSuspensionRequest(flag);
     }
 
-    void SetSafepointStatePtr(uint64_t* slot)
-    {
-        mutatorBase_.SetSafepointStatePtr(slot);
-    }
-
-    void SetSafepointActive(bool value)
-    {
-        mutatorBase_.SetSafepointActive(value);
-    }
-
     // Ensure that mutator phase is changed only once by mutator itself or GC
     __attribute__((always_inline)) inline bool TransitionGCPhase(bool bySelf);
 
@@ -225,11 +214,6 @@ public:
     {
         // tid changed after fork, so we re-initialize it.
         InitTid();
-    }
-
-    const void* GetSafepointPage() const
-    {
-        return mutatorBase_.GetSafepointPage();
     }
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
@@ -281,22 +265,6 @@ public:
     void MutatorUnlock()
     {
         mutatorBase_.MutatorBaseUnlock();
-    }
-
-    void PreparedToRun(ThreadLocalData* tlData)
-    {
-        if (UNLIKELY_CC(tlData->buffer == nullptr)) {
-            (void)AllocationBuffer::GetOrCreateAllocBuffer();
-        }
-        DoLeaveSaferegion();
-        SetSafepointStatePtr(&tlData->safepointState);
-        SetSafepointActive(false);
-    }
-
-    void PreparedToPark(void* pc, void* fa)
-    {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
     }
 
     // temporary impl
