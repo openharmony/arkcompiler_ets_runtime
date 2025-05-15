@@ -612,6 +612,18 @@ public:
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_RESURRECTED_REGION, 1, flag);
     }
 
+    void SetRegionCellCount(uint8_t cellCount)
+    {
+        // 8: region cell count is 8 bits.
+        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8, cellCount);
+    }
+
+    uint16_t GetRegionCellCount()
+    {
+        // 8: region cell count is 8 bits.
+        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8);
+    }
+
     RegionType GetRegionType() const
     {
         return static_cast<RegionType>(metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE,
@@ -758,6 +770,12 @@ public:
 
     ALWAYS_INLINE bool IsLargeRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::LARGE_SIZED_UNITS; }
 
+    bool IsFixedRegion() const
+    {
+        return (GetRegionType()  == RegionType::FIXED_PINNED_REGION) ||
+            (GetRegionType()  == RegionType::FULL_FIXED_PINNED_REGION);
+    }
+
     bool IsThreadLocalRegion() const
     {
         return GetRegionType()  == RegionType::THREAD_LOCAL_REGION;
@@ -779,7 +797,7 @@ public:
 
     bool CollectPinnedGarbage(BaseObject* obj, size_t cellCount)
     {
-        std::lock_guard<std::mutex> lg(regionMutex);
+        std::lock_guard<std::mutex> lg(metadata.regionMutex);
         if (IsFreePinnedObject(obj)) {
             return false;
         }
@@ -804,7 +822,7 @@ public:
 
     HeapAddress AllocPinnedFromFreeList()
     {
-        std::lock_guard<std::mutex> lg(regionMutex);
+        std::lock_guard<std::mutex> lg(metadata.regionMutex);
         HeapAddress addr = GetFreeSlot();
         if (addr == 0) {
             RegionDesc* region = GetNextRegion();
@@ -908,7 +926,8 @@ private:
         // use mark-bitmap pointer instead
         BIT_OFFSET_MARKED_REGION = 5,
         BIT_OFFSET_ENQUEUED_REGION = 6,
-        BIT_OFFSET_RESURRECTED_REGION = 7
+        BIT_OFFSET_RESURRECTED_REGION = 7,
+        BIT_OFFSET_REGION_CELLCOUNT = 8
     };
 
     struct ObjectSlot {
@@ -922,7 +941,7 @@ private:
             isFree_ = 1;
             size_t extraSize = size - sizeof(ObjectSlot);
             if (extraSize > 0) {
-                uintptr_t start = reinterpret_cast<uintptr_t>(this) - sizeof(ObjectSlot);
+                uintptr_t start = reinterpret_cast<uintptr_t>(this) + sizeof(ObjectSlot);
                 LOGE_IF((memset_s(reinterpret_cast<void*>(start), extraSize, 0, extraSize) != EOK)) << "memset_s fail";
             }
         }
@@ -979,11 +998,13 @@ private:
                 uint8_t isMarked : 1;
                 uint8_t isEnqueued : 1;
                 uint8_t isResurrected : 1;
+                uint8_t cellCount : 8;
             };
             BitFields<uint16_t> regionBits;
         };
 
         bool toSpaceRegion;
+        std::mutex regionMutex;
     };
 
     class UnitInfo {
@@ -1110,7 +1131,6 @@ private:
 
     static constexpr uint32_t NULLPTR_IDX = UnitInfo::INVALID_IDX;
     UnitMetadata metadata;
-    std::mutex regionMutex;
 };
 } // namespace panda
 #endif // ARK_COMMON_REGION_INFO_H

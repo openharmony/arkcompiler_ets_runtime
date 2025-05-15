@@ -242,7 +242,7 @@ static RuntimeParam InitRuntimeParam()
 {
     CheckSysmemSize();
     // For address aligns inner 4G range, max capacity must smaller than 4G. Because of metadata.
-    size_t initHeapSize = InitHeapSize(g_sysmemSize > 1 * GB ? 3.9 * MB : 64 * KB);
+    size_t initHeapSize = InitHeapSize(g_sysmemSize > 1 * GB ? 3.6 * MB : 64 * KB);
     RuntimeParam param = {
         .heapParam = {
 #if defined(PANDA_TARGET_OHOS)

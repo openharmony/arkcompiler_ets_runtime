@@ -138,6 +138,23 @@ const char* RegionDesc::GetTypeName() const
 
 void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
 {
+    if (IsFixedRegion()) {
+        size_t size = static_cast<size_t>(GetRegionCellCount()) * sizeof(uint64_t);
+        uintptr_t position = GetRegionStart();
+        uintptr_t end = GetRegionEnd();
+        while (position < end) {
+            BaseObject* obj = reinterpret_cast<BaseObject*>(position);
+            position += size;
+            if (position > end) {
+                break;
+            }
+            if (IsFreePinnedObject(obj)) {
+                continue;
+            }
+            func(obj);
+        }
+        return;
+    }
     if (IsLargeRegion()) {
         func(reinterpret_cast<BaseObject*>(GetRegionStart()));
     } else if (IsSmallRegion()) {
