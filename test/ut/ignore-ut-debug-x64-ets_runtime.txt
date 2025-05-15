@@ -11,3 +11,6 @@ obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Barrier_Test
 
 #25085
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest
+
+#25886
+obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
