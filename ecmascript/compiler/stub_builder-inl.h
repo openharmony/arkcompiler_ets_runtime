@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
@@ -3515,10 +3514,14 @@ inline void StubBuilder::SetBaselineJitCodeToFunction(GateRef glue, GateRef func
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
+inline GateRef StubBuilder::GetGlobalEnv(GateRef glue)
+{
+    return env_->GetBuilder()->GetGlobalEnv(glue);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
-    GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
-    return Load(VariableType::JS_ANY(), glue, glue, offset);
+    return env_->GetBuilder()->GetGlobalObject(glue);
 }
 
 inline GateRef StubBuilder::GetMethodFromFunction(GateRef glue, GateRef function)
@@ -3940,13 +3943,12 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef glue, GateRef jsFunc)
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
 {
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = GetGlobalEnv(glue);
     GateRef keyAddr = ChangeTaggedPointerToInt64(key);
     GateRef firstDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glue, glueGlobalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
+        VariableType::INT64(), glue, globalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
     GateRef lastDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glue, glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
+        VariableType::INT64(), glue, globalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BitAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                     Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
     Label checkCommonDetector(env_);
@@ -3988,8 +3990,8 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
     env->SubCfgEntry(&subEntry);
 
     DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(constantIndex, VariableType::INT32(),
-        Int32(static_cast<int32_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
+    DEFVARIABLE(elementIndex, VariableType::INT32(),
+        Int32(static_cast<int32_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -4002,15 +4004,15 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
     bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(glue, cachedArray, *i));
     BRANCH(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
-    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(glue, cachedArray, Int32Add(*i, Int32(1))));
+    elementIndex = GetInt32OfTInt(GetValueFromTaggedArray(glue, cachedArray, Int32Add(*i, Int32(1))));
     Jump(&afterLoop);
     Bind(&afterUpdate);
-    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
+    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and elementIndex
     BRANCH(Int32LessThan(*i, cachedLength), &loopEnd, miss);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);
-    auto ret = *constantIndex;
+    auto ret = *elementIndex;
 
     env->SubCfgExit();
     return ret;
@@ -4102,12 +4104,6 @@ inline void StubBuilder::SetArrayBufferByteLength(GateRef glue, GateRef buffer, 
 {
     GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, buffer, offset, length);
-}
-
-inline GateRef StubBuilder::GetCurrentEcmaContext(GateRef glue)
-{
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    return LoadPrimitive(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
 }
 
 inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
@@ -4384,9 +4380,8 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
 
 inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
 {
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    return GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    return GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
 }
 
 inline GateRef StubBuilder::GetArrayElementsGuardians(GateRef env)

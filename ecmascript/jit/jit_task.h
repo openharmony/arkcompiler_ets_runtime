@@ -192,11 +192,6 @@ public:
         methodName_ = methodName;
     }
 
-    EcmaContext *GetEcmaContext() const
-    {
-        return ecmaContext_;
-    }
-
     void SetRunState(RunState s)
     {
         runState_.store(s, std::memory_order_release);
@@ -245,10 +240,6 @@ public:
         virtual ~AsyncTask() override = default;
 
         bool Run(uint32_t threadIndex) override;
-        EcmaContext *GetEcmaContext() const
-        {
-            return jitTask_->GetEcmaContext();
-        }
         EcmaVM *GetHostVM() const
         {
             return jitTask_->GetHostThread()->GetEcmaVM();
@@ -309,7 +300,6 @@ private:
     CString methodName_;
     int32_t offset_;
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
-    EcmaContext *ecmaContext_;
     JitCompileMode jitCompileMode_;
     JitDfx *jitDfx_ { nullptr };
     int mainThreadCompileTime_ {0};

@@ -192,6 +192,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
         }
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
+        mainFunc->SetLexicalEnv(thread, vm->GetGlobalEnv(), SKIP_BARRIER);
         // Main function is created profileTypeInfo by default.
         if (thread->IsPGOProfilerEnable()) {
             SlowRuntimeStub::NotifyInlineCache(thread, mainFunc.GetObject<JSFunction>());

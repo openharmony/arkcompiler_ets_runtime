@@ -577,8 +577,9 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     Label dispatch(env);
     Label slowPath(env);
     // For the args, we use ElementsKind::GENERIC as the kind
-    GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                  ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                             static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);

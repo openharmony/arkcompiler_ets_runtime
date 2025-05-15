@@ -30,7 +30,6 @@ using namespace panda::pandasm;
 
 namespace panda::test {
 using Program = panda::ecmascript::Program;
-using EcmaContext = panda::ecmascript::EcmaContext;
 class QuickFixTest : public testing::Test {
 public:
     static void SetUpTestCase()

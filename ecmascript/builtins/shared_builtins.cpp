@@ -65,7 +65,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
         factory_->NewSEcmaHClass(JSSharedObject::SIZE, 0, JSType::JS_SHARED_OBJECT, sObjPrototypeVal,
                                  emptySLayout);
     // SharedFunction.prototype_or_hclass
-    JSHandle<JSHClass> sFuncPrototypeHClass = CreateSFunctionPrototypeHClass(sObjPrototypeVal);
+    JSHandle<JSHClass> sFuncPrototypeHClass = CreateSFunctionPrototypeHClass(env, sObjPrototypeVal);
     // SharedFunction.prototype
     JSHandle<JSFunction> sFuncPrototype = factory_->NewSFunctionByHClass(
         reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf), sFuncPrototypeHClass,
@@ -133,7 +133,7 @@ void Builtins::InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHa
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // SendableArrayBuffer.prototype
-    JSHandle<JSHClass> arrayBufferPrototypeHClass = CreateSArrayBufferPrototypeHClass(sObjPrototype);
+    JSHandle<JSHClass> arrayBufferPrototypeHClass = CreateSArrayBufferPrototypeHClass(env, sObjPrototype);
     JSHandle<JSObject> arrayBufferPrototype =
         factory_->NewSharedOldSpaceJSObjectWithInit(arrayBufferPrototypeHClass);
 
@@ -145,7 +145,7 @@ void Builtins::InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHa
         JSSendableArrayBuffer::SIZE, 0, JSType::JS_SENDABLE_ARRAY_BUFFER, arrayBufferPrototypeValue, emptySLayout);
 
     // SendableArrayBuffer = new Function()
-    JSHandle<JSHClass> arrayBufferFuncHClass = CreateSArrayBufferFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> arrayBufferFuncHClass = CreateSArrayBufferFunctionHClass(env, sFuncPrototype);
 
     JSHandle<JSFunction> arrayBufferFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSendableArrayBuffer::ArrayBufferConstructor),
@@ -196,7 +196,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // SharedSet.prototype
-    JSHandle<JSHClass> setPrototypeHClass = CreateSSetPrototypeHClass(sObjPrototype);
+    JSHandle<JSHClass> setPrototypeHClass = CreateSSetPrototypeHClass(env, sObjPrototype);
     JSHandle<JSObject> setPrototype =
         factory_->NewSharedOldSpaceJSObjectWithInit(setPrototypeHClass);
 
@@ -206,7 +206,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSHClass> setIHClass =
         factory_->NewSEcmaHClass(JSSharedSet::SIZE, 0, JSType::JS_SHARED_SET, setPrototypeValue, emptySLayout);
     // SharedSet.hclass
-    JSHandle<JSHClass> setFuncHClass = CreateSSetFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> setFuncHClass = CreateSSetFunctionHClass(env, sFuncPrototype);
     // SharedSet() = new Function()
     JSHandle<JSFunction> setFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedSet::Constructor),
@@ -264,7 +264,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // SharedMap.prototype
-    JSHandle<JSHClass> mapPrototypeHClass = CreateSMapPrototypeHClass(sObjPrototype);
+    JSHandle<JSHClass> mapPrototypeHClass = CreateSMapPrototypeHClass(env, sObjPrototype);
     JSHandle<JSObject> mapPrototype =
         factory_->NewSharedOldSpaceJSObjectWithInit(mapPrototypeHClass);
     JSHandle<JSTaggedValue> mapPrototypeValue(mapPrototype);
@@ -273,7 +273,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSHClass> mapIHClass =
         factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0, JSType::JS_SHARED_MAP, mapPrototypeValue, emptySLayout);
     // SharedMap.hclass
-    JSHandle<JSHClass> mapFuncHClass = CreateSMapFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> mapFuncHClass = CreateSMapFunctionHClass(env, sFuncPrototype);
     // SharedMap() = new Function()
     JSHandle<JSFunction> mapFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedMap::Constructor),
@@ -488,10 +488,10 @@ JSHandle<JSHClass> Builtins::CreateSFunctionHClass(const JSHandle<JSFunction> &s
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                              const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -517,10 +517,10 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<JSF
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                      const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -546,10 +546,10 @@ JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<JSFunction>
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                      const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -575,10 +575,10 @@ JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction>
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateBitVectorFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateBitVectorFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                           const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -604,10 +604,10 @@ JSHandle<JSHClass> Builtins::CreateBitVectorFunctionHClass(const JSHandle<JSFunc
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const
+JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                            const JSHandle<JSTaggedValue> &sObjPrototypeVal) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -632,10 +632,10 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTag
     return sobjPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                               const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -661,10 +661,10 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<JS
     return sArrayBufferPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                       const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -692,10 +692,10 @@ JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<JSObject> 
     return sSetPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                       const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -723,10 +723,10 @@ JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> 
     return sMapPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateBitVectorPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateBitVectorPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                            const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -754,10 +754,10 @@ JSHandle<JSHClass> Builtins::CreateBitVectorPrototypeHClass(const JSHandle<JSObj
     return sBitVectorPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                         const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -785,10 +785,10 @@ JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<JSObject
     return sArrayPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -987,7 +987,7 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Arraybase.prototype
-    JSHandle<JSHClass> arrBaseFuncInstanceHClass = CreateSArrayPrototypeHClass(sObjIHClass);
+    JSHandle<JSHClass> arrBaseFuncInstanceHClass = CreateSArrayPrototypeHClass(env, sObjIHClass);
 
     // Array.prototype
     JSHandle<JSObject> arrFuncPrototype = InitializeArrayPrototype(arrBaseFuncInstanceHClass);
@@ -996,7 +996,7 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     int32_t protoFieldIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX + 1;
     
     // SharedArray.hclass
-    JSHandle<JSHClass> arrayFuncHClass = CreateSArrayFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> arrayFuncHClass = CreateSArrayFunctionHClass(env, sFuncPrototype);
     arrayFuncHClass->SetExtensible(false);
     // SharedArray() = new Function()
     JSHandle<JSFunction> arrayFunction =
@@ -1052,7 +1052,7 @@ void Builtins::InitializeSharedBitVector(const JSHandle<GlobalEnv> &env, const J
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     auto globalConst = const_cast<GlobalEnvConstants*>(thread_->GlobalConstants());
     // BitVector.prototype
-    JSHandle<JSHClass> prototypeHClass = CreateBitVectorPrototypeHClass(sObjPrototype);
+    JSHandle<JSHClass> prototypeHClass = CreateBitVectorPrototypeHClass(env, sObjPrototype);
     JSHandle<JSObject> bitVectorFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(prototypeHClass);
     JSHandle<JSTaggedValue> bitVectorFuncPrototypeValue(bitVectorFuncPrototype);
 
@@ -1063,7 +1063,7 @@ void Builtins::InitializeSharedBitVector(const JSHandle<GlobalEnv> &env, const J
             JSType::JS_API_BITVECTOR, bitVectorFuncPrototypeValue, emptySLayout);
     
     // BitVector.hclass
-    JSHandle<JSHClass> bitVectorFuncHClass = CreateBitVectorFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> bitVectorFuncHClass = CreateBitVectorFunctionHClass(env, sFuncPrototype);
     bitVectorFuncHClass->SetExtensible(false);
     
     // BitVector() = new Function()
@@ -1147,7 +1147,7 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // SharedTypedArray.prototype
-    JSHandle<JSHClass> typedArrFuncPrototypeHClass = CreateSTypedArrayPrototypeHClass(sObjPrototype);
+    JSHandle<JSHClass> typedArrFuncPrototypeHClass = CreateSTypedArrayPrototypeHClass(env, sObjPrototype);
     JSHandle<JSObject> typedArrFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(typedArrFuncPrototypeHClass);
     JSHandle<JSTaggedValue> typedArrFuncPrototypeValue(typedArrFuncPrototype);
 
@@ -1155,7 +1155,7 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSHClass> typedArrFuncInstanceHClass = CreateSSpecificTypedArrayInstanceHClass(
         typedArrFuncPrototype);
     // SharedTypedArray.hclass
-    JSHandle<JSHClass> typedArrFuncHClass = CreateSTypedArrayFunctionHClass(sFuncPrototype);
+    JSHandle<JSHClass> typedArrFuncHClass = CreateSTypedArrayFunctionHClass(env, sFuncPrototype);
     // SharedTypedArray = new Function()
     JSHandle<JSFunction> typedArrayFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedTypedArray::TypedArrayBaseConstructor),
@@ -1215,10 +1215,10 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
 #undef BUILTIN_SHARED_TYPED_ARRAY_CALL_INITIALIZE
 }
 
-JSHandle<JSHClass> Builtins::CreateSTypedArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+JSHandle<JSHClass> Builtins::CreateSTypedArrayPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                              const JSHandle<JSObject> &sObjPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);
@@ -1246,10 +1246,10 @@ JSHandle<JSHClass> Builtins::CreateSTypedArrayPrototypeHClass(const JSHandle<JSO
     return sTypedArrayPrototypeHClass;
 }
 
-JSHandle<JSHClass> Builtins::CreateSTypedArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+JSHandle<JSHClass> Builtins::CreateSTypedArrayFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                             const JSHandle<JSFunction> &sFuncPrototype) const
 {
     uint32_t index = 0;
-    auto env = vm_->GetGlobalEnv();
     PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
     attributes.SetIsInlinedProps(true);
     attributes.SetRepresentation(Representation::TAGGED);

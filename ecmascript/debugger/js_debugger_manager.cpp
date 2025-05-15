@@ -16,33 +16,47 @@
 #include "ecmascript/debugger/js_debugger_manager.h"
 
 namespace panda::ecmascript::tooling {
+std::unordered_map<int, JsDebuggerManager *> JsDebuggerManager::jsDebuggerManagerMap_ {};
+std::shared_mutex JsDebuggerManager::mutex_;
 
-    std::unordered_map<int, JsDebuggerManager *> JsDebuggerManager::jsDebuggerManagerMap_ {};
-    std::shared_mutex JsDebuggerManager::mutex_;
+void JsDebuggerManager::AddJsDebuggerManager (int tid, JsDebuggerManager *jsDebuggerManager)
+{
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
+        jsDebuggerManagerMap_.emplace(tid, jsDebuggerManager);
+    }
+}
 
-    void JsDebuggerManager::AddJsDebuggerManager (int tid, JsDebuggerManager *jsDebuggerManager)
-    {
-        std::unique_lock<std::shared_mutex> lock(mutex_);
-        if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
-            jsDebuggerManagerMap_.emplace(tid, jsDebuggerManager);
-        }
+JsDebuggerManager *JsDebuggerManager::GetJsDebuggerManager(int tid)
+{
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
+        return nullptr;
+    }
+    return jsDebuggerManagerMap_[tid];
+}
+
+void JsDebuggerManager::DeleteJsDebuggerManager(int tid)
+{
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    auto it = jsDebuggerManagerMap_.find(tid);
+    if (it != jsDebuggerManagerMap_.end()) {
+        jsDebuggerManagerMap_.erase(it);
+    }
+}
+
+void JsDebuggerManager::SetDebugMode(bool isDebugMode)
+{
+    if (isDebugMode_ == isDebugMode) {
+        return;
     }
 
-    JsDebuggerManager *JsDebuggerManager::GetJsDebuggerManager(int tid)
-    {
-        std::shared_lock<std::shared_mutex> lock(mutex_);
-        if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
-            return nullptr;
-        }
-        return jsDebuggerManagerMap_[tid];
-    }
+    isDebugMode_ = isDebugMode;
 
-    void JsDebuggerManager::DeleteJsDebuggerManager(int tid)
-    {
-        std::unique_lock<std::shared_mutex> lock(mutex_);
-        auto it = jsDebuggerManagerMap_.find(tid);
-        if (it != jsDebuggerManagerMap_.end()) {
-            jsDebuggerManagerMap_.erase(it);
-        }
+    if (isDebugMode) {
+        jsThread_->SetDebugModeState();
+    } else {
+        jsThread_->ResetDebugModeState();
     }
+}
 } // namespace panda::ecmascript::tooling

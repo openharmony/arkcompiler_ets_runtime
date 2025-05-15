@@ -105,7 +105,6 @@ using TriggerGCData = std::pair<void*, uint8_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
-using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
@@ -282,6 +281,12 @@ public:
     }
 
     explicit inline Local(uintptr_t addr) : address_(addr) {}
+
+    inline bool operator==(const Local<T> &other) const
+    {
+        return *reinterpret_cast<JSTaggedType *>(GetAddress()) ==
+            *reinterpret_cast<JSTaggedType *>(other.GetAddress());
+    }
 
 private:
     inline T *GetAddress() const
@@ -656,6 +661,7 @@ public:
                          size_t *byteOffset);
     void TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
         bool *isArrayOrSharedArray, uint32_t *arrayLength);
+    bool IsJsGlobalEnv(const EcmaVM *vm);
 
 private:
     JSTaggedType value_;
@@ -1608,14 +1614,6 @@ public:
                             const std::string &moduleName,
                             std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
-    // context
-    static EcmaContext *CreateJSContext(EcmaVM *vm);
-    static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
-    static void DestroyJSContext(EcmaVM *vm, EcmaContext *context);
-
-    // context execute
-    static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
-                                 bool needUpdate = false);
     // JS code
     static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName,
                                        const std::string &entry, bool needUpdate = false,
@@ -1823,6 +1821,13 @@ public:
 
     // Napi Update SubStackInfo
     static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
+
+    static Local<JSValueRef> CreateContext(const EcmaVM *vm);
+
+    static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
+
+    static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);

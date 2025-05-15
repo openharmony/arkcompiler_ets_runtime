@@ -30,8 +30,7 @@ void JSNApiSwitchCurrentContextFuzztest([[maybe_unused]]const uint8_t *data, siz
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    EcmaContext *context = JSNApi::CreateJSContext(vm);
-    JSNApi::SwitchCurrentContext(vm, context);
+
     JSNApi::DestroyJSVM(vm);
 }
 }

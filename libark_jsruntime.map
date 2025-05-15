@@ -383,6 +383,7 @@
       panda::ecmascript::pgo::PGOMethodInfo::CalcChecksum*;
       panda::ecmascript::pgo::PGOProfiler::*;
       panda::ecmascript::pgo::PGOProfilerManager::*;
+      panda::ecmascript::tooling::JsDebuggerManager::SetDebugMode*;
       panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::panda_file::ClassDataAccessor::ClassDataAccessor*;
       panda::panda_file::CodeDataAccessor::CatchBlock::CatchBlock*;

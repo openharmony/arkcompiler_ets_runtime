@@ -347,31 +347,6 @@ HWTEST_F_L0(JSNApiTests, LocalScope_LocalScope)
 }
 
 /**
- * @tc.number: ffi_interface_api_111
- * @tc.name: JSNApi_CreateJSContext_SwitchCurrentContext_DestroyJSContext
- * @tc.desc:
- * CreateJSContext：Create Context Object Pointer
- * SwitchCurrentContext：Record Update Context Object
- * DestroyJSContext：Delete Context Object
- * @tc.type: FUNC
- * @tc.require:  parameter
- */
-HWTEST_F_L0(JSNApiTests, JSNApi_SwitchCurrentContext_DestroyJSContext)
-{
-    LocalScope scope(vm_);
-    EXPECT_EQ(vm_->GetJSThread()->GetEcmaContexts().size(), 1);
-    EcmaContext *context = JSNApi::CreateJSContext(vm_);
-    GTEST_LOG_(WARNING) << "context test =" << context;
-    EXPECT_EQ(vm_->GetJSThread()->GetEcmaContexts().size(), 2);
-    EcmaContext *context1 = JSNApi::CreateJSContext(vm_);
-    EXPECT_EQ(vm_->GetJSThread()->GetEcmaContexts().size(), 3);
-    JSNApi::SwitchCurrentContext(vm_, context1);
-    EXPECT_EQ(vm_->GetJSThread()->GetEcmaContexts().size(), 3);
-    JSNApi::DestroyJSContext(vm_, context1);
-    EXPECT_EQ(vm_->GetJSThread()->GetEcmaContexts().size(), 2);
-}
-
-/**
  * @tc.number: ffi_interface_api_112
  * @tc.name: JSNApi_CreateJSVM_DestroyJSVM
  * @tc.desc: Create/delete JSVM
@@ -1678,5 +1653,43 @@ HWTEST_F_L0(JSNApiTests, UpdateStackInfo)
     ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
     JSNApi::UpdateStackInfo(vm_, nullptr, 0);
     ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_CreateContext001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::CreateContext(vm_);
+    EXPECT_TRUE(contextValue->IsHeapObject());
+    EXPECT_TRUE(contextValue->IsJsGlobalEnv(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_GetCurrentContext001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::GetCurrentContext(vm_);
+    EXPECT_TRUE(contextValue->IsHeapObject());
+    EXPECT_TRUE(contextValue->IsJsGlobalEnv(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_Local_Operator_equal001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::CreateContext(vm_);
+    Local<JSValueRef> newContext = Local<JSValueRef>(contextValue);
+    EXPECT_TRUE(contextValue == newContext);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SwitchContext001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::CreateContext(vm_);
+    EXPECT_TRUE(contextValue->IsHeapObject());
+    EXPECT_TRUE(contextValue->IsJsGlobalEnv(vm_));
+    Local<JSValueRef> currentContext = JSNApi::GetCurrentContext(vm_);
+    EXPECT_FALSE(currentContext == contextValue);
+
+    JSNApi::SwitchContext(vm_, contextValue);
+    Local<JSValueRef> switchedContext = JSNApi::GetCurrentContext(vm_);
+    EXPECT_TRUE(switchedContext == contextValue);
 }
 } // namespace panda::test

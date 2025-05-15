@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/global_env.h"

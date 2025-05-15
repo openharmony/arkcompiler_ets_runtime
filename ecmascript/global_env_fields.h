@@ -18,6 +18,9 @@
 
 #include <cstdint>
 
+#define GLOBAL_ENV_SELF_FIELD(V)                                                                    \
+    V(JSTaggedValue, GlobalEnv, GLOBAL_ENV_INDEX)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_COMMON_FIELDS(V)                                                                 \
     /* Function */                                                                                  \
@@ -241,7 +244,31 @@
     V(JSTaggedValue, StringSplitResultCache, STRING_SPLIT_RESULT_CACHE_INDEX)                       \
     V(JSTaggedValue, StringToListResultCache, STRING_TO_LIST_RESULT_CACHE_INDEX)                    \
     V(JSTaggedValue, RegExpCache, REGEXP_CACHE_INDEX)                                               \
-    V(JSTaggedValue, RegExpGlobalResult, REGEXP_GLOBAL_RESULT_INDEX)
+    V(JSTaggedValue, RegExpGlobalResult, REGEXP_GLOBAL_RESULT_INDEX)                                \
+    V(JSTaggedValue, ElementNONEClass, ELEMENT_NONE_HCLASS_INDEX)                                   \
+    V(JSTaggedValue, ElementNONEProtoClass, ELEMENT_NONE_PROTO_HCLASS_INDEX)                        \
+    V(JSTaggedValue, ElementHOLEClass, ELEMENT_HOLE_HCLASS_INDEX)                                   \
+    V(JSTaggedValue, ElementHOLEProtoClass, ELEMENT_HOLE_PROTO_HCLASS_INDEX)                        \
+    V(JSTaggedValue, ElementINTClass, ELEMENT_INT_HCLASS_INDEX)                                     \
+    V(JSTaggedValue, ElementINTProtoClass, ELEMENT_INT_PROTO_HCLASS_INDEX)                          \
+    V(JSTaggedValue, ElementNUMBERClass, ELEMENT_NUMBER_HCLASS_INDEX)                               \
+    V(JSTaggedValue, ElementNUMBERProtoClass, ELEMENT_NUMBER_PROTO_HCLASS_INDEX)                    \
+    V(JSTaggedValue, ElementSTRINGClass, ELEMENT_STRING_HCLASS_INDEX)                               \
+    V(JSTaggedValue, ElementSTRINGProtoClass, ELEMENT_STRING_PROTO_HCLASS_INDEX)                    \
+    V(JSTaggedValue, ElementOBJECTClass, ELEMENT_OBJECT_HCLASS_INDEX)                               \
+    V(JSTaggedValue, ElementOBJECTProtoClass, ELEMENT_OBJECT_PROTO_HCLASS_INDEX)                    \
+    V(JSTaggedValue, ElementTAGGEDClass, ELEMENT_TAGGED_HCLASS_INDEX)                               \
+    V(JSTaggedValue, ElementTAGGEDProtoClass, ELEMENT_TAGGED_PROTO_HCLASS_INDEX)                    \
+    V(JSTaggedValue, ElementHOLE_INTClass, ELEMENT_HOLE_INT_HCLASS_INDEX)                           \
+    V(JSTaggedValue, ElementHOLE_INTProtoClass, ELEMENT_HOLE_INT_PROTO_HCLASS_INDEX)                \
+    V(JSTaggedValue, ElementHOLE_NUMBERClass, ELEMENT_HOLE_NUMBER_HCLASS_INDEX)                     \
+    V(JSTaggedValue, ElementHOLE_NUMBERProtoClass, ELEMENT_HOLE_NUMBER_PROTO_HCLASS_INDEX)          \
+    V(JSTaggedValue, ElementHOLE_STRINGClass, ELEMENT_HOLE_STRING_HCLASS_INDEX)                     \
+    V(JSTaggedValue, ElementHOLE_STRINGProtoClass, ELEMENT_HOLE_STRING_PROTO_HCLASS_INDEX)          \
+    V(JSTaggedValue, ElementHOLE_OBJECTClass, ELEMENT_HOLE_OBJECT_HCLASS_INDEX)                     \
+    V(JSTaggedValue, ElementHOLE_OBJECTProtoClass, ELEMENT_HOLE_OBJECT_PROTO_HCLASS_INDEX)          \
+    V(JSTaggedValue, ElementHOLE_TAGGEDClass, ELEMENT_HOLE_TAGGED_HCLASS_INDEX)                     \
+    V(JSTaggedValue, ElementHOLE_TAGGEDProtoClass, ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX)
 
 #define GLOBAL_ENV_CONTAINER_ITERATORS(V)                                                           \
     /* non ECMA standard jsapi containers iterators */                                              \
@@ -355,6 +382,7 @@
 
 
 #define GLOBAL_ENV_FIELDS(V)                                \
+    GLOBAL_ENV_SELF_FIELD(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
     GLOBAL_ENV_CONTAINER_ITERATORS(V)
@@ -363,7 +391,8 @@ namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
     enum class GlobalEnvField: uint16_t {
         GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
-        FINAL_INDEX
+        FINAL_INDEX,
+        INVALID = -1
     };
 #undef GLOBAL_ENV_FIELD_ENUM_ITEM
 

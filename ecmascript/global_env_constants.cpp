@@ -66,11 +66,11 @@ void GlobalEnvConstants::Init(JSThread *thread)
         }
     } else {
         InitSharedRootsClasses(factory);
-        InitSharedMiscellanious(thread, factory);
+        InitSharedMiscellaneous(thread, factory);
         InitSharedStrings(factory);
     }
     // 2. Init non-shareds.
-    InitMiscellanious(thread, factory);
+    InitMiscellaneous(thread, factory);
     InitRootsClasses(factory);
 }
 
@@ -156,8 +156,10 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
 #endif
-    SetConstant(ConstantIndex::ENV_CLASS_INDEX,
+    SetConstant(ConstantIndex::LEXICAL_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
+    SetConstant(ConstantIndex::SFUNCTION_ENV_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SFUNCTION_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, JSSymbol::SIZE, JSType::SYMBOL));
     SetConstant(ConstantIndex::ACCESSOR_DATA_CLASS_INDEX,
@@ -281,7 +283,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
 #endif
 }
 
-void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory *factory)
+void GlobalEnvConstants::InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory)
 {
     // Accessors
     auto accessor = factory->NewSInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
@@ -310,6 +312,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::SINGLE_CHAR_TABLE_INDEX, SingleCharTable::CreateSingleCharTable(thread));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
+    SetConstant(ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX, factory->NewEmptySFunctionEnv());
     SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->NewSEmptyLayoutInfo());
     SetConstant(ConstantIndex::UINT64_MAX_BIGINT_INDEX, BigInt::CreateUint64MaxBigInt(thread));
@@ -433,7 +436,7 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::JS_PROXY_CONSTRUCT_CLASS_INDEX, JSTaggedValue(jsProxyConstructClass));
 }
 
-void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *factory)
+void GlobalEnvConstants::InitMiscellaneous(JSThread *thread, ObjectFactory *factory)
 {
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
@@ -460,28 +463,5 @@ void GlobalEnvConstants::InitSpecialForSnapshot()
 {
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
-}
-
-void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
-{
-    {
-        JSHandle<JSHClass> hclass;
-#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                        \
-        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, false);  \
-        SetConstant(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX, hclass);
-
-        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
-#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
-    }
-    SetConstant(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX, originHClass);
-    {
-        JSHandle<JSHClass> hclass;
-#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                       \
-        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, true);  \
-        SetConstant(ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX, hclass);
-
-        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
-#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
-    }
 }
 }  // namespace panda::ecmascript

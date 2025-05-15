@@ -130,7 +130,7 @@ LexicalEnv *ObjectFactory::InlineNewLexicalEnv(int numSlots)
     NewObjectHook();
     size_t size = LexicalEnv::ComputeSize(numSlots);
     auto header = heap_->TryAllocateYoungGeneration(
-        JSHClass::Cast(thread_->GlobalConstants()->GetEnvClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetLexicalEnvClass().GetTaggedObject()), size);
     if (UNLIKELY(header == nullptr)) {
         return nullptr;
     }

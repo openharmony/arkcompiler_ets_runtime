@@ -18,7 +18,6 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
-#include "ecmascript/ecma_context.h"
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

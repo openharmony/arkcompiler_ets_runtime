@@ -2925,11 +2925,11 @@ DEF_RUNTIME_STUBS(OptNewLexicalEnvWithName)
     RUNTIME_STUBS_HEADER(OptNewLexicalEnvWithName);
     JSTaggedValue taggedNumVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue taggedScopeId = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> currentLexEnv = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> currentEnv = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     uint16_t numVars = static_cast<uint16_t>(taggedNumVars.GetInt());
     uint16_t scopeId = static_cast<uint16_t>(taggedScopeId.GetInt());
-    return RuntimeOptNewLexicalEnvWithName(thread, numVars, scopeId, currentLexEnv, func).GetRawData();
+    return RuntimeOptNewLexicalEnvWithName(thread, numVars, scopeId, currentEnv, func).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(OptCopyRestArgs)

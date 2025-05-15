@@ -14,7 +14,6 @@
  */
 #include "ecmascript/patch/quick_fix_manager.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"

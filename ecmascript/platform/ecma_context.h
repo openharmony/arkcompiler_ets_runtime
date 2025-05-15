@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_PLATFORM_ECMA_CONTEXT_H
 #define ECMASCRIPT_PLATFORM_ECMA_CONTEXT_H
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 

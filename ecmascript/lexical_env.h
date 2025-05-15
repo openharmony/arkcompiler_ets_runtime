@@ -16,19 +16,19 @@
 #ifndef ECMASCRIPT_LEXICALENV_H
 #define ECMASCRIPT_LEXICALENV_H
 
-#include "ecmascript/js_object.h"
-#include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/base_env.h"
 
 namespace panda::ecmascript {
-class LexicalEnv : public TaggedArray {
+class LexicalEnv : public BaseEnv {
 public:
-    static constexpr uint32_t PARENT_ENV_INDEX = 0;
-    static constexpr uint32_t SCOPE_INFO_INDEX = 1;
-    static constexpr uint32_t RESERVED_ENV_LENGTH = 2;
+    // the first field is used to store GlobalEnv
+    static constexpr uint32_t PARENT_ENV_INDEX = 1;
+    static constexpr uint32_t SCOPE_INFO_INDEX = 2;
+    static constexpr uint32_t RESERVED_ENV_LENGTH = 3;
 
     static LexicalEnv *Cast(TaggedObject *object)
     {
-        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        ASSERT(JSTaggedValue(object).IsLexicalEnv());
         return static_cast<LexicalEnv *>(object);
     }
 
@@ -65,6 +65,36 @@ public:
     void SetScopeInfo(JSThread *thread, JSTaggedValue value)
     {
         Set(thread, SCOPE_INFO_INDEX, value);
+    }
+
+    DECL_DUMP()
+};
+
+class SFunctionEnv : public BaseEnv {
+public:
+    // the first field is used to store GlobalEnv
+    static constexpr uint32_t CONSTRUCTOR_INDEX = 1;
+    static constexpr uint32_t RESERVED_ENV_LENGTH = 2;
+
+    static SFunctionEnv *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsSFunctionEnv());
+        return static_cast<SFunctionEnv *>(object);
+    }
+
+    static size_t ComputeSize(uint32_t numSlots)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), numSlots + RESERVED_ENV_LENGTH);
+    }
+
+    void SetConstructor(JSThread *thread, JSTaggedValue value)
+    {
+        Set(thread, CONSTRUCTOR_INDEX, value);
+    }
+
+    JSTaggedValue GetConstructor() const
+    {
+        return Get(CONSTRUCTOR_INDEX);
     }
 
     DECL_DUMP()

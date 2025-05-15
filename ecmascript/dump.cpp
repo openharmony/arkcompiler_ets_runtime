@@ -49,6 +49,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TaggedArray";
         case JSType::LEXICAL_ENV:
             return "LexicalEnv";
+        case JSType::SFUNCTION_ENV:
+            return "SFunctionEnv";
         case JSType::SENDABLE_ENV:
             return "SendableEnv";
         case JSType::TAGGED_DICTIONARY:
@@ -646,6 +648,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os, bool isPrivacy)
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
@@ -1709,12 +1712,12 @@ void JSFunction::Dump(std::ostream &os) const
     GetProtoOrHClass().Dump(os);
     os << "\n";
     os << " - LexicalEnv: ";
-    if (GetClass()->IsJSSharedFunction()) {
-        os << GetLexicalEnv().GetRawData()<< "\n";
-    } else {
+    if (GetLexicalEnv().IsLexicalEnv()) {
         GetLexicalEnv().Dump(os);
-        os << "\n";
+    } else {
+        GetLexicalEnv().DumpTaggedValue(os); // reduce circular calls
     }
+    os << "\n";
     os << " - RawProfileTypeInfo: ";
     GetRawProfileTypeInfo().Dump(os);
     os << "\n";
@@ -2619,6 +2622,11 @@ void JSSymbol::Dump(std::ostream &os) const
 }
 
 void LexicalEnv::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
+void SFunctionEnv::Dump(std::ostream &os) const
 {
     DumpArrayClass(this, os);
 }
@@ -3954,6 +3962,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
         case JSType::AOT_LITERAL_INFO:
@@ -5352,6 +5361,11 @@ void AccessorData::DumpForSnapshot(std::vector<Reference> &vec) const
 }
 
 void LexicalEnv::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    DumpArrayClass(this, vec);
+}
+
+void SFunctionEnv::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DumpArrayClass(this, vec);
 }

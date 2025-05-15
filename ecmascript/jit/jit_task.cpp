@@ -43,12 +43,10 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     compilerTier_(tier),
     methodName_(methodName),
     offset_(offset),
-    ecmaContext_(nullptr),
     jitCompileMode_(mode),
     runState_(RunState::INIT)
 {
     jit->IncJitTaskCnt(hostThread);
-    ecmaContext_ = hostThread->GetCurrentEcmaContext();
     sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
 }
 

@@ -60,20 +60,7 @@ public:
         return const_cast<HotReloadManager *>(&hotReloadManager_);
     }
 
-    void SetDebugMode(bool isDebugMode)
-    {
-        if (isDebugMode_ == isDebugMode) {
-            return;
-        }
-
-        isDebugMode_ = isDebugMode;
-
-        if (isDebugMode) {
-            jsThread_->SetDebugModeState();
-        } else {
-            jsThread_->ResetDebugModeState();
-        }
-    }
+    void PUBLIC_API SetDebugMode(bool isDebugMode);
 
     bool IsDebugMode() const
     {

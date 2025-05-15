@@ -39,9 +39,8 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     env_ = *vm->GetGlobalEnv();
 
     // For Json, we do not support ElementsKind
-    auto index = static_cast<size_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
-    auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    auto hclassVal = globalConstant->GetGlobalConstantObject(index);
+    auto index = static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    auto hclassVal = env_->GetGlobalEnvObjectByIndex(index).GetTaggedValue();
     initialJSArrayClass_ = JSHandle<JSHClass>(thread_, hclassVal);
     JSHandle<JSFunction> objectFunc(env_->GetObjectFunction());
     initialJSObjectClass_ =
