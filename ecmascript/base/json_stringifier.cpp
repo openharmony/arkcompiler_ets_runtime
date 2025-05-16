@@ -262,7 +262,7 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                     // a. If value is finite, return ToString(value).
                     if (std::isfinite(tagValue.GetNumber())) {
 #if ENABLE_NEXT_OPTIMIZATION
-                        ConvertAndAppendToString(result_, *base::NumberHelper::NumberToString(thread_, tagValue));
+                        ConvertToCStringAndAppend(result_, tagValue);
 #else
                         result_ += ConvertToString(*base::NumberHelper::NumberToString(thread_, tagValue));
 #endif
@@ -996,7 +996,7 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
         auto priNum = JSTaggedValue::ToNumber(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);
         if (std::isfinite(priNum.GetNumber())) {
-            ConvertAndAppendToString(result_, *base::NumberHelper::NumberToString(thread_, priNum));
+            ConvertToCStringAndAppend(result_, priNum);
         } else {
             result_ += "null";
         }

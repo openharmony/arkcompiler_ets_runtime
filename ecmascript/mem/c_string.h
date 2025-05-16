@@ -60,8 +60,11 @@ std::string PUBLIC_API ConvertToStdString(const CString &str);
 CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 
-void ConvertAndAppendToString(CString &str, const ecmascript::EcmaString *s,
-                              StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
+bool AppendSpecialDouble(CString &str, double d);
+
+void AppendDoubleToString(CString &str, double d);
+
+void ConvertToCStringAndAppend(CString &str, JSTaggedValue num);
 
 void ConvertQuotedAndAppendToString(CString &str, const ecmascript::EcmaString *s,
                                     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
