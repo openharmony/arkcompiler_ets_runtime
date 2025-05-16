@@ -94,6 +94,10 @@ public:
                        Variable *result, Label *success, Label *failed, GateRef slotId,
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef NewJSFunction(GateRef glue, GateRef method, GateRef homeObject);
+    GateRef DefineFuncForJit(GateRef glue, GateRef method, GateRef hclass, FunctionKind targetKind);
+    void NewJSFunctionForJit(GateRef glue, GateRef jsFunc, GateRef hclass, GateRef method, GateRef length,
+                             GateRef lexEnv, Variable *result, Label *success, Label *failed, GateRef slotId,
+                             FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId);
     GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
