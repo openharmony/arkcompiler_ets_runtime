@@ -183,6 +183,22 @@ public:
         }
         hooks_->DisableFirstTimeFlag();
     }
+
+    void SetSymbolicBreakpoint(const std::unordered_set<std::string> &functionNamesSet)
+    {
+        symbolicBreakpoints_.insert(functionNamesSet.begin(), functionNamesSet.end());
+    }
+
+    void RemoveSymbolicBreakpoint(const std::string &functionName)
+    {
+        auto symbolicBreakpoint = symbolicBreakpoints_.find(functionName);
+        if (symbolicBreakpoint != symbolicBreakpoints_.end()) {
+            symbolicBreakpoints_.erase(symbolicBreakpoint);
+        } else {
+            LOG_DEBUGGER(ERROR) << "RemoveSymbolicBreakpoint: invalid symbol breakpoint " << functionName;
+        }
+    }
+
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
@@ -203,6 +219,7 @@ private:
 
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> smartBreakpoints_ {};
+    std::unordered_set<std::string> symbolicBreakpoints_ {};
 
     friend class JsDebuggerFriendTest;
 };

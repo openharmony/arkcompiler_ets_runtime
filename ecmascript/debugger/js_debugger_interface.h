@@ -45,7 +45,8 @@ enum PauseReason {
     BREAK_ON_START,
     STEP, // single step
     DEBUGGERSTMT, // debugger stmt
-    NATIVE_OUT
+    NATIVE_OUT,
+    SYMBOL
 };
 
 class PtHooks {
@@ -101,6 +102,12 @@ public:
     virtual void DisableFirstTimeFlag() = 0;
 
     virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
+
+    /**
+    * \brief called by the ecmavm when symbolic breakpoint hits. Thread where symbolic breakpoint hits is stopped until
+    * continue or step event will be received
+    */
+    virtual void HitSymbolicBreakpoint() = 0;
 
     virtual ~PtHooks() = default;
 
