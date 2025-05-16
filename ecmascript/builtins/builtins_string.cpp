@@ -2423,6 +2423,15 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
     cache->Set(thread, index + ARRAY_INDEX, newElements);
 }
 
+void StringSplitResultCache::ClearCache(const JSThread *thread, JSHandle<JSTaggedValue> cache)
+{
+    JSHandle<StringSplitResultCache> splitCacheTable(cache);
+    uint32_t arrayLength = splitCacheTable->GetLength();
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        splitCacheTable->Set(thread, i, JSTaggedValue::Undefined());
+    }
+}
+
 JSTaggedValue StringToListResultCache::CreateCacheTable(const JSThread *thread)
 {
     int length = CACHE_SIZE * ENTRY_SIZE;

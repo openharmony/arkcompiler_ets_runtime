@@ -96,6 +96,8 @@ public:
         *reinterpret_cast<JSThread**>(address) = thread;
     }
 
+    void ClearCache(JSThread *thread) const;
+
     // For work serialize, add initialized global env object to snapshot env map
     void AddValueToSnapshotEnv(const JSThread *thread, JSTaggedValue value, uint16_t index, uint32_t offset)
     {

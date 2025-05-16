@@ -87,4 +87,8 @@ void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver
     }
 }
 
+void GlobalEnv::ClearCache(JSThread *thread) const
+{
+    builtins::StringSplitResultCache::ClearCache(thread, GetStringSplitResultCache());
+}
 }  // namespace panda::ecmascript
