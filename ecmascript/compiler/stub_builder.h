@@ -1135,6 +1135,7 @@ public:
                                      GateRef hir = Circuit::NullGate());
     GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef HashFromHclassAndStringKey(GateRef glue, GateRef cls, GateRef key);
+    GateRef HashSecondaryFromHclassAndStringKey(GateRef glue, GateRef cls, GateRef key);
     GateRef GetKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef GetStringKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
     inline GateRef GetSortedKey(GateRef glue, GateRef layoutInfo, GateRef index);

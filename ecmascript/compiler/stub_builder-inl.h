@@ -4213,12 +4213,25 @@ inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
 // that the hash value of the String exists.
 inline GateRef StubBuilder::HashFromHclassAndStringKey([[maybe_unused]] GateRef glue, GateRef cls, GateRef key)
 {
+    GateRef hclassRef = TaggedCastToIntPtr(cls);
+    GateRef clsHash = ChangeIntPtrToInt32(Int64Xor(
+        hclassRef,
+        Int64LSR(hclassRef,
+                 Int64(MegaICCache::PRIMARY_LENGTH_BIT)))); // skip 8bytes
+    GateRef keyHash = Load(VariableType::INT32(), glue, key,
+                           IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    GateRef temp = Int32Add(clsHash, keyHash);
+    return Int32And(temp, Int32(MegaICCache::PRIMARY_LENGTH_MASK));
+}
+
+inline GateRef StubBuilder::HashSecondaryFromHclassAndStringKey([[maybe_unused]] GateRef glue, GateRef cls, GateRef key)
+{
     GateRef clsHash =
-        Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(MegaICCache::HCLASS_SHIFT)); // skip 8bytes
-    GateRef keyHash = LoadPrimitive(VariableType::INT32(), key, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
-    GateRef temp = Int32Xor(Int32Xor(Int32Mul(clsHash, Int32(31)), Int32Mul(keyHash, Int32(0x9e3779b9))),
-                            Int32LSR(keyHash, Int32(16)));
-    return Int32And(temp, Int32(MegaICCache::CACHE_LENGTH_MASK));
+        ChangeIntPtrToInt32(Int64LSR(TaggedCastToIntPtr(cls), Int64(MegaICCache::HCLASS_SHIFT))); // skip 8bytes
+    GateRef keyHash = TruncInt64ToInt32(ChangeTaggedPointerToInt64(key));
+    GateRef addHash = Int32Add(clsHash, keyHash);
+    GateRef tempHash = Int32Add(addHash, Int32LSR(addHash, Int32(MegaICCache::SECONDARY_LENGTH_BIT)));
+    return Int32And(tempHash, Int32(MegaICCache::SECONDARY_LENGTH_MASK));
 }
 
 inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
