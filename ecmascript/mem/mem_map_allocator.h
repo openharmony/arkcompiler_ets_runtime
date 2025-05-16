@@ -266,6 +266,7 @@ public:
         capacity_ = 0;
         memMapFreeList_.Finalize();
         memMapPool_.Finalize();
+        compressMemMapPool_.Finalize();
     }
 
     size_t GetCapacity()
@@ -293,9 +294,12 @@ private:
     void InitializeHugeRegionMap(size_t alignment);
     void InitializeCompressRegionMap(size_t alignment);
 
-    MemMap AllocateFromMemPool(MemMapPool &pool, const uint32_t threadId, size_t size, size_t alignment,
+    MemMap AllocateFromMemPool(const uint32_t threadId, size_t size, size_t alignment,
                                const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
                                bool shouldPageTag, PageTagType type);
+    MemMap AllocateFromCompressPool(const uint32_t threadId, size_t size, size_t alignment,
+                                    const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
+                                    bool shouldPageTag, PageTagType type);
     MemMap InitialMemPool(MemMap &mem, const uint32_t threadId, size_t size, const std::string &spaceName,
                           bool isMachineCode, bool isEnableJitFort, bool shouldPageTag, PageTagType type);
     MemMap AlignMemMapTo4G(const MemMap &memMap, size_t targetSize);
