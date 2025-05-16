@@ -1484,7 +1484,6 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
-            GateRef newArrayType = GetObjectType(LoadHClass(glue, newArray));
             BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
             Bind(&hasException2);
             {
@@ -1492,6 +1491,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                 Jump(exit);
             }
             Bind(&notHasException2);
+            GateRef newArrayType = GetObjectType(LoadHClass(glue, newArray));
             i = Int32(0);
             Label loopHead2(env);
             Label loopEnd2(env);
@@ -2637,6 +2637,8 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Label arg0HeapObject(env);
     Label callable(env);
     Label next(env);
+    Label newTypedArrayException(env);
+    Label newTypedArrayNoException(env);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     GateRef jsType = GetObjectType(LoadHClass(glue, thisValue));
@@ -2653,6 +2655,13 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+        BRANCH(HasPendingException(glue), &newTypedArrayException, &newTypedArrayNoException);
+        Bind(&newTypedArrayException);
+        {
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+        Bind(&newTypedArrayNoException);
         GateRef newArrayType = GetObjectType(LoadHClass(glue, newArray));
         Label loopHead(env);
         Label loopEnd(env);
@@ -2711,6 +2720,15 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
+    Label newTypedArrayhasException(env);
+    Label newTypedArraynotHasException0(env);
+    BRANCH(HasPendingException(glue), &newTypedArrayhasException, &newTypedArraynotHasException0);
+    Bind(&newTypedArrayhasException);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&newTypedArraynotHasException0);
     DEFVARIABLE(k, VariableType::INT64(), Int64(0));
 
     Label loopHead(env);
