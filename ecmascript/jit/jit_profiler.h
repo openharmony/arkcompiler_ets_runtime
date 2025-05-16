@@ -51,6 +51,7 @@ public:
                                     ProfileTypeInfo *rawProfileTypeInfo,
                                     EntityId methodId, ApEntityId abcId, const uint8_t *pcStart,
                                     uint32_t codeSize, const panda_file::File::Header *header,
+                                    JSHandle<JSFunction> jsFunction,
                                     bool useRawProfileTypeInfo = false);
 
     std::unordered_map<int32_t, const PGOSampleType *> GetOpTypeMap()
@@ -139,6 +140,8 @@ private:
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
     void ConvertTryldGlobalByName(uint32_t bcOffset, uint32_t slotId);
 
+    void ConvertExternalModuleVar(uint32_t index, uint32_t bcOffset);
+
     // RwOpType related
     void AddObjectInfoWithMega(int32_t bcOffset);
     void AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &info,
@@ -198,6 +201,7 @@ private:
     RecursiveMutex mutex_;
     CompilationEnv *compilationEnv_ {nullptr};
     Chunk *chunk_ {nullptr};
+    JSHandle<JSFunction> jsFunction_;
 };
 
 }

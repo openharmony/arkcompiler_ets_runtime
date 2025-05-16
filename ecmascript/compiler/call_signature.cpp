@@ -1844,6 +1844,22 @@ DEF_CALL_SIGNATURE(StringToNumber)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(GetExternalModuleVar)
+{
+    // 3 : 3 input parameters
+    CallSignature getExternalModuleVar("GetExternalModuleVar", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = getExternalModuleVar;
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(ArrayTrim)
 {
     // 3 : 3 input parameters

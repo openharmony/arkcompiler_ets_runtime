@@ -135,6 +135,10 @@ public:
         functionSlotIdMap_[calleeOffset] = slotId;
         callee2CallerMap_[calleeOffset] = callerOffset;
     }
+    JSHandle<JSFunction> GetJsFunction() const
+    {
+        return jsFunction_;
+    }
 
     JSFunction *GetJsFunctionByMethodOffset(uint32_t methodOffset) const;
 
@@ -153,6 +157,24 @@ public:
         ASSERT(thread_->IsJitThread());
         auto jitThread = static_cast<JitThread*>(thread_);
         return jitThread->NewHandle(value);
+    }
+
+    void SetLdExtModuleVarResolved(uint32_t methodOffset, uint32_t pcOffset)
+    {
+        ldExtModuleVarResolved_[methodOffset][pcOffset] = true;
+    }
+
+    bool IsLdExtModuleVarResolved(uint32_t methodOffset, uint32_t bcOffset) const
+    {
+        auto itMethodOffset = ldExtModuleVarResolved_.find(methodOffset);
+        if (itMethodOffset != ldExtModuleVarResolved_.end()) {
+            auto &bcOffsetMap = itMethodOffset->second;
+            auto itBcOffset = bcOffsetMap.find(bcOffset);
+            if (itBcOffset != bcOffsetMap.end()) {
+                return itBcOffset->second;
+            }
+        }
+        return false;
     }
 
     JSHandle<JSTaggedValue> GetHeapConstantHandle(uint32_t heapConstantIndex) const;
@@ -214,6 +236,7 @@ private:
     const uint8_t* pcStart_ {nullptr};
     pgo::ApEntityId abcId_ {0};
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
+    std::unordered_map<uint32_t, std::unordered_map<uint32_t, bool>> ldExtModuleVarResolved_;
     std::map<uint32_t, uint32_t> functionSlotIdMap_;
     std::map<uint32_t, uint32_t> callee2CallerMap_;
     struct HeapConstantInfo {

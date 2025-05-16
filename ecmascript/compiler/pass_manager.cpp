@@ -98,7 +98,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
-                                          header);
+                                          header, static_cast<JitCompilationEnv*>(compilationEnv_)->GetJsFunction());
         } else {
             jitProfiler_ = nullptr;
         }
