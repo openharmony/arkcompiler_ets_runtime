@@ -291,7 +291,7 @@ hello,hello,hello,hello,hello
 apple,banana,orange
 [object Object],[object Object]
 Caught an error:  TypeError: the callbackfun is not callable.
-Caught an error:  TypeError: is not callable
+Caught an error:  TypeError: undefined is not callable
 undefined
 undefined
 6

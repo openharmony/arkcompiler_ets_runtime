@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-TypeError: is not callable
+TypeError:[object Object] is not callable
     at foo1 (hidden:25:25)
     at unknown (maybe inlined). depth: 3
     at unknown (maybe inlined). depth: 2

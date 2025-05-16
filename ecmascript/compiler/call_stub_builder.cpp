@@ -317,7 +317,7 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
         BRANCH_LIKELY(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
         Bind(funcNotCallable);
         {
-            CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {});
+            CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
             Jump(exit);
         }
         Bind(funcIsCallable);
