@@ -409,7 +409,7 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_jsruntime_set",
   ]
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps += [ "$js_root:libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
@@ -478,7 +478,7 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps += [ "$js_root:libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]

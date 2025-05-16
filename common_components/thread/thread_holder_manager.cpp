@@ -30,12 +30,35 @@ void ThreadHolderManager::RegisterThreadHolder([[maybe_unused]] ThreadHolder *ho
 
     auto& mutator_manager = panda::MutatorManager::Instance();
     mutator_manager.MutatorManagementRLock();
-    mutator_manager.BindMutator(*mutator);
 
     {
         std::lock_guard<std::mutex> guard(mutator_manager.allMutatorListLock_);
         mutator_manager.allMutatorList_.push_back(mutator);
     }
+
+    mutator_manager.MutatorManagementRUnlock();
+}
+
+void ThreadHolderManager::BindMutator(ThreadHolder *holder)
+{
+    Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
+
+    auto& mutator_manager = panda::MutatorManager::Instance();
+    mutator_manager.MutatorManagementRLock();
+
+    mutator_manager.BindMutator(*mutator);
+
+    mutator_manager.MutatorManagementRUnlock();
+}
+
+void ThreadHolderManager::UnbindMutator(ThreadHolder *holder)
+{
+    Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
+
+    auto& mutator_manager = panda::MutatorManager::Instance();
+    mutator_manager.MutatorManagementRLock();
+
+    mutator_manager.UnbindMutator(*mutator);
 
     mutator_manager.MutatorManagementRUnlock();
 }
@@ -57,7 +80,6 @@ void ThreadHolderManager::UnregisterThreadHolder(ThreadHolder *holder)
         }
     }
 
-    mutator_manager.UnbindMutator(*mutator);
     mutator_manager.MutatorManagementRUnlock();
 }
 

@@ -585,8 +585,8 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
         }
 
         // 3. hope we can copy this object
-        if (obj->TryLockObject(oldWord)) {
-            return CopyObjectExclusive(obj);
+        if (obj->TryLockExclusive(oldWord)) {
+            return CopyObjectAfterExclusive(obj);
         }
     } while (true);
     LOG_COMMON(FATAL) << "forwardObject exit in wrong path";
@@ -594,7 +594,7 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
     return nullptr;
 }
 
-BaseObject* WCollector::CopyObjectExclusive(BaseObject* obj)
+BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
 {
     size_t size = RegionSpace::GetAllocSize(*obj);
     // 8: size of free object, but free object can not be copied.
@@ -605,7 +605,7 @@ BaseObject* WCollector::CopyObjectExclusive(BaseObject* obj)
     if (toObj == nullptr) {
         ASSERT_LOGF(0, "OOM");
         // ConcurrentGC
-        obj->UnlockObject(panda::BaseStateWord::ForwardState::NORMAL);
+        obj->UnlockExclusive(panda::BaseStateWord::ForwardState::NORMAL);
         return toObj;
     }
     DLOG(COPY, "copy obj %p<%p>(%zu) to %p", obj, obj->GetTypeInfo(), size, toObj);
@@ -618,7 +618,7 @@ BaseObject* WCollector::CopyObjectExclusive(BaseObject* obj)
     }
     std::atomic_thread_fence(std::memory_order_release);
     obj->SetSizeForwarded(size);
-    obj->SetForwardingPointerExclusive(toObj);
+    obj->SetForwardingPointerAfterExclusive(toObj);
     return toObj;
 }
 

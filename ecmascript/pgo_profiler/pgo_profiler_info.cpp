@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 
+#include "zlib.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"

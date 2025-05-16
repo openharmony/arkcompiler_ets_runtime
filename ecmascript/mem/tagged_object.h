@@ -45,7 +45,7 @@ public:
     void SetFreeObjectClass(JSHClass *hclass);
     void TransitionClassWithoutBarrier(JSHClass *hclass);
 
-    void SetForwardingPointerExclusive(BaseObject *fwdPtr)
+    void SetForwardingPointerAfterExclusive(BaseObject *fwdPtr)
     {
         reinterpret_cast<TaggedStateWord *>(this)->SetForwardingAddress(reinterpret_cast<uintptr_t>(fwdPtr));
     }

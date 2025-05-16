@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
+#include "zlib.h"
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
