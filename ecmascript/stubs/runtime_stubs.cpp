@@ -334,6 +334,17 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallInternalSetterNoThrow)
+{
+    RUNTIME_STUBS_HEADER(CallInternalSetterNoThrow);
+    JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
+    JSTaggedType argSetter = GetTArg(argv, argc, 1); // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    auto setter = AccessorData::Cast((reinterpret_cast<TaggedObject*>(argSetter)));
+    bool result = setter->CallInternalSet(thread, receiver, value, false);
+    return result ? JSTaggedValue::Undefined().GetRawData() : JSTaggedValue::False().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetHash32)
 {
     JSTaggedValue argKey = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
@@ -4522,8 +4533,9 @@ DEF_RUNTIME_STUBS(JSProxySetProperty)
     JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
-    return JSTaggedValue(JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), keyHandle,
-                                              valueHandle, receiver, true)).GetRawData();
+    bool mayThrow = GetArg(argv, argc, 4).ToBoolean();  // 4: means mayThrow exception during JSProxy::SetProperty
+    auto result = JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), keyHandle, valueHandle, receiver, mayThrow);
+    return JSTaggedValue(result).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CheckGetTrapResult)

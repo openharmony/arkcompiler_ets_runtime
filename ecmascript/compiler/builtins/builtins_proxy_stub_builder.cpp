@@ -195,7 +195,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
         GateRef target = GetTarget(glue_, proxy);
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::GET_STRING_INDEX);
-        GateRef trap = GetPropertyByName(glue_, handler, name, ProfileOperation(), True());
+        GateRef trap = GetPropertyByName(glue_, handler, name);
         BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
         Bind(&trapIsNotUndefinedOrNullOrHole);
         {
@@ -225,7 +225,8 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     return ret;
 }
 
-GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRef value, GateRef receiver)
+GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRef value, GateRef receiver,
+                                              bool mayThrow)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
@@ -252,7 +253,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         GateRef target = GetTarget(glue_, proxy);
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::SET_STRING_INDEX);
-        GateRef trap = GetPropertyByName(glue_, handler, name, ProfileOperation(), True());
+        GateRef trap = GetPropertyByName(glue_, handler, name);
         BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
         Bind(&trapIsNotUndefinedOrNullOrHole);
         {
@@ -279,8 +280,10 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
                 BRANCH(TaggedIsFalse(FastToBoolean(glue_, trapResult)), &trapResultIsFalse, &checkSetTrapResult);
                 Bind(&trapResultIsFalse);
                 {
-                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyReturnFalse));
-                    CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                    if (mayThrow) {
+                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyReturnFalse));
+                        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                    }
                     result = TaggedFalse();
                     Jump(&exit);
                 }
@@ -292,7 +295,8 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         }
         Bind(&slowPath);
         {
-            result = CallRuntime(glue_, RTSTUB_ID(JSProxySetProperty), { proxy, key, value, receiver });
+            result = CallRuntime(glue_, RTSTUB_ID(JSProxySetProperty),
+                                 {proxy, key, value, receiver, mayThrow ? TaggedTrue() : TaggedFalse()});
             Jump(&exit);
         }
     }

@@ -153,6 +153,12 @@ class ObjectFactory;
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)
 
+#if ENABLE_NEXT_OPTIMIZATION
+#define CONDITION_GLOBAL_REFLECT_HAS(V)
+#else
+#define CONDITION_GLOBAL_REFLECT_HAS(V) V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX, ecma_roots_special)
+#endif
+
 // Use for builtins inlining
 #define GLOBAL_ENV_INLINED_BUILTINS(V)                                                                  \
     V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_builtins)                                    \
@@ -220,7 +226,7 @@ class ObjectFactory;
     V(JSTaggedValue, ObjectGetPrototo, OBJECT_GET_PROTO_INDEX, ecma_roots_special)                      \
     V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX, ecma_roots_special)             \
     V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)         \
-    V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX, ecma_roots_special)                                 \
+    CONDITION_GLOBAL_REFLECT_HAS(V)                                                                     \
     V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX, ecma_roots_special)                     \
     V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX, ecma_roots_special)                             \
     V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)    \

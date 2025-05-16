@@ -648,7 +648,12 @@ public:
     GateRef JSObjectGetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef propAttr);
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef key, GateRef value);
     GateRef ShouldCallSetter(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
-    GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value, ProfileOperation callback);
+    GateRef CallSetterHelper(GateRef glue,
+                             GateRef holder,
+                             GateRef accessor,
+                             GateRef value,
+                             ProfileOperation callback,
+                             bool mayThrow = true);
     GateRef AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef propertyAttributes,
         ProfileOperation callback);
     GateRef IsUtf16String(GateRef string);
@@ -771,9 +776,14 @@ public:
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
-    GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                              ProfileOperation callback, GateRef isInternal,
-                              bool canUseIsInternal = false, GateRef hir = Circuit::NullGate());
+                               GateRef GetPropertyByName(GateRef glue,
+                                GateRef target,
+                                GateRef propKey,
+                                GateRef receiver = Circuit::NullGate(),
+                                ProfileOperation callback = ProfileOperation(),
+                                GateRef isInternal = Circuit::NullGate(),
+                                bool canUseIsInternal = false,
+                                GateRef hir = Circuit::NullGate());
     void CallGetterIfAccessor(GateRef glue, GateRef holder, Variable *value, Variable *attr,
                               Label *isFoundData, Label *isFoundAccessor);
     void TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, GateRef hir,
@@ -783,21 +793,39 @@ public:
                                     ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index,
                                    ProfileOperation callback, GateRef hir = Circuit::NullGate());
-    GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
+    GateRef GetPropertyByValue(GateRef glue,
+                               GateRef target,
+                               GateRef propKey,
+                               GateRef receiver = Circuit::NullGate(),
+                               ProfileOperation callback = ProfileOperation());
     void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
         ProfileOperation callback = ProfileOperation());
     void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
-    GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
-        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
+    GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn,
+                               ProfileOperation callback = ProfileOperation(), bool defineSemantics = false,
+                               bool mayThrow = true);
     GateRef DefinePropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
-    GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-        GateRef value, bool useOwn, GateRef isInternal, ProfileOperation callback = ProfileOperation(),
-        bool canUseIsInternal = false, bool defineSemantics = false); // Crawl prototype chain
+    GateRef SetPropertyByName(GateRef glue,
+                              GateRef receiver,
+                              GateRef key,
+                              GateRef value,
+                              bool useOwn,
+                              GateRef isInternal,
+                              ProfileOperation callback = ProfileOperation(),
+                              bool canUseIsInternal = false,
+                              bool defineSemantics = false,
+                              bool mayThrow = true); // Crawl prototype chain
     GateRef DefinePropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, GateRef isInternal, GateRef SCheckModelIsCHECK,
         ProfileOperation callback = ProfileOperation());
-    GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-        ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
+    GateRef SetPropertyByValue(GateRef glue,
+                               GateRef receiver,
+                               GateRef key,
+                               GateRef value,
+                               bool useOwn,
+                               ProfileOperation callback = ProfileOperation(),
+                               bool defineSemantics = false,
+                               bool mayThrow = true);
     GateRef DefinePropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
         GateRef SCheckModelIsCHECK, ProfileOperation callback = ProfileOperation());
     GateRef GetParentEnv(GateRef glue, GateRef object);
