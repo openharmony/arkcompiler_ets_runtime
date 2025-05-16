@@ -262,8 +262,12 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (!funcValue.IsCallable()) {                                          \
             {                                                                   \
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSTaggedValue>func(thread, funcValue);                 \
+                std::string message = EcmaStringAccessor(                       \
+                    JSTaggedValue::ToString(thread, func)).ToStdString();       \
+                message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
-                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                    ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
                 thread->SetException(error.GetTaggedValue());                   \
             }                                                                   \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
@@ -284,8 +288,12 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (!funcValue.IsCallable()) {                                          \
             {                                                                   \
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSTaggedValue>func(thread, funcValue);                 \
+                std::string message = EcmaStringAccessor(                       \
+                    JSTaggedValue::ToString(thread, func)).ToStdString();       \
+                message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
-                    ErrorType::TYPE_ERROR, "is not callable", StackCheck::NO);  \
+                    ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
                 thread->SetException(error.GetTaggedValue());                   \
             }                                                                   \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \

@@ -13,7 +13,7 @@
 
 2
 0
-TypeError: is not callable
+TypeError: 0 is not callable
 FindIndex Test case 1:
 Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]}] Result: 2
 ---
