@@ -417,7 +417,9 @@ EcmaVM::~EcmaVM()
     }
 #endif
 
-    thread_->GetModuleManager()->NativeObjDestory();
+    for (auto &moduleManager : moduleManagers_) {
+        moduleManager->NativeObjDestory();
+    }
 
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
@@ -530,11 +532,6 @@ EcmaVM::~EcmaVM()
         strategy_ = nullptr;
     }
 
-    if (thread_ != nullptr) {
-        delete thread_;
-        thread_ = nullptr;
-    }
-
     if (regExpParserCache_ != nullptr) {
         delete regExpParserCache_;
         regExpParserCache_ = nullptr;
@@ -567,6 +564,17 @@ EcmaVM::~EcmaVM()
     if (functionProtoTransitionTable_ != nullptr) {
         delete functionProtoTransitionTable_;
         functionProtoTransitionTable_ = nullptr;
+    }
+
+    for (auto &moduleManager : moduleManagers_) {
+        delete moduleManager;
+        moduleManager = nullptr;
+    }
+    moduleManagers_.clear();
+
+    if (thread_ != nullptr) {
+        delete thread_;
+        thread_ = nullptr;
     }
 }
 
@@ -898,6 +906,9 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
         ++iterator;
     }
 #endif
+    for (ModuleManager *moduleManager : moduleManagers_) {
+        moduleManager->Iterate(v);
+    }
 }
 
 size_t EcmaVM::IterateHandle(RootVisitor &visitor)
@@ -2030,6 +2041,11 @@ void EcmaVM::AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value)
     }
     linkedSet = LinkedHashSet::Add(thread, linkedSet, value);
     globalEnv->SetWeakRefKeepObjects(thread, linkedSet);
+}
+
+void EcmaVM::AddModuleManager(ModuleManager *moduleManager)
+{
+    moduleManagers_.push_back(moduleManager);
 }
 
 }  // namespace panda::ecmascript

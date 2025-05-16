@@ -4137,8 +4137,12 @@ inline GateRef StubBuilder::GetStageOfHotReload(GateRef glue)
 
 inline GateRef StubBuilder::GetModuleManager(GateRef glue)
 {
-    GateRef moduleManagerOffset = IntPtr(JSThread::GlueData::GetModuleManagerOffset(env_->Is32Bit()));
-    return LoadPrimitive(VariableType::NATIVE_POINTER(), glue, moduleManagerOffset);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef pointer = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                        GlobalEnv::MODULE_MANAGER_NATIVE_POINTER_INDEX);
+    GateRef offset = IntPtr(JSNativePointer::POINTER_OFFSET);
+    GateRef moduleManager = Load(VariableType::NATIVE_POINTER(), glue, pointer, offset);
+    return moduleManager;
 }
 
 inline void StubBuilder::IncMegaProbeCount([[maybe_unused]]GateRef glue)

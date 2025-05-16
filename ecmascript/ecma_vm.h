@@ -1254,6 +1254,7 @@ public:
 
     static void ClearKeptObjects(JSThread *thread);
     static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);
+    void AddModuleManager(ModuleManager *moduleManager);
 
 private:
     void ClearBufferData();
@@ -1501,6 +1502,9 @@ private:
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_;
     StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
+
+    // store multi-context module manager
+    std::vector<ModuleManager *> moduleManagers_ {};
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/template_map.h"
 
@@ -45,6 +46,7 @@ void GlobalEnv::Init(JSThread *thread)
 #define INIT_JSAPI_CONTAINER(Type, Name, INDEX) Set##Name(thread, JSTaggedValue::Undefined());
     GLOBAL_ENV_CONTAINER_ITERATORS(INIT_JSAPI_CONTAINER)
 #undef INIT_JSAPI_CONTAINER
+    SetModuleManagerNativePointer(thread, ModuleManager::CreateModuleManagerNativePointer(thread));
     ClearBitField();
     SetJSThread(thread);
 }

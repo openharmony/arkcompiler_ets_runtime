@@ -106,6 +106,7 @@ public:
     {
         return vm_->IsBundlePack();
     }
+    static JSTaggedValue CreateModuleManagerNativePointer(JSThread *thread);
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);
