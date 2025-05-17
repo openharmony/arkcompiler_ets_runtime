@@ -166,7 +166,7 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> ctor =
-        factory->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
 
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSFunction::SetFunctionLength(thread, ctor, JSTaggedValue(length));
@@ -211,8 +211,8 @@ JSHandle<JSFunction> ContainersPrivate::NewFunction(JSThread *thread, const JSHa
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function =
-        factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func),
-                               FunctionKind::NORMAL_FUNCTION, builtinId);
+        factory->NewJSBuiltinFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func),
+                                      FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSFunction::SetFunctionName(thread, baseFunction, key, thread->GlobalConstants()->GetHandledUndefined());
@@ -224,7 +224,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::CreateGetter(JSThread *thread, EcmaEn
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> function = factory->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> funcName(factory->NewFromASCII(name));
     JSHandle<JSTaggedValue> prefix = thread->GlobalConstants()->GetHandledGetString();
@@ -247,7 +247,7 @@ void ContainersPrivate::SetFunctionAtSymbol(JSThread *thread, const JSHandle<Glo
                                             const char *name, EcmaEntrypoint func, int length)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> function = factory->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(func));
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory->NewFromASCII(name));
     JSHandle<JSFunctionBase> baseFunction(function);
