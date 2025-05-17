@@ -185,6 +185,14 @@ GateRef CircuitBuilder::TaggedIsString(GateRef glue, GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsLineUtf8String(GateRef glue, GateRef obj)
+{
+    return LogicAndBuilder(env_).And(TaggedIsString(glue, obj))
+                                .And(IsLineString(glue, obj))
+                                .And(IsUtf8String(obj))
+                                .Done();
+}
+
 GateRef CircuitBuilder::TaggedIsStringIterator(GateRef glue, GateRef obj)
 {
     Label entry(env_);

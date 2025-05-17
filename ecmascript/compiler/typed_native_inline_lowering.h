@@ -169,6 +169,7 @@ private:
                                  Variable* res,
                                  Variable* start,
                                  Variable* end);
+    GateRef CheckAndConvertToUInt(GateRef msg, Label* notIntegerStr, Label* nonZeroLength);
 
 private:
     Circuit* circuit_ {nullptr};

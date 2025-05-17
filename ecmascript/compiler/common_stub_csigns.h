@@ -143,7 +143,8 @@ namespace panda::ecmascript::kungfu {
     V(MoveBarrierCrossRegion)         \
     V(FindEntryFromNameDictionary)    \
     V(ReverseBarrier)                 \
-    V(GetValueWithBarrier)
+    V(GetValueWithBarrier)            \
+    V(ComputeStringHashcode)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

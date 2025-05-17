@@ -3843,29 +3843,14 @@ inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, Gat
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
-inline GateRef StubBuilder::IsIntegerString(GateRef string)
+inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
 {
-    return env_->GetBuilder()->IsIntegerString(string);
-}
-
-inline GateRef StubBuilder::GetRawHashFromString(GateRef value)
-{
-    return env_->GetBuilder()->GetRawHashFromString(value);
-}
-
-inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger)
-{
-    env_->GetBuilder()->SetRawHashcode(glue, str, rawHashcode, isInteger);
+    env_->GetBuilder()->SetRawHashcode(glue, str, rawHashcode);
 }
 
 inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
 {
     return env_->GetBuilder()->TryGetHashcodeFromString(string);
-}
-
-inline GateRef StubBuilder::GetMixHashcode(GateRef string)
-{
-    return LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
 }
 
 inline void StubBuilder::SetElementsKindToJSHClass(GateRef glue, GateRef jsHclass, GateRef elementsKind)
@@ -4218,7 +4203,7 @@ inline GateRef StubBuilder::HashFromHclassAndStringKey([[maybe_unused]] GateRef 
         Int64LSR(hclassRef,
                  Int64(MegaICCache::PRIMARY_LENGTH_BIT)))); // skip 8bytes
     GateRef keyHash = Load(VariableType::INT32(), glue, key,
-                           IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+                           IntPtr(EcmaString::RAW_HASHCODE_OFFSET));
     GateRef temp = Int32Add(clsHash, keyHash);
     return Int32And(temp, Int32(MegaICCache::PRIMARY_LENGTH_MASK));
 }

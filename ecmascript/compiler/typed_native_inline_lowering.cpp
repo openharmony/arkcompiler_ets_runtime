@@ -1170,10 +1170,14 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
     }
     builder_.Bind(&notNumber);
     {
-        builder_.DeoptCheck(builder_.TaggedIsString(glue, param), FindFrameState(gate), DeoptType::NOTSTRING1);
-        auto isIntString = builder_.IsIntegerString(param);
-        builder_.DeoptCheck(isIntString, FindFrameState(gate), DeoptType::NOTINT1);
-        result = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(builder_.GetRawHashFromString(param)));
+        builder_.DeoptCheck(builder_.TaggedIsLineUtf8String(glue, param), FindFrameState(gate), DeoptType::NOTSTRING1);
+        auto length = builder_.GetLengthFromString(param);
+        builder_.DeoptCheck(builder_.NotEqual(length, builder_.Int32(0)), FindFrameState(gate), DeoptType::NOTINT1);
+        BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
+        GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+        GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
+        builder_.DeoptCheck(builder_.NotEqual(res, builder_.Int64(-1)), FindFrameState(gate), DeoptType::NOTINT1);
+        result = builder_.ToTaggedIntPtr(res);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1990,12 +1994,21 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
         gate, acc_.GetGlueFromArgList(), builder_.GetState(), builder_.GetDepend(), *result);
 }
 
+GateRef TypedNativeInlineLowering::CheckAndConvertToUInt(GateRef msg, Label* notIntegerStr, Label* nonZeroLength)
+{
+    auto length = builder_.GetLengthFromString(msg);
+    BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), notIntegerStr, nonZeroLength);
+    builder_.Bind(nonZeroLength);
+    BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
+    GateRef dataUtf8 = builder_.PtrAdd(msg, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+    return stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
+}
+
 void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
 
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.HoleConstant());
-    Label slowPath(&builder_);
     Label exit(&builder_);
 
     Label definedMsg(&builder_);
@@ -2007,14 +2020,21 @@ void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
         auto frameState = acc_.GetFrameState(gate);
         GateRef glue = acc_.GetGlueFromArgList();
         builder_.DeoptCheck(builder_.TaggedIsString(glue, msg), frameState, DeoptType::NOTSTRING1);
-        Label isIntegerStr(&builder_);
         Label notIntegerStr(&builder_);
         Label exitIntegerStr(&builder_);
-        builder_.Branch(builder_.IsIntegerString(msg), &isIntegerStr, &notIntegerStr);
-        builder_.Bind(&isIntegerStr);
+        Label isLineUtf8String(&builder_);
+        BRANCH_CIR(builder_.TaggedIsLineUtf8String(glue, msg), &isLineUtf8String, &notIntegerStr);
+        builder_.Bind(&isLineUtf8String);
         {
-            result = builder_.ChangeInt32ToFloat64(builder_.GetRawHashFromString(msg));
-            builder_.Jump(&exitIntegerStr);
+            Label isInteger(&builder_);
+            Label nonZeroLength(&builder_);
+            GateRef res = CheckAndConvertToUInt(msg, &notIntegerStr, &nonZeroLength);
+            BRANCH_CIR(builder_.Int64NotEqual(res, builder_.Int64(-1)), &isInteger, &notIntegerStr);
+            builder_.Bind(&isInteger);
+            {
+                result = builder_.ChangeInt32ToFloat64(builder_.TruncInt64ToInt32(res));
+                builder_.Jump(&exitIntegerStr);
+            }
         }
         builder_.Bind(&notIntegerStr);
         {
