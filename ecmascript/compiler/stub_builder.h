@@ -1086,8 +1086,8 @@ public:
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
     GateRef AlignDown(GateRef x, GateRef alignment);
-    inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
-    inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
+    inline void InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, bool compressed);
+    inline void InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 
     GateRef GetNormalStringData(GateRef glue, const StringInfoGateRef &stringInfoGate);

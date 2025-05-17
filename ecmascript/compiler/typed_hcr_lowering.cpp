@@ -545,9 +545,9 @@ void TypedHCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 
 GateRef TypedHCRLowering::GetLengthFromString(GateRef gate)
 {
-    GateRef shiftCount = builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT);
+    GateRef shiftCount = builder_.Int32(EcmaString::LengthBits::START_BIT);
     return builder_.Int32LSR(
-        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), shiftCount);
+        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::LENGTH_AND_FLAGS_OFFSET), shiftCount);
 }
 
 void TypedHCRLowering::LowerStringLength(GateRef gate)

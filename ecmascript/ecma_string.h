@@ -62,16 +62,12 @@ public:
     CAST_CHECK(EcmaString, IsString);
 
     static constexpr uint32_t IS_INTEGER_MASK = 1U << 31;
-    static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
-    static constexpr uint32_t STRING_INTERN_BIT = 0x2;
     static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
-    static constexpr uint32_t STRING_LENGTH_SHIFT_COUNT = 2U;
     static constexpr uint32_t MAX_INTEGER_HASH_NUMBER = 0x3B9AC9FF;
     static constexpr uint32_t MAX_CACHED_INTEGER_SIZE = 9;
 
-    static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
-    // In last bit of mix_length we store if this string is compressed or not.
-    ACCESSORS_PRIMITIVE_FIELD(MixLength, uint32_t, MIX_LENGTH_OFFSET, MIX_HASHCODE_OFFSET)
+    static constexpr size_t LENGTH_AND_FLAGS_OFFSET = TaggedObjectSize();
+    ACCESSORS_PRIMITIVE_FIELD(LengthAndFlags, uint32_t, LENGTH_AND_FLAGS_OFFSET, MIX_HASHCODE_OFFSET)
     // In last bit of mix_hash we store if this string is small-integer number or not.
     ACCESSORS_PRIMITIVE_FIELD(MixHashcode, uint32_t, MIX_HASHCODE_OFFSET, SIZE)
 
@@ -97,9 +93,16 @@ public:
         CONFIRMED_IN_STRING_ADD,
         END_STRING_ADD,
         INVALID_STRING_ADD,
-        HAS_BACKING_STORE,
     };
 
+    static constexpr uint32_t STRING_LENGTH_BITS_NUM = 30;
+    static constexpr uint32_t BITS_PER_BYTE = 8;
+
+    using CompressedStatusBit = BitField<CompressedStatus, 0>; // 1
+    using IsInternBit = CompressedStatusBit::NextFlag; // 1
+    using LengthBits = IsInternBit::NextField<uint32_t, STRING_LENGTH_BITS_NUM>; // 30
+    static_assert(LengthBits::START_BIT + LengthBits::SIZE == sizeof(uint32_t) * BITS_PER_BYTE,
+                  "LengthBits does not match the field size");
 private:
     friend class EcmaStringAccessor;
     friend class LineEcmaString;
@@ -153,14 +156,17 @@ private:
     static inline EcmaString *FastSubUtf16String(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     inline void TrimLineString(const JSThread *thread, uint32_t newLength);
+
     inline bool IsUtf8() const
     {
-        return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_COMPRESSED;
+        uint32_t bits = GetLengthAndFlags();
+        return CompressedStatusBit::Decode(bits) == STRING_COMPRESSED;
     }
 
     inline bool IsUtf16() const
     {
-        return (GetMixLength() & STRING_COMPRESSED_BIT) == STRING_UNCOMPRESSED;
+        uint32_t bits = GetLengthAndFlags();
+        return CompressedStatusBit::Decode(bits) == STRING_UNCOMPRESSED;
     }
 
     inline bool IsInteger()
@@ -179,14 +185,18 @@ private:
 
     inline uint32_t GetLength() const
     {
-        return GetMixLength() >> STRING_LENGTH_SHIFT_COUNT;
+        uint32_t bits = GetLengthAndFlags();
+        return LengthBits::Decode(bits);
     }
 
-    inline void SetLength(uint32_t length, bool compressed = false)
+    inline void InitLengthAndFlags(uint32_t length, bool compressed = false, bool isIntern = false)
     {
         ASSERT(length < MAX_STRING_LENGTH);
-        // Use 0u for compressed/utf8 expression
-        SetMixLength((length << STRING_LENGTH_SHIFT_COUNT) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
+        uint32_t newVal = 0;
+        newVal = IsInternBit::Update(newVal,  isIntern);
+        newVal = CompressedStatusBit::Update(newVal,  (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
+        newVal = LengthBits::Update(newVal, length);
+        SetLengthAndFlags(newVal);
     }
 
     inline uint32_t GetRawHashcode() const
@@ -209,17 +219,22 @@ private:
 
     inline void SetIsInternString()
     {
-        SetMixLength(GetMixLength() | STRING_INTERN_BIT);
+        uint32_t bits = GetLengthAndFlags();
+        uint32_t newVal = IsInternBit::Update(bits, true);
+        SetLengthAndFlags(newVal);
     }
 
     inline bool IsInternString() const
     {
-        return (GetMixLength() & STRING_INTERN_BIT) != 0;
+        uint32_t bits = GetLengthAndFlags();
+        return IsInternBit::Decode(bits);
     }
 
     inline void ClearInternStringFlag()
     {
-        SetMixLength(GetMixLength() & ~STRING_INTERN_BIT);
+        uint32_t bits = GetLengthAndFlags();
+        uint32_t newVal = IsInternBit::Update(bits, false);
+        SetLengthAndFlags(newVal);
     }
 
     inline bool TryGetHashCode(uint32_t *hash)
@@ -832,13 +847,48 @@ class SlicedString : public EcmaString {
 public:
     static constexpr uint32_t MIN_SLICED_ECMASTRING_LENGTH = 13;
     static constexpr size_t PARENT_OFFSET = EcmaString::SIZE;
-    ACCESSORS(Parent, PARENT_OFFSET, STARTINDEX_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(StartIndex, uint32_t, STARTINDEX_OFFSET, BACKING_STORE_FLAG);
-    ACCESSORS_PRIMITIVE_FIELD(HasBackingStore, uint32_t, BACKING_STORE_FLAG, SIZE);
+    static constexpr uint32_t START_INDEX_BITS_NUM = 30U;
+    using HasBackingStoreBit = BitField<bool, 0>; // 1
+    using ReserveBit = HasBackingStoreBit::NextFlag; // 1
+    using StartIndexBits = ReserveBit::NextField<uint32_t, START_INDEX_BITS_NUM>; // 30
+    static_assert(StartIndexBits::START_BIT + StartIndexBits::SIZE == sizeof(uint32_t) * BITS_PER_BYTE,
+                  "StartIndexBits does not match the field size");
+    static_assert(StartIndexBits::SIZE == LengthBits::SIZE, "The size of startIndex should be same with Length");
 
-    DECL_VISIT_OBJECT(PARENT_OFFSET, STARTINDEX_OFFSET);
+    ACCESSORS(Parent, PARENT_OFFSET, STARTINDEX_AND_FLAGS_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(StartIndexAndFlags, uint32_t, STARTINDEX_AND_FLAGS_OFFSET, SIZE);
+
+    DECL_VISIT_OBJECT(PARENT_OFFSET, STARTINDEX_AND_FLAGS_OFFSET);
 
     CAST_CHECK(SlicedString, IsSlicedString);
+
+    uint32_t GetStartIndex() const
+    {
+        uint32_t bits = GetStartIndexAndFlags();
+        return StartIndexBits::Decode(bits);
+    }
+
+    void SetStartIndex(uint32_t startIndex)
+    {
+        ASSERT(startIndex <= SlicedString::MAX_STRING_LENGTH);
+        uint32_t bits = GetStartIndexAndFlags();
+        uint32_t newVal = StartIndexBits::Update(bits, startIndex);
+        SetStartIndexAndFlags(newVal);
+    }
+
+    bool GetHasBackingStore() const
+    {
+        uint32_t bits = GetStartIndexAndFlags();
+        return HasBackingStoreBit::Decode(bits);
+    }
+
+    void SetHasBackingStore(bool hasBackingStore)
+    {
+        uint32_t bits = GetStartIndexAndFlags();
+        uint32_t newVal = HasBackingStoreBit::Update(bits, hasBackingStore);
+        SetStartIndexAndFlags(newVal);
+    }
+
 private:
     friend class EcmaString;
     static SlicedString *Cast(EcmaString *str)
