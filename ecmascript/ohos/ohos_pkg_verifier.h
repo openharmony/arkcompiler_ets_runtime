@@ -62,11 +62,25 @@ public:
     static bool CheckAOTOutputFilePath(AotCompilerPreprocessor &cPreprocessor, CompilationOptions &cOptions)
     {
         std::string arkCachePath = "/data/app/el1/public/aot_compiler/ark_cache/";
+        if (cOptions.outputFileName_.length() < arkCachePath.length()) {
+            LOG_COMPILER(ERROR) << "outputFileName_ is too short";
+            return false;
+        }
         if (cOptions.outputFileName_.substr(0, arkCachePath.length()) != arkCachePath) {
             LOG_COMPILER(ERROR) << "aot file name wrong";
             return false;
         }
-        if (cOptions.outputFileName_.find(cPreprocessor.GetMainPkgArgs()->GetBundleName()) == std::string::npos) {
+        std::shared_ptr<OhosPkgArgs> mainPkgArgs = cPreprocessor.GetMainPkgArgs();
+        if (!mainPkgArgs) {
+            LOG_COMPILER(ERROR) << "mainPkgArgs is nullptr";
+            return false;
+        }
+        const std::string bundleName = mainPkgArgs->GetBundleName();
+        if (bundleName.empty()) {
+            LOG_COMPILER(ERROR) << "bundleName is empty";
+            return false;
+        }
+        if (cOptions.outputFileName_.find(bundleName) == std::string::npos) {
             LOG_COMPILER(ERROR) << "verify main pkg bundleName wrong";
             return false;
         }
