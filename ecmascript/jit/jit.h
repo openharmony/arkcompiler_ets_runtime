@@ -147,7 +147,7 @@ public:
         {
             if (thread->IsJitThread()) {
                 thread_ = static_cast<JitThread*>(thread);
-                if (thread_->GetState() != ThreadState::RUNNING) {
+                if (!thread_->IsInRunningState()) {
                     thread_->ManagedCodeBegin();
                     isInManagedCode_ = true;
                 }
@@ -163,7 +163,7 @@ public:
                 JSThread *thread = env->GetJSThread();
                 ASSERT(thread->IsJitThread());
                 thread_ = static_cast<JitThread*>(thread);
-                if (thread_->GetState() != ThreadState::RUNNING) {
+                if (!thread_->IsInRunningState()) {
                     thread_->ManagedCodeBegin();
                     isInManagedCode_ = true;
                 }

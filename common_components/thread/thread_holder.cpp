@@ -42,6 +42,7 @@ void ThreadHolder::DestroyThreadHolder(ThreadHolder *holder)
 {
     holder->TransferToNative();
     BaseRuntime::GetInstance()->GetThreadHolderManager().UnregisterThreadHolder(holder);
+    holder->TransferToRunning();
 }
 
 ThreadHolder *ThreadHolder::GetCurrent()

@@ -1056,6 +1056,11 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+
+#ifdef USE_READ_BARRIER
+        CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, func});
+        CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray), {glue, argv, argc});
+#endif
     BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
         &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);

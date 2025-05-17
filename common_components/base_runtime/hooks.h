@@ -33,5 +33,11 @@ PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void FillFreeObject(void *object, size_t size);
 PUBLIC_API void SetBaseAddress(uintptr_t base);
 PUBLIC_API void JSGCCallback(void *ecmaVM);
+
+// Jit interfaces
+PUBLIC_API void SweepThreadLocalJitFort();
+PUBLIC_API bool IsMachineCodeObject(uintptr_t obj);
+PUBLIC_API void JitFortUnProt(size_t size, void* base);
+
 } // namespace panda
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H

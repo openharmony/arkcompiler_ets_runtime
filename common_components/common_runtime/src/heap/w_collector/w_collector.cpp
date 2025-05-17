@@ -18,6 +18,7 @@
 #include "common_interfaces/heap/heap_visitor.h"
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/ref_field.h"
+#include "common_components/base_runtime/hooks.h"
 #include "verification.h"
 
 namespace panda {
@@ -428,6 +429,7 @@ void WCollector::DoGarbageCollection()
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
         CollectLargeGarbage();
+        SweepThreadLocalJitFort();
 
         CopyFromSpace();
         WVerify::VerifyAfterForward(*this);
@@ -456,6 +458,7 @@ void WCollector::DoGarbageCollection()
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
         CollectLargeGarbage();
+        SweepThreadLocalJitFort();
 
         CopyFromSpace();
         WVerify::VerifyAfterForward(*this);
@@ -486,6 +489,7 @@ void WCollector::DoGarbageCollection()
     // reclaim large objects should after preforward(may process weak ref)
     // and before fix heap(may clear live bit)
     CollectLargeGarbage();
+    SweepThreadLocalJitFort();
 
     CopyFromSpace();
     WVerify::VerifyAfterForward(*this);

@@ -681,7 +681,7 @@ uintptr_t RegionManager::AllocPinnedRegion()
     return start;
 }
 
-uintptr_t RegionManager::AllocLargeReion(size_t size)
+uintptr_t RegionManager::AllocLargeRegion(size_t size)
 {
     return AllocLarge(size, false);
 }
@@ -699,6 +699,12 @@ void RegionManager::ParallelCopyFromRegions(RegionDesc &startRegion, size_t regi
     if (LIKELY_CC(allocBuffer != nullptr)) {
         allocBuffer->ClearRegion(); // clear thread local region for gc threads.
     }
+}
+
+uintptr_t RegionManager::AllocJitFortRegion(size_t size)
+{
+    auto res =  AllocLarge(size, false);
+    return res;
 }
 
 void RegionManager::CopyFromRegions(Taskpool *threadPool)
@@ -907,6 +913,9 @@ size_t RegionManager::CollectLargeGarbage()
             RegionDesc* del = region;
             region = region->GetNextRegion();
             oldLargeRegionList_.DeleteRegion(del);
+            if (IsMachineCodeObject(reinterpret_cast<HeapAddress>(obj))) {
+                JitFortUnProt(del->GetRegionSize(), reinterpret_cast<void*>(obj));
+            }
             if (del->GetRegionSize() > RegionDesc::LARGE_OBJECT_RELEASE_THRESHOLD) {
                 garbageSize += ReleaseRegion(del);
             } else {

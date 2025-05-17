@@ -1850,8 +1850,8 @@ void SlowPathLowering::LowerFastSuperCallWithArgArray(GateRef array, const std::
     LowerFastSuperCall(args, elementsPtr, result, exit);
 }
 
-void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, GateRef elementsPtr,
-                                          Variable &result, Label &exit)
+void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef>& args, GateRef elementsPtr, Variable& result,
+                                          Label& exit)
 {
     Label fastCall(&builder_);
     Label notFastCall(&builder_);
@@ -1866,6 +1866,13 @@ void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, Gate
 
     GateRef method = builder_.GetMethodFromFunction(glue_, superFunc);
     GateRef expectedNum = builder_.GetExpectedNumOfArgs(method);
+#ifdef USE_READ_BARRIER
+    builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget),
+                            Gate::InvalidGateRef, {glue_, superFunc}, glue_);
+    builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+                            Gate::InvalidGateRef,
+                            {glue_, elementsPtr, actualArgc}, glue_);
+#endif
     BRANCH_CIR(IsAotOrFastCall(superFunc, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
     builder_.Bind(&fastCall);
     {
@@ -3314,6 +3321,9 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
             builder_.Jump(exit);
         } else {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+#endif
             const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushArgv));
             GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushArgv));
             auto depend = builder_.GetDepend();
@@ -3337,6 +3347,9 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
             builder_.Jump(exit);
         } else {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+#endif
             const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushArgv));
             GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushArgv));
             auto depend = builder_.GetDepend();
@@ -3348,6 +3361,9 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
     builder_.Bind(&slowPath);
     {
         builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+#endif
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
         GateRef target = builder_.IntPtr(RTSTUB_ID(JSCallNew));
         auto depend = builder_.GetDepend();
