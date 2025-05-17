@@ -1709,7 +1709,7 @@ public:
                 ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET,
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {}},
-            {JSType::SLICED_STRING, {SlicedString::STARTINDEX_OFFSET - SlicedString::PARENT_OFFSET}},
+            {JSType::SLICED_STRING, {SlicedString::STARTINDEX_AND_FLAGS_OFFSET - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::NAMESPACE_OFFSET - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
                 SourceTextModule::MODULE_REQUESTS_OFFSET - SourceTextModule::NAMESPACE_OFFSET,

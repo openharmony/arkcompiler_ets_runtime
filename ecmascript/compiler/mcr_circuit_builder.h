@@ -116,8 +116,8 @@ GateRef CircuitBuilder::IsSpecialSlicedString(GateRef glue, GateRef obj)
     BRANCH(isSlicedString, &isSlicedStr, &exit);
     Bind(&isSlicedStr);
     {
-        GateRef hasBackingStore = LoadConstOffset(VariableType::INT32(), obj, SlicedString::BACKING_STORE_FLAG);
-        result = Int32Equal(hasBackingStore, Int32(EcmaString::HAS_BACKING_STORE));
+        GateRef mixStartIndex = LoadConstOffset(VariableType::INT32(), obj, SlicedString::STARTINDEX_AND_FLAGS_OFFSET);
+        result = TruncInt32ToInt1(Int32And(mixStartIndex, Int32((1 << SlicedString::HasBackingStoreBit::SIZE) - 1)));
         Jump(&exit);
     }
     Bind(&exit);

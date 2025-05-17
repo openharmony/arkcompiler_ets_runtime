@@ -30,7 +30,7 @@ namespace panda::ecmascript {
 inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 {
     auto string = vm->GetFactory()->AllocNonMovableLineStringObject(EcmaString::SIZE);
-    string->SetLength(0, true);
+    string->InitLengthAndFlags(0, true);
     string->SetRawHashcode(0);
     return string;
 }
@@ -103,7 +103,7 @@ inline void EcmaString::TrimLineString(const JSThread *thread, uint32_t newLengt
     size_t trimBytes = (oldLength - newLength) * (IsUtf8() ? sizeof(uint8_t) : sizeof(uint16_t));
     size_t size = IsUtf8() ? LineEcmaString::ComputeSizeUtf8(newLength) : LineEcmaString::ComputeSizeUtf16(newLength);
     factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
-    SetLength(newLength, CanBeCompressed(this));
+    InitLengthAndFlags(newLength, CanBeCompressed(this));
 }
 
 inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
@@ -134,7 +134,7 @@ inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length,
 {
     size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
     auto string = vm->GetFactory()->AllocLineStringObject(size);
-    string->SetLength(length, compressed);
+    string->InitLengthAndFlags(length, compressed);
     string->SetRawHashcode(0);
     return string;
 }
@@ -145,7 +145,7 @@ inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t len
     size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     auto string = vm->GetFactory()->AllocLineStringObjectNoGC(size);
-    string->SetLength(length, compressed);
+    string->InitLengthAndFlags(length, compressed);
     string->SetRawHashcode(0);
     return string;
 }
@@ -171,7 +171,7 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    string->SetLength(length, compressed);
+    string->InitLengthAndFlags(length, compressed);
     string->SetRawHashcode(0);
     return string;
 }
@@ -211,7 +211,7 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     JSThread *thread = nullptr;
     GetDebuggerThread(vm, &thread);
     auto string = TreeEcmaString::Cast(vm->GetFactory()->AllocTreeStringObject());
-    string->SetLength(length, compressed);
+    string->InitLengthAndFlags(length, compressed);
     string->SetRawHashcode(0);
     string->SetFirst(thread, left.GetTaggedValue());
     string->SetSecond(thread, right.GetTaggedValue());

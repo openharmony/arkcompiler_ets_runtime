@@ -143,7 +143,7 @@ EcmaString *EcmaString::GetSlicedString(const EcmaVM *vm,
     ASSERT((start + length) <= src->GetLength());
     JSHandle<SlicedString> slicedString(vm->GetJSThread(), CreateSlicedString(vm));
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
-    slicedString->SetLength(length, srcFlat.GetString()->IsUtf8());
+    slicedString->InitLengthAndFlags(length, srcFlat.GetString()->IsUtf8());
     slicedString->SetParent(vm->GetJSThread(), JSTaggedValue(srcFlat.GetString()));
     slicedString->SetStartIndex(start + srcFlat.GetStartIndex());
     return *slicedString;
