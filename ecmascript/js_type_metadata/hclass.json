@@ -1,1 +1,59 @@
-{"name": "HCLASS", "offsets": [{"name": "Proto", "offset": 0, "size": 8}, {"name": "Layout", "offset": 8, "size": 8}, {"name": "Transitions", "offset": 16, "size": 8}, {"name": "Parent", "offset": 24, "size": 8}, {"name": "ProtoChangeMarker", "offset": 32, "size": 8}, {"name": "ProtoChangeDetails", "offset": 40, "size": 8}, {"name": "EnumCache", "offset": 48, "size": 8}, {"name": "ProfilerType", "offset": 56, "size": 8}, {"name": "BitField", "offset": 64, "size": 4}, {"name": "BitField1", "offset": 68, "size": 4}], "end_offset": 72, "parents": ["TAGGED_OBJECT"]}
+{
+  "name": "HCLASS",
+  "offsets": [
+    {
+      "name": "BitField",
+      "offset": 0,
+      "size": 4
+    },
+    {
+      "name": "BitField1",
+      "offset": 4,
+      "size": 4
+    },
+    {
+      "name": "Proto",
+      "offset": 8,
+      "size": 8
+    },
+    {
+      "name": "Layout",
+      "offset": 16,
+      "size": 8
+    },
+    {
+      "name": "Transitions",
+      "offset": 24,
+      "size": 8
+    },
+    {
+      "name": "Parent",
+      "offset": 32,
+      "size": 8
+    },
+    {
+      "name": "ProtoChangeMarker",
+      "offset": 40,
+      "size": 8
+    },
+    {
+      "name": "ProtoChangeDetails",
+      "offset": 48,
+      "size": 8
+    },
+    {
+      "name": "EnumCache",
+      "offset": 56,
+      "size": 8
+    },
+    {
+      "name": "ProfilerType",
+      "offset": 64,
+      "size": 8
+    }
+  ],
+  "end_offset": 72,
+  "parents": [
+    "TAGGED_OBJECT"
+  ]
+}
