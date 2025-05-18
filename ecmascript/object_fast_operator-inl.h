@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1029,7 +1029,7 @@ bool ObjectFastOperator::ShouldCallSetter(JSTaggedValue receiver, JSTaggedValue 
 
 bool ObjectFastOperator::IsSpecialIndexedObj(JSType jsType)
 {
-    return jsType > JSType::JS_ARRAY;
+    return jsType > JSType::JS_ARRAY || IsString(jsType);
 }
 
 bool ObjectFastOperator::IsJSSharedArray(JSType jsType)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "ecmascript/js_typed_array.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 
 namespace panda::ecmascript {

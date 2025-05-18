@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1389,7 +1389,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     while (stringBegin < stringEnd) {
         // str is from snapshot file, which is in native heap.
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);  // Note str is not in Heap, so no Handle
-        str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
+        str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(lineStringClass.GetTaggedObject()));
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {

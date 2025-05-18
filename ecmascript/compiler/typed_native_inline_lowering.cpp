@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1175,7 +1175,7 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
         auto length = builder_.GetLengthFromString(param);
         builder_.DeoptCheck(builder_.NotEqual(length, builder_.Int32(0)), FindFrameState(gate), DeoptType::NOTINT1);
         BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
-        GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+        GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineString::DATA_OFFSET));
         GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
         builder_.DeoptCheck(builder_.NotEqual(res, builder_.Int64(-1)), FindFrameState(gate), DeoptType::NOTINT1);
         result = builder_.ToTaggedIntPtr(res);
@@ -2001,7 +2001,7 @@ GateRef TypedNativeInlineLowering::CheckAndConvertToUInt(GateRef msg, Label* not
     BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), notIntegerStr, nonZeroLength);
     builder_.Bind(nonZeroLength);
     BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
-    GateRef dataUtf8 = builder_.PtrAdd(msg, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+    GateRef dataUtf8 = builder_.PtrAdd(msg, builder_.IntPtr(LineString::DATA_OFFSET));
     return stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
 }
 

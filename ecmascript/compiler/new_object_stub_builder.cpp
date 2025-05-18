@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1712,6 +1712,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
@@ -1730,9 +1731,10 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     GateRef mixLength = LoadPrimitive(VariableType::INT32(), flatString->GetFlatString(),
-                                      IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
-    GateRef compressedStatus = TruncInt32ToInt1(Int32And(Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1),
+                                      IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
+    GateRef compressedStatus = TruncInt32ToInt1(Int32And(Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1),
                                                          mixLength));
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, BoolNot(compressedStatus));
     // decode compressedStatus to bool
@@ -1750,7 +1752,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 {
     auto env = GetEnvironment();
 
-    size_ = AlignUp(IntPtr(TreeEcmaString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    size_ = AlignUp(IntPtr(TreeString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     Label afterAllocate(env);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                  ConstantIndex::TREE_STRING_CLASS_INDEX);
@@ -1758,10 +1760,11 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
-    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::FIRST_OFFSET), first);
-    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::SECOND_OFFSET), second);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::LEFT_OFFSET), first);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::RIGHT_OFFSET), second);
     Jump(exit);
 }
 

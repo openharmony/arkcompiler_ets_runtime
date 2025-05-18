@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,51 +45,71 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
         UNREACHABLE();
     }
     object->SetClass(thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
+    object->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
     return EcmaString::Cast(object);
 }
 
 EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
+    EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+    EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+    EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 EcmaString *ObjectFactory::AllocReadOnlyLineStringObject(size_t size)
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateReadOnlyOrHugeObject(
+    EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateReadOnlyOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
 {
     ASSERT(IsSMemSpace(type));
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
+    EcmaString* str = reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetSlicedStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
     NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
+    EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
-        TreeEcmaString::SIZE));
+        TreeString::SIZE));
+    JSTaggedValue hclass = thread_->GlobalConstants()->GetTreeStringClass();
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    return str;
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,

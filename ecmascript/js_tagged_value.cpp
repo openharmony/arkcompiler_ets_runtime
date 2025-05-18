@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1693,7 +1693,7 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
         CVector<uint8_t> buf;
-        Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+        auto str = strAccessor.ToUtf8Span(buf);
         if (strAccessor.GetLength() == 0) {
             return JSTaggedNumber(0);
         }
@@ -1703,7 +1703,7 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         }
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+    auto str = strAccessor.ToUtf8Span(buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);

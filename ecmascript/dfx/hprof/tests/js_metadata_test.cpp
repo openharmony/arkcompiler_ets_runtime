@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -896,7 +896,7 @@ public:
             {JSType::JS_WEAK_SET, {
                 JSWeakSet::LINKED_SET_OFFSET, JSWeakSet::SIZE - JSWeakSet::LINKED_SET_OFFSET}},
             {JSType::LEXICAL_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
-            {JSType::LINE_STRING, {LineEcmaString::SIZE - LineEcmaString::SIZE}},
+            {JSType::LINE_STRING, {LineString::SIZE - LineString::SIZE}},
             {JSType::LINKED_NODE, {LinkedNode::NEXT_OFFSET, LinkedNode::LAST_OFFSET - LinkedNode::NEXT_OFFSET}},
             {JSType::LOCAL_EXPORTENTRY_RECORD, {
                 LocalExportEntry::LOCAL_EXPORT_ENTRY_OFFSET,
@@ -1016,8 +1016,8 @@ public:
                 TransWithProtoHandler::TRANSITION_HCLASS_OFFSET,
                 TransWithProtoHandler::PROTO_CELL_OFFSET,
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::HANDLER_INFO_OFFSET}},
-            {JSType::TREE_STRING, {TreeEcmaString::FIRST_OFFSET, TreeEcmaString::SECOND_OFFSET,
-                                   TreeEcmaString::SIZE - TreeEcmaString::FIRST_OFFSET}},
+            {JSType::TREE_STRING, {TreeString::LEFT_OFFSET, TreeString::RIGHT_OFFSET,
+                                       TreeString::SIZE - TreeString::LEFT_OFFSET}},
             {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}}
         };
         // { typeName: [all parents of this type]}
@@ -1744,8 +1744,8 @@ public:
                 TransWithProtoHandler::TRANSITION_HCLASS_OFFSET - TransWithProtoHandler::HANDLER_INFO_OFFSET,
                 TransWithProtoHandler::PROTO_CELL_OFFSET - TransWithProtoHandler::TRANSITION_HCLASS_OFFSET,
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::PROTO_CELL_OFFSET}},
-            {JSType::TREE_STRING, {TreeEcmaString::SECOND_OFFSET - TreeEcmaString::FIRST_OFFSET,
-                                   TreeEcmaString::SIZE - TreeEcmaString::SECOND_OFFSET}},
+            {JSType::TREE_STRING, {TreeString::RIGHT_OFFSET - TreeString::LEFT_OFFSET,
+                                   TreeString::SIZE - TreeString::RIGHT_OFFSET}},
             {JSType::VTABLE, {}}
         };
     }

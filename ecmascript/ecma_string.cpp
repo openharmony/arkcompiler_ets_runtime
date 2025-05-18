@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_string-inl.h"
 
+#include "common_interfaces/objects/string/base_string-inl.h"
 #include "ecmascript/base/json_helper.h"
 
 namespace panda::ecmascript {
@@ -55,7 +56,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     }
     // if the result string is small, make a LineString
     bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
-    if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
+    if (newLength < TreeString::MIN_TREE_STRING_LENGTH) {
         ASSERT(strLeft->IsLineString());
         ASSERT(strRight->IsLineString());
         auto newString = CreateLineStringWithSpaceType(vm, newLength, compressed, type);
@@ -64,28 +65,28 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         strRight = *right;
         if (compressed) {
             // copy left part
-            Span<uint8_t> sp(newString->GetDataUtf8Writable(), newLength);
-            Span<const uint8_t> srcLeft(strLeft->GetDataUtf8(), leftLength);
+            common::Span<uint8_t> sp(newString->GetDataUtf8Writable(), newLength);
+            common::Span<const uint8_t> srcLeft(strLeft->GetDataUtf8(), leftLength);
             EcmaString::MemCopyChars(sp, newLength, srcLeft, leftLength);
             // copy right part
             sp = sp.SubSpan(leftLength);
-            Span<const uint8_t> srcRight(strRight->GetDataUtf8(), rightLength);
+            common::Span<const uint8_t> srcRight(strRight->GetDataUtf8(), rightLength);
             EcmaString::MemCopyChars(sp, rightLength, srcRight, rightLength);
         } else {
             // copy left part
-            Span<uint16_t> sp(newString->GetDataUtf16Writable(), newLength);
+            common::Span<uint16_t> sp(newString->GetDataUtf16Writable(), newLength);
             if (strLeft->IsUtf8()) {
-                EcmaString::CopyChars(sp.data(), strLeft->GetDataUtf8(), leftLength);
+                BaseString::CopyChars(sp.data(), strLeft->GetDataUtf8(), leftLength);
             } else {
-                Span<const uint16_t> srcLeft(strLeft->GetDataUtf16(), leftLength);
+                common::Span<const uint16_t> srcLeft(strLeft->GetDataUtf16(), leftLength);
                 EcmaString::MemCopyChars(sp, newLength << 1U, srcLeft, leftLength << 1U);
             }
             // copy right part
             sp = sp.SubSpan(leftLength);
             if (strRight->IsUtf8()) {
-                EcmaString::CopyChars(sp.data(), strRight->GetDataUtf8(), rightLength);
+                BaseString::CopyChars(sp.data(), strRight->GetDataUtf8(), rightLength);
             } else {
-                Span<const uint16_t> srcRight(strRight->GetDataUtf16(), rightLength);
+                common::Span<const uint16_t> srcRight(strRight->GetDataUtf16(), rightLength);
                 EcmaString::MemCopyChars(sp, rightLength << 1U, srcRight, rightLength << 1U);
             }
         }
@@ -104,16 +105,16 @@ EcmaString *EcmaString::CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<Ec
     auto strOrigin = FlattenAllString(vm, original);
     if (compressed) {
         // copy
-        Span<uint8_t> sp(newString->GetDataUtf8Writable(), length);
-        Span<const uint8_t> srcSp(strOrigin.GetDataUtf8(), length);
+        common::Span<uint8_t> sp(newString->GetDataUtf8Writable(), length);
+        common::Span<const uint8_t> srcSp(strOrigin.GetDataUtf8(), length);
         EcmaString::MemCopyChars(sp, length, srcSp, length);
     } else {
         // copy left part
-        Span<uint16_t> sp(newString->GetDataUtf16Writable(), length);
+        common::Span<uint16_t> sp(newString->GetDataUtf16Writable(), length);
         if (strOrigin.IsUtf8()) {
-            EcmaString::CopyChars(sp.data(), strOrigin.GetDataUtf8(), length);
+            BaseString::CopyChars(sp.data(), strOrigin.GetDataUtf8(), length);
         } else {
-            Span<const uint16_t> srcSp(strOrigin.GetDataUtf16(), length);
+            common::Span<const uint16_t> srcSp(strOrigin.GetDataUtf16(), length);
             EcmaString::MemCopyChars(sp, length << 1U, srcSp, length << 1U);
         }
     }
@@ -143,12 +144,12 @@ EcmaString *EcmaString::GetSlicedString(const EcmaVM *vm,
     const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
 {
     ASSERT((start + length) <= src->GetLength());
-    JSHandle<SlicedString> slicedString(vm->GetJSThread(), CreateSlicedString(vm));
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
-    slicedString->InitLengthAndFlags(length, srcFlat.GetString()->IsUtf8());
-    slicedString->SetParent(vm->GetJSThread(), JSTaggedValue(srcFlat.GetString()));
+    JSHandle<EcmaString> flatString(vm->GetJSThread(), srcFlat.GetString());
+    SlicedEcmaString *slicedString = CreateSlicedString(vm, flatString);
+    slicedString->InitLengthAndFlags(length, flatString->IsUtf8());
     slicedString->SetStartIndex(start + srcFlat.GetStartIndex());
-    return *slicedString;
+    return slicedString;
 }
 
 /* static */
@@ -164,7 +165,7 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
             return EcmaString::Cast(singleCharTable->GetStringFromSingleCharTable(res).GetTaggedObject());
         }
     }
-    if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
+    if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_STRING_LENGTH) {
         if (start == 0 && length == src->GetLength()) {
             return *src;
         }
@@ -174,7 +175,7 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
             if (canBeCompressed) {
                 JSHandle<EcmaString> string(vm->GetJSThread(), CreateLineString(vm, length, canBeCompressed));
                 srcFlat = FlattenAllString(vm, src);
-                CopyChars(string->GetDataUtf8Writable(), srcFlat.GetDataUtf16() + start, length);
+                BaseString::CopyChars(string->GetDataUtf8Writable(), srcFlat.GetDataUtf16() + start, length);
                 return *string;
             }
         }
@@ -199,48 +200,10 @@ bool EcmaString::SubStringIsUtf8(const EcmaVM *vm,
 
 void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
 {
-    ASSERT(IsLineString());
-    if (IsUtf8()) {
-        ASSERT(src->IsUtf8());
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(src, buf);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        if (length != 0 && memcpy_s(GetDataUtf8Writable() + start, destSize, data, length) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-    } else if (src->IsUtf8()) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(src, buf);
-        Span<uint16_t> to(GetDataUtf16Writable() + start, length);
-        Span<const uint8_t> from(data, length);
-        for (uint32_t i = 0; i < length; i++) {
-            to[i] = from[i];
-        }
-    } else {
-        CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(src, buf);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        if (length != 0 && memcpy_s(GetDataUtf16Writable() + start,
-            destSize * sizeof(uint16_t), data, length * sizeof(uint16_t)) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-    }
-}
-
-template<typename T1, typename T2>
-int32_t CompareStringSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, int32_t count)
-{
-    for (int32_t i = 0; i < count; ++i) {
-        auto left = static_cast<int32_t>(lhsSp[i]);
-        auto right = static_cast<int32_t>(rhsSp[i]);
-        if (left != right) {
-            return left - right;
-        }
-    }
-    return 0;
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    LineString::Cast(this)->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
 }
 
 int32_t EcmaString::Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)
@@ -257,29 +220,29 @@ int32_t EcmaString::Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, 
     int32_t countDiff = lhsCount - rhsCount;
     int32_t minCount = (countDiff < 0) ? lhsCount : rhsCount;
     if (!lhs.IsUtf16() && !rhs.IsUtf16()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else if (!lhs.IsUtf16()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else if (!rhs.IsUtf16()) {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), rhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), lhsCount);
         int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
@@ -287,22 +250,6 @@ int32_t EcmaString::Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, 
     }
     return countDiff;
 }
-
-template<typename T1, typename T2>
-bool IsSubStringAtSpan(Span<T1> &lhsSp, Span<T2> &rhsSp, uint32_t offset)
-{
-    int rhsSize = static_cast<int>(rhsSp.size());
-    ASSERT(rhsSize + offset <= lhsSp.size());
-    for (int i = 0; i < rhsSize; ++i) {
-        auto left = static_cast<int32_t>(lhsSp[offset + static_cast<uint32_t>(i)]);
-        auto right = static_cast<int32_t>(rhsSp[i]);
-        if (left != right) {
-            return false;
-        }
-    }
-    return true;
-}
-
 
 /**
  * left: text string
@@ -320,77 +267,36 @@ bool EcmaString::IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& lef
     int32_t lhsCount = static_cast<int32_t>(lhs.GetLength());
     int32_t rhsCount = static_cast<int32_t>(rhs.GetLength());
     if (!lhs.IsUtf16() && !rhs.IsUtf16()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!lhs.IsUtf16()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!rhs.IsUtf16()) {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else {
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return IsSubStringAtSpan(lhsSp, rhsSp, offset);
     }
     return false;
 }
 
 /* static */
-template<typename T1, typename T2>
-int32_t EcmaString::IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos, int32_t max)
+template <typename T1, typename T2>
+int32_t EcmaString::IndexOf(common::Span<const T1>& lhsSp, common::Span<const T2>& rhsSp, int32_t pos, int32_t max)
 {
-    ASSERT(rhsSp.size() > 0);
-    auto first = static_cast<int32_t>(rhsSp[0]);
-    for (int32_t i = pos; i <= max; i++) {
-        if (static_cast<int32_t>(lhsSp[i]) != first) {
-            i++;
-            while (i <= max && static_cast<int32_t>(lhsSp[i]) != first) {
-                i++;
-            }
-        }
-        /* Found first character, now look at the rest of rhsSp */
-        if (i <= max) {
-            int j = i + 1;
-            int end = j + static_cast<int>(rhsSp.size()) - 1;
-
-            for (int k = 1; j < end && static_cast<int32_t>(lhsSp[j]) == static_cast<int32_t>(rhsSp[k]); j++, k++) {
-            }
-            if (j == end) {
-                /* Found whole string. */
-                return i;
-            }
-        }
-    }
-    return -1;
+    return BaseString::IndexOf(lhsSp, rhsSp, pos, max);
 }
 
-template<typename T1, typename T2>
-int32_t EcmaString::LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos)
+template <typename T1, typename T2>
+int32_t EcmaString::LastIndexOf(common::Span<const T1>& lhsSp, common::Span<const T2>& rhsSp, int32_t pos)
 {
-    int rhsSize = static_cast<int>(rhsSp.size());
-    ASSERT(rhsSize > 0);
-    auto first = rhsSp[0];
-    for (int32_t i = pos; i >= 0; i--) {
-        if (lhsSp[i] != first) {
-            continue;
-        }
-        /* Found first character, now look at the rest of rhsSp */
-        int j = 1;
-        while (j < rhsSize) {
-            if (rhsSp[j] != lhsSp[i + j]) {
-                break;
-            }
-            j++;
-        }
-        if (j == rhsSize) {
-            return i;
-        }
-    }
-    return -1;
+    return BaseString::LastIndexOf(lhsSp, rhsSp, pos);
 }
 
 int32_t EcmaString::IndexOf(const EcmaVM *vm,
@@ -431,18 +337,18 @@ int32_t EcmaString::IndexOf(const EcmaVM *vm,
     lhs.SetString(*string);
 
     if (rhs.IsUtf8() && lhs.IsUtf8()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
     } else if (rhs.IsUtf16() && lhs.IsUtf16()) {  // NOLINT(readability-else-after-return)
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
     } else if (rhs.IsUtf16()) {
         return -1;
     } else {  // NOLINT(readability-else-after-return)
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return EcmaString::IndexOf(lhsSp, rhsSp, pos, max);
     }
 }
@@ -483,36 +389,28 @@ int32_t EcmaString::LastIndexOf(const EcmaVM *vm,
     FlatStringInfo rhs = FlattenAllString(vm, search);
     lhs.SetString(*string);
     if (rhs.IsUtf8() && lhs.IsUtf8()) {
-        Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
     } else if (rhs.IsUtf16() && lhs.IsUtf16()) {  // NOLINT(readability-else-after-return)
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
         return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
     } else if (rhs.IsUtf16()) {
         return -1;
     } else {  // NOLINT(readability-else-after-return)
-        Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
-        Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
+        common::Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
+        common::Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
         return EcmaString::LastIndexOf(lhsSp, rhsSp, pos);
     }
 }
 
 std::u16string EcmaString::ToU16String(uint32_t len)
 {
-    uint32_t length = len > 0 ? len : GetLength();
-    std::u16string result;
-    if (IsUtf16()) {
-        CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
-        result = base::StringHelper::Utf16ToU16String(data, length);
-    } else {
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        result = base::StringHelper::Utf8ToU16String(data, length);
-    }
-    return result;
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return ToBaseString()->ToU16String(std::move(readBarrier), len);
 }
 
 // static
@@ -521,25 +419,14 @@ template<typename T1, typename T2>
 uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
                                                  const T2 *dataSecond, size_t sizeSecond)
 {
-    uint32_t totalHash = ComputeHashForData(dataFirst, sizeFirst, 0);
-    totalHash = ComputeHashForData(dataSecond, sizeSecond, totalHash);
-    return totalHash;
+    return BaseString::CalculateDataConcatHashCode(dataFirst, sizeFirst, dataSecond, sizeSecond);
 }
 #else
 template<typename T1, typename T2>
 uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
                                                  const T2 *dataSecond, size_t sizeSecond)
 {
-    uint32_t totalHash = 0;
-    constexpr uint32_t hashShift = static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT);
-    // The concatenated length of the two strings is less than MIN_SIZE_FOR_UNROLLING.
-    for (uint32_t i = 0; i < sizeFirst; i++) {
-        totalHash = (totalHash << hashShift) - totalHash + dataFirst[i];
-    }
-    for (uint32_t i = 0; i < sizeSecond; i++) {
-        totalHash = (totalHash << hashShift) - totalHash + dataSecond[i];
-    }
-    return totalHash;
+    return BaseString::CalculateDataConcatHashCode(dataFirst, sizeFirst, dataSecond, sizeSecond);
 }
 #endif
 
@@ -584,115 +471,37 @@ uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstSt
 // static
 bool EcmaString::CanBeCompressed(const EcmaString *string)
 {
-    ASSERT(string->IsLineString());
-    if (string->IsUtf8()) {
-        return CanBeCompressed(string->GetDataUtf8(), string->GetLength());
-    }
-    return CanBeCompressed(string->GetDataUtf16(), string->GetLength());
+    return LineString::CanBeCompressed(LineString::ConstCast(string));
 }
 
 // static
 bool EcmaString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    uint32_t index = 0;
-    for (; index + 4 <= utf8Len; index += 4) { // 4: process the data in chunks of 4 elements to improve speed
-        // Check if all four characters in the current block are ASCII characters
-        if (!IsASCIICharacter(utf8Data[index]) ||
-            !IsASCIICharacter(utf8Data[index + 1]) || // 1: the second element of the block
-            !IsASCIICharacter(utf8Data[index + 2]) || // 2: the third element of the block
-            !IsASCIICharacter(utf8Data[index + 3])) { // 3: the fourth element of the block
-            return false;
-        }
-    }
-    // Check remaining characters if they are ASCII
-    for (; index < utf8Len; ++index) {
-        if (!IsASCIICharacter(utf8Data[index])) {
-            return false;
-        }
-    }
-    return true;
+    return BaseString::CanBeCompressed(utf8Data, utf8Len);
 }
 
 /* static */
 bool EcmaString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 {
-    uint32_t index = 0;
-    for (; index + 4 <= utf16Len; index += 4) { // 4: process the data in chunks of 4 elements to improve speed
-        // Check if all four characters in the current block are ASCII characters
-        if (!IsASCIICharacter(utf16Data[index]) ||
-            !IsASCIICharacter(utf16Data[index + 1]) || // 1: the second element of the block
-            !IsASCIICharacter(utf16Data[index + 2]) || // 2: the third element of the block
-            !IsASCIICharacter(utf16Data[index + 3])) { // 3: the fourth element of the block
-            return false;
-        }
-    }
-    // Check remaining characters if they are ASCII
-    for (; index < utf16Len; ++index) {
-        if (!IsASCIICharacter(utf16Data[index])) {
-            return false;
-        }
-    }
-    return true;
+    return BaseString::CanBeCompressed(utf16Data, utf16Len);
 }
 
 bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)
 {
-    ASSERT(NotTreeString());
-    ASSERT(str1->NotTreeString() && str2->NotTreeString());
-    if (GetLength() != str1->GetLength() + str2->GetLength()) {
-        return false;
-    }
-    if (IsUtf16()) {
-        CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
-        if (EcmaString::StringsAreEqualUtf16(str1, data, str1->GetLength())) {
-            return EcmaString::StringsAreEqualUtf16(str2, data + str1->GetLength(), str2->GetLength());
-        }
-    } else {
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        if (EcmaString::StringIsEqualUint8Data(str1, data, str1->GetLength(), this->IsUtf8())) {
-            return EcmaString::StringIsEqualUint8Data(str2, data + str1->GetLength(),
-                                                      str2->GetLength(), this->IsUtf8());
-        }
-    }
-    return false;
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return ToBaseString()->EqualToSplicedString(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
 }
 
 /* static */
 bool EcmaString::StringsAreEqualDiffUtfEncoding(EcmaString *left, EcmaString *right)
 {
-    CVector<uint16_t> bufLeftUft16;
-    CVector<uint16_t> bufRightUft16;
-    CVector<uint8_t> bufLeftUft8;
-    CVector<uint8_t> bufRightUft8;
-    int32_t lhsCount = static_cast<int32_t>(left->GetLength());
-    int32_t rhsCount = static_cast<int32_t>(right->GetLength());
-    if (!left->IsUtf16() && !right->IsUtf16()) {
-        const uint8_t *data1 = EcmaString::GetUtf8DataFlat(left, bufLeftUft8);
-        const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
-        Span<const uint8_t> lhsSp(data1, lhsCount);
-        Span<const uint8_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
-    } else if (!left->IsUtf16()) {
-        const uint8_t *data1 = EcmaString::GetUtf8DataFlat(left, bufLeftUft8);
-        const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
-        Span<const uint8_t> lhsSp(data1, lhsCount);
-        Span<const uint16_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
-    } else if (!right->IsUtf16()) {
-        const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
-        const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
-        Span<const uint16_t> lhsSp(data1, lhsCount);
-        Span<const uint8_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
-    } else {
-        const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
-        const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
-        Span<const uint16_t> lhsSp(data1, lhsCount);
-        Span<const uint16_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
-    }
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::StringsAreEqualDiffUtfEncoding(std::move(readBarrier), left->ToBaseString(),
+                                                      right->ToBaseString());
 }
 
 /* static */
@@ -701,20 +510,20 @@ bool EcmaString::StringsAreEqualDiffUtfEncoding(const FlatStringInfo &left, cons
     int32_t lhsCount = static_cast<int32_t>(left.GetLength());
     int32_t rhsCount = static_cast<int32_t>(right.GetLength());
     if (!left.IsUtf16() && !right.IsUtf16()) {
-        Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
-        Span<const uint8_t> rhsSp(right.GetDataUtf8(), rhsCount);
+        common::Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
+        common::Span<const uint8_t> rhsSp(right.GetDataUtf8(), rhsCount);
         return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else if (!left.IsUtf16()) {
-        Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
-        Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
+        common::Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
+        common::Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
         return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else if (!right.IsUtf16()) {
-        Span<const uint16_t> lhsSp(left.GetDataUtf16(), rhsCount);
-        Span<const uint8_t> rhsSp(right.GetDataUtf8(), lhsCount);
+        common::Span<const uint16_t> lhsSp(left.GetDataUtf16(), rhsCount);
+        common::Span<const uint8_t> rhsSp(right.GetDataUtf8(), lhsCount);
         return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else {
-        Span<const uint16_t> lhsSp(left.GetDataUtf16(), lhsCount);
-        Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
+        common::Span<const uint16_t> lhsSp(left.GetDataUtf16(), lhsCount);
+        common::Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
         return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     }
 }
@@ -750,73 +559,36 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
 }
 
 /* static */
-bool EcmaString::StringsAreEqual(EcmaString *str1, EcmaString *str2)
+bool EcmaString::StringsAreEqual(EcmaString* str1, EcmaString* str2)
 {
-    ASSERT(str1 != nullptr && str2 != nullptr);
-    if (str1 == str2) {
-        return true;
-    }
-    uint32_t str1Len = str1->GetLength();
-    if (str1Len != str2->GetLength()) {
-        return false;
-    }
-    if (str1Len == 0) {
-        return true;
-    }
-
-    uint32_t str1Hash;
-    uint32_t str2Hash;
-    if (str1->TryGetHashCode(&str1Hash) && str2->TryGetHashCode(&str2Hash)) {
-        if (str1Hash != str2Hash) {
-            return false;
-        }
-    }
-    return StringsAreEqualDiffUtfEncoding(str1, str2);
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::StringsAreEqual(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
 }
 
 /* static */
-bool EcmaString::StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+bool EcmaString::StringIsEqualUint8Data(const EcmaString* str1, const uint8_t* dataAddr, uint32_t dataLen,
                                         bool canBeCompressToUtf8)
 {
-    if (!str1->IsSlicedString() && canBeCompressToUtf8 != str1->IsUtf8()) {
-        return false;
-    }
-    if (canBeCompressToUtf8 && str1->GetLength() != dataLen) {
-        return false;
-    }
-    if (str1->IsUtf8()) {
-        CVector<uint8_t> buf;
-        Span<const uint8_t> data1(EcmaString::GetUtf8DataFlat(str1, buf), dataLen);
-        Span<const uint8_t> data2(dataAddr, dataLen);
-        return EcmaString::StringsAreEquals(data1, data2);
-    }
-    CVector<uint16_t> buf;
-    uint32_t length = str1->GetLength();
-    const uint16_t *data = EcmaString::GetUtf16DataFlat(str1, buf);
-    return IsUtf8EqualsUtf16(dataAddr, dataLen, data, length);
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::StringIsEqualUint8Data(std::move(readBarrier), str1->ToBaseString(), dataAddr, dataLen,
+                                              canBeCompressToUtf8);
 }
 
 /* static */
 bool EcmaString::StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)
 {
-    uint32_t length = str1->GetLength();
-    if (length != utf16Len) {
-        return false;
-    }
-    if (str1->IsUtf8()) {
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(str1, buf);
-        return IsUtf8EqualsUtf16(data, length, utf16Data, utf16Len);
-    } else {
-        CVector<uint16_t> buf;
-        Span<const uint16_t> data1(EcmaString::GetUtf16DataFlat(str1, buf), length);
-        Span<const uint16_t> data2(utf16Data, utf16Len);
-        return EcmaString::StringsAreEquals(data1, data2);
-    }
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::StringsAreEqualUtf16(std::move(readBarrier), str1->ToBaseString(), utf16Data, utf16Len);
 }
 
 template<typename T>
-bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count)
+bool EcmaString::MemCopyChars(common::Span<T> &dst, size_t dstMax, common::Span<const T> &src, size_t count)
 {
     ASSERT(dstMax >= count);
     ASSERT(dst.Size() >= src.Size());
@@ -830,140 +602,22 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
 // hashSeed only be used when computing two separate strings merged hashcode.
 uint32_t EcmaString::ComputeRawHashcode() const
 {
-    uint32_t length = GetLength();
-    if (length == 0) {
-        return 0;
-    }
-
-    if (IsUtf8()) {
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        // String can not convert to integer number, using normal hashcode computing algorithm.
-        return ComputeHashForData(data, length, 0);
-    } else {
-        CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
-        // If rawSeed has certain value, and second string uses UTF16 encoding,
-        // then merged string can not be small integer number.
-        return ComputeHashForData(data, length, 0);
-    }
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return ToBaseString()->ComputeRawHashcode(std::move(readBarrier));
 }
 
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
 {
-    if (canBeCompress) {
-        return ComputeHashForData(utf8Data, utf8Len, 0);
-    } else {
-        auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
-        CVector<uint16_t> tmpBuffer(utf16Len);
-        [[maybe_unused]] auto len = base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
-                                                                               utf16Len);
-        ASSERT(len == utf16Len);
-        return ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
-    }
-    LOG_ECMA(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
+    return BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
 }
 
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
 {
-    return ComputeHashForData(utf16Data, length, 0);
-}
-
-// drop the tail bytes if the remain length can't fill the length it represents.
-static size_t FixUtf8Len(const uint8_t* utf8, size_t utf8Len)
-{
-    constexpr size_t TWO_BYTES_LENGTH = 2;
-    constexpr size_t THREE_BYTES_LENGTH = 3;
-    size_t trimSize = 0;
-    if (utf8Len >= 1 && utf8[utf8Len - 1] >= 0xC0) {
-        // The last one char claim there are more than 1 byte next to it, it's invalid, so drop the last one.
-        trimSize = 1;
-    }
-    if (utf8Len >= TWO_BYTES_LENGTH && utf8[utf8Len - TWO_BYTES_LENGTH] >= 0xE0) {
-        // The second to last char claim there are more than 2 bytes next to it, it's invalid, so drop the last two.
-        trimSize = TWO_BYTES_LENGTH;
-    }
-    if (utf8Len >= THREE_BYTES_LENGTH && utf8[utf8Len - THREE_BYTES_LENGTH] >= 0xF0) {
-        // The third to last char claim there are more than 3 bytes next to it, it's invalid, so drop the last three.
-        trimSize = THREE_BYTES_LENGTH;
-    }
-    return utf8Len - trimSize;
-}
-
-
-/* static */
-bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len,
-                                   const uint16_t *utf16Data, uint32_t utf16Len)
-{
-    size_t safeUtf8Len = FixUtf8Len(utf8Data, utf8Len);
-    const uint8_t *utf8End = utf8Data + utf8Len;
-    const uint8_t *utf8SafeEnd = utf8Data + safeUtf8Len;
-    const uint16_t *utf16End = utf16Data + utf16Len;
-    while (utf8Data < utf8SafeEnd && utf16Data < utf16End) {
-        uint8_t src = *utf8Data;
-        switch (src & 0xF0) {
-            case 0xF0: {
-                const uint8_t c2 = *(++utf8Data);
-                const uint8_t c3 = *(++utf8Data);
-                const uint8_t c4 = *(++utf8Data);
-                uint32_t codePoint = ((src & LOW_3BITS) << OFFSET_18POS) | ((c2 & LOW_6BITS) << OFFSET_12POS) |
-                                     ((c3 & LOW_6BITS) << OFFSET_6POS) | (c4 & LOW_6BITS);
-                if (codePoint >= SURROGATE_RAIR_START) {
-                    if (utf16Data >= utf16End - 1) {
-                        return false;
-                    }
-                    codePoint -= SURROGATE_RAIR_START;
-                    if (*utf16Data++ != static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START)) {
-                        return false;
-                    } else if (*utf16Data++ != static_cast<uint16_t>((codePoint & 0x3FF) | L_SURROGATE_START)) {
-                        return false;
-                    }
-                } else {
-                    if (*utf16Data++ != static_cast<uint16_t>(codePoint)) {
-                        return false;
-                    }
-                }
-                utf8Data++;
-                break;
-            }
-            case 0xE0: {
-                const uint8_t c2 = *(++utf8Data);
-                const uint8_t c3 = *(++utf8Data);
-                if (*utf16Data++ != static_cast<uint16_t>(((src & LOW_4BITS) << OFFSET_12POS) |
-                    ((c2 & LOW_6BITS) << OFFSET_6POS) | (c3 & LOW_6BITS))) {
-                    return false;
-                }
-                utf8Data++;
-                break;
-            }
-            case 0xD0:
-            case 0xC0: {
-                const uint8_t c2 = *(++utf8Data);
-                if (*utf16Data++ != static_cast<uint16_t>(((src & LOW_5BITS) << OFFSET_6POS) | (c2 & LOW_6BITS))) {
-                    return false;
-                }
-                utf8Data++;
-                break;
-            }
-            default:
-                do {
-                    if (*utf16Data++ != static_cast<uint16_t>(*utf8Data++)) {
-                        return false;
-                    }
-                } while (utf8Data < utf8SafeEnd && utf16Data < utf16End && *utf8Data < 0x80);
-                break;
-        }
-    }
-    // The remain chars should be treated as single byte char.
-    while (utf8Data < utf8End && utf16Data < utf16End) {
-        if (*utf16Data++ != static_cast<uint16_t>(*utf8Data++)) {
-            return false;
-        }
-    }
-    return utf8Data == utf8End && utf16Data == utf16End;
+    return BaseString::ComputeHashcodeUtf16(utf16Data, length);
 }
 
 bool EcmaString::ToElementIndex(uint32_t *index)
@@ -1080,8 +734,9 @@ bool EcmaString::ToTypedArrayIndex(uint32_t *index)
     return false;
 }
 
-template<typename T>
-EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode)
+template <typename T>
+EcmaString* EcmaString::TrimBody(const JSThread* thread, const JSHandle<EcmaString>& src, common::Span<T>& data,
+                                 TrimMode mode)
 {
     uint32_t srcLen = src->GetLength();
     int32_t start = 0;
@@ -1093,7 +748,7 @@ EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaStri
     if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_END) {
         end = base::StringHelper::GetEnd(data, start, srcLen);
     }
-    EcmaString *res = FastSubString(thread->GetEcmaVM(), src, start, static_cast<uint32_t>(end - start + 1));
+    EcmaString* res = FastSubString(thread->GetEcmaVM(), src, start, static_cast<uint32_t>(end - start + 1));
     return res;
 }
 
@@ -1120,7 +775,7 @@ EcmaString *EcmaString::TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> 
     const char start = 'A';
     const char end = 'Z';
     uint32_t upperIndex = srcLength;
-    Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
     for (uint32_t index = 0; index < srcLength; ++index) {
         if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
             upperIndex = index;
@@ -1141,7 +796,7 @@ EcmaString *EcmaString::TryToUpper(const EcmaVM *vm, const JSHandle<EcmaString> 
     const char start = 'a';
     const char end = 'z';
     uint32_t lowerIndex = srcLength;
-    Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
     for (uint32_t index = 0; index < srcLength; ++index) {
         if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
             lowerIndex = index;
@@ -1163,7 +818,7 @@ EcmaString *EcmaString::ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHand
     uint32_t srcLength = src->GetLength();
     JSHandle<EcmaString> newString(vm->GetJSThread(), CreateLineString(vm, srcLength, true));
     auto srcFlat = FlattenAllString(vm, src);
-    Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
     auto newStringPtr = newString->GetDataUtf8Writable();
     if (startIndex > 0) {
         if (memcpy_s(newStringPtr, startIndex * sizeof(uint8_t), data.data(), startIndex * sizeof(uint8_t)) != EOK) {
@@ -1224,10 +879,10 @@ EcmaString *EcmaString::Trim(const JSThread *thread, const JSHandle<EcmaString> 
         return EcmaString::Cast(thread->GlobalConstants()->GetEmptyString().GetTaggedObject());
     }
     if (srcFlat.IsUtf8()) {
-        Span<const uint8_t> data(srcFlat.GetDataUtf8(), srcLen);
+        common::Span<const uint8_t> data(srcFlat.GetDataUtf8(), srcLen);
         return TrimBody(thread, src, data, mode);
     } else {
-        Span<const uint16_t> data(srcFlat.GetDataUtf16(), srcLen);
+        common::Span<const uint16_t> data(srcFlat.GetDataUtf16(), srcLen);
         return TrimBody(thread, src, data, mode);
     }
 }
@@ -1284,8 +939,8 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
             s = EcmaString::Cast(tree->GetFirst());
         }
     } else if (string->IsSlicedString()) {
-        s = EcmaString::Cast(SlicedString::Cast(*string)->GetParent());
-        startIndex = SlicedString::Cast(*string)->GetStartIndex();
+        s = EcmaString::Cast(SlicedEcmaString::Cast(*string)->GetParent());
+        startIndex = SlicedEcmaString::Cast(*string)->GetStartIndex();
     }
     return FlatStringInfo(s, startIndex, string->GetLength());
 }
@@ -1315,7 +970,7 @@ EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *str
             return result;
         }
     } else if (string->IsSlicedString()) {
-        SlicedString *str = SlicedString::Cast(string);
+        SlicedEcmaString *str = SlicedEcmaString::Cast(string);
         uint32_t length = str->GetLength();
         EcmaString *result = nullptr;
         if (str->IsUtf8()) {
@@ -1332,68 +987,34 @@ EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *str
 
 const uint8_t *EcmaString::GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf)
 {
-    ASSERT(src->IsUtf8());
-    uint32_t length = src->GetLength();
-    EcmaString *string = const_cast<EcmaString *>(src);
-    if (string->IsTreeString()) {
-        if (string->IsFlat()) {
-            string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
-        } else {
-            buf.reserve(length);
-            WriteToFlat(string, buf.data(), length);
-            return buf.data();
-        }
-    } else if (string->IsSlicedString()) {
-        SlicedString *str = SlicedString::Cast(string);
-        return EcmaString::Cast(str->GetParent())->GetDataUtf8() + str->GetStartIndex();
-    }
-    return string->GetDataUtf8();
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::GetUtf8DataFlat(std::move(readBarrier), src->ToBaseString(), buf);
 }
 
 const uint8_t *EcmaString::GetNonTreeUtf8Data(const EcmaString *src)
 {
-    ASSERT(src->IsUtf8());
-    ASSERT(!src->IsTreeString());
-    EcmaString *string = const_cast<EcmaString *>(src);
-    if (string->IsSlicedString()) {
-        SlicedString *str = SlicedString::Cast(string);
-        return EcmaString::Cast(str->GetParent())->GetDataUtf8() + str->GetStartIndex();
-    }
-    ASSERT(src->IsLineString());
-    return string->GetDataUtf8();
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::GetNonTreeUtf8Data(std::move(readBarrier), src->ToBaseString());
 }
 
 const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
 {
-    ASSERT(src->IsUtf16());
-    uint32_t length = src->GetLength();
-    EcmaString *string = const_cast<EcmaString *>(src);
-    if (string->IsTreeString()) {
-        if (string->IsFlat()) {
-            string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
-        } else {
-            buf.reserve(length);
-            WriteToFlat(string, buf.data(), length);
-            return buf.data();
-        }
-    } else if (string->IsSlicedString()) {
-        SlicedString *str = SlicedString::Cast(string);
-        return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
-    }
-    return string->GetDataUtf16();
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::GetUtf16DataFlat(std::move(readBarrier), src->ToBaseString(), buf);
 }
 
 const uint16_t *EcmaString::GetNonTreeUtf16Data(const EcmaString *src)
 {
-    ASSERT(src->IsUtf16());
-    ASSERT(!src->IsTreeString());
-    EcmaString *string = const_cast<EcmaString *>(src);
-    if (string->IsSlicedString()) {
-        SlicedString *str = SlicedString::Cast(string);
-        return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
-    }
-    ASSERT(src->IsLineString());
-    return string->GetDataUtf16();
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    return BaseString::GetNonTreeUtf16Data(std::move(readBarrier), src->ToBaseString());
 }
 
 std::u16string FlatStringInfo::ToU16String(uint32_t len)
@@ -1434,7 +1055,7 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+    common::Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
 #if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1473,7 +1094,7 @@ std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
 
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->DebuggerToUtf8Span(buf, modify);
+    common::Span<const uint8_t> sp = string_->DebuggerToUtf8Span(buf, modify);
 #if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1493,7 +1114,7 @@ CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    common::Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
 #if ENABLE_NEXT_OPTIMIZATION
     return CString(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1513,7 +1134,7 @@ void EcmaStringAccessor::AppendToCString(CString &str, StringConvertedUsage usag
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    common::Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
     str.append(reinterpret_cast<const char*>(sp.data()), sp.size());
 }
 
@@ -1524,7 +1145,7 @@ void EcmaStringAccessor::AppendQuotedStringToCString(CString &str, StringConvert
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    common::Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
     base::JsonHelper::AppendValueToQuotedString(sp, str);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -534,25 +534,25 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
 GateRef CircuitBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
-        Int32(EcmaString::STRING_COMPRESSED));
+        Int32And(len, Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1)),
+        Int32(BaseString::STRING_COMPRESSED));
 }
 
 GateRef CircuitBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
-        Int32(EcmaString::STRING_UNCOMPRESSED));
+        Int32And(len, Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1)),
+        Int32(BaseString::STRING_UNCOMPRESSED));
 }
 
 GateRef CircuitBuilder::IsInternString(GateRef string)
 {
-    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
-    return Int32NotEqual(Int32And(len, Int32(1 << EcmaString::IsInternBit::START_BIT)), Int32(0));
+    GateRef len = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
+    return Int32NotEqual(Int32And(len, Int32(1 << BaseString::IsInternBit::START_BIT)), Int32(0));
 }
 
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)

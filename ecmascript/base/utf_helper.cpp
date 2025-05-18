@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,10 @@
  */
 
 #include "ecmascript/base/utf_helper.h"
+#include "common_interfaces/objects/utils/span.h"
 
 #include "ecmascript/log_wrapper.h"
+#include "objects/utils/utf_utils.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 static constexpr int32_t U16_SURROGATE_OFFSET = (0xd800 << 10UL) + 0xdc00 - 0x10000;
@@ -56,31 +58,6 @@ uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu
     }
     (*index)++;
     return ((high - DECODE_LEAD_LOW) << UTF16_OFFSET) + (low - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
-}
-
-uint32_t HandleAndDecodeInvalidUTF16(uint16_t const *utf16, size_t len, size_t *index)
-{
-    uint16_t first = utf16[*index];
-    // A valid surrogate pair should always start with a High Surrogate
-    if (IsUTF16LowSurrogate(first)) {
-        return UTF16_REPLACEMENT_CHARACTER;
-    }
-    if (IsUTF16HighSurrogate(first) || (first & SURROGATE_MASK) == DECODE_LEAD_LOW) {
-        if (*index == len - 1) {
-            // A High surrogate not paired with another surrogate
-            return UTF16_REPLACEMENT_CHARACTER;
-        }
-        uint16_t second = utf16[*index + 1];
-        if (!IsUTF16LowSurrogate(second)) {
-            // A High surrogate not followed by a low surrogate
-            return UTF16_REPLACEMENT_CHARACTER;
-        }
-        // A valid surrogate pair, decode normally
-        (*index)++;
-        return ((first - DECODE_LEAD_LOW) << UTF16_OFFSET) + (second - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
-    }
-    // A unicode not fallen into the range of representing by surrogate pair, return as it is
-    return first;
 }
 
 inline size_t UTF8Length(uint32_t codepoint)
@@ -287,35 +264,11 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
     return utf8Pos;
 }
 
-size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
+size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len, size_t utf8Len,
                                         size_t start, bool modify, bool isWriteBuffer)
 {
-    if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
-        return 0;
-    }
-    size_t utf8Pos = 0;
-    size_t end = start + utf16Len;
-    for (size_t i = start; i < end; ++i) {
-        uint32_t codepoint = HandleAndDecodeInvalidUTF16(utf16In, end, &i);
-        if (codepoint == 0) {
-            if (isWriteBuffer) {
-                utf8Out[utf8Pos++] = 0x00U;
-                continue;
-            }
-            if (modify) {
-                // special case for \u0000 ==> C080 - 1100'0000 1000'0000
-                utf8Out[utf8Pos++] = UTF8_2B_FIRST;
-                utf8Out[utf8Pos++] = UTF8_2B_SECOND;
-            }
-            continue;
-        }
-        size_t size = UTF8Length(codepoint);
-        if (utf8Pos + size > utf8Len) {
-            break;
-        }
-        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Pos, size);
-    }
-    return utf8Pos;
+    return utf_utils::DebuggerConvertRegionUtf16ToUtf8(utf16In, utf8Out, utf16Len, utf8Len, start, modify,
+                                                       isWriteBuffer);
 }
 
 std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool combine)
@@ -476,30 +429,12 @@ size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_
     return out_pos;
 }
 
-size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, size_t utf16Len, size_t latin1Len)
-{
-    if (utf16In == nullptr || latin1Out == nullptr || latin1Len == 0) {
-        return 0;
-    }
-    size_t latin1Pos = 0;
-    size_t end = utf16Len;
-    for (size_t i = 0; i < end; ++i) {
-        if (latin1Pos == latin1Len) {
-            break;
-        }
-        uint32_t codepoint = DecodeUTF16(utf16In, end, &i);
-        uint8_t latin1Code = static_cast<uint8_t>(codepoint & latin1Limit);
-        latin1Out[latin1Pos++] = latin1Code;
-    }
-    return latin1Pos;
-}
-
 std::pair<int32_t, size_t> ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen)
 {
     if (maxLen == 0) {
         return {INVALID_UTF8, 0};
     }
-    Span<const uint8_t> sp(utf8, maxLen);
+    common::Span<const uint8_t> sp(utf8, maxLen);
     // one byte
     uint8_t d0 = sp[0];
     if ((d0 & BIT_MASK_1) == 0) {

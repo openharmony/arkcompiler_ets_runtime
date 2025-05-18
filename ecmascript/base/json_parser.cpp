@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table.h"
 
 namespace panda::ecmascript::base {
@@ -1108,7 +1109,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
     if (LIKELY(stringAccessor.IsLineString())) {
         sourceString_ = strHandle;
     } else if (stringAccessor.IsSlicedString()) {
-        auto *sliced = static_cast<SlicedString *>(*strHandle);
+        auto *sliced = static_cast<SlicedEcmaString *>(*strHandle);
         slicedOffset = sliced->GetStartIndex();
         sourceString_ = JSHandle<EcmaString>(thread_, EcmaString::Cast(sliced->GetParent()));
     } else {

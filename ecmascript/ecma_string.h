@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,8 +29,9 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/platform/ecma_string_hash_helper.h"
-
+#include "common_interfaces/objects/string/line_string.h"
+#include "common_interfaces/objects/string/sliced_string.h"
+#include "common_interfaces/objects/string/tree_string.h"
 #include "libpandabase/macros.h"
 #include "securec.h"
 #include "unicode/locid.h"
@@ -47,32 +48,36 @@ class JSPandaFile;
 class EcmaVM;
 class LineEcmaString;
 class TreeEcmaString;
-class SlicedString;
+class SlicedEcmaString;
 class FlatStringInfo;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length)                                        \
-    if ((length) >= MAX_STRING_LENGTH) {                                                      \
+    if ((length) >= BaseString::MAX_STRING_LENGTH) {                                                      \
         THROW_RANGE_ERROR_AND_RETURN((vm)->GetJSThread(), "Invalid string length", nullptr);  \
     }
 
 class EcmaString : public TaggedObject {
+private:
+    using TaggedObject::SIZE;
+
 public:
     CAST_CHECK(EcmaString, IsString);
 
-    static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
-    static constexpr uint32_t MAX_INTEGER_HASH_NUMBER = 0x3B9AC9FF;
-    static constexpr uint32_t MAX_CACHED_INTEGER_SIZE = 9;
+    BaseString* ToBaseString()
+    {
+        return BaseString::Cast(this);
+    }
 
-    static constexpr size_t LENGTH_AND_FLAGS_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(LengthAndFlags, uint32_t, LENGTH_AND_FLAGS_OFFSET, RAW_HASHCODE_OFFSET)
-    // In last bit of mix_hash we store if this string is small-integer number or not.
-    ACCESSORS_PRIMITIVE_FIELD(RawHashcode, uint32_t, RAW_HASHCODE_OFFSET, SIZE)
+    const BaseString* ToBaseString() const
+    {
+        return BaseString::ConstCast(this);
+    }
 
-    enum CompressedStatus {
-        STRING_COMPRESSED,
-        STRING_UNCOMPRESSED,
-    };
+    static EcmaString* FromBaseString(BaseString* str)
+    {
+        return reinterpret_cast<EcmaString*>(str);
+    }
 
     enum TrimMode : uint8_t {
         TRIM,
@@ -80,27 +85,17 @@ public:
         TRIM_END,
     };
 
-    enum ConcatOptStatus {
-        BEGIN_STRING_ADD = 1,
-        IN_STRING_ADD,
-        CONFIRMED_IN_STRING_ADD,
-        END_STRING_ADD,
-        INVALID_STRING_ADD,
-    };
+    void SetRawHashcode(uint32_t rawHashCode)
+    {
+        return ToBaseString()->SetRawHashcode(rawHashCode);
+    }
 
-    static constexpr uint32_t STRING_LENGTH_BITS_NUM = 30;
-    static constexpr uint32_t BITS_PER_BYTE = 8;
-
-    using CompressedStatusBit = BitField<CompressedStatus, 0>; // 1
-    using IsInternBit = CompressedStatusBit::NextFlag; // 1
-    using LengthBits = IsInternBit::NextField<uint32_t, STRING_LENGTH_BITS_NUM>; // 30
-    static_assert(LengthBits::START_BIT + LengthBits::SIZE == sizeof(uint32_t) * BITS_PER_BYTE,
-                  "LengthBits does not match the field size");
 private:
+
     friend class EcmaStringAccessor;
     friend class LineEcmaString;
     friend class TreeEcmaString;
-    friend class SlicedString;
+    friend class SlicedEcmaString;
     friend class FlatStringInfo;
     friend class NameDictionary;
     friend class panda::test::EcmaStringEqualsTest;
@@ -115,11 +110,13 @@ private:
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
-    static SlicedString *CreateSlicedString(const EcmaVM *vm, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    static SlicedEcmaString* CreateSlicedString(const EcmaVM* vm, JSHandle<EcmaString> parent,
+                                                MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
     static EcmaString *CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed);
+    static EcmaString *AllocLineString(const EcmaVM* vm, size_t size, MemSpaceType type);
     static EcmaString *CreateLineStringWithSpaceType(const EcmaVM *vm,
-        size_t length, bool compressed, MemSpaceType type);
+                                                     size_t length, bool compressed, MemSpaceType type);
     static EcmaString *CreateTreeString(const EcmaVM *vm,
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
@@ -151,18 +148,14 @@ private:
 
     inline bool IsUtf8() const
     {
-        uint32_t bits = GetLengthAndFlags();
-        return CompressedStatusBit::Decode(bits) == STRING_COMPRESSED;
+        return ToBaseString()->IsUtf8();
     }
 
     inline bool IsUtf16() const
     {
-        uint32_t bits = GetLengthAndFlags();
-        return CompressedStatusBit::Decode(bits) == STRING_UNCOMPRESSED;
+        return ToBaseString()->IsUtf16();
     }
 
-    // require is LineString
-    inline uint16_t *GetData() const;
     inline const uint8_t *GetDataUtf8() const;
     inline const uint16_t *GetDataUtf16() const;
 
@@ -172,69 +165,47 @@ private:
 
     inline uint32_t GetLength() const
     {
-        uint32_t bits = GetLengthAndFlags();
-        return LengthBits::Decode(bits);
+        return ToBaseString()->GetLength();
     }
 
     inline void InitLengthAndFlags(uint32_t length, bool compressed = false, bool isIntern = false)
     {
-        ASSERT(length < MAX_STRING_LENGTH);
-        uint32_t newVal = 0;
-        newVal = IsInternBit::Update(newVal,  isIntern);
-        newVal = CompressedStatusBit::Update(newVal,  (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
-        newVal = LengthBits::Update(newVal, length);
-        SetLengthAndFlags(newVal);
+        ToBaseString()->InitLengthAndFlags(length, compressed, isIntern);
     }
 
     inline size_t GetUtf8Length(bool modify = true, bool isGetBufferSize = false) const;
 
     inline void SetIsInternString()
     {
-        uint32_t bits = GetLengthAndFlags();
-        uint32_t newVal = IsInternBit::Update(bits, true);
-        SetLengthAndFlags(newVal);
+        ToBaseString()->SetIsInternString();
     }
 
     inline bool IsInternString() const
     {
-        uint32_t bits = GetLengthAndFlags();
-        return IsInternBit::Decode(bits);
+        return ToBaseString()->IsInternString();
     }
 
     inline void ClearInternStringFlag()
     {
-        uint32_t bits = GetLengthAndFlags();
-        uint32_t newVal = IsInternBit::Update(bits, false);
-        SetLengthAndFlags(newVal);
+        ToBaseString()->ClearInternStringFlag();
     }
 
     inline bool TryGetHashCode(uint32_t *hash)
     {
-        uint32_t hashcode = GetRawHashcode();
-        if (hashcode == 0 && GetLength() != 0) {
-            return false;
-        }
-        *hash = hashcode;
-        return true;
+        return ToBaseString()->TryGetHashCode(hash);
     }
 
     // not change this data structure.
     // if string is not flat, this func has low efficiency.
     uint32_t PUBLIC_API GetHashcode()
     {
-        uint32_t hashcode = GetRawHashcode();
+        uint32_t hashcode = ToBaseString()->GetRawHashcode();
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
         if (hashcode == 0 && GetLength() != 0) {
             hashcode = ComputeRawHashcode();
             SetRawHashcode(hashcode);
         }
         return hashcode;
-    }
-
-    template<typename T>
-    inline static bool IsDecimalDigitChar(const T c)
-    {
-        return (c >= '0' && c <= '9');
     }
 
     uint32_t PUBLIC_API ComputeRawHashcode() const;
@@ -257,27 +228,8 @@ private:
     // Check that two spans are equal. Should have the same length.
     /* static */
     template<typename T, typename T1>
-    static bool StringsAreEquals(Span<const T> &str1, Span<const T1> &str2)
-    {
-        ASSERT(str1.Size() <= str2.Size());
-        size_t size = str1.Size();
-        if constexpr (std::is_same_v<T, T1>) {
-            return !memcmp(str1.data(), str2.data(), size * sizeof(T));
-        } else {
-            for (size_t i = 0; i < size; i++) {
-                auto left = static_cast<uint16_t>(str1[i]);
-                auto right = static_cast<uint16_t>(str2[i]);
-                if (left != right) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
+    static bool StringsAreEquals(common::Span<const T> &str1, common::Span<const T1> &str2);
 
-    // Converts utf8Data to utf16 and compare it with given utf16_data.
-    static bool IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, const uint16_t *utf16Data,
-                                  uint32_t utf16Len);
     // Compares string1 + string2 by bytes, It doesn't check canonical unicode equivalence.
     bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
@@ -306,200 +258,21 @@ private:
     static int32_t LastIndexOf(const EcmaVM *vm,
         const JSHandle<EcmaString> &receiver, const JSHandle<EcmaString> &search, int pos = 0);
 
-    inline size_t CopyDataUtf8(uint8_t *buf, size_t maxLength, bool modify = true) const
-    {
-        if (maxLength == 0) {
-            return 1; // maxLength was -1 at napi
-        }
-        size_t length = GetLength();
-        if (length > maxLength) {
-            return 0;
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        buf[maxLength - 1] = '\0';
-        // Put comparison here so that internal usage and napi can use the same CopyDataRegionUtf8
-        return CopyDataRegionUtf8(buf, 0, length, maxLength, modify) + 1;  // add place for zero in the end
-    }
+    // It allows user to copy into buffer even if maxLength < length
+    size_t WriteUtf8(uint8_t *buf, size_t maxLength, bool isWriteBuffer = false) const;
 
     // It allows user to copy into buffer even if maxLength < length
-    inline size_t WriteUtf8(uint8_t *buf, size_t maxLength, bool isWriteBuffer = false) const
-    {
-        if (maxLength == 0) {
-            return 1; // maxLength was -1 at napi
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        buf[maxLength - 1] = '\0';
-        return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength, true, isWriteBuffer) + 1;
-    }
+    size_t WriteUtf16(uint16_t *buf, uint32_t targetLength, uint32_t bufLength) const;
 
-    size_t CopyDataToUtf16(uint16_t *buf, uint32_t length, uint32_t bufLength) const
-    {
-        if (IsUtf16()) {
-            CVector<uint16_t> tmpBuf;
-            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            if (length > bufLength) {
-                if (memcpy_s(buf, bufLength * sizeof(uint16_t), data, bufLength * sizeof(uint16_t)) != EOK) {
-                    LOG_FULL(FATAL) << "memcpy_s failed when length > bufLength";
-                    UNREACHABLE();
-                }
-                return bufLength;
-            }
-            if (memcpy_s(buf, bufLength * sizeof(uint16_t), data, length * sizeof(uint16_t)) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-            return length;
-        }
-        CVector<uint8_t> tmpBuf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
-        if (length > bufLength) {
-            return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength);
-        }
-        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength);
-    }
+    size_t WriteOneByte(uint8_t *buf, size_t maxLength) const;
 
-    // It allows user to copy into buffer even if maxLength < length
-    inline size_t WriteUtf16(uint16_t *buf, uint32_t targetLength, uint32_t bufLength) const
-    {
-        if (bufLength == 0) {
-            return 0;
-        }
-        // Returns a number representing a valid backrest length.
-        return CopyDataToUtf16(buf, targetLength, bufLength);
-    }
-
-    size_t WriteOneByte(uint8_t *buf, size_t maxLength) const
-    {
-        if (maxLength == 0) {
-            return 0;
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        buf[maxLength - 1] = '\0';
-        uint32_t length = GetLength();
-        if (!IsUtf16()) {
-            CVector<uint8_t> tmpBuf;
-            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
-            if (length > maxLength) {
-                length = maxLength;
-            }
-            if (memcpy_s(buf, maxLength, data, length) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed when write one byte";
-                UNREACHABLE();
-            }
-            return length;
-        }
-
-        CVector<uint16_t> tmpBuf;
-        const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
-        if (length > maxLength) {
-            return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, maxLength, maxLength);
-        }
-        return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, length, maxLength);
-    }
-
-    size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength,
-                              bool modify = true, bool isWriteBuffer = false) const
-    {
-        uint32_t len = GetLength();
-        if (start + length > len) {
-            return 0;
-        }
-        if (!IsUtf16()) {
-            if (length > std::numeric_limits<size_t>::max() / 2 - 1) {  // 2: half
-                LOG_FULL(FATAL) << " length is higher than half of size_t::max";
-                UNREACHABLE();
-            }
-            CVector<uint8_t> tmpBuf;
-            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf) + start;
-            // Only copy maxLength number of chars into buffer if length > maxLength
-            auto dataLen = std::min(length, maxLength);
-            std::copy(data, data + dataLen, buf);
-            return dataLen;
-        }
-        CVector<uint16_t> tmpBuf;
-        const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
-        if (length > maxLength) {
-            return base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf, maxLength, maxLength, start,
-                                                              modify, isWriteBuffer);
-        }
-        return base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf, length, maxLength, start,
-                                                          modify, isWriteBuffer);
-    }
-
-    inline uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const
-    {
-        uint32_t length = GetLength();
-        if (length > maxLength) {
-            return 0;
-        }
-        if (IsUtf16()) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            CVector<uint16_t> tmpBuf;
-            const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
-            if (memcpy_s(buf, maxLength * sizeof(uint16_t), data, length * sizeof(uint16_t)) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-            return length;
-        }
-        CVector<uint8_t> tmpBuf;
-        const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
-        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, maxLength);
-    }
+    uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const;
 
     std::u16string ToU16String(uint32_t len = 0);
 
-    std::unique_ptr<uint8_t[]> ToOneByteDataForced()
-    {
-        uint8_t *buf = nullptr;
-        auto length = GetLength();
-        if (IsUtf16()) {
-            auto size = length * sizeof(uint16_t);
-            buf = new uint8_t[size]();
-            CopyDataUtf16(reinterpret_cast<uint16_t *>(buf), length);
-        } else {
-            buf = new uint8_t[length + 1]();
-            CopyDataUtf8(buf, length + 1);
-        }
-        return std::unique_ptr<uint8_t[]>(buf);
-    }
+    common::Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false);
 
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false)
-    {
-        Span<const uint8_t> str;
-        uint32_t strLen = GetLength();
-        if (UNLIKELY(IsUtf16())) {
-            CVector<uint16_t> tmpBuf;
-            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            ASSERT(base::utf_helper::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) > 0);
-            size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) - 1;
-            buf.reserve(len);
-            len = base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify, false, cesu8);
-            str = Span<const uint8_t>(buf.data(), len);
-        } else {
-            const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-            str = Span<const uint8_t>(data, strLen);
-        }
-        return str;
-    }
-
-    Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true)
-    {
-        Span<const uint8_t> str;
-        uint32_t strLen = GetLength();
-        if (UNLIKELY(IsUtf16())) {
-            CVector<uint16_t> tmpBuf;
-            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) - 1;
-            buf.reserve(len);
-            len = base::utf_helper::DebuggerConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify);
-            str = Span<const uint8_t>(buf.data(), len);
-        } else {
-            const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-            str = Span<const uint8_t>(data, strLen);
-        }
-        return str;
-    }
+    common::Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true);
 
     void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
 
@@ -515,154 +288,40 @@ private:
 
     bool PUBLIC_API ToTypedArrayIndex(uint32_t *index);
 
-    template<bool isLower>
-    static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+    template <typename T>
+    static EcmaString* TrimBody(const JSThread* thread, const JSHandle<EcmaString>& src, common::Span<T>& data,
+                                TrimMode mode);
 
-    template<bool isLower>
-    static EcmaString *LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
-
-    template<typename T>
-    static EcmaString *TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode);
-
-    static EcmaString *Trim(const JSThread *thread, const JSHandle<EcmaString> &src, TrimMode mode = TrimMode::TRIM);
-
-    // single char copy for loop
-    template<typename DstType, typename SrcType>
-    static void CopyChars(DstType *dst, SrcType *src, uint32_t count)
-    {
-        Span<SrcType> srcSp(src, count);
-        Span<DstType> dstSp(dst, count);
-        for (uint32_t i = 0; i < count; i++) {
-            dstSp[i] = srcSp[i];
-        }
-    }
+    static EcmaString* Trim(const JSThread* thread, const JSHandle<EcmaString>& src, TrimMode mode = TrimMode::TRIM);
 
     // memory block copy
     template<typename T>
-    static bool MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count);
-
-    // To change the hash algorithm of EcmaString, please modify EcmaString::CalculateConcatHashCode
-    // and EcmaStringHashHelper::ComputeHashForDataPlatform simultaneously!!
-#if ENABLE_NEXT_OPTIMIZATION
-    template <typename T>
-    static uint32_t ComputeHashForData(const T *data, size_t size,
-                                       uint32_t hashSeed)
-    {
-        constexpr size_t switchUnrollingSize = EcmaStringHash::SWITCH_UNROLLING_SIZE;
-        if (size <= switchUnrollingSize) {
-            return ComputeHashForShortData(data, size, hashSeed);
-        }
-        if (size <= EcmaStringHash::MIN_SIZE_FOR_UNROLLING) {
-            size_t offset = size & (switchUnrollingSize - 1);
-            uint32_t hash = ComputeHashForShortData(data, offset, hashSeed);
-            for (; offset < size; offset += switchUnrollingSize) {
-                hash = ComputeHashForShortData(data + offset, switchUnrollingSize, hash);
-            }
-            return hash;
-        }
-        return EcmaStringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
-    }
-#else
-    template <typename T>
-    static uint32_t ComputeHashForData(const T *data, size_t size,
-                                       uint32_t hashSeed)
-    {
-        uint32_t hash = hashSeed;
-        for (uint32_t i = 0; i < size; i++) {
-            hash = (hash << static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT)) - hash + data[i];
-        }
-        return hash;
-    }
-#endif
-
-    // compute hashcode for data when data.size() <=32,
-    // using switch-case unrolling to efficiently calculate hashcode
-    template <typename T>
-    static uint32_t ComputeHashForShortData(const T *data, size_t size, uint32_t hashSeed)
-    {
-        ASSERT(size <= EcmaStringHash::SWITCH_UNROLLING_SIZE);
-        uint32_t hash = 0;
-        switch (size) {
-#define CASE(N) case (N): hash += data[size - (N)] * base::POWER_OF_31_TABLE[(N) - 1]; [[fallthrough]]
-            CASE(EcmaStringHash::SIZE_32);
-            CASE(EcmaStringHash::SIZE_31);
-            CASE(EcmaStringHash::SIZE_30);
-            CASE(EcmaStringHash::SIZE_29);
-            CASE(EcmaStringHash::SIZE_28);
-            CASE(EcmaStringHash::SIZE_27);
-            CASE(EcmaStringHash::SIZE_26);
-            CASE(EcmaStringHash::SIZE_25);
-            CASE(EcmaStringHash::SIZE_24);
-            CASE(EcmaStringHash::SIZE_23);
-            CASE(EcmaStringHash::SIZE_22);
-            CASE(EcmaStringHash::SIZE_21);
-            CASE(EcmaStringHash::SIZE_20);
-            CASE(EcmaStringHash::SIZE_19);
-            CASE(EcmaStringHash::SIZE_18);
-            CASE(EcmaStringHash::SIZE_17);
-            CASE(EcmaStringHash::SIZE_16);
-            CASE(EcmaStringHash::SIZE_15);
-            CASE(EcmaStringHash::SIZE_14);
-            CASE(EcmaStringHash::SIZE_13);
-            CASE(EcmaStringHash::SIZE_12);
-            CASE(EcmaStringHash::SIZE_11);
-            CASE(EcmaStringHash::SIZE_10);
-            CASE(EcmaStringHash::SIZE_9);
-            CASE(EcmaStringHash::SIZE_8);
-            CASE(EcmaStringHash::SIZE_7);
-            CASE(EcmaStringHash::SIZE_6);
-            CASE(EcmaStringHash::SIZE_5);
-            CASE(EcmaStringHash::SIZE_4);
-            CASE(EcmaStringHash::SIZE_3);
-            CASE(EcmaStringHash::SIZE_2);
-            CASE(EcmaStringHash::SIZE_1);
-#undef CASE
-            default:
-                break;
-        }
-        hash += hashSeed * base::POWER_OF_31_TABLE[size];
-        return hash;
-    }
-
-    static bool IsASCIICharacter(uint16_t data)
-    {
-        if (data == 0) {
-            return false;
-        }
-        // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data <= base::utf_helper::UTF8_1B_MAX;
-    }
+    static bool MemCopyChars(common::Span<T> &dst, size_t dstMax, common::Span<const T> &src, size_t count);
 
     template<typename T1, typename T2>
-    static int32_t IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos, int32_t max);
+    static int32_t IndexOf(common::Span<const T1> &lhsSp, common::Span<const T2> &rhsSp, int32_t pos, int32_t max);
 
     template<typename T1, typename T2>
-    static int32_t LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos);
+    static int32_t LastIndexOf(common::Span<const T1> &lhsSp, common::Span<const T2> &rhsSp, int32_t pos);
 
     bool IsFlat() const;
 
     bool IsLineString() const
     {
-        return GetClass()->IsLineString();
+        return ToBaseString()->IsLineString();
     }
     bool IsSlicedString() const
     {
-        return GetClass()->IsSlicedString();
+        return ToBaseString()->IsSlicedString();
     }
     bool IsTreeString() const
     {
-        return GetClass()->IsTreeString();
+        return ToBaseString()->IsTreeString();
     }
+
     bool NotTreeString() const
     {
         return !IsTreeString();
-    }
-
-    JSType GetStringType() const
-    {
-        JSType type = GetClass()->GetObjectType();
-        ASSERT(type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST);
-        return type;
     }
 
     template <typename Char>
@@ -708,18 +367,24 @@ private:
 
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data
 class LineEcmaString : public EcmaString {
+private:
+    using TaggedObject::SIZE;
 public:
-    static constexpr uint32_t MAX_LENGTH = (1 << 28) - 16;
-    static constexpr uint32_t INIT_LENGTH_TIMES = 4;
-    // DATA_OFFSET: the string data stored after the string header.
-    // Data can be stored in utf8 or utf16 form according to compressed bit.
-    static constexpr size_t DATA_OFFSET = EcmaString::SIZE;  // DATA_OFFSET equal to Empty String size
+    LineString* ToLineString()
+    {
+        return LineString::Cast(this);
+    }
+
+    const LineString* ToLineString() const
+    {
+        return LineString::ConstCast(this);
+    }
 
     CAST_CHECK(LineEcmaString, IsLineString);
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetPointerLength());
+    DECL_VISIT_ARRAY(LineString::DATA_OFFSET, 0, GetPointerLength());
 
-    static LineEcmaString *Cast(EcmaString *str)
+    static LineEcmaString* Cast(EcmaString* str)
     {
         return static_cast<LineEcmaString *>(str);
     }
@@ -731,24 +396,22 @@ public:
 
     static size_t ComputeSizeUtf8(uint32_t utf8Len)
     {
-        return DATA_OFFSET + utf8Len;
+        return LineString::ComputeSizeUtf8(utf8Len);
     }
 
     static size_t ComputeSizeUtf16(uint32_t utf16Len)
     {
-        return DATA_OFFSET + utf16Len * sizeof(uint16_t);
+        return LineString::ComputeSizeUtf16(utf16Len);
     }
 
     static size_t ObjectSize(EcmaString *str)
     {
-        uint32_t length = str->GetLength();
-        return str->IsUtf16() ? ComputeSizeUtf16(length) : ComputeSizeUtf8(length);
+        return LineString::ObjectSize(str->ToBaseString());
     }
 
     static size_t DataSize(EcmaString *str)
     {
-        uint32_t length = str->GetLength();
-        return str->IsUtf16() ? length * sizeof(uint16_t) : length;
+        return LineString::DataSize(str->ToBaseString());
     }
 
     size_t GetPointerLength()
@@ -757,99 +420,101 @@ public:
         return AlignUp(byteSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) / sizeof(JSTaggedType);
     }
 
-    uint16_t *GetData() const
-    {
-        return reinterpret_cast<uint16_t *>(ToUintPtr(this) + DATA_OFFSET);
-    }
-
     template<bool verify = true>
     uint16_t Get(int32_t index) const
     {
-        int32_t length = static_cast<int32_t>(GetLength());
-        if (verify) {
-            if ((index < 0) || (index >= length)) {
-                return 0;
-            }
-        }
-        if (!IsUtf16()) {
-            Span<const uint8_t> sp(GetDataUtf8(), length);
-            return sp[index];
-        }
-        Span<const uint16_t> sp(GetDataUtf16(), length);
-        return sp[index];
+        return ToLineString()->Get<verify>(index);
     }
 
     void Set(uint32_t index, uint16_t src)
     {
-        ASSERT(index < GetLength());
-        if (IsUtf8()) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            *(reinterpret_cast<uint8_t *>(GetData()) + index) = static_cast<uint8_t>(src);
-        } else {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            *(GetData() + index) = src;
-        }
+        return ToLineString()->Set(index, src);
     }
 };
-static_assert((LineEcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+// static_assert((LineString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
 
 // The substrings of another string use SlicedString to describe.
-class SlicedString : public EcmaString {
+class SlicedEcmaString : public EcmaString {
+private:
+    using TaggedObject::SIZE;
 public:
-    static constexpr uint32_t MIN_SLICED_ECMASTRING_LENGTH = 13;
-    static constexpr size_t PARENT_OFFSET = EcmaString::SIZE;
-    static constexpr uint32_t START_INDEX_BITS_NUM = 30U;
-    using HasBackingStoreBit = BitField<bool, 0>; // 1
-    using ReserveBit = HasBackingStoreBit::NextFlag; // 1
-    using StartIndexBits = ReserveBit::NextField<uint32_t, START_INDEX_BITS_NUM>; // 30
-    static_assert(StartIndexBits::START_BIT + StartIndexBits::SIZE == sizeof(uint32_t) * BITS_PER_BYTE,
-                  "StartIndexBits does not match the field size");
-    static_assert(StartIndexBits::SIZE == LengthBits::SIZE, "The size of startIndex should be same with Length");
+    DECL_VISIT_OBJECT(SlicedString::PARENT_OFFSET, SlicedString::STARTINDEX_AND_FLAGS_OFFSET);
 
-    ACCESSORS(Parent, PARENT_OFFSET, STARTINDEX_AND_FLAGS_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(StartIndexAndFlags, uint32_t, STARTINDEX_AND_FLAGS_OFFSET, SIZE);
+    CAST_CHECK(SlicedEcmaString, IsSlicedString);
 
-    DECL_VISIT_OBJECT(PARENT_OFFSET, STARTINDEX_AND_FLAGS_OFFSET);
+    SlicedString* ToSlicedString()
+    {
+        return SlicedString::Cast(this);
+    }
 
-    CAST_CHECK(SlicedString, IsSlicedString);
+    const SlicedString* ToSlicedString() const
+    {
+        return SlicedString::ConstCast(this);
+    }
+
+    static SlicedEcmaString* FromBaseString(SlicedString* str)
+    {
+        return reinterpret_cast<SlicedEcmaString*>(str);
+    }
 
     uint32_t GetStartIndex() const
     {
-        uint32_t bits = GetStartIndexAndFlags();
-        return StartIndexBits::Decode(bits);
+        return ToSlicedString()->GetStartIndex();
     }
 
     void SetStartIndex(uint32_t startIndex)
     {
-        ASSERT(startIndex <= SlicedString::MAX_STRING_LENGTH);
-        uint32_t bits = GetStartIndexAndFlags();
-        uint32_t newVal = StartIndexBits::Update(bits, startIndex);
-        SetStartIndexAndFlags(newVal);
+        ToSlicedString()->SetStartIndex(startIndex);
     }
 
     bool GetHasBackingStore() const
     {
-        uint32_t bits = GetStartIndexAndFlags();
-        return HasBackingStoreBit::Decode(bits);
+        return ToSlicedString()->GetHasBackingStore();
     }
 
     void SetHasBackingStore(bool hasBackingStore)
     {
-        uint32_t bits = GetStartIndexAndFlags();
-        uint32_t newVal = HasBackingStoreBit::Update(bits, hasBackingStore);
-        SetStartIndexAndFlags(newVal);
+        return ToSlicedString()->SetHasBackingStore(hasBackingStore);
     }
 
+    JSTaggedValue GetParent() const
+    {
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return JSTaggedValue(ToSlicedString()->GetParent<TaggedObject*>(std::move(readBarrier)));
+    }
+
+    template <typename T>
+    void SetParent(const JSThread* thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToSlicedString()->SetParent(std::move(writeBarrier), value.GetTaggedValue().GetTaggedObject());
+    }
+
+    void SetParent(const JSThread* thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToSlicedString()->SetParent(std::move(writeBarrier), value.GetTaggedObject());
+    };
 private:
     friend class EcmaString;
-    static SlicedString *Cast(EcmaString *str)
+    static SlicedEcmaString *Cast(EcmaString *str)
     {
-        return static_cast<SlicedString *>(str);
+        return static_cast<SlicedEcmaString *>(str);
     }
 
-    static SlicedString *Cast(const EcmaString *str)
+    static SlicedEcmaString *Cast(const EcmaString *str)
     {
-        return SlicedString::Cast(const_cast<EcmaString *>(str));
+        return SlicedEcmaString::Cast(const_cast<EcmaString *>(str));
     }
 
     static size_t ObjectSize()
@@ -861,81 +526,119 @@ private:
     template<bool verify = true>
     uint16_t Get(int32_t index) const
     {
-        int32_t length = static_cast<int32_t>(GetLength());
-        if (verify) {
-            if ((index < 0) || (index >= length)) {
-                return 0;
-            }
-        }
-        EcmaString *parent = EcmaString::Cast(GetParent());
-        ASSERT(parent->IsLineString());
-        if (parent->IsUtf8()) {
-            Span<const uint8_t> sp(parent->GetDataUtf8() + GetStartIndex(), length);
-            return sp[index];
-        }
-        Span<const uint16_t> sp(parent->GetDataUtf16() + GetStartIndex(), length);
-        return sp[index];
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return ToSlicedString()->Get<verify>(std::move(readBarrier), index);
     }
 };
 
 class TreeEcmaString : public EcmaString {
+private:
+    using TaggedObject::SIZE;
 public:
-    // Minimum length for a tree string
-    static constexpr uint32_t MIN_TREE_ECMASTRING_LENGTH = 13;
-
-    static constexpr size_t FIRST_OFFSET = EcmaString::SIZE;
-    ACCESSORS(First, FIRST_OFFSET, SECOND_OFFSET);
-    ACCESSORS(Second, SECOND_OFFSET, SIZE);
-
-    DECL_VISIT_OBJECT(FIRST_OFFSET, SIZE);
+    DECL_VISIT_OBJECT(TreeString::LEFT_OFFSET, TreeString::SIZE);
 
     CAST_CHECK(TreeEcmaString, IsTreeString);
 
-    static TreeEcmaString *Cast(EcmaString *str)
+    static TreeEcmaString* Cast(EcmaString* str)
     {
-        return static_cast<TreeEcmaString *>(str);
+        return static_cast<TreeEcmaString*>(str);
     }
 
-    static TreeEcmaString *Cast(const EcmaString *str)
+    static TreeEcmaString* Cast(const EcmaString* str)
     {
-        return TreeEcmaString::Cast(const_cast<EcmaString *>(str));
+        return TreeEcmaString::Cast(const_cast<EcmaString*>(str));
     }
+
+    TreeString* ToTreeString()
+    {
+        return TreeString::Cast(this);
+    }
+
+    const TreeString* ToTreeString() const
+    {
+        return TreeString::ConstCast(this);
+    }
+
+    static TreeEcmaString* FromBaseString(TreeString* str)
+    {
+        return reinterpret_cast<TreeEcmaString*>(str);
+    }
+
+    JSTaggedValue GetFirst() const
+    {
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return JSTaggedValue(ToTreeString()->GetLeftSubString<TaggedObject*>(std::move(readBarrier)));
+    }
+
+    template <typename T>
+    void SetFirst(const JSThread* thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToTreeString()->SetLeftSubString(std::move(writeBarrier), value->GetTaggedObject());
+    }
+
+    void SetFirst(const JSThread* thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToTreeString()->SetLeftSubString(std::move(writeBarrier), value.GetTaggedObject());
+    };
+
+    JSTaggedValue GetSecond() const
+    {
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return JSTaggedValue(ToTreeString()->GetRightSubString<TaggedObject*>(std::move(readBarrier)));
+    }
+
+    template <typename T>
+    void SetSecond(const JSThread* thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToTreeString()->SetRightSubString(std::move(writeBarrier), value->GetTaggedObject());
+    }
+
+    void SetSecond(const JSThread* thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)
+    {
+        auto writeBarrier = [thread, mode](void* obj, size_t offset, BaseObject* str) {
+            if (mode == WRITE_BARRIER) {
+                Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
+            } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
+        };
+        ToTreeString()->SetRightSubString(std::move(writeBarrier), value.GetTaggedObject());
+    };
 
     bool IsFlat() const
     {
-        auto strSecond = EcmaString::Cast(GetSecond());
-        return strSecond->GetLength() == 0;
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return ToTreeString()->IsFlat(std::move(readBarrier));
     }
 
     template<bool verify = true>
     uint16_t Get(int32_t index) const
     {
-        int32_t length = static_cast<int32_t>(GetLength());
-        if (verify) {
-            if ((index < 0) || (index >= length)) {
-                return 0;
-            }
-        }
-
-        if (IsFlat()) {
-            EcmaString *first = EcmaString::Cast(GetFirst());
-            return first->At<verify>(index);
-        }
-        EcmaString *string = const_cast<TreeEcmaString *>(this);
-        while (true) {
-            if (string->IsTreeString()) {
-                EcmaString *first = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
-                if (static_cast<int32_t>(first->GetLength()) > index) {
-                    string = first;
-                } else {
-                    index -= static_cast<int32_t>(first->GetLength());
-                    string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetSecond());
-                }
-            } else {
-                return string->At<verify>(index);
-            }
-        }
-        UNREACHABLE();
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        return ToTreeString()->Get<verify>(std::move(readBarrier), index);
     }
 };
 
@@ -1100,7 +803,7 @@ public:
         if (string_->IsLineString()) {
             return LineEcmaString::ObjectSize(string_);
         } else {
-            return TreeEcmaString::SIZE;
+            return TreeString::SIZE;
         }
     }
 
@@ -1139,16 +842,10 @@ public:
         return string_->ToU16String(len);
     }
 
-    // not change string data structure.
-    // if string is not flat, this func has low efficiency.
-    std::unique_ptr<uint8_t[]> ToOneByteDataForced()
-    {
-        return string_->ToOneByteDataForced();
-    }
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf)
+    common::Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf)
     {
         return string_->ToUtf8Span(buf);
     }
@@ -1231,11 +928,6 @@ public:
     uint32_t GetHashcode()
     {
         return string_->GetHashcode();
-    }
-
-    uint32_t GetRawHashcode()
-    {
-        return string_->GetRawHashcode();
     }
 
     uint32_t ComputeHashcode()
@@ -1397,14 +1089,7 @@ public:
         return EcmaString::Trim(thread, src, mode);
     }
 
-    static bool IsASCIICharacter(uint16_t data)
-    {
-        if (data == 0) {
-            return false;
-        }
-        // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data <= base::utf_helper::UTF8_1B_MAX;
-    }
+    static bool IsASCIICharacter(uint16_t data);
 
     bool IsFlat() const
     {
@@ -1419,11 +1104,6 @@ public:
     bool IsSlicedString() const
     {
         return string_->IsSlicedString();
-    }
-
-    JSType GetStringType() const
-    {
-        return string_->GetStringType();
     }
 
     bool IsTreeString() const

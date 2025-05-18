@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,7 +15,7 @@
 
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/utf_helper.h"
-
+#include "common_interfaces/objects/utils/span.h"
 
 namespace panda::ecmascript::base {
 constexpr uint8_t CODE_SPACE = 0x20;
@@ -51,7 +51,7 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
     return true;
 }
 
-bool JsonHelper::IsFastValueToQuotedString(const Span<const uint8_t>& sp)
+bool JsonHelper::IsFastValueToQuotedString(const common::Span<const uint8_t>& sp)
 {
     for (const auto ch : sp) {
         switch (ch) {
@@ -137,7 +137,7 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
     output += "\"";
 }
 
-void JsonHelper::AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output)
+void JsonHelper::AppendValueToQuotedString(const common::Span<const uint8_t>& sp, CString& output)
 {
     output += "\"";
     bool isFast = IsFastValueToQuotedString(sp); // fast mode

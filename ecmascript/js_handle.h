@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,7 +22,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/barriers.h"
-
+#include "common_interfaces/objects/readonly_handle.h"
 /*
  * JSHandle: A JSHandle provides a reference to an object that survives relocation by the garbage collector.
  *
@@ -181,6 +181,17 @@ public:
         GetTaggedValue().D();
     }
 
+    template <typename R>
+    operator ReadOnlyHandle<R>()
+    {
+        return ReadOnlyHandle<R>(address_);
+    }
+
+    template <typename R>
+    operator const ReadOnlyHandle<R>() const
+    {
+        return ReadOnlyHandle<R>(address_);
+    }
 private:
     inline explicit JSHandle(const JSTaggedType *slot) : address_(reinterpret_cast<uintptr_t>(slot)) {}
     inline explicit JSHandle(const T *const *slot) : address_(reinterpret_cast<uintptr_t>(slot)) {}

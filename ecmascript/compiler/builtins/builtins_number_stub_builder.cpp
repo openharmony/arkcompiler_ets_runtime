@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -429,7 +429,7 @@ GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
                 newBuilder.AllocLineStringObject(&result, &afterNew, *length, true);
                 Bind(&afterNew);
                 {
-                    GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
+                    GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineString::DATA_OFFSET)));
                     DEFVARIABLE(cursor, VariableType::INT32(), Int32Sub(*length, Int32(1)));
                     DEFVARIABLE(digit, VariableType::INT32(), Int32(0));
                     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);

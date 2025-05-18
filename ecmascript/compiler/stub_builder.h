@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -379,8 +379,9 @@ public:
     GateRef DefineField(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass,
                      MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
+    void StoreBaseAddressForBaseClass(GateRef glue, GateRef object, GateRef hClass);
     void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,
-                      MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
+                          MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
@@ -722,6 +723,7 @@ public:
     GateRef ZExtInt16ToInt32(GateRef x);
     GateRef ZExtInt16ToInt64(GateRef x);
     GateRef TruncInt64ToInt32(GateRef x);
+    GateRef TruncInt64ToInt16(GateRef x);
     GateRef TruncPtrToInt32(GateRef x);
     GateRef TruncInt64ToInt1(GateRef x);
     GateRef TruncInt32ToInt1(GateRef x);

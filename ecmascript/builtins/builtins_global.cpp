@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"
 
