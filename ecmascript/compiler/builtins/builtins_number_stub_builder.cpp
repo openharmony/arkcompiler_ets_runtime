@@ -429,7 +429,7 @@ GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
                 newBuilder.AllocLineStringObject(&result, &afterNew, *length, true);
                 Bind(&afterNew);
                 {
-                    GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
+                    GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineString::DATA_OFFSET)));
                     DEFVARIABLE(cursor, VariableType::INT32(), Int32Sub(*length, Int32(1)));
                     DEFVARIABLE(digit, VariableType::INT32(), Int32(0));
                     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);

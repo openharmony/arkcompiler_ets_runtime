@@ -39,7 +39,7 @@ int NameDictionary::Hash(const JSTaggedValue &key)
 // for ohmurl path to compute hash code
 int NameDictionary::Hash(const uint8_t* str, int strSize)
 {
-    return EcmaString::ComputeHashForData(str, strSize, 0);
+    return BaseString::ComputeHashForData(str, strSize, 0);
 }
 
 bool NameDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)

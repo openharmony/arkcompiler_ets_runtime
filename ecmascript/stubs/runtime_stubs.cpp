@@ -3303,9 +3303,9 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
         }
     } else {
         ASSERT(stringAcc.IsSlicedString());
-        auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
+        auto parent = SlicedEcmaString::Cast(string.GetTaggedValue())->GetParent();
         auto parentStrAcc = EcmaStringAccessor(parent);
-        auto startIndex = SlicedString::Cast(string.GetTaggedValue())->GetStartIndex();
+        auto startIndex = SlicedEcmaString::Cast(string.GetTaggedValue())->GetStartIndex();
 #if !ENABLE_NEXT_OPTIMIZATION
         if (parentStrAcc.IsLineString()) {
             if (parentStrAcc.IsUtf8()) {

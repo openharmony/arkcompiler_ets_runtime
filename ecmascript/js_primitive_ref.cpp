@@ -16,6 +16,7 @@
 #include "ecmascript/js_primitive_ref.h"
 
 #include "ecmascript/global_env.h"
+#include "ecmascript/ecma_string-inl.h"
 
 namespace panda::ecmascript {
 // ES6 9.4.3.4 StringCreate( value, prototype)

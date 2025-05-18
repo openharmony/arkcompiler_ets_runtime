@@ -17,7 +17,7 @@
 #define ECMASCRIPT_PLATFORM_ECMA_STRING_HASH_COMMON_H
 
 #include <cstdint>
-
+#include "ecmascript/base/config.h"
 #include "ecmascript/platform/ecma_string_hash.h"
 
 namespace panda::ecmascript {

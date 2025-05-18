@@ -422,7 +422,7 @@ public:
                 TreeEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::SLICED_STRING:
-                SlicedString::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                SlicedEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_NATIVE_POINTER:
                 if constexpr ((visitType == VisitType::SNAPSHOT_VISIT) || (visitType == VisitType::ALL_VISIT)) {

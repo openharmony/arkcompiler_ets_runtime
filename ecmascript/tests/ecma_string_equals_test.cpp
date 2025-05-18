@@ -25,7 +25,7 @@ class EcmaStringEqualsTest : public BaseTestWithScope<false> {
         static bool IsUtf8EqualsUtf16UT(const uint8_t *utf8Data, size_t utf8Len,
                                         const uint16_t *utf16Data, uint32_t utf16Len)
         {
-            return  EcmaString::IsUtf8EqualsUtf16(utf8Data, utf8Len, utf16Data, utf16Len);
+            return BaseString::IsUtf8EqualsUtf16(utf8Data, utf8Len, utf16Data, utf16Len);
         }
 };
 

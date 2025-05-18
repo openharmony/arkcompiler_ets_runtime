@@ -762,13 +762,13 @@ GateRef CircuitBuilder::TreeStringIsFlat(GateRef glue, GateRef string)
 
 GateRef CircuitBuilder::GetFirstFromTreeString(GateRef glue, GateRef string)
 {
-    GateRef offset = IntPtr(TreeEcmaString::FIRST_OFFSET);
+    GateRef offset = IntPtr(TreeString::FIRST_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 
 GateRef CircuitBuilder::GetSecondFromTreeString(GateRef glue, GateRef string)
 {
-    GateRef offset = IntPtr(TreeEcmaString::SECOND_OFFSET);
+    GateRef offset = IntPtr(TreeString::SECOND_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 

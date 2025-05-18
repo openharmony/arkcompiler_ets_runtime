@@ -22,6 +22,7 @@
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value-inl.h"

@@ -902,7 +902,7 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         }
     }
     allocateLength += static_cast<uint64_t>(sepLength) * (length - 1);
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     auto newString =

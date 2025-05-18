@@ -16,6 +16,7 @@
 
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/platform/ecma_string_hash.h"
 
 using namespace panda::ecmascript;
 
@@ -35,7 +36,7 @@ public:
     template <typename T>
     static uint32_t ComputeHashOpt(const T *data, size_t size, uint32_t hashSeed)
     {
-        return EcmaString::ComputeHashForData(data, size, hashSeed);
+        return BaseString::ComputeHashForData(data, size, hashSeed);
     }
 
     static uint32_t ComputeConcatHash(

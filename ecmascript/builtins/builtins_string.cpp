@@ -989,7 +989,7 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     if (thisLen == 0) {
         return thisHandle.GetTaggedValue();
     }
-    if (static_cast<uint32_t>(count) >= static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) / thisLen) {
+    if (static_cast<uint32_t>(count) >= static_cast<uint32_t>(BaseString::MAX_STRING_LENGTH) / thisLen) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
@@ -2283,7 +2283,7 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
     std::u16string u16strSearch = EcmaStringAccessor(thisHandle).ToU16String();
     int64_t fillLen = intMaxLength - stringLength;
     int64_t len = static_cast<int64_t>(stringBuilder.length());
-    if (static_cast<size_t>(intMaxLength) >= EcmaString::MAX_STRING_LENGTH) {
+    if (static_cast<size_t>(intMaxLength) >= BaseString::MAX_STRING_LENGTH) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     std::u16string fiString;

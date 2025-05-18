@@ -18,6 +18,7 @@
 #include "ecmascript/base/utf_helper.h"
 #include "ecmascript/builtins/builtins_global_uri-inl.h"
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"

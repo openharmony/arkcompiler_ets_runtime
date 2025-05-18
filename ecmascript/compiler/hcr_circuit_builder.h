@@ -138,12 +138,12 @@ GateRef CircuitBuilder::IsLineString(GateRef glue, GateRef obj)
 
 GateRef CircuitBuilder::ComputeSizeUtf8(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), length);
 }
 
 GateRef CircuitBuilder::ComputeSizeUtf16(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
 }
 
 GateRef CircuitBuilder::AlignUp(GateRef x, GateRef alignment)

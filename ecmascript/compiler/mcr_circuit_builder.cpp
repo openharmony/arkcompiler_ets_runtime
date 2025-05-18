@@ -1305,13 +1305,13 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, GateRef length, boo
 
 void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
 {
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::RAW_HASHCODE_OFFSET), rawHashcode);
+    Store(VariableType::INT32(), glue, str, IntPtr(BaseString::RAW_HASHCODE_OFFSET), rawHashcode);
 }
 
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
-    GateRef len = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
-    return Int32LSR(len, Int32(EcmaString::LengthBits::START_BIT));
+    GateRef len = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
+    return Int32LSR(len, Int32(BaseString::LengthBits::START_BIT));
 }
 
 GateRef CircuitBuilder::Rotl(GateRef word, uint32_t shift)
@@ -1358,12 +1358,12 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value, GateR
     Label noRawHashcode(env_);
     Label exit(env_);
     DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
-    hashcode = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(EcmaString::RAW_HASHCODE_OFFSET));
+    hashcode = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(BaseString::RAW_HASHCODE_OFFSET));
     BRANCH(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
         hashcode = CallCommonStub(glue, hir, CommonStubCSigns::ComputeStringHashcode, {glue, value});
-        Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::RAW_HASHCODE_OFFSET), *hashcode);
+        Store(VariableType::INT32(), glue, value, IntPtr(BaseString::RAW_HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1381,7 +1381,7 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
     GateRef hashCode = ZExtInt32ToInt64(
-        LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::RAW_HASHCODE_OFFSET)));
+        LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::RAW_HASHCODE_OFFSET)));
     BRANCH(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {

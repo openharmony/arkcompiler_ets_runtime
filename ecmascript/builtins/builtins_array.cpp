@@ -1339,7 +1339,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     if (len > 0) {
         allocateLength = sepLength * (len - 1) + len;
     }
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     // 7. ReturnIfAbrupt(sep).
@@ -1376,7 +1376,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
             concatStr.append(EcmaStringAccessor(nextStringHandle).ToU16String());
         }
-        if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
+        if (concatStr.size() > BaseString::MAX_STRING_LENGTH) {
             ArrayJoinStack::Pop(thread, thisHandle);
             THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
         }

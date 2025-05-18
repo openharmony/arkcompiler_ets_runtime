@@ -16,6 +16,7 @@
 #include "ecmascript/js_typed_array.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 
 namespace panda::ecmascript {
