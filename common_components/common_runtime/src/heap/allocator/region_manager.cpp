@@ -1179,6 +1179,11 @@ void RegionManager::CopyRegion(RegionDesc* region)
 uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
 {
     GCPhase mutatorPhase = Mutator::GetMutator()->GetMutatorPhase();
+    // workaround: make sure once fixline is set, newly allocated objects are after fixline
+    if (mutatorPhase == GC_PHASE_FIX) {
+        return 0;
+    }
+
     RegionList* list = oldFixedPinnedRegionList_[cellCount];
     std::lock_guard<std::mutex> lock(list->GetListMutex());
     uintptr_t allocPtr = list->AllocFromFreeListInLock();
