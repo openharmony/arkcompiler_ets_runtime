@@ -87,7 +87,7 @@ JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
     if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {
         return JSTaggedValue::Undefined();
     }
-    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    EcmaVM::ClearKeptObjects(thread);
     return JSTaggedValue::Undefined();
 }
 

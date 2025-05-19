@@ -121,13 +121,6 @@ void EcmaContext::MountContext(JSThread *thread)
     thread->SwitchCurrentContext(context);
 }
 
-void EcmaContext::UnmountContext(JSThread *thread)
-{
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    thread->PopContext();
-    Destroy(context);
-}
-
 EcmaContext *EcmaContext::CreateAndInitialize(JSThread *thread)
 {
     EcmaContext *context = EcmaContext::Create(thread);

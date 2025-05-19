@@ -1502,11 +1502,6 @@ public:
         glueData_.stackLimit_ = stackLimit;
     }
 
-    EcmaContext *GetCurrentEcmaContext() const
-    {
-        return glueData_.currentContext_;
-    }
-
     JSTaggedValue GetSingleCharTable() const
     {
         ASSERT(glueData_.globalConst_->GetSingleCharTable() != JSTaggedValue::Hole());
