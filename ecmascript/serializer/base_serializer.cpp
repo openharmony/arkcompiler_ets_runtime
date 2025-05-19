@@ -326,7 +326,6 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 break;
             }
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
-            case JSFunction::LEXICAL_ENV_OFFSET:
             case JSFunction::MACHINECODE_OFFSET:
             case JSFunction::BASELINECODE_OFFSET:
             case JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET:
@@ -337,6 +336,10 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 slot++;
                 break;
             }
+            case JSFunction::LEXICAL_ENV_OFFSET:
+                data_->WriteEncodeFlag(EncodeFlag::GLOBAL_ENV);
+                slot++;
+                break;
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));

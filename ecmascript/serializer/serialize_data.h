@@ -72,6 +72,7 @@ enum class EncodeFlag : uint8_t {
     JS_ERROR,
     JS_REG_EXP,
     SHARED_OBJECT,
+    GLOBAL_ENV,
     LAST
 };
 
