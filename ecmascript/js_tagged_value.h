@@ -395,6 +395,7 @@ public:
     static uint8_t ToUint8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static uint8_t ToUint8Clamp(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> PUBLIC_API ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static std::string ExceptionToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> ToString(JSThread *thread, JSTaggedValue val);
     static JSHandle<JSObject> ToObject(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSTaggedValue> ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
