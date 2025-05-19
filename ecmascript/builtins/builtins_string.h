@@ -315,6 +315,7 @@ public:
     static void SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
         const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern,
         const JSHandle<TaggedArray> &result);
+    static void ClearCache(const JSThread *thread, JSHandle<JSTaggedValue> cache);
 
 private:
     static constexpr int CACHE_SIZE = 256;
