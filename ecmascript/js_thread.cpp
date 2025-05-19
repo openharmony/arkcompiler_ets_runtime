@@ -201,8 +201,6 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         glueData_.storeMegaICCache_ = new MegaICCache();
     }
 
-    glueData_.moduleManager_ = new ModuleManager(vm_);
-
     glueData_.globalConst_ = new GlobalEnvConstants();
     glueData_.baseAddress_ = TaggedStateWord::BASE_ADDRESS;
 }
@@ -283,10 +281,6 @@ JSThread::~JSThread()
     if (dateUtils_ != nullptr) {
         delete dateUtils_;
         dateUtils_ = nullptr;
-    }
-    if (glueData_.moduleManager_ != nullptr) {
-        delete glueData_.moduleManager_;
-        glueData_.moduleManager_ = nullptr;
     }
     if (glueData_.moduleLogger_ != nullptr) {
         delete glueData_.moduleLogger_;
@@ -533,11 +527,6 @@ void JSThread::Iterate(RootVisitor &visitor)
 
     if (glueData_.propertiesCache_ != nullptr) {
         glueData_.propertiesCache_->Clear();
-    }
-
-    ModuleManager *moduleManager = GetModuleManager();
-    if (moduleManager) {
-        moduleManager->Iterate(visitor);
     }
 
     if (glueData_.globalConst_ != nullptr) {
@@ -1491,5 +1480,13 @@ JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) 
     auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
     ASSERT(exceptRecvHClass->IsJSArray());
     return exceptRecvHClass;
+}
+
+ModuleManager *JSThread::GetModuleManager() const
+{
+    JSHandle<GlobalEnv> globalEnv = GetGlobalEnv();
+    JSHandle<JSNativePointer> nativePointer(globalEnv->GetModuleManagerNativePointer());
+    ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(nativePointer->GetExternalPointer());
+    return moduleManager;
 }
 }  // namespace panda::ecmascript

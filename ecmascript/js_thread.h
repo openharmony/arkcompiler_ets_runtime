@@ -1077,8 +1077,7 @@ public:
                                                  base::AlignedUint64,
                                                  ElementsHClassEntries,
                                                  base::AlignedPointer,
-                                                 base::AlignedUint32,
-                                                 base::AlignedPointer> {
+                                                 base::AlignedUint32> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
@@ -1134,7 +1133,6 @@ public:
             ArrayHClassIndexesIndex,
             moduleLoggerIndex,
             stageOfHotReloadIndex,
-            moduleManagerIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1409,11 +1407,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::stageOfHotReloadIndex)>(
                 isArch32);
         }
-        static size_t GetModuleManagerOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::moduleManagerIndex)>(
-                isArch32);
-        }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
@@ -1469,7 +1462,6 @@ public:
         alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
         alignas(EAS) ModuleLogger *moduleLogger_ {nullptr};
         alignas(EAS) StageOfHotReload stageOfHotReload_ {StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD};
-        alignas(EAS) ModuleManager *moduleManager_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1499,10 +1491,7 @@ public:
         glueData_.stageOfHotReload_ = stageOfHotReload;
     }
 
-    ModuleManager *GetModuleManager() const
-    {
-        return glueData_.moduleManager_;
-    }
+    ModuleManager *GetModuleManager() const;
 
     bool IsInSubStack() const
     {

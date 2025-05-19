@@ -20,6 +20,7 @@
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript {
@@ -399,5 +400,16 @@ void ModuleManager::RemoveModuleNameFromList(const CString& recordName)
             ", when try to remove the module";
     }
     resolvedModules_.erase(recordName);
+}
+
+JSTaggedValue ModuleManager::CreateModuleManagerNativePointer(JSThread *thread)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ModuleManager *moduleManager = new ModuleManager(vm);
+    auto factory = vm->GetFactory();
+    JSHandle<JSNativePointer> nativePointer = factory->NewJSNativePointer(reinterpret_cast<void *>(moduleManager),
+                                                                          nullptr, nullptr, true);
+    vm->AddModuleManager(moduleManager);
+    return nativePointer.GetTaggedValue();
 }
 } // namespace panda::ecmascript
