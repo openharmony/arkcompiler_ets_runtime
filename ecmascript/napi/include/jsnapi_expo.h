@@ -1944,14 +1944,6 @@ Global<T>::Global(const EcmaVM *vm, const Local<S> &current) : vm_(vm)
     if (!current.IsEmpty()) {
         address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
     }
-    
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-class ECMA_PUBLIC_API HandshakeHelper final {
-public:
-    static void DoHandshake(EcmaVM *vm, void *stsiface, void **ecmaiface);
-};
-#endif  // PANDA_JS_ETS_HYBRID_MODE
-
 }
 
 template<typename T>
@@ -2104,5 +2096,13 @@ Local<T>::Local(const EcmaVM *vm, const Global<T> &current)
 {
     address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
 }
-}  // panda
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+class PUBLIC_API HandshakeHelper final {
+   public:
+    static void DoHandshake(EcmaVM *vm, void *stsiface, void **ecmaiface);
+};
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
+}  // namespace panda
 #endif
