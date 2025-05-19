@@ -430,33 +430,6 @@ bool SourceTextModule::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTex
     return true;
 }
 
-
-void SourceTextModule::HandlePreInstantiationException(JSThread *thread, JSHandle<SourceTextModule> module)
-{
-    if (module->GetStatus() != ModuleStatus::PREINSTANTIATING) {
-        return;
-    }
-    module->SetStatus(ModuleStatus::UNINSTANTIATED);
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-        size_t requestedModulesLen = requestedModules->GetLength();
-        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
-            if (request->IsSourceTextModule()) {
-                HandlePreInstantiationException(thread, JSHandle<SourceTextModule>::Cast(request));
-            } else if (request->IsString()) {
-                ModuleManager *moduleManager = thread->GetModuleManager();
-                CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
-                JSHandle<SourceTextModule> mm = moduleManager->GetImportedModule(requestStr);
-                HandlePreInstantiationException(thread, mm);
-            } else {
-                // else request is hole;
-                break;
-            }
-        }
-    }
-}
-
 int SourceTextModule::HandleInstantiateException([[maybe_unused]] JSHandle<SourceTextModule> &module,
                                                  const CVector<JSHandle<SourceTextModule>> &stack, int result)
 {
@@ -492,15 +465,18 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
            status == ModuleStatus::EVALUATING_ASYNC || status == ModuleStatus::EVALUATED ||
            status == ModuleStatus::ERRORED);
     // 4. Let result be InnerModuleInstantiation(module, stack, 0).
-    int result = SourceTextModule::PreModuleInstantiation(thread, module, executeType);
+    SourceTextModule::PreModuleInstantiation(thread, module, executeType);
+    JSHandle<JSTaggedValue> exception;
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
-        HandlePreInstantiationException(thread, module);
-        return result;
+        // handle exception here may cause incompatible changes, therefore, resolve module failed still need to bind.
+        // clear exception here, save the exception, handle exception in FinishModuleInstantiation process.
+        exception = JSHandle<JSTaggedValue>(thread, thread->GetException());
+        thread->ClearException();
     }
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;
-    result = FinishModuleInstantiation(thread, module, stack, 0);
+    int result = FinishModuleInstantiation(thread, module, stack, 0, exception);
     if (thread->HasPendingException()) {
         return HandleInstantiateException(module, stack, result);
     }
@@ -593,7 +569,7 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
 }
 
 int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<SourceTextModule> module,
-    CVector<JSHandle<SourceTextModule>> &stack, int index)
+    CVector<JSHandle<SourceTextModule>> &stack, int index, JSHandle<JSTaggedValue> exception)
 {
     // Add a safepoint here to check if a suspension is needed.
     thread->CheckSafepointIfSuspended();
@@ -623,9 +599,11 @@ int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<Sourc
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            JSHandle<SourceTextModule> requiredModule = GetRequestedModuleFromCache(thread, requestedModules, idx);
-            ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
-            index = FinishModuleInstantiation(thread, requiredModule, stack, index);
+            JSHandle<JSTaggedValue> moduleHdl =
+                GetRequestedModuleMayThrowError(thread, requestedModules, idx, exception);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(moduleHdl);
+            index = FinishModuleInstantiation(thread, requiredModule, stack, index, exception);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // c. Assert: requiredModule.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED.
             ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
@@ -2202,5 +2180,19 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(J
     JSHandle<JSTaggedValue> required(thread, moduleRequests->Get(idx));
     return JSHandle<SourceTextModule>::Cast(
         ModuleResolver::HostResolveImportedModule(thread, module, required));
+}
+
+JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThread *thread,
+    const JSHandle<TaggedArray> requestedModules, uint32_t idx, JSHandle<JSTaggedValue> exception)
+{
+    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
+    if (UNLIKELY(request->IsHole())) {
+        // requestModule is hole, means module resolve already have exception.
+        // throw original error.
+        LOG_ECMA(ERROR) << "GetRequestedModuleMayThrowError request module is hole";
+        thread->SetException(exception.GetTaggedValue());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    }
+    return JSHandle<JSTaggedValue>::Cast(GetRequestedModuleFromCache(thread, requestedModules, idx));
 }
 } // namespace panda::ecmascript
