@@ -18,13 +18,32 @@
 #include "common_components/base_runtime/hooks.h"
 
 namespace panda {
+// The "weak" functions below are needed for linking ets_runtime tools like
+// ark_stub_compiler and profdump.
+void __attribute__((weak)) VisitStaticRoots(const RefFieldVisitor &visitor)
+{
+}
+void __attribute__((weak)) UpdateStaticRoots(const RefFieldVisitor &visitor)
+{
+}
+void __attribute__((weak)) SweepStaticRoots(const WeakRefFieldVisitor &visitor)
+{
+}
+
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {
     VisitDynamicRoots(visitor, isMark);
+    if (isMark) {
+        VisitStaticRoots(visitor);
+    } else {
+        UpdateStaticRoots(visitor);
+    }
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakRoots(visitor);
+    UpdateStaticRoots(visitor);
+    SweepStaticRoots(visitor);
 }
 }  // namespace panda
