@@ -2329,6 +2329,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
                 thread, JSHandle<SourceTextModule>::Cast(module)->GetSendableEnv());
         }
         result->SetModule(thread, sendableFuncModule.GetTaggedValue());
+        auto globalConst = thread->GlobalConstants();
+        JSHandle<JSTaggedValue> emptySFunctionEnvHandle = globalConst->GetHandledEmptySFunctionEnv();
+        result->SetLexicalEnv(thread, emptySFunctionEnvHandle.GetTaggedValue(), SKIP_BARRIER);
     } else {
         result = factory->NewJSFunction(methodHandle);
         result->SetModule(thread, module.GetTaggedValue());
