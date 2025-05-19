@@ -1164,6 +1164,10 @@ void HeapSnapshot::FillEdges(bool isSimplify)
 void HeapSnapshot::FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *refSet)
 {
     auto entryFrom = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(newAddr));
+    if (entryFrom == nullptr) {
+        return;
+    }
+
     JSTaggedValue value(entryFrom->GetAddress());
     auto object = value.GetTaggedObject();
     std::vector<Reference> referenceResources;
