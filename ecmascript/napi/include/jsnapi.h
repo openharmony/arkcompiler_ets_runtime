@@ -465,135 +465,12 @@ private:
 
 template<typename T>
 template<typename S>
-Global<T>::Global(const EcmaVM *vm, const Local<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-template<typename S>
-Global<T>::Global(const EcmaVM *vm, const Global<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-
-template<typename T>
-template<typename S>
 void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
 {
     vm_ = vm;
     if (!current.IsEmpty()) {
         address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
     }
-}
-
-template<typename T>
-CopyableGlobal<T>::CopyableGlobal(const EcmaVM *vm, const Local<T> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-template<typename S>
-CopyableGlobal<T>::CopyableGlobal(const EcmaVM *vm, const Local<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-void CopyableGlobal<T>::Copy(const CopyableGlobal &that)
-{
-    Free();
-    vm_ = that.vm_;
-    if (!that.IsEmpty()) {
-        ECMA_ASSERT(vm_ != nullptr);
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
-    }
-}
-
-template<typename T>
-template<typename S>
-void CopyableGlobal<T>::Copy(const CopyableGlobal<S> &that)
-{
-    Free();
-    vm_ = that.GetEcmaVM();
-    if (!that.IsEmpty()) {
-        ECMA_ASSERT(vm_ != nullptr);
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
-    }
-}
-
-template<typename T>
-void CopyableGlobal<T>::Move(CopyableGlobal &that)
-{
-    Free();
-    vm_ = that.vm_;
-    address_ = that.address_;
-    that.vm_ = nullptr;
-    that.address_ = 0U;
-}
-
-template<typename T>
-inline void CopyableGlobal<T>::Free()
-{
-    if (!IsEmpty()) {
-        JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-        address_ = 0U;
-    }
-}
-
-template <typename T>
-void CopyableGlobal<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
-                                        WeakRefClearCallBack nativeFinalizeCallback)
-{
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
-}
-
-template<typename T>
-void CopyableGlobal<T>::SetWeak()
-{
-    address_ = JSNApi::SetWeak(vm_, address_);
-}
-
-template<typename T>
-void CopyableGlobal<T>::ClearWeak()
-{
-    address_ = JSNApi::ClearWeak(vm_, address_);
-}
-
-template<typename T>
-bool CopyableGlobal<T>::IsWeak() const
-{
-    return JSNApi::IsWeak(vm_, address_);
-}
-
-template<typename T>
-void Global<T>::Update(const Global &that)
-{
-    if (address_ != 0) {
-        JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-    }
-    address_ = that.address_;
-    vm_ = that.vm_;
-}
-
-template<typename T>
-void Global<T>::FreeGlobalHandleAddr()
-{
-    if (address_ == 0) {
-        return;
-    }
-    JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-    address_ = 0;
 }
 
 template<typename T>
@@ -634,44 +511,6 @@ void Global<T>::FreeXRefGlobalHandleAddr()
         return JSNApi::IsValidHeapObject(vm_, address_);
     }
 #endif // PANDA_JS_ETS_HYBRID_MODE
-
-template<typename T>
-void Global<T>::SetWeak()
-{
-    address_ = JSNApi::SetWeak(vm_, address_);
-}
-
-template <typename T>
-void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
-                                WeakRefClearCallBack nativeFinalizeCallback)
-{
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
-}
-
-template<typename T>
-void Global<T>::ClearWeak()
-{
-    address_ = JSNApi::ClearWeak(vm_, address_);
-}
-
-template<typename T>
-bool Global<T>::IsWeak() const
-{
-    return JSNApi::IsWeak(vm_, address_);
-}
-
-// ---------------------------------- Local --------------------------------------------
-template<typename T>
-Local<T>::Local(const EcmaVM *vm, const CopyableGlobal<T> &current)
-{
-    address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
-}
-
-template<typename T>
-Local<T>::Local(const EcmaVM *vm, const Global<T> &current)
-{
-    address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
-}
 }  // namespace panda
 
 #endif  // ECMASCRIPT_NAPI_INCLUDE_JSNAPI_H
