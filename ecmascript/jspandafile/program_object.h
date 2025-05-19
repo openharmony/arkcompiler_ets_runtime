@@ -613,7 +613,8 @@ public:
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     arr->SetElements(thread, literal);
-                    if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind()) {
+                    if (thread->GetEcmaVM()->IsEnablePGOProfiler() || thread->GetEcmaVM()->IsEnableElementsKind() ||
+                        thread->GetEcmaVM()->GetAOTFileManager()->IsEnableAOT()) {
                         // for all JSArray, the initial ElementsKind should be NONE
                         // Because AOT Stable Array Deopt check, we have support arrayLiteral elementskind
                         // If array is loaded from AOT, no need to do migration.

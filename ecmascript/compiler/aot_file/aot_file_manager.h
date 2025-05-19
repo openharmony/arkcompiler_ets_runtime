@@ -162,7 +162,7 @@ public:
     static bool InsideStub(uintptr_t pc);
     static bool InsideAOT(uintptr_t pc);
     static bool AOTFileExist(const std::string &aotFileName, const std::string &extension);
-    bool IsEnableAOT() const;
+    PUBLIC_API bool IsEnableAOT() const;
     void Iterate(RootVisitor& v);
 
     static std::string GetAOTFileFullPath(EcmaVM* vm, const std::string& moduleName);

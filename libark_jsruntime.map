@@ -134,6 +134,7 @@
       panda::Logger::logger*;
       panda::ecmascript::AnFileInfo::GenerateMethodToEntryIndexMap*;
       panda::ecmascript::AnFileInfo::Save*;
+      panda::ecmascript::AOTFileManager::IsEnableAOT*;
       panda::ecmascript::AOTFileVersion::GetAOTVersion*;
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
@@ -181,6 +182,7 @@
       panda::ecmascript::EcmaVM::IsEnableJit*;
       panda::ecmascript::EcmaVM::GetMultiThreadCheck*;
       panda::ecmascript::EcmaVM::PrintAOTSnapShotStats*;
+      panda::ecmascript::EcmaVM::GetAOTFileManager*;
       panda::ecmascript::EcmaVM::multiThreadCheck_;
       panda::ecmascript::ElementAccessor::ConvertTaggedValueWithElementsKind*;
       panda::ecmascript::ElementAccessor::Get*;
