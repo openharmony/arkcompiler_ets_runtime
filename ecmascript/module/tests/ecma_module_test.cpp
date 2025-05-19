@@ -2290,7 +2290,8 @@ HWTEST_F_L0(EcmaModuleTest, ModuleInstantiation)
     module->SetIsNewBcVersion(false);
     CVector<JSHandle<SourceTextModule>> stack;
     SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
-    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
+    JSHandle<JSTaggedValue> exception(thread, thread->GetException());
+    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1, exception);
     EXPECT_EQ(index, 2);
 }
 
@@ -2692,12 +2693,13 @@ HWTEST_F_L0(EcmaModuleTest, ModuleInstantiation_ReEnterTest)
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     CVector<JSHandle<SourceTextModule>> stack;
     SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
-    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
+    JSHandle<JSTaggedValue> exception(thread, thread->GetException());
+    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1, exception);
     EXPECT_EQ(index, 1);
     module->SetStatus(ModuleStatus::EVALUATING);
     module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
-    index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
+    index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1, exception);
     EXPECT_EQ(index, 2);
 }
 

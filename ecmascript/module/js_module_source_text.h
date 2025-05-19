@@ -402,7 +402,7 @@ public:
     static int FinishModuleInstantiation(JSThread *thread,
                                          JSHandle<SourceTextModule> module,
                                          CVector<JSHandle<SourceTextModule>> &stack,
-                                         int index);
+                                         int index, JSHandle<JSTaggedValue> exception);
 
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread,
@@ -428,7 +428,6 @@ private:
                                        CVector<JSHandle<SourceTextModule>> &stack);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
-    static void HandlePreInstantiationException(JSThread *thread, JSHandle<SourceTextModule> module);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
                                      JSHandle<JSPromise> &capability,
                                      const CVector<JSHandle<SourceTextModule>> &stack,
@@ -445,6 +444,8 @@ private:
                                      JSTaggedValue exception);
     static JSHandle<SourceTextModule> GetModuleFromCacheOrResolveNewOne(JSThread *thread,
         const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx);
+    static JSHandle<JSTaggedValue> GetRequestedModuleMayThrowError(JSThread *thread,
+        const JSHandle<TaggedArray> requestedModules, uint32_t idx, JSHandle<JSTaggedValue> exception);
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };
