@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/builtins_lowering.h"
+
+#include "builtins/builtins_string_stub_builder.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::kungfu {
@@ -472,7 +474,7 @@ void BuiltinLowering::LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID i
 void BuiltinLowering::LowerNumberConstructor(GateRef gate)
 {
     auto env = builder_.GetCurrentEnvironment();
-
+    GateRef glue = acc_.GetGlueFromArgList();
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), IntToTaggedIntPtr(builder_.Int32(0)));
     GateRef param = acc_.GetValueIn(gate, 0);
     Label exit(env);
@@ -486,25 +488,28 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     }
     builder_.Bind(&notNumber);
     {
-        Label isString(env);
-        Label notString(env);
-        GateRef glue = acc_.GetGlueFromArgList();
-        BRANCH_CIR(builder_.TaggedIsString(glue, param), &isString, &notString);
-        builder_.Bind(&isString);
+        Label isLineUtf8String(env);
+        Label notLineUtf8String(env);
+        // only line string can be integer, because length of sliced string and tree string is at least 13
+        BRANCH_CIR(builder_.TaggedIsLineUtf8String(glue, param), &isLineUtf8String, &notLineUtf8String);
+        builder_.Bind(&isLineUtf8String);
         {
             Label nonZeroLength(env);
             auto length = builder_.GetLengthFromString(param);
             BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
-            BRANCH_CIR(builder_.IsIntegerString(param), &isInteger, &notString);
+            BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
+            GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+            GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
+            BRANCH_CIR(builder_.Int64NotEqual(res, builder_.Int64(-1)), &isInteger, &notLineUtf8String);
             builder_.Bind(&isInteger);
             {
-                result = IntToTaggedIntPtr(builder_.GetRawHashFromString(param));
+                result = IntToTaggedIntPtr(res);
                 builder_.Jump(&exit);
             }
         }
-        builder_.Bind(&notString);
+        builder_.Bind(&notLineUtf8String);
         {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(ToNumericConvertBigInt), { param }, true);
             builder_.Jump(&exit);

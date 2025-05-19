@@ -513,7 +513,8 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
         BRANCH(TaggedIsString(glue_, prop), &keyIsString, slowPath); // 2 : two args
         Bind(&keyIsString);
         {
-            GateRef res = StringToElementIndex(glue_, prop);
+            BuiltinsStringStubBuilder stringStub(this);
+            GateRef res = stringStub.StringToUint(glue_, prop, JSObject::MAX_ELEMENT_INDEX - 1);
             // -1: not find element index
             BRANCH(Int64NotEqual(res, Int64(-1)), &isIndex, &notIndex);
             Bind(&isIndex);

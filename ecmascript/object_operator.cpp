@@ -15,26 +15,20 @@
 
 #include "ecmascript/object_operator.h"
 
+#include "ecmascript/base/number_helper.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
-bool ObjectOperator::TryFastHandleStringKey(const JSHandle<JSTaggedValue> &key)
+bool ObjectOperator::TryFastHandleStringKey(const JSHandle<JSTaggedValue>& key)
 {
-    if (!EcmaStringAccessor(key->GetTaggedObject()).IsInternString()) {
-        return false;
-    }
-    if (EcmaStringAccessor(key->GetTaggedObject()).IsInteger()) {
-        elementIndex_ = EcmaStringAccessor(key->GetTaggedObject()).GetIntegerCode();
-        return true;
-    }
-    if (EcmaStringAccessor(key->GetTaggedObject()).GetLength() <= EcmaString::MAX_CACHED_INTEGER_SIZE) {
-        // Since the range of hash values is of the int32 type,
-        // the IsInteger() function can only accurately determine
-        // a string whose length is less than or equal to MAX_CACHED_INTEGER_SIZE is not a number.
-        key_ = key;
-        return true;
+    EcmaStringAccessor strAcc(key->GetTaggedObject());
+    if (strAcc.IsUtf8() && strAcc.IsLineString()) {
+        const std::basic_string_view strView(strAcc.GetDataUtf8(), strAcc.GetLength());
+        constexpr uint64_t maxValue = std::numeric_limits<uint32_t>::max() - 1;
+        return base::NumberHelper::StringToUint<uint32_t, uint8_t>(strView, elementIndex_, maxValue);
     }
     return false;
 }
@@ -53,11 +47,6 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
     if (key->IsString()) {
         keyFromStringType_ = true;
-#ifdef ENABLE_NEXT_OPTIMIZATION
-        if (TryFastHandleStringKey(key)) {
-            return;
-        }
-#endif
         uint32_t index = 0;
         if (JSTaggedValue::StringToElementIndex(key.GetTaggedValue(), &index)) {
             ASSERT(index < JSObject::MAX_ELEMENT_INDEX);

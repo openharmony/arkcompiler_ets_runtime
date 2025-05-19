@@ -167,17 +167,6 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef glue, GateRef base, Gate
     return result;
 }
 
-GateRef CircuitBuilder::LoadFromAddress(VariableType type, GateRef glue, GateRef addr, MemoryAttribute mAttr)
-{
-    auto label = GetCurrentLabel();
-    auto depend = label->GetDepend();
-    auto bits = LoadStoreAccessor::ToValue(mAttr);
-    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(bits), type.GetMachineType(),
-                                           { depend, glue, addr }, type.GetGateType());
-    label->SetDepend(result);
-    return result;
-}
-
 GateRef CircuitBuilder::LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset, MemoryAttribute mAttr)
 {
     auto label = GetCurrentLabel();

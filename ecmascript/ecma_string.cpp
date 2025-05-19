@@ -31,6 +31,8 @@ constexpr size_t OFFSET_12POS = 12;
 constexpr size_t OFFSET_10POS = 10;
 constexpr size_t OFFSET_6POS = 6;
 
+using NumberHelper = base::NumberHelper;
+
 EcmaString *EcmaString::Concat(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, MemSpaceType type)
 {
@@ -513,25 +515,6 @@ std::u16string EcmaString::ToU16String(uint32_t len)
     return result;
 }
 
-//static
-uint32_t EcmaString::CalculateAllConcatHashCode(const JSHandle<EcmaString> &firstString,
-                                                const JSHandle<EcmaString> &secondString)
-{
-    uint32_t hashCode;
-    uint32_t firstLength = firstString->GetLength();
-    uint32_t secondLength = secondString->GetLength();
-    if ((firstLength + secondLength < MAX_ELEMENT_INDEX_LEN) &&
-        firstString->IsUtf8() && secondString->IsUtf8() &&
-        firstString->IsInteger() && secondString->IsInteger()) {
-            firstString->HashIntegerString(firstLength, &hashCode, 0);
-            secondString->HashIntegerString(secondLength, &hashCode, hashCode);
-            return hashCode;
-    }
-    hashCode = EcmaString::CalculateConcatHashCode(firstString, secondString);
-    hashCode = MixHashcode(hashCode, NOT_INTEGER);
-    return hashCode;
-}
-
 // static
 #if ENABLE_NEXT_OPTIMIZATION
 template<typename T1, typename T2>
@@ -549,59 +532,12 @@ uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t siz
 {
     uint32_t totalHash = 0;
     constexpr uint32_t hashShift = static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT);
-    constexpr uint32_t blockSize = static_cast<size_t>(EcmaStringHash::BLOCK_SIZE);
     // The concatenated length of the two strings is less than MIN_SIZE_FOR_UNROLLING.
-    if (sizeFirst + sizeSecond <= static_cast<size_t>(EcmaStringHash::MIN_SIZE_FOR_UNROLLING)) {
-        for (uint32_t i = 0; i < sizeFirst; i++) {
-            totalHash = (totalHash << hashShift) - totalHash + dataFirst[i];
-        }
-        for (uint32_t i = 0; i < sizeSecond; i++) {
-            totalHash = (totalHash << hashShift) - totalHash + dataSecond[i];
-        }
-        return totalHash;
+    for (uint32_t i = 0; i < sizeFirst; i++) {
+        totalHash = (totalHash << hashShift) - totalHash + dataFirst[i];
     }
-    // Process the entire block of the first string.
-    uint32_t hash[blockSize] = {0};
-    uint32_t index = 0;
-    for (; index + blockSize <= sizeFirst; index += blockSize) {
-        hash[0] = (hash[0] << hashShift) - hash[0] + dataFirst[index];
-        hash[1] = (hash[1] << hashShift) - hash[1] + dataFirst[index + 1]; // 1: the second element
-        hash[2] = (hash[2] << hashShift) - hash[2] + dataFirst[index + 2]; // 2: the third element
-        hash[3] = (hash[3] << hashShift) - hash[3] + dataFirst[index + 3]; // 3: the fourth element
-    }
-    // The remaining total string length is less than a whole block.
-    if ((sizeFirst % blockSize) + sizeSecond < blockSize) {
-        for (; index < sizeFirst; ++index) {
-            hash[0] = (hash[0] << hashShift) - hash[0] + dataFirst[index];
-        }
-        index = 0;
-    } else {
-        //Calculate the non-integral block portion at the end of the first string.
-        for (; index < sizeFirst; ++index) {
-            hash[index % blockSize] = (hash[index % blockSize] << hashShift) -
-                                        hash[index % blockSize] + dataFirst[index];
-        }
-        //Calculate the portion of the second string
-        //that starts and aligns with an integral block at the end of the first string.
-        uint32_t wholeBlockRemain = (blockSize - sizeFirst % blockSize) % blockSize;
-        index = 0;
-        for (; index < wholeBlockRemain && index < sizeSecond; ++index) {
-            uint32_t nowHashIndex = sizeFirst % blockSize + index;
-            hash[nowHashIndex] = (hash[nowHashIndex] << hashShift) - hash[nowHashIndex] + dataSecond[index];
-        }
-        // Process the entire block of the Second string.
-        for (; index + blockSize <= sizeSecond; index += blockSize) {
-            hash[0] = (hash[0] << hashShift) - hash[0] + dataSecond[index];
-            hash[1] = (hash[1] << hashShift) - hash[1] + dataSecond[index + 1]; // 1: the second element
-            hash[2] = (hash[2] << hashShift) - hash[2] + dataSecond[index + 2]; // 2: the third element
-            hash[3] = (hash[3] << hashShift) - hash[3] + dataSecond[index + 3]; // 3: the fourth element
-        }
-    }
-    for (; index < sizeSecond; ++index) {
-        hash[0] = (hash[0] << hashShift) - hash[0] + dataSecond[index];
-    }
-    for (uint32_t i = 0; i < blockSize; ++i) {
-        totalHash = (totalHash << hashShift) - totalHash + hash[i];
+    for (uint32_t i = 0; i < sizeSecond; i++) {
+        totalHash = (totalHash << hashShift) - totalHash + dataSecond[i];
     }
     return totalHash;
 }
@@ -891,97 +827,40 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
     return true;
 }
 
-bool EcmaString::HashIntegerString(uint32_t length, uint32_t *hash, const uint32_t hashSeed) const
-{
-    ASSERT(length >= 0);
-    Span<const uint8_t> str = FastToUtf8Span();
-    return HashIntegerString(str.data(), length, hash, hashSeed);
-}
-
-uint32_t EcmaString::ComputeHashcode() const
-{
-    auto [hash, isInteger] = ComputeRawHashcode();
-    return MixHashcode(hash, isInteger);
-}
-
 // hashSeed only be used when computing two separate strings merged hashcode.
-std::pair<uint32_t, bool> EcmaString::ComputeRawHashcode() const
+uint32_t EcmaString::ComputeRawHashcode() const
 {
-    uint32_t hash = 0;
     uint32_t length = GetLength();
     if (length == 0) {
-        return {hash, false};
+        return 0;
     }
 
     if (IsUtf8()) {
-        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
-        if (length < MAX_ELEMENT_INDEX_LEN && this->HashIntegerString(length, &hash, 0)) {
-            return {hash, true};
-        }
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
         // String can not convert to integer number, using normal hashcode computing algorithm.
-        hash = this->ComputeHashForData(data, length, 0);
-        return {hash, false};
+        return ComputeHashForData(data, length, 0);
     } else {
         CVector<uint16_t> buf;
         const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
         // If rawSeed has certain value, and second string uses UTF16 encoding,
         // then merged string can not be small integer number.
-        hash = this->ComputeHashForData(data, length, 0);
-        return {hash, false};
-    }
-}
-
-// hashSeed only be used when computing two separate strings merged hashcode.
-uint32_t EcmaString::ComputeHashcode(uint32_t rawHashSeed, bool isInteger) const
-{
-    uint32_t hash;
-    uint32_t length = GetLength();
-    if (length == 0) {
-        return MixHashcode(rawHashSeed, isInteger);
-    }
-
-    if (IsUtf8()) {
-        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
-        if ((rawHashSeed == 0 || isInteger) &&
-             length < MAX_ELEMENT_INDEX_LEN && this->HashIntegerString(length, &hash, rawHashSeed)) {
-            return hash;
-        }
-        CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        // String can not convert to integer number, using normal hashcode computing algorithm.
-        hash = this->ComputeHashForData(data, length, rawHashSeed);
-        return MixHashcode(hash, NOT_INTEGER);
-    } else {
-        CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
-        // If rawSeed has certain value, and second string uses UTF16 encoding,
-        // then merged string can not be small integer number.
-        hash = this->ComputeHashForData(data, length, rawHashSeed);
-        return MixHashcode(hash, NOT_INTEGER);
+        return ComputeHashForData(data, length, 0);
     }
 }
 
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
 {
-    uint32_t mixHash = 0;
     if (canBeCompress) {
-        // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
-        if (utf8Len < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf8Data, utf8Len, &mixHash, 0)) {
-            return mixHash;
-        }
-        uint32_t hash = ComputeHashForData(utf8Data, utf8Len, 0);
-        return MixHashcode(hash, NOT_INTEGER);
+        return ComputeHashForData(utf8Data, utf8Len, 0);
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
         CVector<uint16_t> tmpBuffer(utf16Len);
         [[maybe_unused]] auto len = base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
                                                                                utf16Len);
         ASSERT(len == utf16Len);
-        uint32_t hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
-        return MixHashcode(hash, NOT_INTEGER);
+        return ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
     }
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
@@ -990,13 +869,7 @@ uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
 {
-    uint32_t mixHash = 0;
-    // String length smaller than 10, try to compute integer hash.
-    if (length < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf16Data, length, &mixHash, 0)) {
-        return mixHash;
-    }
-    uint32_t hash = ComputeHashForData(utf16Data, length, 0);
-    return MixHashcode(hash, NOT_INTEGER);
+    return ComputeHashForData(utf16Data, length, 0);
 }
 
 // drop the tail bytes if the remain length can't fill the length it represents.
@@ -1103,22 +976,10 @@ bool EcmaString::ToElementIndex(uint32_t *index)
         return false;
     }
 
-    // fast path: get integer from string's hash value
-    if (TryToGetInteger(index)) {
-        return true;
-    }
-
     CVector<uint8_t> buf;
     const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-    uint32_t c = data[0];
-    uint64_t n = 0;
-    if (c == '0') {
-        *index = 0;
-        return len == 1;
-    }
-    uint32_t loopStart = 0;
-    if (ToUInt64FromLoopStart(&n, loopStart, data) && n < JSObject::MAX_ELEMENT_INDEX) {
-        *index = n;
+    constexpr uint64_t maxValue = std::numeric_limits<uint32_t>::max() - 1;
+    if (NumberHelper::StringToUint<uint32_t, uint8_t>(std::basic_string_view(data, GetLength()), *index, maxValue)) {
         return true;
     }
     return false;
