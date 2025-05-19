@@ -66,6 +66,16 @@ public:
     void TryLoadGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
 private:
+    struct PrimitiveLoadICInfo {
+        GateRef glue;
+        GateRef glueGlobalEnv;
+        GateRef profileFirstValue;
+        Label *tryICHandler;
+        Variable *cachedHandler;
+    };
+    void TryDesignatePrimitiveLoadIC(Label &tryDesignatePrimitive, Label &notDesignatePrimitive,
+                                     PrimitiveType primitiveType, PrimitiveLoadICInfo info);
+    void TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHandler);
     template<ICStubType type>
     void NamedICAccessor(Variable* cachedHandler, Label *tryICHandler);
     template<ICStubType type>

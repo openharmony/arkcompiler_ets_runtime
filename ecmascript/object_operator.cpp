@@ -121,7 +121,7 @@ void ObjectOperator::UpdateHolder()
         } else {
             SetIsOnPrototype(true);
         }
-    } else if (holder_->IsNumber()) {
+    } else if (holder_->IsPrimitive(PrimitiveType::PRIMITIVE_BOOLEAN | PrimitiveType::PRIMITIVE_NUMBER)) {
         SetIsOnPrototype(true);
     }
     holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());

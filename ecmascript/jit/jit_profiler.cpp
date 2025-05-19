@@ -587,9 +587,17 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
             ->UpdateFuncSlotIdMap(accessorMethodId, methodId_.GetOffset(), slotId);
     }
     if (AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass)) {
-        return ;
+        return;
     }
-    AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId, name);
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        JSHandle<JSTaggedValue> holderHandler = jitCompilationEnv->NewJSHandle(holder);
+        uint32_t heapConstantIndex = jitCompilationEnv->RecordHeapConstant(holderHandler);
+        int32_t holderHClassIndex = ptManager_->RecordAndGetHclassIndexForJIT(holderHClass);
+        jitCompilationEnv->RecordHolderHClassIndex2HeapConstantIndex(holderHClassIndex, heapConstantIndex);
+    }
+    auto primitiveType = HandlerBase::TryGetPrimitiveType(handlerInfo);
+    AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId, primitiveType, name);
 }
 
 void JITProfiler::HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
@@ -753,7 +761,7 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
                 AddBuiltinsInfo(abcId, bcOffset, hclass, hclass, onHeap);
                 return;
             }
-            AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass, INVALID_METHOD_INDEX, name);
+            AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass, INVALID_METHOD_INDEX, PRIMITIVE_TYPE_INVALID, name);
         } else if (secondValue.IsPrototypeHandler()) {
             HandleLoadTypePrototypeHandler(abcId, bcOffset, hclass, secondValue, slotId, name);
         }
@@ -1017,23 +1025,23 @@ void JITProfiler::AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &
 }
 
 bool JITProfiler::AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold,
-                                JSHClass *holdTra, uint32_t accessorMethodId, JSTaggedValue name)
+    JSHClass *holdTra, uint32_t accessorMethodId, PrimitiveType primitiveType, JSTaggedValue name)
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
     // case: obj = Object.create(null) => LowerProtoChangeMarkerCheck Crash
     if (receiver->GetPrototype().IsNull()) {
         return false;
     }
-    return AddTranstionObjectInfo(bcOffset, receiver, hold, holdTra, accessor, name);
+    return AddTranstionObjectInfo(bcOffset, receiver, hold, holdTra, accessor, primitiveType, name);
 }
 
 bool JITProfiler::AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver, JSHClass *hold,
-                                         JSHClass *holdTra, PGOSampleType accessorMethod, JSTaggedValue name)
+    JSHClass *holdTra, PGOSampleType accessorMethod, PrimitiveType primitiveType, JSTaggedValue name)
 {
     ptManager_->RecordAndGetHclassIndexForJIT(receiver);
     ptManager_->RecordAndGetHclassIndexForJIT(hold);
     ptManager_->RecordAndGetHclassIndexForJIT(holdTra);
-    PGOObjectInfo info(ProfileType::CreateJITType(), receiver, hold, holdTra, accessorMethod);
+    PGOObjectInfo info(ProfileType::CreateJITType(), receiver, hold, holdTra, accessorMethod, primitiveType);
     AddObjectInfoImplement(bcOffset, info, name);
     return true;
 }

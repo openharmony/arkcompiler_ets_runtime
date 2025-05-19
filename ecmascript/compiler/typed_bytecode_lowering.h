@@ -79,6 +79,26 @@ public:
     void RunTypedBytecodeLowering();
 
 private:
+    struct LoadObjByNameDataInfo {
+        LoadObjByNameDataInfo(std::vector<Label> &loaderLabels, std::vector<Label> &failLabels,
+            const LoadObjPropertyTypeInfoAccessor &ldTacc, Variable &resVar, Label &exitLabel) : loaders(loaderLabels),
+            fails(failLabels), tacc(ldTacc), result(resVar), exit(exitLabel) {}
+        ~LoadObjByNameDataInfo() = default;
+        std::vector<Label> &loaders;
+        std::vector<Label> &fails;
+        const LoadObjPropertyTypeInfoAccessor &tacc;
+        Variable &result;
+        Label &exit;
+    };
+
+    struct LoadObjByNameOnProtoTypeInfo {
+        GateRef gate;
+        GateRef frameState;
+        GateRef receiverHC;
+        Label *exit;
+        size_t typeIndex;
+    };
+
     bool IsLogEnabled() const
     {
         return enableLog_;
@@ -124,6 +144,18 @@ private:
 
     void LowerTypedStPrivateProperty(GateRef gate);
     void LowerTypedLdPrivateProperty(GateRef gate);
+    GateRef GetPrimitiveTypeProto(PrimitiveType primitiveType);
+    void PolyPrimitiveTypeCheckAndLoad(LoadObjByNameDataInfo &info,
+        std::map<size_t, uint32_t> &typeIndex2HeapConstantIndex);
+    void GenerateMergedHClassListCheck(LoadObjByNameDataInfo &info, Label &hclassCheckExit,
+        Variable &checkResult, size_t index, GateRef receiverHC);
+    void PolyHeapObjectCheckAndLoad(LoadObjByNameDataInfo &info,
+        const std::map<size_t, uint32_t> &typeIndex2HeapConstantIndex);
+    void LoadOnPrototypeForHeapObjectReceiver(const LoadObjPropertyTypeInfoAccessor &tacc, Variable &result,
+                                              LoadObjByNameOnProtoTypeInfo ldProtoInfo);
+    void LowerTypedMonoLdObjByNameOnProto(const LoadObjPropertyTypeInfoAccessor &tacc, Variable &result);
+    void LowerTypedMonoLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc);
+    void LowerTypedPolyLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc);
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate);
     void TypedStObjByNameTransition(GateRef gate, GateRef receiverHC, GateRef frameState,

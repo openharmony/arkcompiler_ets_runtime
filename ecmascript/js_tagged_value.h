@@ -491,6 +491,7 @@ public:
     bool IsJSFinalizationRegistry() const;
     bool IsCellRecord() const;
     bool IsJSRegExp() const;
+    bool IsPrimitive(uint8_t primitiveType) const;
     bool IsNumber() const;
     bool IsBigInt() const;
     bool IsString() const;

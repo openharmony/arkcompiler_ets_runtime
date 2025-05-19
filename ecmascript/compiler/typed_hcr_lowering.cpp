@@ -192,6 +192,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
             LowerProtoChangeMarkerCheck(glue, gate);
             break;
+        case OpCode::PRIMTYPE_PROTO_CHANGE_MARKER_CHECK:
+            LowerPrimitiveTypeProtoChangeMarkerCheck(glue, gate);
+            break;
         case OpCode::MONO_CALL_GETTER_ON_PROTO:
             LowerMonoCallGetterOnProto(gate, glue);
             break;
@@ -610,7 +613,7 @@ void TypedHCRLowering::LowerSimpleHClassCheck(GateRef glue, GateRef gate)
         GateRef aotHCIndex = acc_.GetValueIn(gate, i + 1);
         auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
         GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
-        
+
         if (i != typeCount - 1) {
             BRANCH_CIR(builder_.Equal(receiverHClass, aotHCGate), &resultIsTrue, &ifFalse[i]);
             builder_.Bind(&ifFalse[i]);
@@ -2769,6 +2772,20 @@ void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerPrimitiveTypeProtoChangeMarkerCheck(GateRef glue, GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef prototype = acc_.GetValueIn(gate, 0);
+    auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
+    auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    auto notNull = builder_.TaggedIsNotNull(marker);
+    builder_.DeoptCheck(notNull, frameState, DeoptType::PRIMTYPEPROTOTYPECHANGED);
+    auto hasChanged = builder_.GetHasChanged(marker);
+    builder_.DeoptCheck(builder_.BoolNot(hasChanged), frameState, DeoptType::PRIMTYPEPROTOTYPECHANGED);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -2781,32 +2798,47 @@ void TypedHCRLowering::LowerMonoLoadPropertyOnProto(GateRef glue, GateRef gate)
     GateRef result = Circuit::NullGate();
     ASSERT(plr.IsLocal() || plr.IsFunction());
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    Label loadHolder(&builder_);
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    GetPropertyHolderFromProtoChain(glue, { receiver, hclassIndex, unsharedConstPool, frameState },
+                                    &loadHolder, &current, DeoptType::INCONSISTENTHCLASS8);
+    builder_.Bind(&loadHolder);
+    result = LoadPropertyFromHolder(*current, plr);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypedHCRLowering::GetPropertyHolderFromProtoChain(
+    GateRef glue, ProtoTypeHolderInfo holderInfo, Label *loadHolder, Variable *current, DeoptType deoptType)
+{
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        const auto &holderHClassIndex2HeapConstantIndex = jitCompilationEnv->GetHolderHClassIndex2HeapConstantIndex();
+        auto holderHClassIndex = acc_.GetConstantValue(holderInfo.holderHClassIndex);
+        auto itr = holderHClassIndex2HeapConstantIndex.find(holderHClassIndex);
+        if (itr != holderHClassIndex2HeapConstantIndex.end()) {
+            *current = builder_.HeapConstant(itr->second);
+            builder_.Jump(loadHolder);
+            return;
+        }
+    }
+    auto receiverHC = builder_.LoadHClassByConstOffset(glue, holderInfo.receiver);
+    *current = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
 
     // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
-    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
-    Label exit(&builder_);
+    auto holderHC = builder_.LoadHClassFromConstpool(
+        holderInfo.unsharedConstPool, acc_.GetConstantValue(holderInfo.holderHClassIndex));
     Label loopHead(&builder_);
-    Label loadHolder(&builder_);
     Label lookUpProto(&builder_);
     builder_.Jump(&loopHead);
 
     builder_.LoopBegin(&loopHead);
-    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS8);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
-    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(current->ReadVariable()), holderInfo.frameState, deoptType);
+    auto curHC = builder_.LoadHClassByConstOffset(glue, current->ReadVariable());
+    BRANCH_CIR(builder_.Equal(curHC, holderHC), loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
-    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    *current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
     builder_.LoopEnd(&loopHead);
-
-    builder_.Bind(&loadHolder);
-    result = LoadPropertyFromHolder(*current, plr);
-    builder_.Jump(&exit);
-    builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
@@ -2821,32 +2853,14 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
     GateRef accessor = Circuit::NullGate();
     GateRef holder = Circuit::NullGate();
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-
-    // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
-    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
-    Label exitLoad(&builder_);
-    Label loopHead(&builder_);
     Label loadHolder(&builder_);
-    Label lookUpProto(&builder_);
-    builder_.Jump(&loopHead);
-
-    builder_.LoopBegin(&loopHead);
-    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS9);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
-    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
-
-    builder_.Bind(&lookUpProto);
-    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
-    builder_.LoopEnd(&loopHead);
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    GetPropertyHolderFromProtoChain(glue, { receiver, hclassIndex, unsharedConstPool, frameState },
+                                    &loadHolder, &current, DeoptType::INCONSISTENTHCLASS9);
 
     builder_.Bind(&loadHolder);
     holder = *current;
     accessor = LoadPropertyFromHolder(holder, plr);
-    builder_.Jump(&exitLoad);
-    builder_.Bind(&exitLoad);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
     Label isInternalAccessor(&builder_);
     Label notInternalAccessor(&builder_);
@@ -2913,25 +2927,12 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     bool noBarrier = acc_.IsNoBarrier(gate);
 
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-    // lookup from receiver for holder
-    auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
-    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
-    Label exit(&builder_);
-    Label loopHead(&builder_);
     Label loadHolder(&builder_);
-    Label lookUpProto(&builder_);
-    builder_.Jump(&loopHead);
-
-    builder_.LoopBegin(&loopHead);
-    builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS10);
-    auto curHC = builder_.LoadHClassByConstOffset(glue, *current);
-    BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
-
-    builder_.Bind(&lookUpProto);
-    current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
-    builder_.LoopEnd(&loopHead);
+    DEFVALUE(current, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    GetPropertyHolderFromProtoChain(glue, { receiver, hclassIndex, unsharedConstPool, frameState },
+                                    &loadHolder, &current, DeoptType::INCONSISTENTHCLASS10);
+    builder_.Bind(&loadHolder);
+    Label exit(&builder_);
 
     builder_.Bind(&loadHolder);
     if (!plr.IsAccessor()) {
@@ -2998,8 +2999,20 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");
         builder_.Bind(&isProto);
 
-        GateRef propKey =
-            builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, keyIndex, ConstPoolType::STRING);
+        uint32_t heapConstantIndex = JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        GateRef propKey = 0;
+        if (compilationEnv_->SupportHeapConstant()) {
+            auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+            const auto &gate2HeapConstantIndex = jitCompilationEnv->GetGate2HeapConstantIndex();
+            auto itr = gate2HeapConstantIndex.find(gate);
+            if (itr != gate2HeapConstantIndex.end()) {
+                heapConstantIndex = itr->second;
+                propKey = builder_.HeapConstant(heapConstantIndex);
+            }
+        }
+        if (heapConstantIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+            propKey = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, keyIndex, ConstPoolType::STRING);
+        }
         builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
             { receiverHC, newHolderHC, propKey }, gate);
         builder_.Jump(&notProto);

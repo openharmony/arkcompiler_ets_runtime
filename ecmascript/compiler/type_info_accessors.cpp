@@ -949,8 +949,10 @@ bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessI
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
         JSHClass *holder = parent_.jitTypes_[i].GetHolderHclass();
+        PrimitiveType primitiveType = parent_.jitTypes_[i].GetPrimitiveType();
         // case: r.toFixed() => HeapObjectCheck Deopt
-        if (receiver->IsJsPrimitiveRef() || holder->IsJsPrimitiveRef()) {
+        if ((receiver->IsJsPrimitiveRef() || holder->IsJsPrimitiveRef()) &&
+            !parent_.compilationEnv_->SupportHeapConstant()) {
             return false;
         }
         if (receiver == holder) {
@@ -958,6 +960,7 @@ bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessI
             if (!parent_.GeneratePlrInJIT(receiver, info, key)) {
                 return false;
             }
+            info.SetPrimitiveType(primitiveType);
             parent_.accessInfos_.emplace_back(info);
             parent_.checkerInfos_.emplace_back(info);
         } else {
@@ -965,12 +968,14 @@ bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessI
             if (!parent_.GeneratePlrInJIT(holder, accInfo, key)) {
                 return false;
             }
+            accInfo.SetPrimitiveType(primitiveType);
             parent_.accessInfos_.emplace_back(accInfo);
             ObjectAccessInfo checkInfo;
             parent_.GeneratePlrInJIT(receiver, checkInfo, key);
             if (checkInfo.HClassIndex() == -1) {
                 return false;
             }
+            checkInfo.SetPrimitiveType(primitiveType);
             parent_.checkerInfos_.emplace_back(checkInfo);
         }
     }

@@ -228,6 +228,15 @@ public:
         return INVALID_HEAP_CONSTANT_INDEX;
     }
 
+    void RecordHolderHClassIndex2HeapConstantIndex(int32_t holderHClassIndex, uint32_t heapConstantIndex)
+    {
+        heapConstantInfo_.holderHClassIndex2HeapConstantIndex[holderHClassIndex] = heapConstantIndex;
+    }
+
+    const std::unordered_map<int32_t, uint32_t> &GetHolderHClassIndex2HeapConstantIndex() const
+    {
+        return heapConstantInfo_.holderHClassIndex2HeapConstantIndex;
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
@@ -246,6 +255,7 @@ private:
         std::unordered_map<uint32_t, uint32_t> callMethodId2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> onlyInlineMethodId2HeapConstantIndex;
         std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> ldGlobalByNameBcOffset2HeapConstantIndex;
+        std::unordered_map<int32_t, uint32_t> holderHClassIndex2HeapConstantIndex;
     } heapConstantInfo_;
 };
 } // namespace panda::ecmascript

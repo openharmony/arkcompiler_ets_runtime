@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -147,9 +148,11 @@ private:
     void AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &info,
                                 JSTaggedValue name = JSTaggedValue::Undefined());
     bool AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra,
-                                PGOSampleType accessorMethod, JSTaggedValue name = JSTaggedValue::Undefined());
+                                PGOSampleType accessorMethod, PrimitiveType primitiveType = PRIMITIVE_TYPE_INVALID,
+                                JSTaggedValue name = JSTaggedValue::Undefined());
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                        JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = INVALID_METHOD_INDEX,
+                       PrimitiveType primitiveType = PRIMITIVE_TYPE_INVALID,
                        JSTaggedValue name = JSTaggedValue::Undefined());
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,

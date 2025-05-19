@@ -2603,6 +2603,7 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerInfoExist(env);
     Label handlerInfoIsPrimitive(env);
     Label handlerInfoNotPrimitive(env);
+    Label handlerInfoNotStringOrNumber(env);
     Label handlerInfoIsStringLength(env);
     Label handlerInfoNotStringLength(env);
     Label handlerIsPrototypeHandler(env);
@@ -2636,8 +2637,12 @@ GateRef StubBuilder::LoadICWithHandler(
             }
             Bind(&handlerInfoNotField);
             {
-                BRANCH(BitOr(IsStringElement(handlerInfo), IsNumber(handlerInfo)),
-                    &handlerInfoIsPrimitive, &handlerInfoNotPrimitive);
+                BRANCH(BitOr(IsStringElement(handlerInfo), IsNumberHandler(handlerInfo)),
+                    &handlerInfoIsPrimitive, &handlerInfoNotStringOrNumber);
+                Bind(&handlerInfoNotStringOrNumber);
+                {
+                    BRANCH(IsBooleanHandler(handlerInfo), &handlerInfoIsPrimitive, &handlerInfoNotPrimitive);
+                }
                 Bind(&handlerInfoIsPrimitive);
                 {
                     result = LoadFromField(glue, *holder, handlerInfo);
@@ -9015,7 +9020,7 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef glue, GateRef obj)
     // Check no elements on self.
     GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
-    
+
     Bind(&receiverHasNoElements);
     // Since current isn't a heapObject, the receiver's proto chain has no keys.
     current = GetPrototypeFromHClass(glue, LoadHClass(glue, obj));
@@ -9051,7 +9056,7 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef glue, GateRef obj)
         Bind(&loopEnd);
         LoopEnd(&loopHead);
     }
-    
+
     Bind(&afterLoop);
     {
         result = True();
@@ -9084,12 +9089,12 @@ GateRef StubBuilder::IsProtoChainCacheValid(GateRef glue, GateRef obj)
     // Check no elements on self.
     GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
-    
+
     Bind(&receiverHasNoElements);
     GateRef hClass = LoadHClass(glue, obj);
     GateRef prototype = GetPrototypeFromHClass(glue, hClass);
     BRANCH(TaggedIsHeapObject(prototype), &prototypeIsHeapObj, &exit);
-    
+
     // Check receiver.proto.EnumCacheAll == receiver.ProtoChainInfoEnumCache.
     Bind(&prototypeIsHeapObj);
     GateRef protoHClass = LoadHClass(glue, prototype);
@@ -9108,7 +9113,7 @@ GateRef StubBuilder::IsProtoChainCacheValid(GateRef glue, GateRef obj)
                        .And(TaggedIsNotNull(keyOwn))
                        .Done();
     BRANCH(checkKey, &isCacheEqual, &exit);
-    
+
     // Check no elements on prototype chain.
     Bind(&isCacheEqual);
     {

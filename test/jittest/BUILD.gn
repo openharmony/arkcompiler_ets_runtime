@@ -61,6 +61,9 @@ group("ark_jit_ts_test") {
     "ldobjbyvalue_mono_proto_getter",
     "ldobjbyvalue_deopt_string_check",
     "ldobjbyvalue_deopt_key_check",
+    "boolean_number_ic",
+    "boolean_new_boolean_poly",
+    "boolean_change_proto_ic",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

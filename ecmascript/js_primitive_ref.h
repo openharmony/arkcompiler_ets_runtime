@@ -22,12 +22,13 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-enum class PrimitiveType : uint8_t {
-    PRIMITIVE_BOOLEAN = 0,
-    PRIMITIVE_NUMBER,
-    PRIMITIVE_STRING,
-    PRIMITIVE_SYMBOL,
-    PRIMITIVE_BIGINT,
+enum PrimitiveType : uint8_t {
+    PRIMITIVE_TYPE_INVALID = 0,
+    PRIMITIVE_BOOLEAN = 1,
+    PRIMITIVE_NUMBER = 2,
+    PRIMITIVE_STRING = 4,
+    PRIMITIVE_SYMBOL = 8,
+    PRIMITIVE_BIGINT = 16,
 };
 
 class JSPrimitiveRef : public JSObject {

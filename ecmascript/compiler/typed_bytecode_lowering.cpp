@@ -565,6 +565,290 @@ void TypedBytecodeLowering::DeleteConstDataIfNoUser(GateRef gate)
     }
 }
 
+static void GeneratePrimitiveTypeCheck(CircuitBuilder &builder, GateRef receiver, PrimitiveType primitiveType)
+{
+    switch (primitiveType) {
+        case PrimitiveType::PRIMITIVE_BOOLEAN:
+            builder.TryPrimitiveTypeCheck(GateType::BooleanType(), receiver);
+            break;
+        case PrimitiveType::PRIMITIVE_NUMBER:
+            builder.TryPrimitiveTypeCheck(GateType::NumberType(), receiver);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "Implementation Error: Unreachable branch.";
+            UNREACHABLE();
+            break;
+    }
+}
+
+GateRef TypedBytecodeLowering::GetPrimitiveTypeProto(PrimitiveType primitiveType)
+{
+    size_t index = -1;
+    if (primitiveType == PrimitiveType::PRIMITIVE_BOOLEAN) {
+        index = GlobalEnv::BOOLEAN_PROTOTYPE_INDEX;
+    } else if (primitiveType == PrimitiveType::PRIMITIVE_NUMBER) {
+        index = GlobalEnv::NUMBER_PROTOTYPE_INDEX;
+    } else {
+        LOG_ECMA(FATAL) << "Implementation Error: Unreachable branch, not supported primitiveType currently";
+        UNREACHABLE();
+    }
+    ASSERT(index != static_cast<size_t>(-1));
+    return builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, builder_.GetGlobalEnv(), index);
+}
+
+void TypedBytecodeLowering::PolyPrimitiveTypeCheckAndLoad(LoadObjByNameDataInfo &info,
+    std::map<size_t, uint32_t> &typeIndex2HeapConstantIndex)
+{
+    GateRef receiver = info.tacc.GetReceiver();
+    auto itr = typeIndex2HeapConstantIndex.begin();
+    size_t typeCount = info.tacc.GetTypeCount();
+    GateRef gate = info.tacc.GetGate();
+    GateRef frameState = acc_.GetFrameState(gate);
+    for (size_t i = 0; i < typeIndex2HeapConstantIndex.size(); ++i) {
+        auto primitiveType = info.tacc.GetPrimitiveType(itr->first);
+        // only boolean and number are supported currently
+        ASSERT(primitiveType == PrimitiveType::PRIMITIVE_BOOLEAN || primitiveType == PrimitiveType::PRIMITIVE_NUMBER);
+        Label isDesignatePrimitiveType(&builder_);
+        if (i != typeCount - 1) {
+            if (primitiveType == PrimitiveType::PRIMITIVE_NUMBER) {
+                BRANCH_CIR(builder_.TaggedIsNumber(receiver), &isDesignatePrimitiveType, &info.fails[i]);
+            } else {
+                BRANCH_CIR(builder_.TaggedIsBoolean(receiver), &isDesignatePrimitiveType, &info.fails[i]);
+            }
+        } else {
+            GeneratePrimitiveTypeCheck(builder_, receiver, primitiveType);
+            builder_.Jump(&isDesignatePrimitiveType);
+        }
+        builder_.Bind(&isDesignatePrimitiveType);
+        GateRef protoType = GetPrimitiveTypeProto(primitiveType);
+        builder_.PrimitiveTypeProtoChangeMarkerCheck(protoType, frameState);
+        GateRef protoConstant = builder_.HeapConstant(itr->second);
+        info.result = BuildNamedPropertyAccess(gate, receiver, protoConstant, info.tacc.GetAccessInfo(i).Plr());
+        builder_.Jump(&info.exit);
+
+        if (i != typeCount - 1) {
+            builder_.Bind(&info.fails[i]);
+        }
+        itr++;
+    }
+}
+
+void TypedBytecodeLowering::LoadOnPrototypeForHeapObjectReceiver(const LoadObjPropertyTypeInfoAccessor &tacc,
+    Variable &result, LoadObjByNameOnProtoTypeInfo ldProtoInfo)
+{
+    auto gate = tacc.GetGate();
+
+    // prototype change marker check
+    builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), ldProtoInfo.frameState);
+    // lookup from receiver for holder
+    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(),
+                                              ldProtoInfo.receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    // lookup from receiver for holder
+    ObjectAccessTypeInfoAccessor::ObjectAccessInfo info = tacc.GetAccessInfo(ldProtoInfo.typeIndex);
+    bool protoConstantFound = false;
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        const auto &holderHClassIndex2HeapConstantIndex =
+            jitCompilationEnv->GetHolderHClassIndex2HeapConstantIndex();
+        auto holderHClassIndex = info.HClassIndex();
+        auto itr = holderHClassIndex2HeapConstantIndex.find(holderHClassIndex);
+        if (itr != holderHClassIndex2HeapConstantIndex.end()) {
+            // holder is HeapConstant, which is recorded at jit profiler. so don't need to visit protochain
+            GateRef protoConstant = builder_.HeapConstant(itr->second);
+            result = BuildNamedPropertyAccess(
+                gate, tacc.GetReceiver(), protoConstant, tacc.GetAccessInfo(ldProtoInfo.typeIndex).Plr());
+            builder_.Jump(ldProtoInfo.exit);
+            protoConstantFound = true;
+        }
+    }
+    if (!protoConstantFound) {
+        auto holderHC = builder_.GetHClassGateFromIndex(gate, info.HClassIndex());
+        DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
+        Label loopHead(&builder_);
+        Label loadHolder(&builder_);
+        Label lookUpProto(&builder_);
+        builder_.Jump(&loopHead);
+
+        builder_.LoopBegin(&loopHead);
+        builder_.DeoptCheck(builder_.TaggedIsNotNull(*current),
+                            ldProtoInfo.frameState, DeoptType::INCONSISTENTHCLASS2);
+        auto curHC = builder_.LoadHClassByConstOffset(glue_, *current);
+        BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
+
+        builder_.Bind(&lookUpProto);
+        current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+        builder_.LoopEnd(&loopHead);
+
+        builder_.Bind(&loadHolder);
+        result = BuildNamedPropertyAccess(gate, tacc.GetReceiver(),
+                                          *current, tacc.GetAccessInfo(ldProtoInfo.typeIndex).Plr());
+        builder_.Jump(ldProtoInfo.exit);
+    }
+}
+
+void TypedBytecodeLowering::LowerTypedMonoLdObjByNameOnProto(const LoadObjPropertyTypeInfoAccessor &tacc,
+                                                             Variable &result)
+{
+    GateRef receiver = tacc.GetReceiver();
+    GateRef gate = tacc.GetGate();
+    PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
+    GateRef plrGate = builder_.Int32(plr.GetData());
+    GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+    size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
+    if (LIKELY(!plr.IsAccessor())) {
+        result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPool, holderHClassIndex);
+    } else {
+        result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPool, holderHClassIndex);
+    }
+}
+
+void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc)
+{
+    GateRef receiver = tacc.GetReceiver();
+    GateRef gate = tacc.GetGate();
+    PrimitiveType primitiveType = tacc.GetPrimitiveType(0);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    GateRef frameState = acc_.GetFrameState(gate);
+    if ((primitiveType != PrimitiveType::PRIMITIVE_TYPE_INVALID) && compilationEnv_->SupportHeapConstant()) {
+        Label notPrimitive(&builder_);
+        Label isPrimitive(&builder_);
+        if (primitiveType == PrimitiveType::PRIMITIVE_NUMBER) {
+            Label isNumber(&builder_);
+            BRANCH_CIR(builder_.TaggedIsNumber(receiver), &isNumber, &notPrimitive);
+            builder_.Bind(&isNumber);
+            GateRef protoType = GetPrimitiveTypeProto(PrimitiveType::PRIMITIVE_NUMBER);
+            builder_.PrimitiveTypeProtoChangeMarkerCheck(protoType, frameState);
+            builder_.Jump(&isPrimitive);
+        } else {
+            ASSERT(primitiveType == PrimitiveType::PRIMITIVE_BOOLEAN);
+            Label isBoolean(&builder_);
+            BRANCH_CIR(builder_.TaggedIsBoolean(receiver), &isBoolean, &notPrimitive);
+            builder_.Bind(&isBoolean);
+            GateRef prototype = GetPrimitiveTypeProto(PrimitiveType::PRIMITIVE_BOOLEAN);
+            builder_.PrimitiveTypeProtoChangeMarkerCheck(prototype, frameState);
+            builder_.Jump(&isPrimitive);
+        }
+        builder_.Bind(&notPrimitive);
+        {
+            builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0), frameState);
+            builder_.ProtoChangeMarkerCheck(receiver, frameState);
+            builder_.Jump(&isPrimitive);
+        }
+        builder_.Bind(&isPrimitive);
+        LowerTypedMonoLdObjByNameOnProto(tacc, result);
+    } else {
+        builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0), frameState);
+        if (tacc.IsReceiverEqHolder(0)) {
+            result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
+        } else {
+            builder_.ProtoChangeMarkerCheck(receiver, frameState);
+            LowerTypedMonoLdObjByNameOnProto(tacc, result);
+        }
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    DeleteConstDataIfNoUser(tacc.GetKey());
+}
+
+void TypedBytecodeLowering::GenerateMergedHClassListCheck(LoadObjByNameDataInfo &info, Label &hclassCheckExit,
+    Variable &checkResult, size_t index, GateRef receiverHC)
+{
+    std::vector<Label> ifFalse;
+    Label resultIsTrue(&builder_);
+    Label resultIsFalse(&builder_);
+    const auto& hclassList = info.tacc.GetExpectedHClassIndexList(index);
+    size_t hclassCount = hclassList.size();
+
+    for (size_t j = 0; j < hclassCount - 1; j++) {
+        ifFalse.emplace_back(Label(&builder_));
+    }
+    for (size_t j = 0; j < hclassCount; j++) {
+        auto expected = builder_.GetHClassGateFromIndex(info.tacc.GetGate(), hclassList[j]);
+        if (j != hclassCount - 1) {
+            BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &ifFalse[j]);
+            builder_.Bind(&ifFalse[j]);
+        } else {
+            BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &resultIsFalse);
+        }
+    }
+    builder_.Bind(&resultIsFalse);
+    {
+        checkResult = builder_.Boolean(false);
+        builder_.Jump(&hclassCheckExit);
+    }
+    builder_.Bind(&resultIsTrue);
+    {
+        checkResult = builder_.Boolean(true);
+        builder_.Jump(&hclassCheckExit);
+    }
+}
+
+void TypedBytecodeLowering::PolyHeapObjectCheckAndLoad(LoadObjByNameDataInfo &info,
+    const std::map<size_t, uint32_t> &typeIndex2HeapConstantIndex)
+{
+    GateRef gate = info.tacc.GetGate();
+    GateRef frameState = acc_.GetFrameState(gate);
+    builder_.HeapObjectCheck(info.tacc.GetReceiver(), frameState);
+    auto receiverHC = builder_.LoadHClassByConstOffset(glue_, info.tacc.GetReceiver());
+    size_t labelIndex = typeIndex2HeapConstantIndex.size();
+    size_t typeCount = info.tacc.GetTypeCount();
+    for (size_t i = 0; i < typeCount; ++i) {
+        if (typeIndex2HeapConstantIndex.find(i) != typeIndex2HeapConstantIndex.end()) {
+            continue;
+        }
+        Label hclassCheckExit(&builder_);
+        DEFVALUE(checkResult, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
+        GenerateMergedHClassListCheck(info, hclassCheckExit, checkResult, i, receiverHC);
+        builder_.Bind(&hclassCheckExit);
+        if (labelIndex != typeCount - 1) {
+            BRANCH_CIR(*checkResult, &info.loaders[labelIndex], &info.fails[labelIndex]);
+            builder_.Bind(&info.loaders[labelIndex]);
+        } else {
+            // Deopt if fails at last hclass compare
+            builder_.DeoptCheck(*checkResult, frameState, DeoptType::INCONSISTENTHCLASS1);
+        }
+
+        if (info.tacc.IsReceiverEqHolder(i)) {
+            info.result = BuildNamedPropertyAccess(gate, info.tacc.GetReceiver(), info.tacc.GetReceiver(),
+                                                   info.tacc.GetAccessInfo(i).Plr());
+            builder_.Jump(&info.exit);
+        } else {
+            LoadOnPrototypeForHeapObjectReceiver(info.tacc, info.result,
+                { gate, frameState, receiverHC, &info.exit, i });
+        }
+        if (labelIndex != typeCount - 1) {
+            builder_.Bind(&info.fails[labelIndex]);
+        }
+        labelIndex++;
+    }
+}
+
+void TypedBytecodeLowering::LowerTypedPolyLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc)
+{
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    size_t typeCount = tacc.GetTypeCount();
+    std::vector<Label> loaders;
+    std::vector<Label> fails;
+    ASSERT(typeCount > 0);
+    for (size_t i = 0; i < typeCount - 1; ++i) {
+        loaders.emplace_back(Label(&builder_));
+        fails.emplace_back(Label(&builder_));
+    }
+    Label exit(&builder_);
+    GateRef gate = tacc.GetGate();
+    std::map<size_t, uint32_t> typeIndex2HeapConstantIndex = tacc.CollectPrimitiveTypeInfo(compilationEnv_);
+    LoadObjByNameDataInfo info(loaders, fails, tacc, result, exit);
+    if (!typeIndex2HeapConstantIndex.empty()) {
+        PolyPrimitiveTypeCheckAndLoad(info, typeIndex2HeapConstantIndex);
+    }
+
+    if (typeIndex2HeapConstantIndex.size() < typeCount) {
+        PolyHeapObjectCheckAndLoad(info, typeIndex2HeapConstantIndex);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    DeleteConstDataIfNoUser(tacc.GetKey());
+}
+
 void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     LoadObjPropertyTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
@@ -578,125 +862,15 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     if (tacc.TypesIsEmpty() || tacc.HasIllegalType()) {
         return;
     }
-
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     if (enableMergePoly_) {
         tacc.TryMergeExpectedHClass();
     }
-    size_t typeCount = tacc.GetTypeCount();
-    std::vector<Label> loaders;
-    std::vector<Label> fails;
-    ASSERT(typeCount > 0);
-    for (size_t i = 0; i < typeCount - 1; ++i) {
-        loaders.emplace_back(Label(&builder_));
-        fails.emplace_back(Label(&builder_));
-    }
-    Label exit(&builder_);
     AddProfiling(gate);
-    GateRef frameState = acc_.GetFrameState(gate);
     if (tacc.IsMono()) {
-        GateRef receiver = tacc.GetReceiver();
-        builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0),
-                                 frameState);
-        if (tacc.IsReceiverEqHolder(0)) {
-            result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
-        } else {
-            builder_.ProtoChangeMarkerCheck(receiver, frameState);
-            PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
-            GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
-            size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
-            if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPool, holderHClassIndex);
-            } else {
-                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPool, holderHClassIndex);
-            }
-        }
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
-        DeleteConstDataIfNoUser(tacc.GetKey());
+        LowerTypedMonoLdObjByName(tacc);
         return;
     }
-    builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
-
-    auto receiverHC = builder_.LoadHClassByConstOffset(glue_, tacc.GetReceiver());
-    for (size_t i = 0; i < typeCount; ++i) {
-        std::vector<Label> ifFalse;
-        Label resultIsTrue(&builder_);
-        Label resultIsFalse(&builder_);
-        Label hclassCheckExit(&builder_);
-        const auto& hclassList = tacc.GetExpectedHClassIndexList(i);
-        size_t hclassCount = hclassList.size();
-        DEFVALUE(checkResult, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
-        for (size_t j = 0; j < hclassCount - 1; j++) {
-            ifFalse.emplace_back(Label(&builder_));
-        }
-        for (size_t j = 0; j < hclassCount; j++) {
-            auto expected = builder_.GetHClassGateFromIndex(gate, hclassList[j]);
-            if (j != hclassCount - 1) {
-                BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &ifFalse[j]);
-                builder_.Bind(&ifFalse[j]);
-            } else {
-                BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &resultIsFalse);
-            }
-        }
-        builder_.Bind(&resultIsFalse);
-        {
-            checkResult = builder_.Boolean(false);
-            builder_.Jump(&hclassCheckExit);
-        }
-        builder_.Bind(&resultIsTrue);
-        {
-            checkResult = builder_.Boolean(true);
-            builder_.Jump(&hclassCheckExit);
-        }
-        builder_.Bind(&hclassCheckExit);
-
-        if (i != typeCount - 1) {
-            BRANCH_CIR(*checkResult, &loaders[i], &fails[i]);
-            builder_.Bind(&loaders[i]);
-        } else {
-            // Deopt if fails at last hclass compare
-            builder_.DeoptCheck(*checkResult, frameState, DeoptType::INCONSISTENTHCLASS1);
-        }
-
-        if (tacc.IsReceiverEqHolder(i)) {
-            result = BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
-                                              tacc.GetAccessInfo(i).Plr());
-            builder_.Jump(&exit);
-        } else {
-            // prototype change marker check
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
-            // lookup from receiver for holder
-            auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-            // lookup from receiver for holder
-            ObjectAccessTypeInfoAccessor::ObjectAccessInfo info = tacc.GetAccessInfo(i);
-            auto holderHC = builder_.GetHClassGateFromIndex(gate, info.HClassIndex());
-            DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
-            Label loopHead(&builder_);
-            Label loadHolder(&builder_);
-            Label lookUpProto(&builder_);
-            builder_.Jump(&loopHead);
-
-            builder_.LoopBegin(&loopHead);
-            builder_.DeoptCheck(builder_.TaggedIsNotNull(*current), frameState, DeoptType::INCONSISTENTHCLASS2);
-            auto curHC = builder_.LoadHClassByConstOffset(glue_, *current);
-            BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
-
-            builder_.Bind(&lookUpProto);
-            current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
-            builder_.LoopEnd(&loopHead);
-
-            builder_.Bind(&loadHolder);
-            result = BuildNamedPropertyAccess(gate, tacc.GetReceiver(), *current, tacc.GetAccessInfo(i).Plr());
-            builder_.Jump(&exit);
-        }
-        if (i != typeCount - 1) {
-            builder_.Bind(&fails[i]);
-        }
-    }
-    builder_.Bind(&exit);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
-    DeleteConstDataIfNoUser(tacc.GetKey());
+    LowerTypedPolyLdObjByName(tacc);
 }
 
 void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
@@ -774,6 +948,27 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     DeleteConstDataIfNoUser(key);
 }
 
+static void RecordGate2HeapConstantIndex(CompilationEnv *compilationEnv, uint32_t methodOffset,
+                                         uint32_t keyIndex, GateRef resultGate)
+{
+    if (!compilationEnv->SupportHeapConstant()) {
+        return;
+    }
+    auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv);
+    JSTaggedValue strObj = jitCompilationEnv->GetStringFromConstantPool(methodOffset, keyIndex, false);
+    if (strObj.IsUndefined()) {
+        return;
+    }
+    JSHandle<JSTaggedValue> strObjHandle = jitCompilationEnv->NewJSHandle(strObj);
+    auto constpool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+    ASSERT(!constpool.IsUndefined());
+    auto constpoolId = static_cast<uint32_t>(
+        ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+    uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+        { constpoolId, keyIndex, JitCompilationEnv::IN_SHARED_CONSTANTPOOL }, strObjHandle);
+    jitCompilationEnv->RecordGate2HeapConstantIndex(resultGate, indexInConstantTable);
+}
+
 void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 {
     StoreObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
@@ -822,9 +1017,12 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex,
                                                       value);
             } else {
-                builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex, value,
-                                           builder_.TruncInt64ToInt32(tacc.GetKey()),
-                                           builder_.Boolean(tacc.IsPrototypeHclass(0)), frameState);
+                GateRef ret = builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool,
+                    holderHClassIndex, value, builder_.TruncInt64ToInt32(tacc.GetKey()),
+                    builder_.Boolean(tacc.IsPrototypeHclass(0)), frameState);
+                auto methodOffset = acc_.TryGetMethodOffset(gate);
+                uint32_t keyIndex = static_cast<uint32_t>(acc_.GetConstantValue(tacc.GetKey()));
+                RecordGate2HeapConstantIndex(compilationEnv_, methodOffset, keyIndex, ret);
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),

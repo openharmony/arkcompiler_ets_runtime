@@ -50,6 +50,7 @@ namespace panda::ecmascript::kungfu {
     V(EcmaObjectCheck, ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                           \
     V(MathHClassConsistencyCheck, MATH_HCLASS_CONSISTENCY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
+    V(PrimTypeProtoChangeMarkerCheck, PRIMTYPE_PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)           \
     V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::CHECKABLE, 1, 1, 3)                                                 \
     V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 0, 1, 2)                                                       \
     V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 0, 1, 2)                                                       \
