@@ -604,6 +604,7 @@ public:
     bool IsAsyncGeneratorObject() const;
     bool IsAsyncFuncObject() const;
     bool IsJSPromise() const;
+    bool IsJSXRefObject() const;
     bool IsRecord() const;
     bool IsPromiseReaction() const;
     bool IsProgram() const;

@@ -244,7 +244,7 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
     }
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
-            LogErrorForObjSlot(heap_, "Verify VerifyMarkFull: Local object, slot local_to_share bit = 0, "
+            LogErrorForObjSlot(heap_, "Verify MarkFull: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
     } // LCOV_EXCL_STOP

@@ -304,6 +304,9 @@ bool EcmaVM::Initialize()
 #endif
     heap_ = new Heap(this);
     heap_->Initialize();
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    crossVMOperator_ = new CrossVMOperator(this);
+#endif // PANDA_JS_ETS_HYBRID_MODE
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
     gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
     factory_ = chunk_.New<ObjectFactory>(thread_, heap_, SharedHeap::GetInstance());
@@ -453,6 +456,13 @@ EcmaVM::~EcmaVM()
         delete sustainingJSHandleList_;
         sustainingJSHandleList_ = nullptr;
     }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    if (crossVMOperator_ != nullptr) {
+        delete crossVMOperator_;
+        crossVMOperator_ = nullptr;
+    }
+#endif  // PANDA_JS_ETS_HYBRID_MODE
 
 #ifndef USE_CMC_GC
     SharedHeap *sHeap = SharedHeap::GetInstance();

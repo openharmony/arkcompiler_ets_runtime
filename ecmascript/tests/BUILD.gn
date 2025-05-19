@@ -3090,7 +3090,37 @@ host_unittest_action("Sendable_JsSharedArray_Test") {
 
   sources = [
     # test file
+    "barrier_test.cpp",
+    "ecma_global_storage_test.cpp",
     "js_shared_array_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Unified_GC_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "unified_gc_multi_vm_test.cpp",
+    "unified_gc_test.cpp",
   ]
 
   configs = [
