@@ -167,63 +167,50 @@ JSThread::JSThread(EcmaVM *vm) : BaseThread(BaseThreadType::JS_THREAD, new Threa
 #else
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 #endif
-
-void JSThread::ConstructGlobalStorage(EcmaVM *vm)
 {
     auto chunk = vm->GetChunk();
-    globalStorage_ = chunk->New<EcmaGlobalStorage<Node>>(this, vm->GetNativeAreaAllocator());
-    newGlobalHandle_ = [this](JSTaggedType value) {
-        return globalStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
-    };
-    newXRefGlobalHandle_ = [this](JSTaggedType value) {
-        return globalStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
-    };
-    disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
-        globalStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
-    };
-    disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
-        globalStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
-    };
-    setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
-                    WeakClearCallback nativeFinalizeCallBack) {
-        return globalStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
-    };
-    clearWeak_ = [this](uintptr_t nodeAddr) { return globalStorage_->ClearWeak(nodeAddr); };
-    isWeak_ = [this](uintptr_t addr) { return globalStorage_->IsWeak(addr); };
-    setNodeKind_ = [this](NodeKind nodeKind) { globalStorage_->SetNodeKind(nodeKind); };
-}
-
-void JSThread::ConstructGlobalDebugStorage(EcmaVM *vm)
-{
-    auto chunk = vm->GetChunk();
-    globalDebugStorage_ = chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
-    newGlobalHandle_ = [this](JSTaggedType value) {
-        return globalDebugStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
-    };
-    newXRefGlobalHandle_ = [this](JSTaggedType value) {
-        return globalDebugStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
-    };
-    disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
-        globalDebugStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
-    };
-    disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
-        globalDebugStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
-    };
-    setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
-                    WeakClearCallback nativeFinalizeCallBack) {
-        return globalDebugStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
-    };
-    clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
-    isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
-    setNodeKind_ = [this](NodeKind nodeKind) { globalDebugStorage_->SetNodeKind(nodeKind); };
-}
-
-JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
-{
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
-        ConstructGlobalStorage(vm);
+        globalStorage_ = chunk->New<EcmaGlobalStorage<Node>>(this, vm->GetNativeAreaAllocator());
+        newGlobalHandle_ = [this](JSTaggedType value) {
+            return globalStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
+        };
+        newXRefGlobalHandle_ = [this](JSTaggedType value) {
+            return globalStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
+        };
+        disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
+            globalStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
+        };
+        disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
+            globalStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
+        };
+        setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
+                        WeakClearCallback nativeFinalizeCallBack) {
+            return globalStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
+        };
+        clearWeak_ = [this](uintptr_t nodeAddr) { return globalStorage_->ClearWeak(nodeAddr); };
+        isWeak_ = [this](uintptr_t addr) { return globalStorage_->IsWeak(addr); };
+        setNodeKind_ = [this](NodeKind nodeKind) { globalStorage_->SetNodeKind(nodeKind); };
     } else {
-        ConstructGlobalDebugStorage(vm);
+        globalDebugStorage_ = chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
+        newGlobalHandle_ = [this](JSTaggedType value) {
+            return globalDebugStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
+        };
+        newXRefGlobalHandle_ = [this](JSTaggedType value) {
+            return globalDebugStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
+        };
+        disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
+            globalDebugStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
+        };
+        disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
+            globalDebugStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
+        };
+        setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
+                        WeakClearCallback nativeFinalizeCallBack) {
+            return globalDebugStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
+        };
+        clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
+        isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
+        setNodeKind_ = [this](NodeKind nodeKind) { globalDebugStorage_->SetNodeKind(nodeKind); };
     }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
@@ -234,8 +221,6 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         glueData_.loadMegaICCache_ = new MegaICCache();
         glueData_.storeMegaICCache_ = new MegaICCache();
     }
-
-    glueData_.moduleManager_ = new ModuleManager(vm_);
 
     glueData_.globalConst_ = new GlobalEnvConstants();
     glueData_.baseAddress_ = TaggedStateWord::BASE_ADDRESS;

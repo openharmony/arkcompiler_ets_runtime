@@ -1852,9 +1852,6 @@ private:
         glueData_.globalConst_ = globalConst;
     }
 
-    void ConstructGlobalStorage(EcmaVM *vm);
-    void ConstructGlobalDebugStorage(EcmaVM *vm);
-
     void TransferFromRunningToSuspended(ThreadState newState);
 
     void TransferToRunning();
