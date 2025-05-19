@@ -87,7 +87,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     std::shared_ptr<JSPandaFile> baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-        thread, baseFileName.c_str(), "", false, ExecuteTypes::STATIC);
+        thread, baseFileName.c_str(), "", false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, PatchErrorCode::FILE_NOT_FOUND);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
@@ -96,7 +96,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
 
     // The entry point is not work for merge abc.
     std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-        thread, patchFileName.c_str(), "", false, ExecuteTypes::STATIC);
+        thread, patchFileName.c_str(), "", false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, PatchErrorCode::FILE_NOT_FOUND);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";

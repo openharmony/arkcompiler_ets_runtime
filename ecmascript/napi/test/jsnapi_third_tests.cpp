@@ -128,6 +128,16 @@ public:
         return base::bit_cast<JSTaggedType>(val) + JSTaggedValue::DOUBLE_ENCODE_OFFSET;
     }
 
+    uintptr_t JSNApiGetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
+    {
+        return JSNApi::GetXRefGlobalHandleAddr(vm, localAddress);
+    }
+
+    void JSNApiDisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
+    {
+        JSNApi::DisposeXRefGlobalHandleAddr(vm, addr);
+    }
+
 protected:
     void RegisterStringCacheTable();
 
@@ -687,7 +697,7 @@ HWTEST_F_L0(JSNApiTests, SetHostResolveBufferTracker)
 {
     LocalScope scope(vm_);
     JSNApi::SetHostResolveBufferTracker(vm_,
-        [&](std::string, uint8_t **, size_t *, std::string &) -> bool { return true; });
+        [&](std::string, bool, uint8_t **, size_t *, std::string &) -> bool { return true; });
 }
 
 /*
@@ -1691,5 +1701,28 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SwitchContext001)
     JSNApi::SwitchContext(vm_, contextValue);
     Local<JSValueRef> switchedContext = JSNApi::GetCurrentContext(vm_);
     EXPECT_TRUE(switchedContext == contextValue);
+}
+
+HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
+{
+    JSHandle<TaggedArray> weakRefArray = vm_->GetFactory()->NewTaggedArray(2, JSTaggedValue::Hole());
+    uintptr_t xRefArrayAddress;
+    vm_->SetEnableForceGC(false);
+    {
+        [[maybe_unused]] EcmaHandleScope scope(thread_);
+        JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(1));
+        JSHandle<JSTaggedValue> normalArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(2));
+        xRefArrayAddress = JSNApiGetXRefGlobalHandleAddr(vm_, xRefArray.GetAddress());
+        weakRefArray->Set(thread_, 0, xRefArray.GetTaggedValue().CreateAndGetWeakRef());
+        weakRefArray->Set(thread_, 1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
+    }
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    EXPECT_TRUE(!weakRefArray->Get(0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(1).IsUndefined());
+
+    JSNApiDisposeXRefGlobalHandleAddr(vm_, xRefArrayAddress);
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    vm_->SetEnableForceGC(true);
+    EXPECT_TRUE(weakRefArray->Get(0).IsUndefined());
 }
 } // namespace panda::test
