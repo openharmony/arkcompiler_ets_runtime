@@ -26,6 +26,74 @@ namespace panda::ecmascript {
 class EcmaStringHashInternal {
 friend class EcmaStringHashHelper;
 private:
+#if ENABLE_NEXT_OPTIMIZATION
+    template <typename T>
+    static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
+                                                   uint32_t hashSeed)
+    {
+        /**
+         *  process the first {remainder} items of data[] and hashSeed
+         *  for example, if remainder = 2,
+         *  then hash[2] = data[0] * 31^1, hash[3] = data[1] * 31^0;
+         *  hash[0] = hashSeed * 31^{remainder}
+         *
+         *  the rest elements in data[] will be processed with for loop as follows
+         *  hash[0]: hash[0] * 31^4 + data[i] * 31^3
+         *  hash[1]: hash[1] * 31^4 + data[i+1] * 31^2
+         *  hash[2]: hash[2] * 31^4 + data[i+2] * 31^1
+         *  hash[3]: hash[3] * 31^4 + data[i+3] * 31^0
+         *  i starts at {remainder} and every time += 4,
+         *  at last, totolHash = hash[0] + hash[1] + hash[2] + hash[3];
+         */
+        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>);
+        constexpr size_t blockSize = EcmaStringHash::BLOCK_SIZE;
+        constexpr size_t loopSize = EcmaStringHash::SIMD_U8_LOOP_SIZE;
+        uint32_t hash[blockSize] = {};
+        uint32_t index = 0;
+        uint32_t remainder = size & (blockSize - 1);
+        switch (remainder) {
+#define CASE(N) case (N): \
+    hash[blockSize - (N)] = data[index++] * EcmaStringHash::MULTIPLIER[blockSize - (N)]; [[fallthrough]]
+            CASE(EcmaStringHash::SIZE_3);
+            CASE(EcmaStringHash::SIZE_2);
+            CASE(EcmaStringHash::SIZE_1);
+#undef CASE
+            default:
+                break;
+        }
+        hash[0] += hashSeed * EcmaStringHash::MULTIPLIER[blockSize - 1 - remainder];
+
+        uint32x4_t dataVec;
+        uint32x4_t hashVec;
+        uint32x4_t multiplierVec = vld1q_u32(EcmaStringHash::MULTIPLIER);
+        uint32x4_t scaleVec = vdupq_n_u32(EcmaStringHash::BLOCK_MULTIPLY);
+
+        if constexpr (std::is_same_v<T, uint8_t>) {
+            // process 4 elements with for loop if (size-index) % 8 = 4
+            if ((size - index) % loopSize == blockSize) {
+                for (size_t i = 0; i < blockSize; i++) {
+                    hash[i] = hash[i] * EcmaStringHash::BLOCK_MULTIPLY + data[index++] * EcmaStringHash::MULTIPLIER[i];
+                }
+            }
+            hashVec = vld1q_u32(hash);
+            for (; index < size; index += loopSize) {
+                uint8x8_t dataVec8 = vld1_u8(data + index);
+                uint16x8_t dataVec16 = vmovl_u8(dataVec8);
+                dataVec = vmovl_u16(vget_low_u16(dataVec16));
+                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
+                dataVec = vmovl_u16(vget_high_u16(dataVec16));
+                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
+            }
+        } else {
+            hashVec = vld1q_u32(hash);
+            for (; index < size; index += blockSize) {
+                dataVec = vmovl_u16(vld1_u16(data + index));
+                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
+            }
+        }
+        return vaddvq_u32(hashVec);
+    }
+#else
     template <typename T>
     static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
                                                    uint32_t hashSeed)
@@ -54,6 +122,7 @@ private:
         }
         return totalHash;
     }
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_ECMA_STRING_HASH_ARM64_H
