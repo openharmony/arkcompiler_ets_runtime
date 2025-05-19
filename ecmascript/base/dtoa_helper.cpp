@@ -220,27 +220,25 @@ void DtoaHelper::FillDigits32FixedLength(uint32_t number, int requested_length,
     *length += requested_length;
 }
 
-void DtoaHelper::FillDigits32(uint32_t number, BufferVector<char> buffer, int* length)
+void DtoaHelper::FillDigits32(uint32_t value, BufferVector<char> outputBuffer, int* totalLength)
 {
-    int number_length = 0;
-    // We fill the digits in reverse order and exchange them afterwards.
-    while (number != 0) {
-        int digit = static_cast<int>(number % TEN);
-        number /= TEN;
-        buffer[(*length) + number_length] = '0' + digit;
-        number_length++;
+    int digitCount = 0;
+    while (value != 0) {
+        int currentDigit = static_cast<int>(value % TEN);
+        value /= TEN;
+        outputBuffer[(*totalLength) + digitCount] = '0' + currentDigit;
+        digitCount++;
     }
-    // Exchange the digits.
-    int i = *length;
-    int j = *length + number_length - 1;
-    while (i < j) {
-        char tmp = buffer[i];
-        buffer[i] = buffer[j];
-        buffer[j] = tmp;
-        i++;
-        j--;
+    int startIdx = *totalLength;
+    int endIdx = *totalLength + digitCount - 1;
+    while (startIdx < endIdx) {
+        char temp = outputBuffer[startIdx];
+        outputBuffer[startIdx] = outputBuffer[endIdx];
+        outputBuffer[endIdx] = temp;
+        startIdx++;
+        endIdx--;
     }
-    *length += number_length;
+    *totalLength += digitCount;
 }
 
 void DtoaHelper::FillDigits64FixedLength(uint64_t number, [[maybe_unused]] int requested_length,
@@ -275,161 +273,157 @@ void DtoaHelper::FillDigits64(uint64_t number, BufferVector<char> buffer, int* l
     }
 }
 
-void DtoaHelper::RoundUp(BufferVector<char> buffer, int* length, int* decimal_point)
+void DtoaHelper::RoundUp(BufferVector<char> digitsBuffer, int* digitCount, int* decimalPosition)
 {
-    // An empty buffer represents 0.
-    if (*length == 0) {
-        buffer[0] = '1';
-        *decimal_point = 1;
-        *length = 1;
+    if (*digitCount == 0) {
+        digitsBuffer[0] = '1';
+        *decimalPosition = 1;
+        *digitCount = 1;
         return;
     }
-    buffer[(*length) - 1]++;
-    for (int i = (*length) - 1; i > 0; --i) {
-        if (buffer[i] != '0' + 10) { // 10: means the decimal digit
+    digitsBuffer[(*digitCount) - 1]++;
+    for (int i = (*digitCount) - 1; i > 0; --i) {
+        if (digitsBuffer[i] != '0' + 10) {
             return;
         }
-        buffer[i] = '0';
-        buffer[i - 1]++;
+        digitsBuffer[i] = '0';
+        digitsBuffer[i - 1]++;
     }
-    if (buffer[0] == '0' + 10) { // 10: means the decimal digit
-        buffer[0] = '1';
-        (*decimal_point)++;
+    if (digitsBuffer[0] == '0' + 10) {
+        digitsBuffer[0] = '1';
+        (*decimalPosition)++;
     }
 }
 
-void DtoaHelper::FillFractionals(uint64_t fractionals, int exponent, int fractional_count,
-                                 BufferVector<char> buffer, int* length, int* decimal_point)
+void DtoaHelper::FillFractionals(uint64_t fractionalValue, int exponentValue, int fractionalDigitCount,
+                                 BufferVector<char> targetBuffer, int* totalLength, int* decimalPointPos)
 {
-    ASSERT(NEGATIVE_128BIT <= exponent && exponent <= 0);
-    // 'fractionals' is a fixed-point number, with binary point at bit
-    // (-exponent). Inside the function the non-converted remainder of fractionals
-    // is a fixed-point number, with binary point at bit 'point'.
-    if (-exponent <= EXPONENT_64) {
-        // One 64 bit number is sufficient.
-        ASSERT((fractionals >> 56) == 0); // 56: parameter
-        int point = -exponent;
-        for (int i = 0; i < fractional_count; ++i) {
-            if (fractionals == 0) break;
-            fractionals *= 5; // 5: parameter
-            point--;
-            int digit = static_cast<int>(fractionals >> point);
-            buffer[*length] = '0' + digit;
-            (*length)++;
-            fractionals -= static_cast<uint64_t>(digit) << point;
+    ASSERT(NEGATIVE_128BIT <= exponentValue && exponentValue <= 0);
+    if (-exponentValue <= EXPONENT_64) {
+        ASSERT((fractionalValue >> 56) == 0);
+        int currentPoint = -exponentValue;
+        for (int i = 0; i < fractionalDigitCount; ++i) {
+            if (fractionalValue == 0) {
+                break;
+            }
+            fractionalValue *= 5;
+            currentPoint--;
+            int digitValue = static_cast<int>(fractionalValue >> currentPoint);
+            targetBuffer[*totalLength] = '0' + digitValue;
+            (*totalLength)++;
+            fractionalValue -= static_cast<uint64_t>(digitValue) << currentPoint;
         }
-        // If the first bit after the point is set we have to round up.
-        if (point > 0 && ((fractionals >> (point - 1)) & 1) == 1) {
-            RoundUp(buffer, length, decimal_point);
+        if (currentPoint > 0 && ((fractionalValue >> (currentPoint - 1)) & 1) == 1) {
+            RoundUp(targetBuffer, totalLength, decimalPointPos);
         }
-    } else {  // We need 128 bits.
-        ASSERT(EXPONENT_64 < -exponent && -exponent <= EXPONENT_128);
-        UInt128 fractionals128 = UInt128(fractionals, 0);
-        fractionals128.Shift(-exponent - EXPONENT_64);
-        int point = 128;
-        for (int i = 0; i < fractional_count; ++i) {
-            if (fractionals128.IsZero()) break;
-            // As before: instead of multiplying by 10 we multiply by 5 and adjust the
-            // point location.
-            // This multiplication will not overflow for the same reasons as before.
-            fractionals128.Multiply(5); // 5: parameter
-            point--;
-            int digit = fractionals128.DivModPowerOf2(point);
-            buffer[*length] = '0' + digit;
-            (*length)++;
+    } else {
+        ASSERT(EXPONENT_64 < -exponentValue && -exponentValue <= EXPONENT_128);
+        UInt128 fractionalValue128 = UInt128(fractionalValue, 0);
+        fractionalValue128.Shift(-exponentValue - EXPONENT_64);
+        int currentPoint = 128;
+        for (int i = 0; i < fractionalDigitCount; ++i) {
+            if (fractionalValue128.IsZero()) {
+                break;
+            }
+            fractionalValue128.Multiply(5);
+            currentPoint--;
+            int digitValue = fractionalValue128.DivModPowerOf2(currentPoint);
+            targetBuffer[*totalLength] = '0' + digitValue;
+            (*totalLength)++;
         }
-        if (fractionals128.BitAt(point - 1) == 1) {
-            RoundUp(buffer, length, decimal_point);
+        if (fractionalValue128.BitAt(currentPoint - 1) == 1) {
+            RoundUp(targetBuffer, totalLength, decimalPointPos);
         }
     }
 }
 
 // Removes leading and trailing zeros.
 // If leading zeros are removed then the decimal point position is adjusted.
-void DtoaHelper::TrimZeros(BufferVector<char> buffer, int* length, int* decimal_point)
+void DtoaHelper::TrimZeros(BufferVector<char> digitBuffer, int* digitCount, int* decimalPointPos)
 {
-    while (*length > 0 && buffer[(*length) - 1] == '0') {
-        (*length)--;
+    while (*digitCount > 0 && digitBuffer[(*digitCount) - 1] == '0') {
+        (*digitCount)--;
     }
-    int first_non_zero = 0;
-    while (first_non_zero < *length && buffer[first_non_zero] == '0') {
-        first_non_zero++;
+    int firstNonZeroPos = 0;
+    while (firstNonZeroPos < *digitCount && digitBuffer[firstNonZeroPos] == '0') {
+        firstNonZeroPos++;
     }
-    if (first_non_zero != 0) {
-        for (int i = first_non_zero; i < *length; ++i) {
-            buffer[i - first_non_zero] = buffer[i];
+    if (firstNonZeroPos != 0) {
+        for (int i = firstNonZeroPos; i < *digitCount; ++i) {
+            digitBuffer[i - firstNonZeroPos] = digitBuffer[i];
         }
-        *length -= first_non_zero;
-        *decimal_point -= first_non_zero;
+        *digitCount -= firstNonZeroPos;
+        *decimalPointPos -= firstNonZeroPos;
     }
 }
 
-bool DtoaHelper::FixedDtoa(double v, int fractional_count, BufferVector<char> buffer,
-                           int* length, int* decimal_point)
+bool DtoaHelper::FixedDtoa(double value, int fractionalDigitCount, BufferVector<char> outputBuffer,
+                           int* totalLength, int* decimalPointPosition)
 {
-    if (v == 0) {
-        buffer[0] = '0';
-        buffer[1] = '\0';
-        *length = 1;
-        *decimal_point = 1;
+    if (value == 0) {
+        outputBuffer[0] = '0';
+        outputBuffer[1] = '\0';
+        *totalLength = 1;
+        *decimalPointPosition = 1;
         return true;
     }
-    uint64_t significand = NumberHelper::Significand(v);
-    int exponent = NumberHelper::Exponent(v);
-    if (exponent > 20) return false; // 20: max parameter
-    if (fractional_count > 20) return false; // 20: max parameter
-    *length = 0;
-    if (exponent + kDoubleSignificandSize > EXPONENT_64) {
-        const uint64_t kFive17 = 0xB1'A2BC'2EC5;  // 5^17
-        uint64_t divisor = kFive17;
-        int divisor_power = 17;
-        uint64_t dividend = significand;
-        uint32_t quotient;
-        uint64_t remainder;
-        if (exponent > divisor_power) {
-            // We only allow exponents of up to 20 and therefore (17 - e) <= 3
-            dividend <<= exponent - divisor_power;
-            quotient = static_cast<uint32_t>(dividend / divisor);
-            remainder = (dividend % divisor) << divisor_power;
-        } else {
-            divisor <<= divisor_power - exponent;
-            quotient = static_cast<uint32_t>(dividend / divisor);
-            remainder = (dividend % divisor) << exponent;
-        }
-        FillDigits32(quotient, buffer, length);
-        FillDigits64FixedLength(remainder, divisor_power, buffer, length);
-        *decimal_point = *length;
-    } else if (exponent >= 0) {
-        // 0 <= exponent <= 11
-        significand <<= exponent;
-        FillDigits64(significand, buffer, length);
-        *decimal_point = *length;
-    } else if (exponent > -kDoubleSignificandSize) {
-        // We have to cut the number.
-        uint64_t integrals = significand >> -exponent;
-        uint64_t fractionals = significand - (integrals << -exponent);
-        if (integrals > kMaxUInt32) {
-            FillDigits64(integrals, buffer, length);
-        } else {
-            FillDigits32(static_cast<uint32_t>(integrals), buffer, length);
-        }
-        *decimal_point = *length;
-        FillFractionals(fractionals, exponent, fractional_count,
-                        buffer, length, decimal_point);
-    } else if (exponent < NEGATIVE_128BIT) {
-        ASSERT(fractional_count <= 20); // 20: parameter
-        buffer[0] = '\0';
-        *length = 0;
-        *decimal_point = -fractional_count;
-    } else {
-        *decimal_point = 0;
-        FillFractionals(significand, exponent, fractional_count,
-                        buffer, length, decimal_point);
+    uint64_t significandValue = NumberHelper::Significand(value);
+    int exponentValue = NumberHelper::Exponent(value);
+    if (exponentValue > 20) {
+        return false;
     }
-    TrimZeros(buffer, length, decimal_point);
-    buffer[*length] = '\0';
-    if ((*length) == 0) {
-        *decimal_point = -fractional_count;
+    if (fractionalDigitCount > 20) {
+        return false;
+    }
+    *totalLength = 0;
+    if (exponentValue + kDoubleSignificandSize > EXPONENT_64) {
+        const uint64_t kFive17 = 0xB1'A2BC'2EC5;
+        uint64_t divisorValue = kFive17;
+        int divisorPower = 17;
+        uint64_t dividendValue = significandValue;
+        uint32_t quotientValue;
+        uint64_t remainderValue;
+        if (exponentValue > divisorPower) {
+            dividendValue <<= exponentValue - divisorPower;
+            quotientValue = static_cast<uint32_t>(dividendValue / divisorValue);
+            remainderValue = (dividendValue % divisorValue) << divisorPower;
+        } else {
+            divisorValue <<= divisorPower - exponentValue;
+            quotientValue = static_cast<uint32_t>(dividendValue / divisorValue);
+            remainderValue = (dividendValue % divisorValue) << exponentValue;
+        }
+        FillDigits32(quotientValue, outputBuffer, totalLength);
+        FillDigits64FixedLength(remainderValue, divisorPower, outputBuffer, totalLength);
+        *decimalPointPosition = *totalLength;
+    } else if (exponentValue >= 0) {
+        significandValue <<= exponentValue;
+        FillDigits64(significandValue, outputBuffer, totalLength);
+        *decimalPointPosition = *totalLength;
+    } else if (exponentValue > -kDoubleSignificandSize) {
+        uint64_t integralPart = significandValue >> -exponentValue;
+        uint64_t fractionalPart = significandValue - (integralPart << -exponentValue);
+        if (integralPart > kMaxUInt32) {
+            FillDigits64(integralPart, outputBuffer, totalLength);
+        } else {
+            FillDigits32(static_cast<uint32_t>(integralPart), outputBuffer, totalLength);
+        }
+        *decimalPointPosition = *totalLength;
+        FillFractionals(fractionalPart, exponentValue, fractionalDigitCount,
+                        outputBuffer, totalLength, decimalPointPosition);
+    } else if (exponentValue < NEGATIVE_128BIT) {
+        ASSERT(fractionalDigitCount <= 20);
+        outputBuffer[0] = '\0';
+        *totalLength = 0;
+        *decimalPointPosition = -fractionalDigitCount;
+    } else {
+        *decimalPointPosition = 0;
+        FillFractionals(significandValue, exponentValue, fractionalDigitCount,
+                        outputBuffer, totalLength, decimalPointPosition);
+    }
+    TrimZeros(outputBuffer, totalLength, decimalPointPosition);
+    outputBuffer[*totalLength] = '\0';
+    if ((*totalLength) == 0) {
+        *decimalPointPosition = -fractionalDigitCount;
     }
     return true;
 }
