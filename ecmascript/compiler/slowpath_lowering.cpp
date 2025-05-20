@@ -1248,8 +1248,8 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue_, exceptionOffset);
     auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
-    GateRef loadException = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
-        { depend, glue_, val }, VariableType::JS_ANY().GetGateType());
+    GateRef loadException = circuit_->NewGate(circuit_->LoadWithoutBarrier(bit),
+        VariableType::JS_ANY().GetMachineType(), { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
     GateRef holeCst = builder_.HoleConstant();
     GateRef clearException = circuit_->NewGate(circuit_->Store(bit), MachineType::NOVALUE,
@@ -1277,8 +1277,8 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate)
     GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
     GateRef val = builder_.Int64Add(glue_, offset);
     auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
-    GateRef newGate = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
-        { builder_.GetDepend(), glue_, val }, VariableType::JS_ANY().GetGateType());
+    GateRef newGate = circuit_->NewGate(circuit_->LoadWithoutBarrier(bit), VariableType::JS_ANY().GetMachineType(),
+        { builder_.GetDepend(), val }, VariableType::JS_ANY().GetGateType());
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -1596,7 +1596,7 @@ GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef a
         GateRef gConstAddr = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), glue_,
             builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
         GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
-        GateRef hclass = builder_.Load(VariableType::JS_POINTER(), glue_, gConstAddr, constantIndex);
+        GateRef hclass = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), gConstAddr, constantIndex);
         builder_.Store(VariableType::JS_POINTER(), glue_, array, builder_.IntPtr(0), hclass);
     }
     return array;
@@ -3676,7 +3676,7 @@ void SlowPathLowering::LowerGetUnsharedConstPool(GateRef gate)
     GateRef index = builder_.Load(VariableType::JS_ANY(), glue_, sharedConstPool, dataOffset, constPoolSize);
     GateRef unshareCpOffset = static_cast<int32_t>(JSThread::GlueData::GetUnSharedConstpoolsOffset(false));
     GateRef unshareCpAddr =
-        builder_.Load(VariableType::NATIVE_POINTER(), glue_, glue_, builder_.IntPtr(unshareCpOffset), index);
+        builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(unshareCpOffset), index);
     GateRef unshareCpDataOffset =
         builder_.PtrAdd(unshareCpAddr, builder_.PtrMul(builder_.IntPtr(JSTaggedValue::TaggedTypeSize()),
                                                        builder_.ZExtInt32ToPtr(builder_.TaggedGetInt(index))));

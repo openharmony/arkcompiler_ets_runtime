@@ -83,6 +83,8 @@ public:
         return reinterpret_cast<GlobalEnv *>(object);
     }
 
+    void Iterate(RootVisitor &v);
+
     JSThread* GetJSThread() const
     {
         uintptr_t address = ComputeObjectAddress(JSTHREAD_INDEX);
@@ -144,11 +146,8 @@ public:
 #define GLOBAL_ENV_FIELD_ACCESSORS(type, name, index)                                                   \
     inline JSHandle<type> Get##name() const                                                             \
     {                                                                                                   \
-        /* every GLOBAL_ENV_FIELD is JSTaggedValue */                                                   \
         size_t offset = HEADER_SIZE + (index) * JSTaggedValue::TaggedTypeSize();                        \
         const uintptr_t address = reinterpret_cast<uintptr_t>(this) + offset;                           \
-        JSTaggedType value = Barriers::GetTaggedValue(address);                                         \
-        *reinterpret_cast<JSTaggedType *>(address) = value;                                             \
         JSHandle<type> result(address);                                                                 \
         if (result.GetTaggedValue().IsInternalAccessor()) {                                             \
             JSThread *thread = GetJSThread();                                                           \

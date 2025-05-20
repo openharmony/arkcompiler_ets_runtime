@@ -32,6 +32,17 @@ void GlobalEnv::Init(JSThread *thread)
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
     SetJSThread(thread);
 }
+
+void GlobalEnv::Iterate(RootVisitor &v)
+{
+    for (uint16_t i = 0; i < FINAL_INDEX; i++) {
+        size_t offset = HEADER_SIZE + i * sizeof(JSTaggedType);
+        uintptr_t slotAddress = reinterpret_cast<uintptr_t>(this) + offset;
+        ObjectSlot slot(slotAddress);
+        v.VisitRoot(Root::ROOT_VM, slot);
+    }
+}
+
 JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string)
 {
     JSHandle<JSTaggedValue> symbolFunction(GetSymbolFunction());

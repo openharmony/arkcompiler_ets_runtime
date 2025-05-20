@@ -77,7 +77,14 @@ private:
                                                            std::vector<GateRef> &endBBGates);
 
     void LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
+#ifdef USE_CMC_GC
+    void LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates,
+                                                                     std::vector<GateRef> &successBBGates,
+                                                                     std::vector<GateRef> &failBBGates,
+                                                                     std::vector<GateRef> &endBBGates);
+#else
     void LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
+#endif
 
     void PrepareToScheduleNewGate(GateRef gate, std::vector<GateRef> &gates);
     MemoryAttribute::Barrier GetBarrierKind(GateRef gate);

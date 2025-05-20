@@ -798,7 +798,7 @@ void MCRLowering::LowerGetGlobalEnv(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glue_, glueGlobalEnvOffset);
+    GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), glue_, glueGlobalEnvOffset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), glueGlobalEnv);
 }
 
@@ -808,7 +808,7 @@ void MCRLowering::LowerGetGlobalEnvObj(GateRef gate)
     GateRef globalEnv = acc_.GetValueIn(gate, 0);
     size_t index = acc_.GetIndex(gate);
     GateRef offset = builder_.IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
-    GateRef object = builder_.Load(VariableType::JS_ANY(), glue_, globalEnv, offset);
+    GateRef object = builder_.LoadWithoutBarrier(VariableType::JS_ANY(), globalEnv, offset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), object);
 }
 
@@ -818,7 +818,7 @@ void MCRLowering::LowerGetGlobalEnvObjHClass(GateRef gate)
     GateRef globalEnv = acc_.GetValueIn(gate, 0);
     size_t index = acc_.GetIndex(gate);
     GateRef offset = builder_.IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
-    GateRef object = builder_.Load(VariableType::JS_ANY(), glue_, globalEnv, offset);
+    GateRef object = builder_.LoadWithoutBarrier(VariableType::JS_ANY(), globalEnv, offset);
     auto hclass = builder_.Load(VariableType::JS_POINTER(), glue_, object,
                                 builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
@@ -831,7 +831,7 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     GateRef gConstAddr = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
     GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * index);
-    GateRef result = builder_.Load(VariableType::JS_POINTER(), glue_, gConstAddr, constantIndex);
+    GateRef result = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), gConstAddr, constantIndex);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 

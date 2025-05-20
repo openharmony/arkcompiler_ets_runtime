@@ -187,9 +187,9 @@ GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
     // ReadBarrier is not need for loading hClass as long as it is non-movable
     // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    GateRef lowAddress = Load(VariableType::INT32(), glue, object, offset);
+    GateRef lowAddress = LoadWithoutBarrier(VariableType::INT32(), object, offset);
     GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
-    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    GateRef baseAddress = LoadWithoutBarrier(VariableType::INT64(), glue, baseAddressOffset);
     return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 
@@ -197,7 +197,7 @@ GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
 {
     GateRef lowAddress = LoadConstOffset(VariableType::INT32(), object, TaggedObject::HCLASS_OFFSET);
     GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
-    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
+    GateRef baseAddress = LoadWithoutBarrier(VariableType::INT64(), glue, baseAddressOffset);
     return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
 }
 

@@ -601,11 +601,7 @@ void EcmaContext::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minC
     std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
     int32_t copyLen = GetUnsharedConstpoolsArrayLen();
 #ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
-        Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
-    } else {
-        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
-    }
+    Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
 #else
     std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
 #endif
@@ -843,6 +839,13 @@ void EcmaContext::Iterate(RootVisitor &v)
     globalConst_.Iterate(v);
 
     v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
+#ifdef USE_CMC_GC
+    if (globalEnv_.IsHeapObject()) {
+        GlobalEnv *globalEnv = reinterpret_cast<GlobalEnv *>(globalEnv_.GetTaggedObject());
+        globalEnv->Iterate(v);
+    }
+#endif
+
     if (!regexpCache_.IsHole()) {
         v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     }

@@ -596,6 +596,17 @@ public:
         return status == SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     }
 
+#ifdef USE_READ_BARRIER
+    bool IsCMCGCConcurrentCopying() const
+    {
+#ifdef USE_CMC_GC
+        return GetThreadHolder()->GetMutatorPhase() >= GCPhase::GC_PHASE_PRECOPY;
+#else
+        return false;
+#endif
+    }
+#endif
+
     void SetPGOProfilerEnable(bool enable)
     {
         PGOProfilerStatus status =
