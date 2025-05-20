@@ -111,6 +111,7 @@ public:
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
     inline GateRef GetVregValue(GateRef glue, GateRef sp, GateRef idx);
+    inline GateRef GetVregValueFromArray(GateRef glue, GateRef array, GateRef idx);
     inline GateRef ReadInst4_0(GateRef pc);
     inline GateRef ReadInst4_1(GateRef pc);
     inline GateRef ReadInst4_2(GateRef pc);

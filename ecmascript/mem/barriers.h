@@ -69,7 +69,7 @@ public:
     // It can be a derived pointer point to the middle of an object.
     //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    template<bool needWriteBarrier, bool maybeOverlap>
+    template <bool needWriteBarrier, bool maybeOverlap>
     static void CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
                            const JSTaggedValue *srcAddr, size_t count);
 
@@ -77,7 +77,7 @@ public:
     // It can be a derived pointer point to the middle of an object.
     //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    template<bool maybeOverlap>
+    template<bool needReadBarrier, bool maybeOverlap>
     static void CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count);
     static void SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                       bool isPrimitive = false);
@@ -99,8 +99,10 @@ public:
 #ifdef USE_READ_BARRIER
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
         if (value.IsHeapObject()) {
+#ifdef USE_CMC_GC
             return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier(const_cast<void*>(obj),
                                                                            (void*)(ToUintPtr(obj) + offset)));
+#endif
         }
         return value.GetRawData();
 #else
@@ -113,7 +115,9 @@ public:
 #ifdef USE_READ_BARRIER
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
         if (value.IsHeapObject()) {
+#ifdef USE_CMC_GC
             return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier((void*)slotAddress));
+#endif
         }
         return value.GetRawData();
 #else
@@ -127,9 +131,11 @@ public:
         JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
             offset)->load(std::memory_order_acquire);
         if (value.IsHeapObject()) {
+#ifdef USE_CMC_GC
             return reinterpret_cast<JSTaggedType>(
                 BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset),
                                                std::memory_order_acquire));
+#endif
         }
         return value.GetRawData();
 #else

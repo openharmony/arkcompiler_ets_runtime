@@ -1691,11 +1691,7 @@ void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapaci
     std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
     int32_t copyLen = GetUnsharedConstpoolsArrayLen();
 #ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
-        Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
-    } else {
-        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
-    }
+    Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
 #else
     std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
 #endif

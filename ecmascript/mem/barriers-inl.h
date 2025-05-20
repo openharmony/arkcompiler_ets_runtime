@@ -130,36 +130,32 @@ inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, s
 #endif
 }
 
+template <bool needReadBarrier>
 static inline void CopyBackward(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
-#ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
-        for (size_t i = count; i > 0; i--) {
-            JSTaggedType valueToRef = Barriers::GetTaggedValue(src, (i - 1) * sizeof(JSTaggedType));
-            Barriers::SetObject<false>(nullptr, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
-        }
-    } else {
+    if constexpr (needReadBarrier == false) {
         std::copy_backward(src, src + count, dst + count);
+        return;
     }
-#else
-    std::copy_backward(src, src + count, dst + count);
-#endif
+
+    for (size_t i = count; i > 0; i--) {
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(src, (i - 1) * sizeof(JSTaggedType));
+        Barriers::SetObject<false>(nullptr, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
+    }
 }
 
+template <bool needReadBarrier>
 static inline void CopyForward(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
-#ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
-        for (size_t i = 0; i < count; i++) {
-            JSTaggedType valueToRef = Barriers::GetTaggedValue(src, i * sizeof(JSTaggedType));
-            Barriers::SetObject<false>(nullptr, dst, i * sizeof(JSTaggedType), valueToRef);
-        }
-    } else {
+    if constexpr (needReadBarrier == false) {
         std::copy_n(src, count, dst);
+        return;
     }
-#else
-    std::copy_n(src, count, dst);
-#endif
+
+    for (size_t i = 0; i < count; i++) {
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(src, i * sizeof(JSTaggedType));
+        Barriers::SetObject<false>(nullptr, dst, i * sizeof(JSTaggedType), valueToRef);
+    }
 }
 
 template <Region::RegionSpaceKind kind>
@@ -174,7 +170,17 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
 
     // step 1. copy from src to dst directly.
-    CopyObjectPrimitive<maybeOverlap>(dstAddr, srcAddr, count);
+#ifdef USE_READ_BARRIER
+    if (thread->IsCMCGCConcurrentCopying()) {
+        CopyObjectPrimitive<true, maybeOverlap>(dstAddr, srcAddr, count);
+        return;
+    } else {
+        CopyObjectPrimitive<false, maybeOverlap>(dstAddr, srcAddr, count);
+    }
+#else
+    CopyObjectPrimitive<false, maybeOverlap>(dstAddr, srcAddr, count);
+#endif
+
     if constexpr (!needWriteBarrier) {
         return;
     }
@@ -225,19 +231,19 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     }
 }
 
-template <bool maybeOverlap>
+template <bool needReadBarrier, bool maybeOverlap>
 inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
     // Copy Primitive value don't need thread.
     ASSERT((ToUintPtr(dst) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
     if constexpr (maybeOverlap == false) {
-        CopyForward(dst, src, count);
+        CopyForward<needReadBarrier>(dst, src, count);
         return;
     }
     if (dst > src && dst < src + count) {
-        CopyBackward(dst, src, count);
+        CopyBackward<needReadBarrier>(dst, src, count);
     } else {
-        CopyForward(dst, src, count);
+        CopyForward<needReadBarrier>(dst, src, count);
     }
 }
 } // namespace panda::ecmascript

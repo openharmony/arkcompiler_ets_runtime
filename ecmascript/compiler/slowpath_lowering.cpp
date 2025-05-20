@@ -1277,8 +1277,8 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue_, exceptionOffset);
     auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
-    GateRef loadException = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
-        { depend, glue_, val }, VariableType::JS_ANY().GetGateType());
+    GateRef loadException = circuit_->NewGate(circuit_->LoadWithoutBarrier(bit),
+        VariableType::JS_ANY().GetMachineType(), { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
     GateRef holeCst = builder_.HoleConstant();
     GateRef clearException = circuit_->NewGate(circuit_->Store(bit), MachineType::NOVALUE,
@@ -3760,7 +3760,7 @@ void SlowPathLowering::LowerGetUnsharedConstPool(GateRef gate)
     GateRef index = builder_.Load(VariableType::JS_ANY(), glue_, sharedConstPool, dataOffset, constPoolSize);
     GateRef unshareCpOffset = static_cast<int32_t>(JSThread::GlueData::GetUnSharedConstpoolsOffset(false));
     GateRef unshareCpAddr =
-        builder_.Load(VariableType::NATIVE_POINTER(), glue_, glue_, builder_.IntPtr(unshareCpOffset), index);
+        builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(unshareCpOffset), index);
     GateRef unshareCpDataOffset =
         builder_.PtrAdd(unshareCpAddr, builder_.PtrMul(builder_.IntPtr(JSTaggedValue::TaggedTypeSize()),
                                                        builder_.ZExtInt32ToPtr(builder_.TaggedGetInt(index))));

@@ -259,7 +259,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         MethodEntry(thread, method, env);
     }
 #ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
+    if (thread->IsCMCGCConcurrentCopying()) {
         base::GCHelper::CopyCallTarget(callTarget); // callTarget should be ToSpace Reference
         method = callTarget->GetCallTarget();
     }
@@ -323,7 +323,7 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
         MethodEntry(thread, method, env);
     }
 #ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
+    if (thread->IsCMCGCConcurrentCopying()) {
         // func should be ToSpace Reference
         base::GCHelper::CopyCallTarget(func.GetTaggedObject());
         // context should be ToSpace Reference

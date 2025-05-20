@@ -264,12 +264,28 @@ GateRef CallStubBuilder::JSCallDispatch()
     this->result_ = &result;
 
 #ifdef USE_READ_BARRIER
-    // func_ should be ToSpace Reference
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
-    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
-        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+    Label prepareForAsmBridgeEntry(env);
+    Label finishPrepare(env);
+    GateRef threadHolder = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
+        IntPtr(JSThread::GlueData::GetThreadHolderOffset(false)));
+    GateRef mutatorBase = LoadPrimitive(VariableType::NATIVE_POINTER(), threadHolder,
+                                        IntPtr(0)); // currently offset is zero
+    GateRef gcPhase = LoadPrimitive(VariableType::INT8(), mutatorBase, IntPtr(0)); // currently offset is zero
+    BRANCH(Int8GreaterThanOrEqual(gcPhase, Int8(GCPhase::GC_PHASE_PRECOPY)), &prepareForAsmBridgeEntry, &finishPrepare);
+    Bind(&prepareForAsmBridgeEntry);
+    {
+        // func_ should be ToSpace Reference
+        CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
+        // every callmode except SUPER_CALL_SPREAD_WITH_ARGV has argv on the frame which is GC root,
+        // so only need to copy argv here for SUPER_CALL_SPREAD_WITH_ARGV callmode
+        if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
+            // argv should be ToSpace Reference
+            CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+                { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+        }
+        Jump(&finishPrepare);
     }
+    Bind(&finishPrepare);
 #endif
 
     // 1. call initialize
@@ -462,7 +478,8 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
 
         Bind(&funcCheckBaselineCode);
         GateRef baselineCodeOffset = IntPtr(JSFunction::BASELINECODE_OFFSET);
-        GateRef baselineCode = Load(VariableType::JS_POINTER(), glue_, func_, baselineCodeOffset);
+        // jump over the ReadBarrier for baselineCode since currently baseline-jit is disabled
+        GateRef baselineCode = LoadPrimitive(VariableType::JS_POINTER(), func_, baselineCodeOffset);
 
         Branch(NotEqual(baselineCode, Undefined()), &checkIsBaselineCompiling, &methodNotAot);
         Bind(&checkIsBaselineCompiling);

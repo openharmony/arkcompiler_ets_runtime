@@ -1304,7 +1304,7 @@ void NewObjectStubBuilder::FillArgumentsList(GateRef argumentsList,
     BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
     GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-    GateRef argument = Load(VariableType::JS_ANY(), glue_, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+    GateRef argument = LoadPrimitive(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, argumentsList, *i, argument);
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
@@ -1412,8 +1412,8 @@ void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-        GateRef receiver =
-            Load(VariableType::JS_ANY(), glue_, sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
+        GateRef receiver = LoadPrimitive(VariableType::JS_ANY(), sp,
+                                         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
         SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);

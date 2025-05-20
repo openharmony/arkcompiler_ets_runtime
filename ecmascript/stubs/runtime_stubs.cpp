@@ -4872,26 +4872,32 @@ DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
     return publishValue.GetTaggedValue().GetRawData();
 }
 
-void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count)
+void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dst, JSTaggedType *src, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
 #ifdef USE_READ_BARRIER
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    // check CMC-GC phase inside
     Barriers::CopyObject<true, true>(
-        nullptr, nullptr, reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
+        thread, nullptr, reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
 #else
+    (void)argGlue;
     std::copy_n(src, count, dst);
 #endif
 }
 
-void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
+void RuntimeStubs::ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length)
 {
     DISALLOW_GARBAGE_COLLECTION;
 #ifdef USE_READ_BARRIER
-    if (true) { // IsConcurrentCopying
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    if (thread->IsCMCGCConcurrentCopying()) {
         for (uint32_t i = 0; i < length; i++) {
             Barriers::UpdateSlot(dst, i * sizeof(JSTaggedType));
         }
     }
+#else
+    (void)argGlue;
 #endif
     std::reverse(dst, dst + length);
 }

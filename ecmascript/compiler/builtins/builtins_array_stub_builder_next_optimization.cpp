@@ -2745,7 +2745,7 @@ void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue,
     Label afterReverse(env);
     GateRef element = GetElementsArray(glue, thisValue);
     GateRef dstAddr = GetDataPtrInTaggedArray(element);
-    CallNGCRuntime(glue, RTSTUB_ID(ReverseArray), {TaggedCastToIntPtr(dstAddr), thisLen});
+    CallNGCRuntime(glue, RTSTUB_ID(ReverseArray), {glue, TaggedCastToIntPtr(dstAddr), thisLen});
     BRANCH(NeedBarrier(kind), &shouldBarrier, &afterReverse);
     Bind(&shouldBarrier);
     {

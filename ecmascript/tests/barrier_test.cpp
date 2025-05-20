@@ -79,7 +79,7 @@ HWTEST_F_L0(BarrierTest, BatchCopyNoBarrier)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObjectPrimitive<false>(to, from, arrayLength);
+    Barriers::CopyObject<false, false>(thread, nullptr, to, from, arrayLength);
 
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         EXPECT_TRUE(LocalToShareBeforeCopy.count(ToUintPtr(mem)));

@@ -32,9 +32,14 @@ void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx,
     Store(VariableType::INT64(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx), val);
 }
 
-inline GateRef InterpreterStubBuilder::GetVregValue(GateRef glue, GateRef sp, GateRef idx)
+inline GateRef InterpreterStubBuilder::GetVregValue([[maybe_unused]] GateRef glue, GateRef sp, GateRef idx)
 {
-    return Load(VariableType::JS_ANY(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+    return LoadPrimitive(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+}
+
+inline GateRef InterpreterStubBuilder::GetVregValueFromArray(GateRef glue, GateRef array, GateRef idx)
+{
+    return Load(VariableType::JS_ANY(), glue, array, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
 }
 
 GateRef InterpreterStubBuilder::ReadInst8_0(GateRef pc)
@@ -254,15 +259,15 @@ GateRef InterpreterStubBuilder::GetPcFromFrame(GateRef frame)
         IntPtr(AsmInterpretedFrame::GetPcOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStubBuilder::GetFunctionFromFrame(GateRef glue, GateRef frame)
+GateRef InterpreterStubBuilder::GetFunctionFromFrame([[maybe_unused]] GateRef glue, GateRef frame)
 {
-    return Load(VariableType::JS_POINTER(), glue, frame,
+    return LoadPrimitive(VariableType::JS_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
 }
 
 GateRef InterpreterStubBuilder::GetNewTarget(GateRef glue, GateRef sp)
 {
-    GateRef function = Load(VariableType::JS_POINTER(), glue, GetFrame(sp),
+    GateRef function = LoadPrimitive(VariableType::JS_POINTER(), GetFrame(sp),
         IntPtr(AsmInterpretedFrame::GetFunctionOffset(GetEnvironment()->IsArch32Bit())));
     GateRef method = GetMethodFromFunction(glue, function);
     GateRef callField = GetCallFieldFromMethod(method);
@@ -273,12 +278,12 @@ GateRef InterpreterStubBuilder::GetNewTarget(GateRef glue, GateRef sp)
         Int64(MethodLiteral::HaveFuncBit::START_BIT)),
         Int64((1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1)), Int64(0)));
     GateRef idx = ZExtInt32ToPtr(Int32Add(numVregs, haveFunc));
-    return Load(VariableType::JS_ANY(), glue, sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
+    return LoadPrimitive(VariableType::JS_ANY(), sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
 }
 
-GateRef InterpreterStubBuilder::GetThisFromFrame(GateRef glue, GateRef frame)
+GateRef InterpreterStubBuilder::GetThisFromFrame([[maybe_unused]] GateRef glue, GateRef frame)
 {
-    return Load(VariableType::JS_POINTER(), glue, frame,
+    return LoadPrimitive(VariableType::JS_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetThisOffset(GetEnvironment()->IsArch32Bit())));
 }
 
@@ -288,15 +293,15 @@ GateRef InterpreterStubBuilder::GetCallSizeFromFrame(GateRef frame)
         IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStubBuilder::GetAccFromFrame(GateRef glue, GateRef frame)
+GateRef InterpreterStubBuilder::GetAccFromFrame([[maybe_unused]] GateRef glue, GateRef frame)
 {
-    return Load(VariableType::JS_ANY(), glue, frame,
+    return LoadPrimitive(VariableType::JS_ANY(), frame,
         IntPtr(AsmInterpretedFrame::GetAccOffset(GetEnvironment()->IsArch32Bit())));
 }
 
-GateRef InterpreterStubBuilder::GetEnvFromFrame(GateRef glue, GateRef frame)
+GateRef InterpreterStubBuilder::GetEnvFromFrame([[maybe_unused]] GateRef glue, GateRef frame)
 {
-    return Load(VariableType::JS_POINTER(), glue, frame,
+    return LoadPrimitive(VariableType::JS_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetEnvOffset(GetEnvironment()->IsArch32Bit())));
 }
 
@@ -483,7 +488,7 @@ GateRef InterpreterStubBuilder::PushRange(GateRef glue, GateRef sp, GateRef arra
     Label pushArgsEnd(env);
     BRANCH(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsBegin, &pushArgsEnd);
     LoopBegin(&pushArgsBegin);
-    GateRef arg = GetVregValue(glue, array, ZExtInt32ToPtr(*i));
+    GateRef arg = GetVregValueFromArray(glue, array, ZExtInt32ToPtr(*i));
     newSp = PushArg(glue, *newSp, arg);
     i = Int32Sub(*i, Int32(1));  // 1 : set as high 1 bits
     BRANCH(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsAgain, &pushArgsEnd);
