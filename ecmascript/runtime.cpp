@@ -18,6 +18,9 @@
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
 #include "ecmascript/crt.h"
+#include "ecmascript/dynamic_object_accessor.h"
+#include "ecmascript/dynamic_object_descriptor.h"
+#include "ecmascript/dynamic_type_converter.h"
 #endif
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -119,6 +122,11 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
 void Runtime::PreInitialization(const EcmaVM *vm)
 {
     DynamicObjectOperator::Initialize();
+#ifdef USE_CMC_GC
+    DynamicObjectAccessor::Initialize();
+    DynamicObjectDescriptor::Initialize();
+    DynamicTypeConverter::Initialize();
+#endif
     mainThread_ = vm->GetAssociatedJSThread();
     mainThread_->SetMainThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
