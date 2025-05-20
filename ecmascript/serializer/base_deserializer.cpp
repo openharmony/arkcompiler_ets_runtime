@@ -375,6 +375,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             UpdateMaybeWeak(slot, value, GetAndResetWeak());
             break;
         }
+        case (uint8_t)EncodeFlag::GLOBAL_ENV: {
+            slot.Update(thread_->GetGlobalEnv().GetTaggedValue().GetTaggedObject());
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
