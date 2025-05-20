@@ -140,6 +140,10 @@ public:
     uintptr_t AllocPinnedRegion();
     uintptr_t AllocLargeReion(size_t size);
 
+    // ONLY used for UT
+    uintptr_t GetLastRegionForTest();
+    uintptr_t GetLastLargeRegionForTest();
+
     uintptr_t AllocPinnedFromFreeList(size_t size);
 
     uintptr_t AllocPinned(size_t size, bool allowGC = true)

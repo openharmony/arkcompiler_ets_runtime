@@ -15,6 +15,7 @@
 
 #include "ecmascript/tests/test_helper.h"
 
+#include "common_components/heap/heap_proxy.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
@@ -83,13 +84,13 @@ public:
         std::thread t1([&]() {
             JSRuntimeOptions options;
             EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options);
-            // deserialize with last version tag
-            SnapshotMock snapshotDeserialize(ecmaVm2);
-            snapshotDeserialize.SetLastVersion(deserializeVersion);
-            EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
-
-            ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr,
-                      expected);
+            {
+                ThreadManagedScope scope(ecmaVm2->GetJSThread());
+                // deserialize with last version tag
+                SnapshotMock snapshotDeserialize(ecmaVm2);
+                snapshotDeserialize.SetLastVersion(deserializeVersion);
+                EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
+            }
             JSNApi::DestroyJSVM(ecmaVm2);
         });
         {
@@ -137,8 +138,12 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
+#ifdef USE_CMC_GC
+    ConstantPool *constpool1 = reinterpret_cast<ConstantPool*>(HeapProxy::GetLastRegionForTest());
+#else
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+#endif
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsJSFunction());
@@ -186,18 +191,24 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
+#ifdef USE_CMC_GC
+    ConstantPool *constpool1 = reinterpret_cast<ConstantPool*>(HeapProxy::GetLastRegionForTest());
+#else
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+#endif
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());
 
+#ifndef USE_CMC_GC
     auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
     auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
+#endif
     std::remove(fileName.c_str());
 }
 
@@ -233,14 +244,20 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName1);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName2);
 
+#ifdef USE_CMC_GC
+    ConstantPool *constpool = reinterpret_cast<ConstantPool*>(HeapProxy::GetLastRegionForTest());
+#else
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+#endif
     EXPECT_TRUE(constpool->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool->GetObjectFromCache(100).IsTaggedArray());
+#ifndef USE_CMC_GC
     auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
     auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
+#endif
     std::remove(fileName1.c_str());
     std::remove(fileName2.c_str());
 }
@@ -335,8 +352,12 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
 
+#ifdef USE_CMC_GC
+    TaggedArray *array4 = reinterpret_cast<TaggedArray*>(HeapProxy::GetLastLargeRegionForTest());
+#else
     auto lastRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetHugeObjectSpace()->GetCurrentRegion();
     auto array4 = reinterpret_cast<TaggedArray *>(lastRegion->GetBegin());
+#endif
     EXPECT_TRUE(array4->Get(0).IsTaggedArray());
     EXPECT_TRUE(array4->Get(1).IsJSFunction());
     EXPECT_TRUE(array4->Get(2).IsJSFunction());

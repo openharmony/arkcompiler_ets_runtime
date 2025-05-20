@@ -56,14 +56,20 @@ protected:
             return VerifyVersion("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
         }
 
-        uint32_t oldSpaceObjSize {0};
-        uint32_t nonMovableObjSize {0};
-        uint32_t machineCodeObjSize {0};
-        uint32_t snapshotObjSize {0};
-        uint32_t hugeObjSize {0};
-        uint32_t stringSize {0};
-        uint32_t pandaFileBegin {0};
-        uint32_t rootObjectSize {0};
+#ifdef USE_CMC_GC
+        size_t regularObjSize {0};
+        size_t pinnedObjSize {0};
+        size_t largeObjSize {0};
+#else
+        size_t oldSpaceObjSize {0};
+        size_t nonMovableObjSize {0};
+        size_t machineCodeObjSize {0};
+        size_t snapshotObjSize {0};
+        size_t hugeObjSize {0};
+#endif
+        size_t stringSize {0};
+        uintptr_t pandaFileBegin {0};
+        size_t rootObjectSize {0};
     };
 
     virtual const base::FileHeaderBase::VersionType &GetLastVersion() const
