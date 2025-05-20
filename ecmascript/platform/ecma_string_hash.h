@@ -23,7 +23,7 @@ namespace panda::ecmascript {
     public:
         static constexpr size_t BLOCK_SIZE = 4;
         static constexpr size_t SIMD_U8_LOOP_SIZE = 8;
-        static constexpr size_t MIN_SIZE_FOR_UNROLLING = 128;
+        static constexpr size_t MIN_SIZE_FOR_UNROLLING = 32;
 
         static constexpr uint32_t HASH_SHIFT = 5;
         static constexpr uint32_t HASH_MULTIPLY = 31;
