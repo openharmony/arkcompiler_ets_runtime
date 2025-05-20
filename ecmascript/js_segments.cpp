@@ -109,16 +109,17 @@ JSTaggedValue JSSegments::Containing(JSThread *thread, const JSHandle<JSSegments
                                    *unicodeString, startIndex, endIndex).GetTaggedValue();
 }
 
-bool CurrentSegmentIsWordLike(icu::BreakIterator* breakIterator)
+bool CurrentSegmentIsWordLike(icu::BreakIterator* textBreakIterator)
 {
-    int32_t rule_status = breakIterator->getRuleStatus();
-    return (rule_status >= UBRK_WORD_NUMBER &&
-            rule_status < UBRK_WORD_NUMBER_LIMIT) ||
-           (rule_status >= UBRK_WORD_LETTER &&
-            rule_status < UBRK_WORD_LETTER_LIMIT) ||
-           (rule_status >= UBRK_WORD_KANA &&
-            rule_status < UBRK_WORD_KANA_LIMIT) ||
-           (rule_status >= UBRK_WORD_IDEO && rule_status < UBRK_WORD_IDEO_LIMIT);
+    int32_t currentSegmentRuleStatus = textBreakIterator->getRuleStatus();
+    return (currentSegmentRuleStatus >= UBRK_WORD_NUMBER &&
+            currentSegmentRuleStatus < UBRK_WORD_NUMBER_LIMIT) ||
+           (currentSegmentRuleStatus >= UBRK_WORD_LETTER &&
+            currentSegmentRuleStatus < UBRK_WORD_LETTER_LIMIT) ||
+           (currentSegmentRuleStatus >= UBRK_WORD_KANA &&
+            currentSegmentRuleStatus < UBRK_WORD_KANA_LIMIT) ||
+           (currentSegmentRuleStatus >= UBRK_WORD_IDEO && 
+            currentSegmentRuleStatus < UBRK_WORD_IDEO_LIMIT);
 }
 
 // 18.7.1 CreateSegmentDataObject ( segmenter, string, startIndex, endIndex )
