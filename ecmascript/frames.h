@@ -32,7 +32,6 @@ namespace kungfu {
 };
 
 static constexpr int64_t BASELINEJIT_PC_FLAG = static_cast<int64_t>(std::numeric_limits<uint64_t>::max());
-
 // Here list all scenarios of calling between Runtime/CInterpreter/ASMInterpreter/AOTCompiler/CBuiltin/ASMBuitlin.
 // Please note that the "[]" means a must frame while "<>" means an optional frame. Each case is from top to down.
 //
@@ -235,6 +234,11 @@ private:
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -294,6 +298,10 @@ public:
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -368,10 +376,17 @@ private:
     {
         return prevFp;
     }
+
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
+
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -436,14 +451,22 @@ private:
     {
         return prevFp;
     }
+    
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
+
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     uintptr_t GetPrevFrameSp() const
     {
         return callSiteSp;
     }
+
     alignas(EAS) uintptr_t callSiteSp {0};
     alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
@@ -590,8 +613,12 @@ public:
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     void GCIterate(const FrameIterator &it, RootVisitor &visitor, FrameType frameType) const;
-    void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
     {
@@ -1320,6 +1347,11 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     AsmInterpretedEntryFrame entry;
     alignas(EAS) uintptr_t returnAddr {0};
 };
@@ -1370,6 +1402,11 @@ struct OptimizedLeaveFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
     }
 
     static size_t GetTypeOffset()
@@ -1436,6 +1473,11 @@ struct OptimizedWithArgvLeaveFrame : public base::AlignedStruct<JSTaggedValue::T
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
     }
 
     static size_t GetTypeOffset()
@@ -1510,6 +1552,11 @@ public:
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
     }
 
     void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
@@ -1649,6 +1696,11 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     static size_t GetStackArgsOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32);
@@ -1755,6 +1807,11 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     static size_t GetTypeOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
@@ -1854,8 +1911,12 @@ public:
         return returnAddr;
     }
 
+    const uintptr_t *GetReturnAddrAddress() const
+    {
+        return &returnAddr;
+    }
+
     void GCIterate(const FrameIterator &it, RootVisitor &visitor, FrameType frameType) const;
-    void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
     {
@@ -1961,13 +2022,57 @@ public:
     using ConstInfo = kungfu::LLVMStackMapType::ConstInfo;
     using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>;
     explicit FrameIterator(JSTaggedType *sp, const JSThread *thread = nullptr);
+    
+    static constexpr uint32_t LAZY_DEOPT_FLAG_BIT = 30;
+    static constexpr uintptr_t CLEARD_LAZY_DEOPT_FLAG =
+        static_cast<uintptr_t>(~0ULL & ~(1ULL << LAZY_DEOPT_FLAG_BIT));
+
+    inline static void TryRemoveLazyDeoptFlag(uintptr_t& type)
+    {
+        type &= CLEARD_LAZY_DEOPT_FLAG;
+    }
+
     FrameType GetFrameType() const
+    {
+        ASSERT(current_ != nullptr);
+        uintptr_t *typeAddr = reinterpret_cast<uintptr_t *>(
+            reinterpret_cast<uintptr_t>(current_) - sizeof(FrameType));
+        return static_cast<FrameType>((*typeAddr) & CLEARD_LAZY_DEOPT_FLAG);
+    }
+
+    FrameType GetRawFrameType() const
     {
         ASSERT(current_ != nullptr);
         FrameType *typeAddr = reinterpret_cast<FrameType *>(
             reinterpret_cast<uintptr_t>(current_) - sizeof(FrameType));
         return *typeAddr;
     }
+    
+    FrameType *GetFrameTypeAddress() const
+    {
+        ASSERT(current_ != nullptr);
+        FrameType *typeAddr = reinterpret_cast<FrameType *>(
+            reinterpret_cast<uintptr_t>(current_) - sizeof(FrameType));
+        return typeAddr;
+    }
+
+    bool IsLazyDeoptFrameType() const
+    {
+        return IsLazyDeoptFrameType(GetRawFrameType());
+    }
+
+    static bool IsLazyDeoptFrameType(FrameType type)
+    {
+        return static_cast<uint64_t>(type) >= (1ULL << LAZY_DEOPT_FLAG_BIT);
+    }
+
+    static void DecodeAsLazyDeoptFrameType(FrameType* type)
+    {
+        *type = static_cast<FrameType>(
+            static_cast<uintptr_t>(*type) | (1ULL << LAZY_DEOPT_FLAG_BIT));
+    }
+
+    uintptr_t *GetReturnAddrAddress() const;
 
     template<class T>
     T* GetFrame()
@@ -2000,8 +2105,11 @@ public:
     int ComputeDelta(const Method *method = nullptr) const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
-    std::map<uint32_t, uint32_t> GetInlinedMethodInfo();
     uint32_t GetBytecodeOffset() const;
+    void GetStackTraceInfos(std::vector<std::pair<JSTaggedType, uint32_t>> &stackTraceInfos,
+        bool needBaselineSpecialHandling, uint32_t pcOffset) const;
+    void CollectStackTraceInfos(std::vector<std::pair<JSTaggedType, uint32_t>> &info) const;
+    size_t GetInlineDepth() const;
     uintptr_t GetPrevFrameCallSiteSp() const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
@@ -2016,9 +2124,7 @@ public:
     {
         return thread_;
     }
-    bool IteratorStackMap(RootVisitor &visitor) const;
-    void CollectPcOffsetInfo(ConstInfo &info) const;
-    void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
+    bool IteratorStackMapAndDeopt(RootVisitor &visitor) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::pair<CallSiteInfo, bool> CalCallSiteInfo(uintptr_t retAddr, bool isDeopt) const;
     CallSiteInfo TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const;

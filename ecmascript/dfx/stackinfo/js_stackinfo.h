@@ -184,7 +184,6 @@ private:
         DebugInfoExtractor *extractor{nullptr};
     };
 public:
-    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
     static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative,
                                                 bool needNativeStack = true, uint32_t depth = UINT32_MAX)
     {
@@ -210,8 +209,10 @@ public:
 
 private:
     static std::string BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
-                                             uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj,
-                                             LastBuilderCache &lastCache);
+                                             const JSHandle<JSObject> &jsErrorObj,
+                                             LastBuilderCache &lastCache,
+                                             bool needBaselineSpecialHandling,
+                                             uint32_t pcOffset);
     static constexpr int32_t InitialLength = 50;
     static constexpr int32_t InitialDeeps = 5;
 };

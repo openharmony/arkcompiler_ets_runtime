@@ -2309,6 +2309,12 @@ inline void StubBuilder::SetEnumCacheToHClass(VariableType type, GateRef glue, G
     Store(type, glue, hClass, offset, key);
 }
 
+inline void StubBuilder::SetDependentInfosToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef value)
+{
+    GateRef offset = IntPtr(JSHClass::DEPENDENT_INFOS_OFFSET);
+    Store(type, glue, hClass, offset, value);
+}
+
 inline void StubBuilder::SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition)
 {
     GateRef offset = IntPtr(JSHClass::TRANSTIONS_OFFSET);

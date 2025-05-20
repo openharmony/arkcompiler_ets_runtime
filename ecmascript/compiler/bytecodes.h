@@ -829,6 +829,11 @@ public:
         return HasFrameArgs() || !NoThrow();
     }
 
+    bool NeedFrameStateInPlace() const
+    {
+        return IsCall() || IsAccessorBC() || !NoThrow();
+    }
+
     bool IsCall() const
     {
         return metaData_.IsCall();

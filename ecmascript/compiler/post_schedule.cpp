@@ -293,18 +293,15 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
         }
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         ASSERT(cs->IsRuntimeStub());
-        GateRef reseverdFrameArgs = Circuit::NullGate();
-        GateRef reseverdPc = Circuit::NullGate();
+        GateRef reseverdFrameState = Circuit::NullGate();
         std::vector<GateRef> args { taggedSize };
-        // keep same with CircuitBuilder::Call: only when condition is true, we pass the other two args.
+        // keep same with CircuitBuilder::Call: only when condition is true, we pass FrameState.
         if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
-            reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-            reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-            args.push_back(reseverdFrameArgs);
-            args.push_back(reseverdPc);
+            reseverdFrameState = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+            args.push_back(reseverdFrameState);
         }
         // here in order to schedule all the intermediate value,
-        // frameargs and pcoffset are solved out from CircuitBuilder::Call,
+        // framestate is solved out from CircuitBuilder::Call,
         // so hirGate must be NullGate to prevent duplicated operation.
         GateRef slowResult = builder_.Call(cs, glue, target, builder_.GetDepend(),
                                            args, Circuit::NullGate(), "Heap alloc");
@@ -317,8 +314,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
             PrepareToScheduleNewGate(target, failBBGates);
             PrepareToScheduleNewGate(taggedSize, failBBGates);
             if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
-                PrepareToScheduleNewGate(reseverdFrameArgs, failBBGates);
-                PrepareToScheduleNewGate(reseverdPc, failBBGates);
+                PrepareToScheduleNewGate(reseverdFrameState, failBBGates);
             }
             PrepareToScheduleNewGate(taggedIntMask, failBBGates);
             PrepareToScheduleNewGate(ifTrue, failBBGates);
@@ -364,18 +360,15 @@ void PostSchedule::LoweringHeapAllocate(GateRef gate,
     GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, id, GateType::NJSValue());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
     ASSERT(cs->IsRuntimeStub());
-    GateRef reseverdFrameArgs = Circuit::NullGate();
-    GateRef reseverdPc = Circuit::NullGate();
+    GateRef reseverdFrameState = Circuit::NullGate();
     std::vector<GateRef> args { taggedSize };
     // keep same with CircuitBuilder::Call: only when condition is true, we pass the other two args.
     if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
-        reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-        reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-        args.push_back(reseverdFrameArgs);
-        args.push_back(reseverdPc);
+        reseverdFrameState = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        args.push_back(reseverdFrameState);
     }
     // here in order to schedule all the intermediate value,
-    // frameargs and pcoffset are solved out from CircuitBuilder::Call,
+    // framestate is solved out from CircuitBuilder::Call,
     // so hirGate must be NullGate to prevent duplicated operation.
     GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(), args, Circuit::NullGate(), "Heap alloc");
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -385,8 +378,7 @@ void PostSchedule::LoweringHeapAllocate(GateRef gate,
     PrepareToScheduleNewGate(target, currentBBGates);
     PrepareToScheduleNewGate(taggedSize, currentBBGates);
     if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
-        PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
-        PrepareToScheduleNewGate(reseverdPc, currentBBGates);
+        PrepareToScheduleNewGate(reseverdFrameState, currentBBGates);
     }
     PrepareToScheduleNewGate(taggedIntMask, currentBBGates);
     return;
@@ -520,15 +512,13 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     index = SelectBarrier(share, cs, comment);
     ASSERT(cs && (cs->IsCommonStub() || cs->IsASMCallBarrierStub()) && "Invalid call signature for barrier");
     GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
-    GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef reseverdFrameState = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                         {glue, base, offset, value, reseverdFrameArgs, reseverdPc},
+                                         {glue, base, offset, value, reseverdFrameState},
                                          Circuit::NullGate(), comment.data());
     {
         PrepareToScheduleNewGate(storeBarrier, currentBBGates);
-        PrepareToScheduleNewGate(reseverdPc, currentBBGates);
-        PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
+        PrepareToScheduleNewGate(reseverdFrameState, currentBBGates);
         PrepareToScheduleNewGate(target, currentBBGates);
         PrepareToScheduleNewGate(store, currentBBGates);
         PrepareToScheduleNewGate(addr, currentBBGates);
@@ -636,18 +626,17 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
         index = SelectBarrier(share, cs, comment);
         ASSERT(cs && (cs->IsCommonStub() || cs->IsASMCallBarrierStub()) && "Invalid call signature for barrier");
         GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
-        GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-        GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        GateRef reseverdFrameState = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
 #ifndef NDEBUG
         GateRef verifyTarget = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, CommonStubCSigns::VerifyBarrier,
                                                                      GateType::NJSValue());
         const CallSignature* verifyBarrierCs = CommonStubCSigns::Get(CommonStubCSigns::VerifyBarrier);
         GateRef verifyBarrier = builder_.Call(verifyBarrierCs, glue, verifyTarget, builder_.GetDepend(),
-                                              {glue, base, offset, value, reseverdFrameArgs, reseverdPc},
+                                              {glue, base, offset, value, reseverdFrameState},
                                               Circuit::NullGate(), "verify barrier");
 #endif
         GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                             { glue, base, offset, value, reseverdFrameArgs, reseverdPc },
+                                             { glue, base, offset, value, reseverdFrameState},
                                              Circuit::NullGate(), comment.data());
         builder_.Jump(&exit);
         {
@@ -657,8 +646,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
 #ifndef NDEBUG
             PrepareToScheduleNewGate(verifyBarrier, barrierBBGates);
 #endif
-            PrepareToScheduleNewGate(reseverdFrameArgs, barrierBBGates);
-            PrepareToScheduleNewGate(reseverdPc, barrierBBGates);
+            PrepareToScheduleNewGate(reseverdFrameState, barrierBBGates);
             PrepareToScheduleNewGate(ifTrue, barrierBBGates);
         }
     }

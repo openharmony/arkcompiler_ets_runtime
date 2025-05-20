@@ -135,11 +135,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
     if (GetCircuit()->IsOptimizedOrFastJit() && hirGate != Circuit::NullGate()) {
-        AppendFrameArgs(inputs, hirGate);
-        numValuesIn += 1;
-
-        GateRef pcOffset = Int64(acc_.TryGetPcOffset(hirGate));
-        inputs.emplace_back(pcOffset);
+        AppendFrameState(inputs, hirGate);
         numValuesIn += 1;
     }
 
@@ -377,7 +373,7 @@ GateRef CircuitBuilder::CallPrivateGetter(GateRef hirGate, GateRef receiver, Gat
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor};
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateGetter(pcOffset),
                                           MachineType::I64,
                                           args.size(),
@@ -400,7 +396,7 @@ GateRef CircuitBuilder::CallPrivateSetter(
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     std::vector<GateRef> args = {currentControl, currentDepend, receiver, accessor, value};
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallPrivateSetter(pcOffset),
                                           MachineType::I64,
                                           args.size(),
@@ -423,7 +419,7 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef ho
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder };
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset),
                                           MachineType::I64,
                                           args.size(),
@@ -446,7 +442,7 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef ho
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     std::vector<GateRef> args = { currentControl, currentDepend, receiver, propertyLookupResult, holder, value };
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset),
                                           MachineType::I64,
                                           args.size(),
@@ -469,7 +465,7 @@ GateRef CircuitBuilder::Float32ArrayConstructor(GateRef hirGate, std::vector<Gat
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(bitfield, pcOffset),
         MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -487,7 +483,7 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield, pcOffset), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -504,7 +500,7 @@ GateRef CircuitBuilder::CallInternal(GateRef hirGate, std::vector<GateRef> args,
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(
         circuit_->CallInternal(bitfield, pcOffset), MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -525,7 +521,7 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushArgv),
                                           MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);

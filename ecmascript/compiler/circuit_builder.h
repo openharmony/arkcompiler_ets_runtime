@@ -312,7 +312,7 @@ public:
     GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
                    const char* comment = nullptr);  // 1: default branch weight
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
-    void AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate);
+    void AppendFrameState(std::vector<GateRef> &args, GateRef hirGate);
     inline GateRef True();
     inline GateRef False();
     inline GateRef Undefined();

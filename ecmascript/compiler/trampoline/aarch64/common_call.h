@@ -81,6 +81,8 @@ class OptimizedCall : public CommonCall {
 public:
     static void CallRuntime(ExtendedAssembler *assembler);
 
+    static void DeoptPushAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register context);
+
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
     static void OptimizedCallAndPushArgv(ExtendedAssembler *assembler);
@@ -236,7 +238,7 @@ private:
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
 
     static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
-                             Register acc = INVALID_REG);
+                             Register acc = INVALID_REG, bool hasException = false);
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 

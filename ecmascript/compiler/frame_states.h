@@ -267,8 +267,8 @@ private:
     bool IsGateNotEmpty(GateRef gate) const;
 
     GateRef BuildFrameContext(FrameContext* frameContext);
-    void BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
-    void BindStateSplitAfter(const BytecodeInfo &bytecodeInfo, uint32_t bcId, GateRef gate);
+    void BuildFrameStateBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
+    void BindFrameStateAndStateSplitAfter(const BytecodeInfo &bytecodeInfo, uint32_t bcId, GateRef gate);
     GateRef BuildFrameValues(FrameContext* frameContext, FrameLiveOut* liveout);
     GateRef BuildStateSplit(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);
     GateRef BuildFrameState(FrameContext* frameContext, FrameLiveOut* liveout, size_t bcIndex);

@@ -477,13 +477,13 @@ GateRef CircuitBuilder::IsAccessorInternal(GateRef glue, GateRef accessor)
                       Int32(static_cast<int32_t>(JSType::INTERNAL_ACCESSOR)));
 }
 
-void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate)
+void CircuitBuilder::AppendFrameState(std::vector<GateRef> &args, GateRef hirGate)
 {
-    GateRef frameArgs = acc_.GetFrameArgs(hirGate);
-    if (frameArgs == Circuit::NullGate()) {
-        args.emplace_back(IntPtr(0));
+    if (acc_.HasFrameState(hirGate)) {
+        GateRef frameState = acc_.GetFrameState(hirGate);
+        args.emplace_back(frameState);
     } else {
-        args.emplace_back(frameArgs);
+        args.emplace_back(IntPtr(0));
     }
 }
 

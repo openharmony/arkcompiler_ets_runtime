@@ -291,6 +291,33 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::ForceLazyDeopt(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 2);  // 2 : object and exception-flag
+
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    if (!object->IsHeapObject()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHClass *hclass = object->GetTaggedObject()->GetClass();
+    JSTaggedValue infos = hclass->GetDependentInfos();
+    if (!infos.IsHeapObject()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<DependentInfos> infosHandle(thread, infos);
+    DependentInfos::DeoptimizeGroups(
+        infosHandle, thread, DependentInfos::DependentGroup::PROTOTYPE_CHECK);
+    if (GetCallArg(info, 1)->IsTrue()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "user-defined exception", JSTaggedValue::Exception());
+    }
+    return JSTaggedValue::True();
+}
+
 JSTaggedValue BuiltinsArkTools::HintGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -1424,12 +1451,6 @@ JSTaggedValue BuiltinsArkTools::SetForceSlowPath([[maybe_unused]] EcmaRuntimeCal
 }
 
 // empty function for regress-xxx test cases
-JSTaggedValue BuiltinsArkTools::NotifyContextDisposed([[maybe_unused]] EcmaRuntimeCallInfo *info)
-{
-    return UnimplementedBuiltin(__func__, info);
-}
-
-// empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::OptimizeObjectForAddingMultipleProperties([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     return UnimplementedBuiltin(__func__, info);
@@ -1588,7 +1609,7 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
     DummyRootVisitor visitor;
 
     for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        bool ret = it.IteratorStackMap(visitor);
+        bool ret = it.IteratorStackMapAndDeopt(visitor);
         FrameType type = it.GetFrameType();
         LOG_BUILTINS(INFO) << "IterateFrameType: " << (int)type;
         if (!ret) {

@@ -49,7 +49,8 @@ public:
     {
         ASSERT(sp != nullptr);
         FrameType *typeAddr = reinterpret_cast<FrameType *>(reinterpret_cast<uintptr_t>(sp) - sizeof(FrameType));
-        return *typeAddr;
+        return static_cast<FrameType> (static_cast<uint32_t>(*typeAddr) & 
+            FrameIterator::CLEARD_LAZY_DEOPT_FLAG);
     }
 
     inline static bool IsEntryFrame(const uint8_t *pc)
@@ -268,7 +269,8 @@ private:
     {
         ASSERT(HasFrame());
         FrameType *typeAddr = reinterpret_cast<FrameType *>(reinterpret_cast<uintptr_t>(sp_) - sizeof(FrameType));
-        return *typeAddr;
+        return static_cast<FrameType> (static_cast<uint32_t>(*typeAddr) & 
+            FrameIterator::CLEARD_LAZY_DEOPT_FLAG);
     }
 
     void AdvanceToJSFrame();

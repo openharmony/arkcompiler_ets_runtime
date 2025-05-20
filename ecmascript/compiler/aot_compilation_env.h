@@ -33,6 +33,12 @@ public:
         return false;
     }
 
+    kungfu::LazyDeoptAllDependencies *GetDependencies() const override
+    {
+        LOG_FULL(FATAL) << "Aot should not get dependencies";
+        UNREACHABLE();
+    }
+
     JSRuntimeOptions &GetJSOptions() const override;
 
     // thread

@@ -331,6 +331,7 @@ public:
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
                                       passOptions->EnableMergePoly(),
+                                      passOptions->EnableLazyDeopt(),
                                       data->GetRecordName(),
                                       data->GetCallMethodFlagMap(),
                                       data->GetPGOProfilerDecoder(),

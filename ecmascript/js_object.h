@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JSOBJECT_H
 #define ECMASCRIPT_JSOBJECT_H
 
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/enum_cache.h"
@@ -42,6 +43,7 @@ class LexicalEnv;
 class GlobalEnv;
 class TaggedQueue;
 class NumberDictionary;
+class DependentInfos;
 
 namespace builtins {
     class BuiltinsArkTools;
@@ -768,6 +770,7 @@ public:
     static bool IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
                                  JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key);
     static JSHandle<EnumCache> GetOrCreateEnumCache(JSThread *thread, JSHandle<JSHClass> jsHClass);
+    static JSHandle<DependentInfos> GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass);
     static inline void SetEnumCacheKind([[maybe_unused]] const JSThread *thread,
                                         JSHandle<EnumCache> enumCache, const EnumCacheKind kind)
     {

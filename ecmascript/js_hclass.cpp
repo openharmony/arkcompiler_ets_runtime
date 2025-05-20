@@ -142,6 +142,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetIsPrototype(false);
     SetHasDeleteProperty(false);
     SetIsAllTaggedProp(true);
+    SetIsStable(true);
     SetElementsKind(ElementsKind::GENERIC);
     SetTransitions(thread, JSTaggedValue::Undefined());
     SetParent(thread, JSTaggedValue::Undefined());
@@ -149,6 +150,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
     SetConstructionCounter(0);
+    SetDependentInfos(thread, JSTaggedValue::Undefined());
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -304,7 +306,7 @@ void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle
         JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key);
     } else {
 #if ENABLE_NEXT_OPTIMIZATION
-        JSHClass::NotifyHClassChangedForNotFound(thread, jshclass, newHClass, key);
+        JSHClass::NotifyHClassChangedForNormal(thread, jshclass, newHClass, key);
 #endif
         JSHClass::RefreshUsers(thread, jshclass, newHClass);
     }
@@ -971,6 +973,21 @@ void JSHClass::MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass
     }
 }
 
+void JSHClass::NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass)
+{
+    if (!jsHClass->IsStable()) {
+        return;
+    }
+    jsHClass->SetIsStable(false);
+    JSTaggedValue infos = jsHClass->GetDependentInfos();
+    if (!infos.IsHeapObject()) {
+        return;
+    }
+    JSHandle<DependentInfos> infosHandle(thread, infos);
+    DependentInfos::DeoptimizeGroups(
+        infosHandle, thread, DependentInfos::DependentGroup::PROTOTYPE_CHECK);
+}
+
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     JSTaggedValue proto = jshclass->GetPrototype();
@@ -1023,8 +1040,8 @@ JSHandle<JSTaggedValue> JSHClass::EnablePHCProtoChangeMarker(const JSThread *thr
     return JSHandle<JSTaggedValue>(markerHandle);
 }
 
-void JSHClass::NotifyHClassChangedForNotFound(const JSThread *thread, JSHandle<JSHClass> oldHclass,
-                                              JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
+void JSHClass::NotifyHClassChangedForNormal(const JSThread *thread, JSHandle<JSHClass> oldHclass,
+                                            JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
 {
     if (!oldHclass->IsPrototype()) {
         return;
@@ -1033,7 +1050,6 @@ void JSHClass::NotifyHClassChangedForNotFound(const JSThread *thread, JSHandle<J
     if (oldHclass.GetTaggedValue() == newHclass.GetTaggedValue()) {
         return;
     }
-
     JSHClass::NoticeThroughChain<true>(thread, oldHclass, addedKey);
 }
 
@@ -1074,11 +1090,18 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     if (newHclass->IsAOT() && !newHclass->IsPrototype()) {
         newHclass->SetIsPrototype(true);
     }
+    NotifyLeafHClassChanged(const_cast<JSThread *>(thread), oldHclass);
     JSHClass::NoticeThroughChain<false>(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }
 
 void JSHClass::NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass)
+{
+    hclass->NotifyLeafHClassChanged(const_cast<JSThread *>(thread), hclass);
+    NotifyAccessorChangedThroughChain(thread, hclass);
+}
+
+void JSHClass::NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandle<JSHClass> hclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue markerValue = hclass->GetProtoChangeMarker();
@@ -1099,7 +1122,8 @@ void JSHClass::NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> 
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
         JSTaggedValue temp = listeners->Get(i);
         if (temp.IsJSHClass()) {
-            NotifyAccessorChanged(thread, JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()));
+            NotifyAccessorChangedThroughChain(thread,
+                JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()));
         }
     }
 }

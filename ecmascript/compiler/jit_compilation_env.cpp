@@ -19,8 +19,11 @@
 
 namespace panda::ecmascript {
 // jit
-JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFunction> &jsFunction)
-    : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThreadNoCheck()), jsFunction_(jsFunction)
+JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm,
+                                     JSHandle<JSFunction> &jsFunction,
+                                     kungfu::LazyDeoptAllDependencies *dependencies)
+    : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThreadNoCheck()),
+    jsFunction_(jsFunction), dependencies_(dependencies)
 {
     if (hostThread_ != nullptr && jsVm->GetPTManager() != nullptr) {
         ptManager_ = jsVm->GetPTManager();

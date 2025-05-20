@@ -756,6 +756,7 @@ ecma_source = [
   "ecmascript/compiler/pgo_type/pgo_type_manager.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_parser.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_recorder.cpp",
+  "ecmascript/compiler/lazy_deopt_dependency.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_bitvector.cpp",
   "ecmascript/containers/containers_deque.cpp",
@@ -777,6 +778,7 @@ ecma_source = [
   "ecmascript/debugger/js_debugger_manager.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/dependent_infos.cpp",
   "ecmascript/dfx/stackinfo/async_stack_trace.cpp",
   "ecmascript/dfx/dump_code/jit_dump_elf.cpp",
   "ecmascript/dfx/native_module_failure_info.cpp",
@@ -1034,6 +1036,15 @@ ecma_source += [
 
 if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
+}
+
+if (current_cpu == "arm64") {
+  ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
+} else if (current_cpu == "amd64" || current_cpu == "x64" ||
+           current_cpu == "x86_64") {
+  ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
+} else if (current_cpu == "arm") {
+  ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
 }
 
 hitrace_scope_source = []

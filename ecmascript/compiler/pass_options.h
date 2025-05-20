@@ -36,6 +36,7 @@ namespace panda::ecmascript::kungfu {
     V(LexenvSpecialization, false)                                               \
     V(InlineNative, false)                                                       \
     V(LoweringBuiltin, false)                                                    \
+    V(LazyDeopt, false)                                                          \
     V(FastModule, false)                                                         \
     V(OptBranchProfiling, true)                                                  \
     V(EscapeAnalysis, false)                                                     \

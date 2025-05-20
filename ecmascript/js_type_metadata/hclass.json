@@ -47,12 +47,17 @@
       "size": 8
     },
     {
-      "name": "ProfilerType",
+      "name": "DependentInfos",
       "offset": 64,
+      "size": 8
+    },
+    {
+      "name": "ProfilerType",
+      "offset": 72,
       "size": 8
     }
   ],
-  "end_offset": 72,
+  "end_offset": 80,
   "parents": [
     "TAGGED_OBJECT"
   ]

@@ -581,6 +581,7 @@ public:
                            MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetHClassTypeIDToHClass(GateRef glue, GateRef hClass, GateRef id);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
+    void SetDependentInfosToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef value);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
     void SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value);

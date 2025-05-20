@@ -19,9 +19,27 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
+
+extern "C" uintptr_t GetDeoptHandlerAsmOffset(bool isArch32)
+{
+    return JSThread::GlueData::GetRTStubEntriesOffset(isArch32) +
+        RTSTUB_ID(DeoptHandlerAsm) * 8;     // 8: 8 bytes in size
+}
+
+extern "C" uintptr_t GetFixedReturnAddr(uintptr_t argGlue, uintptr_t prevCallSiteSp)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    uintptr_t fixed = thread->GetAndClearCallSiteReturnAddr(prevCallSiteSp);
+    if (fixed == 0) {
+        LOG_ECMA(FATAL) << "ilegal return addr found";
+    }
+    return fixed;
+}
+
 class FrameWriter {
 public:
     explicit FrameWriter(Deoptimizier *deoptimizier) : thread_(deoptimizier->GetThread())
@@ -85,7 +103,8 @@ private:
     JSTaggedType *firstFrame_ {nullptr};
 };
 
-Deoptimizier::Deoptimizier(JSThread *thread, size_t depth) : thread_(thread), inlineDepth_(depth)
+Deoptimizier::Deoptimizier(JSThread *thread, size_t depth, kungfu::DeoptType type)
+    : thread_(thread), inlineDepth_(depth), type_(static_cast<uint32_t>(type))
 {
     CalleeReg callreg;
     numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
@@ -100,6 +119,9 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
         ARKDeopt deopt = deoptBundle.at(i);
         JSTaggedType v;
         VRegId id = deopt.id;
+        if (static_cast<OffsetType>(id) == static_cast<OffsetType>(SpecVregIndex::INLINE_DEPTH)) {
+            continue;
+        }
         if (std::holds_alternative<DwarfRegAndOffsetType>(deopt.value)) {
             ASSERT(deopt.kind == LocationTy::Kind::INDIRECT);
             auto value = std::get<DwarfRegAndOffsetType>(deopt.value);
@@ -275,6 +297,7 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
     stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
     stackContext_.returnAddr_ = frame->GetReturnAddr();
     stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
+    stackContext_.isFrameLazyDeopt_ = it.IsLazyDeoptFrameType();
 }
 
 void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
@@ -489,12 +512,14 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
 //   |       ......             |
 //   +--------------------------+ ---------------
 //   |        callerFp_         |               ^
-//   |       returnAddr_        |          stackContext
-//   |      callFrameTop_       |               |
-//   |       inlineDepth        |               v
+//   |       returnAddr_        |               |
+//   |      callFrameTop_       |          stackContext
+//   |       inlineDepth_       |               |
+//   |       hasException_      |               |
+//   |      isFrameLazyDeopt_   |               v
 //   |--------------------------| ---------------
 
-JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
+JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc)
 {
     FrameWriter frameWriter(this);
     // Push asm interpreter frame
@@ -508,9 +533,20 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
         AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
         const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
-        auto acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
         statePtr->function = callTarget;
-        statePtr->acc = acc;
+        if ((curDepth == static_cast<int32_t>(inlineDepth_)) && NeedOverwriteAcc(resumePc)) {
+            statePtr->acc = maybeAcc.GetTaggedValue();
+        } else {
+            auto acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
+            statePtr->acc = acc;
+        }
+        
+        if ((curDepth == static_cast<int32_t>(inlineDepth_)) &&
+                type_ == static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT)) {
+            EcmaOpcode curOpcode = kungfu::Bytecodes::GetOpcode(resumePc);
+            resumePc += (BytecodeInstruction::Size(curOpcode));
+        }
+
         statePtr->env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
         statePtr->callSize = GetCallSize(curDepth, resumePc);
         statePtr->fp = 0;  // need update
@@ -533,6 +569,8 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 
     RelocateCalleeSave();
 
+    frameWriter.PushRawValue(stackContext_.isFrameLazyDeopt_);
+    frameWriter.PushRawValue(thread_->HasPendingException());
     frameWriter.PushRawValue(stackContext_.callerFp_);
     frameWriter.PushRawValue(stackContext_.returnAddr_);
     frameWriter.PushRawValue(stackContext_.callFrameTop_);
@@ -540,7 +578,8 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
 }
 
-void Deoptimizier::ResetJitHotness(JSFunction *jsFunc) const
+// static
+void Deoptimizier::ResetJitHotness(JSThread *thread, JSFunction *jsFunc)
 {
     if (jsFunc->GetMachineCode().IsMachineCodeObject()) {
         JSTaggedValue profileTypeInfoVal = jsFunc->GetProfileTypeInfo();
@@ -552,28 +591,31 @@ void Deoptimizier::ResetJitHotness(JSFunction *jsFunc) const
             uint16_t threshold = profileTypeInfo->GetJitHotnessThreshold();
             threshold = threshold >= thresholdLimit ? ProfileTypeInfo::JIT_DISABLE_FLAG : threshold * thresholdStep;
             profileTypeInfo->SetJitHotnessThreshold(threshold);
-            ProfileTypeInfoCell::Cast(jsFunc->GetRawProfileTypeInfo())->SetMachineCode(thread_, JSTaggedValue::Hole());
+            ProfileTypeInfoCell::Cast(jsFunc->GetRawProfileTypeInfo())->SetMachineCode(thread, JSTaggedValue::Hole());
             Method *method = Method::Cast(jsFunc->GetMethod().GetTaggedObject());
             LOG_JIT(DEBUG) << "reset jit hotness for func: " << method->GetMethodName() << ", threshold:" << threshold;
         }
     }
 }
 
-void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *method)
+// static
+void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *func,
+                                                    Method *method, kungfu::DeoptType type)
 {
+    method->SetDeoptType(type);
     if (func->GetMachineCode().IsMachineCodeObject()) {
         Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
     }
     if (func->IsCompiledCode()) {
         bool isFastCall = func->IsCompiledFastCall();  // get this flag before clear it
         uintptr_t entry =
-            isFastCall ? thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
-                       : thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
+            isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
+                       : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
         func->ClearCompiledCodeFlags();
-        ResetJitHotness(func);
-        func->ClearMachineCode(thread_);
+        ResetJitHotness(thread, func);
+        func->ClearMachineCode(thread);
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }
 
@@ -600,7 +642,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptType(type);
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
-            ClearCompiledCodeStatusWhenDeopt(func, method);
+            ClearCompiledCodeStatusWhenDeopt(thread_, func, method, type);
         }
     }
 }
@@ -647,5 +689,77 @@ size_t Deoptimizier::DecodeDeoptDepth(OffsetType id, size_t shift)
         return id & mask;
     }
     return (-id) & mask;
+}
+
+// static
+size_t Deoptimizier::GetInlineDepth(JSThread *thread)
+{
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsOptimizedJSFunctionFrame()) {
+            continue;
+        }
+        return it.GetInlineDepth();
+    }
+    return 0;
+}
+
+// static
+void Deoptimizier::ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread,
+                                                           uintptr_t *returnAddraddress,
+                                                           FrameType *prevFrameTypeAddress,
+                                                           uintptr_t prevFrameCallSiteSp)
+{
+    ASSERT(returnAddraddress != nullptr);
+    uintptr_t lazyDeoptTrampoline = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_LazyDeoptEntry);
+    uintptr_t oldPc = *returnAddraddress;
+    *returnAddraddress = lazyDeoptTrampoline;
+    ASSERT(oldPc != 0);
+    ASSERT(oldPc != lazyDeoptTrampoline);
+    thread->AddToCallsiteSpToReturnAddrTable(prevFrameCallSiteSp, oldPc);
+
+    FrameIterator::DecodeAsLazyDeoptFrameType(prevFrameTypeAddress);
+}
+
+// static
+bool Deoptimizier::IsNeedLazyDeopt(const FrameIterator &it)
+{
+    if (!it.IsOptimizedJSFunctionFrame()) {
+        return false;
+    }
+    auto function = it.GetFunction();
+    return function.CheckIsJSFunctionBase() && !JSFunction::Cast(function)->IsCompiledCode();
+}
+
+// static
+void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
+{
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    uintptr_t *prevReturnAddrAddress = nullptr;
+    FrameType *prevFrameTypeAddress;
+    uintptr_t prevFrameCallSiteSp = 0;
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (IsNeedLazyDeopt(it)) {
+            ReplaceReturnAddrWithLazyDeoptTrampline(
+                thread, prevReturnAddrAddress, prevFrameTypeAddress, prevFrameCallSiteSp);
+        }
+        prevReturnAddrAddress = it.GetReturnAddrAddress();
+        prevFrameTypeAddress = it.GetFrameTypeAddress();
+        prevFrameCallSiteSp = it.GetPrevFrameCallSiteSp();
+    }
+}
+
+bool Deoptimizier::NeedOverwriteAcc(const uint8_t *pc)
+{
+    if (type_ != static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT)) {
+        return false;
+    }
+    BytecodeInstruction inst(pc);
+    if (inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE)) {
+        return true;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

@@ -17,6 +17,8 @@
 #define ECMASCRIPT_JIT_TASK_H
 
 #include "ecmascript/common.h"
+#include "ecmascript/dependent_infos.h"
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/ecma_vm.h"
 
@@ -104,6 +106,7 @@ public:
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, JitCompileMode mode);
     ~JitTask();
+    
     void Optimize();
     void Finalize();
     void PrepareCompile();
@@ -112,6 +115,12 @@ public:
     void InstallOsrCode(JSHandle<MachineCode> &codeObj);
     void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
         JSHandle<Method> &methodHandle);
+    
+    kungfu::LazyDeoptAllDependencies *GetDependencies()
+    {
+        return dependencies_;
+    }
+
     MachineCodeDesc &GetMachineCodeDesc()
     {
         return codeDesc_;
@@ -294,6 +303,7 @@ private:
     JSHandle<JSFunction> jsFunction_;
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     void *compilerTask_;
+    kungfu::LazyDeoptAllDependencies *dependencies_ {nullptr};
     MachineCodeDesc codeDesc_;
     CompileState state_;
     CompilerTier compilerTier_;

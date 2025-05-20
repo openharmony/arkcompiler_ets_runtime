@@ -4020,6 +4020,7 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     SetParentToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
     SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetEnumCacheToHClass(VariableType::INT64(), glue, dstHClass, Null());
+    SetDependentInfosToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
     SetLayoutToHClass(VariableType::JS_POINTER(),
                       glue,
                       dstHClass,

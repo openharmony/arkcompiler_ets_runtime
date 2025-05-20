@@ -1368,6 +1368,8 @@ public:
         virtual bool IsReceiverEqHolder(size_t index) const = 0;
         virtual void FetchPGORWTypesDual() = 0;
         virtual bool GenerateObjectAccessInfo() = 0;
+        virtual JSHClass* GetReceiverHClass(size_t index) const = 0;
+        virtual JSHClass* GetHolderHClass(size_t index) const = 0;
     };
 
     class AotAccessorStrategy : public AccessorStrategy {
@@ -1395,6 +1397,18 @@ public:
         {
             ASSERT(index < parent_.types_.size());
             return parent_.types_[index].first == parent_.types_[index].second;
+        }
+
+        JSHClass* GetReceiverHClass([[maybe_unused]] size_t index) const override
+        {
+            LOG_FULL(FATAL) << "Aot should not get receiver hclass";
+            UNREACHABLE();
+        }
+
+        JSHClass* GetHolderHClass([[maybe_unused]] size_t index) const override
+        {
+            LOG_FULL(FATAL) << "Aot should not get holder hclass";
+            UNREACHABLE();
         }
 
         void FetchPGORWTypesDual() override;
@@ -1428,6 +1442,16 @@ public:
         bool IsReceiverEqHolder(size_t index) const override
         {
             return parent_.jitTypes_[index].GetReceiverHclass() == parent_.jitTypes_[index].GetHolderHclass();
+        }
+
+        JSHClass* GetReceiverHClass(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass();
+        }
+
+        JSHClass* GetHolderHClass(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetHolderHclass();
         }
 
         void FetchPGORWTypesDual() override;
@@ -1520,6 +1544,16 @@ public:
         }
     }
 
+    JSHClass* GetReceiverHClass(size_t index) const
+    {
+        return strategy_->GetReceiverHClass(index);
+    }
+
+    JSHClass* GetHolderHClass(size_t index) const
+    {
+        return strategy_->GetHolderHClass(index);
+    }
+
     JSHandle<JSTaggedValue> GetName()
     {
         return name_;
@@ -1579,6 +1613,8 @@ public:
         virtual bool IsHolderEqNewHolder(size_t index) const = 0;
         virtual void FetchPGORWTypesDual() = 0;
         virtual bool GenerateObjectAccessInfo() = 0;
+        virtual JSHClass* GetReceiverHClass(size_t index) const = 0;
+        virtual JSHClass* GetHolderHClass(size_t index) const = 0;
         virtual bool IsPrototypeHclass(size_t index) const = 0;
     };
 
@@ -1631,6 +1667,18 @@ public:
             return JSHClass::Cast(hclass.GetTaggedObject())->IsPrototype();
         }
 
+        JSHClass* GetReceiverHClass([[maybe_unused]] size_t index) const override
+        {
+            LOG_FULL(FATAL) << "Aot should not get receiver hclass";
+            UNREACHABLE();
+        }
+
+        JSHClass* GetHolderHClass([[maybe_unused]] size_t index) const override
+        {
+            LOG_FULL(FATAL) << "Aot should not get holder hclass";
+            UNREACHABLE();
+        }
+
         void FetchPGORWTypesDual() override;
         bool GenerateObjectAccessInfo() override;
 
@@ -1679,6 +1727,16 @@ public:
             return parent_.jitTypes_[index].GetReceiverHclass()->IsPrototype();
         }
 
+        JSHClass* GetReceiverHClass(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass();
+        }
+
+        JSHClass* GetHolderHClass(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetHolderHclass();
+        }
+
         void FetchPGORWTypesDual() override;
         bool GenerateObjectAccessInfo() override;
 
@@ -1723,6 +1781,16 @@ public:
     bool IsPrototypeHclass(size_t index) const
     {
         return strategy_->IsPrototypeHclass(index);
+    }
+
+    JSHClass* GetReceiverHClass(size_t index) const
+    {
+        return strategy_->GetReceiverHClass(index);
+    }
+
+    JSHClass* GetHolderHClass(size_t index) const
+    {
+        return strategy_->GetHolderHClass(index);
     }
 
     GateRef GetValue() const

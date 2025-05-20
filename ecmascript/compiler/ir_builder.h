@@ -42,9 +42,9 @@ enum class CallInputs : size_t {
     FIRST_PARAMETER
 };
 
-enum class CallExceptionKind : bool {
-    HAS_PC_OFFSET = true,
-    NO_PC_OFFSET = false
+enum class CallInfoKind : bool {
+    HAS_FRAME_STATE = true,
+    NO_FRAME_STATE = false
 };
 
 #define OPCODES(V)                                                                        \

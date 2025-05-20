@@ -34,10 +34,12 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
     UpdateRootHClass(thread, parent, child);
     JSTaggedValue transitions = parent->GetTransitions();
     if (transitions.IsUndefined()) {
+        NotifyLeafHClassChanged(const_cast<JSThread *>(thread), parent);
         JSTaggedValue weakChild = JSTaggedValue(child.GetTaggedValue().CreateAndGetWeakRef());
         parent->SetTransitions(thread, weakChild);
         return;
     }
+    ASSERT(!parent->IsStable());
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());
     if (transitions.IsWeak()) {
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
@@ -76,6 +78,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
     JSTaggedValue transitions = parent->GetTransitions();
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());
     if (transitions.IsUndefined()) {
+        NotifyLeafHClassChanged(const_cast<JSThread *>(thread), parent);
         transitions = TransitionsDictionary::Create(thread).GetTaggedValue();
     } else if (transitions.IsWeak()) {
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
@@ -91,6 +94,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
                 metaData).GetTaggedValue();
         }
     }
+    ASSERT(!parent->IsStable());
     dict.Update(transitions);
     transitions =
         TransitionsDictionary::PutIfAbsent(thread, dict, key, JSHandle<JSTaggedValue>(child), proto).GetTaggedValue();
@@ -361,7 +365,7 @@ inline void JSHClass::ObjSizeTrackingStep()
     }
 }
 
-template<bool isOnlyIncludeNotFound>
+template<bool isForNormal>
 void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -374,7 +378,7 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
-        if constexpr (isOnlyIncludeNotFound) {
+        if constexpr (isForNormal) {
             protoChangeMarker->SetNotFoundHasChanged(true);
         } else {
             protoChangeMarker->SetHasChanged(true);
@@ -382,12 +386,12 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
 }
 
-template<bool isOnlyIncludeNotFound /* = false*/>
+template<bool isForNormal /* = false*/>
 void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                   JSTaggedValue addedKey)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    MarkProtoChanged<isOnlyIncludeNotFound>(thread, jshclass);
+    MarkProtoChanged<isForNormal>(thread, jshclass);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
@@ -400,7 +404,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
         JSTaggedValue temp = listeners->Get(i);
         if (temp.IsJSHClass()) {
-            NoticeThroughChain<isOnlyIncludeNotFound>(thread,
+            NoticeThroughChain<isForNormal>(thread,
                 JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
         }
     }

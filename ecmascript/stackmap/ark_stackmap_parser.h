@@ -37,12 +37,27 @@ public:
     {
         enableLog_ = false;
     }
-    void GetConstInfo(uintptr_t callsite, LLVMStackMapType::ConstInfo& info, uint8_t *stackmapAddr = nullptr) const;
-    void GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uint32_t, uint32_t>& info,
-                             uint8_t *stackmapAddr) const;
-    bool IteratorStackMap(RootVisitor& visitor,
-                          uintptr_t callSiteAddr, uintptr_t callsiteFp,
-                          uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
+    size_t GetInlineDepth(const std::vector<ARKDeopt> &deopts) const;
+    size_t GetInlineDepth(uintptr_t callSiteAddr, uint8_t *stackmapAddr) const;
+    void CollectStackTraceInfos(uintptr_t callSiteAddr,
+                                std::vector<std::pair<JSTaggedType, uint32_t>> &info,
+                                uintptr_t callsiteSp,
+                                uintptr_t callsiteFp,
+                                uint8_t *stackmapAddr) const;
+    JSTaggedType GetFunction(const std::vector<ARKDeopt> &deopts, size_t currentDepth, size_t shift,
+                             uintptr_t callsiteSp, uintptr_t callsiteFp) const;
+    int32_t GetPcOffset(const std::vector<ARKDeopt> &deopts, size_t currentDepth, size_t shift) const;
+    void IteratorStackMap(RootVisitor& visitor, uintptr_t callsiteFp,
+                          uintptr_t callSiteSp, uint8_t *stackmapAddr,
+                          uint32_t offset, uint16_t stackmapNum,
+                          std::map<uintptr_t, uintptr_t> &baseSet) const;
+    void IteratorDeopt(RootVisitor& visitor, uintptr_t callsiteFp,
+                       uintptr_t callSiteSp, uint8_t *stackmapAddr,
+                       uint32_t offset, uint16_t num,
+                       std::map<uintptr_t, uintptr_t> &baseSet) const;
+    bool IteratorStackMapAndDeopt(RootVisitor& visitor,
+                                  uintptr_t callSiteAddr, uintptr_t callsiteFp,
+                                  uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
     void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<ARKDeopt>& deopts) const;
 
 private:
@@ -53,12 +68,17 @@ private:
     void GetArkDeopt(uint8_t *stackmapAddr, const CallsiteHeader& callsiteHead,
                      std::vector<ARKDeopt>& deopt) const;
     void ParseArkDeopt(const CallsiteHeader& callsiteHead, uint8_t *ptr, std::vector<ARKDeopt>& deopts) const;
-    void ParseArkStackMap(const CallsiteHeader& callsiteHead, uint8_t *ptr, ArkStackMap& stackMap) const;
 #ifndef NDEBUG
+    void ParseArkStackMap(const CallsiteHeader& callsiteHead, uint8_t *ptr, ArkStackMap& stackMap) const;
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
 #endif
+    uintptr_t GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
+                                  uintptr_t callSiteSp,
+                                  uintptr_t callsiteFp) const;
     uintptr_t GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
                                   uint32_t &offset) const;
+    uintptr_t GetDeoptStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp,
+                                       uintptr_t callsiteFp, uint32_t &offset) const;
     friend class ArkStackMapBuilder;
     bool enableLog_ {false};
 };

@@ -1366,13 +1366,13 @@ bool LiteCGIRBuilder::IsOptimized() const
     return circuit_->GetFrameType() == FrameType::OPTIMIZED_FRAME;
 }
 
-CallExceptionKind LiteCGIRBuilder::GetCallExceptionKind(OpCode op, size_t index) const
+CallInfoKind LiteCGIRBuilder::GetCallInfoKind(OpCode op, size_t index) const
 {
     ASSERT(op != OpCode::NOGC_RUNTIME_CALL || index != SIZE_MAX);
     bool hasPcOffset = IsOptimizedJSFunction() &&
                        ((op == OpCode::NOGC_RUNTIME_CALL && (kungfu::RuntimeStubCSigns::IsAsmStub(index))) ||
                         (op == OpCode::CALL) || (op == OpCode::RUNTIME_CALL) || (op == OpCode::BUILTINS_CALL));
-    return hasPcOffset ? CallExceptionKind::HAS_PC_OFFSET : CallExceptionKind::NO_PC_OFFSET;
+    return hasPcOffset ? CallInfoKind::HAS_FRAME_STATE : CallInfoKind::NO_FRAME_STATE;
 }
 
 void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &inList)
@@ -1384,9 +1384,9 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
     Expr rtbaseOffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
     const CallSignature *signature = RuntimeStubCSigns::Get(std::get<RuntimeStubCSigns::ID>(stubId));
 
-    CallExceptionKind kind = GetCallExceptionKind(OpCode::RUNTIME_CALL);
-    bool hasPCOffset = (kind == CallExceptionKind::HAS_PC_OFFSET);
-    size_t actualNumArgs = hasPCOffset ? (inList.size() - 2) : inList.size();  // 2: pcOffset and frameArgs
+    CallInfoKind kind = GetCallInfoKind(OpCode::RUNTIME_CALL);
+    bool hasFrameState = (kind == CallInfoKind::HAS_FRAME_STATE);
+    size_t actualNumArgs = hasFrameState ? (inList.size() - 1) : inList.size();  // 1: frameState
 
     std::vector<Expr> params;
     params.push_back(glue);  // glue
@@ -1417,12 +1417,10 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
     Stmt &callNode =
         returnVoid ? lmirBuilder_->ICall(callee, params) : lmirBuilder_->ICall(callee, params, returnPregIdx);
 
-    if (kind == CallExceptionKind::HAS_PC_OFFSET) {
+    if (kind == CallInfoKind::HAS_FRAME_STATE) {
         std::unordered_map<int, LiteCGValue> deoptBundleInfo;
-        auto frameArgs = inList.at(actualNumArgs);
-        Expr pcOffset = hasPCOffset ? (GetExprFromGate(inList[actualNumArgs + 1]))
-                                    : lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i32Type, 0));
-        CollectExraCallSiteInfo(deoptBundleInfo, pcOffset, frameArgs);
+        auto frameState = inList.at(actualNumArgs);
+        GetDeoptBundleInfo(bb, frameState, deoptBundleInfo);
         lmirBuilder_->SetCallStmtDeoptBundleInfo(callNode, deoptBundleInfo);
     }
     lmirBuilder_->SetStmtCallConv(callNode, maple::litecg::Web_Kit_JS_Call);
@@ -1553,7 +1551,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
     const CallSignature *calleeDescriptor = nullptr;
     Expr glue = GetGlue(inList);
     Expr callee;
-    CallExceptionKind kind = CallExceptionKind::NO_PC_OFFSET;
+    CallInfoKind kind = CallInfoKind::NO_FRAME_STATE;
     BB &bb = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
     if (op == OpCode::CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
@@ -1561,7 +1559,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetCoStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op);
+        kind = GetCallInfoKind(op);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         UpdateLeaveFrame(glue);
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
@@ -1569,22 +1567,22 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetRTStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op, index);
+        kind = GetCallInfoKind(op, index);
     } else if (op == OpCode::CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedCallSign();
         callee = GetCallee(bb, inList, calleeDescriptor, calleeDescriptor->GetName());
         if (IsOptimizedJSFunction()) {
-            kind = CallExceptionKind::HAS_PC_OFFSET;
+            kind = CallInfoKind::HAS_FRAME_STATE;
         } else {
-            kind = CallExceptionKind::NO_PC_OFFSET;
+            kind = CallInfoKind::NO_FRAME_STATE;
         }
     } else if (op == OpCode::FAST_CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedFastCallSign();
         callee = GetCallee(bb, inList, calleeDescriptor, calleeDescriptor->GetName());
         if (IsOptimizedJSFunction()) {
-            kind = CallExceptionKind::HAS_PC_OFFSET;
+            kind = CallInfoKind::HAS_FRAME_STATE;
         } else {
-            kind = CallExceptionKind::NO_PC_OFFSET;
+            kind = CallInfoKind::NO_FRAME_STATE;
         }
     } else if (op == OpCode::BASELINE_CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
@@ -1592,7 +1590,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetBaselineStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op);
+        kind = GetCallInfoKind(op);
     } else if (op == OpCode::ASM_CALL_BARRIER) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
@@ -1611,7 +1609,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
             calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
         }
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op);
+        kind = GetCallInfoKind(op);
     }
 
     std::vector<Expr> params;
@@ -1622,8 +1620,8 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
     LiteCGType *calleeFuncType = lmirBuilder_->LiteCGGetPointedType(callee.GetType());
     std::vector<LiteCGType *> paramTypes = lmirBuilder_->LiteCGGetFuncParamTypes(calleeFuncType);
 
-    bool hasPCOffset = (kind == CallExceptionKind::HAS_PC_OFFSET);
-    size_t actualNumArgs = hasPCOffset ? (inList.size() - 2) : inList.size();  // 2: pcOffset and frameArgs
+    bool hasFrameState = (kind == CallInfoKind::HAS_FRAME_STATE);
+    size_t actualNumArgs = hasFrameState ? (inList.size() - 1) : inList.size();  // 1: frameState
 
     // then push the actual parameter for js function call
     for (size_t paraIdx = firstArg + 1; paraIdx < actualNumArgs; ++paraIdx) {
@@ -1655,62 +1653,16 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
     }
     Stmt &callNode =
         returnVoid ? lmirBuilder_->ICall(callee, params) : lmirBuilder_->ICall(callee, params, returnPregIdx);
-    if (kind == CallExceptionKind::HAS_PC_OFFSET) {
+    if (kind == CallInfoKind::HAS_FRAME_STATE) {
         std::unordered_map<int, LiteCGValue> deoptBundleInfo;
-        auto frameArgs = inList.at(actualNumArgs);
-        Expr pcOffset = hasPCOffset ? (GetExprFromGate(inList[actualNumArgs + 1]))
-                                    : lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i32Type, 0));
-        CollectExraCallSiteInfo(deoptBundleInfo, pcOffset, frameArgs);
+        auto frameState = inList.at(actualNumArgs);
+        GetDeoptBundleInfo(bb, frameState, deoptBundleInfo);
         lmirBuilder_->SetCallStmtDeoptBundleInfo(callNode, deoptBundleInfo);
     }
     lmirBuilder_->SetStmtCallConv(callNode, ConvertCallAttr(calleeDescriptor->GetCallConv()));
     lmirBuilder_->AppendStmt(bb, callNode);
     if (!returnVoid) {
         SaveGate2Expr(gate, lmirBuilder_->Regread(returnPregIdx));
-    }
-}
-
-void LiteCGIRBuilder::CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
-                                              maple::litecg::Expr pcOffset, GateRef frameArgs)
-{
-    // pc offset
-    auto pcIndex = static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX);
-    ASSERT(pcOffset.IsConstValue());
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(
-        pcIndex, {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(pcOffset)}));
-
-    if (!enableOptInlining_) {
-        return;
-    }
-
-    if (frameArgs == Circuit::NullGate()) {
-        return;
-    }
-    if (acc_.GetOpCode(frameArgs) != OpCode::FRAME_ARGS) {
-        return;
-    }
-    uint32_t maxDepth = acc_.GetFrameDepth(frameArgs, OpCode::FRAME_ARGS);
-    if (maxDepth == 0) {
-        return;
-    }
-
-    maxDepth = std::min(maxDepth, MAX_METHOD_OFFSET_NUM);
-    size_t shift = Deoptimizier::ComputeShift(MAX_METHOD_OFFSET_NUM);
-    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
-    for (int32_t curDepth = static_cast<int32_t>(maxDepth - 1); curDepth >= 0; curDepth--) {
-        ASSERT(acc_.GetOpCode(frameArgs) == OpCode::FRAME_ARGS);
-        // method id
-        uint32_t methodOffset = acc_.TryGetMethodOffset(frameArgs);
-        frameArgs = acc_.GetFrameState(frameArgs);
-        if (methodOffset == FrameStateOutput::INVALID_INDEX) {
-            methodOffset = 0;
-        }
-        int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - curDepth;
-        int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specCallTargetIndex, curDepth, shift);
-        auto constMethodOffset = lmirBuilder_->GetConstFromExpr(
-            lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i32Type, methodOffset)));
-        deoptBundleInfo.insert(
-            std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kConstKind, constMethodOffset}));
     }
 }
 
@@ -2851,7 +2803,7 @@ void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
 
     Expr glue = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 0));          // 0: glue
     Expr deoptType = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 1));     // 1: deopt_type
-    Expr depth = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 2));         // 2: depth
+    Expr maybeAcc = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 2));      // 2: maybe_acc
 
     StubIdType stubId = RTSTUB_ID(DeoptHandlerAsm);
     int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
@@ -2868,7 +2820,7 @@ void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
 
     LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);
     PregIdx pregIdx = lmirBuilder_->CreatePreg(returnType);
-    maple::litecg::Args params = {glue, deoptType, depth};
+    maple::litecg::Args params = {glue, deoptType, maybeAcc};
     Stmt &callNode = lmirBuilder_->ICall(lmirBuilder_->Regread(funcPregIdx), params, pregIdx);
     lmirBuilder_->AppendStmt(bb, callNode);
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Return(lmirBuilder_->Regread(pregIdx)));
@@ -2885,10 +2837,10 @@ Function *LiteCGIRBuilder::GetExperimentalDeopt()
         Function &preFunc = lmirBuilder_->GetCurFunction();
         auto fnTy = GetExperimentalDeoptTy();
         FunctionBuilder funcBuilder = lmirBuilder_->DefineFunction(funcName);
-        // glue type depth
+        // glue type maybeAcc
         funcBuilder.Param(lmirBuilder_->i64Type, "glue")
             .Param(lmirBuilder_->i64RefType, "deopt_type")
-            .Param(lmirBuilder_->i64RefType, "max_depth");
+            .Param(lmirBuilder_->i64RefType, "maybe_acc");
         Function &curFunc = funcBuilder.Return(lmirBuilder_->LiteCGGetFuncReturnType(fnTy)).Done();
         funcBuilder.CallConvAttribute(maple::litecg::CCall);
         lmirBuilder_->SetCurFunc(curFunc);
@@ -2977,8 +2929,7 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
             return *iter->second;
         }
         BB &falseBB = lmirBuilder_->CreateBB();
-        Expr constDeoptType = ConvertInt32ToTaggedInt(
-            lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, deoptType)));
+        Expr constDeoptType = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u64Type, deoptType));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Regassign(constDeoptType, deoptBBInfo.deoptTypePreg));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Goto(*deoptBBInfo.deoptBB));
         // deopt branch is not expected to be token as often,
@@ -3004,35 +2955,28 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
     lmirBuilder_->AppendBB(curBB);
 }
 
-LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef gate)
+void LiteCGIRBuilder::GetDeoptBundleInfo(BB &bb, GateRef deoptFrameState,
+                                         std::unordered_map<int, LiteCGValue> &deoptBundleInfo)
 {
-    GateRef deoptFrameState = acc_.GetValueIn(gate, 1);  // 1: frame state
-    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
-    auto iter = deoptFrameState2BB_.find(deoptFrameState);
-    if (iter != deoptFrameState2BB_.end()) {
-        return iter->second;
+    if (acc_.GetOpCode(deoptFrameState) != OpCode::FRAME_STATE) {
+        return;
     }
-    BB &bb = lmirBuilder_->CreateBB();  // deoptBB
-    Expr glue = GetExprFromGate(acc_.GetGlueFromArgList());
-
-    std::vector<Expr> params;
-    params.push_back(glue);                        // glue
-    auto deoptTypePreg = lmirBuilder_->CreatePreg(lmirBuilder_->i64RefType);
-    params.push_back(lmirBuilder_->Regread(deoptTypePreg));  // deoptType
-
-    std::unordered_map<int, LiteCGValue> deoptBundleInfo;
     size_t maxDepth = 0;
     GateRef frameState = acc_.GetFrameState(deoptFrameState);
     while ((acc_.GetOpCode(frameState) == OpCode::FRAME_STATE)) {
         maxDepth++;
         frameState = acc_.GetFrameState(frameState);
     }
-    Expr constMaxDepth =
-        lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, static_cast<uint32_t>(maxDepth)));
-    params.push_back(ConvertInt32ToTaggedInt(constMaxDepth));
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
+
+    // inline depth
+    int32_t specInlineDepthIndex  = static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH);
+    Const &depthConst = lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, maxDepth);
+    LiteCGValue depthVal = {LiteCGValueKind::kConstKind, &depthConst};
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(specInlineDepthIndex, depthVal));
+
     for (int32_t curDepth = static_cast<int32_t>(maxDepth); curDepth >= 0; curDepth--) {
         ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
         GateRef frameValues = acc_.GetValueIn(frameState, 1);  // 1: frame values
@@ -3084,6 +3028,30 @@ LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef ga
         SaveDeoptVregInfoWithI64(deoptBundleInfo, bb, specArgcIndex, curDepth, shift, actualArgc);
         frameState = acc_.GetFrameState(frameState);
     }
+}
+
+LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef gate)
+{
+    GateRef deoptFrameState = acc_.GetValueIn(gate, 1);  // 1: frame state
+    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
+    auto iter = deoptFrameState2BB_.find(deoptFrameState);
+    if (iter != deoptFrameState2BB_.end()) {
+        return iter->second;
+    }
+    BB &bb = lmirBuilder_->CreateBB();  // deoptBB
+    Expr glue = GetExprFromGate(acc_.GetGlueFromArgList());
+
+    std::vector<Expr> params;
+    params.push_back(glue);  // glue
+    auto deoptTypePreg = lmirBuilder_->CreatePreg(lmirBuilder_->i64RefType);
+    params.push_back(lmirBuilder_->Regread(deoptTypePreg));  // deoptType
+    Expr undefined =
+        lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i64Type, JSTaggedValue::VALUE_UNDEFINED));
+    Expr maybeAcc = lmirBuilder_->Cvt(lmirBuilder_->u64Type, lmirBuilder_->i64RefType, undefined);
+    params.push_back(maybeAcc);  // maybeAcc
+
+    std::unordered_map<int, LiteCGValue> deoptBundleInfo;
+    GetDeoptBundleInfo(bb, deoptFrameState, deoptBundleInfo);
     Function *callee = GetExperimentalDeopt();
     LiteCGType *funcType = GetExperimentalDeoptTy();
     LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);

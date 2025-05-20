@@ -825,17 +825,16 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
 }
 
 #define SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(name)                    \
-    /* 6 : 4 input parameters + 2 fake parameter */                         \
-    CallSignature signature(#name, 0, 6,                                    \
+    /* 5 : 4 input parameters + 1 fake parameter */                         \
+    CallSignature signature(#name, 0, 5,                                    \
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());               \
     *callSign = signature;                                                  \
-    /* 6 : 4 input parameters + 2 fake parameter */                         \
+    /* 5 : 4 input parameters + 1 fake parameter */                         \
     std::array<VariableType, 6> params = {                                  \
         VariableType::NATIVE_POINTER(),                                     \
         VariableType::JS_POINTER(),                                         \
         VariableType::NATIVE_POINTER(),                                     \
         VariableType::JS_ANY(),                                             \
-        VariableType::INT64(),                                              \
         VariableType::INT64(),                                              \
     };                                                                      \
     callSign->SetParameters(params.data());                                 \
@@ -847,7 +846,6 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
         CallSignature::ParamAttr::NoAttr,                                   \
         CallSignature::ParamAttr::NoAttr,                                   \
         CallSignature::ParamAttr::NoAttr,                                   \
-        CallSignature::ParamAttr::Dead,                                     \
         CallSignature::ParamAttr::Dead,                                     \
     };                                                                      \
     callSign->SetParamAttr(std::move(paramAttrs))
@@ -3029,6 +3027,18 @@ DEF_CALL_SIGNATURE(JsBoundCallInternal)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::COMMON_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(LazyDeoptEntry)
+{
+    CallSignature lazyDeoptEntry("LazyDeoptEntry", 0, 0,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = lazyDeoptEntry;
+    /* 0 : 0 input parameters */
+    std::array<VariableType, 0> params = {};
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
 DEF_CALL_SIGNATURE(DeoptHandlerAsm)
