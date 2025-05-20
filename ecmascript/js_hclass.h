@@ -487,7 +487,7 @@ public:
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
     
-    static void NotifyHClassChangedForNormal(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
+    static void NotifyHClassChangedForAot(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
                                                const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
     
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
@@ -508,10 +508,10 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
     
-    template<bool isForNormal>
+    template<bool isForAot>
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     
-    template<bool isForNormal = false>
+    template<bool isForAot = false>
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
@@ -776,6 +776,11 @@ public:
     inline bool HasOrdinaryGet() const
     {
         return (IsSpecialContainer() || IsModuleNamespace() || IsBigInt64Array());
+    }
+
+    inline bool HasDependentInfos() const
+    {
+        return GetDependentInfos() != JSTaggedValue::Undefined();
     }
 
     inline bool IsJSTypedArray() const

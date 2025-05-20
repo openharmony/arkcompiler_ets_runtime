@@ -57,56 +57,10 @@ function Test2(obj, obj2, shouldChange) {
     
     // Additional code to prevent aggressive inlining.
     let test = {};
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 // Function Test calls Test2 to trigger deoptimization and then prints the value of 'x'.

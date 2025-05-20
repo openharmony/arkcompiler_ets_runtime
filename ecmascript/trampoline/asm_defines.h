@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "ecmascript/trampoline/asm_defines.h"
+#ifndef ECMASCRIPT_TRAMPOLINES_ASM_DEFINES_H
+#define ECMASCRIPT_TRAMPOLINES_ASM_DEFINES_H
 
-.extern GetGlueFromThreadLocal
-.extern GlueHasException
-.extern GetFixedReturnAddr
-.extern GetDeoptHandlerAsmOffset
+#define REG_PAIR_SIZE_ARM64 16
+#define PRE_SP_OFFSET_ARM64 176
+#define RETURN_ADDRESS_OFFSET_ARM64 168
+#define PRE_SP_OFFSET_X64 64
+#define RETURN_ADDRESS_OFFSET_X64 56
+#define LAZY_DEOPT_TYPE_OFFSET 1
 
-.global LazyDeoptEntry
-
-LazyDeoptEntry:
-    bx  lr
+#endif  // ECMASCRIPT_TRAMPOLINES_ASM_DEFINES_H

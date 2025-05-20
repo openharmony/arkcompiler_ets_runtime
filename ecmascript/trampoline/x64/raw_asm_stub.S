@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "ecmascript/trampoline/asm_defines.h"
+
 .extern GetGlueFromThreadLocal
 .extern GlueHasException
 .extern GetFixedReturnAddr
@@ -58,31 +60,31 @@ LazyDeoptEntry layout:
 */
 
 LazyDeoptEntry:
-    pushq   $0                      // Place Holder (return address)
-    pushq   %rbp                    // Save original frame pointer
-    pushq   %rax                    // Save maybeAcc (original rax)
-    PUSH_CALLEE_SAVE                // Callee-saved registers
+    pushq   $0                                      // Place Holder (return address)
+    pushq   %rbp                                    // Save original frame pointer
+    pushq   %rax                                    // Save maybeAcc (original rax)
+    PUSH_CALLEE_SAVE                                // Callee-saved registers
 
     // Get glue pointer from thread local storage
-    callq   GetGlueFromThreadLocal  // rax = glue pointer
+    callq   GetGlueFromThreadLocal                  // rax = glue pointer
 
     // Prepare arguments for GetFixedReturnAddr
-    movq    %rax, %r12              // Save glue to r12
-    movq    %rax, %rdi              // arg0: glue
-    leaq    64(%rsp), %rsi          // arg1: prevCallSiteSp
-    callq   GetFixedReturnAddr  // rax = return address offset
-    movq    %rax, 56(%rsp)          // Store origin return address
+    movq    %rax, %r12                              // Save glue to r12
+    movq    %rax, %rdi                              // arg0: glue
+    leaq    PRE_SP_OFFSET_X64(%rsp), %rsi           // arg1: prevCallSiteSp
+    callq   GetFixedReturnAddr                      // rax = return address offset
+    movq    %rax, RETURN_ADDRESS_OFFSET_X64(%rsp)   // Store origin return address
 
     // Prepare deoptimization handler call
-    movq    $0, %rdi                // arg0: False
-    callq   GetDeoptHandlerAsmOffset// rax = DeoptHandlerAsm offset
-    movq    %r12, %rcx              // rcx = glue
-    addq    %rcx, %rax              // rax = glue + offset(DeoptHandleAsm Address)
+    movq    $0, %rdi                                // arg0: False
+    callq   GetDeoptHandlerAsmOffset                // rax = DeoptHandlerAsm offset
+    movq    %r12, %rcx                              // rcx = glue
+    addq    %rcx, %rax                              // rax = glue + offset(DeoptHandleAsm Address)
 
     // Set up arguments and jump to DeoptHandlerASM
-    movq    %rcx, %rdi              // arg0: glue pointer
-    movq    $1, %rsi                // arg1: deopt type (LAZY_DEOPT)
-    RESTORE_CALLEE_SAVE             // Restore callee-saved registers
-    popq    %rdx                    // arg2: maybeAcc (original rax value)
-    popq    %rbp                    // Restore original frame pointer
-    jmpq    *(%rax)                 // Tail call to DeoptHandler
+    movq    %rcx, %rdi                              // arg0: glue pointer
+    movq    $LAZY_DEOPT_TYPE_OFFSET, %rsi           // arg1: deopt type (LAZY_DEOPT)
+    RESTORE_CALLEE_SAVE                             // Restore callee-saved registers
+    popq    %rdx                                    // arg2: maybeAcc (original rax value)
+    popq    %rbp                                    // Restore original frame pointer
+    jmpq    *(%rax)                                 // Tail call to DeoptHandler

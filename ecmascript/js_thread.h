@@ -397,6 +397,7 @@ public:
 
     void AddToCallsiteSpToReturnAddrTable(uintptr_t callSiteSp, uintptr_t returnAddr)
     {
+        ASSERT(callSiteSpToReturnAddrTable_.find(callSiteSp) == callSiteSpToReturnAddrTable_.end());
         callSiteSpToReturnAddrTable_[callSiteSp] = returnAddr;
     }
 

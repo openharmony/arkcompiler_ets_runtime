@@ -4535,7 +4535,7 @@ DEF_RUNTIME_STUBS(TraceLazyDeoptFailNum)
 }
 
 // static
-void RuntimeStubs::TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSTaggedValue funcValue)
+void RuntimeStubs::TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func)
 {
 #if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
     if (!IsTargetBundleName(argGlue)) {
@@ -4544,7 +4544,7 @@ void RuntimeStubs::TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSTaggedValue 
 
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedValue funcNameValue =
-        JSFunction::NameGetter(thread, JSHandle<JSObject>(thread, funcValue));
+        JSFunction::NameGetter(thread, JSHandle<JSObject>::Cast(func));
     std::string funcName = EcmaStringAccessor(funcNameValue).ToStdString();
     funcName += " Lazy Deoptimize Commit Success.";
     ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, funcName.c_str());

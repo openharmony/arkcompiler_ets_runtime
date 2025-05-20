@@ -365,7 +365,7 @@ inline void JSHClass::ObjSizeTrackingStep()
     }
 }
 
-template<bool isForNormal>
+template<bool isForAot>
 void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -378,7 +378,7 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
-        if constexpr (isForNormal) {
+        if constexpr (isForAot) {
             protoChangeMarker->SetNotFoundHasChanged(true);
         } else {
             protoChangeMarker->SetHasChanged(true);
@@ -386,12 +386,12 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
     }
 }
 
-template<bool isForNormal /* = false*/>
+template<bool isForAot /* = false*/>
 void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                   JSTaggedValue addedKey)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    MarkProtoChanged<isForNormal>(thread, jshclass);
+    MarkProtoChanged<isForAot>(thread, jshclass);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
@@ -404,7 +404,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
         JSTaggedValue temp = listeners->Get(i);
         if (temp.IsJSHClass()) {
-            NoticeThroughChain<isForNormal>(thread,
+            NoticeThroughChain<isForAot>(thread,
                 JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
         }
     }

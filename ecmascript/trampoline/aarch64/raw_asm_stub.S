@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "ecmascript/trampoline/asm_defines.h"
+
 .extern GetGlueFromThreadLocal
 .extern GlueHasException
 .extern GetFixedReturnAddr
@@ -22,27 +24,27 @@
 
 // ARM64 callee-saved registers: X19-X28, D8-D15
 .macro PUSH_CALLEE_SAVE
-    stp x27, x28, [sp, #-16]!
-    stp x25, x26, [sp, #-16]!
-    stp x23, x24, [sp, #-16]!
-    stp x21, x22, [sp, #-16]!
-    stp x19, x20, [sp, #-16]!
-    stp d14, d15, [sp, #-16]!
-    stp d12, d13, [sp, #-16]!
-    stp d10, d11, [sp, #-16]!
-    stp d8, d9, [sp, #-16]!
+    stp x27, x28, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp x25, x26, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp x23, x24, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp x21, x22, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp x19, x20, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp d14, d15, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp d12, d13, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp d10, d11, [sp, #-REG_PAIR_SIZE_ARM64]!
+    stp d8, d9, [sp, #-REG_PAIR_SIZE_ARM64]!
 .endm
 
 .macro RESTORE_CALLEE_SAVE
-    ldp d8, d9, [sp], #16
-    ldp d10, d11, [sp], #16
-    ldp d12, d13, [sp], #16
-    ldp d14, d15, [sp], #16
-    ldp x19, x20, [sp], #16
-    ldp x21, x22, [sp], #16
-    ldp x23, x24, [sp], #16
-    ldp x25, x26, [sp], #16
-    ldp x27, x28, [sp], #16
+    ldp d8, d9, [sp], #REG_PAIR_SIZE_ARM64
+    ldp d10, d11, [sp], #REG_PAIR_SIZE_ARM64
+    ldp d12, d13, [sp], #REG_PAIR_SIZE_ARM64
+    ldp d14, d15, [sp], #REG_PAIR_SIZE_ARM64
+    ldp x19, x20, [sp], #REG_PAIR_SIZE_ARM64
+    ldp x21, x22, [sp], #REG_PAIR_SIZE_ARM64
+    ldp x23, x24, [sp], #REG_PAIR_SIZE_ARM64
+    ldp x25, x26, [sp], #REG_PAIR_SIZE_ARM64
+    ldp x27, x28, [sp], #REG_PAIR_SIZE_ARM64
 .endm
 
 /*
@@ -70,28 +72,28 @@
 */
 
 LazyDeoptEntry:
-    stp     x29, x30, [sp, #-16]!  // Frame pointer and return address
-    stp     x0, x3, [sp, #-16]!    // Save maybeAcc, x3 use to align up
-    PUSH_CALLEE_SAVE               // Callee-saved registers
+    stp     x29, x30, [sp, #-REG_PAIR_SIZE_ARM64]!  // Frame pointer and return address
+    stp     x0, x3, [sp, #-REG_PAIR_SIZE_ARM64]!    // Save maybeAcc, x3 use to align up
+    PUSH_CALLEE_SAVE                                // Callee-saved registers
 
     // Get glue pointer from thread local storage
-    bl GetGlueFromThreadLocal     // x0 = glue pointer
+    bl GetGlueFromThreadLocal                       // x0 = glue pointer
 
     // Prepare arguments for GetFixedReturnAddr
-    mov x19, x0                    // Save glue to x19, arg0: glue
-    add x1, sp, #176               // arg1: prevCallSiteSp
-    bl GetFixedReturnAddr // x0 = return address offset
-    str x0, [sp, #168]             // Store origin return address
+    mov x19, x0                                     // Save glue to x19, arg0: glue
+    add x1, sp, #PRE_SP_OFFSET_ARM64                // arg1: prevCallSiteSp
+    bl GetFixedReturnAddr                           // x0 = return address offset
+    str x0, [sp, #RETURN_ADDRESS_OFFSET_ARM64]      // Store origin return address
 
     // Prepare deoptimization handler call
-    mov x0, #0                    // arg0: False
-    bl GetDeoptHandlerAsmOffset   // x0 = DeoptHandlerAsm offset
-    ldr x4, [x19, x0]             // x4 = *(glue + offset) (DeoptHandleAsm Address)
+    mov x0, #0                                      // arg0: False
+    bl GetDeoptHandlerAsmOffset                     // x0 = DeoptHandlerAsm offset
+    ldr x4, [x19, x0]                               // x4 = *(glue + offset) (DeoptHandleAsm Address)
 
     // Set up arguments and jump to DeoptHandlerASM
-    mov x0, x19                   // arg0: glue
-    mov x1, #1                    // arg1: LAZY_DEOPT
-    RESTORE_CALLEE_SAVE           // Restore callee-saved registers
-    ldp x2, x3, [sp], #16         // arg2: maybeAcc
-    ldp x29, x30, [sp], #16       // Restore frame pointer and return address
-    br x4                         // Tail call to DeoptHandler
+    mov x0, x19                                     // arg0: glue
+    mov x1, #LAZY_DEOPT_TYPE_OFFSET                 // arg1: LAZY_DEOPT
+    RESTORE_CALLEE_SAVE                             // Restore callee-saved registers
+    ldp x2, x3, [sp], #REG_PAIR_SIZE_ARM64          // arg2: maybeAcc
+    ldp x29, x30, [sp], #REG_PAIR_SIZE_ARM64        // Restore frame pointer and return address
+    br x4                                           // Tail call to DeoptHandler

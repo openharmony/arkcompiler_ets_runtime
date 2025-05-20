@@ -29,58 +29,13 @@ function Test3(shouldChange)
     if (shouldChange) {
         ArkTools.forceLazyDeopt(C.prototype, true);
     }
+    
     // Additional code to prevent aggressive inlining.
     let test = {};
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 function Test2(obj, shouldChange) {

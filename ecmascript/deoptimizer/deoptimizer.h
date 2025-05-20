@@ -44,6 +44,14 @@ struct Context {
     kungfu::CalleeRegAndOffsetVec calleeRegAndOffset;
 };
 
+//   |--------------------------| ---------------
+//   |        callerFp_         |               ^
+//   |       returnAddr_        |               |
+//   |      callFrameTop_       |          stackContext
+//   |       inlineDepth_       |               |
+//   |       hasException_      |               |
+//   |      isFrameLazyDeopt_   |               v
+//   |--------------------------| ---------------
 struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                     base::AlignedPointer,
                                                     base::AlignedPointer,
@@ -142,7 +150,9 @@ public:
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
                                                         FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
     static void PrepareForLazyDeopt(JSThread *thread);
-    bool NeedOverwriteAcc(const uint8_t *pc);
+    void ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
+                          AsmInterpretedFrame *statePtr);
+    bool NeedOverwriteAcc(const uint8_t *pc) const;
     JSThread *GetThread() const
     {
         return thread_;

@@ -22,10 +22,30 @@ namespace panda::ecmascript {
 #define LAZY_DEOPT_TYPE_LIST(V)          \
     V(PROTOTYPE_CHECK, 1ULL << 0)
 
+/*
+ * -------------- Structure of DependentInfos --------------
+ *
+ * Index | Stored Content       | Description
+ * ------|----------------------|---------------------------
+ *   0   | function0            | Function Slot
+ *   1   | group0               | Group Slot
+ *   2   | function1            | Function Slot
+ *   3   | group1               | Group Slot
+ *   4   | function2            | Function Slot
+ *   5   | group2               | Group Slot
+ *   6   | ...                  | ...
+ */
+
+/*
+ * DependentInfos are stored on the HClass as (function)-(group) pairs.
+ * 
+ * When the HClass changes in a way that satisfies group's requirement,
+ * the corresponding paired function is marked for lazy deoptimization.
+ */
 class DependentInfos : public WeakVector {
 public:
     static constexpr uint32_t SLOT_PER_ENTRY = 2;
-    static constexpr uint32_t METHOD_SLOT_OFFSET = 0;
+    static constexpr uint32_t FUNCTION_SLOT_OFFSET = 0;
     static constexpr uint32_t GROUP_SLOT_OFFSET = 1;
     static DependentInfos *Cast(TaggedObject *object)
     {
@@ -42,6 +62,14 @@ public:
                                                          const JSHandle<JSTaggedValue> jsFunc,
                                                          const DependentGroups groups,
                                                          const JSHandle<DependentInfos> info);
+    // CheckGroupsEffect ensures don't trigger unnecessary lazy deopt.
+    // For example, when we need to ensure the IsStable flag of HClass remains valid,
+    // modifying the IsPrototype flag of that HClass
+    // shouldn't trigger lazy deopt.
+    static bool CheckGroupsEffect(DependentGroups depGroups, DependentGroups groups)
+    {
+        return (depGroups & groups) > 0;
+    }
     static void DeoptimizeGroups(JSHandle<DependentInfos> dependentInfos,
                                  JSThread *thread, DependentGroups groups);
     static void TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction> func,

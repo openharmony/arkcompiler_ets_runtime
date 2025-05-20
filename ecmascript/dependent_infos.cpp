@@ -71,23 +71,23 @@ void DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos> dependentInfos,
     bool hasDeoptMethod = false;
     for (uint32_t i = 0; i < dependentInfos->GetEnd(); i += SLOT_PER_ENTRY) {
         DependentGroups depGroups = static_cast<DependentGroups>(dependentInfos->Get(i + GROUP_SLOT_OFFSET).GetInt());
-        // Check whether this lazy deopt is effect.
-        if ((depGroups & groups) == 0) {
+        if (!CheckGroupsEffect(depGroups, groups)) {
             continue;
         }
-        JSTaggedValue rawValue = dependentInfos->Get(i + METHOD_SLOT_OFFSET).GetWeakRawValue();
-        if (rawValue.IsHeapObject()) {
-            JSHandle<JSFunction> func(thread, rawValue);
-            if (func->IsCompiledCode()) {
-                hasDeoptMethod = true;
-                JSHandle<Method> method(thread, func->GetMethod());
-                // When lazy deopt happened, the deopt method cannot call as jit any more.
-                Deoptimizier::ClearCompiledCodeStatusWhenDeopt(thread,
-                                                               func.GetObject<JSFunction>(),
-                                                               method.GetObject<Method>(),
-                                                               kungfu::DeoptType::LAZYDEOPT);
-                TraceLazyDeoptReason(thread, func, (depGroups & groups));
-            }
+        JSTaggedValue rawValue = dependentInfos->Get(i + FUNCTION_SLOT_OFFSET).GetWeakRawValue();
+        if (!rawValue.IsHeapObject()) {
+            continue;
+        }
+        JSHandle<JSFunction> func(thread, rawValue);
+        if (func->IsCompiledCode()) {
+            hasDeoptMethod = true;
+            JSHandle<Method> method(thread, func->GetMethod());
+            // When lazy deopt happened, the deopt method cannot call as jit any more.
+            Deoptimizier::ClearCompiledCodeStatusWhenDeopt(thread,
+                                                            func.GetObject<JSFunction>(),
+                                                            method.GetObject<Method>(),
+                                                            kungfu::DeoptType::LAZYDEOPT);
+            TraceLazyDeoptReason(thread, func, (depGroups & groups));
         }
     }
     if (hasDeoptMethod) {

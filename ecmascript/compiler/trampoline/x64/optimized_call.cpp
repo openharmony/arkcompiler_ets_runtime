@@ -1488,8 +1488,9 @@ void OptimizedCall::DeoptPushAsmInterpBridgeFrame(ExtendedAssembler *assembler, 
 {
     Label processLazyDeopt;
     Label exit;
-    __ Movq(Operand(context, AsmStackContext::GetIsFrameLazyDeoptOffset(false)), r8);
-    __ Cmpq(0, r8);
+    Register frameTypeRegister = r8;
+    __ Movq(Operand(context, AsmStackContext::GetIsFrameLazyDeoptOffset(false)), frameTypeRegister);
+    __ Cmpq(0, frameTypeRegister);
     __ Jne(&processLazyDeopt);
     {
         __ Pushq(static_cast<int64_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME));

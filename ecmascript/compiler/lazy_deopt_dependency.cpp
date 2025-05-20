@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/lazy_deopt_dependency.h"
 
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
@@ -31,10 +32,12 @@ void CombinedDependencies::Register(JSHClass *hclass, DependentGroup group)
 
 void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc)
 {
+    JSMutableHandle<JSHClass> hclass(thread, JSTaggedValue::Undefined());
     for (auto iter : deps_) {
-        JSHandle<JSHClass> hclass(thread, iter.first);
+        hclass.Update(JSTaggedValue(iter.first));
         uint32_t groups = iter.second;
-        JSHandle<DependentInfos> dependentInfos = JSObject::GetOrCreateDependentInfos(thread, hclass);
+        JSHandle<DependentInfos> dependentInfos = 
+            JSHandle<DependentInfos>::Cast(JSObject::GetOrCreateDependentInfos(thread, hclass));
         JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
             jsFunc, groups, dependentInfos);
         hclass->SetDependentInfos(thread, infos.GetTaggedValue());
@@ -72,6 +75,8 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
     while (current.IsHeapObject()) {
         auto currentHC = current.GetTaggedObject()->GetClass();
         success &= DependOnStableHClass(currentHC);
+        // We only need to ensure Stable of the prototype chain
+        // from the receiver's prototype to the holder.
         if (currentHC == holderHClass) {
             break;
         }
@@ -109,7 +114,7 @@ bool LazyDeoptAllDependencies::Commit(LazyDeoptAllDependencies *dependencies,
         dep->Install(&cbDependencies);
     }
     cbDependencies.InstallAll(thread, jsFuncHandle);
-    RuntimeStubs::TraceLazyDeoptCommitSuccess(thread->GetGlueAddr(), jsFunc);
+    RuntimeStubs::TraceLazyDeoptCommitSuccess(thread->GetGlueAddr(), jsFuncHandle);
     return true;
 }
 }  // namespace panda::ecmascript::kungfu

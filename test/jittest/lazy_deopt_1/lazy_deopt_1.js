@@ -23,15 +23,9 @@ function Test(obj)
     print(obj.x);
 }
 
-class A{
-
-}
-class B extends A{
-
-}
-class C extends B{
-
-}
+class A{}
+class B extends A{}
+class C extends B{}
 A.prototype.x = 1;
 
 let c = new C();

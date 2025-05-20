@@ -419,6 +419,7 @@ JitTask::~JitTask()
     ReleaseSustainingJSHandle();
     jit_->DeleteJitCompilerTask(compilerTask_);
     jit_->DecJitTaskCnt(hostThread_);
+    ASSERT(dependencies_ != nullptr);
     delete dependencies_;
     dependencies_ = nullptr;
 }

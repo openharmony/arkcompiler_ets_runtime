@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
@@ -306,7 +306,7 @@ void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle
         JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key);
     } else {
 #if ENABLE_NEXT_OPTIMIZATION
-        JSHClass::NotifyHClassChangedForNormal(thread, jshclass, newHClass, key);
+        JSHClass::NotifyHClassChangedForAot(thread, jshclass, newHClass, key);
 #endif
         JSHClass::RefreshUsers(thread, jshclass, newHClass);
     }
@@ -630,7 +630,6 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
     JSHandle<JSHClass> newJsHClass = CloneWithoutInlinedProperties(thread, jshclass);
 
     {
-        DISALLOW_GARBAGE_COLLECTION;
         // 2. Copy
         newJsHClass->SetNumberOfProps(0);
         newJsHClass->SetIsDictionaryMode(true);
@@ -640,6 +639,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
+        DISALLOW_GARBAGE_COLLECTION;
         RestoreElementsKindToGeneric(*newJsHClass);
         obj->SynchronizedTransitionClass(thread, *newJsHClass);
     }
@@ -1040,8 +1040,8 @@ JSHandle<JSTaggedValue> JSHClass::EnablePHCProtoChangeMarker(const JSThread *thr
     return JSHandle<JSTaggedValue>(markerHandle);
 }
 
-void JSHClass::NotifyHClassChangedForNormal(const JSThread *thread, JSHandle<JSHClass> oldHclass,
-                                            JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
+void JSHClass::NotifyHClassChangedForAot(const JSThread *thread, JSHandle<JSHClass> oldHclass,
+                                         JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
 {
     if (!oldHclass->IsPrototype()) {
         return;
@@ -1119,11 +1119,12 @@ void JSHClass::NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandl
         return;
     }
     ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
+    JSMutableHandle<JSHClass> hclassTemp(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
         JSTaggedValue temp = listeners->Get(i);
         if (temp.IsJSHClass()) {
-            NotifyAccessorChangedThroughChain(thread,
-                JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()));
+            hclassTemp.Update(listeners->Get(i));
+            NotifyAccessorChangedThroughChain(thread, hclassTemp);
         }
     }
 }

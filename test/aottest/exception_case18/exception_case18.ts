@@ -12,15 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "ecmascript/trampoline/asm_defines.h"
-
-.extern GetGlueFromThreadLocal
-.extern GlueHasException
-.extern GetFixedReturnAddr
-.extern GetDeoptHandlerAsmOffset
-
-.global LazyDeoptEntry
-
-LazyDeoptEntry:
-    bx  lr
+try {
+    Reflect.construct(123 as any, []);
+} catch (error) {
+    print(error); 
+}

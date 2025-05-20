@@ -36,56 +36,10 @@ function ChangePrototypeValue(obj, shouldChange) {
     
     // Additional code to prevent aggressive inlining.
     let test = {};
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 function Test2(obj, shouldChange) {

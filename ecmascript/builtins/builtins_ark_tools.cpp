@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/verification.h"

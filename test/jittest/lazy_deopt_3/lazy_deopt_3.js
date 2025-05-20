@@ -31,58 +31,13 @@ function ChangePrototypeValue(obj, shouldChange) {
         obj.__proto__.__proto__.x = 2;
     }
     print("ChangeProto end.");
+    
     // Additional code to prevent aggressive inlining.
     let test = {};
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
-    test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 

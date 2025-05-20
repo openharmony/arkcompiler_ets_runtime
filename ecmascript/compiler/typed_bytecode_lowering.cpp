@@ -733,9 +733,7 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
         builder_.Bind(&notPrimitive);
         {
             builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0), frameState);
-            if (!TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
-                builder_.ProtoChangeMarkerCheck(receiver, frameState);
-            }
+            builder_.ProtoChangeMarkerCheck(receiver, frameState);
             builder_.Jump(&isPrimitive);
         }
         builder_.Bind(&isPrimitive);

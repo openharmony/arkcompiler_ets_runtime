@@ -588,15 +588,15 @@ JSHandle<EnumCache> JSObject::GetOrCreateEnumCache(JSThread *thread, JSHandle<JS
 }
 
 // static
-JSHandle<DependentInfos> JSObject::GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass)
+JSHandle<JSTaggedValue> JSObject::GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass)
 {
-    if (jsHClass->GetDependentInfos() == JSTaggedValue::Undefined()) {
+    if (!jsHClass->HasDependentInfos()) {
         JSHandle<DependentInfos> dependentInfos = thread->GetEcmaVM()->GetFactory()->NewDependentInfos(0);
         jsHClass->SetDependentInfos(thread, dependentInfos.GetTaggedValue());
-        return dependentInfos;
+        return JSHandle<JSTaggedValue>::Cast(dependentInfos);
     }
     JSHandle<DependentInfos> dependentInfos(thread, jsHClass->GetDependentInfos());
-    return dependentInfos;
+    return JSHandle<JSTaggedValue>::Cast(dependentInfos);
 }
 
 JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,

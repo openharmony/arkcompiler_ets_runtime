@@ -27,7 +27,7 @@ namespace panda::ecmascript {
 extern "C" uintptr_t GetDeoptHandlerAsmOffset(bool isArch32)
 {
     return JSThread::GlueData::GetRTStubEntriesOffset(isArch32) +
-        RTSTUB_ID(DeoptHandlerAsm) * 8;     // 8: 8 bytes in size
+        RTSTUB_ID(DeoptHandlerAsm) * RuntimeStubs::RT_STUB_FUNC_SIZE;
 }
 
 extern "C" uintptr_t GetFixedReturnAddr(uintptr_t argGlue, uintptr_t prevCallSiteSp)
@@ -533,18 +533,13 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
         const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
+        JSTaggedValue acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
         statePtr->function = callTarget;
-        if ((curDepth == static_cast<int32_t>(inlineDepth_)) && NeedOverwriteAcc(resumePc)) {
-            statePtr->acc = maybeAcc.GetTaggedValue();
-        } else {
-            auto acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
-            statePtr->acc = acc;
-        }
-        
-        if ((curDepth == static_cast<int32_t>(inlineDepth_)) &&
-                type_ == static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT)) {
-            EcmaOpcode curOpcode = kungfu::Bytecodes::GetOpcode(resumePc);
-            resumePc += (BytecodeInstruction::Size(curOpcode));
+        statePtr->acc = acc;
+
+        if (UNLIKELY(curDepth == static_cast<int32_t>(inlineDepth_) && 
+            type_ == static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT))) {
+            ProcessLazyDeopt(maybeAcc, resumePc, statePtr);
         }
 
         statePtr->env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
@@ -751,11 +746,47 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
     }
 }
 
-bool Deoptimizier::NeedOverwriteAcc(const uint8_t *pc)
+/**
+ * [Lazy Deoptimization Handling]
+ * This scenario specifically occurs during lazy deoptimization.
+ * 
+ * Typical Trigger:
+ * When bytecode operations (LDOBJBYNAME) invoke accessors that induce
+ * lazy deoptimization of the current function's caller.
+ * 
+ * Key Differences from Eager Deoptimization:
+ * Lazy deoptimization happens *after* bytecode execution completes.
+ * When return to DeoptHandlerAsm:
+ * 1. Bytecode processing remains incomplete
+ * 2. Post-processing must handle:
+ *    a. Program Counter (PC) adjustment
+ *    b. Accumulator (ACC) state overwrite
+ *    c. Handling pending exceptions 
+ * 
+ * Critical Constraint:
+ * Any JIT-compiled call that may trigger lazy deoptimization MUST be the final
+ * call in this bytecode.
+ * This ensures no intermediate state remains after lazy deoptimization.
+ */
+void Deoptimizier::ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
+                                    AsmInterpretedFrame *statePtr)
 {
-    if (type_ != static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT)) {
-        return false;
+    if (NeedOverwriteAcc(resumePc)) {
+        statePtr->acc = maybeAcc.GetTaggedValue();
     }
+    
+    // Todo: add check constructor
+
+    if (!thread_->HasPendingException()) {
+        EcmaOpcode curOpcode = kungfu::Bytecodes::GetOpcode(resumePc);
+        // Avoid adding the PC when a pending exception exists.
+        // Prevents ExceptionHandler from failing to identify try-catch blocks.
+        resumePc += (BytecodeInstruction::Size(curOpcode));
+    }
+}
+
+bool Deoptimizier::NeedOverwriteAcc(const uint8_t *pc) const
+{
     BytecodeInstruction inst(pc);
     if (inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE)) {
         return true;
