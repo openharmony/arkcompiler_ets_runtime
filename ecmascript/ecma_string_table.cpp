@@ -19,6 +19,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
+#if !ENABLE_NEXT_OPTIMIZATION
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
     StartSweepWeakRefTask();
@@ -623,4 +624,5 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint16_t *utf16Data, ui
     }
     return nullptr;
 }
+#endif
 }  // namespace panda::ecmascript

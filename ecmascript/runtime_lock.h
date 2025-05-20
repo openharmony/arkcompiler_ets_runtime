@@ -16,9 +16,34 @@
 #ifndef ECMASCRIPT_RUNTIME_LOCK_H
 #define ECMASCRIPT_RUNTIME_LOCK_H
 
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/platform/mutex.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 namespace panda::ecmascript {
+
+// Manually manage lock implementation
+static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
+{
+    if (mtx.TryLock()) {
+        return;
+    }
+#ifndef NDEBUG
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::ASYNC);  // Trigger CMC FULL GC
+#else
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+#endif
+#endif
+    ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread);
+    mtx.Lock();
+}
+
+static inline void RuntimeUnLock(Mutex &mtx)
+{
+    mtx.Unlock();
+}
+
 class RuntimeLockHolder {
 public:
     RuntimeLockHolder(JSThread *thread, Mutex &mtx);

@@ -71,6 +71,9 @@
 #include "ecmascript/containers/containers_vector.h"
 #include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/runtime_lock.h"
+#ifdef ENABLE_NEXT_OPTIMIZATION
+#include "ecmascript/ecma_string_table_optimization-inl.h"
+#endif
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -1311,6 +1314,42 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
             auto hashcode = EcmaStringAccessor(str).GetHashcode();
+#if ENABLE_NEXT_OPTIMIZATION
+            EcmaString *strFromTable = stringTable->GetOrInternString(
+                vm_, hashcode,
+                [strSize, hugeSpace, thread, str, this]() {
+                    uintptr_t newObj = 0;
+                    if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                        newObj = hugeSpace->Allocate(thread, strSize);
+                    } else {
+                        newObj = this->sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
+                    }
+                    if (newObj == 0) {
+                        LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";
+                        UNREACHABLE();
+                    }
+                    if (memcpy_s(ToVoidPtr(newObj), strSize, str, strSize) != EOK) {
+                        LOG_FULL(FATAL) << "memcpy_s failed";
+                        UNREACHABLE();
+                    }
+
+                    EcmaString *value = reinterpret_cast<EcmaString *>(newObj);
+#ifdef USE_CMC_GC
+                    ASSERT(value->IsInSharedHeap());
+#else
+                    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
+#endif
+                    ASSERT(EcmaStringAccessor(value).NotTreeString());
+                    JSHandle<EcmaString> stringHandle(thread, value);
+                    return stringHandle;
+                },
+                [str](EcmaString *foundString) {
+                    ASSERT(EcmaStringAccessor(str).NotTreeString());
+                    return EcmaStringAccessor::StringsAreEqual(foundString, str);
+                });
+            ASSERT(strFromTable != nullptr);
+            deserializeStringVector_.emplace_back(thread, strFromTable);
+#else
             RuntimeLockHolder locker(thread,
                 stringTable->stringTable_[EcmaStringTable::GetTableId(hashcode)].mutex_);
             auto strFromTable = stringTable->GetStringThreadUnsafe(str, hashcode);
@@ -1335,6 +1374,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 stringTable->InsertStringToTableWithHashThreadUnsafe(str, hashcode);
                 deserializeStringVector_.emplace_back(thread, str);
             }
+#endif
         }
         stringBegin += strSize;
     }
