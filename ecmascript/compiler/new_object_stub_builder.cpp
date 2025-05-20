@@ -656,6 +656,23 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Jump(exit);
 }
 
+GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass, GateRef size)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetParameters(glue, size);
+    NewJSObject(&result, &exit, hclass, size);
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
 {
     auto env = GetEnvironment();
@@ -1218,7 +1235,7 @@ GateRef NewObjectStubBuilder::DefineMethod(GateRef glue, GateRef method, GateRef
                                            GateRef lexEnv, GateRef module)
 {
     GateRef func = NewJSFunction(glue, method, homeObject);
-    
+
     SetLengthToFunction(glue, func, length);
     SetLexicalEnvToFunction(glue, func, lexEnv);
     SetModuleToFunction(glue, func, module);

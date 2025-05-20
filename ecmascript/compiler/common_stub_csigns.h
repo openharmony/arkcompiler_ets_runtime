@@ -93,6 +93,7 @@ namespace panda::ecmascript::kungfu {
     V(CreateArrayWithBuffer)          \
     V(CreateObjectHavingMethod)       \
     V(NewJSObject)                    \
+    V(FastNewThisObject)              \
     V(JsBoundCallInternal)            \
     V(CreateStringBySingleCharCode)   \
     V(Getpropiterator)                \
@@ -131,6 +132,11 @@ namespace panda::ecmascript::kungfu {
     V(NewFloat32ArrayWithNoArgs)      \
     V(NewFloat32Array)                \
     V(StringLoadElement)              \
+    V(GetStringFromConstPool)         \
+    V(GetPrototype)                   \
+    V(FastCallSelector)               \
+    V(CheckSuperAndNew)               \
+    V(SuperCallAndConstructorCheck)   \
     V(ConvertCharToInt32)             \
     V(ConvertCharToDouble)            \
     V(ConvertCharToString)            \

@@ -280,7 +280,7 @@ public:
     {
         return TailCallBit::Decode(kind_);
     }
-    
+
     // When setting this flag to true
     // ensure the function doesn't cause GC,
     // throw exceptions, or lead to LAZY deopt.
@@ -436,6 +436,7 @@ private:
     V(CreateEmptyArray)                         \
     V(CreateArrayWithBuffer)                    \
     V(NewJSObject)                              \
+    V(FastNewThisObject)                        \
     V(GetTaggedArrayPtrTest)                    \
     V(BytecodeHandler)                          \
     V(Builtins)                                 \
@@ -656,6 +657,11 @@ private:
     V(NewFloat32ArrayWithNoArgs)                     \
     V(NewFloat32Array)                               \
     V(StringLoadElement)                             \
+    V(GetStringFromConstPool)                        \
+    V(GetPrototype)                                  \
+    V(FastCallSelector)                              \
+    V(CheckSuperAndNew)                              \
+    V(SuperCallAndConstructorCheck)                  \
     V(ConvertCharToInt32)                            \
     V(ConvertCharToDouble)                           \
     V(ConvertCharToString)                           \

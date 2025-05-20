@@ -788,6 +788,7 @@ public:
     inline GateRef TaggedIsException(GateRef x);
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
+    inline GateRef TaggedIsJSFunction(GateRef glue, GateRef x);
     inline GateRef TaggedIsArrayIterator(GateRef glue, GateRef obj);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef glue, GateRef x);
     inline GateRef TaggedIsJSGlobalObject(GateRef glue, GateRef x);

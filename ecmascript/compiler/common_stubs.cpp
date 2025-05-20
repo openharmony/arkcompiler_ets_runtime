@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
+#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -29,7 +30,9 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
@@ -255,6 +258,100 @@ void StringLoadElementStubBuilder::GenerateCircuit()
     BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.GetSingleCharCodeByIndex(glue, string, index);
     Return(result);
+}
+
+void GetStringFromConstPoolStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef constpool = TaggedArgument(1);
+    GateRef index = Int32Argument(2); // index
+    GateRef result = GetStringFromConstPool(glue, constpool, index);
+    Return(result);
+}
+
+void GetPrototypeStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    auto &builder = *env->GetBuilder();
+    GateRef glue = PtrArgument(0);
+    GateRef func = TaggedArgument(1);
+    Return(builder.GetPrototype(glue, func));
+}
+
+void FastCallSelectorStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    auto &builder = *env->GetBuilder();
+    GateRef glue = PtrArgument(0);
+    GateRef func = TaggedArgument(1);
+    GateRef actualArgc = Int64Argument(2); /* 2 : 3rd parameter is actualArgc */
+
+    Label entry(env);
+    Label exit(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT32(), builder.Int32(static_cast<int32_t>(FastCallType::SLOW_CALL)));
+    CallCoStubBuilder::FastCallSelector(builder, glue, func, actualArgc, &result, &exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    Return(ret);
+}
+
+void CheckSuperAndNewStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef super = TaggedArgument(1);
+    GateRef newTarget = TaggedArgument(2); /* 2 : 3rd parameter is newTarget */
+    NewObjectStubBuilder objBuilder(env);
+    Label isHeapObj(env);
+    Label isJsFunc(env);
+    Label isCtor(env);
+    Label needAllocateThis(env);
+    Label defaultThis(env);
+    Label exit(env);
+
+    BRANCH(TaggedIsHeapObject(super), &isHeapObj, &exit);
+    Bind(&isHeapObj);
+    BRANCH(IsJSFunction(glue, super), &isJsFunc, &exit);
+    Bind(&isJsFunc);
+    BRANCH(IsConstructor(glue, super), &isCtor, &exit);
+    Bind(&isCtor);
+    BRANCH(IsBase(glue, super), &needAllocateThis, &defaultThis);
+    Bind(&needAllocateThis);
+    Return(objBuilder.FastSuperAllocateThis(glue, super, newTarget));
+    Bind(&defaultThis);
+    Return(Undefined());
+    Bind(&exit);
+    Return(Hole());
+}
+
+void SuperCallAndConstructorCheckStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef super = TaggedArgument(1);
+    GateRef newTarget = TaggedArgument(2); /* 2 : 3rd parameter is newtarget */
+    GateRef thisObj = TaggedArgument(3);   /* 3 : 4th parameter is thisObj   */
+    GateRef argc = Int64Argument(4);       /* 4 : 5th parameter is argc      */
+    GateRef argv = PtrArgument(5);         /* 5 : 6th parameter is argv      */
+
+    GateRef gate = Circuit::NullGate();
+    auto &builder = *env->GetBuilder();
+    NewObjectStubBuilder objBuilder(env);
+
+    Label entry(env);
+    Label exit(env);
+
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    auto args = {gate, super, newTarget, thisObj, argc};
+    CallCoStubBuilder::LowerFastSuperCall(glue, builder, args, argv, result, exit);
+    Bind(&exit);
+    result = objBuilder.ConstructorCheck(glue, super, *result, thisObj);
+    auto ret = *result;
+    env->SubCfgExit();
+    Return(ret);
 }
 
 void ConvertCharToInt32StubBuilder::GenerateCircuit()
@@ -1174,6 +1271,15 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
 }
 
 void NewJSObjectStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef hclass = TaggedArgument(1);
+    GateRef size = Int64Argument(2); // size
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.NewJSObject(glue, hclass, size));
+}
+
+void FastNewThisObjectStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef ctor = TaggedArgument(1);

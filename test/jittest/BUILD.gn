@@ -86,6 +86,7 @@ group("ark_jit_ts_test") {
     "hole_in_array",
     "definefunc",
     "jnez",
+    "constructor",
   ]
 
   # Until we support barriers for HeapConstant table

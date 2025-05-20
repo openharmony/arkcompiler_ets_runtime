@@ -68,6 +68,7 @@ public:
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewSObject(Variable *result, Label *exit, GateRef hclass);
     GateRef NewJSObject(GateRef glue, GateRef hclass);
+    GateRef NewJSObject(GateRef glue, GateRef hclass, GateRef size);
     GateRef NewSObject(GateRef glue, GateRef hclass);
     GateRef NewJSFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
                                   FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);

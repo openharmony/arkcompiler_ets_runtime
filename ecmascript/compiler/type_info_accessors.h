@@ -1537,7 +1537,7 @@ public:
             ObjectAccessInfo& checkerInfo = checkerInfos_[i];
             bool isMerged = false;
 
-            for (auto j = 0; j < i; j++) {
+            for (size_t j = 0; j < i; j++) {
                 if (infoIsMerged[j]) {
                     continue;
                 }

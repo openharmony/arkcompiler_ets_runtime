@@ -125,8 +125,17 @@ public:
     static void LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
                               const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
                               Variable *result, Label *exit, bool isNew);
- 
- private:
+    static void FastCallSelector(CircuitBuilder &builder, GateRef glue, GateRef func, GateRef argc, Variable *result,
+                                 Label *exit);
+    static void LowerFastSuperCall(GateRef glue, CircuitBuilder &builder, const std::vector<GateRef> &args,
+                                   GateRef elementsPtr, Variable &result, Label &exit);
+
+    static GateRef LowerCallNGCRuntime(GateRef glue, CircuitBuilder &builder, GateRef gate, int index,
+                                       const std::vector<GateRef> &args, bool useLabel = false);
+    static void CallNGCRuntimeWithCallTimer(GateRef glue, CircuitBuilder &builder, int index, GateRef gate,
+                                            GateRef func, Variable &result, const std::vector<GateRef> &args);
+
+private:
     GateRef glue_ { Circuit::NullGate() };
     GateRef actualArgc_ { Circuit::NullGate() };
     GateRef actualArgv_ { Circuit::NullGate() };
@@ -137,6 +146,13 @@ public:
     GateRef thisObj_ { Circuit::NullGate() };
 };
 
+enum class FastCallType {
+    FAST_AOT_CALL,
+    FAST_AOT_CALL_BRIDGE,
+    AOT_CALL,
+    AOT_CALL_BRIDGE,
+    SLOW_CALL
+};
 
 class CallStubBuilder : public StubBuilder {
 public:
