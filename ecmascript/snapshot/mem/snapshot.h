@@ -45,6 +45,11 @@ public:
     bool Deserialize(SnapshotType type, const CString &snapshotFile, [[maybe_unused]] std::function<bool
         (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack, bool isBuiltins = false);
 #endif
+    JSTaggedValue GetDeserializeResultForUT() const
+    {
+        // ONLY used in UT to get the deserialize value result
+        return result_;
+    }
 
 protected:
     struct SnapShotHeader : public base::FileHeaderBase {
@@ -56,14 +61,20 @@ protected:
             return VerifyVersion("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
         }
 
-        uint32_t oldSpaceObjSize {0};
-        uint32_t nonMovableObjSize {0};
-        uint32_t machineCodeObjSize {0};
-        uint32_t snapshotObjSize {0};
-        uint32_t hugeObjSize {0};
-        uint32_t stringSize {0};
-        uint32_t pandaFileBegin {0};
-        uint32_t rootObjectSize {0};
+#ifdef USE_CMC_GC
+        size_t regularObjSize {0};
+        size_t pinnedObjSize {0};
+        size_t largeObjSize {0};
+#else
+        size_t oldSpaceObjSize {0};
+        size_t nonMovableObjSize {0};
+        size_t machineCodeObjSize {0};
+        size_t snapshotObjSize {0};
+        size_t hugeObjSize {0};
+#endif
+        size_t stringSize {0};
+        uintptr_t pandaFileBegin {0};
+        size_t rootObjectSize {0};
     };
 
     virtual const base::FileHeaderBase::VersionType &GetLastVersion() const
@@ -79,6 +90,8 @@ private:
     NO_COPY_SEMANTIC(Snapshot);
 
     EcmaVM *vm_;
+    // ONLY used in UT to get the deserialize value result
+    JSTaggedValue result_ {JSTaggedValue::Hole()};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H

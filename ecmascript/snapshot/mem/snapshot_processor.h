@@ -20,6 +20,9 @@
 #include <fstream>
 #include <sstream>
 
+#ifdef USE_CMC_GC
+#include "common_components/serialize/serialize_utils.h"
+#endif
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
@@ -39,8 +42,8 @@ enum class SnapshotType {
 };
 
 struct SnapshotRegionHeadInfo {
-    uint32_t regionIndex_ {0};
-    uint32_t aliveObjectSize_ {0};
+    size_t regionIndex_ {0};
+    size_t aliveObjectSize_ {0};
 
     static constexpr size_t RegionHeadInfoSize()
     {
@@ -56,28 +59,53 @@ public:
         : vm_(vm), sHeap_(SharedHeap::GetInstance()) {}
     ~SnapshotProcessor();
 
+    struct AllocResult {
+        uintptr_t address;
+        size_t offset;
+        size_t regionIndex;
+    };
+
     void Initialize();
     void StopAllocate();
     void WriteObjectToFile(std::fstream &write);
-    std::vector<uint32_t> StatisticsObjectSize();
+    std::vector<size_t> StatisticsObjectSize();
     void ProcessObjectQueue(CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
     void SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                          std::unordered_map<uint64_t, ObjectEncode> *data);
     void Relocate(SnapshotType type, const JSPandaFile *jsPandaFile,
                   uint64_t rootObjSize);
+#ifdef USE_CMC_GC
+    void RelocateSpaceObject(std::vector<std::pair<uintptr_t, size_t>> &regions, SnapshotType type,
+        MethodLiteral* methods, size_t methodNums, size_t rootObjSize);
+#else
     void RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
+#endif
     void SerializePandaFileMethod();
-    uintptr_t GetNewObj(size_t objectSize, TaggedObject *objectHeader);
+    AllocResult GetNewObj(size_t objectSize, TaggedObject *objectHeader);
+#ifndef USE_CMC_GC
+    uintptr_t GetNewObjAddress(size_t objectSize, TaggedObject *objectHeader);
+#endif
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
     EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
                               std::unordered_map<uint64_t, ObjectEncode> *data);
     void EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
+#ifdef USE_CMC_GC
+    void DeserializeObjectExcludeString(uintptr_t regularObjBegin, size_t regularObjSize, size_t pinnedObjSize,
+                                        size_t largeObjSize);
+#else
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
                                         size_t machineCodeObjSize, size_t snapshotObjSize, size_t hugeSpaceObjSize);
+#endif
     void DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd);
+
+    // ONLY used in UT to get the deserialize value result
+    JSTaggedValue GetDeserializeResultForUT() const
+    {
+        return root_;
+    }
 
     void AddRootObjectToAOTFileManager(SnapshotType type, const CString &fileName);
 
@@ -99,11 +127,6 @@ public:
     const CVector<uintptr_t> GetStringVector() const
     {
         return stringVector_;
-    }
-
-    LocalSpace* GetOldLocalSpace() const
-    {
-        return oldLocalSpace_;
     }
 
     size_t GetNativeTableSize() const;
@@ -153,8 +176,12 @@ private:
     void DeserializeClassWord(TaggedObject *object);
     void DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
                                 size_t &methodNums, size_t &others);
+#ifdef USE_CMC_GC
+    void DeserializeSpaceObject(uintptr_t beginAddr, size_t objSize, common::SerializedObjectSpace spaceType);
+#else
     void DeserializeSpaceObject(uintptr_t beginAddr, Space* space, size_t spaceObjSize);
     void DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObjectSpace* space, size_t hugeSpaceObjSize);
+#endif
     void HandleRootObject(SnapshotType type, uintptr_t rootObjectAddr, size_t objType, size_t &constSpecialIndex);
 
     EncodeBit NativePointerToEncodeBit(void *nativePointer);
@@ -162,19 +189,112 @@ private:
     uintptr_t TaggedObjectEncodeBitToAddr(EncodeBit taggedBit);
     void WriteSpaceObjectToFile(Space* space, std::fstream &write);
     void WriteHugeObjectToFile(HugeObjectSpace* space, std::fstream &writer);
-    uint32_t StatisticsSpaceObjectSize(Space* space);
-    uint32_t StatisticsHugeObjectSize(HugeObjectSpace* space);
+    size_t StatisticsSpaceObjectSize(Space* space);
+    size_t StatisticsHugeObjectSize(HugeObjectSpace* space);
     uintptr_t AllocateObjectToLocalSpace(Space *space, size_t objectSize);
     SnapshotRegionHeadInfo GenerateRegionHeadInfo(Region *region);
     void ResetRegionUnusedRange(Region *region);
 
     EcmaVM *vm_ {nullptr};
     SharedHeap* sHeap_ {nullptr};
+#ifdef USE_CMC_GC
+    class RegionProxy {
+    public:
+        RegionProxy() = default;
+        ~RegionProxy() = default;
+
+        bool IsEmpty() const
+        {
+            return begin_ == 0;
+        }
+
+        AllocResult Allocate(size_t size)
+        {
+            if (top_ + size <= end_) {
+                uintptr_t addr = top_;
+                top_ += size;
+                return {addr, addr - begin_, regionIndex_};
+            }
+            return {0, 0, -1};
+        }
+
+        void Reset(uintptr_t begin, uintptr_t end, size_t regionIndex)
+        {
+            begin_ = begin;
+            top_ = begin;
+            end_ = end;
+            regionIndex_ = regionIndex;
+        }
+
+        uintptr_t GetBegin() const
+        {
+            return begin_;
+        }
+
+        uintptr_t GetTop() const
+        {
+            return top_;
+        }
+
+        uintptr_t GetEnd() const
+        {
+            return end_;
+        }
+
+        size_t GetRegionIndex() const
+        {
+            return regionIndex_;
+        }
+    private:
+        uintptr_t begin_ {0};
+        uintptr_t top_ {0};
+        uintptr_t end_ {0};
+        size_t regionIndex_ {-1};
+    };
+
+    class AllocateProxy {
+    public:
+        AllocateProxy(common::SerializedObjectSpace spaceType) : spaceType_(spaceType) {}
+        ~AllocateProxy()
+        {
+            for (RegionProxy &proxy : regions_) {
+                ASSERT(!proxy.IsEmpty());
+                void *ptr = reinterpret_cast<void*>(proxy.GetBegin());
+                free(ptr);
+            }
+        }
+
+        void Initialize(size_t commonRegionSize);
+
+        AllocResult Allocate(size_t size, uintptr_t &regionIndex);
+
+        void StopAllocate(SharedHeap *sHeap);
+        
+        size_t GetAllocatedSize() const
+        {
+            return allocatedSize_;
+        }
+
+        void WriteToFile(std::fstream &writer);
+    private:
+        void AllocateNewRegion(size_t size, uintptr_t &regionIndex);
+        std::vector<RegionProxy> regions_ {};
+        RegionProxy currentRegion_ {};
+        common::SerializedObjectSpace spaceType_ {common::SerializedObjectSpace::OTHER};
+        size_t allocatedSize_ {0};
+        size_t commonRegionSize_ {0};
+    };
+    AllocateProxy regularObjAllocator_ {common::SerializedObjectSpace::REGULAR_SPACE};
+    AllocateProxy pinnedObjAllocator_ {common::SerializedObjectSpace::PIN_SPACE};
+    AllocateProxy largeObjAllocator_ {common::SerializedObjectSpace::LARGE_SPACE};
+    size_t commonRegionSize_ {0};
+#else
     LocalSpace *oldLocalSpace_ {nullptr};
     LocalSpace *nonMovableLocalSpace_ {nullptr};
     LocalSpace *machineCodeLocalSpace_ {nullptr};
     SnapshotSpace *snapshotLocalSpace_ {nullptr};
     HugeObjectSpace *hugeObjectLocalSpace_ {nullptr};
+#endif
     bool programSerialize_ {false};
     bool builtinsSerialize_ {false};
     bool builtinsDeserialize_ {false};
@@ -185,10 +305,15 @@ private:
      * so use handle to protect.
     */
     CVector<JSHandle<EcmaString>> deserializeStringVector_;
-    std::unordered_map<size_t, Region *> regionIndexMap_;
+    std::unordered_map<size_t, uintptr_t> regionIndexMap_;
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};
     JSTaggedValue root_ {JSTaggedValue::Hole()};
+#ifdef USE_CMC_GC
+    std::vector<std::pair<uintptr_t, size_t>> regularRegions_ {};
+    std::vector<std::pair<uintptr_t, size_t>> pinnedRegions_ {};
+    std::vector<std::pair<uintptr_t, size_t>> largeRegions_ {};
+#endif
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);

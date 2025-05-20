@@ -126,9 +126,4 @@ group("host_unittest") {
       ":AOTFileTestAction",
     ]
   }
-
-  # TODO: CMC-GC FIX LATER
-  if (ets_runtime_enable_cmc_gc) {
-    deps -= [ ":AOTFileTestAction" ]
-  }
 }
