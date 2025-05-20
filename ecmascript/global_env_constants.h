@@ -145,7 +145,6 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, XRefObjectClass, XREF_OBJECT_HCLASS_INDEX, ecma_roots_class)                                     \
-    V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)
 
