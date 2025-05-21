@@ -3234,12 +3234,27 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
     return JSTaggedValue::True().GetRawData();
 }
 
+         
+DEF_RUNTIME_STUBS(GetOrInternStringFromHashTrieTable)
+{
+    RUNTIME_STUBS_HEADER(GetOrInternStringFromHashTrieTable);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    ASSERT(value->IsString());
+    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, value);
+    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
+    return JSTaggedValue::Cast(static_cast<void *>(stringTable->GetOrInternString(thread->GetEcmaVM(), *str)));
+}
+
 DEF_RUNTIME_STUBS(InsertStringToTable)
 {
+#if !ENABLE_NEXT_OPTIMIZATION
     RUNTIME_STUBS_HEADER(InsertStringToTable);
     JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue::Cast(
         static_cast<void *>(thread->GetEcmaVM()->GetEcmaStringTable()->InsertStringToTable(thread->GetEcmaVM(), str)));
+#else
+    return JSTaggedType();
+#endif
 }
 
 DEF_RUNTIME_STUBS(SlowFlattenString)

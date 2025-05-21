@@ -18,6 +18,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/barriers.h"
+#include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/stackmap/ark_stackmap.h"

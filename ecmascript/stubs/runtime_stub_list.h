@@ -469,6 +469,7 @@ namespace panda::ecmascript {
     V(DeoptHandler)                             \
     V(ContainerRBTreeForEach)                   \
     V(InsertStringToTable)                      \
+    V(GetOrInternStringFromHashTrieTable)       \
     V(SlowFlattenString)                        \
     V(NotifyConcurrentResult)                   \
     V(DefineField)                              \
