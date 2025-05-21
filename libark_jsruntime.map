@@ -103,6 +103,7 @@
       panda::ecmascript::AotCrashInfo*;
       panda::Log::*;
       panda::AndroidLog*;
+      panda::ecmascript::ThreadHolder::*;
       panda::ecmascript::Method::*;
       panda::ecmascript::JSPandaFileManager::*;
       panda::ecmascript::DebugInfoExtractor::*;
@@ -238,6 +239,8 @@
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSSharedMap::Set*;
+      panda::ecmascript::JSTaggedValue::IsBoolean*;
+      panda::ecmascript::JSTaggedValue::IsBigInt*;
       panda::ecmascript::JSTaggedValue::IsTaggedArray*;
       panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
