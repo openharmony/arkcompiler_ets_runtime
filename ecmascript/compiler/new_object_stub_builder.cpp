@@ -1260,12 +1260,14 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Bind(&checkNativePointer);
     BRANCH(IsNativePointer(glue, *object), &empty, &tryGetEnumCache);
     Bind(&tryGetEnumCache);
-    GateRef enumCache = TryGetEnumCache(glue, *object);
-    BRANCH(TaggedIsUndefined(enumCache), &slowpath, &cacheHit);
+    GateRef enumCacheAll = TryGetEnumCache(glue, *object);
+    BRANCH(TaggedIsUndefined(enumCacheAll), &slowpath, &cacheHit);
     Bind(&cacheHit);
     {
         GateRef hclass = LoadHClass(glue, *object);
-        result = NewJSForinIterator(glue, *object, enumCache, hclass, GetEnumCacheKindFromEnumCache(enumCache));
+        GateRef enumCache = GetEnumCacheFromHClass(glue, hclass);
+        result = NewJSForinIterator(glue, *object, enumCacheAll, hclass,
+            GetEnumCacheKindFromEnumCache(enumCache));
         Jump(&exit);
     }
     Bind(&empty);
