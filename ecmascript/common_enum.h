@@ -50,7 +50,8 @@ enum TriggerGCType {
     SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
     APPSPAWN_SHARED_FULL_GC,
-    GC_TYPE_LAST
+    UNIFIED_GC,
+    GC_TYPE_LAST,
 };
 
 enum class GCReason : uint8_t {
@@ -65,6 +66,7 @@ enum class GCReason : uint8_t {
     NATIVE_LIMIT,
     SHARED_LIMIT,
     IDLE_NATIVE,
+    CROSSREF_CAUSE,
     HANDLE_MARKING_FINISHED,
     TRIGGER_BY_ARKUI,
     TRIGGER_BY_ABILITY,
@@ -82,6 +84,8 @@ enum class MarkReason : uint8_t {
     WORKER_DESTRUCTION,
     TRIGGER_BY_JS,
     HINT_GC,
+    IDLE_NATIVE,
+    CROSSREF_CAUSE,
     NATIVE_LIMIT,
     SHARED_LIMIT,
     EXIT_SERIALIZE,
