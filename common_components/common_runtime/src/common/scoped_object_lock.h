@@ -33,7 +33,7 @@ public:
                 return;
             }
             panda::BaseStateWord curState = lockedObj_->GetBaseStateWord();
-            if (lockedObj_->TryLockObject(curState)) {
+            if (lockedObj_->TryLockExclusive(curState)) {
                 return;
             }
         } while (true);
@@ -41,7 +41,7 @@ public:
     ~ScopedObjectLock()
     {
         LOGF_CHECK(lockedObj_ != nullptr) << "from copy is nullptr when unlock object\n";
-        lockedObj_->UnlockObject(panda::BaseStateWord::ForwardState::NORMAL);
+        lockedObj_->UnlockExclusive(panda::BaseStateWord::ForwardState::NORMAL);
     }
 
 private:

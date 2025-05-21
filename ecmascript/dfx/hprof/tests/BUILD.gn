@@ -347,7 +347,7 @@ group("host_unittest") {
   }
 
   # TODO: CMC-GC UT FIX LATER
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps -= [
       ":HProfTestAction",
       ":HeapDumpTestAction",

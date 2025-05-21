@@ -132,7 +132,7 @@ public:
 
 protected:
     BaseObject* CopyObjectImpl(BaseObject* obj);
-    BaseObject* CopyObjectExclusive(BaseObject* obj) override;
+    BaseObject* CopyObjectAfterExclusive(BaseObject* obj) override;
 
     bool TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const override;
 

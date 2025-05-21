@@ -308,6 +308,7 @@ HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotifyThenResume)
         }
         state->SuspendByGC();
         state->ResumeByGC(profiler.get());
+        profiler.reset();
         JSNApi::DestroyJSVM(vm);
     });
 

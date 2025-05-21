@@ -15,60 +15,71 @@
 
 #include "common_interfaces/heap/heap_allocator.h"
 
+#include "common_components/common_runtime/src/common/type_def.h"
 #include "common_components/common_runtime/src/heap_manager.h"
 #include "common_components/common_runtime/src/heap/allocator/region_manager.h"
 #include "common_components/common_runtime/src/heap/allocator/region_space.h"
 
 namespace panda {
-uintptr_t HeapAllocator::Allocate(size_t size)
+Address HeapAllocator::Allocate(size_t size, LanguageType language)
 {
-    return HeapManager::Allocate(size);
+    auto address = HeapManager::Allocate(size);
+    BaseObject::Cast(address)->SetLanguageType(language);
+    return address;
 }
 
-uintptr_t HeapAllocator::AllocateInOld(size_t size)
+Address HeapAllocator::AllocateInNonmove(size_t size, LanguageType language)
 {
-    return HeapManager::Allocate(size);
+    auto address = HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    BaseObject::Cast(address)->SetLanguageType(language);
+    return address;
 }
 
-uintptr_t HeapAllocator::AllocateInHuge(size_t size)
+Address HeapAllocator::AllocateInOld(size_t size, LanguageType language)
 {
-    return HeapManager::Allocate(size);
+    auto address = HeapManager::Allocate(size);
+    BaseObject::Cast(address)->SetLanguageType(language);
+    return address;
 }
 
-uintptr_t HeapAllocator::AllocateInNonmove(size_t size)
+Address HeapAllocator::AllocateInHuge(size_t size, LanguageType language)
 {
-    return HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    auto address = HeapManager::Allocate(size);
+    BaseObject::Cast(address)->SetLanguageType(language);
+    return address;
 }
 
-uintptr_t HeapAllocator::AllocateInReadOnly(size_t size)
+Address HeapAllocator::AllocateInReadOnly(size_t size, LanguageType language)
 {
-    return HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    auto address = HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    BaseObject::Cast(address)->SetLanguageType(language);
+    return address;
 }
 
 // below interface used for serialize
-uintptr_t HeapAllocator::AllocateNoGC(size_t size)
+Address HeapAllocator::AllocateNoGC(size_t size)
 {
     return HeapManager::Allocate(size, AllocType::MOVEABLE_OBJECT, false);
 }
 
-uintptr_t HeapAllocator::AllocatePinNoGC(size_t size)
+Address HeapAllocator::AllocatePinNoGC(size_t size)
 {
     return HeapManager::Allocate(size, AllocType::PINNED_OBJECT, false);
 }
 
-uintptr_t HeapAllocator::AllocateRegion()
+Address HeapAllocator::AllocateRegion()
 {
     RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
     return manager.AllocRegion();
 }
 
-uintptr_t HeapAllocator::AllocatePinnedRegion()
+Address HeapAllocator::AllocatePinnedRegion()
 {
     RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
     return manager.AllocPinnedRegion();
 }
 
-uintptr_t HeapAllocator::AllocateLargeRegion(size_t size)
+Address HeapAllocator::AllocateLargeRegion(size_t size)
 {
     RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
     return manager.AllocLargeReion(size);

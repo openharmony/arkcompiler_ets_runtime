@@ -367,6 +367,9 @@ private:
     Mutex skipCtorMethodIdMutex_;
     JITProfiler* jitProfiler_ {nullptr};
     CVector<ProfileType> recordedTransRootType_;
+#ifdef USE_CMC_GC
+    ThreadHolder *holder_ {nullptr};
+#endif
     friend class PGOProfilerManager;
 };
 

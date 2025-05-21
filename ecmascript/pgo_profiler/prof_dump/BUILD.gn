@@ -50,7 +50,7 @@ ohos_executable("profdump") {
     ]
   }
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+  if (ets_runtime_enable_cmc_gc) {
     deps += [ "$js_root:libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]

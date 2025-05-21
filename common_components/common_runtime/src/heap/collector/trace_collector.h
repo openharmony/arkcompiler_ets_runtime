@@ -231,7 +231,7 @@ public:
     void CopyObject(const BaseObject& fromObj, BaseObject& toObj, size_t size) const;
 
 protected:
-    virtual BaseObject* CopyObjectExclusive(BaseObject* obj) = 0;
+    virtual BaseObject* CopyObjectAfterExclusive(BaseObject* obj) = 0;
     virtual void CopyFromSpace();
     virtual void ExemptFromSpace();
 
