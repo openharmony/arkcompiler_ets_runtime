@@ -119,26 +119,14 @@ public:
     {
         VisitAllMutators([](Mutator& mutator) {
             mutator.SetSuspensionFlag(MutatorBase::SuspensionType::SUSPENSION_FOR_STW);
-            mutator.SetSafepointActive(true);
         });
     }
 
     void CancelSuspensionAfterStw()
     {
         VisitAllMutators([](Mutator& mutator) {
-            mutator.SetSafepointActive(false);
             mutator.ClearSuspensionFlag(MutatorBase::SuspensionType::SUSPENSION_FOR_STW);
         });
-    }
-
-    void TriggerMutatorSuspension(Mutator& mutator) const
-    {
-        mutator.SetSafepointActive(true);
-    }
-
-    void RemoveMutatorSuspensionTrigger(Mutator& mutator) const
-    {
-        mutator.SetSafepointActive(false);
     }
 
     void BindMutator(Mutator& mutator) const;

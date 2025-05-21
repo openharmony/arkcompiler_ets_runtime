@@ -45,8 +45,6 @@ void MutatorManager::BindMutator(Mutator& mutator) const
     if (UNLIKELY_CC(tlData->buffer == nullptr)) {
         (void)AllocationBuffer::GetOrCreateAllocBuffer();
     }
-    mutator.SetSafepointStatePtr(&tlData->safepointState);
-    mutator.SetSafepointActive(false);
     tlData->mutator = &mutator;
 }
 
@@ -56,7 +54,6 @@ void MutatorManager::UnbindMutator(Mutator& mutator) const
     ASSERT_LOGF(tlData->mutator == &mutator, "mutator in ThreadLocalData doesn't match in arkthread");
     tlData->mutator = nullptr;
     tlData->buffer = nullptr;
-    mutator.SetSafepointStatePtr(nullptr);
 }
 
 Mutator* MutatorManager::CreateMutator()
@@ -379,7 +376,6 @@ void MutatorManager::TransitionAllMutatorsToGCPhase(GCPhase phase)
     // Broadcast mutator phase transition signal to all mutators
     VisitAllMutators([&undoneMutators, phase](Mutator& mutator) {
         mutator.SetSuspensionFlag(Mutator::SuspensionType::SUSPENSION_FOR_GC_PHASE);
-        mutator.SetSafepointActive(true);
         // Request finalize callback in each vm-thread when gc finished.
         if (phase == GCPhase::GC_PHASE_IDLE) {
             mutator.SetCallbackRequest();

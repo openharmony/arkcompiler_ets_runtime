@@ -151,6 +151,7 @@ void EcmaVM::PreFork()
     heap_->GetWorkManager()->FinishInPreFork();
     sHeap->GetWorkManager()->FinishInPreFork();
 
+    SetPreForked(true);
     SetPostForked(false);
     Jit::GetInstance()->PreFork();
 }
@@ -174,6 +175,7 @@ void EcmaVM::PostFork()
     sHeap->GetWorkManager()->InitializeInPostFork();
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     heap_->EnableParallelGC();
+    SetPreForked(false);
     SetPostForked(true);
 
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();

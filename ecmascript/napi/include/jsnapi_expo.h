@@ -1377,11 +1377,8 @@ public:
 
 private:
     JSThread *thread_;
-#if USE_CMC_GC
-    bool hasSwitchState_ {false};
-#else
-    uint16_t oldThreadState_;
-#endif
+    [[maybe_unused]] uint16_t oldThreadState_;
+    [[maybe_unused]] bool hasSwitchState_ {false};
 };
 
 class PUBLIC_API JsiFastNativeScope {
