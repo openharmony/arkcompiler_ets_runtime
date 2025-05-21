@@ -71,7 +71,7 @@ JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, BaseType va
     return result;
 }
 
-BaseType DynamicTypeConverter::UnWrapTagged(JSTaggedValue value)
+PandaType DynamicTypeConverter::UnwrapTagged(JSTaggedValue value)
 {
     if (value.IsBoolean()) {
         return value.ToBoolean();

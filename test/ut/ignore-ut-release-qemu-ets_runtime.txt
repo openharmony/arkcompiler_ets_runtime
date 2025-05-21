@@ -198,3 +198,6 @@ obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssert
 #24283
 #26429
 obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWithQemu
+
+#26017
+obj/arkcompiler/ets_runtime/test/moduletest/allocatearraybuffer/allocatearraybufferAsm
