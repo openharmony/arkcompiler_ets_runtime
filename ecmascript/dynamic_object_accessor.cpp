@@ -15,6 +15,8 @@
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/dynamic_object_accessor.h"
+#include "ecmascript/object_operator.h"
+#include "ecmascript/object_factory.h"
 #include "common_interfaces/objects/base_object_dispatcher.h"
 
 namespace panda::ecmascript {
@@ -26,47 +28,59 @@ void DynamicObjectAccessor::Initialize()
     BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectAccessor(&dynObjectAccessor_);
 }
 
-bool DynamicObjectAccessor::HasProperty([[maybe_unused]] ThreadHolder *thread,
-                                        [[maybe_unused]] BaseObject *obj,
-                                        [[maybe_unused]] char *name)
+bool DynamicObjectAccessor::HasProperty(ThreadHolder *thread, BaseObject *obj, char *name)
 {
-    return false;
+    JSThread *jsThread = thread->GetJSThread();
+    ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> keyHandle(factory->NewFromUtf8(name));
+    return JSTaggedValue::HasProperty(jsThread, holderHandle, keyHandle);
 }
 
-JSTaggedValue DynamicObjectAccessor::GetProperty([[maybe_unused]] ThreadHolder *thread,
-                                                 [[maybe_unused]] BaseObject *obj,
-                                                 [[maybe_unused]] char *name)
+JSTaggedValue DynamicObjectAccessor::GetProperty(ThreadHolder *thread, BaseObject *obj, char *name)
 {
-    return JSTaggedValue::Undefined();
+    JSThread *jsThread = thread->GetJSThread();
+    ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> keyHandle(factory->NewFromUtf8(name));
+    return JSTaggedValue::GetProperty(jsThread, holderHandle, keyHandle).GetValue().GetTaggedValue();
 }
 
-bool DynamicObjectAccessor::SetProperty([[maybe_unused]] ThreadHolder *thread,
-                                        [[maybe_unused]] BaseObject *obj,
-                                        [[maybe_unused]] char *name,
-                                        [[maybe_unused]] JSTaggedValue value)
+bool DynamicObjectAccessor::SetProperty(ThreadHolder *thread, BaseObject *obj, char *name, JSTaggedValue value)
 {
-    return false;
+    JSThread *jsThread = thread->GetJSThread();
+    ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> keyHandle(factory->NewFromUtf8(name));
+    JSHandle<JSTaggedValue> valueHandle(jsThread, value);
+    return JSTaggedValue::SetProperty(jsThread, holderHandle, keyHandle, valueHandle);
 }
 
-bool DynamicObjectAccessor::HasElementByIdx([[maybe_unused]] ThreadHolder *thread,
-                                            [[maybe_unused]] BaseObject *obj,
-                                            [[maybe_unused]] uint32_t index)
+bool DynamicObjectAccessor::HasElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index)
 {
-    return false;
+    JSThread *jsThread = thread->GetJSThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    return JSTaggedValue::HasProperty(jsThread, holderHandle, index);
 }
 
-JSTaggedValue DynamicObjectAccessor::GetElementByIdx([[maybe_unused]] ThreadHolder *thread,
-                                                     [[maybe_unused]] BaseObject *obj,
-                                                     [[maybe_unused]] uint32_t index)
+JSTaggedValue DynamicObjectAccessor::GetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index)
 {
-    return JSTaggedValue::Undefined();
+    JSThread *jsThread = thread->GetJSThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    return JSTaggedValue::GetProperty(jsThread, holderHandle, index).GetValue().GetTaggedValue();
 }
 
-bool DynamicObjectAccessor::SetElementByIdx([[maybe_unused]] ThreadHolder *thread,
-                                            [[maybe_unused]] BaseObject *obj,
-                                            [[maybe_unused]] uint32_t index,
-                                            [[maybe_unused]] JSTaggedValue value)
+bool DynamicObjectAccessor::SetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index, JSTaggedValue value)
 {
-    return false;
+    JSThread *jsThread = thread->GetJSThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
+    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> valueHandle(jsThread, value);
+    return JSTaggedValue::SetProperty(jsThread, holderHandle, index, valueHandle);
 }
 }
