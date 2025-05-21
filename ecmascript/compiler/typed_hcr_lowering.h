@@ -113,7 +113,8 @@ public:
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
-          traceBuiltins_(env != nullptr ? env->GetJSOptions().GetTraceBuiltins() : false)
+          traceBuiltins_(env != nullptr ? env->GetJSOptions().GetTraceBuiltins() : false),
+          glue_(acc_.GetGlueFromArgList())
     {
     }
 
@@ -294,6 +295,7 @@ private:
     GateRef dependEntry_;
     bool enableLoweringBuiltin_ {false};
     bool traceBuiltins_ {false};
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H

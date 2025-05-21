@@ -386,7 +386,7 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
 
 void NTypeBytecodeLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
-    auto glue = acc_.GetGlueFromArgList();
+    auto glue = glue_;
     auto condition = builder_.HasPendingException(glue);
     GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);

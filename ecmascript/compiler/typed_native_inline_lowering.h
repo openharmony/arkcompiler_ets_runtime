@@ -35,7 +35,8 @@ public:
           acc_(circuit),
           builder_(circuit, cmpCfg),
           compilationEnv_(ctx->GetCompilationEnv()),
-          isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()) {}
+          isLiteCG_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG()),
+          glue_(acc_.GetGlueFromArgList()) {}
     ~TypedNativeInlineLowering() = default;
     GateRef VisitGate(GateRef gate) override;
 private:
@@ -177,6 +178,7 @@ private:
     CircuitBuilder builder_;
     const CompilationEnv *compilationEnv_ {nullptr};
     bool isLiteCG_ {false};
+    GateRef glue_ {Circuit::NullGate()};
 };
 }
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H
