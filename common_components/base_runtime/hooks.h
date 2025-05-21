@@ -19,6 +19,7 @@
 #include <cstdint>
 
 #include "common_interfaces/heap/heap_visitor.h"
+#include "common_interfaces/thread/mutator_base.h"
 
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
 // `WorkStack` Should be moved to BaseRT and panda namespace later
@@ -28,6 +29,7 @@ PUBLIC_API void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
 PUBLIC_API void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
 
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
+PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);
 
 // CMC-GC dependent interface
 PUBLIC_API void FillFreeObject(void *object, size_t size);
