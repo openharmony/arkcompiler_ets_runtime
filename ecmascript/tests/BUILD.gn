@@ -1464,6 +1464,32 @@ host_unittest_action("JS_NumberFormat_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Dynamic_Object_Accessor_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "dynamic_object_accessor_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_Object_Test") {
   module_out_path = module_output_path
 
@@ -3519,6 +3545,11 @@ group("unittest") {
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
   ]
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps += [
+      ":Dynamic_Object_Accessor_Test"
+    ]
+  }
 }
 
 group("host_unittest") {
@@ -3821,6 +3852,10 @@ group("host_unittest") {
       ":JS_TaggedArray_TestAction",
       ":JS_ThreadState_TestAction",
       ":Sendable_JsSharedArray_TestAction",
+    ]
+
+    deps += [
+      ":Dynamic_Object_Accessor_TestAction"
     ]
   }
 }
