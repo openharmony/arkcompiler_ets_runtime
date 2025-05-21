@@ -379,7 +379,7 @@ public:
     // ecma6 7.1 Type Conversion
     static JSTaggedValue ToPrimitive(JSThread *thread, const JSHandle<JSTaggedValue> &tagged,
                                      PreferredPrimitiveType type = NO_PREFERENCE);
-    bool ToBoolean() const;
+    bool PUBLIC_API ToBoolean() const;
     static JSTaggedNumber ToNumber(JSThread *thread, JSTaggedValue tagged);
     static JSTaggedNumber ToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedValue ToBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
@@ -493,7 +493,7 @@ public:
     bool IsJSRegExp() const;
     bool IsPrimitive(uint8_t primitiveType) const;
     bool IsNumber() const;
-    bool IsBigInt() const;
+    bool PUBLIC_API IsBigInt() const;
     bool IsString() const;
     bool IsLineString() const;
     bool IsTreeString() const;
@@ -516,7 +516,7 @@ public:
     bool IsNativePointer() const;
     bool IsJSNativePointer() const;
     bool CheckIsJSNativePointer() const;
-    bool IsBoolean() const;
+    bool PUBLIC_API IsBoolean() const;
     bool IsSymbol() const;
     bool IsJSObject() const;
     bool IsOnlyJSObject() const;
