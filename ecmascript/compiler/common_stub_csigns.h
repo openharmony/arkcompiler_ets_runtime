@@ -41,6 +41,7 @@ namespace panda::ecmascript::kungfu {
     V(Xor)                            \
     V(IsIn)                           \
     V(Instanceof)                     \
+    V(OrdinaryHasInstance)            \
     V(TypeOf)                         \
     V(Inc)                            \
     V(Dec)                            \
@@ -127,8 +128,12 @@ namespace panda::ecmascript::kungfu {
     V(CallThis1Stub)                  \
     V(CallThis2Stub)                  \
     V(CallThis3Stub)                  \
+    V(NewFloat32ArrayWithNoArgs)      \
+    V(NewFloat32Array)                \
+    V(StringLoadElement)              \
     V(ConvertCharToInt32)             \
     V(ConvertCharToDouble)            \
+    V(ConvertCharToString)            \
     V(DeleteObjectProperty)           \
     V(SameValue)                      \
     V(StringIteratorNext)             \

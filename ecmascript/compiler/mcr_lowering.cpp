@@ -365,8 +365,12 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
         case ValueType::CHAR: {
             GateRef glue = acc_.GetGlueFromArgList();
             if (dstType == ValueType::ECMA_STRING) {
-                BuiltinsStringStubBuilder builder(&env);
-                result = builder.CreateStringBySingleCharCode(glue, value);
+                if (env_->IsJitCompiler()) {
+                    result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToString, {glue, value });
+                } else {
+                    BuiltinsStringStubBuilder builder(&env);
+                    result = builder.CreateStringBySingleCharCode(glue, value);
+                }
             } else if (dstType == ValueType::INT32) {
                 result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32, { glue, value });
             } else {

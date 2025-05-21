@@ -382,6 +382,7 @@ private:
     V(Xor)                                      \
     V(IsIn)                                     \
     V(Instanceof)                               \
+    V(OrdinaryHasInstance)                      \
     V(Inc)                                      \
     V(Dec)                                      \
     V(Neg)                                      \
@@ -645,8 +646,12 @@ private:
     V(CallThis1Stub)                                 \
     V(CallThis2Stub)                                 \
     V(CallThis3Stub)                                 \
+    V(NewFloat32ArrayWithNoArgs)                     \
+    V(NewFloat32Array)                               \
+    V(StringLoadElement)                             \
     V(ConvertCharToInt32)                            \
     V(ConvertCharToDouble)                           \
+    V(ConvertCharToString)                           \
     V(ASMFastWriteBarrier)                           \
     V(VerifyBarrier)                                 \
     V(SortTypedArray)                                \
