@@ -229,14 +229,24 @@ public:
         return initialized_;
     }
 
-    void SetPostForked(bool isPostForked)
+    void SetPreForked(bool preForked)
     {
-        isPostForked_ = isPostForked;
+        preForked_ = preForked;
+    }
+
+    void SetPostForked(bool postForked)
+    {
+        postForked_ = postForked;
+    }
+
+    bool IsPreForked() const
+    {
+        return preForked_;
     }
 
     bool IsPostForked() const
     {
-        return isPostForked_;
+        return postForked_;
     }
 
     void SetAgentCanSuspend(bool agentCanSuspend)
@@ -1043,7 +1053,8 @@ private:
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
     bool initialized_ {false};
-    bool isPostForked_ {false};
+    bool preForked_ {false};
+    bool postForked_ {false};
     bool agentCanSuspend_ {true};
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
