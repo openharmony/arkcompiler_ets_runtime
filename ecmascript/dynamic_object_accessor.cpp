@@ -27,44 +27,44 @@ void DynamicObjectAccessor::Initialize()
 }
 
 bool DynamicObjectAccessor::HasProperty([[maybe_unused]] ThreadHolder *thread,
-                                        [[maybe_unused]] BaseObject *obj,
-                                        [[maybe_unused]] char *name)
+                                        [[maybe_unused]] const BaseObject *obj,
+                                        [[maybe_unused]] const char *name) const
 {
     return false;
 }
 
 JSTaggedValue DynamicObjectAccessor::GetProperty([[maybe_unused]] ThreadHolder *thread,
-                                                 [[maybe_unused]] BaseObject *obj,
-                                                 [[maybe_unused]] char *name)
+                                                 [[maybe_unused]] const BaseObject *obj,
+                                                 [[maybe_unused]] const char *name) const
 {
     return JSTaggedValue::Undefined();
 }
 
 bool DynamicObjectAccessor::SetProperty([[maybe_unused]] ThreadHolder *thread,
                                         [[maybe_unused]] BaseObject *obj,
-                                        [[maybe_unused]] char *name,
+                                        [[maybe_unused]] const char *name,
                                         [[maybe_unused]] JSTaggedValue value)
 {
     return false;
 }
 
 bool DynamicObjectAccessor::HasElementByIdx([[maybe_unused]] ThreadHolder *thread,
-                                            [[maybe_unused]] BaseObject *obj,
-                                            [[maybe_unused]] uint32_t index)
+                                            [[maybe_unused]] const BaseObject *obj,
+                                            [[maybe_unused]] const uint32_t index) const
 {
     return false;
 }
 
 JSTaggedValue DynamicObjectAccessor::GetElementByIdx([[maybe_unused]] ThreadHolder *thread,
-                                                     [[maybe_unused]] BaseObject *obj,
-                                                     [[maybe_unused]] uint32_t index)
+                                                     [[maybe_unused]] const BaseObject *obj,
+                                                     [[maybe_unused]] const uint32_t index) const
 {
     return JSTaggedValue::Undefined();
 }
 
 bool DynamicObjectAccessor::SetElementByIdx([[maybe_unused]] ThreadHolder *thread,
                                             [[maybe_unused]] BaseObject *obj,
-                                            [[maybe_unused]] uint32_t index,
+                                            [[maybe_unused]] const uint32_t index,
                                             [[maybe_unused]] JSTaggedValue value)
 {
     return false;

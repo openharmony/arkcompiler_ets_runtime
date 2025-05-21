@@ -26,7 +26,7 @@ public:
 
     JSTaggedValue WrapTagged(ThreadHolder *thread, PandaType value) override;
 
-    PandaType UnWrapTagged(JSTaggedValue value) override;
+    PandaType UnwrapTagged(JSTaggedValue value) override;
 
   private:
     static DynamicTypeConverter dynTypeConverter_;

@@ -33,7 +33,7 @@ JSTaggedValue DynamicTypeConverter::WrapTagged([[maybe_unused]] ThreadHolder *th
     return JSTaggedValue::Undefined();
 }
 
-PandaType DynamicTypeConverter::UnWrapTagged([[maybe_unused]] JSTaggedValue value)
+PandaType DynamicTypeConverter::UnwrapTagged([[maybe_unused]] JSTaggedValue value)
 {
     // fixme(liuzhijie)
     return PandaType();
