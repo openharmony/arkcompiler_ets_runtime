@@ -27,25 +27,25 @@ class DynamicObjectAccessor : public common::DynamicObjectAccessorInterface {
 public:
     static void Initialize();
 
-    bool HasProperty(ThreadHolder *thread, BaseObject *obj,
-                     char *name) override;
+    bool HasProperty(ThreadHolder *thread, const BaseObject *obj,
+                     const char *name) const override;
 
-    JSTaggedValue GetProperty(ThreadHolder *thread, BaseObject *obj,
-                              char *name) override;
+    JSTaggedValue GetProperty(ThreadHolder *thread, const BaseObject *obj,
+                              const char *name) const override;
 
     bool SetProperty(ThreadHolder *thread, BaseObject *obj,
-                     char *name, JSTaggedValue value) override;
+                     const char *name, JSTaggedValue value) override;
 
     bool HasElementByIdx(ThreadHolder *thread,
-                         BaseObject *obj,
-                         uint32_t index) override;
+                         const BaseObject *obj,
+                         const uint32_t index) const override;
 
     JSTaggedValue GetElementByIdx(ThreadHolder *thread,
-                                  BaseObject *obj,
-                                  uint32_t index) override;
+                                  const BaseObject *obj,
+                                  const uint32_t index) const override;
 
     bool SetElementByIdx(ThreadHolder *thread, BaseObject *obj,
-                         uint32_t index, JSTaggedValue value) override;
+                         const uint32_t index, JSTaggedValue value) override;
 
 private:
     static DynamicObjectAccessor dynObjectAccessor_;
