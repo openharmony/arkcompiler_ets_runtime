@@ -173,7 +173,7 @@ public:
         return obj->IsToVersion();
     }
 
-    virtual bool MarkObject(BaseObject* obj) const
+    virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const
     {
         bool marked = RegionSpace::MarkObject(obj);
         if (!marked) {
