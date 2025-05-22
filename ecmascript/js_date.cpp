@@ -50,8 +50,7 @@ bool DateUtils::IsLeap(int64_t year)
 // static
 int64_t DateUtils::GetDaysInYear(int64_t year)
 {
-    int64_t number;
-    number = IsLeap(year) ? (DAYS_IN_YEAR + 1) : DAYS_IN_YEAR;
+    int64_t number = IsLeap(year) ? (DAYS_IN_YEAR + 1) : DAYS_IN_YEAR;
     return number;
 }
 
@@ -90,7 +89,6 @@ void DateUtils::GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date)
             return;
         }
     }
-    int64_t realDay;
     int64_t d = (*date)[DAYS];
     preSumDays_ = d;
     d += DAYS_1970_TO_0000;                                               // shift from 1970-01-01 to 0000-03-01
@@ -107,7 +105,7 @@ void DateUtils::GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date)
                 MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);                         // transform month to civil system
     int64_t year = y + (month <= MONTH_COEFFICIENT);
     month -= 1;
-    realDay = doy - (COEFFICIENT_TO_CIVIL[1] * mp + 2) / COEFFICIENT_TO_CIVIL[0] + 1;   // 2: shift from 03-01 to 01-01
+    int64_t realDay = doy - (COEFFICIENT_TO_CIVIL[1] * mp + 2) / COEFFICIENT_TO_CIVIL[0] + 1;
     (*date)[YEAR] = year;
     (*date)[MONTH] = month;
     (*date)[DAYS] = realDay;
@@ -263,14 +261,12 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
     int index = 0;
     int len = static_cast<int>(str.length());
     bool isLocal = false;
-    CString::size_type indexGmt;
     CString::size_type indexPlus = CString::npos;
     int localTime = 0;
     int localHours = 0;
     int localMinutes = 0;
     int64_t localMs = 0;
-    CString::size_type localSpace;
-    localSpace = str.find(' ', index);
+    CString::size_type localSpace = str.find(' ', index);
     CString strMonth = str.substr(localSpace + 1, LENGTH_MONTH_NAME);
     for (int i = 0; i < MOUTH_PER_YEAR; i++) {
         if (strMonth == MONTH_NAME[i]) {
@@ -281,7 +277,7 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
     index += (LENGTH_MONTH_NAME + 1);
     GetNumFromString(str, len, &index, &date);
     GetNumFromString(str, len, &index, &year);
-    indexGmt = str.find("GMT", index);
+    CString::size_type indexGmt = str.find("GMT", index);
     if (indexGmt == CString::npos) {
         GetNumFromString(str, len, &index, &hours);
         GetNumFromString(str, len, &index, &minutes);
@@ -328,7 +324,6 @@ JSTaggedValue JSDate::UtcParseStringToMs(const CString &str)
     int ms = 0;
     int index = 0;
     int len = static_cast<int>(str.length());
-    CString::size_type indexGmt;
     CString::size_type indexPlus = CString::npos;
     int localTime = 0;
     int localHours = 0;
@@ -345,7 +340,7 @@ JSTaggedValue JSDate::UtcParseStringToMs(const CString &str)
     }
     index += (LENGTH_MONTH_NAME + 1);
     GetNumFromString(str, len, &index, &year);
-    indexGmt = str.find("GMT", index);
+    CString::size_type indexGmt = str.find("GMT", index);
     if (indexGmt == CString::npos) {
         GetNumFromString(str, len, &index, &hours);
         GetNumFromString(str, len, &index, &minutes);
@@ -383,7 +378,6 @@ JSTaggedValue JSDate::UtcParseStringToMs(const CString &str)
 JSTaggedValue JSDate::IsoParseStringToMs(const CString &str)
 {
     char flag = 0;
-    int year;
     int month = 1;
     int date = 1;
     int hours = 0;
@@ -392,7 +386,7 @@ JSTaggedValue JSDate::IsoParseStringToMs(const CString &str)
     int ms = 0;
     int index = 0;
     int len = static_cast<int>(str.length());
-    year = GetSignedNumFromString(str, len, &index);
+    int year = GetSignedNumFromString(str, len, &index);
     CString::size_type indexT = str.find(FLAG_TIME, index);
     CString::size_type indexZ = str.find(FLAG_UTC, index);
     CString::size_type indexEndFlag = 0;
@@ -467,7 +461,7 @@ JSTaggedValue JSDate::IsoParseStringToMs(const CString &str)
 
 JSTaggedValue JSDate::GetTimeFromString(const char *str, int len)
 {
-    int time[TIMEZONE + 1];
+    int time[TIMEZONE + 1] {0};
     bool res = DateParse::ParseDateString(str, len, time);
     if (res) {
         double day = MakeDay(time[YEAR], time[MONTH], time[DAYS]);
@@ -476,7 +470,7 @@ JSTaggedValue JSDate::GetTimeFromString(const char *str, int len)
         if (std::isnan(timeValue)) {
             return JSTaggedValue(timeValue);
         }
-        int64_t localMs;
+        int64_t localMs {0};
         if (time[TIMEZONE] == INT_MAX) {
             localMs = GetLocalOffsetFromOS(static_cast<int64_t>(timeValue), true) * MS_PER_MINUTE;
         } else {
@@ -510,11 +504,10 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
 JSTaggedValue JSDate::Now()
 {
     // time from now is in ms.
-    int64_t ans;
     struct timeval tv {
     };
     gettimeofday(&tv, nullptr);
-    ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
+    int64_t ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
     return JSTaggedValue(static_cast<double>(ans));
 }
 
@@ -545,7 +538,7 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
     }
     uint32_t index = 1;
     uint32_t numArgs = argv->GetArgsNumber();
-    JSTaggedValue res;
+    JSTaggedValue res = JSTaggedValue::Undefined();
     if (numArgs > index) {
         JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, index);
         res = JSTaggedValue::ToNumber(thread, value);
@@ -602,7 +595,7 @@ JSTaggedValue JSDate::GetTime() const
 CString JSDate::StrToTargetLength(const CString &str, int length)
 {
     int len = 0;
-    CString sub;
+    CString sub {""};
     if (str[0] == NEG) {
         sub.reserve(length + 1);
         ASSERT(str.length() > 0);
@@ -662,7 +655,7 @@ JSTaggedValue JSDate::ToDateString(JSThread *thread) const
     if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString str;
+    CString str {""};
     str.reserve(DATE_STRING_LENGTH);
     str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekdy name
         .append(SPACE_STR) // Append SPACE
@@ -683,7 +676,7 @@ CString JSDate::ToDateString(JSThread *thread, double timeMs)
     }
     std::array<int64_t, DATE_LENGTH> fields = {0};
     GetDateValues(thread, timeMs, &fields, true);
-    CString localTime;
+    CString localTime {""};
     int localMin = 0;
     localMin = GetLocalOffsetFromOS(timeMs, true);
     if (localMin >= 0) {
@@ -694,7 +687,7 @@ CString JSDate::ToDateString(JSThread *thread, double timeMs)
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString str;
+    CString str {""};
     str.reserve(DATE_CSTRING_LENGTH);
     str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
         .append(SPACE_STR)  // Append SPACE
@@ -729,7 +722,7 @@ JSTaggedValue JSDate::ToISOString(JSThread *thread) const
     } else {
         year = StrToTargetLength(year, STR_LENGTH_YEAR);
     }
-    CString str;
+    CString str {""};
     str.reserve(ISO_STRING_LENGTH);
     str.append(year) // Append year
         .append(NEG_STR); // Append NEG
@@ -756,7 +749,7 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
     if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString localTime;
+    CString localTime {""};
     localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue().GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
@@ -766,7 +759,7 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString str;
+    CString str {""};
     str.reserve(TO_STRING_LENGTH);
     str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
         .append(SPACE_STR) // Append SPACE
@@ -795,7 +788,7 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
     if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString localTime;
+    CString localTime {""};
     localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue().GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
@@ -805,7 +798,7 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString str;
+    CString str {""};
     str.reserve(TIME_STRING_LENGTH);
     ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
     str += COLON;
@@ -825,7 +818,7 @@ JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
     if (!GetThisDateValues(thread, &fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString str;
+    CString str {""};
     str.reserve(UTC_STRING_LENGTH);
     str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
         .append(COMMA_STR) // Append COMMA
