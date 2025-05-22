@@ -2925,7 +2925,9 @@ GateRef TypedHCRLowering::LoadPropertyFromHolder(GateRef holder, PropertyLookupR
 {
     GateRef result = Circuit::NullGate();
     GateRef glue = acc_.GetGlueFromArgList();
-    if (plr.IsNotHole()) {
+    // while loading from iterator result, it may be the case that traversing an array including holes using 'for of',
+    // need to convert hole to undefined
+    if (plr.IsNotHole() || (compilationEnv_->IsJitCompiler() && !plr.IsLoadFromIterResult())) {
         ASSERT(plr.IsLocal());
         if (plr.IsInlinedProps()) {
             result = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, plr.GetOffset());
