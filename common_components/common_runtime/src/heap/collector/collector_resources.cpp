@@ -21,10 +21,6 @@
 #include "common_components/common_runtime/src/common/run_type.h"
 #include "common_components/common_runtime/src/common/scoped_object_access.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
-#ifdef __RTOS__
-#include "libhmsrv_sys/hm_futex.h"
-#include "private/futex.h"
-#endif
 
 namespace panda {
 
@@ -268,9 +264,7 @@ int32_t CollectorResources::GetGCThreadCount(const bool isConcurrent) const
 void CollectorResources::BroadcastGCFinished()
 {
     gcWorking_ = 0;
-#if defined(__RTOS__)
-    (void)Futex(&gcWorking, (FUTEX_WAKE | FUTEX_PRIVATE_FLAG), INT_MAX);
-#elif defined(_WIN64) || defined(__APPLE__)
+#if defined(_WIN64) || defined(__APPLE__)
     WakeWhenGCDone();
 #else
     (void)Futex(&gcWorking_, FUTEX_WAKE_PRIVATE, INT_MAX);

@@ -1477,7 +1477,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         reason == GCReason::ALLOCATION_FAILED) {
         type = GcType::FULL;
     }
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+    BaseRuntime::RequestGC(type);
     return;
 #endif
     CollectGarbageImpl(gcType, reason);

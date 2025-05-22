@@ -24,7 +24,10 @@
 
 #define PRINT_STATE_CHANGE false
 
-namespace panda::ecmascript::pgo {
+namespace panda::ecmascript {
+class JSThread;
+
+namespace pgo {
 class PGOProfiler;
 class PGOProfilerManager;
 class PGOState {
@@ -65,7 +68,7 @@ public:
     void NotifyAllDumpWaiters();
     void NotifyAllGCWaiters();
     bool TryChangeState(State expected, State desired);
-    void StartDumpBeforeDestroy();
+    void StartDumpBeforeDestroy(JSThread *thread);
 
 private:
 #if PRINT_STATE_CHANGE
@@ -92,6 +95,7 @@ private:
 protected:
     Mutex stateMutex_;
 };
-} // namespace panda::ecmascript::pgo
+} // namespace pgo
+} // namespace panda::ecmascript
 
 #endif // ECMASCRIPT_PGO_PROFILER_PGO_STATE_H

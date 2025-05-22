@@ -315,13 +315,5 @@ private:
     void VisitStaticRoots(const RefFieldVisitor& visitor) const;
     void VisitFinalizerRoots(const RootVisitor& visitor) const;
 };
-
-
-using WorkStackAddHookType = void (*)(void *workStack, uint64_t *obj);
-using EnumStaticRootsHookType = void (*)(void *workStack, WorkStackAddHookType hook);
-
-
-extern "C" PUBLIC_API void ArkRegisterEnumStaticRootsHook(EnumStaticRootsHookType hook);
-
 } // namespace panda
 #endif

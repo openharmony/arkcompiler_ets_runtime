@@ -17,33 +17,22 @@
 #include <stack>
 #include <unistd.h>
 
-#include "allocator/region_manager.h"
+#include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/common/type_def.h"
-#if defined(__RTOS__)
-#include <private/futex.h>
-#elif defined(_WIN64)
+#if defined(_WIN64)
 #define NOGDI
 #include <windows.h>
 #endif
+#include "common_components/common_runtime/src/heap/allocator/region_manager.h"
 #include "common_components/common_runtime/src/heap/collector/trace_collector.h"
 #include "common_components/common_runtime/src/common/scoped_object_access.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
-#ifdef _WIN64
-#include "common_components/common_runtime/src/os/windows/win_module_manager.h"
-#endif
 
 namespace panda {
-JSGCCallbackHookType g_jsGCCallbackHook = nullptr;
-
-extern "C" PUBLIC_API void ArkRegisterJSGCCallbackHook(JSGCCallbackHookType hook)
-{
-    g_jsGCCallbackHook = hook;
-}
-
-ThreadLocalData *ArkCommonGetThreadLocalData()
+ThreadLocalData *GetThreadLocalData()
 {
     uintptr_t tlDataAddr = reinterpret_cast<uintptr_t>(ThreadLocal::GetThreadLocalData());
-#if defined(__aarch64__) && not defined(__RTOS__)
+#if defined(__aarch64__)
     if (Heap::GetHeap().IsGcStarted()) {
         // Since the TBI(top bit ignore) feature in Aarch64,
         // set gc phase to high 8-bit of ThreadLocalData Address for gc barrier fast path.
@@ -126,7 +115,7 @@ void MutatorBase::HandleJSGCCallback()
     if (mutator != nullptr) {
         void *vm = reinterpret_cast<Mutator*>(mutator)->GetEcmaVMPtr();
         if (vm != nullptr) {
-            g_jsGCCallbackHook(vm);
+            JSGCCallback(vm);
         }
     }
 }
@@ -227,18 +216,8 @@ inline void CheckAndPush(BaseObject* obj, std::set<BaseObject*>& rootSet, std::s
     }
 }
 
-EnumThreadStackRootType g_enumThreadStackRootHook = nullptr;
-extern "C" PUBLIC_API void ArkRegisterEnumThreadStackRootHook(EnumThreadStackRootType hook) {
-    g_enumThreadStackRootHook = hook;
-}
-
 inline void MutatorBase::GcPhaseEnum(GCPhase newPhase)
 {
-     // below function is registed by arkts
-    AllocBufferAddHookType allocBufferAddHook = [](uint64_t *obj) {
-        AllocationBuffer* buffer = AllocationBuffer::GetOrCreateAllocBuffer();
-        buffer->PushRoot(obj);
-    };
 }
 
 // comment all
@@ -293,7 +272,7 @@ void MutatorBase::TransitionToCpuProfileExclusive()
     ClearSuspensionFlag(SUSPENSION_FOR_CPU_PROFILE);
 }
 
-extern "C" void ArkCommonPreRunManagedCode(Mutator* mutator, int layers, ThreadLocalData* threadData)
+void PreRunManagedCode(Mutator* mutator, int layers, ThreadLocalData* threadData)
 {
     if (UNLIKELY_CC(MutatorManager::Instance().StwTriggered())) {
         mutator->SetSuspensionFlag(Mutator::SuspensionType::SUSPENSION_FOR_STW);

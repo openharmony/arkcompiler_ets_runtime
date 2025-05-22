@@ -95,9 +95,5 @@ private:
     // MemoryMap is created via factory method
     MemoryMap(void* baseAddr, size_t initSize, size_t mappedSize);
 }; // class MemoryMap
-
-using SetBaseAddrHookType = void (*)(uintptr_t base);
-
-extern "C" PUBLIC_API void ArkRegisterSetBaseAddrHook(SetBaseAddrHookType hook);
 } // namespace panda
 #endif // ARK_COMMON_ALLOC_MEM_MAP_H

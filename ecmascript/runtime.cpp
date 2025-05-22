@@ -17,7 +17,7 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#include "ecmascript/crt.h"
+#include "common_interfaces/thread/thread_holder_manager.h"
 #endif
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -84,10 +84,9 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         instance_ = new Runtime();
         SharedHeap::CreateNewInstance();
 #ifdef USE_CMC_GC
-        // create CommonRuntime before daemon thread because creating mutator may access gcphase in heap
+        // Init BaseRuntime before daemon thread because creating mutator may access gcphase in heap
         LOG_ECMA(INFO) << "start run with cmc gc";
-        CommonRuntime::Create();
-        CommonRuntime::GetInstance()->Init();
+        BaseRuntime::GetInstance()->Init();
 #endif
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
@@ -159,9 +158,8 @@ void Runtime::DestroyIfLastVm()
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
 #ifdef USE_CMC_GC
-        // destroy CommonRuntime after daemon thread because it will unregister mutator
-        CommonRuntime::GetInstance()->Fini();
-        CommonRuntime::Destroy();
+        // Finish BaseRuntime after daemon thread because it will unregister mutator
+        BaseRuntime::GetInstance()->Fini();
 #endif
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
@@ -169,6 +167,7 @@ void Runtime::DestroyIfLastVm()
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
 #ifdef USE_CMC_GC
+        // Destroy BaseRuntime after daemon thread because it will unregister mutator
         BaseRuntime::DestroyInstance();
 #endif
         ASSERT(instance_ != nullptr);

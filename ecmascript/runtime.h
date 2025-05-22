@@ -18,7 +18,6 @@
 
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#include "ecmascript/crt.h"
 #endif
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env_constants.h"

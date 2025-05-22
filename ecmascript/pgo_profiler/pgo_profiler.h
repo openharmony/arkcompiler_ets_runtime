@@ -104,7 +104,7 @@ public:
     void SetStopAndNotify();
     bool SetStartIfStop();
     void TrySaveByDumpThread();
-    void DumpBeforeDestroy();
+    void DumpBeforeDestroy(JSThread *thread);
 
 private:
     class WorkNode;

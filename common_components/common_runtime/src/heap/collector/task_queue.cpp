@@ -29,7 +29,7 @@ bool GCRunner::Execute(void* owner)
         }
         case GCTask::GCTaskType::GC_TASK_TIMEOUT_GC: {
             uint64_t curTime = TimeUtil::NanoSeconds();
-            if ((curTime - GCStats::GetPrevGCStartTime()) > ArkCommonRuntime::GetGCParam().backupGCInterval) {
+            if ((curTime - GCStats::GetPrevGCStartTime()) > BaseRuntime::GetInstance()->GetGCParam().backupGCInterval) {
                 GCStats::SetPrevGCStartTime(curTime);
                 collectorProxy->RunGarbageCollection(GCTask::TASK_INDEX_ASYNC_GC, GC_REASON_BACKUP);
                 GCStats::SetPrevGCFinishTime(TimeUtil::NanoSeconds());

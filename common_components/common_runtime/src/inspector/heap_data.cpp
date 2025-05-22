@@ -14,15 +14,14 @@
  */
 #include "common_components/common_runtime/src/inspector/heap_data.h"
 
-#include <common/base_object.h>
-#include <common/runtime.h>
-#include <common/scoped_object_access.h>
-#include <heap/collector/task_queue.h>
-#include <heap/collector/trace_collector.h>
 #include <sys/time.h>
 
 #include "common_components/common_runtime/src/common/base_object.h"
+#include "common_components/common_runtime/src/common/scoped_object_access.h"
+#include "common_components/common_runtime/src/heap/collector/task_queue.h"
+#include "common_components/common_runtime/src/heap/collector/trace_collector.h"
 #include "common_components/common_runtime/src/heap/heap.h"
+
 namespace panda {
 static bool g_oomIsTrigged = false;
 

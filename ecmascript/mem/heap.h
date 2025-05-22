@@ -29,10 +29,6 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
-
 namespace panda::test {
 class GCTest_CallbackTask_Test;
 class HProfTestHelper;
