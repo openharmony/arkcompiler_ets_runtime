@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/dynamic_object_accessor.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/object_factory.h"

@@ -130,7 +130,7 @@ void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
     runtime->GCIterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         const_cast<ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
-        thread->ContextCachedConstantPool();
+        thread->ClearVMCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
     });
 }

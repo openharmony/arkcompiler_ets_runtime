@@ -3575,7 +3575,7 @@ group("unittest") {
   if (ets_runtime_enable_cmc_gc) {
     deps += [
       ":Dynamic_Object_Accessor_Test",
-      ":JS_DynamicTypeConverter_TestAction",
+      ":JS_DynamicTypeConverter_Test",
     ]
   }
 }
