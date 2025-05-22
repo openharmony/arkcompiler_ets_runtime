@@ -435,7 +435,11 @@ void WCollector::FixHeap()
 
 void WCollector::DoGarbageCollection()
 {
-    if (shouldSTW_ == 2) { // 2: stw-gc
+    if (gcMode_ == GCMode::STW) { // 2: stw-gc
+#ifdef ENABLE_CMC_RB_DFX
+        WVerify::DisableReadBarrierDFX(*this);
+#endif
+
         ScopedStopTheWorld stw("stw-gc");
         WorkStack workStack = NewWorkStack();
         EnumRoots(workStack);
@@ -456,11 +460,15 @@ void WCollector::DoGarbageCollection()
         CollectPinnedGarbage();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
+
         ClearAllGCInfo();
         CollectSmallSpace();
 
+#if defined(ENABLE_CMC_RB_DFX)
+        WVerify::EnableReadBarrierDFX(*this);
+#endif
         return;
-    } else if (shouldSTW_ == 1) {
+    } else if (gcMode_ == GCMode::CONCURRENT_MARK) { // 1: concurrent-mark
         WorkStack workStack = NewWorkStack();
         {
             ScopedStopTheWorld stw("wgc-enumroot");

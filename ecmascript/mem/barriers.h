@@ -100,8 +100,15 @@ public:
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
         if (value.IsHeapObject()) {
 #ifdef USE_CMC_GC
+#ifdef ENABLE_CMC_RB_DFX
+            JSTaggedValue value(reinterpret_cast<JSTaggedType>(
+                BaseRuntime::ReadBarrier(const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset))));
+            value.RemoveReadBarrierDFXTag();
+            return value.GetRawData();
+#else
             return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier(const_cast<void*>(obj),
                                                                            (void*)(ToUintPtr(obj) + offset)));
+#endif
 #endif
         }
         return value.GetRawData();
@@ -116,7 +123,13 @@ public:
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
         if (value.IsHeapObject()) {
 #ifdef USE_CMC_GC
+#ifdef ENABLE_CMC_RB_DFX
+            JSTaggedValue value(reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier((void*)slotAddress)));
+            value.RemoveReadBarrierDFXTag();
+            return value.GetRawData();
+#else
             return reinterpret_cast<JSTaggedType>(BaseRuntime::ReadBarrier((void*)slotAddress));
+#endif
 #endif
         }
         return value.GetRawData();
@@ -132,9 +145,16 @@ public:
             offset)->load(std::memory_order_acquire);
         if (value.IsHeapObject()) {
 #ifdef USE_CMC_GC
+#ifdef ENABLE_CMC_RB_DFX
+            JSTaggedValue value(reinterpret_cast<JSTaggedType>(BaseRuntime::AtomicReadBarrier(
+                const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset), std::memory_order_acquire)));
+            value.RemoveReadBarrierDFXTag();
+            return value.GetRawData();
+#else
             return reinterpret_cast<JSTaggedType>(
                 BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset),
                                                std::memory_order_acquire));
+#endif
 #endif
         }
         return value.GetRawData();

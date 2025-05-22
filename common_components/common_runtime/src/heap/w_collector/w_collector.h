@@ -41,6 +41,12 @@ public:
     RegionSpace& theSpace;
 };
 
+enum class GCMode: uint8_t {
+    CMC = 0,
+    CONCURRENT_MARK = 1,
+    STW = 2
+};
+
 class WCollector : public TraceCollector {
 public:
     explicit WCollector(Allocator& allocator, CollectorResources& resources)
@@ -54,7 +60,16 @@ public:
     void Init(const RuntimeParam& param) override
     {
         HeapBitmapManager::GetHeapBitmapManager().InitializeHeapBitmap();
-        shouldSTW_ = param.gcParam.enableStwGC;
+        if (param.gcParam.enableStwGC) {
+            gcMode_ = GCMode::STW;
+        } else {
+            gcMode_ = GCMode::CMC;
+        }
+
+        // force STW for RB DFX
+#ifdef ENABLE_CMC_RB_DFX
+        gcMode_ = GCMode::STW;
+#endif
     }
 
     void MarkNewObject(BaseObject* obj) override;
@@ -176,8 +191,7 @@ private:
 
     CopyTable fwdTable_;
 
-    // gc index 0 or 1 is used to distinguish previous gc and current gc.
-    uint8_t shouldSTW_ = false;
+    GCMode gcMode_ = GCMode::CMC;
 };
 } // namespace panda
 #endif // ~ARK_COMMON_WCOLLECTOR_H
