@@ -20,10 +20,11 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsNumberStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsNumberStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
-    BuiltinsNumberStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue, GateRef numArgs)
-        : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
+    explicit BuiltinsNumberStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
+    BuiltinsNumberStubBuilder(BuiltinsStubBuilder* parent, GateRef glue, GateRef thisValue, GateRef numArgs,
+                              GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsNumberStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsNumberStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsNumberStubBuilder);

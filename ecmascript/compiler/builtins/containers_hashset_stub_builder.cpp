@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 void ContainersHashSetStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,
                                            Label *exit, Label *slowPath)
 {
-    ContainersCommonStubBuilder commonBuilder(this);
+    ContainersCommonStubBuilder commonBuilder(this, GetCurrentGlobalEnv());
     commonBuilder.ContainersHashCall(glue, thisValue, numArgs, result, exit, slowPath, ContainersType::HASHSET_FOREACH);
 }
 }

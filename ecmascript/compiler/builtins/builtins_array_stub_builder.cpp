@@ -35,7 +35,7 @@ void BuiltinsArrayStubBuilder::ElementsKindHclassCompare(GateRef glue, GateRef a
     BRANCH(notGeneric, matchCls, &isGeneric);
     Bind(&isGeneric);
     {
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                                  static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
         BRANCH(Equal(intialHClass, arrayCls), matchCls, slowPath);
@@ -478,7 +478,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                         Bind(&spreadable);
                         {
                             Label setProperties(env);
-                            GateRef globalEnv = GetGlobalEnv(glue);
+                            GateRef globalEnv = GetCurrentGlobalEnv();
                             auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                 GlobalEnv::ARRAY_FUNCTION_INDEX);
                             GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
@@ -1098,7 +1098,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
     {
         Label indexIsValid(env);
         Label kindIsNotKey(env);
-        BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
+        BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
         GateRef length = typedArrayBuilder.GetArrayLength(array);
         BRANCH(Int32UnsignedLessThan(index, length), &indexIsValid, &iterDone);
         Bind(&indexIsValid);
@@ -2346,7 +2346,7 @@ void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
     GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, iterClassIdx);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef prototype = GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv,
                                           GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
     SetPrototypeToHClass(VariableType::JS_POINTER(), glue, iteratorHClass, prototype);
@@ -2779,7 +2779,7 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
     BRANCH(IsEcmaObject(glue, obj), &isEcmaObj, &exit);
     Bind(&isEcmaObj);
     {
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef isConcatsprKey =
             GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
         AccessObjectStubBuilder builder(this);
@@ -2826,7 +2826,7 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
     DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
     Label exit(env);
     Label setProperties(env);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(this);
@@ -3015,7 +3015,7 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
 
         GateRef cacheResArray = GetValueFromTaggedArray(glue, cacheArray,
             Int32Add(index, Int32(builtins::StringToListResultCache::ARRAY_INDEX)));
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
         GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
@@ -5004,7 +5004,7 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&loopExit);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef noneHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
         static_cast<size_t>(GlobalEnvField::ELEMENT_NONE_HCLASS_INDEX));
     Label useElementsKindHClass(env);
@@ -5052,7 +5052,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
     {
         Label fastGetHclass(env);
         Label intialHClassIsHClass(env);
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                            GlobalEnv::ARRAY_FUNCTION_INDEX);
         BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath1);

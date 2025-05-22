@@ -378,7 +378,7 @@ void ICStubBuilder::LoadICByValue(
                 {
                     GateRef hclass = LoadHClass(glue_, receiver_);
                     GateRef jsType = GetObjectType(hclass);
-                    BuiltinsTypedArrayStubBuilder typedArrayBuilder(reinterpret_cast<StubBuilder*>(this));
+                    BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetGlobalEnv(glue_));
                     ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
                     Jump(&exit);
                 }

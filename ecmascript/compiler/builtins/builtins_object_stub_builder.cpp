@@ -48,7 +48,7 @@ void BuiltinsObjectStubBuilder::ToStringFunc(Variable *result, Label *exit, Labe
     BRANCH(IsEcmaObject(glue_, thisValue_), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     {
-        GateRef globalEnv = GetGlobalEnv(glue_);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef toStringTagSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv,
                                                       GlobalEnv::TOSTRINGTAG_SYMBOL_INDEX);
         GateRef tag = FastGetPropertyByName(glue_, thisValue_, toStringTagSymbol, ProfileOperation());
@@ -513,7 +513,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
         BRANCH(TaggedIsString(glue_, prop), &keyIsString, slowPath); // 2 : two args
         Bind(&keyIsString);
         {
-            BuiltinsStringStubBuilder stringStub(this);
+            BuiltinsStringStubBuilder stringStub(this, GetCurrentGlobalEnv());
             GateRef res = stringStub.StringToUint(glue_, prop, JSObject::MAX_ELEMENT_INDEX - 1);
             // -1: not find element index
             BRANCH(Int64NotEqual(res, Int64(-1)), &isIndex, &notIndex);

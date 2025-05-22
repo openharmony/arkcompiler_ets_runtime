@@ -21,8 +21,8 @@ namespace panda::ecmascript::kungfu {
 class BuiltinsDataViewStubBuilder : public BuiltinsStubBuilder {
 public:
     enum OffsetIndex : uint8_t { ZERO = 0, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN};
-    explicit BuiltinsDataViewStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit BuiltinsDataViewStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~BuiltinsDataViewStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsDataViewStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsDataViewStubBuilder);

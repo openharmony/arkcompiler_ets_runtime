@@ -330,7 +330,7 @@ GateRef BuiltinsArrayStubBuilder::StringEqual(
     result.WriteVariable(True());
     Jump(&exit);
     Bind(&addrNotEquals);
-    BuiltinsStringStubBuilder stringBuilder(env);
+    BuiltinsStringStubBuilder stringBuilder(env, GetCurrentGlobalEnv());
     result.WriteVariable(stringBuilder.FastStringEqualWithoutRTStub(glue, left, right));
     Jump(&exit);
 

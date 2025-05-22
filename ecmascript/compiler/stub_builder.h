@@ -462,6 +462,7 @@ public:
     GateRef IsCOWArray(GateRef glue, GateRef obj);
     GateRef IsMutantTaggedArray(GateRef glue, GateRef elements);
     GateRef IsJSObject(GateRef glue, GateRef obj);
+    GateRef IsGlobalEnv(GateRef glue, GateRef obj);
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
     GateRef IsConfigable(GateRef attr);
@@ -856,6 +857,7 @@ public:
     GateRef GetProtoOrHClass(GateRef glue, GateRef function);
     GateRef GetViewedArrayBufferOrByteArray(GateRef glue, GateRef typedArray);
     GateRef IsSendableFunctionModule(GateRef glue, GateRef module);
+    GateRef GetFunctionLexicalEnv(GateRef glue, GateRef function);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
                                  MemoryAttribute mAttr = MemoryAttribute::Default());

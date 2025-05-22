@@ -21,11 +21,11 @@ namespace panda::ecmascript::kungfu {
 
 class BuiltinsRegExpStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsRegExpStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
-    BuiltinsRegExpStubBuilder(CallSignature *callSignature, Environment *env)
-        : BuiltinsStubBuilder(callSignature, env) {}
-    explicit BuiltinsRegExpStubBuilder(Environment* env): BuiltinsStubBuilder(env) {}
+    explicit BuiltinsRegExpStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
+    BuiltinsRegExpStubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)
+        : BuiltinsStubBuilder(callSignature, env, globalEnv) {}
+    explicit BuiltinsRegExpStubBuilder(Environment* env, GateRef globalEnv): BuiltinsStubBuilder(env, globalEnv) {}
     ~BuiltinsRegExpStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsRegExpStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsRegExpStubBuilder);

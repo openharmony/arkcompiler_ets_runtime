@@ -824,7 +824,7 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     {
         // If the kind has hole, we know it must be transited to TAGGED kind;
         // There will be no hole in the new array because hole will be converted to undefined.
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef newHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                               static_cast<size_t>(GlobalEnvField::ELEMENT_TAGGED_HCLASS_INDEX));
         receiver = NewArrayWithHClass(glue, newHClass, thisArrLen);
@@ -938,7 +938,7 @@ void BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef fromArray, GateRe
 GateRef BuiltinsArrayStubBuilder::NewArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen)
 {
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
 #endif
@@ -1130,7 +1130,7 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                     BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayToSpliced, &fastToSpliced);
                     Bind(&fastToSpliced);
                     {
-                        GateRef globalEnv = GetGlobalEnv(glue);
+                        GateRef globalEnv = GetCurrentGlobalEnv();
                         GateRef newHClass =
                             GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                 static_cast<size_t>(GlobalEnvField::ELEMENT_TAGGED_HCLASS_INDEX));
@@ -2421,7 +2421,7 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
 {
     auto env = GetEnvironment();
     Label setProperties(env);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
         GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,

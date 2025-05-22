@@ -2288,7 +2288,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
         BRANCH(TaggedIsString(glue, key), &isString, &notString);
         Bind(&isString);
         {
-            BuiltinsStringStubBuilder stringStub(this);
+            BuiltinsStringStubBuilder stringStub(this, GetGlobalEnv(glue));
             resultKey = stringStub.StringToUint(glue, key, JSObject::MAX_ELEMENT_INDEX - 1);
             Jump(&exit);
         }
@@ -2696,7 +2696,7 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
         Bind(&lengthLessIndex);
         Jump(&exit);
         Bind(&lengthNotLessIndex);
-        BuiltinsStringStubBuilder stringBuilder(this);
+        BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
         StringInfoGateRef stringInfoGate(&thisFlat);
         result = stringBuilder.CreateFromEcmaString(glue, index, stringInfoGate);
         Jump(&exit);
@@ -2799,7 +2799,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef hclass = LoadHClass(glue, receiver);
                 GateRef jsType = GetObjectType(hclass);
-                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetGlobalEnv(glue));
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
@@ -3367,7 +3367,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
+                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetGlobalEnv(glue));
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
@@ -3394,7 +3394,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
                 BRANCH(Int32LessThan(index, length), &getSubString, &notString);
                 Bind(&getSubString);
                 Label flattenFastPath(env);
-                BuiltinsStringStubBuilder stringBuilder(this);
+                BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
                 FlatStringStubBuilder thisFlat(this);
                 thisFlat.FlattenString(glue, *holder, &flattenFastPath);
                 Bind(&flattenFastPath);
@@ -6702,7 +6702,7 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
             rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
             Bind(&rightFlattenFastPath);
             {
-                BuiltinsStringStubBuilder stringBuilder(this);
+                BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
                 StringInfoGateRef leftStrInfoGate(&leftFlat);
                 StringInfoGateRef rightStrInfoGate(&rightFlat);
                 GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, Int32(0));
@@ -6773,7 +6773,7 @@ GateRef StubBuilder::StringCompareContents(GateRef glue, GateRef left, GateRef r
         BRANCH(Int32UnsignedLessThan(*i, minLength), &loopBody, &exit);
         Bind(&loopBody);
         {
-            BuiltinsStringStubBuilder stringBuilder(this);
+            BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
             GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, *i);
             GateRef rightStrToInt = stringBuilder.StringAt(glue, rightStrInfoGate, *i);
             Label notEqual(env);
@@ -7967,7 +7967,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
         result = builtinsStringStubBuilder.StringConcat(glue, left, NumberToString(glue, right));
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -7979,7 +7979,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
         result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -7990,7 +7990,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     {
         Label hasPendingException(env);
         callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
         result = builtinsStringStubBuilder.StringConcat(glue, left, right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -9441,7 +9441,7 @@ void StubBuilder::TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef 
         BRANCH(GetArrayIteratorDetector(globalEnv), slowPath2, &arrayDetectorValid);
         Bind(&arrayDetectorValid);
         {
-            BuiltinsArrayStubBuilder arrayStubBuilder(this);
+            BuiltinsArrayStubBuilder arrayStubBuilder(this, globalEnv);
             arrayStubBuilder.ElementsKindHclassCompare(glue, hclass, matchArray, slowPath2);
         }
     }
@@ -9505,17 +9505,17 @@ void StubBuilder::TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
 
     Bind(&matchMap);
     {
-        BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0));
+        BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0), GetGlobalEnv(glue));
         collectionStubBuilder.Entries(&result, exit, slowPath);
     }
     Bind(&matchSet);
     {
-        BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0));
+        BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0), GetGlobalEnv(glue));
         collectionStubBuilder.Values(&result, exit, slowPath);
     }
     Bind(&matchArray);
     {
-        BuiltinsArrayStubBuilder arrayStubBuilder(this);
+        BuiltinsArrayStubBuilder arrayStubBuilder(this, GetGlobalEnv(glue));
         arrayStubBuilder.Values(glue, obj, Int32(0), &result, exit, slowPath);
     }
 }
@@ -9793,7 +9793,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetGlobalEnv(glue));
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }

@@ -152,7 +152,7 @@ GateRef NewObjectStubBuilder::NewJSFunctionByHClass(GateRef glue,
     GateRef result = NewJSObject(glue, hclass);
     SetExtensibleToBitfield(glue, hclass, true);
     GateRef kind = GetFuncKind(method);
-    BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this);
+    BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this, GetGlobalEnv(glue));
     builtinsFunctionStubBuilder.InitializeJSFunction(glue, result, kind, targetKind);
     builtinsFunctionStubBuilder.InitializeFunctionWithMethod(glue, result, method, hclass);
     return result;
@@ -163,7 +163,7 @@ GateRef NewObjectStubBuilder::NewSFunctionByHClass(GateRef glue,
 {
     GateRef result = result = NewSObject(glue, hclass);
     GateRef kind = GetFuncKind(method);
-    BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this);
+    BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this, GetGlobalEnv(glue));
     builtinsFunctionStubBuilder.InitializeSFunction(glue, result, kind, targetKind);
     builtinsFunctionStubBuilder.InitializeFunctionWithMethod(glue, result, method, hclass);
     return result;
@@ -575,7 +575,7 @@ GateRef NewObjectStubBuilder::NewJSProxy(GateRef glue, GateRef target, GateRef h
         GateRef proxyMethod = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue, ConstantIndex::PROXY_METHOD_INDEX);
         StoreHClass(glue_, *result, *hclass, MemoryAttribute::NoBarrier());
-        BuiltinsProxyStubBuilder builtinsProxyStubBuilder(this);
+        BuiltinsProxyStubBuilder builtinsProxyStubBuilder(this, GetGlobalEnv(glue));
         builtinsProxyStubBuilder.SetMethod(glue, *result, proxyMethod);
         builtinsProxyStubBuilder.SetTarget(glue, *result, target);
         builtinsProxyStubBuilder.SetHandler(glue, *result, handler);
@@ -1750,7 +1750,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
     // decode compressedStatus to bool
 
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
-    BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue_));
     builtinsStringStubBuilder.StoreParent(glue_, result->ReadVariable(), flatString->GetFlatString());
     builtinsStringStubBuilder.StoreStartIndexAndBackingStore(glue_, result->ReadVariable(),
                                                              Int32Add(from, flatString->GetStartIndex()),
@@ -2631,10 +2631,10 @@ GateRef NewObjectStubBuilder::NewEnumCache(GateRef glue)
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    
+
     Label initialize(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    
+
     auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
         ConstantIndex::ENUM_CACHE_CLASS_INDEX);
     GateRef size = GetObjectSizeFromHClass(hclass);
@@ -3055,7 +3055,7 @@ GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arra
         {
             GateRef int32Len = GetLengthOfJSTypedArray(arrayObj);
             GateRef array = NewTaggedArray(glue, int32Len);
-            BuiltinsTypedArrayStubBuilder arrayStubBuilder(this);
+            BuiltinsTypedArrayStubBuilder arrayStubBuilder(this, GetGlobalEnv(glue));
             arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
             // c. ReturnIfAbrupt(next).
             Label noPendingException1(env);

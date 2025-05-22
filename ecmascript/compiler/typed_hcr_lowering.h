@@ -153,7 +153,7 @@ private:
     void LowerCallSetter(GateRef gate, GateRef glue);
     void LowerLoadArrayLength(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
-    void LowerLoadElement(GateRef gate);
+    void LowerLoadElement(GateRef gate, GateRef glue);
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerRangeCheckPredicate(GateRef gate);
@@ -177,7 +177,7 @@ private:
     void LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
-    void LowerStringLoadElement(GateRef gate);
+    void LowerStringLoadElement(GateRef gate, GateRef glue);
     GateRef BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type,

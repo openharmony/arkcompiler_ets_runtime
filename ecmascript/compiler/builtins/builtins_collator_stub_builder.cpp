@@ -34,7 +34,7 @@ void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValu
     BRANCH_LIKELY(IsJSCollator(glue, thisValue), &isJsCollator, slowPath);
 
     Bind(&isJsCollator);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef funCtor = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
     NewObjectStubBuilder newObjectStubBuilder(this);

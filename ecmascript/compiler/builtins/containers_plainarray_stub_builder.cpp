@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 void ContainersPlainArrayStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,
                                               Label *exit, Label *slowPath)
 {
-    ContainersCommonStubBuilder commonBuilder(this);
+    ContainersCommonStubBuilder commonBuilder(this, GetCurrentGlobalEnv());
     commonBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, result, exit, slowPath,
                                            ContainersType::PLAINARRAY_FOREACH);
 }

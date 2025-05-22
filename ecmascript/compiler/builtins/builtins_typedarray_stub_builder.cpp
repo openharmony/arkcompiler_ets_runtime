@@ -1421,7 +1421,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
         {
             GateRef argHandle = GetCallArg1(numArgs);
             GateRef thisLen = GetArrayLength(thisValue);
-            BuiltinsArrayStubBuilder arrayStubBuilder(this);
+            BuiltinsArrayStubBuilder arrayStubBuilder(this, GetCurrentGlobalEnv());
             GateRef kept = arrayStubBuilder.NewArray(glue, ZExtInt32ToInt64(thisLen));
             DEFVARIABLE(i, VariableType::INT32(), Int32(0));
             DEFVARIABLE(newArrayLen, VariableType::INT32(), Int32(0));
@@ -3682,7 +3682,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetOnHeapHclassFromType(GateRef glue, Gat
     env->SubCfgEntry(&entry);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     Label slowPath(env);
     Label exit(env);
 

@@ -20,8 +20,8 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsFunctionStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsFunctionStubBuilder(StubBuilder *parent)
-        : BuiltinsStubBuilder(parent) {}
+    explicit BuiltinsFunctionStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv) {}
     ~BuiltinsFunctionStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsFunctionStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsFunctionStubBuilder);

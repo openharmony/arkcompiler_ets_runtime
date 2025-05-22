@@ -24,9 +24,11 @@ template <typename CollectionType>
 class BuiltinsCollectionStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsCollectionStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue,
-        GateRef numArgs) : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
+        GateRef numArgs, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     explicit BuiltinsCollectionStubBuilder(StubBuilder *parent, GateRef glue, GateRef thisValue,
-        GateRef numArgs) : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
+        GateRef numArgs, GateRef globalEnv)
+        : BuiltinsStubBuilder(parent, globalEnv), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsCollectionStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsCollectionStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsCollectionStubBuilder);
