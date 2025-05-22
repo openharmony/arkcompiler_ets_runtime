@@ -596,7 +596,7 @@ public:
     void SetRegionType(RegionType type)
     {
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE,
-            BITS_4, static_cast<uint8_t>(type));
+            BITS_5, static_cast<uint8_t>(type));
     }
 
     void SetMarkedRegionFlag(uint8_t flag)
@@ -627,7 +627,7 @@ public:
     RegionType GetRegionType() const
     {
         return static_cast<RegionType>(metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE,
-                                                                          4)); // 4 is the length that is to be read
+                                                                          BITS_5));
     }
 
     UnitRole GetUnitRole() const { return static_cast<UnitRole>(metadata.unitRole); }
@@ -635,7 +635,7 @@ public:
     size_t GetUnitIdx() const { return RegionDesc::UnitInfo::GetUnitIdx(reinterpret_cast<const UnitInfo*>(this)); }
 
     HeapAddress GetRegionStart() const { return RegionDesc::GetUnitAddress(GetUnitIdx()); }
-
+   
     HeapAddress GetRegionEnd() const { return metadata.regionEnd; }
 
     void SetRegionAllocPtr(HeapAddress addr) { metadata.allocPtr = addr; }
@@ -919,12 +919,12 @@ public:
 private:
     static constexpr int32_t MAX_RAW_POINTER_COUNT = std::numeric_limits<int32_t>::max();
     static constexpr int32_t BITS_4 = 4;
+    static constexpr int32_t BITS_5 = 5;
 
     enum RegionBitOffset : uint8_t {
         BIT_OFFSET_REGION_TYPE = 0,
-        BIT_OFFSET_TRACE_REGION = BITS_4,
         // use mark-bitmap pointer instead
-        BIT_OFFSET_MARKED_REGION = 5,
+        BIT_OFFSET_MARKED_REGION = BITS_5,
         BIT_OFFSET_ENQUEUED_REGION = 6,
         BIT_OFFSET_RESURRECTED_REGION = 7,
         BIT_OFFSET_REGION_CELLCOUNT = 8
@@ -984,12 +984,7 @@ private:
         // change the value, we must use specific interface implenmented by BitFields.
         union {
             struct {
-                RegionType regionType : BITS_4;
-
-                // a region allocated during trace phase, gc should not put any object in this region into satb buffer.
-                // the count of objects which can be put into satb buffer should has an upper-bound,
-                // so that concurrent tracing can converge and terminate.
-                uint8_t isTraceRegion : 1;
+                RegionType regionType : BITS_5;
 
                 // true if this unit belongs to a ghost region, which is an unreal region for keeping reclaimed
                 // from-region. ghost region is set up to memorize a from-region before from-space is forwarded. this
@@ -1059,7 +1054,7 @@ private:
         void SetUnitRole(UnitRole role) { metadata_.unitBits.AtomicSetValue(0, BITS_4, static_cast<uint8_t>(role)); }
         void SetRegionType(RegionType type)
         {
-            metadata_.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE, BITS_4,
+            metadata_.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE, BITS_5,
                                                 static_cast<uint8_t>(type));
         }
 

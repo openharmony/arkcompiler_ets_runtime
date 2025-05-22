@@ -1189,7 +1189,7 @@ uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
 
     // Mark new allocated pinned object.
     BaseObject* object = reinterpret_cast<BaseObject*>(allocPtr);
-    (reinterpret_cast<TraceCollector*>(&Heap::GetHeap().GetCollector()))->MarkObject(object);
+    (reinterpret_cast<TraceCollector*>(&Heap::GetHeap().GetCollector()))->MarkObject(object, cellCount);
     return allocPtr;
 }
 } // namespace panda
