@@ -236,6 +236,34 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test getLower no.1:", newset.getLowerValue(new c(3)).n == 1);
     map.set("test getLower no.2:", newset.getLowerValue(undefined) == null);
     map.set("test getLower no.3:", newset.getLowerValue(null) == tmp_c);
+{
+    class A {
+        time = 0;
+        constructor(time) {
+            this.time = time;
+        }
+        compared = ((first, second) => {
+            return first.time - second.time;
+        });
+    }
+    let set = new fastset(A.compared);
+    const a1 = new A(1);
+    const a2 = new A(2);
+    const a3 = new A(3);
+    const a4 = new A(4);
+    const a5 = new A(5);
+    set.add(a1);
+    set.add(a2);
+    set.add(a3);
+    set.add(a4);
+    set.add(a5);
+    for (let i = 0; i < 5; i++) {
+        set.remove(a1);
+        let ok = set.has(a1);
+        map.set("test add and remove failed, expect:" + false + ", output:" + ok, ok === false);
+        set.add(a1);
+    }
+}
 
     flag = undefined;
     function elementsTreeSet(valueTreeSet, keyTreeSet, map) {
