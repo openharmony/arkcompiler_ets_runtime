@@ -20,6 +20,7 @@
 #include "common_interfaces/objects/base_object_operator.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/mem/tagged_object.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -73,7 +74,10 @@ public:
 
     bool IsValidObject([[maybe_unused]] const BaseObject *object) const override
     {
-        return true;
+        auto taggedObject = TaggedObject::Cast(object);
+        auto hclass = taggedObject->GetClass();
+
+        return hclass->GetClass()->IsHClass();
     }
 
     void ForEachRefField(const BaseObject *object, const RefFieldVisitor &visitor) const override

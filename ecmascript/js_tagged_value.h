@@ -206,6 +206,31 @@ public:
         return value_ <= INVALID_VALUE_LIMIT;
     }
 
+    ARK_INLINE bool HasReadBarrierDFXTag() const
+    {
+#if defined(USE_READ_BARRIER) && defined(USE_CMC_GC) && defined(ENABLE_CMC_RB_DFX)
+        return (value_ & TAG_READ_BARRIER_DFX_MASK) == TAG_READ_BARRIER_DFX;
+#else
+        return false;
+#endif
+    }
+
+    inline void AddReadBarrierDFXTag()
+    {
+#if defined(USE_READ_BARRIER) && defined(USE_CMC_GC) && defined(ENABLE_CMC_RB_DFX)
+        if (IsHeapObject()) {
+            value_ |= TAG_READ_BARRIER_DFX;
+        }
+#endif
+    }
+
+    inline void RemoveReadBarrierDFXTag()
+    {
+#if defined(USE_READ_BARRIER) && defined(USE_CMC_GC) && defined(ENABLE_CMC_RB_DFX)
+        value_ &= ~TAG_READ_BARRIER_DFX;
+#endif
+    }
+
     ARK_INLINE double GetDouble() const
     {
         ASSERT_PRINT(IsDouble(), "can not convert JSTaggedValue to Double : " << std::hex << value_);

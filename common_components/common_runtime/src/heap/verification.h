@@ -25,11 +25,15 @@ public:
     static void VerifyAfterMark(WCollector &collector);
     static void VerifyAfterForward(WCollector &collector);
     static void VerifyAfterFix(WCollector &collector);
+    static void EnableReadBarrierDFX(WCollector &collector);
+    static void DisableReadBarrierDFX(WCollector &collector);
 
 private:
     static void VerifyAfterMarkInternal(RegionSpace &space);
     static void VerifyAfterForwardInternal(RegionSpace &space);
     static void VerifyAfterFixInternal(RegionSpace &space);
+    static void EnableReadBarrierDFXInternal(RegionSpace &space);
+    static void DisableReadBarrierDFXInternal(RegionSpace &space);
 };
 
 }  // namespace panda
