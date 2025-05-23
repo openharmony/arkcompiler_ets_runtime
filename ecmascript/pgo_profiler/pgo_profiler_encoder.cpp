@@ -16,6 +16,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 #include "zlib.h"
@@ -56,6 +57,10 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     }
     fileStream.close();
     umask(0); // unset umask to avoid affecting other file permissions in the process
+    if (filesystem::FileSize(tmpOutPath.c_str()) > 100_MB) {
+        remove(tmpOutPath.c_str());
+        return false;
+    }
     if (task && task->IsTerminate()) {
         return false;
     }
