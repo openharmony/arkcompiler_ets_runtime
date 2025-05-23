@@ -161,9 +161,9 @@ public:
     static void ReverseTypedArray(JSTypedArray *typedArray);
     static void SortTypedArray(JSTypedArray *typedArray);
     static inline uintptr_t RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos);
-    static void ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count);
+    static void ObjectCopy(uintptr_t argGlue, JSTaggedType *dst, JSTaggedType *src, uint32_t count);
     static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
-    static void ReverseArray(JSTaggedType *dst, uint32_t length);
+    static void ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 

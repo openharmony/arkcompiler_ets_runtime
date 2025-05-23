@@ -5478,12 +5478,12 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
     GateRef gConstAddr = LoadPrimitive(VariableType::JS_ANY(), glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     GateRef undefinedIndex = GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX);
-    GateRef gConstUndefinedStr = Load(VariableType::JS_POINTER(), glue, gConstAddr, undefinedIndex);
+    GateRef gConstUndefinedStr = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr, undefinedIndex);
     DEFVARIABLE(result, VariableType::JS_POINTER(), gConstUndefinedStr);
     Label objIsTrue(env);
     Label objNotTrue(env);
     Label defaultLabel(env);
-    GateRef gConstBooleanStr = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+    GateRef gConstBooleanStr = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
         GetGlobalConstantOffset(ConstantIndex::BOOLEAN_STRING_INDEX));
     BRANCH(TaggedIsTrue(obj), &objIsTrue, &objNotTrue);
     Bind(&objIsTrue);
@@ -5508,7 +5508,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             BRANCH(TaggedIsNull(obj), &objIsNull, &objNotNull);
             Bind(&objIsNull);
             {
-                result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                     GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                 Jump(&exit);
             }
@@ -5519,7 +5519,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                 BRANCH(TaggedIsUndefined(obj), &objIsUndefined, &objNotUndefined);
                 Bind(&objIsUndefined);
                 {
-                    result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                    result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                         GetGlobalConstantOffset(ConstantIndex::UNDEFINED_STRING_INDEX));
                     Jump(&exit);
                 }
@@ -5540,7 +5540,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             BRANCH(IsString(glue, obj), &objIsString, &objNotString);
             Bind(&objIsString);
             {
-                result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                     GetGlobalConstantOffset(ConstantIndex::STRING_STRING_INDEX));
                 Jump(&exit);
             }
@@ -5551,7 +5551,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                 BRANCH_UNLIKELY(IsSymbol(glue, obj), &objIsSymbol, &objNotSymbol);
                 Bind(&objIsSymbol);
                 {
-                    result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                    result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                         GetGlobalConstantOffset(ConstantIndex::SYMBOL_STRING_INDEX));
                     Jump(&exit);
                 }
@@ -5562,7 +5562,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     BRANCH_UNLIKELY(IsCallable(glue, obj), &objIsCallable, &objNotCallable);
                     Bind(&objIsCallable);
                     {
-                        result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                        result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                             GetGlobalConstantOffset(ConstantIndex::FUNCTION_STRING_INDEX));
                         Jump(&exit);
                     }
@@ -5573,7 +5573,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                         BRANCH_UNLIKELY(TaggedObjectIsBigInt(glue, obj), &objIsBigInt, &objNotBigInt);
                         Bind(&objIsBigInt);
                         {
-                            result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                            result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                                 GetGlobalConstantOffset(ConstantIndex::BIGINT_STRING_INDEX));
                             Jump(&exit);
                         }
@@ -5585,13 +5585,13 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                                 &objNotNativeModuleFailureInfo);
                             Bind(&objIsNativeModuleFailureInfo);
                             {
-                                result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                                result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                                     GetGlobalConstantOffset(ConstantIndex::NATIVE_MODULE_FAILURE_INFO_STRING_INDEX));
                                 Jump(&exit);
                             }
                             Bind(&objNotNativeModuleFailureInfo);
                             {
-                                result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                                result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                                     GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
                                 Jump(&exit);
                             }
@@ -5607,7 +5607,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             BRANCH(TaggedIsNumber(obj), &objIsNum, &objNotNum);
             Bind(&objIsNum);
             {
-                result = Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                result = LoadPrimitive(VariableType::JS_POINTER(), gConstAddr,
                     GetGlobalConstantOffset(ConstantIndex::NUMBER_STRING_INDEX));
                 Jump(&exit);
             }
@@ -11660,7 +11660,7 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     Label exit(env);
 #endif
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
-                   {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
+                   {glue, TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
 #ifndef USE_CMC_GC
     Label handleBarrier(env);
     BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
