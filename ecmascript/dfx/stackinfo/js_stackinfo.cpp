@@ -182,7 +182,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
         }
         if (!method->IsNativeWithCallField()) {
             uint32_t pcOffset = 0;
-            bool needBaselineSpecialHandling = 
+            bool needBaselineSpecialHandling =
                 (it.GetFrameType() == FrameType::ASM_INTERPRETER_FRAME && baselineNativePc != 0);
             if (needBaselineSpecialHandling) {
                 // the pcOffste in baseline frame slot is always uint64::max(), so pcOffset should be computed

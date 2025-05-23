@@ -36,7 +36,7 @@ void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> 
     for (auto iter : deps_) {
         hclass.Update(JSTaggedValue(iter.first));
         uint32_t groups = iter.second;
-        JSHandle<DependentInfos> dependentInfos = 
+        JSHandle<DependentInfos> dependentInfos =
             JSHandle<DependentInfos>::Cast(JSObject::GetOrCreateDependentInfos(thread, hclass));
         JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
             jsFunc, groups, dependentInfos);

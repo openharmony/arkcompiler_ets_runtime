@@ -135,7 +135,7 @@ namespace panda::ecmascript {
     V(TraceStoreEnd)                            \
     V(TraceNum)                                 \
     V(TraceLazyDeoptNum)                        \
-    V(TraceLazyDeoptFailNum)                    \
+    V(TraceLazyDeoptFailNum)
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(Dump)                                    \
