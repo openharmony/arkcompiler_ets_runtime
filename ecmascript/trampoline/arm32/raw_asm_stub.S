@@ -15,12 +15,11 @@
 
 #include "ecmascript/trampoline/asm_defines.h"
 
-.extern GetGlueFromThreadLocal
-.extern GlueHasException
-.extern GetFixedReturnAddr
-.extern GetDeoptHandlerAsmOffset
+.extern GetGlueFromThreadLocalName
+.extern GetFixedReturnAddrName
+.extern GetDeoptHandlerAsmOffsetName
 
-.global LazyDeoptEntry
+.global LazyDeoptEntryName
 
-LazyDeoptEntry:
+LazyDeoptEntryName :
     bx  lr

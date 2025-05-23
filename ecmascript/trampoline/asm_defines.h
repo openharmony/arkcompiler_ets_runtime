@@ -23,4 +23,15 @@
 #define RETURN_ADDRESS_OFFSET_X64 56
 #define LAZY_DEOPT_TYPE_OFFSET 1
 
+#ifdef PANDA_TARGET_MACOS
+    #define LazyDeoptEntryName _LazyDeoptEntry
+    #define GetGlueFromThreadLocalName _GetGlueFromThreadLocal
+    #define GetFixedReturnAddrName _GetFixedReturnAddr
+    #define GetDeoptHandlerAsmOffsetName _GetDeoptHandlerAsmOffset
+#else
+    #define LazyDeoptEntryName LazyDeoptEntry
+    #define GetGlueFromThreadLocalName GetGlueFromThreadLocal
+    #define GetFixedReturnAddrName GetFixedReturnAddr
+    #define GetDeoptHandlerAsmOffsetName GetDeoptHandlerAsmOffset
+#endif
 #endif  // ECMASCRIPT_TRAMPOLINES_ASM_DEFINES_H
