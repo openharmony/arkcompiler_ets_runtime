@@ -23,10 +23,6 @@
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 {
-    if (g_isEnableCMCGC) {
-        auto size = common::Heap::GetHeap().GetRemainHeapSize();
-        return JSTaggedValue(static_cast<int64_t>(size));
-    }
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     auto size = heap->GetHeapLimitSize() - heap->GetHeapObjectSize();
@@ -35,10 +31,6 @@ JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::GetReservedHeapSize(EcmaRuntimeCallInfo *info)
 {
-    if (g_isEnableCMCGC) {
-        auto size = common::Heap::GetHeap().GetMaxCapacity();
-        return JSTaggedValue(static_cast<int64_t>(size));
-    }
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapLimitSize()));
@@ -46,10 +38,6 @@ JSTaggedValue BuiltinsGc::GetReservedHeapSize(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::GetUsedHeapSize(EcmaRuntimeCallInfo *info)
 {
-    if (g_isEnableCMCGC) {
-        auto size = common::Heap::GetHeap().GetAllocatedSize();
-        return JSTaggedValue(static_cast<int64_t>(size));
-    }
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapObjectSize()));
