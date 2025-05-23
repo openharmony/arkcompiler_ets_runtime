@@ -1033,6 +1033,7 @@ ecma_source = [
 ecma_source += [
   "common_components/log/log.cpp",
   "common_components/objects/base_object.cpp",
+  "common_components/objects/base_string.cpp",
 ]
 
 if (ets_runtime_enable_cmc_gc) {

@@ -1117,7 +1117,7 @@ JSTaggedValue BuiltinsArkTools::StringMaxLength([[maybe_unused]] EcmaRuntimeCall
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     CHECK(info && info->GetArgsNumber() == 0);
-    return JSTaggedValue(static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) - 1);
+    return JSTaggedValue(static_cast<uint32_t>(BaseString::MAX_STRING_LENGTH) - 1);
 }
 
 JSTaggedValue BuiltinsArkTools::ArrayBufferMaxByteLength([[maybe_unused]] EcmaRuntimeCallInfo *info)

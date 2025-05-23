@@ -85,7 +85,7 @@ EcmaString *ObjectFactory::AllocTreeStringObject()
     NewSObjectHook();
     return reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
-        TreeEcmaString::SIZE));
+        TreeString::SIZE));
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,

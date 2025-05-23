@@ -19,7 +19,7 @@
 #include <cstdint>
 
 #include <arm_neon.h>
-
+#include "ecmascript/base/config.h"
 #include "ecmascript/platform/ecma_string_hash.h"
 
 namespace panda::ecmascript {

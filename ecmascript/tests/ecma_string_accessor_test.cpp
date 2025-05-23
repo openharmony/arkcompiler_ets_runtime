@@ -32,9 +32,9 @@ class LineEcmaStringTest : public BaseTestWithScope<false> {
 HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf8)
 {
     uint32_t scale = 3333;
-    for (uint32_t i = EcmaString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
+    for (uint32_t i = BaseString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
         uint32_t length = i;
-        EXPECT_EQ(LineEcmaString::ComputeSizeUtf8(length), length + LineEcmaString::SIZE);
+        EXPECT_EQ(LineEcmaString::ComputeSizeUtf8(length), length + LineString::SIZE);
     }
 }
 
@@ -47,9 +47,9 @@ HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf8)
 HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf16)
 {
     uint32_t scale = 3333;
-    for (uint32_t i = EcmaString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
+    for (uint32_t i = BaseString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
         uint32_t length = i;
-        EXPECT_EQ(LineEcmaString::ComputeSizeUtf16(length), 2 * length + LineEcmaString::SIZE);
+        EXPECT_EQ(LineEcmaString::ComputeSizeUtf16(length), 2 * length + LineString::SIZE);
     }
 }
 
@@ -360,25 +360,25 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetUtf8Length)
 HWTEST_F_L0(EcmaStringAccessorTest, ObjectSize)
 {
     JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(instance));
-    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).ObjectSize(), EcmaString::SIZE + 0);
+    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).ObjectSize(), BaseString::SIZE + 0);
 
     size_t lengthEcmaStrAllocComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
         EcmaStringAccessor::CreateLineString(instance, lengthEcmaStrAllocComp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).ObjectSize(),
-        EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrAllocComp);
+        BaseString::SIZE + sizeof(uint8_t) * lengthEcmaStrAllocComp);
 
     size_t lengthEcmaStrAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
         EcmaStringAccessor::CreateLineString(instance, lengthEcmaStrAllocNotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).ObjectSize(),
-        EcmaString::SIZE + sizeof(uint16_t) * lengthEcmaStrAllocNotComp);
+        BaseString::SIZE + sizeof(uint16_t) * lengthEcmaStrAllocNotComp);
 
     uint8_t arrayU8[] = {"abcde"};
     size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> handleEcmaStrU8(thread,
         EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true));
-    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU8).ObjectSize(), EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrU8);
+    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU8).ObjectSize(), BaseString::SIZE + sizeof(uint8_t) * lengthEcmaStrU8);
 
     // ObjectSize(). EcmaString made by CreateFromUtf16( , , , true).
     uint16_t arrayU16Comp[] = {1, 23, 45, 67, 127};
@@ -386,7 +386,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, ObjectSize)
     JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
         EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16Comp).ObjectSize(),
-        EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrU16Comp);
+        BaseString::SIZE + sizeof(uint8_t) * lengthEcmaStrU16Comp);
 
     // ObjectSize(). EcmaString made by CreateFromUtf16( , , , false).
     uint16_t arrayU16NotComp[] = {127, 128, 256, 11100, 65535};
@@ -394,7 +394,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, ObjectSize)
     JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
         EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU16NotComp).ObjectSize(),
-        EcmaString::SIZE + sizeof(uint16_t) * lengthEcmaStrU16NotComp);
+        BaseString::SIZE + sizeof(uint16_t) * lengthEcmaStrU16NotComp);
 }
 
 /*

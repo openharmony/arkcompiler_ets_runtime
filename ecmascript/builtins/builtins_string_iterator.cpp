@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/builtins/builtins_string_iterator.h"
+
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"

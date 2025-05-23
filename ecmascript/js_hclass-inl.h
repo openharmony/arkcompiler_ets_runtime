@@ -245,11 +245,11 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::LINE_STRING:
-            size = LineEcmaString::ObjectSize(reinterpret_cast<EcmaString* >(header));
+            size = LineString::ObjectSize(reinterpret_cast<BaseString* >(header));
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::TREE_STRING:
-            size = TreeEcmaString::SIZE;
+            size = TreeString::SIZE;
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::SLICED_STRING:

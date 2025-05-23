@@ -89,6 +89,11 @@ public:
         return *addr;
     }
 
+    static inline ARK_INLINE TaggedObject* GetTaggedObject(const void* obj, size_t offset)
+    {
+        return JSTaggedValue(GetTaggedValue(obj, offset)).GetTaggedObject();
+    }
+
     static inline JSTaggedType GetTaggedValue(const void *obj, size_t offset)
     {
 #ifdef USE_READ_BARRIER

@@ -162,9 +162,9 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
         }
     } else {
         ASSERT(stringAcc.IsSlicedString());
-        auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
+        auto parent = SlicedEcmaString::Cast(string.GetTaggedValue())->GetParent();
         auto parentStrAcc = EcmaStringAccessor(parent);
-        auto startIndex = SlicedString::Cast(string.GetTaggedValue())->GetStartIndex();
+        auto startIndex = SlicedEcmaString::Cast(string.GetTaggedValue())->GetStartIndex();
         if (parentStrAcc.IsLineString() && !parentStrAcc.IsUtf8()) {
             result = DoDecode<uint16_t>(thread, string, IsInURISet, parentStrAcc.GetDataUtf16() + startIndex);
         } else {

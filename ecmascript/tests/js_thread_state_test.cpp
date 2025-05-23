@@ -78,7 +78,7 @@ public:
             size_t oldCount = activeThreadCount;
             // This case isn't a really fork which causes JSThread::GetCurrentThread() equals nullptr in worker_thread.
             // So reset the threadState as CREATED to skip the check.
-            newVm->GetAssociatedJSThread()->UpdateState(ThreadState::CREATED);
+            newVm->GetAssociatedJSThread()->UpdateState(ecmascript::ThreadState::CREATED);
             std::thread *worker_thread = new std::thread(StateTransitioningTest::NewVMThreadEntry, newVm, nativeState,
                                                          &changeToRunning, &isTestEnded, &activeThreadCount);
             threads.push_back(worker_thread);
@@ -105,7 +105,7 @@ public:
         return result;
     }
 
-    bool CheckAllThreadsState(ThreadState expectedState)
+    bool CheckAllThreadsState(ecmascript::ThreadState expectedState)
     {
         bool result = true;
         for (auto i: vms) {
@@ -144,89 +144,89 @@ public:
 
 HWTEST_F_L0(StateTransitioningTest, ThreadStateTransitionScopeTest)
 {
-    ThreadState mainState = thread->GetState();
+    ecmascript::ThreadState mainState = thread->GetState();
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::CREATED> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::CREATED);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::CREATED> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::CREATED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::RUNNING> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::RUNNING> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::RUNNING);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::NATIVE> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::NATIVE> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::WAIT);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::WAIT> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::WAIT);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::IS_SUSPENDED> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::IS_SUSPENDED> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::IS_SUSPENDED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
     {
-        ThreadStateTransitionScope<JSThread, ThreadState::TERMINATED> scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::TERMINATED);
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::TERMINATED> scope(thread);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::TERMINATED);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
 }
 
 HWTEST_F_L0(StateTransitioningTest, ThreadManagedScopeTest)
 {
-    ThreadState mainState = thread->GetState();
+    ecmascript::ThreadState mainState = thread->GetState();
     {
         ThreadManagedScope scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::RUNNING);
     }
-    if (mainState == ThreadState::RUNNING) {
-        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
+    if (mainState == ecmascript::ThreadState::RUNNING) {
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::WAIT> tempScope(thread);
         {
             ThreadManagedScope scope(thread);
-            EXPECT_TRUE(thread->GetState() == ThreadState::RUNNING);
+            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::RUNNING);
         }
-        EXPECT_TRUE(thread->GetState() == ThreadState::WAIT);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::WAIT);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
 }
 
 HWTEST_F_L0(StateTransitioningTest, ThreadNativeScopeTest)
 {
-    ThreadState mainState = thread->GetState();
+    ecmascript::ThreadState mainState = thread->GetState();
     {
         ThreadNativeScope scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
     }
-    if (mainState == ThreadState::NATIVE) {
-        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
+    if (mainState == ecmascript::ThreadState::NATIVE) {
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::WAIT> tempScope(thread);
         {
             ThreadNativeScope scope(thread);
-            EXPECT_TRUE(thread->GetState() == ThreadState::NATIVE);
+            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
         }
-        EXPECT_TRUE(thread->GetState() == ThreadState::WAIT);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::WAIT);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
 }
 
 HWTEST_F_L0(StateTransitioningTest, ThreadSuspensionScopeTest)
 {
-    ThreadState mainState = thread->GetState();
+    ecmascript::ThreadState mainState = thread->GetState();
     {
         ThreadSuspensionScope scope(thread);
-        EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::IS_SUSPENDED);
     }
-    if (mainState == ThreadState::IS_SUSPENDED) {
-        ThreadStateTransitionScope<JSThread, ThreadState::WAIT> tempScope(thread);
+    if (mainState == ecmascript::ThreadState::IS_SUSPENDED) {
+        ThreadStateTransitionScope<JSThread, ecmascript::ThreadState::WAIT> tempScope(thread);
         {
             ThreadSuspensionScope scope(thread);
-            EXPECT_TRUE(thread->GetState() == ThreadState::IS_SUSPENDED);
+            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::IS_SUSPENDED);
         }
-        EXPECT_TRUE(thread->GetState() == ThreadState::WAIT);
+        EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::WAIT);
     }
     EXPECT_TRUE(thread->GetState() == mainState);
 }
@@ -262,56 +262,56 @@ HWTEST_F_L0(StateTransitioningTest, SuspendResumeRunningThreadVMTest)
     EXPECT_FALSE(CheckAllThreadsSuspended());
     {
         SuspendOrResumeAllThreads(true);
-        while (!CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
+        while (!CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED)) {}
         EXPECT_TRUE(CheckAllThreadsSuspended());
-        EXPECT_TRUE(CheckAllThreadsState(ThreadState::IS_SUSPENDED));
+        EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED));
     }
     SuspendOrResumeAllThreads(false);
-    while (CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
+    while (CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED)) {}
     EXPECT_FALSE(CheckAllThreadsSuspended());
-    EXPECT_FALSE(CheckAllThreadsState(ThreadState::IS_SUSPENDED));
+    EXPECT_FALSE(CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED));
     DestroyAllVMs();
 }
 
 HWTEST_F_L0(StateTransitioningTest, SuspendAllManagedTest)
 {
     CreateNewVMInSeparateThread(false);
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::RUNNING));
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::RUNNING));
     {
         SuspendAllScope suspendScope(JSThread::GetCurrent());
         EXPECT_TRUE(CheckAllThreadsSuspended());
     }
-    while (CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::RUNNING));
+    while (CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED)) {}
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::RUNNING));
     DestroyAllVMs();
 }
 
 HWTEST_F_L0(StateTransitioningTest, SuspendAllNativeTest)
 {
     CreateNewVMInSeparateThread(true);
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
     {
         SuspendAllScope suspendScope(JSThread::GetCurrent());
-        EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+        EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
     }
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
     DestroyAllVMs();
 }
 
 HWTEST_F_L0(StateTransitioningTest, SuspendAllNativeTransferToRunningTest)
 {
     CreateNewVMInSeparateThread(true);
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
     {
         SuspendAllScope suspendScope(JSThread::GetCurrent());
-        EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+        EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
         ChangeAllThreadsToRunning();
-        while (!CheckAllThreadsState(ThreadState::NATIVE)) {}
-        EXPECT_TRUE(CheckAllThreadsState(ThreadState::NATIVE));
+        while (!CheckAllThreadsState(ecmascript::ThreadState::NATIVE)) {}
+        EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::NATIVE));
     }
-    while (CheckAllThreadsState(ThreadState::IS_SUSPENDED)) {}
-    while (CheckAllThreadsState(ThreadState::NATIVE)) {}
-    EXPECT_TRUE(CheckAllThreadsState(ThreadState::RUNNING));
+    while (CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED)) {}
+    while (CheckAllThreadsState(ecmascript::ThreadState::NATIVE)) {}
+    EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::RUNNING));
     DestroyAllVMs();
 }
 }  // namespace panda::test

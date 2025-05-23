@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_number.h"
 
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_primitive_ref.h"
 #ifdef ARK_SUPPORT_INTL

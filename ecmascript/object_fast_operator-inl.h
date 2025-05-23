@@ -1061,7 +1061,7 @@ bool ObjectFastOperator::ShouldCallSetter(JSTaggedValue receiver, JSTaggedValue 
 
 bool ObjectFastOperator::IsSpecialIndexedObj(JSType jsType)
 {
-    return jsType > JSType::JS_ARRAY;
+    return jsType > JSType::JS_ARRAY || IsString(jsType);
 }
 
 bool ObjectFastOperator::IsJSSharedArray(JSType jsType)

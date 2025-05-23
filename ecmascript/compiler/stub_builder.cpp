@@ -2244,19 +2244,19 @@ GateRef StubBuilder::TaggedIsInternalAccessor(GateRef glue, GateRef x)
 GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
-        Int32(EcmaString::STRING_UNCOMPRESSED));
+        Int32And(len, Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1)),
+        Int32(BaseString::STRING_UNCOMPRESSED));
 }
 
 GateRef StubBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
-        Int32(EcmaString::STRING_COMPRESSED));
+        Int32And(len, Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1)),
+        Int32(BaseString::STRING_COMPRESSED));
 }
 
 GateRef StubBuilder::IsDigit(GateRef ch)
@@ -9904,7 +9904,7 @@ GateRef StubBuilder::GetNormalStringData([[maybe_unused]] GateRef glue, const St
     Label isUtf16(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), Undefined());
     GateRef data = ChangeTaggedPointerToInt64(
-        PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
+        PtrAdd(stringInfoGate.GetString(), IntPtr(LineString::DATA_OFFSET)));
     BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
     Bind(&isUtf8);
     {
@@ -10429,7 +10429,7 @@ GateRef StubBuilder::IntToEcmaString(GateRef glue, GateRef number)
         newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
         Bind(&afterNew);
         n = Int32Add(Int32('0'), *n);
-        GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
+        GateRef dst = ChangeTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineString::DATA_OFFSET)));
         Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt32ToInt8(*n));
         Jump(&exit);
     }
@@ -12867,7 +12867,7 @@ void StubBuilder::ComputeRawHashcode(GateRef glue, Label *exit, Variable* result
     Label loopHead(env);
     Label loopEnd(env);
     Label doLoop(env);
-    GateRef hashShift = Int32(static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT));
+    GateRef hashShift = Int32(static_cast<uint32_t>(BaseString::HASH_SHIFT));
     GateRef length = stringGate.GetLength();
     GateRef data = GetNormalStringData(glue, stringGate);
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));

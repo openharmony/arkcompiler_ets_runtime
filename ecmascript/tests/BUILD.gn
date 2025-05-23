@@ -205,12 +205,12 @@ host_unittest_action("ECMA_StringHash_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("ECMA_String_Test") {
+host_unittest_action("BASE_String_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    #"ecma_string_test.cpp",
+    "base_string_test.cpp",
   ]
 
   configs = [
@@ -3446,7 +3446,7 @@ group("unittest") {
     ":ECMA_StringHash_Test",
     ":ECMA_StringTable_Test",
 
-    #":ECMA_String_Test",
+    ":BASE_String_Test",
     ":ECMA_VM_Test",
     ":GC_ConcurrentMarking_Test",
     ":GC_ConcurrentSweep_Test",
@@ -3591,7 +3591,7 @@ group("host_unittest") {
     ":ECMA_StringHash_TestAction",
     ":ECMA_StringTable_TestAction",
 
-    #":ECMA_String_TestAction",
+    ":BASE_String_TestAction",
     ":ECMA_VM_TestAction",
     ":GC_ConcurrentMarking_TestAction",
     ":GC_ConcurrentSweep_TestAction",
@@ -3726,7 +3726,7 @@ group("host_unittest") {
       ":ECMA_StringHash_TestAction",
       ":ECMA_StringTable_TestAction",
 
-      #":ECMA_String_TestAction",
+      ":BASE_String_TestAction",
       ":ECMA_VM_TestAction",
       ":GC_ConcurrentMarking_TestAction",
       ":GC_ConcurrentSweep_TestAction",

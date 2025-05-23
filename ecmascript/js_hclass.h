@@ -82,6 +82,11 @@ struct Reference;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define JSTYPE_DECL       /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
     INVALID = 0,          /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
+                          /* COMMON_TYPE ////////////////////////////////////////////////////////////////////////// */ \
+        LINE_STRING,   /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        SLICED_STRING,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
         JS_OBJECT,        /* JS_OBJECT_FIRST ////////////////////////////////////////////////////////////////////// */ \
         JS_SHARED_OBJECT, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_REALM,         /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -231,9 +236,6 @@ struct Reference;
         JS_PROXY, /* ECMA_OBJECT_LAST ///////////////////////////////////////////////////////////////////////////// */ \
                                                                                                                        \
         HCLASS,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        LINE_STRING,   /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        SLICED_STRING,  /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BIGINT,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         MUTANT_TAGGED_ARRAY, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -343,6 +345,13 @@ struct Reference;
 enum class JSType : uint8_t {
     JSTYPE_DECL,
 };
+
+static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(CommonType::LINE_STRING) &&
+    "line string type should be same with common type");
+static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(CommonType::SLICED_STRING) &&
+    "sliced string type should be same with common type");
+static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(CommonType::TREE_STRING) &&
+    "tree string type should be same with common type");
 
 struct TransitionResult {
     bool isTagged;
@@ -527,9 +536,9 @@ public:
 
     inline void ClearBitField()
     {
-        SetProfileType(0ULL);
         SetBitField(0UL);
         SetBitField1(0UL);
+        SetProfileType(0ULL);
     }
 
     inline JSType GetObjectType() const
@@ -1193,7 +1202,7 @@ public:
 
     inline bool IsRegularObject() const
     {
-        return GetObjectType() < JSType::JS_API_ARRAY_LIST;
+        return GetObjectType() < JSType::JS_API_ARRAY_LIST &&  GetObjectType() > JSType::STRING_LAST;
     }
 
     inline bool IsJSAPIArrayList() const

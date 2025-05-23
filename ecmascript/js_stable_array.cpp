@@ -425,7 +425,7 @@ bool JSStableArray::WorthUseTreeString(uint32_t sepLength, size_t allocateLength
         // otherwise, the num of elements is (len-1)(string in vector) + (len -1)(num of seps)
         size_t treeStringElementNum = (sepLength == 0) ? (len - 1) : (2 * (len - 1));
 
-        if (treeStringElementNum * TreeEcmaString::SIZE <= allocateLength) {
+        if (treeStringElementNum * TreeString::SIZE <= allocateLength) {
             // heuristic: if tree string uses less memory than linestring, it is worth.
             // In other words, we hope tree string can work for the large strings join.
             return true;
@@ -511,7 +511,7 @@ JSTaggedValue JSStableArray::DoStableArrayJoin(JSThread *thread, JSHandle<JSTagg
     if (len > 0) {
         allocateLength += static_cast<uint64_t>(sepLength) * (len - 1);
     }
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         ArrayJoinStack::Pop(thread, receiverValue);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
@@ -631,7 +631,7 @@ bool JSStableArray::WorthUseTreeString(int sep, size_t allocateLength, uint32_t 
         size_t treeStringElementNum = (sep == MINUS_TWO) ? (len - 1) : (2 * (len - 1));
         // if sep is MINUS_TWO, means all the elements in treeString is len -1;
         // otherwise, the num of elements is (len-1)(string in vector) + (len -1)(num of seps)
-        if (treeStringElementNum * TreeEcmaString::SIZE <= allocateLength) {
+        if (treeStringElementNum * TreeString::SIZE <= allocateLength) {
             // heuristic: if tree string uses less memory than linestring, it is worth.
             // In other words, we hope tree string can work for the large strings join.
             return true;
@@ -735,7 +735,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRun
     if (len > 0) {
         allocateLength += static_cast<uint64_t>(sepLength) * (len - 1);
     }
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         ArrayJoinStack::Pop(thread, receiverValue);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }

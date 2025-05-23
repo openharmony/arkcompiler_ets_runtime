@@ -66,7 +66,7 @@ public:
 #else
     JSHClass *GetClass() const
     {
-        return reinterpret_cast<JSHClass *>(class_);
+        return reinterpret_cast<JSHClass *>(GetBaseClass());
     }
 
     size_t GetSize();
@@ -90,10 +90,6 @@ public:
 
 private:
     void SetClass(const JSThread *thread, JSHClass *hclass);
-
-#ifndef USE_CMC_GC
-    MarkWordType class_;
-#endif
 
     friend class BaseHeap;
     friend class Heap;
