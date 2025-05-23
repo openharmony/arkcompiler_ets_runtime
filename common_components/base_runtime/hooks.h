@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_CMC_GC_GC_HOOKS_H
-#define ECMASCRIPT_MEM_CMC_GC_GC_HOOKS_H
+#ifndef COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H
+#define COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H
 
 #include <cstdint>
 
@@ -23,12 +23,15 @@
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
 // `WorkStack` Should be moved to BaseRT and panda namespace later
 namespace panda {
-// register this function to arkcommon
+// Dynamic VM Roots scanning
+void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
+void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
+
+void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
+
+// CMC-GC dependent interface
 void FillFreeObject(void *object, size_t size);
 void SetBaseAddress(uintptr_t base);
-
-// register this function to arkcommon
 void JSGCCallback(void *ecmaVM);
-
 } // namespace panda
-#endif // ECMASCRIPT_MEM_CMC_GC_GC_HOOKS_H
+#endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H

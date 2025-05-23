@@ -711,6 +711,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
     ASSERT_TRUE(EcmaStringAccessor::Compare(instance, resultStr, str) == 0);
 }
 
+
 HWTEST_F_L0(RegExpTest, ParseAndExec2)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

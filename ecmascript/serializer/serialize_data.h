@@ -132,7 +132,7 @@ public:
     static size_t AlignUpRegionAvailableSize(size_t size)
     {
 #ifdef USE_CMC_GC
-        size_t regionSize = ArkGetRegionSize();
+        size_t regionSize = SerializeUtils::GetRegionSize();
         if (size == 0) {
             return regionSize;
         }

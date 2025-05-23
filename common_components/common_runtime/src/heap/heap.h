@@ -23,6 +23,7 @@
 #include "common_components/common_runtime/src/common/type_def.h"
 #include "common_components/common_runtime/src/heap/barrier/barrier.h"
 #include "common_components/common_runtime/src/heap/collector/collector.h"
+#include "common_interfaces/base/runtime_param.h"
 
 namespace panda {
 class Allocator;

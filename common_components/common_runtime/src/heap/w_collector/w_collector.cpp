@@ -304,16 +304,6 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
     return oldObj;
 }
 
-using ForwardUpdateRawRefHookType = void (*)(WCollector *collector, uint64_t *obj);
-using ForwardUpdateWeakRawRefHookType = bool (*)(WCollector *collector, uint64_t *obj);
-using PreforwardStaticRootsHookType =
-    void (*)(WCollector *collector, ForwardUpdateRawRefHookType hook, ForwardUpdateWeakRawRefHookType weakHook);
-PreforwardStaticRootsHookType g_preforwardStaticRootsHook = nullptr;
-
-extern "C" PUBLIC_API void RegisterPreforwardStaticRootsHook(PreforwardStaticRootsHookType hook) {
-    g_preforwardStaticRootsHook = hook;
-}
-
 void WCollector::PreforwardStaticRoots()
 {
     panda::RefFieldVisitor visitor = [this](RefField<>& refField) {

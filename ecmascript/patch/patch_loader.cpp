@@ -288,7 +288,7 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
         }
     };
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().ForEachObj(heapVisitor, false);
+    BaseRuntime::ForEachObj(heapVisitor, false);
 #else
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     heap->GetSweeper()->EnsureAllTaskFinished();
@@ -332,7 +332,7 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
         }
     };
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetHeap().ForEachObj(heapVisitor, false);
+    BaseRuntime::ForEachObj(heapVisitor, false);
 #else
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     heap->GetSweeper()->EnsureAllTaskFinished();

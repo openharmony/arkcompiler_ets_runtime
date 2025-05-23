@@ -41,7 +41,6 @@
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder.h"
-#include "ecmascript/crt.h"
 #endif
 
 #if defined(ENABLE_FFRT_INTERFACES)

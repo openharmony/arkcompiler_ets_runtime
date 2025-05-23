@@ -16,10 +16,7 @@
 #ifndef ARK_COMMON_SYSCALL_H
 #define ARK_COMMON_SYSCALL_H
 #include <ctime>
-#ifdef __RTOS__
-#include <sys/prctl.h>
-#include "hmkernel/futex.h"
-#elif defined(_WIN64)
+#if defined(_WIN64)
 #include <pthread.h>
 #elif defined(__APPLE__)
 #include <pthread.h>

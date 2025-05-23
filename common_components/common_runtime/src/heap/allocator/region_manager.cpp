@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <unistd.h>
 
+#include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/heap/allocator/region_desc.h"
 #include "common_components/common_runtime/src/heap/allocator/region_space.h"
 #include "common_components/common_runtime/src/base/c_string.h"
@@ -35,17 +36,12 @@
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
 #endif
 #include "common_components/log/log.h"
+#include "common_interfaces/base_runtime.h"
 
 namespace panda {
 uintptr_t RegionDesc::UnitInfo::totalUnitCount = 0;
 uintptr_t RegionDesc::UnitInfo::unitInfoStart = 0;
 uintptr_t RegionDesc::UnitInfo::heapStartAddress = 0;
-
-FillFreeObjectHookType g_fillFreeObjectHook = nullptr;
-
-extern "C" PUBLIC_API void ArkRegisterFillFreeObjectHook(FillFreeObjectHookType hook) {
-    g_fillFreeObjectHook = hook;
-}
 
 static size_t GetPageSize() noexcept
 {
@@ -348,12 +344,12 @@ size_t FreeRegionManager::ReleaseGarbageRegions(size_t targetCachedSize)
 
 void RegionManager::SetMaxUnitCountForRegion()
 {
-    maxUnitCountPerRegion_ = ArkCommonRuntime::GetHeapParam().regionSize * KB / RegionDesc::UNIT_SIZE;
+    maxUnitCountPerRegion_ = BaseRuntime::GetInstance()->GetHeapParam().regionSize * KB / RegionDesc::UNIT_SIZE;
 }
 
 void RegionManager::SetLargeObjectThreshold()
 {
-    size_t regionSize = ArkCommonRuntime::GetHeapParam().regionSize * KB;
+    size_t regionSize = BaseRuntime::GetInstance()->GetHeapParam().regionSize * KB;
     if (regionSize < RegionDesc::LARGE_OBJECT_DEFAULT_THRESHOLD) {
         largeObjectThreshold_ = regionSize;
     } else {
@@ -363,7 +359,7 @@ void RegionManager::SetLargeObjectThreshold()
 
 void RegionManager::SetGarbageThreshold()
 {
-    fromSpaceGarbageThreshold_ = ArkCommonRuntime::GetGCParam().garbageThreshold;
+    fromSpaceGarbageThreshold_ = BaseRuntime::GetInstance()->GetGCParam().garbageThreshold;
 }
 
 void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
@@ -382,7 +378,7 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
     // propagate region heap layout
     RegionDesc::Initialize(nRegion, regionInfoAddr, regionHeapStart_);
     freeRegionManager_.Initialize(nRegion);
-    exemptedRegionThreshold_ = ArkCommonRuntime::GetHeapParam().exemptionThreshold;
+    exemptedRegionThreshold_ = BaseRuntime::GetInstance()->GetHeapParam().exemptionThreshold;
 
     DLOG(REPORT, "region info @0x%zx+%zu, heap [0x%zx, 0x%zx), unit count %zu", regionInfoAddr, metadataSize,
          regionHeapStart_, regionHeapEnd_, nRegion);
@@ -741,7 +737,7 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
         } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
-            g_fillFreeObjectHook(object, RegionSpace::GetAllocSize(*object));
+            FillFreeObject(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
     });
@@ -776,6 +772,7 @@ static void FixOldRegion(TraceCollector& collector, RegionDesc* region)
         if (collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else {
+            FillFreeObject(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "fix: skip dead old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
     });
@@ -1049,7 +1046,7 @@ void RegionManager::RequestForRegion(size_t size)
     double heuAllocRate = std::cos((pi / 2.0) * allocatedBytes / availableBytesAfterGC) * gcstats.collectionRate;
     // for maximum performance, choose the larger one.
     double allocRate = std::max(
-        static_cast<double>(ArkCommonRuntime::GetHeapParam().allocationRate) * MB / SECOND_TO_NANO_SECOND,
+        static_cast<double>(BaseRuntime::GetInstance()->GetHeapParam().allocationRate) * MB / SECOND_TO_NANO_SECOND,
         heuAllocRate);
     ASSERT_LOGF(allocRate > 0.00001, "allocRate is zero"); // If it is less than 0.00001, it is considered as 0
     size_t waitTime = static_cast<size_t>(size / allocRate);
@@ -1059,7 +1056,7 @@ void RegionManager::RequestForRegion(size_t size)
         return;
     }
 
-    uint64_t sleepTime = std::min<uint64_t>(ArkCommonRuntime::GetHeapParam().allocationWaitTime,
+    uint64_t sleepTime = std::min<uint64_t>(BaseRuntime::GetInstance()->GetHeapParam().allocationWaitTime,
                                   prevRegionAllocTime_ + waitTime - now);
     DLOG(ALLOC, "wait %zu ns to alloc %zu(B)", sleepTime, size);
     std::this_thread::sleep_for(std::chrono::nanoseconds{ sleepTime });

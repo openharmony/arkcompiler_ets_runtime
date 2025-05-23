@@ -20,7 +20,6 @@
 #include <cstdint>
 
 namespace panda {
-extern "C" size_t ArkGetRegionSize();
 
 enum class SerializedObjectSpace : uint8_t {
     REGULAR_SPACE,
@@ -32,6 +31,7 @@ enum class SerializedObjectSpace : uint8_t {
 class SerializeUtils {
 public:
     static SerializedObjectSpace GetSerializeObjectSpace(uintptr_t obj);
+    static size_t GetRegionSize();
 };
 }  // namespace panda
 #endif  // COMMON_COMPONENTS_SERIALIZE_UTILS_H

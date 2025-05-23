@@ -15,6 +15,8 @@
 
 #include "ecmascript/pgo_profiler/pgo_state.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
@@ -189,12 +191,13 @@ void PGOState::SetSaveAndNotify()
     NotifyAllDumpWaiters();
 }
 
-void PGOState::StartDumpBeforeDestroy()
+void PGOState::StartDumpBeforeDestroy(JSThread *thread)
 {
     LockHolder lock(stateMutex_);
     // possible state: STOP, SAVE, START
     // may notify after change to STOP and SAVE, we need to make sure state is STOP
     while (!StateIsStop()) {
+        ThreadNativeScope scope(thread);
         WaitDump();
     }
     // possible gc state: STOP, WAITING, RUNNING

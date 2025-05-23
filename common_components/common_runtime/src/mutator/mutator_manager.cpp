@@ -15,11 +15,8 @@
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
 
 #include <thread>
-#ifdef __RTOS__
-#include <private/futex.h>
-#endif
+
 #include "common_components/common_runtime/src/base/time_utils.h"
-#include "common_components/common_runtime/src/common/runtime.h"
 #include "common_components/common_runtime/src/heap/collector/finalizer_processor.h"
 #include "common_components/common_runtime/src/heap/collector/trace_collector.h"
 #include "common_components/common_runtime/src/heap/heap.h"
@@ -133,8 +130,8 @@ Mutator* MutatorManager::CreateRuntimeMutator(ThreadType threadType)
     ThreadLocal::SetMutator(mutator);
     ThreadLocal::SetThreadType(threadType);
     ThreadLocal::SetProcessorFlag(true);
-    ThreadLocalData* threadData = ArkCommonGetThreadLocalData();
-    ArkCommonPreRunManagedCode(mutator, 2, threadData); // 2 layers
+    ThreadLocalData* threadData = GetThreadLocalData();
+    PreRunManagedCode(mutator, 2, threadData); // 2 layers
     // only running mutator can enter saferegion.
     MutatorManagementRUnlock();
     return mutator;
@@ -169,7 +166,10 @@ void MutatorManager::Init()
 #endif
 }
 
-MutatorManager& MutatorManager::Instance() noexcept { return Runtime::Current().GetMutatorManager(); }
+MutatorManager& MutatorManager::Instance() noexcept
+{
+    return BaseRuntime::GetInstance()->GetMutatorManager();
+}
 
 void MutatorManager::AcquireMutatorManagementWLock()
 {

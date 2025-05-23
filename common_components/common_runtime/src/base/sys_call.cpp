@@ -16,10 +16,7 @@
 
 #include <cstdlib>
 #include <unistd.h>
-#if defined(__RTOS__)
-#include "hmkernel/futex.h"
-#include "sys/syscall.h"
-#elif defined(_WIN64)
+#if defined(_WIN64)
 #include <processthreadsapi.h>
 #elif defined(__APPLE__)
 #include "sys/syscall.h"

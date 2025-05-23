@@ -19,7 +19,6 @@
 #include "clang.h"
 #ifdef USE_CMC_GC
 #include "common_interfaces/heap/heap_allocator.h"
-#include "ecmascript/crt.h"
 #endif
 #include "ecmascript/mem/heap.h"
 
@@ -1165,7 +1164,7 @@ void SharedHeap::CollectGarbage(JSThread *thread)
         gcReason == GCReason::ALLOCATION_FAILED) {
         type = GcType::FULL;
     }
-    BaseRuntime::GetInstance()->GetHeap().RequestGC(type);
+    BaseRuntime::RequestGC(type);
     return;
 #endif
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||

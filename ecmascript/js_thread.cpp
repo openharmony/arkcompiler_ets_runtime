@@ -51,13 +51,6 @@ uintptr_t TaggedStateWord::BASE_ADDRESS = 0;
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
 
-#ifdef USE_CMC_GC
-extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
-{
-    reinterpret_cast<JSThread *>(jsThread)->Visit(visitor);
-}
-#endif
-
 #ifndef USE_CMC_GC
 void SuspendBarrier::Wait()
 {
@@ -930,7 +923,7 @@ bool JSThread::CheckSafepoint()
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
 #ifdef USE_CMC_GC
-        BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::SYNC);  // Trigger Full CMC here
+        BaseRuntime::RequestGC(GcType::SYNC);  // Trigger Full CMC here
 #else
         vm_->CollectGarbage(TriggerGCType::FULL_GC);
 #endif

@@ -36,10 +36,6 @@
 #include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
-#ifdef USE_CMC_GC
-#include "ecmascript/crt.h"
-#endif
-
 namespace panda {
 class JSNApi;
 struct HmsMap;

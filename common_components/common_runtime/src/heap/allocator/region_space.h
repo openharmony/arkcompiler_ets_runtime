@@ -22,7 +22,6 @@
 #include <thread>
 #include <vector>
 
-#include "common_components/common_runtime/src/common_runtime.h"
 #include "common_components/common_runtime/src/heap/allocator/alloc_util.h"
 #include "common_components/common_runtime/src/heap/allocator/allocator.h"
 #include "common_components/common_runtime/src/heap/allocator/region_manager.h"
@@ -30,6 +29,7 @@
 #if defined(ARKCOMMON_SANITIZER_SUPPORT)
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
 #endif
+#include "common_interfaces/base_runtime.h"
 
 namespace panda {
 // RegionSpace aims to be the API for other components of runtime
@@ -86,7 +86,7 @@ public:
 
     inline size_t GetTargetSize() const
     {
-        double heapUtilization = ArkCommonRuntime::GetHeapParam().heapUtilization;
+        double heapUtilization = BaseRuntime::GetInstance()->GetHeapParam().heapUtilization;
         return static_cast<size_t>(GetUsedPageSize() / heapUtilization);
     }
 
@@ -116,7 +116,7 @@ public:
             return regionManager_.ReleaseGarbageRegions(0);
         } else {
             size_t size = regionManager_.GetAllocatedSize();
-            double cachedRatio = 1 - ArkCommonRuntime::GetHeapParam().heapUtilization;
+            double cachedRatio = 1 - BaseRuntime::GetInstance()->GetHeapParam().heapUtilization;
             size_t targetCachedSize = static_cast<size_t>(size * cachedRatio);
             return regionManager_.ReleaseGarbageRegions(targetCachedSize);
         }

@@ -1036,9 +1036,7 @@ ecma_source += [
 ]
 
 if (ets_runtime_enable_cmc_gc) {
-  ecma_source += [
-    "ecmascript/mem/cmc_gc/gc_hooks.cpp",
-  ]
+  ecma_source += [ "ecmascript/mem/cmc_gc/hooks.cpp" ]
 }
 
 if (ark_js_hybrid) {
@@ -1286,13 +1284,12 @@ if (enable_target_compilation) {
 ohos_source_set("libcommon_components_set") {
   sources = [
     "common_components/base_runtime/base_runtime.cpp",
-    "common_components/heap/heap.cpp",
+    "common_components/base_runtime/base_runtime_param.cpp",
     "common_components/heap/heap_allocator.cpp",
     "common_components/heap/heap_visitor.cpp",
     "common_components/serialize/serialize_utils.cpp",
     "common_components/thread/thread_holder.cpp",
     "common_components/thread/thread_holder_manager.cpp",
-    "ecmascript/crt.cpp",
     "ecmascript/dynamic_object_accessor.cpp",
     "ecmascript/dynamic_object_descriptor.cpp",
     "ecmascript/dynamic_type_converter.cpp",

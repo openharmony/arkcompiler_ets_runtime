@@ -15,14 +15,14 @@
 
 #include "common_interfaces/thread/thread_holder-inl.h"
 
+#include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/mutator/mutator.h"
-#include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/base_runtime.h"
+#include "common_interfaces/thread/base_thread.h"
+#include "common_interfaces/thread/thread_holder_manager.h"
 
 namespace panda {
 thread_local ThreadHolder *currentThreadHolder = nullptr;
-
-extern "C" void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 
 ThreadHolder *ThreadHolder::CreateAndRegisterNewThreadHolder(void *vm)
 {
@@ -40,6 +40,7 @@ ThreadHolder *ThreadHolder::CreateAndRegisterNewThreadHolder(void *vm)
 
 void ThreadHolder::DestroyThreadHolder(ThreadHolder *holder)
 {
+    holder->TransferToNative();
     BaseRuntime::GetInstance()->GetThreadHolderManager().UnregisterThreadHolder(holder);
 }
 
@@ -68,9 +69,8 @@ void ThreadHolder::UnregisterJSThread(JSThread *jsThread)
     TransferToRunning();
     DCHECK_CC(jsThread_ == jsThread);
     jsThread_ = nullptr;
-    TransferToNative();
     if (coroutines_.empty()) {
-        BaseRuntime::GetInstance()->GetThreadHolderManager().UnregisterThreadHolder(this);
+        ThreadHolder::DestroyThreadHolder(this);
     }
 }
 
@@ -89,9 +89,8 @@ void ThreadHolder::UnregisterCoroutine(Coroutine *coroutine)
     TransferToRunning();
     DCHECK_CC(coroutines_.find(coroutine) != coroutines_.end());
     coroutines_.erase(coroutine);
-    TransferToNative();
     if (coroutines_.empty() && jsThread_ == nullptr) {
-        BaseRuntime::GetInstance()->GetThreadHolderManager().UnregisterThreadHolder(this);
+        ThreadHolder::DestroyThreadHolder(this);
     }
 }
 
