@@ -15,12 +15,11 @@
 
 #include "ecmascript/trampoline/asm_defines.h"
 
-.extern GetGlueFromThreadLocal
-.extern GlueHasException
-.extern GetFixedReturnAddr
-.extern GetDeoptHandlerAsmOffset
+.extern GetGlueFromThreadLocalName
+.extern GetFixedReturnAddrName
+.extern GetDeoptHandlerAsmOffsetName
 
-.global LazyDeoptEntry
+.global LazyDeoptEntryName
 
 // ARM64 callee-saved registers: X19-X28, D8-D15
 .macro PUSH_CALLEE_SAVE
@@ -71,23 +70,23 @@
 +---------------+ 
 */
 
-LazyDeoptEntry:
+LazyDeoptEntryName :
     stp     x29, x30, [sp, #-REG_PAIR_SIZE_ARM64]!  // Frame pointer and return address
     stp     x0, x3, [sp, #-REG_PAIR_SIZE_ARM64]!    // Save maybeAcc, x3 use to align up
     PUSH_CALLEE_SAVE                                // Callee-saved registers
 
     // Get glue pointer from thread local storage
-    bl GetGlueFromThreadLocal                       // x0 = glue pointer
+    bl GetGlueFromThreadLocalName                   // x0 = glue pointer
 
     // Prepare arguments for GetFixedReturnAddr
     mov x19, x0                                     // Save glue to x19, arg0: glue
     add x1, sp, #PRE_SP_OFFSET_ARM64                // arg1: prevCallSiteSp
-    bl GetFixedReturnAddr                           // x0 = return address offset
+    bl GetFixedReturnAddrName                       // x0 = return address offset
     str x0, [sp, #RETURN_ADDRESS_OFFSET_ARM64]      // Store origin return address
 
     // Prepare deoptimization handler call
     mov x0, #0                                      // arg0: False
-    bl GetDeoptHandlerAsmOffset                     // x0 = DeoptHandlerAsm offset
+    bl GetDeoptHandlerAsmOffsetName                 // x0 = DeoptHandlerAsm offset
     ldr x4, [x19, x0]                               // x4 = *(glue + offset) (DeoptHandleAsm Address)
 
     // Set up arguments and jump to DeoptHandlerASM
