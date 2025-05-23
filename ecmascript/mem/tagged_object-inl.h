@@ -79,7 +79,7 @@ inline bool TaggedObject::IsInSharedHeap() const
 #else
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
 {
-    SetBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass));
+    SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass));
 }
 
 inline void TaggedObject::TransitionClassWithoutBarrier(JSHClass *hclass)

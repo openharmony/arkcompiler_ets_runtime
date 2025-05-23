@@ -1724,6 +1724,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
@@ -1742,6 +1743,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     GateRef mixLength = LoadPrimitive(VariableType::INT32(), flatString->GetFlatString(),
                                       IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     GateRef compressedStatus = TruncInt32ToInt1(Int32And(Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1),
@@ -1771,6 +1773,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBaseAddressForBaseClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::FIRST_OFFSET), first);
