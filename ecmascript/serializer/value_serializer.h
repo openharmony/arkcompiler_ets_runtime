@@ -57,6 +57,12 @@ private:
         return type >= JSType::HCLASS && type <= JSType::TYPE_LAST && type != JSType::SYMBOL;
     }
 
+    void PrintAndRecordErrorMessage(const std::string &errorMessage)
+    {
+        LOG_ECMA(ERROR) << errorMessage;
+        data_->SetErrorMessage(errorMessage);
+    }
+
 private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};

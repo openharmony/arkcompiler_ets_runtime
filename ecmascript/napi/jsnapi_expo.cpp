@@ -5831,6 +5831,38 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     }
 }
 
+void *JSNApi::SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
+                                      Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer,
+                                      bool defaultCloneShared)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
+    JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
+    JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    ecmascript::ValueSerializer serializer(thread, defaultTransfer, defaultCloneShared);
+    std::unique_ptr<ecmascript::SerializeData> data;
+    if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
+        data = serializer.Release();
+    }
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
+    }
+    if (data == nullptr) {
+        error = serializer.Release()->GetErrorMessage();
+        return nullptr;
+    } else {
+        return reinterpret_cast<void *>(data.release());
+    }
+}
+
 Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));

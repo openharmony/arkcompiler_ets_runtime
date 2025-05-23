@@ -93,7 +93,8 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         default:
             break;
     }
-    LOG_ECMA(ERROR) << "Unsupport serialize object type: " << JSHClass::DumpJSType(type);
+    std::string errorMessage = "Serialize don't support object type: " + ConvertToStdString(JSHClass::DumpJSType(type));
+    PrintAndRecordErrorMessage(errorMessage);
     return false;
 }
 
@@ -105,12 +106,14 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ValueSerializer::WriteValue");
     ASSERT(!value->IsWeak());
     if (!defaultTransfer_ && !PrepareTransfer(thread, transfer)) {
-        LOG_ECMA(ERROR) << "ValueSerialize: PrepareTransfer fail";
+        std::string errorMessage = "Serialize PrepareTransfer fail";
+        PrintAndRecordErrorMessage(errorMessage);
         data_->SetIncompleteData(true);
         return false;
     }
     if (!defaultCloneShared_ && !PrepareClone(thread, cloneList)) {
-        LOG_ECMA(ERROR) << "ValueSerialize: PrepareClone fail";
+        std::string errorMessage = "Serialize PrepareClone fail";
+        PrintAndRecordErrorMessage(errorMessage);
         data_->SetIncompleteData(true);
         return false;
     }
@@ -128,7 +131,8 @@ bool ValueSerializer::WriteValue(JSThread *thread,
             auto info = entry.second;
             DetachFunc detachNative = reinterpret_cast<DetachFunc>(info->detachFunc);
             if (detachNative == nullptr || entry.first < 0) {
-                LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject detachNative == nullptr";
+                std::string errorMessage = "Serialize don't support NativeBindingObject detachNative is nullptr";
+                PrintAndRecordErrorMessage(errorMessage);
                 notSupport_ = true;
                 break;
             }
@@ -165,8 +169,10 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
     if (data_->Size() > maxSerializerSize) {
-        LOG_ECMA(ERROR) << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
-                        << " max size is: " << maxSerializerSize;
+        std::ostringstream errorMessage;
+        errorMessage << "The serialization data size has exceed limit Size, current size is: " << data_->Size()
+                     << " max size is: " << maxSerializerSize;
+        PrintAndRecordErrorMessage(errorMessage.str());
         return false;
     }
     return true;
@@ -318,14 +324,16 @@ void ValueSerializer::SerializeNativeBindingObject(TaggedObject *object)
     JSHandle<JSTaggedValue> nativeBindingValue =
         JSObject::GetProperty(thread_, JSHandle<JSObject>(thread_, object), nativeBindingSymbol).GetRawValue();
     if (!nativeBindingValue->IsJSNativePointer()) {
-        LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject nativeBindingValue is not JSNativePointer";
+        std::string errorMessage = "Serialize don't support nativeBindingValue is not JSNativePointer";
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;
     }
     auto info = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(
         JSNativePointer::Cast(nativeBindingValue->GetTaggedObject())->GetExternalPointer());
     if (info == nullptr) {
-        LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject NativeBindingInfo is nullptr";
+        std::string errorMessage = "Serialize don't support NativeBindingInfo is nullptr";;
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;
     }
@@ -345,7 +353,8 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
     ASSERT(object->GetClass()->IsArrayBuffer());
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
     if (arrayBuffer->IsDetach()) {
-        LOG_ECMA(ERROR) << "ValueSerialize: don't support serialize detached array buffer";
+        std::string errorMessage = "Serialize don't support detached array buffer";
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return false;
     }
@@ -356,7 +365,8 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
         if (transfer) {
             if (clone) {
                 notSupport_ = true;
-                LOG_ECMA(ERROR) << "ValueSerialize: can't put arraybuffer in both transfer list and clone list";
+                std::string errorMessage = "Serialize don't support arraybuffer in both transfer list and clone list";
+                PrintAndRecordErrorMessage(errorMessage);
                 return false;
             }
             data_->WriteEncodeFlag(EncodeFlag::TRANSFER_ARRAY_BUFFER);
@@ -364,8 +374,9 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
         } else if (clone || !defaultTransfer_) {
             bool nativeAreaAllocated = arrayBuffer->GetWithNativeAreaAllocator();
             if (!nativeAreaAllocated) {
-                LOG_ECMA(ERROR) << "ValueSerialize: don't support clone arraybuffer has external allocated buffer, \
-                    considering transfer it";
+                std::string errorMessage = "Serialize don't support clone arraybuffer has external allocated buffer, "
+                    "considering transfer it";
+                PrintAndRecordErrorMessage(errorMessage);
                 notSupport_ = true;
                 return false;
             }
@@ -389,7 +400,8 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
     bool transfer = transferDataSet_.find(ToUintPtr(object)) != transferDataSet_.end();
     if (arrayBuffer->IsDetach() || transfer) {
-        LOG_ECMA(ERROR) << "ValueSerialize: don't support serialize detached or transfer shared array buffer";
+        std::string errorMessage =  "Serialize don't support detached or transfer shared array buffer";
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;
     }
@@ -398,7 +410,8 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
         JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
         void *buffer = np->GetExternalPointer();
         if (JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
-            LOG_ECMA(ERROR) << "ValueSerialize: can't find buffer form shared memory pool";
+            std::string errorMessage =  "Serialize can't find buffer from shared memory pool";
+            PrintAndRecordErrorMessage(errorMessage);
             notSupport_ = true;
             return;
         }
@@ -412,7 +425,8 @@ void ValueSerializer::SerializeJSSendableArrayBufferPrologue(TaggedObject *objec
     ASSERT(object->GetClass()->IsSendableArrayBuffer());
     JSSendableArrayBuffer *arrayBuffer = reinterpret_cast<JSSendableArrayBuffer *>(object);
     if (arrayBuffer->IsDetach()) {
-        LOG_ECMA(ERROR) << "ValueSerialize: don't support serialize detached sendable array buffer";
+        std::string errorMessage =  "Serialize don't support serialize detached sendable array buffer";
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;
     }
@@ -420,7 +434,8 @@ void ValueSerializer::SerializeJSSendableArrayBufferPrologue(TaggedObject *objec
     if (arrayLength > 0) {
         bool nativeAreaAllocated = arrayBuffer->GetWithNativeAreaAllocator();
         if (!nativeAreaAllocated) {
-            LOG_ECMA(ERROR) << "ValueSerialize: don't support clone sendablearraybuffer has external allocated buffer";
+            std::string errorMessage =  "Serialize don't support clone sendablearraybuffer has external allocated buffer";
+            PrintAndRecordErrorMessage(errorMessage);
             notSupport_ = true;
             return;
         }
@@ -436,7 +451,8 @@ void ValueSerializer::SerializeJSRegExpPrologue(JSRegExp *jsRegExp)
 {
     uint32_t bufferSize = jsRegExp->GetLength();
     if (bufferSize == 0) {
-        LOG_ECMA(ERROR) << "ValueSerialize: JSRegExp buffer size is 0";
+        std::string errorMessage =  "Serialize don't support JSRegExp buffer size is 0";
+        PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;
     }
