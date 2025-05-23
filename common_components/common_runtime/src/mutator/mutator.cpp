@@ -246,9 +246,6 @@ inline void MutatorBase::HandleGCPhase(GCPhase newPhase)
             SatbBuffer::Instance().RetireNode(actMutator->satbNode_);
             actMutator->satbNode_ = nullptr;
         }
-    } else if (newPhase == GCPhase::GC_PHASE_FIX) {
-        RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-        manager.PrepareFix();
     }
 }
 
