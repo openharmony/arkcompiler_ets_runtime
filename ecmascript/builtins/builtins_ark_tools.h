@@ -29,6 +29,7 @@
     V("getInlinedPropertiesCount",      GetInlinedPropertiesCount,      1, INVALID)       \
     V("excutePendingJob",               ExcutePendingJob,               0, INVALID)       \
     V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
+    V("forceLazyDeopt",                 ForceLazyDeopt,                 2, INVALID)       \
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
     V("currentEnvIsGlobal",             CurrentEnvIsGlobal,             1, INVALID)       \
@@ -134,7 +135,6 @@
     V("call",                                      Call,                                      2, INVALID)     \
     V("debugPushPromise",                          DebugPushPromise,                          1, INVALID)     \
     V("setForceSlowPath",                          SetForceSlowPath,                          1, INVALID)     \
-    V("notifyContextDisposed",                     NotifyContextDisposed,                     0, INVALID)     \
     V("optimizeObjectForAddingMultipleProperties", OptimizeObjectForAddingMultipleProperties, 2, INVALID)     \
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     \
@@ -219,6 +219,8 @@ public:
     static JSTaggedValue ForcePartialGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ForceLazyDeopt(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HintGC(EcmaRuntimeCallInfo *info);
 
@@ -427,8 +429,6 @@ public:
     static JSTaggedValue SetForceSlowPath(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue CreateNapiObject(EcmaRuntimeCallInfo *info);
-
-    static JSTaggedValue NotifyContextDisposed(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue OptimizeObjectForAddingMultipleProperties(EcmaRuntimeCallInfo *info);
 

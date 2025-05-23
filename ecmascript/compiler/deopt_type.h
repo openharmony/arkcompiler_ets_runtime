@@ -20,7 +20,9 @@
 
 namespace panda::ecmascript::kungfu {
 
+// Don't add before LazyDeopt.
 #define GATE_META_DATA_DEOPT_REASON(V)                                 \
+    V(LazyDeopt,                       LAZYDEOPT)                      \
     V(NotInt1,                         NOTINT1)                        \
     V(NotInt2,                         NOTINT2)                        \
     V(NotInt3,                         NOTINT3)                        \
@@ -97,6 +99,7 @@ namespace panda::ecmascript::kungfu {
     V(BuiltinPrototypeHClassMismatch2, BUILTINPROTOHCLASSMISMATCH2)    \
     V(PrototypeChanged1,               PROTOTYPECHANGED1)              \
     V(PrototypeChanged2,               PROTOTYPECHANGED2)              \
+    V(PrototypeChanged3,               PROTOTYPECHANGED3)              \
     V(PrimTypePrototypeChanged,        PRIMTYPEPROTOTYPECHANGED)       \
     V(BuiltinIsHole1,                  BUILTINISHOLE1)                 \
     V(NewBuiltinCtorFail1,             NEWBUILTINCTORFAIL1)            \
@@ -135,6 +138,8 @@ enum class DeoptType : uint8_t {
     GATE_META_DATA_DEOPT_REASON(DECLARE_DEOPT_TYPE)
 #undef DECLARE_DEOPT_TYPE
 };
+
+static_assert(static_cast<uint32_t>(DeoptType::LAZYDEOPT) == 1);
 
 } // namespace panda::ecmascript::kungfu
 

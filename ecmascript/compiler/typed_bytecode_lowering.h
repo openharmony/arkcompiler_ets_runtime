@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/type_info_accessors.h"
@@ -38,6 +39,7 @@ public:
                          const std::string& name,
                          bool enableLoweringBuiltin,
                          bool enableMergePoly,
+                         bool enableLazyDeopt,
                          const CString& recordName,
                          const CallMethodFlagMap* callMethodFlagMap,
                          PGOProfilerDecoder *decoder,
@@ -62,6 +64,7 @@ public:
           compilationEnv_(ctx->GetCompilationEnv()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
           enableMergePoly_(enableMergePoly),
+          enableLazyDeopt_(enableLazyDeopt),
           recordName_(recordName),
           callMethodFlagMap_(callMethodFlagMap),
           decoder_(decoder),
@@ -252,6 +255,31 @@ private:
     void AddBytecodeCount(EcmaOpcode op);
     void DeleteBytecodeCount(EcmaOpcode op);
     void AddHitBytecodeCount();
+    
+    template<class T>
+    bool TryLazyDeoptStableProtoChain(T& tacc, size_t index, [[maybe_unused]] GateRef gate)
+    {
+        // enableLazyDeopt_ is always false in Aot now.
+        if (!enableLazyDeopt_) {
+            return false;
+        }
+    
+        auto holderHC = tacc.GetHolderHClass(index);
+        auto receiverHC = tacc.GetReceiverHClass(index);
+        bool success = compilationEnv_->GetDependencies()->
+                                        DependOnStableProtoChain(receiverHC,
+                                                                 holderHC);
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+        if (success) {
+            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptNum),
+                Gate::InvalidGateRef, {}, gate);
+        } else {
+            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptFailNum),
+                Gate::InvalidGateRef, {}, gate);
+        }
+#endif
+        return success;
+    }
 
     GateRef InternStringCheck(GateRef gate);
     template<TypedBinOp Op>
@@ -317,6 +345,7 @@ private:
     CompilationEnv *compilationEnv_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     bool enableMergePoly_ {true};
+    bool enableLazyDeopt_ {false};
     const CString &recordName_;
     const CallMethodFlagMap *callMethodFlagMap_;
     PGOProfilerDecoder *decoder_ {nullptr};

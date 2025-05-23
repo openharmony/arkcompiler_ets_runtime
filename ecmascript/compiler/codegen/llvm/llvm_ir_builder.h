@@ -424,9 +424,10 @@ private:
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
-    CallExceptionKind GetCallExceptionKind(OpCode op, size_t index = SIZE_MAX) const;
-    void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
-                                    const std::vector<GateRef> &inList, CallExceptionKind kind);
+    CallInfoKind GetCallInfoKind(OpCode op, const std::vector<GateRef> &inList) const;
+    bool GetGCState(GateRef gate, OpCode op, const CallSignature *calleeDescriptor) const;
+    void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, GateRef &frameState,
+                                     const std::vector<GateRef> &inList, CallInfoKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
@@ -442,6 +443,7 @@ private:
     LLVMValueRef ConvertInt32ToTaggedInt(GateRef gate);
     LLVMValueRef ConvertInt32ToTaggedInt(LLVMValueRef value);
     LLVMValueRef ConvertFloat64ToTaggedDouble(GateRef gate);
+    void GetDeoptBundleInfo(GateRef deoptFrameState, std::vector<LLVMValueRef> &values);
     void SaveDeoptVregInfo(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,
                            GateRef gate);
     void SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,

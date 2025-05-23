@@ -691,12 +691,11 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     LLVMValueRef glue = GetGlue(inList);
     const CallSignature *signature = RuntimeStubCSigns::Get(std::get<RuntimeStubCSigns::ID>(stubId));
 
-    auto kind = GetCallExceptionKind(OpCode::RUNTIME_CALL);
+    auto kind = GetCallInfoKind(OpCode::RUNTIME_CALL, inList);
 
     size_t actualNumArgs = 0;
-    LLVMValueRef pcOffset = LLVMConstInt(GetInt32T(), 0, 0);
-    GateRef frameArgs = Circuit::NullGate();
-    ComputeArgCountAndExtraInfo(actualNumArgs, pcOffset, frameArgs, inList, kind);
+    GateRef frameState = Circuit::NullGate();
+    ComputeArgCountAndExtraInfo(actualNumArgs, frameState, inList, kind);
 
     std::vector<LLVMValueRef> params{glue};
     const int index = static_cast<int>(acc_.GetConstantValue(inList[static_cast<int>(CallInputs::TARGET)]));
@@ -719,9 +718,9 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     }
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     LLVMValueRef runtimeCall = nullptr;
-    if (kind == CallExceptionKind::HAS_PC_OFFSET) {
+    if (kind == CallInfoKind::HAS_FRAME_STATE) {
         std::vector<LLVMValueRef> values;
-        CollectExraCallSiteInfo(values, pcOffset, frameArgs);
+        GetDeoptBundleInfo(frameState, values);
         runtimeCall = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs,
                                      "", values.data(), values.size());
     } else {
@@ -836,16 +835,12 @@ void LLVMIRBuilder::SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMV
     ASSERT(calleeDescriptor != nullptr);
     if (calleeDescriptor->GetCallConv() == CallSignature::CallConv::GHCCallConv) {
         LLVMSetTailCall(call, true);
-        SetGCLeafFunction(call);
         LLVMSetInstructionCallConv(call, LLVMGHCCallConv);
     } else if (calleeDescriptor->GetCallConv() == CallSignature::CallConv::WebKitJSCallConv) {
         LLVMSetInstructionCallConv(call, LLVMWebKitJSCallConv);
     }
     if (calleeDescriptor->GetTailCall()) {
         LLVMSetTailCall(call, true);
-    }
-    if (calleeDescriptor->GetGCLeafFunction()) {
-        SetGCLeafFunction(call);
     }
 }
 
@@ -906,28 +901,15 @@ LLVMValueRef LLVMIRBuilder::GetBuiltinsStubOffset(LLVMValueRef glue)
     return LLVMConstInt(glueType, JSThread::GlueData::GetBuiltinsStubEntriesOffset(compCfg_->Is32Bit()), 0);
 }
 
-void LLVMIRBuilder::ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
-                                                const std::vector<GateRef> &inList, CallExceptionKind kind)
+void LLVMIRBuilder::ComputeArgCountAndExtraInfo(size_t &actualNumArgs, GateRef &frameState,
+                                                const std::vector<GateRef> &inList, CallInfoKind kind)
 {
-    if (kind == CallExceptionKind::HAS_PC_OFFSET) {
-        actualNumArgs = inList.size() - 2;  // 2: pcOffset and frameArgs
-        pcOffset = GetLValue(inList.at(actualNumArgs + 1));
-        frameArgs = inList.at(actualNumArgs);
-        ASSERT(acc_.GetOpCode(inList.at(actualNumArgs + 1)) == OpCode::CONSTANT);
+    if (kind == CallInfoKind::HAS_FRAME_STATE) {
+        actualNumArgs = inList.size() - 1;  // 1: frameState
+        frameState = inList.at(actualNumArgs);
     } else {
         actualNumArgs = inList.size();
     }
-}
-
-CallExceptionKind LLVMIRBuilder::GetCallExceptionKind(OpCode op, size_t index) const
-{
-    ASSERT(op != OpCode::NOGC_RUNTIME_CALL || index != SIZE_MAX);
-    bool hasPcOffset = IsOptimizedJSFunction() &&
-                       ((op == OpCode::NOGC_RUNTIME_CALL && (kungfu::RuntimeStubCSigns::IsAsmStub(index))) ||
-                        (op == OpCode::CALL) ||
-                        (op == OpCode::RUNTIME_CALL) ||
-                        (op == OpCode::BUILTINS_CALL));
-    return hasPcOffset ? CallExceptionKind::HAS_PC_OFFSET : CallExceptionKind::NO_PC_OFFSET;
 }
 
 void LLVMIRBuilder::UpdateLeaveFrame(LLVMValueRef glue)
@@ -962,45 +944,69 @@ void LLVMIRBuilder::VisitReadSp(GateRef gate)
     Bind(gate, spValue);
 }
 
-void LLVMIRBuilder::CollectExraCallSiteInfo(std::vector<LLVMValueRef> &values, LLVMValueRef pcOffset,
-                                            GateRef frameArgs)
+CallInfoKind LLVMIRBuilder::GetCallInfoKind(OpCode op, const std::vector<GateRef> &inList) const
 {
-    // pc offset
-    auto pcIndex = LLVMConstInt(GetInt64T(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
-    values.push_back(pcIndex);
-    values.push_back(pcOffset);
-
-    if (!enableOptInlining_) {
-        return;
+    if (!IsOptimizedJSFunction()) {
+        return CallInfoKind::NO_FRAME_STATE;
     }
-
-    if (frameArgs == Circuit::NullGate()) {
-        return;
-    }
-    if (acc_.GetOpCode(frameArgs) != OpCode::FRAME_ARGS) {
-        return;
-    }
-    uint32_t maxDepth = acc_.GetFrameDepth(frameArgs, OpCode::FRAME_ARGS);
-    if (maxDepth == 0) {
-        return;
-    }
-
-    maxDepth = std::min(maxDepth, MAX_METHOD_OFFSET_NUM);
-    size_t shift = Deoptimizier::ComputeShift(MAX_METHOD_OFFSET_NUM);
-    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
-    for (int32_t curDepth = static_cast<int32_t>(maxDepth - 1); curDepth >= 0; curDepth--) {
-        ASSERT(acc_.GetOpCode(frameArgs) == OpCode::FRAME_ARGS);
-        // method id
-        uint32_t methodOffset = acc_.TryGetMethodOffset(frameArgs);
-        frameArgs = acc_.GetFrameState(frameArgs);
-        if (methodOffset == FrameStateOutput::INVALID_INDEX) {
-            methodOffset = 0;
+    CallInfoKind kind;
+    switch (op) {
+        case OpCode::NOGC_RUNTIME_CALL: {
+            size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
+            const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+            if (kungfu::RuntimeStubCSigns::IsAsmStub(index)) {
+                kind = CallInfoKind::HAS_FRAME_STATE;
+            } else {
+                kind = CallInfoKind::NO_FRAME_STATE;
+            }
+            break;
         }
-        int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - curDepth;
-        int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specCallTargetIndex, curDepth, shift);
-        values.emplace_back(LLVMConstInt(GetInt32T(), encodeIndex, false));
-        values.emplace_back(LLVMConstInt(GetInt32T(), methodOffset, false));
+        case OpCode::CALL:
+        case OpCode::CALL_OPTIMIZED:
+        case OpCode::FAST_CALL_OPTIMIZED:
+        case OpCode::BUILTINS_CALL:
+        case OpCode::RUNTIME_CALL:
+            kind = CallInfoKind::HAS_FRAME_STATE;
+            break;
+        case OpCode::BASELINE_CALL:
+        case OpCode::ASM_CALL_BARRIER:
+        case OpCode::BUILTINS_CALL_WITH_ARGV:
+            kind = CallInfoKind::NO_FRAME_STATE;
+            break;
+        default:
+            kind = CallInfoKind::NO_FRAME_STATE;
+            UNREACHABLE();
     }
+    return kind;
+}
+
+bool LLVMIRBuilder::GetGCState(GateRef gate, OpCode op, const CallSignature *calleeDescriptor) const
+{
+    bool isNoGC = false;
+    switch (op) {
+        case OpCode::CALL:
+        case OpCode::NOGC_RUNTIME_CALL:
+        case OpCode::BASELINE_CALL:
+        case OpCode::BUILTINS_CALL:
+        case OpCode::BUILTINS_CALL_WITH_ARGV:
+            isNoGC = false;
+            break;
+        case OpCode::CALL_OPTIMIZED:
+        case OpCode::FAST_CALL_OPTIMIZED:
+            isNoGC = acc_.IsNoGC(gate);
+            break;
+        case OpCode::ASM_CALL_BARRIER:
+            isNoGC = true;
+            break;
+        default:
+            isNoGC = false;
+            UNREACHABLE();
+    }
+    if (calleeDescriptor->GetGCLeafFunction() ||
+        calleeDescriptor->GetCallConv() == CallSignature::CallConv::GHCCallConv) {
+        isNoGC = true;
+    }
+    return isNoGC;
 }
 
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
@@ -1012,8 +1018,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef rtoffset;
     LLVMValueRef rtbaseoffset;
     LLVMValueRef callee;
-    CallExceptionKind kind = CallExceptionKind::NO_PC_OFFSET;
-    bool isNoGC = false;
     if (op == OpCode::CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
@@ -1024,7 +1028,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
             callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         }
-        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         // enableOptDirectCall_ optimization can be used for this case if the callee is asm stub.
         UpdateLeaveFrame(glue);
@@ -1037,32 +1040,18 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
             callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         }
-        kind = GetCallExceptionKind(op, index);
     } else if (op == OpCode::CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedCallSign();
         callee = GetCallee(inList, calleeDescriptor);
-        if (IsOptimizedJSFunction()) {
-            kind = CallExceptionKind::HAS_PC_OFFSET;
-        } else {
-            kind = CallExceptionKind::NO_PC_OFFSET;
-        }
-        isNoGC = acc_.IsNoGC(gate);
     } else if (op == OpCode::FAST_CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedFastCallSign();
         callee = GetCallee(inList, calleeDescriptor);
-        if (IsOptimizedJSFunction()) {
-            kind = CallExceptionKind::HAS_PC_OFFSET;
-        } else {
-            kind = CallExceptionKind::NO_PC_OFFSET;
-        }
-        isNoGC = acc_.IsNoGC(gate);
     } else if (op == OpCode::BASELINE_CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = BaselineStubCSigns::Get(index);
         rtoffset = GetBaselineStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::ASM_CALL_BARRIER) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
@@ -1073,7 +1062,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
             callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         }
-        isNoGC = true;
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = GetLValue(inList.at(targetIndex));
@@ -1086,8 +1074,10 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
         }
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(op);
     }
+
+    CallInfoKind kind = GetCallInfoKind(op, inList);
+    bool isNoGC = GetGCState(gate, op, calleeDescriptor);
 
     std::vector<LLVMValueRef> params;
     const size_t firstArg = static_cast<size_t>(CallInputs::FIRST_PARAMETER);
@@ -1101,9 +1091,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
 
     int extraParameterCnt = 0;
     size_t actualNumArgs = 0;
-    LLVMValueRef pcOffset = LLVMConstInt(GetInt32T(), 0, 0);
-    GateRef frameArgs = Circuit::NullGate();
-    ComputeArgCountAndExtraInfo(actualNumArgs, pcOffset, frameArgs, inList, kind);
+    GateRef frameState = Circuit::NullGate();
+    ComputeArgCountAndExtraInfo(actualNumArgs, frameState, inList, kind);
     std::vector<CallSignature::ParamAttr> *paramAttr = calleeDescriptor->GetParamAttr();
     // then push the actual parameter for js function call
     for (size_t paraIdx = firstArg + 1; paraIdx < actualNumArgs; ++paraIdx) {
@@ -1149,9 +1138,13 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     } else {
         LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);
         callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
-        if (kind == CallExceptionKind::HAS_PC_OFFSET) {
+        // In the LLVM backend, when we set the gcleaf option,
+        // the analysis of stack liveness will not be carried out.
+        // As a result, we shouldn't call llvmcall3 with the gcleaf option enabled.
+        bool useFrameState = (kind == CallInfoKind::HAS_FRAME_STATE && !isNoGC);
+        if (useFrameState) {
             std::vector<LLVMValueRef> values;
-            CollectExraCallSiteInfo(values, pcOffset, frameArgs);
+            GetDeoptBundleInfo(frameState, values);
             call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg +
                 extraParameterCnt, "", values.data(), values.size());
         } else {
@@ -2837,7 +2830,7 @@ LLVMValueRef LLVMModule::GetDeoptFunction()
 
 void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
 {
-    // glue type depth
+    // glue type maybeAcc
     std::vector<LLVMTypeRef> paramTys = { GetInt64T(), GetInt64T(), GetInt64T() };
     auto funcType = LLVMFunctionType(GetInt64T(), paramTys.data(),  paramTys.size(), 0);
     auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
@@ -2854,7 +2847,7 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
 
     LLVMValueRef glue = LLVMGetParam(function, 0);
     LLVMValueRef check = LLVMGetParam(function, 1);
-    LLVMValueRef depth = LLVMGetParam(function, 2);
+    LLVMValueRef maybeAcc = LLVMGetParam(function, 2);  // 2: maybeAcc
 
     StubIdType stubId = RTSTUB_ID(DeoptHandlerAsm);
     int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
@@ -2863,7 +2856,7 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
     LLVMValueRef llvmAddr = LLVMBuildLoad(builder, patchAddr, "");
     LLVMTypeRef rtfuncTypePtr = LLVMPointerType(funcType, 0);
     LLVMValueRef callee = LLVMBuildIntToPtr(builder, llvmAddr, rtfuncTypePtr, "");
-    std::vector<LLVMValueRef> params = {glue, check, depth};
+    std::vector<LLVMValueRef> params = {glue, check, maybeAcc};
     LLVMValueRef runtimeCall = LLVMBuildCall2(builder, funcType, callee, params.data(), params.size(), "");
     LLVMBuildRet(builder, runtimeCall);
     LLVMPositionBuilderAtEnd(builder, entry);
@@ -2951,22 +2944,19 @@ void LLVMIRBuilder::SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, 
     values.emplace_back(ConvertInt32ToTaggedInt(value));
 }
 
-void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
+void LLVMIRBuilder::GetDeoptBundleInfo(GateRef deoptFrameState, std::vector<LLVMValueRef> &values)
 {
-    LLVMValueRef glue = gate2LValue_.at(acc_.GetGlueFromArgList());
-    GateRef deoptFrameState = acc_.GetValueIn(gate, 1); // 1: frame state
-    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
-    std::vector<LLVMValueRef> params;
-    params.push_back(glue); // glue
-    GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
-    uint64_t v = acc_.GetConstantValue(deoptType);
-    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false))); // deoptType
-    LLVMValueRef callee = GetExperimentalDeopt(module_);
-    LLVMTypeRef funcType = GetExperimentalDeoptTy();
+    if (acc_.GetOpCode(deoptFrameState) != OpCode::FRAME_STATE) {
+        return;
+    }
 
-    std::vector<LLVMValueRef> values;
+    // inline depth
     size_t maxDepth = acc_.GetFrameDepth(deoptFrameState, OpCode::FRAME_STATE);
-    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(maxDepth), false)));
+    int32_t specInlineDepthIndex = static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH);
+    LLVMValueRef depthValue = LLVMConstInt(GetInt32T(), maxDepth, false);
+    values.emplace_back(LLVMConstInt(GetInt32T(), specInlineDepthIndex, false));
+    values.emplace_back(depthValue);
+    
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     GateRef frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
@@ -3020,6 +3010,25 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         SaveDeoptVregInfoWithI64(values, specArgcIndex, curDepth, shift, actualArgc);
         frameState = acc_.GetFrameState(frameState);
     }
+}
+
+void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
+{
+    LLVMValueRef glue = gate2LValue_.at(acc_.GetGlueFromArgList());
+    GateRef deoptFrameState = acc_.GetValueIn(gate, 1); // 1: frame state
+    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
+    std::vector<LLVMValueRef> params;
+    params.push_back(glue); // glue
+    GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
+    uint64_t v = acc_.GetConstantValue(deoptType);
+    params.push_back(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false)); // deoptType
+    LLVMValueRef undefined = LLVMConstInt(GetInt64T(), JSTaggedValue::VALUE_UNDEFINED, false);
+    params.push_back(LLVMBuildIntToPtr(builder_, undefined, GetTaggedHPtrT(), "")); // maybeAcc
+    LLVMValueRef callee = GetExperimentalDeopt(module_);
+    LLVMTypeRef funcType = GetExperimentalDeoptTy();
+
+    std::vector<LLVMValueRef> values;
+    GetDeoptBundleInfo(deoptFrameState, values);
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
     Bind(gate, runtimeCall);

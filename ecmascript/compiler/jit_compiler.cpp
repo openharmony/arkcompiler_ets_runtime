@@ -69,6 +69,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
+    isEnableLazyDeopt_ = runtimeOptions.IsEnableJitLazyDeopt();
 }
 
 void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
@@ -97,6 +98,7 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
             .EnableLexenvSpecialization(jitOptions_.isEnableLexenvSpecialization_)
             .EnableInlineNative(jitOptions_.isEnableNativeInline_)
             .EnableLoweringBuiltin(jitOptions_.isEnableLoweringBuiltin_)
+            .EnableLazyDeopt(jitOptions_.isEnableLazyDeopt_)
             .Build();
 }
 

@@ -4440,7 +4440,7 @@ RegOperand &AArch64CGFunc::LoadOpndIntoPhysicalRegister(const IntrinsiccallNode 
 
 void AArch64CGFunc::SelectPureCall(const IntrinsiccallNode &intrnNode)
 {
-    DEBUG_ASSERT(intrnNode.NumOpnds() == 7, "must be 7 operands");  // must be 7 operands
+    DEBUG_ASSERT(intrnNode.NumOpnds() == 6, "must be 6 operands");  // must be 6 operands
     // deal with parms
     ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
     auto &callee = *intrnNode.Opnd(0);

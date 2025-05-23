@@ -188,7 +188,7 @@ private:
                                     maple::litecg::Expr rtbaseoffset, const std::string &realName = "") const;
     bool IsOptimizedJSFunction() const;
     bool IsOptimized() const;
-    CallExceptionKind GetCallExceptionKind(OpCode op, size_t index = SIZE_MAX) const;
+    CallInfoKind GetCallInfoKind(OpCode op, size_t index = SIZE_MAX) const;
     maple::litecg::Expr GetRTStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCoStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetBaselineStubOffset(maple::litecg::Expr glue, int index) const;
@@ -219,8 +219,8 @@ private:
                                   maple::litecg::BB &bb, int32_t index, size_t curDepth, size_t shift, GateRef gate);
 
     maple::litecg::ConvAttr ConvertCallAttr(const CallSignature::CallConv callConv);
-    void CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
-                                 maple::litecg::Expr pcOffset, GateRef frameArgs);
+    void GetDeoptBundleInfo(maple::litecg::BB &bb, GateRef deoptFrameState,
+                            std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo);
     void GenPrologue(maple::litecg::Function &function);
     void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType, maple::litecg::Function &function);
     void SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value);

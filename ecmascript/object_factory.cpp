@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/mem/barriers.h"
 #ifdef USE_CMC_GC
@@ -1912,6 +1913,12 @@ JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
         return NewSFunctionByHClass(method, hclass);
     }
     return NewNativeSFunctionByHClass(hclass, nativeFunc, kind);
+}
+
+JSHandle<DependentInfos> ObjectFactory::NewDependentInfos(uint32_t capacity)
+{
+    JSHandle<WeakVector> weakVector = WeakVector::Create(thread_, capacity);
+    return JSHandle<DependentInfos>::Cast(weakVector);
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,

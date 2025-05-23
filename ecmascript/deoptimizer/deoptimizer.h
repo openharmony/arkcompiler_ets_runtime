@@ -27,22 +27,16 @@
 namespace panda::ecmascript {
 class JSThread;
 enum class SpecVregIndex: int {
-    PC_OFFSET_INDEX = -1,
-    ACC_INDEX = -2,
-    ENV_INDEX = -3,
-    FUNC_INDEX = -4,
-    NEWTARGET_INDEX = -5,
-    THIS_OBJECT_INDEX = -6,
-    ACTUAL_ARGC_INDEX = -7,
-    FIRST_METHOD_OFFSET_INDEX = -8,
-    PADDING1 = -9,
-    PADDING2 = -10,
-    PADDING3 = -11,
-    MAX_METHOD_OFFSET_INDEX = -12,
+    INLINE_DEPTH = -1,  // INLINE_DEPTH wont be decoded, and put it here to
+                        // avoiding confilict with the decoding of inlined frame args below
+    PC_OFFSET_INDEX = -2,
+    ACC_INDEX = -3,
+    ENV_INDEX = -4,
+    FUNC_INDEX = -5,
+    NEWTARGET_INDEX = -6,
+    THIS_OBJECT_INDEX = -7,
+    ACTUAL_ARGC_INDEX = -8,
 };
-
-static constexpr uint32_t MAX_METHOD_OFFSET_NUM = static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) -
-                                                  static_cast<int32_t>(SpecVregIndex::MAX_METHOD_OFFSET_INDEX) + 1;
 
 struct Context {
     uintptr_t callsiteSp;
@@ -50,16 +44,28 @@ struct Context {
     kungfu::CalleeRegAndOffsetVec calleeRegAndOffset;
 };
 
+//   |--------------------------| ---------------
+//   |        callerFp_         |               ^
+//   |       returnAddr_        |               |
+//   |      callFrameTop_       |          stackContext
+//   |       inlineDepth_       |               |
+//   |       hasException_      |               |
+//   |      isFrameLazyDeopt_   |               v
+//   |--------------------------| ---------------
 struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                     base::AlignedPointer,
                                                     base::AlignedPointer,
                                                     base::AlignedPointer,
-                                                    base::AlignedPointer> {
+                                                    base::AlignedPointer,
+                                                    base::AlignedBool,
+                                                    base::AlignedBool> {
     enum class Index : size_t {
         INLINE_DEPTH_INDEX = 0,
         CALLFRAME_TOP_INDEX,
         RETURN_ADDRESS_INDEX,
         CALLERFRAME_POINTER_INDEX,
+        HAS_EXCEPTION_INDEX,
+        IS_FRAME_LAZY_DEOPT_INDEX,
         NUM_OF_MEMBER
     };
 
@@ -85,6 +91,16 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
         return GetOffset<static_cast<size_t>(Index::CALLERFRAME_POINTER_INDEX)>(isArch32);
     }
 
+    static size_t GetHasExceptionOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::HAS_EXCEPTION_INDEX)>(isArch32);
+    }
+
+    static size_t GetIsFrameLazyDeoptOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::IS_FRAME_LAZY_DEOPT_INDEX)>(isArch32);
+    }
+
     static constexpr size_t GetSize(bool isArch32)
     {
         return isArch32 ? AsmStackContext::SizeArch32 : AsmStackContext::SizeArch64;
@@ -94,6 +110,8 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
     alignas(EAS) uintptr_t callFrameTop_{0};
     alignas(EAS) uintptr_t returnAddr_{0};
     alignas(EAS) uintptr_t callerFp_{0};
+    alignas(EAS) bool hasException_{false};
+    alignas(EAS) bool isFrameLazyDeopt_{false};
     // out put data
 };
 
@@ -113,19 +131,28 @@ public:
     using OffsetType = kungfu::LLVMStackMapType::OffsetType;
     using VRegId = kungfu::LLVMStackMapType::VRegId;
 
-    explicit Deoptimizier(JSThread *thread, size_t depth);
+    explicit Deoptimizier(JSThread *thread, size_t depth, kungfu::DeoptType type);
 
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
-    JSTaggedType ConstructAsmInterpretFrame();
+    JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
     static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
     static PUBLIC_API int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
     static PUBLIC_API size_t ComputeShift(size_t depth);
     static int32_t DecodeVregIndex(OffsetType id, size_t shift);
     static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
+    static size_t GetInlineDepth(JSThread *thread);
+    static void ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *fun,
+                                                 Method *method, kungfu::DeoptType type);
+    static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
+                                                        FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
+    static void PrepareForLazyDeopt(JSThread *thread);
+    void ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint8_t* &resumePc,
+                          AsmInterpretedFrame *statePtr);
+    bool NeedOverwriteAcc(const uint8_t *pc) const;
     JSThread *GetThread() const
     {
         return thread_;
@@ -137,6 +164,7 @@ public:
     }
 
 private:
+    static bool IsNeedLazyDeopt(const FrameIterator &it);
     size_t GetFrameIndex(CommonArgIdx index)
     {
         return static_cast<size_t>(index) - static_cast<size_t>(CommonArgIdx::FUNC);
@@ -174,8 +202,7 @@ private:
     void RelocateCalleeSave();
     void Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t depth);
     int64_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
-    void ClearCompiledCodeStatusWhenDeopt(JSFunction *fun, Method *method);
-    void ResetJitHotness(JSFunction *jsFunc) const;
+    static void ResetJitHotness(JSThread *thread, JSFunction *jsFunc);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};
@@ -189,6 +216,7 @@ private:
     JSTaggedType *frameArgvs_ {nullptr};
     bool traceDeopt_{false};
     size_t inlineDepth_ {0};
+    uint32_t type_ {static_cast<uint32_t>(DeoptType::NONE)};
 };
 
 }  // namespace panda::ecmascript

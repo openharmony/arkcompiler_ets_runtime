@@ -639,7 +639,9 @@ void TypedBytecodeLowering::LoadOnPrototypeForHeapObjectReceiver(const LoadObjPr
     auto gate = tacc.GetGate();
 
     // prototype change marker check
-    builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), ldProtoInfo.frameState);
+    if (!TryLazyDeoptStableProtoChain(tacc, ldProtoInfo.typeIndex, gate)) {
+        builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), ldProtoInfo.frameState);
+    }
     // lookup from receiver for holder
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(),
                                               ldProtoInfo.receiverHC, JSHClass::PROTOTYPE_OFFSET);
@@ -741,7 +743,9 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
         if (tacc.IsReceiverEqHolder(0)) {
             result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         } else {
-            builder_.ProtoChangeMarkerCheck(receiver, frameState);
+            if (!TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
+                builder_.ProtoChangeMarkerCheck(receiver, frameState);
+            }
             LowerTypedMonoLdObjByNameOnProto(tacc, result);
         }
     }
@@ -1007,7 +1011,9 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         builder_.ObjectTypeCheck(false, receiver,
                                  builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         if (tacc.IsReceiverNoEqNewHolder(0)) {
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
+            if (!TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
+                builder_.ProtoChangeMarkerCheck(receiver, frameState);
+            }
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
             GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
@@ -1044,7 +1050,9 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             builder_.DeoptCheck(builder_.Equal(receiverHC, expected), frameState, DeoptType::INCONSISTENTHCLASS3);
         }
         if (tacc.IsReceiverNoEqNewHolder(i)) {
-            builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
+            if (!TryLazyDeoptStableProtoChain(tacc, i, gate)) {
+                builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
+            }
             if (tacc.IsHolderEqNewHolder(i)) {
                 // lookup from receiver for holder
                 auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC,
@@ -1104,7 +1112,7 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
     }
     if (!tacc.IsPrototypeHclass(i)) {
         builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(receiverHC)), frameState,
-                            DeoptType::PROTOTYPECHANGED2);
+                            DeoptType::PROTOTYPECHANGED3);
     } else {
         builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
                         BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");

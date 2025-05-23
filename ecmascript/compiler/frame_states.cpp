@@ -290,7 +290,7 @@ void FrameStateBuilder::FillBcInputs(const BytecodeInfo &bytecodeInfo, GateRef g
 void FrameStateBuilder::AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
 {
     if (bytecodeInfo.IsGeneral()) {
-        BindStateSplitBefore(bytecodeInfo, liveout, bcId);
+        BuildFrameStateBefore(bytecodeInfo, liveout, bcId);
         if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
             bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8) {
             auto hole = circuit_->GetConstantGate(MachineType::I64,
@@ -367,7 +367,7 @@ void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
             }
         }
     }
-    BindStateSplitAfter(bytecodeInfo, bcId, gate);
+    BindFrameStateAndStateSplitAfter(bytecodeInfo, bcId, gate);
 }
 
 void FrameStateBuilder::SetOsrLoopHeadBB(const BytecodeRegion &osrLoopBodyBB)
@@ -789,9 +789,6 @@ void FrameStateBuilder::NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAs
     }
     liveContext_->currentState_ = loopExit;
     liveContext_->currentDepend_ = loopExitDepend;
-    if (!bcBuilder_->IsTypeLoweringEnabled()) {
-        return;
-    }
     auto stateSplit = BuildStateSplit(liveContext_, liveout, bbNext.start);
     liveContext_->currentDepend_ = stateSplit;
 }
@@ -839,9 +836,6 @@ void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoop
     }
     if (liveContext_->needStateSplit_) {
         liveContext_->needStateSplit_ = false;
-        if (!bcBuilder_->IsTypeLoweringEnabled()) {
-            return;
-        }
         auto liveout = GetOrOCreateBBLiveOut(bb.id);
         auto stateSplit = BuildStateSplit(liveContext_, liveout, bb.start);
         liveContext_->currentDepend_ = stateSplit;
@@ -1442,24 +1436,18 @@ GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, FrameLive
     return circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
 }
 
-void FrameStateBuilder::BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
+void FrameStateBuilder::BuildFrameStateBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId)
 {
-    if (!bcBuilder_->IsTypeLoweringEnabled()) {
-        return;
-    }
-    if (bytecodeInfo.IsCall() || bytecodeInfo.IsAccessorBC()) {
+    if (bytecodeInfo.NeedFrameStateInPlace()) {
         frameStateCache_ = BuildFrameState(liveContext_, liveout, bcId);
     }
     ASSERT(!liveContext_->needStateSplit_);
 }
 
-void FrameStateBuilder::BindStateSplitAfter(const BytecodeInfo &bytecodeInfo,
+void FrameStateBuilder::BindFrameStateAndStateSplitAfter(const BytecodeInfo &bytecodeInfo,
     uint32_t bcId, GateRef gate)
 {
-    if (!bcBuilder_->IsTypeLoweringEnabled()) {
-        return;
-    }
-    if (bytecodeInfo.IsCall() || bytecodeInfo.IsAccessorBC()) {
+    if (bytecodeInfo.NeedFrameStateInPlace()) {
         auto frameState = GetBcFrameStateCache();
         acc_.ReplaceFrameStateIn(gate, frameState);
     }

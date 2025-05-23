@@ -47,6 +47,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     runState_(RunState::INIT)
 {
     jit->IncJitTaskCnt(hostThread);
+    dependencies_ = new kungfu::LazyDeoptAllDependencies();
     sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
 }
 
@@ -279,12 +280,15 @@ void JitTask::InstallCode()
         return;
     }
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
-
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
-
     size_t size = ComputePayLoadSize(codeDesc_);
-
     codeDesc_.isAsyncCompileMode = IsAsyncTask();
+    
+    if (!kungfu::LazyDeoptAllDependencies::Commit(
+        GetDependencies(), hostThread_, jsFunction_.GetTaggedValue())) {
+        return;
+    }
+
     JSHandle<MachineCode> machineCodeObj;
     if (Jit::GetInstance()->IsEnableJitFort()) {
         // skip install if JitFort out of memory
@@ -415,6 +419,9 @@ JitTask::~JitTask()
     ReleaseSustainingJSHandle();
     jit_->DeleteJitCompilerTask(compilerTask_);
     jit_->DecJitTaskCnt(hostThread_);
+    ASSERT(dependencies_ != nullptr);
+    delete dependencies_;
+    dependencies_ = nullptr;
 }
 
 void JitTask::WaitFinish()

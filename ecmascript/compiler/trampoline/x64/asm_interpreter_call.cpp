@@ -755,7 +755,8 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
 //        %r12 - callTarget
 //        %rbx - method
 void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister,
-    Register newSpRegister, Register callTargetRegister, Register methodRegister, Register accRegister)
+    Register newSpRegister, Register callTargetRegister, Register methodRegister, Register accRegister,
+    bool hasException)
 {
     Register glueRegister = __ GlueRegister();
     Label dispatchCall;
@@ -784,7 +785,11 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
 
     Register bcIndexRegister = rax;
     Register tempRegister = __ AvailableRegister1();
-    __ Movzbq(Operand(pcRegister, 0), bcIndexRegister);
+    if (hasException) {
+        __ Movq(kungfu::BytecodeStubCSigns::ID_ExceptionHandler, bcIndexRegister);
+    } else {
+        __ Movzbq(Operand(pcRegister, 0), bcIndexRegister);
+    }
     // acc: rsi
     if (accRegister != rInvalid) {
         ASSERT(accRegister == rsi);

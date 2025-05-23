@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_JIT_COMPILER_H
 #define ECMASCRIPT_COMPILER_JIT_COMPILER_H
 
-#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/js_runtime_options.h"
@@ -64,15 +64,17 @@ struct JitCompilationOptions {
     bool isEnableLexenvSpecialization_;
     bool isEnableNativeInline_;
     bool isEnableLoweringBuiltin_;
+    bool isEnableLazyDeopt_;
 };
 
 class JitCompilerTask final {
 public:
     JitCompilerTask(JitTask *jitTask) : jsFunction_(jitTask->GetJsFunction()), offset_(jitTask->GetOffset()),
-        jitCompilationEnv_(new JitCompilationEnv(jitTask->GetCompilerVM(), jitTask->GetHostVM(), jsFunction_)),
+        jitCompilationEnv_(new JitCompilationEnv(jitTask->GetCompilerVM(),
+                           jitTask->GetHostVM(), jsFunction_, jitTask->GetDependencies())),
         profileTypeInfo_(jitTask->GetProfileTypeInfo()),
-        compilerTier_(jitTask->GetCompilerTier()), baselineCompiler_(nullptr),
-        passManager_(nullptr), jitCodeGenerator_(nullptr) { };
+        compilerTier_(jitTask->GetCompilerTier()),
+        baselineCompiler_(nullptr), passManager_(nullptr), jitCodeGenerator_(nullptr) { };
     static JitCompilerTask *CreateJitCompilerTask(JitTask *jitTask);
 
     bool Compile();

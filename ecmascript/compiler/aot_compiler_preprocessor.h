@@ -83,6 +83,7 @@ struct CompilationOptions {
     bool isEnableOptLoopPeeling_ {true};
     bool isEnableOptLoopInvariantCodeMotion_ {false};
     bool isEnableOptConstantFolding_ {true};
+    bool isEnableLazyDeopt_ {false};
     bool isEnableLexenvSpecialization_ {false};
     bool isEnableNativeInline_ {true};
     bool isEnablePGOHCRLowering_ {false};

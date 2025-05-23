@@ -1360,9 +1360,12 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
     Register outputCount = rdx;
     Register frameStateBase = rcx;
     Register depth = r11;
+    Register hasExceptionRegister = r15;
     Label loopBegin;
     Label stackOverflow;
+    Label gotoExceptionHandler;
     Label pushArgv;
+    __ Movq(Operand(context, AsmStackContext::GetHasExceptionOffset(false)), hasExceptionRegister);
     __ Movq(Operand(context, AsmStackContext::GetInlineDepthOffset(false)), depth);
     __ Leaq(Operand(context, AsmStackContext::GetSize(false)), context);
     __ Movq(Immediate(0), r12);
@@ -1463,7 +1466,12 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
         __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
 
         __ Leaq(Operand(rsp, AsmInterpretedFrame::GetSize(false)), opRegister);
-        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi);
+        
+        __ Cmpq(0, hasExceptionRegister);
+        __ Jne(&gotoExceptionHandler);
+        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi, false);
+        __ Bind(&gotoExceptionHandler);
+        AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi, true);
     }
 
     __ Bind(&stackOverflow);
@@ -1475,7 +1483,37 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
     }
 }
 
+
+void OptimizedCall::DeoptPushAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register context)
+{
+    Label processLazyDeopt;
+    Label exit;
+    Register frameTypeRegister = r8;
+    __ Movq(Operand(context, AsmStackContext::GetIsFrameLazyDeoptOffset(false)), frameTypeRegister);
+    __ Cmpq(0, frameTypeRegister);
+    __ Jne(&processLazyDeopt);
+    {
+        __ Pushq(static_cast<int64_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME));
+        __ Jmp(&exit);
+    }
+    __ Bind(&processLazyDeopt);
+    {
+        __ Pushq((static_cast<uint64_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME) |
+                 (1ULL << FrameIterator::LAZY_DEOPT_FLAG_BIT)));
+    }
+    __ Bind(&exit);
+    __ Pushq(rbp);
+    __ Pushq(0);    // pc
+    __ Leaq(Operand(rsp, 24), rbp);  // 24: skip pc, prevSp and frame type
+    __ PushAlignBytes();
+    if (!assembler->FromInterpreterHandler()) {
+        __ PushCppCalleeSaveRegisters();
+    }
+}
+
 // Input: %rdi - glue
+// %rsi - deopt type
+// %rdx - maybeAcc
 void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
@@ -1487,15 +1525,15 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 
     __ Movq(rdi, rax); // glue
     Register deoptType = rsi;
-    Register depth = rdx;
+    Register maybeAcc = rdx;
     __ Subq(FRAME_SLOT_SIZE, rsp);
-    __ Pushq(depth);
+    __ Pushq(maybeAcc);   // acc
     __ Pushq(deoptType);  // argv[0]
-    __ Pushq(2);  // 2: argc
+    __ Pushq(2);          // 2: argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_DeoptHandler);
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
 
-    __ Addq(5 * FRAME_SLOT_SIZE, rsp); // 5: skip runtimeId argc deoptType depth align
+    __ Addq(5 * FRAME_SLOT_SIZE, rsp); // 5: skip runtimeId argc deoptType maybeAcc align
 
     Register context = rsi;
     __ Movq(rax, context);
@@ -1512,7 +1550,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), rsp);
     __ Subq(FRAME_SLOT_SIZE, rsp); // skip lr
 
-    PushAsmInterpBridgeFrame(assembler);
+    DeoptPushAsmInterpBridgeFrame(assembler, context);
     __ Callq(&target);
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();

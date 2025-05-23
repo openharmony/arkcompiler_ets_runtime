@@ -204,6 +204,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-inline-property-optimization:  Enable inline property optimization(also enable slack tracking).\n"
     "--compiler-enable-aot-code-comment    Enable generate aot_code_comment.txt file during compilation.\n"
     "                                      Default : 'false'\n"
+    "--compiler-enable-aot-lazy-deopt:     Enable lazy deopt for aot compiler. Default: 'false'\n"
+    "--compiler-enable-jit-lazy-deopt:     Enable lazy deopt for jit compiler. Default: 'false'\n"
     "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means Default\n"
     "                                      Default: No limit for Host, '100' for TargetCompilerMode\n"
     "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
@@ -362,6 +364,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
         {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
+        {"compiler-enable-aot-lazy-deopt", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_LAZY_DEOPT},
+        {"compiler-enable-jit-lazy-deopt", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_LAZY_DEOPT},
+        {"compiler-enable-lazy-deopt-trace", required_argument, nullptr, OPTION_COMPILER_ENABLE_LAZY_DEOPT_TRACE},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
         {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
@@ -1416,6 +1421,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_ENABLE_AOT_LAZY_DEOPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotLazyDeopt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT_LAZY_DEOPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitLazyDeopt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_LAZY_DEOPT_TRACE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableLazyDeoptTrace(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_TRACE_BUILTINS:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1451,6 +1480,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 return false;
         }
     }
+#ifdef PANDA_TARGET_32
+    SetEnableAotLazyDeopt(false);
+    SetEnableJitLazyDeopt(false);
+    SetEnableLazyDeoptTrace(false);
+#endif
 }
 
 bool JSRuntimeOptions::SetDefaultValue(char* argv)

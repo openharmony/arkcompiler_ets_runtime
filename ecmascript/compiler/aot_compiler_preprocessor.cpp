@@ -55,6 +55,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableOptLoopPeeling_ = runtimeOptions.IsEnableOptLoopPeeling();
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
+    isEnableLazyDeopt_ = runtimeOptions.IsEnableAotLazyDeopt();
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();

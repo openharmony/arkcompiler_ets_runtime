@@ -155,10 +155,10 @@ namespace panda::ecmascript::kungfu {
     V(ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 2)                                   \
     V(ObjectHasOwnProperty, OBJECT_HAS_OWN_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                                 \
     V(ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 1)                               \
-    V(ReflectGet, REFLECT_GET, GateFlags::NONE_FLAG, 1, 1, 2)                                                      \
+    V(ReflectGet, REFLECT_GET, GateFlags::HAS_FRAME_STATE, 1, 1, 2)                                                \
     V(ReflectHas, REFLECT_HAS, GateFlags::NO_WRITE, 1, 1, 2)                                                       \
-    V(ReflectConstruct, REFLECT_CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, 1)                                          \
-    V(ReflectApply, REFLECT_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)                                                  \
+    V(ReflectConstruct, REFLECT_CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, 1)                                    \
+    V(ReflectApply, REFLECT_APPLY, GateFlags::HAS_FRAME_STATE, 1, 1, 3)                                            \
     V(FunctionPrototypeApply, FUNCTION_PROTOTYPE_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)                             \
     V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NONE_FLAG, 1, 1, 2)                               \
     V(HeapObjectIsEcmaObjectCheck, HEAP_OBJECT_IS_ECMA_OBJECT, GateFlags::CHECKABLE, 1, 1, 1)                      \

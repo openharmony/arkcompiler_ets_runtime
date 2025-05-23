@@ -42,6 +42,7 @@ class LexicalEnv;
 class GlobalEnv;
 class TaggedQueue;
 class NumberDictionary;
+class DependentInfos;
 
 namespace builtins {
     class BuiltinsArkTools;
@@ -768,6 +769,7 @@ public:
     static bool IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
                                  JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key);
     static JSHandle<EnumCache> GetOrCreateEnumCache(JSThread *thread, JSHandle<JSHClass> jsHClass);
+    static JSHandle<JSTaggedValue> GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass);
     static inline void SetEnumCacheKind([[maybe_unused]] const JSThread *thread,
                                         JSHandle<EnumCache> enumCache, const EnumCacheKind kind)
     {

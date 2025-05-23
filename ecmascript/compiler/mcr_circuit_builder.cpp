@@ -1125,7 +1125,7 @@ GateRef CircuitBuilder::TypedCall(GateRef hirGate, std::vector<GateRef> args, bo
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
@@ -1144,7 +1144,7 @@ GateRef CircuitBuilder::TypedFastCall(GateRef hirGate, std::vector<GateRef> args
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    AppendFrameArgs(args, hirGate);
+    AppendFrameState(args, hirGate);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedFastCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);

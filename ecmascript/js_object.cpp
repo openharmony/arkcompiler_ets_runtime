@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_object.h"
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -574,6 +575,7 @@ void JSObject::GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::ve
     }
 }
 
+// static
 JSHandle<EnumCache> JSObject::GetOrCreateEnumCache(JSThread *thread, JSHandle<JSHClass> jsHClass)
 {
     if (!jsHClass->GetEnumCache().IsEnumCache()) {
@@ -583,6 +585,18 @@ JSHandle<EnumCache> JSObject::GetOrCreateEnumCache(JSThread *thread, JSHandle<JS
     }
     JSHandle<JSTaggedValue> enumCacheHandle(thread, jsHClass->GetEnumCache());
     return JSHandle<EnumCache>::Cast(enumCacheHandle);
+}
+
+// static
+JSHandle<JSTaggedValue> JSObject::GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass)
+{
+    if (!jsHClass->HasDependentInfos()) {
+        JSHandle<DependentInfos> dependentInfos = thread->GetEcmaVM()->GetFactory()->NewDependentInfos(0);
+        jsHClass->SetDependentInfos(thread, dependentInfos.GetTaggedValue());
+        return JSHandle<JSTaggedValue>::Cast(dependentInfos);
+    }
+    JSHandle<DependentInfos> dependentInfos(thread, jsHClass->GetDependentInfos());
+    return JSHandle<JSTaggedValue>::Cast(dependentInfos);
 }
 
 JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,

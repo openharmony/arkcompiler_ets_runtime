@@ -382,6 +382,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableProtoChain*;
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;
       panda::ecmascript::ohos::DecryptSetKey*;
@@ -417,6 +418,7 @@
       step_ark_with_record_jit;
       ark_write_jit_code;
       GetAOTVersion;
+      LazyDeoptEntry;
     };
   local:
     *;

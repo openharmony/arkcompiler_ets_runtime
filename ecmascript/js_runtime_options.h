@@ -20,11 +20,13 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <set>
 
 #include "common_components/log/log_base.h"
 #include "common_interfaces/base/common.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"
 #include "libpandabase/os/file.h"
 
@@ -231,6 +233,9 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_BUILTINS,
     OPTION_ENABLE_HEAP_VERIFY,
     OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT,
+    OPTION_COMPILER_ENABLE_AOT_LAZY_DEOPT,
+    OPTION_COMPILER_ENABLE_JIT_LAZY_DEOPT,
+    OPTION_COMPILER_ENABLE_LAZY_DEOPT_TRACE,
     OPTION_ENABLE_LOADING_STUBS_LOG,
     OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_COMPILER_JIT_METHOD_DICHOTOMY,
@@ -501,13 +506,6 @@ public:
         }
     }
 
-    void SetTraceLoadStoreBundleName(std::string bundleName)
-    {
-        if (bundleName != "") {
-            traceLoadStoreBundleName_ = bundleName;
-        }
-    }
-
     void SetMemConfigProperty(std::string configProperty)
     {
         if (configProperty != "") {
@@ -550,9 +548,9 @@ public:
         return arkBundleName_;
     }
 
-    std::string GetTraceLoadStoreBundleName() const
+    bool FindTraceBundleName(CString s) const
     {
-        return traceLoadStoreBundleName_;
+        return traceBundleName_.find(s) != traceBundleName_.end();
     }
 
     bool EnableOptionalLog() const
@@ -1436,6 +1434,36 @@ public:
     bool IsEnableOptInlining() const
     {
         return enableOptInlining_;
+    }
+
+    void SetEnableJitLazyDeopt(bool value)
+    {
+        enableJitLazyDeopt_ = value;
+    }
+
+    bool IsEnableJitLazyDeopt() const
+    {
+        return enableJitLazyDeopt_;
+    }
+
+    void SetEnableAotLazyDeopt(bool value)
+    {
+        enableAotLazyDeopt_ = value;
+    }
+
+    bool IsEnableAotLazyDeopt() const
+    {
+        return enableAotLazyDeopt_;
+    }
+
+    void SetEnableLazyDeoptTrace(bool value)
+    {
+        enableLazyDeoptTrace_ = value;
+    }
+
+    bool IsEnableLazyDeoptTrace() const
+    {
+        return enableLazyDeoptTrace_;
     }
 
     void SetEnableOptPGOType(bool value)
@@ -2336,7 +2364,7 @@ private:
     int32_t deviceThermalLevel_ {0};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
-    std::string traceLoadStoreBundleName_ = {""};
+    std::set<CString> traceBundleName_ = {};
     size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
@@ -2390,6 +2418,9 @@ private:
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
+    bool enableAotLazyDeopt_ {false};
+    bool enableJitLazyDeopt_ {false};
+    bool enableLazyDeoptTrace_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
     bool enableDFXHiSysEvent_ {true};

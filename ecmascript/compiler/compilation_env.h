@@ -23,7 +23,8 @@
 
 namespace panda::ecmascript {
 namespace kungfu {
-class PGOTypeManager;
+    class PGOTypeManager;
+    class LazyDeoptAllDependencies;
 };
 class ConstantPool;
 namespace pgo {
@@ -39,10 +40,14 @@ public:
     {
         return false;
     }
+
     virtual bool IsAotCompiler() const
     {
         return false;
     }
+
+    virtual kungfu::LazyDeoptAllDependencies *GetDependencies() const = 0;
+
     EcmaVM *GetEcmaVM() const
     {
         return vm_;

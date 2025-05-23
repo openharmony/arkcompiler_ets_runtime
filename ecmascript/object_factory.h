@@ -162,6 +162,7 @@ class JSAsyncGeneratorFunction;
 class JSAsyncGeneratorObject;
 class CellRecord;
 class ClassLiteral;
+class DependentInfos;
 
 namespace job {
 class MicroJobQueue;
@@ -255,6 +256,7 @@ public:
                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                       kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                       MemSpaceType spaceType = SHARED_OLD_SPACE);
+    JSHandle<DependentInfos> NewDependentInfos(uint32_t capacity);
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);

@@ -43,8 +43,12 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
+PUBLIC_API extern "C" JSTaggedType LazyDeoptEntry();
 class RuntimeStubs {
 public:
+    static constexpr uint32_t TRACE_NUMBER = 100;
+    static constexpr uint32_t RT_STUB_FUNC_SIZE = 8;
+
     static void Initialize(JSThread *thread);
 
 #define DECLARE_RUNTIME_STUBS(name) \
@@ -168,6 +172,7 @@ public:
     static JSTaggedValue FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule);
     static void FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule);
     static void LoadNativeModuleFailed(JSTaggedValue curModule);
+    static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
 
 private:

@@ -1070,6 +1070,15 @@ size_t JSThread::GetAsmStackLimit()
 #endif
 }
 
+uintptr_t JSThread::GetAndClearCallSiteReturnAddr(uintptr_t callSiteSp)
+{
+    auto iter = callSiteSpToReturnAddrTable_.find(callSiteSp);
+    ASSERT(iter != callSiteSpToReturnAddrTable_.end());
+    uintptr_t returnAddr = iter->second;
+    callSiteSpToReturnAddrTable_.erase(iter);
+    return returnAddr;
+}
+
 bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();

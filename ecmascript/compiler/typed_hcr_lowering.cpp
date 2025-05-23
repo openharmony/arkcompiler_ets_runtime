@@ -3027,7 +3027,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     }
     if (!isPrototype) {
         builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(receiverHC)), frameState,
-                            DeoptType::PROTOTYPECHANGED2);
+                            DeoptType::PROTOTYPECHANGED3);
     } else {
         builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");

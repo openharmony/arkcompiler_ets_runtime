@@ -98,32 +98,6 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, Las
     return data;
 }
 
-std::string JsStackInfo::BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets)
-{
-    std::string data;
-    std::map<uint32_t, uint32_t>::reverse_iterator it;
-    for (it = methodOffsets.rbegin(); it != methodOffsets.rend(); it++) {
-        uint32_t methodId = it->second;
-        std::string name;
-        if (methodId == 0) {
-            name = "unknown";
-        } else {
-            name = std::string(MethodLiteral::GetMethodName(pf, EntityId(methodId)));
-            if (name == "") {
-                name = "anonymous";
-            }
-        }
-        data.append("    at ");
-        data.append(name);
-        data.append(" (maybe inlined).");
-        data.append(" depth: ");
-        data.append(std::to_string(it->first));
-
-        data.push_back('\n');
-    }
-    return data;
-}
-
 void JsStackInfo::DumpJitCode(JSThread *thread)
 {
     JSTaggedType exception = thread->GetException().GetRawData();
@@ -208,15 +182,16 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
         }
         if (!method->IsNativeWithCallField()) {
             uint32_t pcOffset = 0;
-            if (it.GetFrameType() == FrameType::ASM_INTERPRETER_FRAME && baselineNativePc != 0) {
+            bool needBaselineSpecialHandling = 
+                (it.GetFrameType() == FrameType::ASM_INTERPRETER_FRAME && baselineNativePc != 0);
+            if (needBaselineSpecialHandling) {
                 // the pcOffste in baseline frame slot is always uint64::max(), so pcOffset should be computed
                 JSHandle<JSFunction> function(thread, it.GetFunction());
                 pcOffset = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(function, baselineNativePc);
                 baselineNativePc = 0;
-            } else {
-                pcOffset = it.GetBytecodeOffset();
             }
-            data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj, lastCache);
+            data += BuildJsStackTraceInfo(thread, method, it, jsErrorObj, lastCache,
+                        needBaselineSpecialHandling, pcOffset);
             --depth;
         } else if (needNative) {
             auto addr = JSFunction::Cast(it.GetFunction().GetTaggedObject())->GetNativePointer();
@@ -237,11 +212,10 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
 }
 
 std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
-                                               uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj,
-                                               LastBuilderCache &lastCache)
+                                               const JSHandle<JSObject> &jsErrorObj,
+                                               LastBuilderCache &lastCache,
+                                               bool needBaselineSpecialHandling, uint32_t pcOffset)
 {
-    const JSPandaFile *pf = method->GetJSPandaFile();
-    std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
     FrameType frameType = it.GetFrameType();
     if (IsFastJitFunctionFrame(frameType)) {
         JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
@@ -249,8 +223,16 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
             AssembleJitCodeMap(thread, jsErrorObj, func, method, it.GetOptimizedReturnAddr());
         }
     }
-    return BuildInlinedMethodTrace(pf, methodOffsets) +
-           BuildMethodTrace(method, pcOffset, lastCache, thread->GetEnableStackSourceFile());
+    std::vector<std::pair<JSTaggedType, uint32_t>> stackTraceInfos;
+    it.GetStackTraceInfos(stackTraceInfos, needBaselineSpecialHandling, pcOffset);
+    std::string data;
+    for (auto &info : stackTraceInfos) {
+        Method *methodInline = ECMAObject::Cast(reinterpret_cast<TaggedObject *>(info.first))->GetCallTarget();
+        uint32_t pcOffsetInline = info.second;
+        data += BuildMethodTrace(methodInline, pcOffsetInline, lastCache,
+                                 thread->GetEnableStackSourceFile());
+    }
+    return data;
 }
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
@@ -750,6 +732,7 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
     if (!readMem(ctx, currentPtr, &frameType)) {
         return false;
     }
+    FrameIterator::TryRemoveLazyDeoptFlag(frameType);
     if (ArkFrameCheck(frameType)) {
         return true;
     }
@@ -814,6 +797,7 @@ bool ArkGetNextFrameWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t &currentPt
     if (!arkUnwindParam->readMem(arkUnwindParam->ctx, currentPtr, &frameType)) {
         return false;
     }
+    FrameIterator::TryRemoveLazyDeoptFlag(frameType);
     if (ArkFrameCheck(frameType)) {
         return true;
     }

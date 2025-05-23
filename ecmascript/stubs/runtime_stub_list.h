@@ -132,7 +132,10 @@ namespace panda::ecmascript {
     V(TraceStoreFastPath)                       \
     V(TraceStoreSlowPath)                       \
     V(TraceStoreDetail)                         \
-    V(TraceStoreEnd)
+    V(TraceStoreEnd)                            \
+    V(TraceNum)                                 \
+    V(TraceLazyDeoptNum)                        \
+    V(TraceLazyDeoptFailNum)                    \
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(Dump)                                    \
@@ -155,7 +158,7 @@ namespace panda::ecmascript {
     V(SharedGCMarkingBarrier)                  \
     V(CMCGCMarkingBarrier)                     \
     V(DoubleToInt)                             \
-    V(SaturateTruncDoubleToInt32)           \
+    V(SaturateTruncDoubleToInt32)              \
     V(FloatMod)                                \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \
@@ -185,6 +188,7 @@ namespace panda::ecmascript {
     V(UpdateFieldType)                         \
     V(BigIntEquals)                            \
     V(TimeClip)                                \
+    V(LazyDeoptEntry)                          \
     V(SetDateValues)                           \
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \

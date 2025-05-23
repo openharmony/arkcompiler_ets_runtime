@@ -3752,16 +3752,17 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 DEF_RUNTIME_STUBS(DeoptHandler)
 {
     RUNTIME_STUBS_HEADER(DeoptHandler);
-    size_t depth = static_cast<size_t>(GetArg(argv, argc, 1).GetInt());
-    Deoptimizier deopt(thread, depth);
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetTArg(argv, argc, 0));
+    JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
+    size_t depth = Deoptimizier::GetInlineDepth(thread);
+    Deoptimizier deopt(thread, depth, type);
     std::vector<kungfu::ARKDeopt> deoptBundle;
     deopt.CollectDeoptBundleVec(deoptBundle);
     ASSERT(!deoptBundle.empty());
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
     deopt.UpdateAndDumpDeoptInfo(type);
-    return deopt.ConstructAsmInterpretFrame();
+    return deopt.ConstructAsmInterpretFrame(maybeAcc);
 }
 
 DEF_RUNTIME_STUBS(AotInlineTrace)
@@ -4262,11 +4263,8 @@ void RuntimeStubs::FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t co
 bool RuntimeStubs::IsTargetBundleName(uintptr_t argGlue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    auto targetBundleName = thread->GetEcmaVM()->GetJSOptions().GetTraceLoadStoreBundleName();
-    if (thread->GetEcmaVM()->GetBundleName() != ConvertToString(targetBundleName)) {
-        return false;
-    }
-    return true;
+    return thread->GetEcmaVM()->GetJSOptions().FindTraceBundleName(
+        thread->GetEcmaVM()->GetBundleName());
 }
 
 DEF_RUNTIME_STUBS(TraceLoadSlowPath)
@@ -4497,6 +4495,76 @@ DEF_RUNTIME_STUBS(TraceStoreDetail)
     ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceNum)
+{
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+    if (!IsTargetBundleName(argGlue)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    uint32_t type = static_cast<uint32_t>(GetTArg(argv, argc, 0));
+    static uint32_t traceNum[128] = {};
+    traceNum[type] ++;
+    if (traceNum[type] % TRACE_NUMBER == 0) {
+        std::string s = "Trace type " + std::to_string(type);
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceLazyDeoptNum)
+{
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+    if (!IsTargetBundleName(argGlue)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    static uint32_t traceLazyDeoptNum = 0;
+    traceLazyDeoptNum ++;
+    if (traceLazyDeoptNum % TRACE_NUMBER == 0) {
+        std::string s = "Lazy Deoptimize Code.";
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceLazyDeoptFailNum)
+{
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+    if (!IsTargetBundleName(argGlue)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    static uint32_t traceLazyDeoptFailNum = 0;
+    traceLazyDeoptFailNum ++;
+    if (traceLazyDeoptFailNum % TRACE_NUMBER == 0) {
+        std::string s = "Lazy Deoptimize Code Fail."
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+// static
+void RuntimeStubs::TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func)
+{
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+    if (!IsTargetBundleName(argGlue)) {
+        return;
+    }
+
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedValue funcNameValue =
+        JSFunction::NameGetter(thread, JSHandle<JSObject>::Cast(func));
+    std::string funcName = EcmaStringAccessor(funcNameValue).ToStdString();
+    funcName += " Lazy Deoptimize Commit Success.";
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, funcName.c_str());
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+#endif
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)

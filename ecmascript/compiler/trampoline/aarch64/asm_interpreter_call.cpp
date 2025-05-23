@@ -1764,7 +1764,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
 //        X20 - callTarget
 //        X21 - method
 void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister,
-    Register newSpRegister, Register accRegister)
+    Register newSpRegister, Register accRegister, bool hasException)
 {
     Register glueRegister = __ GlueRegister();
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
@@ -1787,7 +1787,11 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
 
     Register bcIndexRegister = __ AvailableRegister1();
     Register tempRegister = __ AvailableRegister2();
-    __ Ldrb(bcIndexRegister.W(), MemoryOperand(pcRegister, 0));
+    if (hasException) {
+        __ Mov(bcIndexRegister.W(), Immediate(kungfu::BytecodeStubCSigns::ID_ExceptionHandler));
+    } else {
+        __ Ldrb(bcIndexRegister.W(), MemoryOperand(pcRegister, 0));
+    }
     __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(tempRegister, MemoryOperand(tempRegister, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(tempRegister);

@@ -375,7 +375,8 @@ public:
     using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 27
     using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 28
     using ConstructionCounterBits = IsJSSharedBit::NextField<uint8_t, CONSTRUCTION_COUNTER_BITFIELD_NUM>; // 29-31
-    using BitFieldLastBit = ConstructionCounterBits;
+    using IsStableBit = ConstructionCounterBits::NextFlag;                                           // 32
+    using BitFieldLastBit = IsStableBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
@@ -476,7 +477,8 @@ public:
     static void VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr);
     static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
     static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
-
+    
+    static void NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static JSHandle<JSTaggedValue> PUBLIC_API EnableProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
@@ -485,11 +487,12 @@ public:
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
     
-    static void NotifyHClassChangedForNotFound(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
+    static void NotifyHClassChangedForAot(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
                                                const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
     
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
-
+    static void NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandle<JSHClass> hclass);
+    
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static bool UnregisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -505,10 +508,10 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
     
-    template<bool isOnlyIncludeNotFound>
+    template<bool isForAot>
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     
-    template<bool isOnlyIncludeNotFound = false>
+    template<bool isForAot = false>
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
@@ -602,6 +605,17 @@ public:
     inline void SetIsOnHeap(bool flag) const
     {
         IsOnHeap::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void SetIsStable(bool flag) const
+    {
+        IsStableBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline bool IsStable() const
+    {
+        uint32_t bits = GetBitField();
+        return IsStableBit::Decode(bits);
     }
 
     inline bool IsJSObject() const
@@ -762,6 +776,11 @@ public:
     inline bool HasOrdinaryGet() const
     {
         return (IsSpecialContainer() || IsModuleNamespace() || IsBigInt64Array());
+    }
+
+    inline bool HasDependentInfos() const
+    {
+        return GetDependentInfos() != JSTaggedValue::Undefined();
     }
 
     inline bool IsJSTypedArray() const
@@ -2044,7 +2063,8 @@ public:
     ACCESSORS(Parent, PARENT_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
-    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, PROFILE_TYPE_OFFSET);
+    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, DEPENDENT_INFOS_OFFSET);
+    ACCESSORS(DependentInfos, DEPENDENT_INFOS_OFFSET, PROFILE_TYPE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 

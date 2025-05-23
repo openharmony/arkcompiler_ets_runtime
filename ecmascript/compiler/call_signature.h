@@ -280,7 +280,10 @@ public:
     {
         return TailCallBit::Decode(kind_);
     }
-
+    
+    // When setting this flag to true
+    // ensure the function doesn't cause GC,
+    // throw exceptions, or lead to LAZY deopt.
     void SetGCLeafFunction(bool value)
     {
         GCLeafFunctionBit::Set<uint64_t>(value, &kind_);
@@ -562,6 +565,7 @@ private:
     V(JSObjectGetMethod)                        \
     V(JsProxyCallInternal)                      \
     V(JsBoundCallInternal)                      \
+    V(LazyDeoptEntry)                           \
     V(DeoptHandlerAsm)                          \
     V(JSCallNew)                                \
     V(CallOptimized)                            \

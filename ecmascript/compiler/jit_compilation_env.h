@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H
 
 #include "ecmascript/compiler/compilation_env.h"
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/jit/jit_thread.h"
 
@@ -46,7 +47,8 @@ public:
         }
     };
 
-    JitCompilationEnv(EcmaVM *vm, EcmaVM *hVm, JSHandle<JSFunction> &jsFunction);
+    JitCompilationEnv(EcmaVM *vm, EcmaVM *hVm,
+        JSHandle<JSFunction> &jsFunction, kungfu::LazyDeoptAllDependencies *dependencies);
     ~JitCompilationEnv() = default;
     bool IsJitCompiler() const override
     {
@@ -56,6 +58,12 @@ public:
     {
         return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
+
+    kungfu::LazyDeoptAllDependencies *GetDependencies() const override
+    {
+        return dependencies_;
+    }
+
     JSRuntimeOptions &GetJSOptions() const override;
     // thread
     GlobalEnvField GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
@@ -257,6 +265,7 @@ private:
         std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> ldGlobalByNameBcOffset2HeapConstantIndex;
         std::unordered_map<int32_t, uint32_t> holderHClassIndex2HeapConstantIndex;
     } heapConstantInfo_;
+    kungfu::LazyDeoptAllDependencies *dependencies_ {nullptr};
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H

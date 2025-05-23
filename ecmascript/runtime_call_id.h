@@ -233,6 +233,9 @@ namespace panda::ecmascript {
     V(CreateSharedClass)             \
     V(LdSendableClass)               \
     V(UpdateAOTHClass)               \
+    V(TraceNum)                      \
+    V(TraceLazyDeoptNum)             \
+    V(TraceLazyDeoptFailNum)         \
     V(SetGeneratorState)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

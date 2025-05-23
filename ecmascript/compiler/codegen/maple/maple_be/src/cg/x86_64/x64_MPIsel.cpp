@@ -375,7 +375,7 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
 
 void X64MPIsel::SelectPureCall(const IntrinsiccallNode &intrnNode)
 {
-    DEBUG_ASSERT(intrnNode.NumOpnds() == 7, "must be 7 operands");  // must be 7 operands
+    DEBUG_ASSERT(intrnNode.NumOpnds() == 6, "must be 6 operands");  // must be 6 operands
     ListOperand &srcOpnds = cgFunc->GetOpndBuilder()->CreateList();
     auto &callee = *intrnNode.Opnd(0);
     auto ptyp = callee.GetPrimType();

@@ -71,6 +71,13 @@ using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
+// To find the current js thread without parameters
+thread_local void *g_currentThread = nullptr;
+
+extern "C" uintptr_t GetGlueFromThreadLocal()
+{
+    return reinterpret_cast<JSThread *>(g_currentThread)->GetGlueAddr();
+}
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
@@ -104,6 +111,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 #endif
     auto vm = new EcmaVM(newOptions, config);
     auto jsThread = JSThread::Create(vm);
+    g_currentThread = jsThread;
     vm->thread_ = jsThread;
     Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
