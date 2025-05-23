@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include "ecmascript/base/hash_combine.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/type.h"
@@ -83,6 +84,15 @@ public:
             return true;
         }
         return false;
+    }
+
+    virtual uint64_t GetHashCode() const
+    {
+        const uint64_t OPCODE_SHIFT = 48;
+        const uint64_t KIND_SHIFT = 40;
+        const uint64_t FLAGS_SHIFT = 32;
+        return static_cast<uint64_t>(opcode_) << OPCODE_SHIFT | (static_cast<uint64_t>(kind_) << KIND_SHIFT) |
+            (static_cast<uint64_t>(flags_) << FLAGS_SHIFT);
     }
 
     size_t GetStateCount() const
@@ -312,6 +322,12 @@ public:
             return true;
         }
         return false;
+    }
+
+    uint64_t GetHashCode() const override
+    {
+        uint64_t hash = GateMetaData::GetHashCode();
+        return base::HashCombiner::HashCombine(hash, value_);
     }
 
     static const OneParameterMetaData* Cast(const GateMetaData* meta)

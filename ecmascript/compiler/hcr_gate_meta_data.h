@@ -57,6 +57,13 @@ public:
         return false;
     }
 
+    uint64_t GetHashCode() const override
+    {
+        auto hash = GateMetaData::GetHashCode();
+        hash = base::HashCombiner::HashCombine(hash, static_cast<size_t>(opcode_));
+        return hash;
+    }
+
     static const JSBytecodeMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::JSBYTECODE);

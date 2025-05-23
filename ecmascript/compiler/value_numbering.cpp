@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/value_numbering.h"
-    
+#include "ecmascript/base/hash_combine.h"
+
 namespace panda::ecmascript::kungfu {
 
 GateRef ValueNumbering::VisitGate(GateRef gate)
 {
-    size_t hash = HashCode(gate);
     auto opcode = acc_.GetOpCode(gate);
     if (opcode != OpCode::CONVERT && !useNewGVN_) {
         return Circuit::NullGate();
@@ -27,6 +27,8 @@ GateRef ValueNumbering::VisitGate(GateRef gate)
         return Circuit::NullGate();
     }
     
+    uint64_t hash = HashCode(gate);
+
     if (entries_ == nullptr) {
         InitEntries(entriesLength_);
         SetEntry(hash, gate);
@@ -123,31 +125,16 @@ void ValueNumbering::InitEntries(size_t initSize)
     entriesSize_ = 0;
 }
 
-
-size_t HashCombine(size_t seed, size_t value)
-{
-    // In the meantime, we're not considering 32-bit systems
-    assert(sizeof(void *) == 8); // 8 : make sure the void* pointer is 8 bytes in size
-    const uint64_t m = uint64_t{0xC6A4A7935BD1E995};
-    const uint32_t r = 47;
-
-    value *= m;
-    value ^= value >> r;
-    value *= m;
-
-    seed ^= value;
-    seed *= m;
-    return seed;
-}
-
 size_t ValueNumbering::HashCode(GateRef gate)
 {
     size_t valueCount = acc_.GetNumValueIn(gate);
-    size_t hash = HashCombine(static_cast<size_t>(acc_.GetOpCode(gate)), valueCount);
+    uint64_t hash = acc_.GetMetaDataHash(gate);
+    hash = base::HashCombiner::HashCombine(hash, static_cast<uint64_t>(acc_.GetGateType(gate).Value()));
+    hash = base::HashCombiner::HashCombine(hash, static_cast<uint64_t>(acc_.GetMachineType(gate)));
     for (size_t i = 0; i < valueCount; i++) {
         GateRef input = acc_.GetValueIn(gate, i);
         auto id = acc_.GetId(input);
-        hash = HashCombine(hash, id);
+        hash = base::HashCombiner::HashCombine(hash, id);
     }
     return hash;
 }

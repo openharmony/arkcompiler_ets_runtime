@@ -2127,4 +2127,10 @@ TypedBinOp GateAccessor::GetSwapCompareOpForTypedBinOp(TypedBinOp op)
             return op;
     }
 }
+
+uint64_t GateAccessor::GetMetaDataHash(GateRef gate) const
+{
+    return GetMetaData(gate)->GetHashCode();
+}
+
 }  // namespace panda::ecmascript::kungfu
