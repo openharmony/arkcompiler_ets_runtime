@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_gc.h"
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
@@ -21,6 +22,7 @@
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     auto size = heap->GetHeapLimitSize() - heap->GetHeapObjectSize();
     return JSTaggedValue(static_cast<int64_t>(size));
@@ -28,24 +30,28 @@ JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::GetReservedHeapSize(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapLimitSize()));
 }
 
 JSTaggedValue BuiltinsGc::GetUsedHeapSize(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapObjectSize()));
 }
 
 JSTaggedValue BuiltinsGc::GetObjectAddress(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     JSHandle<JSTaggedValue> h = GetCallArg(info, 0);
     return JSTaggedValue(reinterpret_cast<int64_t>(h->GetHeapObject()));
 }
 
 JSTaggedValue BuiltinsGc::GetObjectSpaceType(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     JSHandle<JSTaggedValue> h = GetCallArg(info, 0);
     auto *region = Region::ObjectAddressToRange(h->GetHeapObject());
     return JSTaggedValue(region->GetSpaceType());
@@ -68,6 +74,7 @@ JSTaggedValue BuiltinsGc::RegisterNativeAllocation(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     JSHandle<JSTaggedValue> h = GetCallArg(info, 0);
     auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
     auto size = h->GetInt();
@@ -82,6 +89,7 @@ JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     ASSERT(info);
     JSThread *thread = info->GetThread();
     if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {
@@ -93,6 +101,7 @@ JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
     auto gcId = GetCallArg(info, 0)->GetInt();
     if (gcId <= 0) {
@@ -109,6 +118,7 @@ JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     static int counter = 0;
     auto *thread = info->GetThread();
     auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
@@ -177,6 +187,7 @@ void BuiltinsGc::WaitAndHandleConcurrentMarkingFinished(Heap *heap)
 
 JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 {
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     auto *thread = info->GetThread();
     auto *factory = thread->GetEcmaVM()->GetFactory();
     ASSERT(thread != nullptr);

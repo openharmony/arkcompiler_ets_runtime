@@ -19,6 +19,20 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_thread.h"
 
+#if defined(PANDA_TARGET_ARM64)
+    /* Note: If not open ArkTools option(set by `persist.ark.mem_config_property openArkTools`),  */
+    /*       ArkTools return Empty Implementation                                                 */
+    // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+    #define RETURN_IF_DISALLOW_ARKTOOLS(thread)                                 \
+        do {                                                                    \
+            if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {    \
+                return JSTaggedValue::Undefined();                              \
+            }                                                                   \
+        } while (0)
+#else
+    #define RETURN_IF_DISALLOW_ARKTOOLS(thread) static_cast<void>(0) // NOLINT(cppcoreguidelines-macro-usage)
+#endif
+
 // List of functions in ArkTools, extension of ArkTS engine.
 // V(name, func, length, stubIndex)
 // where BuiltinsArkTools::func refers to the native implementation of ArkTools[name].
