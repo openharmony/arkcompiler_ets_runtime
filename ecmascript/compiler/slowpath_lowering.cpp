@@ -177,9 +177,10 @@ void SlowPathLowering::ReplaceHirWithPendingException(GateRef hirGate,
  * res = Call(...);
  * Set(res);
  */
-void SlowPathLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow)
+void SlowPathLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value)
 {
-    if (!noThrow) {
+    auto opcode = acc_.GetByteCodeOpcode(hirGate);
+    if (!BytecodeMetaData::IsBytecodeNoThrow(opcode)) {
         GateRef state = builder_.GetState();
         // copy depend-wire of hirGate to value
         GateRef depend = builder_.GetDepend();
@@ -1595,13 +1596,13 @@ void SlowPathLowering::LowerCreateEmptyArray(GateRef gate)
 {
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateEmptyArray, { glue_ });
     GateRef newRes = LowerUpdateArrayHClassAtDefine(gate, result);
-    ReplaceHirWithValue(gate, newRes, true);
+    ReplaceHirWithValue(gate, newRes);
 }
 
 void SlowPathLowering::LowerCreateEmptyObject(GateRef gate)
 {
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(CreateEmptyObject), {}, true);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
@@ -1611,7 +1612,7 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
     // when elementsKind switch on, we should not update arrayHClass here.
     GateRef newRes = LowerUpdateArrayHClassAtDefine(gate, result);
-    ReplaceHirWithValue(gate, newRes, true);
+    ReplaceHirWithValue(gate, newRes);
 }
 
 GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef array)
@@ -1677,7 +1678,7 @@ void SlowPathLowering::LowerStModuleVar(GateRef gate)
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(gate, RTSTUB_ID(StModuleVarByIndexOnJSFunc),
         {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerSetGeneratorState(GateRef gate)
@@ -1688,7 +1689,7 @@ void SlowPathLowering::LowerSetGeneratorState(GateRef gate)
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(gate, RTSTUB_ID(SetGeneratorState),
         {acc_.GetValueIn(gate, 1), index, jsFunc}, true);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerGetTemplateObject(GateRef gate)
@@ -2117,7 +2118,7 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, bool flag)
     } else {
         result = builder_.CallStub(glue_, gate, CommonStubCSigns::ToBooleanFalse, { glue_, value });
     }
-    ReplaceHirWithValue(gate, *result, true);
+    ReplaceHirWithValue(gate, *result);
 }
 
 void SlowPathLowering::LowerNewObjRange(GateRef gate)
@@ -2371,7 +2372,7 @@ void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate)
                   builder_.ToTaggedInt(acc_.GetValueIn(gate, 1)),
                   lexEnv, jsFunc };
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(OptNewLexicalEnvWithName), args, true);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerNewSendableEnv(GateRef gate)
@@ -2391,7 +2392,7 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate)
     GateRef currentEnv = acc_.GetValueIn(gate, 0);
     GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
     GateRef parentEnv = builder_.GetValueFromTaggedArray(glue_, currentEnv, index);
-    ReplaceHirWithValue(gate, parentEnv, true);
+    ReplaceHirWithValue(gate, parentEnv);
 }
 
 void SlowPathLowering::LowerLdSuperByValue(GateRef gate)
@@ -2716,7 +2717,7 @@ void SlowPathLowering::LowerLdLexVar(GateRef gate)
     builder_.Bind(&exit);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     GateRef result = builder_.GetValueFromTaggedArray(glue_, *currentEnv, valueIndex);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerLdSendableVar(GateRef gate)
@@ -2751,7 +2752,7 @@ void SlowPathLowering::LowerLdSendableVar(GateRef gate)
     builder_.Bind(&exit);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     GateRef result = builder_.GetValueFromTaggedArray(glue_, *currentEnv, valueIndex);
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerStLexVar(GateRef gate)
@@ -2786,7 +2787,7 @@ void SlowPathLowering::LowerStLexVar(GateRef gate)
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *currentEnv, valueIndex, value);
     auto result = *currentEnv;
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerStSendableVar(GateRef gate)
@@ -2823,7 +2824,7 @@ void SlowPathLowering::LowerStSendableVar(GateRef gate)
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *currentEnv, valueIndex, value);
     auto result = *currentEnv;
-    ReplaceHirWithValue(gate, result, true);
+    ReplaceHirWithValue(gate, result);
 }
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
@@ -2972,7 +2973,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    ReplaceHirWithValue(gate, *result, true);
+    ReplaceHirWithValue(gate, *result);
 }
 
 void SlowPathLowering::LowerGetResumeMode(GateRef gate)
@@ -3009,7 +3010,7 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    ReplaceHirWithValue(gate, *result, true);
+    ReplaceHirWithValue(gate, *result);
 }
 
 static uint32_t TryGetMethodHeapConstantIndex(CompilationEnv *compilationEnv, const GateAccessor &acc, GateRef gate)
