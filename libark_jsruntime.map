@@ -99,6 +99,10 @@
       panda::VisitDynamicRoots*;
       panda::VisitDynamicWeakRoots*;
       panda::BaseObject::*;
+      panda::VisitJSThread*;
+      panda::FillFreeObject*;
+      panda::SetBaseAddress*;
+      panda::JSGCCallback*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::Log::*;
