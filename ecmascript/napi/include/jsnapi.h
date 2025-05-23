@@ -462,6 +462,55 @@ private:
     std::map<std::string, int32_t> aotCompileStatusMap_;
     friend JSNApi;
 };
+
+template<typename T>
+template<typename S>
+void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
+{
+    vm_ = vm;
+    if (!current.IsEmpty()) {
+        address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
+    }
+}
+
+template<typename T>
+void Global<T>::FreeXRefGlobalHandleAddr()
+{
+    if (address_ == 0) {
+        return;
+    }
+    JSNApi::DisposeXRefGlobalHandleAddr(vm_, address_);
+    address_ = 0;
+}
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    template<typename T>
+    void Global<T>::MarkFromObject()
+    {
+        if (address_ == 0) {
+            return;
+        }
+        JSNApi::MarkFromObject(vm_, address_);
+    }
+
+    template<typename T>
+    bool Global<T>::IsObjectAlive() const
+    {
+        if (address_ == 0) {
+            return false ;
+        }
+        return JSNApi::IsObjectAlive(vm_, address_);
+    }
+
+    template<typename T>
+    bool Global<T>::IsValidHeapObject() const
+    {
+        if (address_ == 0) {
+            return false;
+        }
+        return JSNApi::IsValidHeapObject(vm_, address_);
+    }
+#endif // PANDA_JS_ETS_HYBRID_MODE
 }  // namespace panda
 
 #endif  // ECMASCRIPT_NAPI_INCLUDE_JSNAPI_H

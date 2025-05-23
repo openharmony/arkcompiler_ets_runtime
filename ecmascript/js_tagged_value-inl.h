@@ -405,6 +405,11 @@ inline bool JSTaggedValue::IsJSPromise() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSPromise();
 }
 
+inline bool JSTaggedValue::IsJSXRefObject() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSXRefObject();
+}
+
 inline bool JSTaggedValue::IsRecord() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsRecord();

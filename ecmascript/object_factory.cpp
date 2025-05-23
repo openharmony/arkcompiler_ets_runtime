@@ -497,6 +497,13 @@ JSHandle<JSObject> ObjectFactory::NewJSObject(const JSHandle<JSHClass> &jshclass
     return obj;
 }
 
+JSHandle<JSObject> ObjectFactory::NewJSXRefObject()
+{
+    JSHandle<JSHClass> jsXRefHClass = JSHandle<JSHClass>::Cast(thread_->GlobalConstants()->GetHandledXRefObjectClass());
+    JSHandle<JSObject> object(NewJSObject(jsXRefHClass));
+    return object;
+}
+
 JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray> &old)
 {
     uint32_t newLength = old->GetLength();
@@ -1237,6 +1244,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
     JSType type = jshclass->GetObjectType();
     switch (type) {
         case JSType::JS_OBJECT:
+        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:

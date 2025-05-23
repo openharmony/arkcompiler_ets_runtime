@@ -80,6 +80,17 @@ JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {
+        return JSTaggedValue::Undefined();
+    }
+    EcmaVM::ClearKeptObjects(thread);
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
 {
     auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
@@ -210,7 +221,7 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
-    static_assert(GC_TYPE_LAST == 8, "Update this method after TrigerGCType change");
+    static_assert(GC_TYPE_LAST == 9, "Update this method after TrigerGCType change");
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetYoungGcCause(), cause)) {
         return YOUNG_GC;
     }
@@ -234,6 +245,9 @@ TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
     }
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetAppSpawnSharedFullGcCause(), cause)) {
         return APPSPAWN_SHARED_FULL_GC;
+    }
+    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
+        return UNIFIED_GC;
     }
     return GC_TYPE_LAST;
 }

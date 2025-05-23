@@ -38,6 +38,8 @@ public:
 
     static JSTaggedValue WaitForFinishGC(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue ClearWeakRefForTest(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue StartGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue AllocateArrayObject(EcmaRuntimeCallInfo *info);
@@ -66,6 +68,7 @@ private:
         BUILTINS_GC_FUNCTION_ENTRY("waitForFinishGC",             WaitForFinishGC,               1, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("startGC",                     StartGC,                       3, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("allocateArrayObject",         AllocateArrayObject,           1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("clearWeakRefForTest",         ClearWeakRefForTest,           1, INVALID)
     };
 #undef BUILTINS_GC_FUNCTION_ENTRY
 
