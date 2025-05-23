@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_hclass.h"
+
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/ic/proto_change_details.h"

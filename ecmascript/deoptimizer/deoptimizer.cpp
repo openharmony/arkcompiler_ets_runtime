@@ -537,7 +537,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         statePtr->function = callTarget;
         statePtr->acc = acc;
 
-        if (UNLIKELY(curDepth == static_cast<int32_t>(inlineDepth_) && 
+        if (UNLIKELY(curDepth == static_cast<int32_t>(inlineDepth_) &&
             type_ == static_cast<uint32_t>(kungfu::DeoptType::LAZYDEOPT))) {
             ProcessLazyDeopt(maybeAcc, resumePc, statePtr);
         }
@@ -749,11 +749,11 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
 /**
  * [Lazy Deoptimization Handling]
  * This scenario specifically occurs during lazy deoptimization.
- * 
+ *
  * Typical Trigger:
  * When bytecode operations (LDOBJBYNAME) invoke accessors that induce
  * lazy deoptimization of the current function's caller.
- * 
+ *
  * Key Differences from Eager Deoptimization:
  * Lazy deoptimization happens *after* bytecode execution completes.
  * When return to DeoptHandlerAsm:
@@ -761,8 +761,8 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
  * 2. Post-processing must handle:
  *    a. Program Counter (PC) adjustment
  *    b. Accumulator (ACC) state overwrite
- *    c. Handling pending exceptions 
- * 
+ *    c. Handling pending exceptions
+ *
  * Critical Constraint:
  * Any JIT-compiled call that may trigger lazy deoptimization MUST be the final
  * call in this bytecode.

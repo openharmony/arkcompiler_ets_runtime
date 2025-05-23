@@ -38,7 +38,7 @@ namespace panda::ecmascript {
 
 /*
  * DependentInfos are stored on the HClass as (function)-(group) pairs.
- * 
+ *
  * When the HClass changes in a way that satisfies group's requirement,
  * the corresponding paired function is marked for lazy deoptimization.
  */
