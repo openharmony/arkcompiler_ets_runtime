@@ -13,104 +13,101 @@
  * limitations under the License.
  */
 declare function print(str:any):string;
-var x;
-var mycars = new Array();
-mycars[0] = "Saab";
-mycars[1] = "Volvo";
-mycars[2] = "BMW";
-// CHECK#1
-var fin = 0;
-var i = 0;
-for (x in mycars) {
+const animals = ["Panda", "Tiger", "Bird"];
+
+//check_1
+let finalValue = 0;
+let count = 0;
+for (const animal of animals) {
     try {
-        i += 1;
+        count++;
         continue;
-    }
-    catch (er1) { }
+    } catch (error) {}
     finally {
-        fin = 1;
+        finalValue = 1;
     }
-    for (x in mycars) {
-        fin = -1;
+    for (const animal of animals) {
+        finalValue = -1;
     }
-    fin = -1;
+    finalValue = -1;
 }
-print(fin)
-print(i)
-// CHECK#2
-var c2 = 0, fin2 = 0;
-for (x in mycars) {
+print(finalValue);
+print(count);
+
+//check_2
+let finalValue2 = 0;
+let count2 = 0;
+for (const animal of animals) {
     try {
-        throw "ex1";
+        throw "exception1";
+    } catch (error) {
+        count2++;
+        continue;
+    } finally {
+        finalValue2 = 1;
     }
-    catch (er1) {
-        c2 += 1;
+    finalValue2 = -1;
+}
+print(finalValue2);
+print(count2);
+
+//check_3
+let finalValue3 = 0;
+let count3 = 0;
+for (const animal of animals) {
+    try {
+        throw "exception1";
+    } catch (error) {
+        count3++;
+    } finally {
+        finalValue3 = 1;
         continue;
     }
-    finally {
-        fin2 = 1;
-    }
-    fin2 = -1;
+    finalValue3 = 0;
 }
-print(fin2)
-print(c2)
-// CHECK#3
-var c3 = 0, fin3 = 0;
-for (x in mycars) {
-    try {
-        throw "ex1";
-    }
-    catch (er1) {
-        c3 += 1;
-    }
-    finally {
-        fin3 = 1;
-        continue;
-    }
-    fin3 = 0;
-}
-print(fin3)
-print(c3)
-// CHECK#4
-var fin = 0;
-for (x in mycars) {
+print(finalValue3);
+print(count3);
+
+//check_4
+let finalValue4 = 0;
+for (const animal of animals) {
     try {
         continue;
+    } finally {
+        finalValue4 = 1;
     }
-    finally {
-        fin = 1;
-    }
-    fin = -1;
+    finalValue4 = -1;
 }
-print(fin)
-// CHECK#5
-var c5 = 0;
-for (x in mycars) {
+print(finalValue4);
+
+//check_5
+let count5 = 0;
+for (const animal of animals) {
     try {
-        throw "ex1";
-    }
-    catch (er1) {
-        c5 += 1;
+        throw "exception1";
+    } catch (error) {
+        count5++;
         continue;
     }
-    c5 += 12;
+    count5 +=12;
 }
-print(c5)
-// CHECK#6
-var c6 = 0, fin6 = 0;
-for (x in mycars) {
+print(count5);
+
+//check_6
+let finalValue6 = 0;
+let count6 = 0;
+for (const animal of animals) {
     try {
-        c6 += 1;
-        throw "ex1";
-    }
-    finally {
-        fin6 = 1;
+        count6++;
+        throw "exception1";
+    } finally {
+        finalValue6 = 1;
         continue;
     }
-    fin6 = -1;
+    finalValue6 = -1;
 }
-print(fin6)
-print(c6)
+print(finalValue6);
+print(count6);
 
 class A {
     constructor(a:any|number) {
