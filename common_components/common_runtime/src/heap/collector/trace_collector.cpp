@@ -59,146 +59,157 @@ void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
     }
 }
 
-class MarkingWork : public HeapWork {
+class GlobalWorkStackQueue {
 public:
-    MarkingWork(TraceCollector& tc, GCThreadPool* pool, TraceCollector::WorkStack&& stack)
-        : workStack(std::move(stack)), collector(tc), threadPool(pool)
-    {}
+    GlobalWorkStackQueue() = default;
+    ~GlobalWorkStackQueue() = default;
 
-    // single work task without thread pool
-    MarkingWork(TraceCollector& tc, TraceCollector::WorkStack&& stack)
-        : workStack(std::move(stack)), collector(tc), threadPool(nullptr)
-    {}
-
-    ~MarkingWork() override { threadPool = nullptr; }
-
-    void Execute(size_t workerID __attribute__((unused))) override
+    void AddWorkStack(TraceCollector::WorkStack &&stack)
     {
-        size_t nNewlyMarked = 0;
-        const size_t prefetchDistance = MARK_PREFETCH_DISTANCE;
-        PrefetchQueue pq(prefetchDistance);
-        TraceCollector::WeakStack weakStack;
-        for (;;) {
-            // Prefetch as much as possible.
-            while (!pq.Full() && !workStack.empty()) {
-                BaseObject* obj = workStack.back();
-                pq.Add(obj);
-                workStack.pop_back();
-            }
-
-            // End if pq is empty.  This implies that workStack is also empty.
-            if (pq.Empty()) {
-                break;
-            }
-
-            BaseObject* obj = pq.Remove();
-            bool wasMarked = collector.MarkObject(obj);
-            if (!wasMarked) {
-                ++nNewlyMarked;
-                // If we mark before enqueuing, we should have checked if it has children.
-                if (!obj->HasRefField()) {
-                    continue;
-                }
-                collector.TraceObjectRefFields(obj, workStack, weakStack);
-
-                if (threadPool != nullptr && UNLIKELY_CC(workStack.size() > TraceCollector::MAX_MARKING_WORK_SIZE)) {
-                    // Mark stack overflow, give 1/2 the stack to the thread pool as a new work task.
-                    size_t newSize = workStack.size() >> 1;
-                    TraceCollector::WorkStackBuf* hSplit = workStack.split(newSize);
-                    threadPool->AddWork(new MarkingWork(collector, threadPool, TraceCollector::WorkStack(hSplit)));
-                }
-            }
-        } // for loop
-
-        // newly marked statistics.
-        (void)collector.markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
-        collector.MergeWeakStack(weakStack);
+        ASSERT(!stack.empty());
+        std::lock_guard<std::mutex> guard(mtx_);
+        workStacks_.push_back(std::move(stack));
     }
 
-private:
-    TraceCollector::WorkStack workStack;
-    TraceCollector& collector;
-    GCThreadPool* threadPool;
-};
-
-class ConcurrentMarkingWork : public HeapWork {
-public:
-    ConcurrentMarkingWork(TraceCollector& tc, GCThreadPool* pool, TraceCollector::WorkStack&& stack)
-        : collector(tc), threadPool(pool), workStack(std::move(stack))
-    {}
-
-    // create concurrent mark task without thread pool.
-    ConcurrentMarkingWork(TraceCollector& tc, TraceCollector::WorkStack&& stack)
-        : collector(tc), threadPool(nullptr), workStack(std::move(stack))
-    {}
-
-    ~ConcurrentMarkingWork() override { threadPool = nullptr; }
-
-    // when parallel is enabled, fork new task if work stack overflow.
-    void TryForkTask()
+    TraceCollector::WorkStack PopWorkStack()
     {
-        size_t size = workStack.size();
-        if (size > TraceCollector::MIN_MARKING_WORK_SIZE) {
-            bool doFork = false;
-            size_t newSize = 0;
-            if (size > TraceCollector::MAX_MARKING_WORK_SIZE) {
-                newSize = size >> 1; // give 1/2 the stack to the thread pool as a new work task
-                doFork = true;
-            } else if (size > TraceCollector::MIN_MARKING_WORK_SIZE && threadPool->GetWaitingThreadNumber() > 0) {
-                constexpr uint8_t shiftForEight = 3;
-                newSize = size >> shiftForEight; // give 1/8 the stack to the thread pool as a new work task
-                doFork = true;
+        std::unique_lock<std::mutex> lock(mtx_);
+        while (true) {
+            if (!workStacks_.empty()) {
+                TraceCollector::WorkStack stack(std::move(workStacks_.back()));
+                workStacks_.pop_back();
+                return stack;
             }
-
-            if (doFork) {
-                TraceCollector::WorkStackBuf* hSplit = workStack.split(newSize);
-                threadPool->AddWork(
-                    new ConcurrentMarkingWork(collector, threadPool, TraceCollector::WorkStack(hSplit)));
+            if (finished_) {
+                return TraceCollector::WorkStack();
             }
+            cv_.wait(lock);
         }
     }
 
-    // run concurrent marking task.
-    void Execute(size_t) override
+    TraceCollector::WorkStack DrainAllWorkStack()
     {
-        size_t nNewlyMarked = 0;
-        TraceCollector::WeakStack weakStack;
-        // loop until work stack empty.
-        for (;;) {
+        std::unique_lock<std::mutex> lock(mtx_);
+        while (!workStacks_.empty()) {
+            TraceCollector::WorkStack stack(std::move(workStacks_.back()));
+            workStacks_.pop_back();
+            return stack;
+        }
+        return TraceCollector::WorkStack();
+    }
+
+    void NotifyFinish()
+    {
+        std::lock_guard<std::mutex> guard(mtx_);
+        ASSERT(!finished_);
+        finished_ = true;
+        cv_.notify_all();
+    }
+private:
+    bool finished_ {false};
+    std::condition_variable cv_;
+    std::mutex mtx_;
+    std::vector<TraceCollector::WorkStack> workStacks_;
+};
+
+class ConcurrentMarkingTask : public Task {
+public:
+    ConcurrentMarkingTask(uint32_t id, TraceCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
+                          GlobalWorkStackQueue &globalQueue)
+        : Task(id), collector_(tc), threadPool_(pool), monitor_(monitor), globalQueue_(globalQueue)
+    {}
+
+    // single work task without thread pool
+    ConcurrentMarkingTask(uint32_t id, TraceCollector& tc, TaskPackMonitor &monitor,
+                          GlobalWorkStackQueue &globalQueue)
+        : Task(id), collector_(tc), threadPool_(nullptr), monitor_(monitor), globalQueue_(globalQueue)
+    {}
+
+    ~ConcurrentMarkingTask() override
+    {
+        threadPool_ = nullptr;
+    }
+
+    // run concurrent marking task.
+    bool Run([[maybe_unused]] uint32_t threadIndex) override
+    {
+        while (true) {
+            TraceCollector::WorkStack workStack = globalQueue_.PopWorkStack();
             if (workStack.empty()) {
                 break;
             }
-            // get next object from work stack.
-            BaseObject* obj = workStack.back();
-            workStack.pop_back();
-            auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
-            region->AddLiveByteCount(obj->GetSize());
-#ifndef USE_CMC_GC
-                if (!obj->HasRefField()) {
-                    continue;
-                }
-                collector.TraceObjectRefFields(obj, workStack, weakStack);
-
-#else
-                auto beforeSize = workStack.count();
-                collector.TraceObjectRefFields(obj, workStack, weakStack);
-                DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
-                     beforeSize, workStack.count(), workStack.count() - beforeSize);
-#endif
-            // try to fork new task if needed.
-            if (threadPool != nullptr) {
-                TryForkTask();
-            }
-        } // end of mark loop.
-        // newly marked statistics.
-        collector.MergeWeakStack(weakStack);
+            collector_.ProcessMarkStack(threadIndex, threadPool_, workStack, globalQueue_);
+        }
+        monitor_.NotifyFinishOne();
+        return true;
     }
 
 private:
-    TraceCollector& collector;
-    GCThreadPool* threadPool;
-    TraceCollector::WorkStack workStack;
+    TraceCollector &collector_;
+    Taskpool *threadPool_;
+    TaskPackMonitor &monitor_;
+    GlobalWorkStackQueue &globalQueue_;
 };
+
+void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
+{
+    size_t size = workStack.size();
+    if (size > MIN_MARKING_WORK_SIZE) {
+        bool doFork = false;
+        size_t newSize = 0;
+        if (size > MAX_MARKING_WORK_SIZE) {
+            newSize = size >> 1; // give 1/2 the stack to the thread pool as a new work task
+            doFork = true;
+        } else if (size > MIN_MARKING_WORK_SIZE) {
+            constexpr uint8_t shiftForEight = 3;
+            newSize = size >> shiftForEight; // give 1/8 the stack to the thread pool as a new work task
+            doFork = true;
+        }
+
+        if (doFork) {
+            WorkStackBuf *hSplit = workStack.split(newSize);
+            globalQueue.AddWorkStack(WorkStack(hSplit));
+        }
+    }
+}
+
+void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool,
+                                      WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
+{
+    size_t nNewlyMarked = 0;
+    WeakStack weakStack;
+    // loop until work stack empty.
+    for (;;) {
+        ++nNewlyMarked;
+        if (workStack.empty()) {
+            break;
+        }
+        // get next object from work stack.
+        BaseObject* obj = workStack.back();
+        workStack.pop_back();
+        auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
+        region->AddLiveByteCount(obj->GetSize());
+#ifndef USE_CMC_GC
+        if (!obj->HasRefField()) {
+            continue;
+        }
+        TraceObjectRefFields(obj, workStack, weakStack);
+
+#else
+        auto beforeSize = workStack.count();
+        TraceObjectRefFields(obj, workStack, weakStack);
+        DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
+             beforeSize, workStack.count(), workStack.count() - beforeSize);
+#endif
+        // try to fork new task if needed.
+        if (threadPool != nullptr) {
+            TryForkTask(threadPool, workStack, globalQueue);
+        }
+    } // end of mark loop.
+    // newly marked statistics.
+    markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
+    MergeWeakStack(weakStack);
+}
 
 void TraceCollector::MergeWeakStack(WeakStack& weakStack)
 {
@@ -245,36 +256,48 @@ void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
     }
 
     // enable parallel marking if we have thread pool.
-    GCThreadPool* threadPool = GetThreadPool();
+    Taskpool *threadPool = GetThreadPool();
     ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
     if (parallel) { // parallel marking.
-        threadPool->Start();
-        // add work fails, let mainGC run init task & fork tasks to poolThread for workload balance
-        if (!AddConcurrentTracingWork(workStack)) {
-            ConcurrentMarkingWork markTask(*this, threadPool, std::move(workStack));
-            markTask.Execute(0);
+        uint32_t parallelCount = GetGCThreadCount(true) - 1;
+        uint32_t threadCount = parallelCount + 1;
+        TaskPackMonitor monitor(parallelCount, parallelCount);
+        GlobalWorkStackQueue globalQueue;
+        for (uint32_t i = 0; i < parallelCount; ++i) {
+            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask>(0, *this, threadPool, monitor, globalQueue));
         }
-        threadPool->WaitFinish();
+        if (!AddConcurrentTracingWork(workStack, globalQueue, static_cast<size_t>(threadCount))) {
+            ProcessMarkStack(0, threadPool, workStack, globalQueue);
+        }
+        while (true) {
+            WorkStack stack = globalQueue.DrainAllWorkStack();
+            if (stack.empty()) {
+                break;
+            }
+            ProcessMarkStack(0, threadPool, stack, globalQueue);
+        }
+        globalQueue.NotifyFinish();
+        monitor.WaitAllFinished();
     } else {
         // serial marking with a single mark task.
-        ConcurrentMarkingWork markTask(*this, std::move(workStack));
-        markTask.Execute(0);
-        threadPool->DrainWorkQueue(); // drain stack roots task
+        GlobalWorkStackQueue globalQueue;
+        WorkStack stack(std::move(workStack));
+        ProcessMarkStack(0, nullptr, stack, globalQueue);
     }
 }
 
-bool TraceCollector::AddConcurrentTracingWork(RootSet& rs)
+bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue,
+                                              size_t threadCount)
 {
-    GCThreadPool* threadPool = GetThreadPool();
-    size_t threadCount = static_cast<size_t>(threadPool->GetMaxActiveThreadNum() + 1);
-    if (rs.size() <= threadCount * MIN_MARKING_WORK_SIZE) {
+    if (workStack.size() <= threadCount * MIN_MARKING_WORK_SIZE) {
         return false; // too less init tasks, which may lead to workload imbalance, add work rejected
     }
-    const size_t chunkSize = std::min(rs.size() / threadCount + 1, MIN_MARKING_WORK_SIZE);
+    ASSERT(threadCount > 0);
+    const size_t chunkSize = std::min(workStack.size() / threadCount + 1, MIN_MARKING_WORK_SIZE);
     // Split the current work stack into work tasks.
-    while (!rs.empty()) {
-        TraceCollector::WorkStackBuf* hSplit = rs.split(chunkSize);
-        threadPool->AddWork(new (std::nothrow) ConcurrentMarkingWork(*this, threadPool, WorkStack(hSplit)));
+    while (!workStack.empty()) {
+        WorkStackBuf *hSplit = workStack.split(chunkSize);
+        globalQueue.AddWorkStack(WorkStack(hSplit));
     }
     return true;
 }
@@ -285,21 +308,11 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
     ARK_COMMON_PHASE_TIMER("TraceRoots");
     VLOG(REPORT, "roots size: %zu", workStack.size());
 
-    GCThreadPool* threadPool = GetThreadPool();
+    Taskpool *threadPool = GetThreadPool();
     ASSERT_LOGF(threadPool != nullptr, "null thread pool");
 
     // use fewer threads and lower priority for concurrent mark.
-    const int32_t stwWorkers = threadPool->GetMaxActiveThreadNum();
-    const int32_t maxWorkers = GetGCThreadCount(true) - 1;
-    if (maxWorkers > 0) {
-        threadPool->SetMaxActiveThreadNum(maxWorkers);
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-        threadPool->SetPriority(GCThread::GC_THREAD_CONCURRENT_PRIORITY);
-#endif
-    }
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-    GCThread::SetThreadPriority(panda::GetTid(), GCThread::GC_THREAD_CONCURRENT_PRIORITY);
-#endif
+    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
     VLOG(REPORT, "Concurrent mark with %u threads, workStack: %zu", (maxWorkers + 1), workStack.size());
 
     {
@@ -332,16 +345,6 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         DoResurrection(workStack);
     }
 
-    // restore thread pool max workers and priority after concurrent marking.
-    if (maxWorkers > 0) {
-        threadPool->SetMaxActiveThreadNum(stwWorkers);
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-        threadPool->SetPriority(GCThread::GC_THREAD_STW_PRIORITY);
-#endif
-    }
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-    GCThread::SetThreadPriority(panda::GetTid(), GCThread::GC_THREAD_STW_PRIORITY);
-#endif
     VLOG(REPORT, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
 }
 
@@ -379,17 +382,19 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
     visitSatbObj();
     size_t iterationCnt = 0;
     uint64_t iterationStartTime = TimeUtil::NanoSeconds();
+    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
     do {
-        if (++iterationCnt > maxIterationLoopNum && (TimeUtil::NanoSeconds() - iterationStartTime) > maxIterationTime) {
+        ++iterationCnt;
+        if (iterationCnt > maxIterationLoopNum && (TimeUtil::NanoSeconds() - iterationStartTime) > maxIterationTime) {
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
             VLOG(REPORT, "MarkSatbBuffer timeouts");
-            GCThreadPool* threadPool = GetThreadPool();
-            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) || (threadPool->GetWorkCount() > 0));
+            Taskpool *threadPool = GetThreadPool();
+            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
             return workStack.empty();
         }
         if (LIKELY_CC(!workStack.empty())) {
-            GCThreadPool* threadPool = GetThreadPool();
-            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) || (threadPool->GetWorkCount() > 0));
+            Taskpool *threadPool = GetThreadPool();
+            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
         }
         visitSatbObj();
         if (workStack.empty()) {
@@ -510,13 +515,6 @@ void TraceCollector::PreGarbageCollection(bool isConcurrent)
     // SatbBuffer should be initialized before concurrent enumeration.
     SatbBuffer::Instance().Init();
     // prepare thread pool.
-    GCThreadPool* threadPool = GetThreadPool();
-    const int32_t threadCount = GetGCThreadCount(isConcurrent);
-    ASSERT_LOGF(threadCount >= 1, "unexpected thread count");
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-    threadPool->SetPriority(GCThread::GC_THREAD_STW_PRIORITY);
-#endif
-    threadPool->SetMaxActiveThreadNum(threadCount);
 
     GetGCStats().reason = gcReason_;
     GetGCStats().async = !g_gcRequests[gcReason_].IsSyncGC();
@@ -539,19 +537,16 @@ void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
 #endif
 }
 
-void TraceCollector::EnumerateAllRootsImpl(GCThreadPool* threadPool, RootSet& rootSet)
+void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet)
 {
     ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
 
-    const size_t threadCount = static_cast<size_t>(threadPool->GetMaxThreadNum() + 1);
+    const size_t threadCount = static_cast<size_t>(GetGCThreadCount(true));
     RootSet rootSetsInstance[threadCount];
     RootSet* rootSets = rootSetsInstance; // work_around the crash of clang parser
 
-    threadPool->AddWork(new (std::nothrow)
-                            LambdaWork([this, rootSets](size_t workerID) { EnumStaticRoots(rootSets[workerID]); }));
-
-    threadPool->Start();
-    threadPool->WaitFinish();
+    // Only one root task, no need to post task.
+    EnumStaticRoots(rootSets[0]);
 
     MergeMutatorRoots(rootSet);
     WorkStack tempStack = NewWorkStack();

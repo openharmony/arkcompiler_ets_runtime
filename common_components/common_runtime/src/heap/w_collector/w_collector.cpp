@@ -390,14 +390,12 @@ void WCollector::Preforward()
     ARK_COMMON_PHASE_TIMER("Preforward");
     TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
 
-    GCThreadPool* threadPool = GetThreadPool();
+    [[maybe_unused]] Taskpool *threadPool = GetThreadPool();
     ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
 
     // copy and fix finalizer roots.
-    threadPool->AddWork(new (std::nothrow) LambdaWork([this](size_t) { PreforwardStaticRoots(); }));
-
-    threadPool->Start();
-    threadPool->WaitFinish();
+    // Only one root task, no need to post task.
+    PreforwardStaticRoots();
 }
 
 void WCollector::PrepareFix()

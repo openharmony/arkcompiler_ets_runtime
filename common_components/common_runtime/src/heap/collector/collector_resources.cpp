@@ -21,6 +21,9 @@
 #include "common_components/common_runtime/src/common/run_type.h"
 #include "common_components/common_runtime/src/common/scoped_object_access.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
+#ifdef ENABLE_QOS
+#include "qos.h"
+#endif
 
 namespace panda {
 
@@ -42,9 +45,8 @@ void* CollectorResources::GCMainThreadEntry(void* arg)
 
     LOG_COMMON(INFO) << "[GC] CollectorResources Thread begin.";
 
-#if defined(__linux__) || defined(PANDA_TARGET_OHOS)
-    // set thread priority.
-    GCThread::SetThreadPriority(panda::GetTid(), GCThread::GC_THREAD_PRIORITY);
+#ifdef ENABLE_QOS
+    OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, panda::GetTid());
 #endif
 
     // run event loop in this thread.
@@ -110,14 +112,14 @@ void CollectorResources::TerminateGCTask()
 void CollectorResources::StopGCThreads()
 {
     if (gcThreadRunning_.load(std::memory_order_acquire) == false) {
-        return;
+        LOG_COMMON(FATAL) << "[GC] CollectorResources Thread not begin.";
+        UNREACHABLE();
     }
     int ret = ::pthread_join(gcMainThread_, nullptr);
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "::pthread_join() in StopGCThreads() return " << ret;
     // wait the thread pool stopped.
     if (gcThreadPool_ != nullptr) {
-        gcThreadPool_->Exit();
-        delete gcThreadPool_;
+        gcThreadPool_->Destroy(0);
         gcThreadPool_ = nullptr;
     }
     gcThreadRunning_.store(false, std::memory_order_release);
@@ -227,16 +229,20 @@ void CollectorResources::StartGCThreads()
 {
     bool expected = false;
     if (gcThreadRunning_.compare_exchange_strong(expected, true, std::memory_order_acquire) == false) {
-        return;
+        LOG_COMMON(FATAL) << "[GC] CollectorResources Thread already begin.";
+        UNREACHABLE();
     }
-    // starts the thread pool.
-    if (gcThreadPool_ == nullptr) {
-        static constexpr int32_t helperThreads = 4;
-        gcThreadCount_ = helperThreads + 1;
-        VLOG(REPORT, "total gc thread count %d, helper thread count %d", gcThreadCount_, helperThreads);
-        gcThreadPool_ = new (std::nothrow) GCThreadPool("gc", helperThreads, GCThread::GC_THREAD_PRIORITY);
-        LOGF_CHECK(gcThreadPool_ != nullptr) << "new GCThreadPool failed";
+    ASSERT(gcThreadPool_ == nullptr);
+    gcThreadPool_ = Taskpool::GetCurrentTaskpool();
+    gcThreadPool_->Initialize();
+    LOGF_CHECK(gcThreadPool_ != nullptr) << "new GCThreadPool failed";
+    uint32_t helperThreads = gcThreadPool_->GetTotalThreadNum();
+    if (helperThreads > 0) {
+        --helperThreads;    // gc task is exclusive, so keep one thread left
     }
+    // 1 is for gc main thread.
+    gcThreadCount_ = helperThreads + 1;
+    VLOG(REPORT, "total gc thread count %d, helper thread count %d", gcThreadCount_, helperThreads);
 
     // create the collector thread.
     if (::pthread_create(&gcMainThread_, nullptr, CollectorResources::GCMainThreadEntry, this) != 0) {
@@ -250,7 +256,7 @@ void CollectorResources::StartGCThreads()
 #endif
 }
 
-int32_t CollectorResources::GetGCThreadCount(const bool isConcurrent) const
+uint32_t CollectorResources::GetGCThreadCount(const bool isConcurrent) const
 {
     if (GetThreadPool() == nullptr) {
         return 1;

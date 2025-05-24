@@ -16,9 +16,8 @@
 #define ARK_COMMON_COLLECTOR_RESOURCES_H
 
 #include "common_components/common_runtime/src/heap/collector/finalizer_processor.h"
-#include "common_components/common_runtime/src/heap/gc_thread_pool.h"
 #include "common_components/common_runtime/src/heap/collector/task_queue.h"
-#include "common_components/common_runtime/src/heap/collector/task_queue.h"
+#include "common_components/taskpool/taskpool.h"
 
 namespace panda {
 class CollectorProxy;
@@ -43,9 +42,9 @@ public:
     // Notify that GC has finished.
     // Must be called by gc thread only
     void NotifyGCFinished(uint64_t gcIndex);
-    int32_t GetGCThreadCount(const bool isConcurrent) const;
+    uint32_t GetGCThreadCount(const bool isConcurrent) const;
 
-    GCThreadPool* GetThreadPool() const { return gcThreadPool_; }
+    Taskpool *GetThreadPool() const { return gcThreadPool_; }
 
     bool IsHeapMarked() const { return isHeapMarked_; }
 
@@ -78,8 +77,8 @@ private:
     void PostIgnoredGcRequest(GCReason reason);
 
     // the thread pool for parallel tracing.
-    GCThreadPool* gcThreadPool_ = nullptr;
-    int32_t gcThreadCount_ = 1;
+    Taskpool *gcThreadPool_ = nullptr;
+    uint32_t gcThreadCount_ = 1;
     GCTaskQueue<GCRunner>* taskQueue_ = nullptr;
 
     // the collector thread handle.
