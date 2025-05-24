@@ -954,6 +954,8 @@ ecma_source = [
   "ecmascript/module/accessor/module_data_accessor.cpp",
   "ecmascript/module/js_module_manager.cpp",
   "ecmascript/module/js_dynamic_import.cpp",
+  "ecmascript/module/static/static_module_proxy_handler.cpp",
+  "ecmascript/module/static/static_module_loader.cpp",
   "ecmascript/module/js_module_namespace.cpp",
   "ecmascript/module/js_module_source_text.cpp",
   "ecmascript/module/js_module_deregister.cpp",
