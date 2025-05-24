@@ -33,7 +33,7 @@ public:
                                              JSTaggedValue value) override;
 
     std::pair<JSTaggedValue, HandlerBase> GetElementByIdx(ThreadHolder *thread, const BaseObject *obj,
-                                                          const uint32_t index) const override;
+                                                          uint32_t index) const override;
 
     std::pair<bool, HandlerBase> SetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index,
                                                  JSTaggedValue value) override;
