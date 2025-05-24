@@ -52,7 +52,7 @@ public:
         return static_cast<DependentInfos *>(object);
     }
     enum DependentGroup : uint32_t {
-        #define LAZY_DEOPT_TYPE_MEMBER(name, value) name = value,
+        #define LAZY_DEOPT_TYPE_MEMBER(name, value) name = (value),
             LAZY_DEOPT_TYPE_LIST(LAZY_DEOPT_TYPE_MEMBER)
         #undef LAZY_DEOPT_TYPE_MEMBER
     };
