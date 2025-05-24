@@ -191,7 +191,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
                 baselineNativePc = 0;
             }
             data += BuildJsStackTraceInfo(thread, method, it, jsErrorObj, lastCache,
-                        needBaselineSpecialHandling, pcOffset);
+                                          needBaselineSpecialHandling, pcOffset);
             --depth;
         } else if (needNative) {
             auto addr = JSFunction::Cast(it.GetFunction().GetTaggedObject())->GetNativePointer();

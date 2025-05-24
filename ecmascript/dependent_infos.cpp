@@ -51,9 +51,10 @@ void DependentInfos::TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction>
     std::string reason;
     switch (value) {
     #define LAZY_DEOPT_TYPE_CASE(name, value)           \
-        case (value):                                   \
+        case (value): {                                 \
             reason = #name;                             \
-            break;
+            break;                                      \
+        }
         LAZY_DEOPT_TYPE_LIST(LAZY_DEOPT_TYPE_CASE)
     #undef LAZY_DEOPT_TYPE_CASE
         default:
@@ -84,9 +85,9 @@ void DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos> dependentInfos,
             JSHandle<Method> method(thread, func->GetMethod());
             // When lazy deopt happened, the deopt method cannot call as jit any more.
             Deoptimizier::ClearCompiledCodeStatusWhenDeopt(thread,
-                                                            func.GetObject<JSFunction>(),
-                                                            method.GetObject<Method>(),
-                                                            kungfu::DeoptType::LAZYDEOPT);
+                                                           func.GetObject<JSFunction>(),
+                                                           method.GetObject<Method>(),
+                                                           kungfu::DeoptType::LAZYDEOPT);
             TraceLazyDeoptReason(thread, func, (depGroups & groups));
         }
     }
