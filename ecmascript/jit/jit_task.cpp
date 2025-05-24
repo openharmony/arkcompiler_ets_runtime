@@ -259,7 +259,7 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
         reinterpret_cast<JSHandle<JSTaggedValue>*>(codeDesc.heapConstantTableAddr);
 
     uint64_t constTableSlotNum = codeDesc.heapConstantTableSize / sizeof(uint64_t);
-    LOG_JIT(INFO) << "constant table size: " << constTableSlotNum << "\n";
+    LOG_JIT(DEBUG) << "constant table size: " << constTableSlotNum << "\n";
     for (uint64_t i = 0; i < constTableSlotNum; ++i) {
         JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
         heapConstantTableAddr[i] = heapObj->GetRawData();

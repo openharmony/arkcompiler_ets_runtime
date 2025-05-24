@@ -40,6 +40,12 @@ public:
     static bool SetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func,
                                 const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &prefix);
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
+
+    void InitBitField()
+    {
+        SetBitField(static_cast<uint32_t>(0));
+    }
+
     void SetCallNapi(bool isCallNapi)
     {
         uint32_t bitField = GetBitField();

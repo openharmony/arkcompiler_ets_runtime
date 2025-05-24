@@ -101,6 +101,7 @@ void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction
 
 void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHandle<JSFunction> &func)
 {
+    func->InitBitField();
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
