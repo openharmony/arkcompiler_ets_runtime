@@ -1045,8 +1045,9 @@ JSHandle<JSObject> TypedArrayHelper::TypedArrayCreate(JSThread *thread, const JS
     // 3. If argumentList is a List of a single Number, then
     //   a. If newTypedArray.[[ArrayLength]] < argumentList[0], throw a TypeError exception.
     if (argc == 1) {
+        JSHandle<JSTaggedValue> singleNumber(thread, JSTaggedValue(argv[0]));
         if (JSHandle<JSTypedArray>::Cast(newTypedArray)->GetArrayLength() <
-            JSTaggedValue::ToUint32(thread, info->GetCallArg(0))) {
+            JSTaggedValue::ToUint32(thread, singleNumber)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "the length of newTypedArray is not a correct value.",
                                         JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
         }
