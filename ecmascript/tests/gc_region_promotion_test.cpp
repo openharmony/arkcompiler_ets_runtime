@@ -84,7 +84,7 @@ void NewToOldPromotionCase::Initialize()
     newToNewArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
     newArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
     oldArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
-    heap_->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    heap_->SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
 }
 
 HWTEST_F_L0(GCTest, NewToOldPromotionYoungGCTest)
