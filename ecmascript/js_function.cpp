@@ -105,11 +105,13 @@ void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHand
     func->SetProtoOrHClass<SKIP_BARRIER>(thread, JSTaggedValue::Hole());
     func->SetHomeObject<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+
     func->SetMachineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetBaselineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
     func->SetMethod<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetModule<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetInterfaceType(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value

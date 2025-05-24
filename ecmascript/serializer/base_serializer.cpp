@@ -194,6 +194,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
         switch (fieldOffset) {
             case JSFunction::MACHINECODE_OFFSET:
             case JSFunction::BASELINECODE_OFFSET:
+            case JSFunction::INTERFACETYPE_OFFSET:
             case JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
@@ -324,6 +325,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::MACHINECODE_OFFSET:
             case JSFunction::BASELINECODE_OFFSET:
+            case JSFunction::INTERFACETYPE_OFFSET:
             case JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET:
             case JSFunction::ECMA_MODULE_OFFSET: {

@@ -2815,6 +2815,35 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
                                                       val.GetTaggedValue());
 }
 
+Local<JSValueRef> JSNApi::GetImplements(const EcmaVM *vm, Local<JSValueRef> instance)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSTaggedValue result;
+    {
+        LocalScope scope(vm);
+        if (!instance->IsObject(vm)) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(instance));
+        OperationResult ret = JSTaggedValue::GetProperty(
+            thread, obj, thread->GlobalConstants()->GetHandledConstructorString());
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        result = ret.GetValue().GetTaggedValue();
+        if (!result.IsJSFunction()) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> resultValue(thread, result);
+        JSHandle<JSFunction> objFunc = JSHandle<JSFunction>::Cast(resultValue);
+        result = objFunc->GetInterfaceType();
+        if (result.IsUndefined()) {
+            return JSValueRef::Undefined(vm);
+        }
+    }
+    JSHandle<JSTaggedValue> implementRet(thread, result);
+    return JSNApiHelper::ToLocal<JSValueRef>(implementRet);
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
