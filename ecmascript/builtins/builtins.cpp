@@ -3793,6 +3793,7 @@ JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env
     SetConstant(arkPrivate, "LightWeightSet",
                 JSTaggedValue(static_cast<int>(containers::ContainerTag::LightWeightSet)));
     SetConstant(arkPrivate, "PlainArray", JSTaggedValue(static_cast<int>(containers::ContainerTag::PlainArray)));
+    SetConstant(arkPrivate, "FastBuffer", JSTaggedValue(static_cast<int>(containers::ContainerTag::FastBuffer)));
     return arkPrivate;
 }
 

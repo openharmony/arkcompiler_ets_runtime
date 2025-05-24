@@ -75,6 +75,7 @@ host_unittest_action("Containers_003_Test") {
     "containers_treemap_test.cpp",
     "containers_treeset_test.cpp",
     "containers_vector_test.cpp",
+    "containers_buffer_test.cpp",
   ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]

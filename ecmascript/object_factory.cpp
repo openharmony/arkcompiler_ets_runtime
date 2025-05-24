@@ -15,6 +15,7 @@
 
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
@@ -28,6 +29,7 @@
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
@@ -71,6 +73,7 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/js_weak_ref.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -1604,6 +1607,12 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSAPIBitVector::Cast(*obj)->SetNativePointer(thread_, JSTaggedValue::Undefined());
             JSAPIBitVector::Cast(*obj)->SetLength(0);
             JSAPIBitVector::Cast(*obj)->SetModRecord(0);
+            break;
+        }
+        case JSType::JS_API_FAST_BUFFER: {
+            JSAPIFastBuffer::Cast(*obj)->SetFastBufferData(thread_, JSTaggedValue::Undefined());
+            JSAPIFastBuffer::Cast(*obj)->SetLength(0);
+            JSAPIFastBuffer::Cast(*obj)->SetOffset(0);
             break;
         }
         case JSType::JS_API_LIST: {
@@ -4837,6 +4846,51 @@ JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
     obj->SetNativePointer(thread_, pointer);
 
     return obj;
+}
+
+// Creaete a fastbuffer without alloc arraybuffer under TypedArray.
+JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBufferWithoutInit()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> handleTagValFunc = env->GetUint8ArrayFunction();
+    JSHandle<JSObject> obj = NewJSObjectByConstructor(JSHandle<JSFunction>(handleTagValFunc), handleTagValFunc);
+    JSHandle<JSTypedArray> handleUint8Array = JSHandle<JSTypedArray>::Cast(obj);
+
+    handleUint8Array->SetByteLength(0);
+    handleUint8Array->SetByteOffset(0);
+    handleUint8Array->SetArrayLength(0);
+    handleUint8Array->SetContentType(ContentType::Number);
+    JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBufferFunction());
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>(NewJSObjectByConstructor(builtinObj));
+    buffer->SetFastBufferData(thread_, handleUint8Array);
+    buffer->SetLength(0);
+
+    return buffer;
+}
+
+// create fastbuffer shared same arraybufer under typedArray
+JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBuffer(JSHandle<JSTypedArray> typedArrayHandle)
+{
+    NewObjectHook();
+    JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBufferFunction());
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>(NewJSObjectByConstructor(builtinObj));
+    buffer->SetFastBufferData(thread_, typedArrayHandle);
+    buffer->SetLength(typedArrayHandle->GetByteLength());
+    return buffer;
+}
+
+// Create a fastbuffer with length and byteOffset
+JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBuffer(uint32_t length, uint32_t byteOffset)
+{
+    NewObjectHook();
+    JSHandle<JSTypedArray> handleUint8Array = JSAPIFastBuffer::NewUint8Array(thread_, length, byteOffset);
+    JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBufferFunction());
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>(NewJSObjectByConstructor(builtinObj));
+    buffer->SetFastBufferData(thread_, handleUint8Array);
+    buffer->SetLength(length);
+    buffer->SetOffset(0);
+    return buffer;
 }
 
 JSHandle<JSAPIBitVectorIterator> ObjectFactory::NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector)
