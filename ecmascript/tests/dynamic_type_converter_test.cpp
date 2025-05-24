@@ -194,6 +194,20 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_EQ(result, obj.GetTaggedValue());
     }
+    // 9. Test String with BaseString
+    {
+        uint8_t arrayU8[] = {"xyz123!@#"};
+        size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true);
+        PandaType value = str->ToBaseString();
+        JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
+
+        EXPECT_TRUE(result.IsString());
+        EcmaString* str1 = EcmaString::Cast(result.GetTaggedObject());
+        // Verify BigInt properties
+        EXPECT_EQ(EcmaStringAccessor(str1).GetLength(), str->ToBaseString()->GetLength());
+        EXPECT_EQ(EcmaStringAccessor(str1).GetDataUtf8(), str->ToBaseString()->GetDataUtf8());
+    }
 }
 
 /**
@@ -292,6 +306,16 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test1)
         auto result = dynTypeConverter_.UnWrapTagged(obj.GetTaggedValue());
         EXPECT_TRUE(std::holds_alternative<BaseObject*>(result));
         EXPECT_EQ(std::get<BaseObject*>(result), static_cast<BaseObject*>(obj.GetTaggedValue().GetTaggedObject()));
+    }
+    /* String type tests */
+    {
+        uint8_t arrayU8[] = {"xyz123!@#"};
+        size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true);
+        auto result = dynTypeConverter_.UnWrapTagged(JSTaggedValue(str));
+
+        EXPECT_TRUE(std::holds_alternative<BaseString*>(result));
+        EXPECT_EQ(std::get<BaseString*>(result), str->ToBaseString());
     }
 }
 }

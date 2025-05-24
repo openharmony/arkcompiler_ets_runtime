@@ -60,6 +60,8 @@ JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, PandaType v
                 result = JSTaggedValue(static_cast<TaggedObject*>(bigInt));
             } else if constexpr (std::is_same_v<T, BaseObject*>) {
                 result = JSTaggedValue(static_cast<TaggedObject*>(arg));
+            } else if constexpr (std::is_same_v<T, BaseString*>) {
+                result = JSTaggedValue(EcmaString::FromBaseString(arg));
             } else {
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -91,6 +93,8 @@ PandaType DynamicTypeConverter::UnWrapTagged(JSTaggedValue value)
             baseBigInt.data[i] = bigInt->GetDigit(i);
         }
         return baseBigInt;
+    } else if (value.IsString()) {
+        return EcmaString::Cast(value)->ToBaseString();
     } else if (value.IsHeapObject()) {
         return static_cast<BaseObject*>(value.GetTaggedObject());
     } else {
