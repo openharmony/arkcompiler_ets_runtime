@@ -1926,6 +1926,8 @@ public:
     static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
 
     static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+    // 1.2runtime interface info
+    static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
 
 private:
     static bool isForked_;

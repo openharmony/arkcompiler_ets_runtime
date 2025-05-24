@@ -941,6 +941,8 @@ public:
                                MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
+    void SetInterfaceTypeToFunction(GateRef glue, GateRef function, GateRef value,
+                                  MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetBaselineJitCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                       MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,

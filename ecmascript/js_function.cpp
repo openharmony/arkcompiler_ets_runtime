@@ -107,6 +107,7 @@ void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHand
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     func->SetMachineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetBaselineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetInterfaceType<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
     func->SetMethod<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetModule<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
