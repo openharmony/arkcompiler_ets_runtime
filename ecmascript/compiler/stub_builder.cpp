@@ -7493,6 +7493,8 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef glue, GateRef value, Profi
     Label isFalse(env);
     Label isNotFalse(env);
     Label isUndefinedOrNull(env);
+    Label isHole(env);
+    Label isNotBigInt(env);
 
     BRANCH(TaggedIsSpecial(value), &isSpecial, &notSpecial);
     Bind(&isSpecial);
@@ -7512,10 +7514,16 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef glue, GateRef value, Profi
                 Jump(&returnFalse);
             }
             Bind(&isNotFalse);
-            BRANCH(TaggedIsUndefinedOrNull(value), &isUndefinedOrNull, &returnFalse);
+            BRANCH(TaggedIsUndefinedOrNull(value), &isUndefinedOrNull, &isHole);
             Bind(&isUndefinedOrNull);
             {
                 callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+                Jump(&returnFalse);
+            }
+            Bind(&isHole);
+            {
+                // value will never be hole, this branch shouldn't be entered
+                callback.ProfileOpType(TaggedInt(PGOSampleType::SpecialType()));
                 Jump(&returnFalse);
             }
         }
@@ -7528,13 +7536,15 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef glue, GateRef value, Profi
             BRANCH(IsString(glue, value), &isString, &notString);
             Bind(&isString);
             {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
                 auto len = GetLengthFromString(value);
                 BRANCH(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            BRANCH(TaggedObjectIsBigInt(glue, value), &isBigint, &returnTrue);
+            BRANCH(TaggedObjectIsBigInt(glue, value), &isBigint, &isNotBigInt);
             Bind(&isBigint);
             {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::BigIntType()));
                 auto len = LoadPrimitive(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
                 BRANCH(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
                 Bind(&lengthIsOne);
@@ -7543,6 +7553,11 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef glue, GateRef value, Profi
                     auto data0 = LoadPrimitive(VariableType::INT32(), data, Int32(0));
                     BRANCH(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
                 }
+            }
+            Bind(&isNotBigInt);
+            {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::HeapObjectType()));
+                Jump(&returnTrue);
             }
         }
         Bind(&isNumber);
@@ -12414,6 +12429,20 @@ void StubBuilder::EndTraceDefineFunc(GateRef glue)
 #endif
 }
 
+void StubBuilder::UpdateProfileTypeInfoAsMega(GateRef glue, GateRef profileTypeInfo, GateRef slotId)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label pgoOn(env);
+    Label pgoOff(env);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &pgoOff, &pgoOn);
+    Bind(&pgoOn);
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, Hole(), MemoryAttribute::NoBarrier());
+    Jump(&pgoOff);
+    Bind(&pgoOff);
+    env->SubCfgExit();
+}
 GateRef StubBuilder::JSTaggedValueToString(GateRef glue, GateRef val, GateRef hir)
 {
     auto env = GetEnvironment();

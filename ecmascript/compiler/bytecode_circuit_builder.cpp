@@ -789,14 +789,19 @@ GateRef BytecodeCircuitBuilder::NewDeopt(BytecodeRegion &bb)
 {
     ASSERT(bb.succs.empty());
     auto &iterator = bb.GetBytecodeIterator();
+    const BytecodeInfo &bytecodeInfo = iterator.GetBytecodeInfo();
     GateRef state = frameStateBuilder_.GetCurrentState();
     GateRef depend = frameStateBuilder_.GetCurrentDepend();
+    GateRef frameState = gateAcc_.FindNearestFrameState(depend);
+    if (bytecodeInfo.NeedFrameStateInPlace()) {
+        frameState = frameStateBuilder_.GetBcFrameStateCache();
+    }
     std::string comment = Deoptimizier::DisplayItems(DeoptType::INSUFFICIENTPROFILE);
     GateRef type = circuit_->GetConstantGate(MachineType::I64, static_cast<int64_t>(DeoptType::INSUFFICIENTPROFILE),
                                              GateType::NJSValue());
     GateRef condition = circuit_->GetConstantGate(MachineType::I1, 0, GateType::NJSValue());
     GateRef deopt = circuit_->NewGate(circuit_->DeoptCheck(), MachineType::I1,
-                                      {state, depend, condition, gateAcc_.FindNearestFrameState(depend), type},
+                                      {state, depend, condition, frameState, type},
                                       GateType::NJSValue(), comment.c_str());
     GateRef dependRelay = circuit_->NewGate(circuit_->DependRelay(), {deopt, depend});
     GateRef undef =

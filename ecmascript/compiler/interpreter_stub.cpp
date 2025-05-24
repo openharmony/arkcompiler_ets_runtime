@@ -4717,6 +4717,10 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
         Jump(&threadCheck);
     }
     Bind(&slowPath);
+    if (!callback.IsEmpty()) {
+        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+        UpdateProfileTypeInfoAsMega(glue, profileTypeInfo, slotId);
+    }
     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
     GateRef length = Int16Sub(numArgs, firstArgOffset);
     res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
@@ -4790,6 +4794,10 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
         Jump(&threadCheck);
     }
     Bind(&slowPath);
+    if (!callback.IsEmpty()) {
+        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+        UpdateProfileTypeInfoAsMega(glue, profileTypeInfo, slotId);
+    }
     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
     GateRef length = Int16Sub(numArgs, firstArgOffset);
     res = CallRuntime(glue, RTSTUB_ID(NewObjRange),

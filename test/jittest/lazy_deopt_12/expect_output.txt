@@ -21,9 +21,9 @@ true
 ------------------------------------------------------
 Test2 start.
 ChangeProto start.
+[trace] Check Type: InsufficientProfile
 [trace] Lazy Deoptimization occurred on function: "Test2"
 [trace] Lazy Deoptimize reason: PROTOTYPE_CHECK
-[trace] Check Type: InsufficientProfile
 Set success.
 sum: 23300000
 ChangeProto end.

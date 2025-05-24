@@ -1219,6 +1219,7 @@ public:
     void EndTraceCall(GateRef glue);
     void StartTraceDefineFunc(GateRef glue, GateRef methodId, GateRef profileTypeInfo, GateRef slotId);
     void EndTraceDefineFunc(GateRef glue);
+    void UpdateProfileTypeInfoAsMega(GateRef glue, GateRef profileTypeInfo, GateRef slotId);
     GateRef GetIsFastCall(GateRef machineCode);
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef glue, GateRef array, GateRef offset, GateRef end);

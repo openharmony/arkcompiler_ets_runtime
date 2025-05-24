@@ -119,6 +119,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
 
     if (!GetHandler(op, hclass, handlerValue)) {
+        icAccessor_.SetAsMega();
         return;
     }
 
@@ -225,6 +226,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     }
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
+        icAccessor_.SetAsMega();
         return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK).GetValue().GetTaggedValue();
     }
     ObjectOperator op(GetThread(), receiver, key);
@@ -415,6 +417,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
 
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
+        icAccessor_.SetAsMega();
         bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
@@ -462,6 +465,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (success) {
         UpdateStoreHandler(op, key, receiver);
     }
+    icAccessor_.SetAsMegaIfUndefined();
     if (isAccessor) {
         return HandleAccesor(&op, value);
     }
@@ -530,6 +534,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
         if (success) {
             UpdateStoreHandler(op, key, receiver);
         }
+        icAccessor_.SetAsMegaIfUndefined();
         if (isAccessor) {
             return HandleAccesor(&op, value);
         }

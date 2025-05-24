@@ -24,14 +24,24 @@
  * 3. Test call Test2 inlined.
  */
 
-
-function ChangePrototypeValue(obj, shouldChange) {
-    print("ChangeProto start.");
+function MakeChange(obj, shouldChange) {
     if (shouldChange) {
         // Update the 'x' property at the second level of the prototype chain,
         // triggering lazy deoptimization of the JIT-compiled 'test' function.
         obj.__proto__.__proto__.x = 2;
     }
+    // Additional code to prevent aggressive inlining.
+    let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+}
+
+
+function ChangePrototypeValue(obj, shouldChange) {
+    print("ChangeProto start.");
+    MakeChange(obj, shouldChange);
     print("ChangeProto end.");
 }
 
