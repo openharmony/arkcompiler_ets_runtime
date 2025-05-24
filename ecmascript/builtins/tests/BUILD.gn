@@ -765,6 +765,28 @@ host_unittest_action("Builtins_Promise_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Builtins_Promise_Job_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_promise_job_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("Builtins_Proxy_Test") {
   module_out_path = module_output_path
 
@@ -1199,6 +1221,7 @@ group("unittest") {
     ":Builtins_Object_Test",
     ":Builtins_PluralRules_Test",
     ":Builtins_Promise_Test",
+    ":Builtins_Promise_Job_Test",
     ":Builtins_Proxy_Test",
     ":Builtins_Reflect_Test",
     ":Builtins_Regexp_Test",
@@ -1257,6 +1280,7 @@ group("host_unittest") {
     ":Builtins_Object_TestAction",
     ":Builtins_PluralRules_TestAction",
     ":Builtins_Promise_TestAction",
+    ":Builtins_Promise_Job_Test",
     ":Builtins_Proxy_TestAction",
     ":Builtins_Reflect_TestAction",
     ":Builtins_Regexp_TestAction",
@@ -1310,6 +1334,7 @@ group("host_unittest") {
       ":Builtins_Object_TestAction",
       ":Builtins_PluralRules_TestAction",
       ":Builtins_Promise_TestAction",
+      ":Builtins_Promise_Job_Test",
       ":Builtins_Proxy_TestAction",
       ":Builtins_Reflect_TestAction",
       ":Builtins_Regexp_TestAction",
