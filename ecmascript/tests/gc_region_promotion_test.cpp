@@ -42,7 +42,7 @@ public:
 void NewToOldPromotionCase::Initialize()
 {
     // Disallow garbage collection
-    heap_->SetOnSerializeEvent(true);
+    heap_->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     JSThread *thread = heap_->GetJSThread();
     ObjectFactory *factory = heap_->GetEcmaVM()->GetFactory();
     SemiSpace *newSpace = heap_->GetNewSpace();
@@ -84,7 +84,7 @@ void NewToOldPromotionCase::Initialize()
     newToNewArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
     newArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
     oldArray_->Set(thread, idx, newToOldArray_.GetTaggedValue());
-    heap_->SetOnSerializeEvent(false);
+    heap_->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
 }
 
 HWTEST_F_L0(GCTest, NewToOldPromotionYoungGCTest)
