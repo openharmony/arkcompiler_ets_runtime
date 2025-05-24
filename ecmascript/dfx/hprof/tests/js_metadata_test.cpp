@@ -387,6 +387,7 @@ public:
                                                          "AbcFileName", "RESOLVEDRECORDINDEXBINDING_RECORD"}},
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"ResolveFunction", "RejectFunction", "RESOLVING_FUNCTIONS_RECORD"}},
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
+            {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
             {JSType::SLICED_STRING, {"Parent", "SLICED_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"Environment", "Namespace", "ModuleRequests", "RequestedModules",
                                                  "ImportEntries", "LocalExportEntries",
@@ -978,6 +979,7 @@ public:
                 ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET,
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
+            {JSType::SFUNCTION_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::SLICED_STRING, {SlicedString::PARENT_OFFSET, SlicedString::SIZE - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -1218,6 +1220,7 @@ public:
             {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {"RECORD"}},
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"RECORD"}},
             {JSType::SENDABLE_ENV, {"TAGGED_ARRAY"}},
+            {JSType::SFUNCTION_ENV, {"TAGGED_ARRAY"}},
             {JSType::SLICED_STRING, {"ECMA_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"MODULE_RECORD"}},
             {JSType::STAR_EXPORTENTRY_RECORD, {"RECORD"}},
@@ -1710,6 +1713,7 @@ public:
                 ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET,
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {}},
+            {JSType::SFUNCTION_ENV, {}},
             {JSType::SLICED_STRING, {SlicedString::STARTINDEX_AND_FLAGS_OFFSET - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::NAMESPACE_OFFSET - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -4316,6 +4320,17 @@ HWTEST_F_L0(JSMetadataTest, TestSendableEnvMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::SENDABLE_ENV, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestSFunctionEnvMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"sfunction_env.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::SFUNCTION_ENV, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestSlicedStringMetadata)
