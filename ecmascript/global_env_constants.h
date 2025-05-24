@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -465,6 +465,8 @@ class ObjectFactory;
     /* for require native module */                                                                         \
     V(RequireNativeModuleString,      REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,     "requireNativeModule")         \
     V(RequireNapiString,              REQUIRE_NAPI_FUNC_INDEX,               "requireNapi")                 \
+    V(RequireNapiPreviewString,       REQUIRE_NAPI_PREVIEW_FUNC_INDEX,       "requireNapiPreview")          \
+    V(PandaString,                    PANDA_STRING_INDEX,                    "Panda")                       \
     V(DollarStringOne,                DOLLAR_STRING_ONE_INDEX,               "$1")                          \
     V(DollarStringTwo,                DOLLAR_STRING_TWO_INDEX,               "$2")                          \
     V(DollarStringThree,              DOLLAR_STRING_THREE_INDEX,             "$3")                          \
@@ -496,7 +498,9 @@ class ObjectFactory;
     V(SharedFullGcCause,              SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
     V(UnifiedGcCause,                 UNIFIED_GC_CAUSE,                      "unified")                     \
-    V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")
+    V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")                     \
+    V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
+    V(GetModuleString,                GET_MODULE,                            "getModule")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                    \

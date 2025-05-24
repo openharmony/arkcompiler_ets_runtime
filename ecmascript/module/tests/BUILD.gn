@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -60,6 +60,7 @@ host_unittest_action("ModuleTest") {
   sources = [
     # test file
     "ecma_module_test.cpp",
+    "static_module_loader_test.cpp"
   ]
 
   if (!defined(run_with_qemu)) {
