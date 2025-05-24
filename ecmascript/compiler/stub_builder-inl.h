@@ -1386,6 +1386,18 @@ inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClas
     return env_->GetBuilder()->StoreHClass(glue, object, hClass, mAttr);
 }
 
+inline void StubBuilder::StoreBaseAddressForBaseClass([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef object,
+                                                      [[maybe_unused]] GateRef hClass)
+{
+#ifdef USE_CMC_GC
+    GateRef baseAddr = Int64LSR(ChangeTaggedPointerToInt64(hClass),
+                                Int64(BITS_PER_BYTE * TaggedStateWord::STATE_WORD_OFFSET));
+    baseAddr = TruncInt64ToInt16(baseAddr);
+    env_->GetBuilder()->Store(VariableType::INT16(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET),
+                              baseAddr, MemoryAttribute::NoBarrier());
+#endif
+}
+
 inline void StubBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
     return env_->GetBuilder()->TransitionHClass(glue, object, hClass, mAttr);
@@ -2964,6 +2976,11 @@ inline GateRef StubBuilder::ZExtInt16ToInt64(GateRef x)
 inline GateRef StubBuilder::TruncInt64ToInt32(GateRef x)
 {
     return env_->GetBuilder()->TruncInt64ToInt32(x);
+}
+
+inline GateRef StubBuilder::TruncInt64ToInt16(GateRef x)
+{
+    return env_->GetBuilder()->TruncInt64ToInt16(x);
 }
 
 inline GateRef StubBuilder::TruncPtrToInt32(GateRef x)

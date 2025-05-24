@@ -117,10 +117,6 @@ inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length,
     auto allocator = [vm](size_t size, CommonType stringType) -> BaseObject* {
         ASSERT(stringType == CommonType::LINE_STRING && "Can only allocate line string");
         EcmaString* string = vm->GetFactory()->AllocLineStringObject(size);
-#ifdef USE_CMC_GC
-        JSTaggedValue hclass = vm->GetJSThread()->GlobalConstants()->GetLineStringClass();
-        string->SetBaseClassNoBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
-#endif
         return string;
     };
     BaseString *str = BaseString::CreateLineString(std::move(allocator), length, compressed);
@@ -134,10 +130,6 @@ inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t len
         ASSERT(stringType == CommonType::LINE_STRING && "Can only allocate line string");
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         EcmaString* string = vm->GetFactory()->AllocLineStringObjectNoGC(size);
-#ifdef USE_CMC_GC
-        JSTaggedValue hclass = vm->GetJSThread()->GlobalConstants()->GetLineStringClass();
-        string->SetBaseClassNoBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
-#endif
         return string;
     };
     BaseString *str = BaseString::CreateLineString(std::move(allocator), length, compressed);
@@ -161,10 +153,6 @@ inline EcmaString* EcmaString::AllocLineString(const EcmaVM* vm, size_t size, Me
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-#ifdef USE_CMC_GC
-    JSTaggedValue hclass = vm->GetJSThread()->GlobalConstants()->GetLineStringClass();
-    string->SetBaseClassNoBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
-#endif
     return string;
 }
 
@@ -187,10 +175,6 @@ inline SlicedEcmaString* EcmaString::CreateSlicedString(const EcmaVM* vm, JSHand
     auto allocator = [vm, type](size_t, CommonType stringType) -> BaseObject* {
         ASSERT(stringType == CommonType::SLICED_STRING && "Can only allocate sliced string");
         EcmaString* string = vm->GetFactory()->AllocSlicedStringObject(type);
-#ifdef USE_CMC_GC
-        JSTaggedValue hclass = vm->GetJSThread()->GlobalConstants()->GetSlicedStringClass();
-        string->SetBaseClassNoBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
-#endif
         return string;
     };
     auto writeBarrier = [vm](void* obj, size_t offset, BaseObject* str) {
@@ -230,10 +214,6 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     auto allocator = [vm](size_t, CommonType stringType) -> BaseObject* {
         ASSERT(stringType == CommonType::TREE_STRING && "Can only allocate tree string");
         EcmaString* string = vm->GetFactory()->AllocTreeStringObject();
-#ifdef USE_CMC_GC
-        JSTaggedValue hclass = vm->GetJSThread()->GlobalConstants()->GetTreeStringClass();
-        string->SetBaseClassNoBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
-#endif
         return string;
     };
     auto writeBarrier = [thread](void* obj, size_t offset, BaseObject* str) {
