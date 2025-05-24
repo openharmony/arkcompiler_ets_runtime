@@ -590,6 +590,18 @@ uintptr_t RegionManager::AllocRegion()
 {
     RegionDesc* region = TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, false);
     DCHECK_CC(region != nullptr);
+
+    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
+        phase == GC_PHASE_POST_MARK) {
+        region->SetTraceLine();
+    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        region->SetCopyLine();
+    } else if (phase == GC_PHASE_FIX) {
+        region->SetCopyLine();
+        region->SetFixLine();
+    }
+
     DLOG(REGION, "alloc small object region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
         region, region->GetRegionStart(), region->GetRegionSize(),
         region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
@@ -607,6 +619,17 @@ uintptr_t RegionManager::AllocPinnedRegion()
 {
     RegionDesc* region = TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, false);
     DCHECK_CC(region != nullptr);
+    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
+        phase == GC_PHASE_POST_MARK) {
+        region->SetTraceLine();
+    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        region->SetCopyLine();
+    } else if (phase == GC_PHASE_FIX) {
+        region->SetCopyLine();
+        region->SetFixLine();
+    }
+
     DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
          region->GetRegionAllocatedSize(),
          region->GetRegionType());
