@@ -17,10 +17,10 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#include "common_interfaces/ecmascript/dynamic_object_accessor.h"
-#include "common_interfaces/ecmascript/dynamic_object_descriptor.h"
-#include "common_interfaces/ecmascript/dynamic_type_converter.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
+#include "ecmascript/dynamic_object_accessor.h"
+#include "ecmascript/dynamic_object_descriptor.h"
+#include "ecmascript/dynamic_type_converter.h"
 #endif
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
