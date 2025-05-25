@@ -39,7 +39,7 @@ public:
     void Init()
     {
         mutatorBase_.Init();
-        mutatorBase_.mutator = reinterpret_cast<void*>(this);
+        mutatorBase_.mutator_ = reinterpret_cast<void*>(this);
         holder_ = new ThreadHolder(&mutatorBase_);
     }
 
@@ -162,6 +162,11 @@ public:
         return mutatorBase_.HasSuspensionRequest(flag);
     }
 
+    void SetCallbackRequest()
+    {
+        mutatorBase_.SetCallbackRequest();
+    }
+
     // Ensure that mutator phase is changed only once by mutator itself or GC
     __attribute__((always_inline)) inline bool TransitionGCPhase(bool bySelf);
 
@@ -186,9 +191,9 @@ public:
     void DumpMutator() const
     {
         LOG_COMMON(ERROR) << "mutator " << this << ": inSaferegion " <<
-            mutatorBase_.inSaferegion.load(std::memory_order_relaxed) << ", tid " << tid_ <<
-            ", observerCnt " << mutatorBase_.observerCnt.load() << ", gc phase: " <<
-            mutatorBase_.mutatorPhase.load() << ", suspension request "<< mutatorBase_.suspensionFlag.load();
+            mutatorBase_.inSaferegion_.load(std::memory_order_relaxed) << ", tid " << tid_ <<
+            ", observerCnt " << mutatorBase_.observerCnt_.load() << ", gc phase: " <<
+            mutatorBase_.mutatorPhase_.load() << ", suspension request "<< mutatorBase_.suspensionFlag_.load();
     }
 
     // Init after fork.

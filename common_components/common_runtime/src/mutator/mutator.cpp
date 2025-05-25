@@ -47,10 +47,10 @@ ThreadLocalData *GetThreadLocalData()
 bool MutatorBase::TransitionGCPhase(bool bySelf)
 {
     do {
-        GCPhaseTransitionState state = transitionState.load();
+        GCPhaseTransitionState state = transitionState_.load();
         // If this mutator phase transition has finished, just return
         if (state == FINISH_TRANSITION) {
-            bool result = mutatorPhase.load() == Heap::GetHeap().GetGCPhase();
+            bool result = mutatorPhase_.load() == Heap::GetHeap().GetGCPhase();
             if (!bySelf && !result) { // why check bySelf?
                 LOG_COMMON(FATAL) << "Unresolved fatal";
                 UNREACHABLE_CC();
@@ -74,9 +74,9 @@ bool MutatorBase::TransitionGCPhase(bool bySelf)
 
         // Current thread set atomic variable to ensure atomicity of phase transition
         CHECK_CC(state == NEED_TRANSITION);
-        if (transitionState.compare_exchange_weak(state, IN_TRANSITION)) {
+        if (transitionState_.compare_exchange_weak(state, IN_TRANSITION)) {
             TransitionToGCPhaseExclusive(Heap::GetHeap().GetGCPhase());
-            transitionState.store(FINISH_TRANSITION, std::memory_order_release);
+            transitionState_.store(FINISH_TRANSITION, std::memory_order_release);
             return true;
         }
     } while (true);
@@ -112,8 +112,8 @@ void MutatorBase::HandleSuspensionRequest()
 
 void MutatorBase::HandleJSGCCallback()
 {
-    if (mutator != nullptr) {
-        void *vm = reinterpret_cast<Mutator*>(mutator)->GetEcmaVMPtr();
+    if (mutator_ != nullptr) {
+        void *vm = reinterpret_cast<Mutator*>(mutator_)->GetEcmaVMPtr();
         if (vm != nullptr) {
             JSGCCallback(vm);
         }
@@ -228,8 +228,8 @@ inline void MutatorBase::GCPhasePreForward(GCPhase newPhase)
 inline void MutatorBase::HandleGCPhase(GCPhase newPhase)
 {
     if (newPhase == GCPhase::GC_PHASE_POST_MARK) {
-        std::lock_guard<std::mutex> lg(mutatorBaseLock);
-        Mutator *actMutator = reinterpret_cast<Mutator*>(mutator);
+        std::lock_guard<std::mutex> lg(mutatorBaseLock_);
+        Mutator *actMutator = reinterpret_cast<Mutator*>(mutator_);
         if (actMutator->satbNode_ != nullptr) {
             DCHECK_CC(actMutator->satbNode_->IsEmpty());
             SatbBuffer::Instance().RetireNode(actMutator->satbNode_);
@@ -240,8 +240,8 @@ inline void MutatorBase::HandleGCPhase(GCPhase newPhase)
     } else if (newPhase == GCPhase::GC_PHASE_PRECOPY) {
         GCPhasePreForward(newPhase);
     } else if (newPhase == GCPhase::GC_PHASE_REMARK_SATB || newPhase == GCPhase::GC_PHASE_FINAL_MARK) {
-        std::lock_guard<std::mutex> lg(mutatorBaseLock);
-        Mutator *actMutator = reinterpret_cast<Mutator*>(mutator);
+        std::lock_guard<std::mutex> lg(mutatorBaseLock_);
+        Mutator *actMutator = reinterpret_cast<Mutator*>(mutator_);
         if (actMutator->satbNode_ != nullptr) {
             SatbBuffer::Instance().RetireNode(actMutator->satbNode_);
             actMutator->satbNode_ = nullptr;
@@ -254,7 +254,7 @@ void MutatorBase::TransitionToGCPhaseExclusive(GCPhase newPhase)
     HandleGCPhase(newPhase);
     // Clear mutator's suspend request after phase transition
     ClearSuspensionFlag(SUSPENSION_FOR_GC_PHASE);
-    mutatorPhase.store(newPhase, std::memory_order_release); // handshake between muator & mainGC thread
+    mutatorPhase_.store(newPhase, std::memory_order_release); // handshake between muator & mainGC thread
 }
 
 inline void MutatorBase::HandleCpuProfile()
