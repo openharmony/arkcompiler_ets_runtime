@@ -19,7 +19,6 @@
 
 namespace panda {
 struct ObjectSlot {
-    panda::BaseStateWord stateWord; // same with BaseObject::stateWord
     ObjectSlot* next;
 };
 
@@ -28,14 +27,13 @@ public:
     void PushFront(BaseObject* slot)
     {
         ObjectSlot* headSlot = reinterpret_cast<ObjectSlot*>(slot);
-        ClearExtraContent(slot);
         headSlot->next = head_;
         head_ = headSlot;
     }
 
     uintptr_t PopFront(size_t size)
     {
-        if (head_ == nullptr || size != reinterpret_cast<BaseObject*>(head_)->GetSize()) {
+        if (head_ == nullptr) {
             return 0;
         }
         ObjectSlot* allocSlot = head_;
@@ -45,17 +43,6 @@ public:
     }
 
     void Clear() { head_ = nullptr; }
-
-    // Clear the rest memory of slot object if the slot object size is greater than ObjectSlot(16 Bytes).
-    void ClearExtraContent(BaseObject* slot)
-    {
-        size_t size = slot->GetSize() - sizeof(ObjectSlot);
-        if (size > 0) {
-            HeapAddress start = reinterpret_cast<uintptr_t>(slot) + sizeof(ObjectSlot);
-            LOGE_IF((memset_s(reinterpret_cast<void*>(start), size, 0, size) != EOK)) << "memset_s fail";
-        }
-    }
-
 private:
     ObjectSlot* head_ = nullptr;
 };

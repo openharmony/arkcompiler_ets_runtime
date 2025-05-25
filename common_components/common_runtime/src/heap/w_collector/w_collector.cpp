@@ -441,6 +441,7 @@ void WCollector::DoGarbageCollection()
 
         CopyFromSpace();
         FixHeap();
+        CollectPinnedGarbage();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
         ClearAllGCInfo();
@@ -464,7 +465,9 @@ void WCollector::DoGarbageCollection()
         CollectLargeGarbage();
 
         CopyFromSpace();
+        reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
         FixHeap();
+        CollectPinnedGarbage();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
         ClearAllGCInfo();
@@ -490,7 +493,9 @@ void WCollector::DoGarbageCollection()
     CollectLargeGarbage();
 
     CopyFromSpace();
+    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
     FixHeap();
+    CollectPinnedGarbage();
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
@@ -598,6 +603,10 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
 BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
 {
     size_t size = RegionSpace::GetAllocSize(*obj);
+    // 8: size of free object, but free object can not be copied.
+    if (size == 8) {
+        LOG_COMMON(FATAL) << "forward free obj: " << obj << "is survived: " << IsSurvivedObject(obj) ? "true" : "false";
+    }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
     if (toObj == nullptr) {
         ASSERT_LOGF(0, "OOM");
