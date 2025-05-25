@@ -22,7 +22,7 @@
 #include "ecmascript/js_function.h"
 namespace panda::ecmascript::containers {
 using InitializeFunction = JSHandle<JSTaggedValue> (*)(JSThread *);
-enum FuncLength : uint8_t { ZERO = 0, ONE, TWO, THREE, FOUR };
+enum FuncLength : uint8_t { ZERO = 0, ONE, TWO, THREE, FOUR, FIVE };
 enum ContainerTag : uint8_t {
     ArrayList = 0,
     Queue,
@@ -39,6 +39,7 @@ enum ContainerTag : uint8_t {
     LightWeightSet,
     PlainArray,
     BitVector,
+    FastBuffer,
     END
 };
 
@@ -102,6 +103,7 @@ private:
     static JSHandle<JSTaggedValue> InitializeLinkedList(JSThread *thread);
     static void InitializeLinkedListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static void InitializeListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
+    static JSHandle<JSTaggedValue> InitializeBuffer(JSThread *thread);
 };
 }  // namespace panda::ecmascript::containers
 

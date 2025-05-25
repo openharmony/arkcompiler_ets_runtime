@@ -610,6 +610,11 @@ inline bool JSTaggedValue::IsJSAPIBitVector() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBitVector();
 }
 
+inline bool JSTaggedValue::IsJSAPIBuffer() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIBuffer();
+}
+
 inline bool JSTaggedValue::IsJSAPIList() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIList();

@@ -16,6 +16,7 @@
 #include "ecmascript/containers/containers_private.h"
 
 #include "containers_arraylist.h"
+#include "containers_buffer.h"
 #include "containers_deque.h"
 #include "containers_hashmap.h"
 #include "containers_hashset.h"
@@ -31,6 +32,7 @@
 #include "containers_vector.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
@@ -51,6 +53,7 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include <numeric>
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
@@ -133,6 +136,10 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
         }
         case ContainerTag::HashSet: {
             res = InitializeContainer(thread, thisValue, InitializeHashSet, "HashSetConstructor");
+            break;
+        }
+        case ContainerTag::FastBuffer: {
+            res = InitializeContainer(thread, thisValue, InitializeBuffer, "BufferConstructor");
             break;
         }
         case ContainerTag::END:
@@ -1071,5 +1078,51 @@ void ContainersPrivate::InitializeHashSetIterator(JSThread *thread)
     SetFrozenFunction(thread, hashSetIteratorPrototype, "next", JSAPIHashSetIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, hashSetIteratorPrototype, "HashSet Iterator");
     env->SetHashSetIteratorPrototype(thread, hashSetIteratorPrototype);
+}
+
+JSHandle<JSTaggedValue> ContainersPrivate::InitializeBuffer(JSThread *thread)
+{
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // Buffer.prototype
+    JSHandle<JSObject> bufferFuncPrototype = factory->NewEmptyJSObject();
+    JSHandle<JSTaggedValue> bufferFuncPrototypeValue(bufferFuncPrototype);
+    // Buffer.prototype_or_hclass
+    JSHandle<JSHClass> bufferInstanceClass =
+        factory->NewEcmaHClass(JSAPIFastBuffer::SIZE, JSType::JS_API_FAST_BUFFER, bufferFuncPrototypeValue);
+    // Buffer() = new Function()
+    JSHandle<JSTaggedValue> bufferFunction(NewContainerConstructor(
+        thread, bufferFuncPrototype, ContainersBuffer::BufferConstructor, "FastBuffer", FuncLength::ZERO));
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, JSHandle<JSFunction>::Cast(bufferFunction),
+                                                     bufferInstanceClass.GetTaggedValue());
+
+    // "constructor" property on the prototype
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(bufferFuncPrototype), constructorKey, bufferFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+
+    // FastBuffer.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry : ContainersBuffer::GetFastBufferPrototypeFunctions()) {
+        SetFrozenFunction(thread, bufferFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
+                          entry.GetBuiltinStubId());
+    }
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    SetStringTagSymbol(thread, env, bufferFuncPrototype, "FastBuffer");
+
+    JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersBuffer::GetSize, "length", FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
+    SetGetter(thread, bufferFuncPrototype, lengthKey, lengthGetter);
+    JSHandle<JSTaggedValue> bufferGetter =
+        CreateGetter(thread, ContainersBuffer::GetArrayBuffer, "buffer", FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> bufferKey(factory->NewFromASCII("buffer"));
+    SetGetter(thread, bufferFuncPrototype, bufferKey, bufferGetter);
+    JSHandle<JSTaggedValue> offsetGetter =
+        CreateGetter(thread, ContainersBuffer::GetByteOffset, "byteOffset", FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> offsetKey(factory->NewFromASCII("byteOffset"));
+    SetGetter(thread, bufferFuncPrototype, offsetKey, offsetGetter);
+
+    env->SetBufferFunction(thread, bufferFunction);
+    return bufferFunction;
 }
 }  // namespace panda::ecmascript::containers

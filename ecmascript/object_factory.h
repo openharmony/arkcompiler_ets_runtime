@@ -26,6 +26,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -141,6 +142,7 @@ class JSAPILinkedList;
 class JSAPIList;
 class JSAPILinkedListIterator;
 class JSAPIListIterator;
+class JSAPIFastBuffer;
 class ModuleNamespace;
 class NativeModuleFailureInfo;
 class ImportEntry;
@@ -705,6 +707,9 @@ public:
     JSHandle<JSAPIVectorIterator> NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector);
     JSHandle<JSAPIBitVector> NewJSAPIBitVector(uint32_t capacity);
     JSHandle<JSAPIBitVectorIterator> NewJSAPIBitVectorIterator(const JSHandle<JSAPIBitVector> &bitVector);
+    JSHandle<JSAPIFastBuffer> NewJSAPIBufferWithoutInit();
+    JSHandle<JSAPIFastBuffer> NewJSAPIBuffer(JSHandle<JSTypedArray> handleUint8Array);
+    JSHandle<JSAPIFastBuffer> NewJSAPIBuffer(uint32_t length, uint32_t byteOffset = 0);
     JSHandle<JSAPIHashMapIterator> NewJSAPIHashMapIterator(const JSHandle<JSAPIHashMap> &hashMap, IterationKind kind);
     JSHandle<JSAPIHashSetIterator> NewJSAPIHashSetIterator(const JSHandle<JSAPIHashSet> &hashSet, IterationKind kind);
     JSHandle<TaggedHashArray> NewTaggedHashArray(uint32_t length);
@@ -1016,6 +1021,8 @@ private:
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE) const;
+    EcmaString *GetRawStringFromStringTable(const unsigned char *data, uint32_t utf16Len, bool canBeCompressed,
+                                            MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE) const;
     EcmaString *GetRawStringFromStringTableWithoutJSHandle(StringData sd,
                                                            MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE) const;
 

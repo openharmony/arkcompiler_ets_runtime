@@ -1216,7 +1216,73 @@ namespace panda::ecmascript {
     V(LinkedList, Set)                        \
     V(LinkedList, ConvertToArray)             \
     V(LinkedList, ForEach)                    \
-    V(LinkedList, GetIteratorObj)
+    V(LinkedList, GetIteratorObj)             \
+    V(Buffer, Constructor)                    \
+    V(Buffer, WriteUIntBE)                    \
+    V(Buffer, WriteUIntLE)                    \
+    V(Buffer, WriteUInt8BE)                   \
+    V(Buffer, WriteUInt8LE)                   \
+    V(Buffer, WriteUInt16BE)                  \
+    V(Buffer, WriteUInt16LE)                  \
+    V(Buffer, WriteUInt32BE)                  \
+    V(Buffer, WriteUInt32LE)                  \
+    V(Buffer, WriteBigUInt64BE)               \
+    V(Buffer, WriteBigUInt64LE)               \
+    V(Buffer, WriteIntBE)                     \
+    V(Buffer, WriteIntLE)                     \
+    V(Buffer, WriteInt8BE)                    \
+    V(Buffer, WriteInt8LE)                    \
+    V(Buffer, WriteInt16BE)                   \
+    V(Buffer, WriteInt16LE)                   \
+    V(Buffer, WriteInt32BE)                   \
+    V(Buffer, WriteInt32LE)                   \
+    V(Buffer, WriteBigInt64BE)                \
+    V(Buffer, WriteBigInt64LE)                \
+    V(Buffer, WriteFloat32BE)                 \
+    V(Buffer, WriteFloat32LE)                 \
+    V(Buffer, WriteFloat64BE)                 \
+    V(Buffer, WriteFloat64LE)                 \
+    V(Buffer, ReadUIntBE)                     \
+    V(Buffer, ReadUIntLE)                     \
+    V(Buffer, ReadUInt8BE)                    \
+    V(Buffer, ReadUInt8LE)                    \
+    V(Buffer, ReadUInt16BE)                   \
+    V(Buffer, ReadUInt16LE)                   \
+    V(Buffer, ReadUInt32BE)                   \
+    V(Buffer, ReadUInt32LE)                   \
+    V(Buffer, ReadBigUInt64BE)                \
+    V(Buffer, ReadBigUInt64LE)                \
+    V(Buffer, ReadIntBE)                      \
+    V(Buffer, ReadIntLE)                      \
+    V(Buffer, ReadInt8BE)                     \
+    V(Buffer, ReadInt8LE)                     \
+    V(Buffer, ReadInt16BE)                    \
+    V(Buffer, ReadInt16LE)                    \
+    V(Buffer, ReadInt32BE)                    \
+    V(Buffer, ReadInt32LE)                    \
+    V(Buffer, ReadBigInt64BE)                 \
+    V(Buffer, ReadBigInt64LE)                 \
+    V(Buffer, ReadFloat32BE)                  \
+    V(Buffer, ReadFloat32LE)                  \
+    V(Buffer, ReadFloat64BE)                  \
+    V(Buffer, ReadFloat64LE)                  \
+    V(Buffer, Write)                          \
+    V(Buffer, Compare)                        \
+    V(Buffer, Equals)                         \
+    V(Buffer, IndexOf)                        \
+    V(Buffer, LastIndexOf)                    \
+    V(Buffer, Includes)                       \
+    V(Buffer, Copy)                           \
+    V(Buffer, Fill)                           \
+    V(Buffer, GetSize)                        \
+    V(Buffer, From)                           \
+    V(Buffer, Entries)                        \
+    V(Buffer, Keys)                           \
+    V(Buffer, Values)                         \
+    V(Buffer, Alloc)                          \
+    V(Buffer, GetArrayBuffer)                 \
+    V(Buffer, GetByteOffset)                  \
+    V(Buffer, ToString)
 
 #define ABSTRACT_OPERATION_LIST(V) \
     V(JSTaggedValue, ToString)     \

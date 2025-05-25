@@ -27,6 +27,7 @@
 #include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_list.h"
@@ -1177,6 +1178,11 @@ JSTaggedValue ObjectFastOperator::GetContainerProperty(JSThread *thread, JSTagge
             res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Get(thread, index);
             break;
         }
+        case JSType::JS_API_FAST_BUFFER: {
+            auto self = JSHandle<JSAPIFastBuffer>(thread, receiver);
+            res = JSAPIFastBuffer::ReadUInt8(thread, self, index);
+            break;
+        }
         case JSType::JS_API_LINKED_LIST: {
             res = JSAPILinkedList::Cast(receiver.GetTaggedObject())->Get(index);
             break;
@@ -1215,6 +1221,12 @@ JSTaggedValue ObjectFastOperator::SetContainerProperty(JSThread *thread, JSTagge
         case JSType::JS_API_BITVECTOR:
             res = JSAPIBitVector::Cast(receiver.GetTaggedObject())->Set(thread, index, value);
             break;
+        case JSType::JS_API_FAST_BUFFER: {
+            auto self = JSHandle<JSAPIFastBuffer>(thread, receiver);
+            auto valueHandle = JSHandle<JSTaggedValue>(thread, value);
+            res = JSAPIFastBuffer::WriteUInt8(thread, self, valueHandle, index);
+            break;
+        }
         case JSType::JS_API_LIST: {
             JSHandle<JSAPIList> singleList(thread, receiver);
             res = JSAPIList::Set(thread, singleList, index, JSHandle<JSTaggedValue>(thread, value));

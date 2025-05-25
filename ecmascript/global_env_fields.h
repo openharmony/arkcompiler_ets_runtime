@@ -291,7 +291,8 @@
     V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX)                                \
     V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX)                          \
-    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX)
+    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, BufferFunction, BUFFER_FUNCTION_INDEX)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \

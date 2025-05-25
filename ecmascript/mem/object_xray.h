@@ -34,6 +34,7 @@
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -686,6 +687,9 @@ public:
                 break;
             case JSType::JS_API_BITVECTOR_ITERATOR:
                 JSAPIBitVectorIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::JS_API_FAST_BUFFER:
+                JSAPIFastBuffer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_API_LIST:
                 JSAPIList::Cast(object)->VisitRangeSlot<visitType>(visitor);
