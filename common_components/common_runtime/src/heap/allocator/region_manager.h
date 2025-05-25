@@ -169,6 +169,7 @@ public:
             DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
                  region->GetRegionAllocatedSize(),
                  region->GetRegionType());
+            region->SetRegionCellCount(*(reinterpret_cast<uint8_t*>(&cellCount)) + 1);
             GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
             if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK ||
                 phase == GC_PHASE_REMARK_SATB || phase == GC_PHASE_POST_MARK) {
