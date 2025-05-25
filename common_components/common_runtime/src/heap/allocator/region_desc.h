@@ -278,9 +278,8 @@ public:
             return true;
         }
         // top1 issue
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocMarkBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocMarkBitmap()->MarkBits(offset);
         DCHECK_CC(IsMarkedObject(obj));
         return marked;
     }
@@ -294,9 +293,8 @@ public:
             }
             return true;
         }
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocResurrectBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocResurrectBitmap()->MarkBits(offset);
         CHECK_CC(IsResurrectedObject(obj));
         return marked;
     }
@@ -310,9 +308,8 @@ public:
             }
             return true;
         }
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocEnqueueBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocEnqueueBitmap()->MarkBits(offset);
         CHECK_CC(IsEnqueuedObject(obj));
         return marked;
     }
