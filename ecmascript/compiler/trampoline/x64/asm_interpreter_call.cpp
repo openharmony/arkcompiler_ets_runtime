@@ -931,8 +931,6 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
 
 void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy)
 {
-    Label callFastBuiltin;
-    Label callNativeBuiltin;
     Register glue = rdi;
     Register argv = r9;
     Register function = rsi;
@@ -941,13 +939,9 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJs
         Register method = rdx;
         __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
     } else {
-        Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
         __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode); // get native pointer
-        __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, callFieldRegister);
-        __ Jb(&callFastBuiltin);
     }
 
-    __ Bind(&callNativeBuiltin);
     __ PushAlignBytes();
     __ Push(function);
     // 3: 24 means skip thread & argc & returnAddr
@@ -964,93 +958,6 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJs
     // 5: 40 means skip function
     __ Addq(5 * FRAME_SLOT_SIZE, rsp);
     __ Ret();
-
-    __ Bind(&callFastBuiltin);
-    CallFastBuiltin(assembler, &callNativeBuiltin);
-}
-
-void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin)
-{
-    Label arg1;
-    Label arg2;
-    Label arg3;
-    Label callEntry;
-    Register glue = rdi;
-    Register argc = r8;
-    Register argv = r9;
-    Register method = rdx;
-    Register function = rsi;
-    Register nativeCode = r10;
-    Register temp = rax;
-    Register temp1 = r11;
-    // get builtins id
-    __ Movq(Operand(method, Method::EXTRA_LITERAL_INFO_OFFSET), temp1);
-    __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, temp1);
-    __ Andl((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1, temp1);
-
-    __ Cmpl(static_cast<int32_t>(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)), temp1);
-    __ Jge(callNativeBuiltin);
-
-    __ Cmpq(Immediate(3), argc); // 3: number of args
-    __ Jg(callNativeBuiltin);
-
-    // create frame
-    PushAsmBridgeFrame(assembler);
-
-    // register args
-    __ Movq(function, temp);
-    __ Movq(nativeCode, rsi); // nativeCode is rsi
-    __ Movq(temp, rdx); // fun is rdx
-    __ Movq(argv, temp); // temp is argv
-    __ Movq(argc, r9); // argc is r9
-    __ Movq(Operand(temp, FRAME_SLOT_SIZE), rcx); // get new target
-    __ Movq(Operand(temp, FRAME_SLOT_SIZE * 2), r8); // 2: skip func & new target to get this target
-
-    __ Cmp(Immediate(0), r9);
-    __ Jne(&arg1);
-    __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-    __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-    __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-    __ Jmp(&callEntry);
-    __ Bind(&arg1);
-    {
-        __ Cmp(Immediate(1), r9);
-        __ Jne(&arg2);
-        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 3), r10); // 3: get arg0
-        __ Pushq(r10);
-        __ Jmp(&callEntry);
-    }
-    __ Bind(&arg2);
-    {
-        __ Cmp(Immediate(2), r9); // 2: number of args
-        __ Jne(&arg3);
-        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 4), r10); // 4: get arg1
-        __ Pushq(r10);
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 3), r10); // 3: get arg0
-        __ Pushq(r10);
-        __ Jmp(&callEntry);
-    }
-    __ Bind(&arg3);
-    {
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 5), r10); // 5: get arg2
-        __ Pushq(r10);
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 4), r10); // 4: get arg1
-        __ Pushq(r10);
-        __ Movq(Operand(temp, FRAME_SLOT_SIZE * 3), r10); // 3: get arg0
-        __ Pushq(r10);
-        __ Jmp(&callEntry);
-    }
-    __ Bind(&callEntry);
-    {
-        __ Movq(Operand(glue, temp1, Times8, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)), temp1);
-        __ Callq(temp1);
-        __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
-        __ Pop(rbp);
-        __ Ret();
-    }
 }
 
 // uint64_t PushCallArgsAndDispatchNative(uintptr_t codeAddress, uintptr_t glue, uint32_t argc, ...)

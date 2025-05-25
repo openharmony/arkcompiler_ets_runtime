@@ -73,8 +73,6 @@ public:
         Register op, Label *stackOverflow);
     static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue);
     static void PopLeaveFrame(ExtendedAssembler *assembler);
-    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
-    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
 };
 
 class OptimizedCall : public CommonCall {
@@ -131,6 +129,8 @@ private:
                                           int64_t numExtraArgs = 0);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
+    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
+    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
     static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
     static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
@@ -279,8 +279,6 @@ private:
         Register &callTarget, Register &method, Register &pc, Register &temp);
 
     static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
-
-    static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
 
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void PreserveMostCall(ExtendedAssembler* assembler);

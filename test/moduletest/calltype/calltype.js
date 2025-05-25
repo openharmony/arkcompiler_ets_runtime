@@ -132,12 +132,3 @@ prototypeCallTest.call(0, 1);
 prototypeCallTest.call(0, 1, 2);
 prototypeCallTest.call(0, 1, 2, 3);
 prototypeCallTest.call(0, 1, 2, 3, 4);
-
-var x = [];
-x[new Number(0)] = 0;
-print(x[0]);
-
-const reg = /bar/;
-
-reg[Symbol.match] = false;
-print('/bar/'.startsWith(reg));
