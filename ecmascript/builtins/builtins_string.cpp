@@ -2425,6 +2425,9 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
 
 void StringSplitResultCache::ClearCache(const JSThread *thread, JSHandle<JSTaggedValue> cache)
 {
+    if (cache->IsUndefined()) {
+        return;
+    }
     JSHandle<StringSplitResultCache> splitCacheTable(cache);
     uint32_t arrayLength = splitCacheTable->GetLength();
     for (uint32_t i = 0; i < arrayLength; i++) {

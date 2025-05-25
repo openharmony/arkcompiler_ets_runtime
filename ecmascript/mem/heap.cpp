@@ -1471,7 +1471,7 @@ void Heap::ProcessGCCallback()
     CleanCallback();
     JSFinalizationRegistry::CheckAndCall(thread_);
     // clear env cache
-    thread_->GetGlobalEnv()->ClearCache(thread_);
+    thread_->ClearCache();
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,

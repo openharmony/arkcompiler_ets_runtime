@@ -511,8 +511,13 @@ void PGOProfiler::DumpBeforeDestroy(JSThread *thread)
     }
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
     state_->StartDumpBeforeDestroy(thread);
-    HandlePGODump();
-    HandlePGOPreDump();
+    {
+#ifdef USE_CMC_GC
+        ThreadNativeScope scope(thread);
+#endif
+        HandlePGODump();
+        HandlePGOPreDump();
+    }
     state_->SetStopAndNotify();
 }
 
