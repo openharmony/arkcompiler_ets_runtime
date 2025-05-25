@@ -113,18 +113,5 @@ void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue,
     }
     __ Jle(stackOverflow);
 }
-
-void CommonCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    __ Pushq(rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
-    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
-}
-
-void CommonCall::PopAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    __ Addq(FRAME_SLOT_SIZE, rsp);  // skip type
-    __ Popq(rbp);
-}
 #undef __
 }  // namespace panda::ecmascript::x64
