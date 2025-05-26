@@ -318,7 +318,7 @@ public:
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGODefineOpType type);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
-    bool ParseFromBinary(Chunk *chunk, PGOContext &context, void **buffer);
+    bool ParseFromBinary(Chunk* chunk, PGOContext& context, void** addr, size_t bufferSize);
     bool ProcessToBinary(PGOContext &context, ProfileTypeRef recordProfileRef, const SaveTask *task,
                          std::fstream &fileStream, PGOProfilerHeader *const header) const;
 
@@ -337,6 +337,9 @@ public:
 
 private:
     PGOMethodTypeSet *GetOrInsertMethodTypeSet(Chunk *chunk, PGOMethodId methodId);
+    bool SkipMethodFromBinary(PGOProfilerHeader* header, void** addr, void* buffer, size_t bufferSize) const;
+    bool ParseMethodFromBinary(
+        Chunk* chunk, PGOContext& context, PGOMethodInfo* info, void** addr, void* buffer, size_t bufferSize);
 
     CMap<PGOMethodId, PGOMethodInfo *> methodInfos_;
     CMap<PGOMethodId, PGOMethodTypeSet *> methodTypeInfos_;
@@ -516,7 +519,7 @@ public:
 
     void UpdateLayout();
 
-    bool ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
+    bool ParseFromBinary(void* buffer, PGOProfilerHeader* const header, size_t bufferSize);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
 
     void ProcessToText(std::ofstream &stream) const;
@@ -583,7 +586,15 @@ public:
 
 private:
     PGOMethodInfoMap *GetMethodInfoMap(ProfileType recordProfileType);
-    bool ParseFromBinaryForLayout(void **buffer);
+    bool ParseSectionsFromBinary(void* buffer, PGOProfilerHeader* const header);
+    bool ParseRecordTypeFromBinary(PGOProfilerHeader* header,
+                                   void** addr,
+                                   void* buffer,
+                                   size_t bufferSize,
+                                   ApEntityId& recordId,
+                                   ProfileType& recordType);
+    bool ParseRecordInfosFromBinary(void* buffer, PGOProfilerHeader* header, size_t bufferSize);
+    bool ParseFromBinaryForLayout(void** addr, void* buffer, size_t bufferSize);
     bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream);
 
     uint32_t hotnessThreshold_ {2};

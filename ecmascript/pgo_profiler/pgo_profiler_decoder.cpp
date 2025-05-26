@@ -88,22 +88,26 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
         return false;
     }
     void *addr = fileMapAddr_.GetOriginAddr();
-
-    if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
+    size_t fileSize = fileMapAddr_.GetSize();
+    if (!PGOProfilerHeader::ParseFromBinary(addr, fileSize, &header_)) {
         UnLoadAPBinaryFile();
         LOG_PGO(ERROR) << "parse profiler header failed";
+        return false;
+    }
+    if (!VerifyAPFile(addr, fileSize)) {
+        UnLoadAPBinaryFile();
+        LOG_PGO(ERROR) << "AP file verification failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
     if (!recordDetailInfos_) {
         recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
     }
-
     LoadAbcIdPool(externalAbcFilePool, *recordDetailInfos_, addr);
     if (header_->SupportMultiAbcChecksum()) {
         pandaFileInfos_.UpdateFileInfosAbcID(*recordDetailInfos_);
     }
-    if (!recordDetailInfos_->ParseFromBinary(addr, header_)) {
+    if (!recordDetailInfos_->ParseFromBinary(addr, header_, fileSize)) {
         return false;
     }
     recordDetailInfos_->ResetAbcIdRemap();
@@ -286,5 +290,77 @@ void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, 
         const CString &abcNameInDecoder = JSPandaFile::GetNormalizedFileDesc(abcFilePool_->GetEntry(abcId)->GetData());
         fileNameToChecksumMap.emplace(abcNameInDecoder, checksum);
     });
+}
+
+bool PGOProfilerDecoder::VerifyAPFile(void* buffer, size_t bufferSize)
+{
+    if (buffer == nullptr || bufferSize == 0) {
+        LOG_PGO(ERROR) << "Invalid buffer parameters";
+        return false;
+    }
+    if (header_ == nullptr) {
+        LOG_PGO(ERROR) << "Header is null during validation";
+        return false;
+    }
+    if (!ValidateSectionBounds(buffer, bufferSize, header_->GetPandaInfoSection(), "PandaInfo")) {
+        return false;
+    }
+    if (!ValidateSectionBounds(buffer, bufferSize, header_->GetRecordInfoSection(), "RecordInfo")) {
+        return false;
+    }
+    if (!ValidateSectionBounds(buffer, bufferSize, header_->GetLayoutDescSection(), "LayoutDesc")) {
+        return false;
+    }
+    if (header_->SupportRecordPool()) {
+        if (!ValidateSectionBounds(buffer, bufferSize, header_->GetRecordPoolSection(), "RecordPool")) {
+            return false;
+        }
+    }
+    if (header_->SupportProtoTransitionPool()) {
+        auto section = header_->GetProtoTransitionPoolSection();
+        if (!ValidateSectionBounds(buffer, bufferSize, section, "ProtoTransitionPool")) {
+            return false;
+        }
+    }
+    if (header_->SupportProfileTypeWithAbcId()) {
+        if (!ValidateSectionBounds(buffer, bufferSize, header_->GetProfileTypeSection(), "ProfileType")) {
+            return false;
+        }
+        if (!ValidateSectionBounds(buffer, bufferSize, header_->GetAbcFilePoolSection(), "AbcFilePool")) {
+            return false;
+        }
+    }
+    LOG_PGO(DEBUG) << "AP file verification passed";
+    return true;
+}
+
+bool PGOProfilerDecoder::ValidateSectionBounds(void* buffer,
+                                               size_t bufferSize,
+                                               SectionInfo* section,
+                                               const char* sectionName)
+{
+    if (section == nullptr) {
+        LOG_PGO(ERROR) << "Section " << sectionName << " is null";
+        return false;
+    }
+    uint32_t sectionOffset = section->offset_;
+    uint32_t sectionSize = section->size_;
+    if (sectionOffset >= bufferSize) {
+        LOG_PGO(ERROR) << "Section " << sectionName << " offset (0x" << std::hex << sectionOffset
+                       << ") exceeds buffer size (0x" << std::hex << bufferSize << ")" << std::dec;
+        return false;
+    }
+    if (sectionOffset + sectionSize > bufferSize) {
+        LOG_PGO(ERROR) << "Section " << sectionName << " end (0x" << std::hex << (sectionOffset + sectionSize)
+                       << ") exceeds buffer size (0x" << std::hex << bufferSize << ")" << std::dec;
+        return false;
+    }
+    if (sectionSize > 0 && sectionOffset + sectionSize < sectionOffset) {
+        LOG_PGO(ERROR) << "Section " << sectionName << " size overflow detected";
+        return false;
+    }
+    LOG_PGO(DEBUG) << "Section " << sectionName << " bounds validation passed: offset=0x" << std::hex
+                   << sectionOffset << ", size=0x" << std::hex << sectionSize << std::dec;
+    return true;
 }
 } // namespace panda::ecmascript::pgo

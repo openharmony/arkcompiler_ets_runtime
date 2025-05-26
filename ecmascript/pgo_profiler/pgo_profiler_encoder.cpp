@@ -12,16 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
+
+#include "zlib.h"
 
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
-#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/os.h"
-#include "zlib.h"
 
 namespace panda::ecmascript::pgo {
 bool PGOProfilerEncoder::Save(const std::shared_ptr<PGOInfo> pgoInfo)
@@ -29,14 +29,23 @@ bool PGOProfilerEncoder::Save(const std::shared_ptr<PGOInfo> pgoInfo)
     return InternalSave(pgoInfo);
 }
 
-bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
+std::string PGOProfilerEncoder::GetDirectoryPath(const std::string& path) const
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename");
-    LOG_PGO(INFO) << "start save and rename ap file to " << path_;
-    ClockScope start;
-    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); // ensure the permission os ap file is -rw-------
-    static const char* tempSuffix = ".tmp";
-    auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
+    size_t lastSlash = path.find_last_of('/');
+    if (lastSlash == std::string::npos) {
+        return ".";
+    } else if (lastSlash == 0) {
+        return "/";
+    } else {
+        return path.substr(0, lastSlash);
+    }
+}
+
+bool PGOProfilerEncoder::WriteProfilerFile(const std::shared_ptr<PGOInfo> info,
+                                           const SaveTask* task,
+                                           const std::string& tmpOutPath)
+{
+    umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); // ensure the permission of ap file is -rw-------
     std::fstream fileStream(tmpOutPath.c_str(),
                             std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
     if (!fileStream.is_open()) {
@@ -58,11 +67,14 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     }
     fileStream.close();
     umask(0); // unset umask to avoid affecting other file permissions in the process
-    if (filesystem::FileSize(tmpOutPath.c_str()) > 100_MB) {
+    return fileStream.good();
+}
+
+bool PGOProfilerEncoder::ValidateAndRename(const std::string& tmpOutPath)
+{
+    if (filesystem::FileSize(tmpOutPath.c_str()) > MAX_AP_FILE_SIZE) {
+        LOG_PGO(ERROR) << "ap file size is larger than " << MAX_AP_FILE_SIZE / CONVERT_FACTOR << "MB";
         remove(tmpOutPath.c_str());
-        return false;
-    }
-    if (task && task->IsTerminate()) {
         return false;
     }
     if (FileExist(path_.c_str()) && remove(path_.c_str())) {
@@ -71,6 +83,33 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     }
     if (rename(tmpOutPath.c_str(), path_.c_str())) {
         LOG_PGO(ERROR) << "rename " << tmpOutPath << " to " << path_ << " failed, errno: " << errno;
+        return false;
+    }
+    return true;
+}
+
+bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename");
+    LOG_PGO(INFO) << "start save and rename ap file to " << path_;
+    ClockScope start;
+    std::string dirPath = GetDirectoryPath(path_);
+    if (!CheckDiskSpace(dirPath, MIN_DISK_SPACE)) {
+        LOG_PGO(ERROR) << "insufficient disk space, " << MIN_DISK_SPACE / CONVERT_FACTOR << "MB required, path: ["
+                       << dirPath << "]";
+        return false;
+    }
+    static const char* tempSuffix = ".tmp";
+    auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
+    if (!WriteProfilerFile(info, task, tmpOutPath)) {
+        LOG_PGO(ERROR) << "failed to write or close file, errno: " << errno << ", " << strerror(errno);
+        remove(tmpOutPath.c_str());
+        return false;
+    }
+    if (task && task->IsTerminate()) {
+        return false;
+    }
+    if (!ValidateAndRename(tmpOutPath)) {
         return false;
     }
     PGOProfilerManager::GetInstance()->RequestAot();

@@ -76,4 +76,10 @@ void InitializeMallocConfig()
 {
     LOG_ECMA(INFO) << "Initialize Malloc Config in windows not support";
 }
+
+bool CheckDiskSpace([[maybe_unused]] const std::string& path, [[maybe_unused]] size_t requiredBytes)
+{
+    LOG_ECMA(INFO) << "Check Disk Space not support in Windows";
+    return true;
+}
 }  // namespace panda::ecmascript

@@ -16,6 +16,24 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "ets_runtime"
 
+host_unittest_action("OSTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "os_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("BacktraceTest") {
   module_out_path = module_output_path
 
@@ -34,15 +52,25 @@ host_unittest_action("BacktraceTest") {
   deps += hiviewdfx_deps
 }
 
+tests = [
+  "BacktraceTest",
+  "OSTest",
+]
+
 group("unittest") {
   testonly = true
-  deps = [ ":BacktraceTest" ]
+  deps = []
+  foreach(test, tests) {
+    deps += [ ":${test}" ]
+  }
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":BacktraceTestAction" ]
-  if (is_mac) {
-    deps -= [ ":BacktraceTestAction" ]
+  deps = []
+  if (!is_mac) {
+    foreach(test, tests) {
+      deps += [ ":${test}Action" ]
+    }
   }
 }

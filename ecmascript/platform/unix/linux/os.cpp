@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/statvfs.h>
 #include <sys/xattr.h>
 #include <unistd.h>
 
@@ -120,5 +121,15 @@ void SetSecurityLabel(const std::string& path)
     if (setxattr(path.c_str(), XATTR_KEY, DEFAULT_DATA_LEVEL.data(), DEFAULT_DATA_LEVEL.size(), 0) < 0) {
         LOG_ECMA(WARN) << "set label failed! level: " << DEFAULT_DATA_LEVEL << ", file: " << path;
     }
+}
+
+bool CheckDiskSpace(const std::string& path, size_t requiredBytes)
+{
+    struct statvfs stat;
+    if (statvfs(path.c_str(), &stat) != 0) {
+        return false;
+    }
+    size_t availableBytes = static_cast<size_t>(stat.f_bavail) * stat.f_frsize;
+    return availableBytes >= requiredBytes;
 }
 }  // namespace panda::ecmascript

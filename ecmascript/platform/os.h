@@ -37,5 +37,6 @@ PUBLIC_API void BindAllCpuCore();
 PUBLIC_API void SetSecurityLabel(const std::string& path);
 PUBLIC_API void InitializeMallocConfig();
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
+bool CheckDiskSpace(const std::string& path, size_t requiredBytes);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_OS_H
