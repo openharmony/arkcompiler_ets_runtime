@@ -15,7 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
-
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit_profiler.h"
@@ -511,8 +511,13 @@ void PGOProfiler::DumpBeforeDestroy(JSThread *thread)
     }
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
     state_->StartDumpBeforeDestroy(thread);
-    HandlePGODumpByDumpThread();
-    HandlePGOPreDump();
+    {
+#ifdef USE_CMC_GC
+        ThreadNativeScope scope(thread);
+#endif
+        HandlePGODumpByDumpThread();
+        HandlePGOPreDump();
+    }
     state_->SetStopAndNotify();
 }
 
