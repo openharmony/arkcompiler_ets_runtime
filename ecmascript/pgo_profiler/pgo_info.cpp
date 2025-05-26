@@ -161,6 +161,7 @@ bool PGOInfo::VerifyPandaFileMatched(const PGOPandaFileInfos& pandaFileInfos,
 
 void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder, const SaveTask* task)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOInfo::MergeWithExistProfile");
     ClockScope start;
     // inherit some info from runtime encoder
     ASSERT(header_ != nullptr);

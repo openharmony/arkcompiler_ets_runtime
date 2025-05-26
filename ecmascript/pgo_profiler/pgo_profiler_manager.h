@@ -81,12 +81,13 @@ public:
     void TryDispatchDumpTask(PGOProfiler* profiler);
     bool IsTaskRunning() const;
     void SetIsTaskRunning(bool isTaskRunning);
-    void DumpPendingProfilers();
+    void DumpPendingProfilersByDumpThread();
     void SavePGOInfo();
     void SetForceDump(bool forceDump);
     bool IsForceDump() const;
     void DispatchDumpTask();
     bool IsProfilerDestroyed(PGOProfiler* profiler);
+    void ResetSaveTimestamp(EcmaVM* vm, bool isBackground);
 
 private:
     bool InitializeData();
@@ -149,7 +150,7 @@ public:
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
-        PGOProfilerManager::GetInstance()->DumpPendingProfilers();
+        PGOProfilerManager::GetInstance()->DumpPendingProfilersByDumpThread();
         return true;
     }
 

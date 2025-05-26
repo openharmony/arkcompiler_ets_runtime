@@ -139,6 +139,7 @@
       panda::ecmascript::BigInt::Int32ToBigInt*;
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::BindMidCpuCore*;
+      panda::ecmascript::BindAllCpuCore*;
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
