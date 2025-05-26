@@ -37,7 +37,6 @@ bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
 {
     bool marked = RegionSpace::MarkObject(obj);
     if (!marked) {
-        reinterpret_cast<RegionSpace&>(theAllocator_).CountLiveObject(obj);
         RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         (void)region;
 
@@ -47,7 +46,7 @@ bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
         }
         size_t size = cellCount == 0 ? obj->GetSize() : (cellCount + 1) * sizeof(uint64_t);
         region->AddLiveByteCount(size);
-        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), size,
+        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
              region, region->GetRegionType(), region->GetRegionStart(), region->GetLiveByteCount());
     }
     return marked;
@@ -57,7 +56,6 @@ bool WCollector::ResurrectObject(BaseObject* obj)
 {
     bool resurrected = RegionSpace::ResurrentObject(obj);
     if (!resurrected) {
-        reinterpret_cast<RegionSpace&>(theAllocator_).CountLiveObject(obj);
         RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         (void)region;
         DLOG(TRACE, "resurrect region %p@%#zx obj %p<%p>(%zu), live bytes %u", region, region->GetRegionStart(), obj,
@@ -221,24 +219,21 @@ void WCollector::EnumAndTagRawRoot(ObjectRef& ref, RootSet& rootSet) const
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
 void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& workStack, WeakStack& weakStack) const
 {
-    if (!Heap::IsTaggedObject(field.GetFieldValue())) {
-        return;
-    }
     BaseObject* targetObj = field.GetTargetObject();
+    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
-    DLOG(TRACE, "trace obj %p ref@%p: %p<%p>(%zu)", obj, &field, targetObj, targetObj->GetTypeInfo(),
-         targetObj->GetSize());
-    if (IsMarkedObject(targetObj)) {
-        return;
-    }
-    if (RegionSpace::IsNewObjectSinceTrace(targetObj)) {
+    DLOG(TRACE, "trace obj %p ref@%p: %p<%p>(%zu)", obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+    if (region->IsNewObjectSinceTrace(targetObj)) {
         DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
     if (field.IsWeak()) {
         weakStack.push_back(&field);
+        return;
+    }
+    if (region->MarkObject(targetObj)) {
         return;
     }
     workStack.push_back(targetObj);
@@ -257,10 +252,6 @@ void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
     RefField<> oldField(field);
     BaseObject* targetObj = oldField.GetTargetObject();
-
-    if (!Heap::IsTaggedObject(field.GetFieldValue())) {
-        return;
-    }
 
     // target object could be null or non-heap for some static variable.
     if (!Heap::IsHeapAddress(targetObj)) {
