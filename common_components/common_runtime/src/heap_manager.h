@@ -28,7 +28,7 @@ public:
     ~HeapManager() = default;
 
     // runtime required lifecycle interfaces
-    void Init(const HeapParam& param);
+    void Init(const RuntimeParam& param);
     void Fini();
 
     static inline void RequestGC(GCReason reason, bool async)

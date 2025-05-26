@@ -13,17 +13,26 @@
  * limitations under the License.
  */
 
- #include "common_components/platform/cpu.h"
+#include "common_components/platform/cpu.h"
 
- #include <malloc.h>
- #include <sysinfoapi.h>
+#include <malloc.h>
+#include <sysinfoapi.h>
  
- namespace panda {
- uint32_t NumberOfCpuCore()
- {
-     SYSTEM_INFO info;
-     GetSystemInfo(&info);
-     return info.dwNumberOfProcessors;
- }
- }  // namespace panda
+namespace panda {
+uint32_t NumberOfCpuCore()
+{
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return info.dwNumberOfProcessors;
+}
+ 
+size_t PhysicalSize()
+{
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&status);
+    DWORDLONG physSize = status.ullTotalPhys;
+    return physSize;
+}
+}  // namespace panda
  
