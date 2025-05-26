@@ -117,6 +117,7 @@ template <bool IsLock, typename LoaderCallback, typename EqualsCallback>
 EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallback loaderCallback,
                                      EqualsCallback equalsCallback)
 {
+    HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
     uint32_t hashShift = 0;
     std::atomic<Node *> *slot = nullptr;
@@ -225,6 +226,7 @@ template <typename LoaderCallback, typename EqualsCallback>
 EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, LoaderCallback loaderCallback,
                                            EqualsCallback equalsCallback)
 {
+    HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
     uint32_t hashShift = 0;
     std::atomic<Node *> *slot = nullptr;
@@ -318,6 +320,7 @@ template <typename LoaderCallback, typename EqualsCallback>
 EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMapLoadResult loadResult,
                                      LoaderCallback loaderCallback, EqualsCallback equalsCallback)
 {
+    HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
     uint32_t hashShift = loadResult.hashShift;
     std::atomic<Node *> *slot = loadResult.slot;

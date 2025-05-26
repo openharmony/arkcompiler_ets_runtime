@@ -526,6 +526,7 @@ HashTrieMap::HashTrieMapLoadResult HashTrieMap::Load(const uint32_t key, const J
 EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMapLoadResult loadResult,
                                      JSHandle<EcmaString> str)
 {
+    HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
     uint32_t hashShift = loadResult.hashShift;
     std::atomic<Node *> *slot = loadResult.slot;
@@ -739,7 +740,7 @@ bool HashTrieMap::ClearNodeFromGC(Indirect *parent, int index, const WeakRootVis
             }
         }
         // Check whether the indirect node is empty
-        if (cleanCount == INDIRECT_SIZE) {
+        if (cleanCount == INDIRECT_SIZE && inuseCount_ == 0) {
             // Remove the empty Indirect and update the parent reference
             delete indirect;
             parent->children_[index].store(nullptr, std::memory_order_relaxed);
