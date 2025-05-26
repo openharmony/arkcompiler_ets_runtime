@@ -185,6 +185,7 @@ public:
 
     void PrepareTrace() { regionManager_.PrepareTrace(); }
     void PrepareForward() { regionManager_.PrepareForward(); }
+    void PrepareFix() { regionManager_.PrepareFix(); }
     void PrepareFixForPin() { regionManager_.PrepareFixForPin(); }
     void FeedHungryBuffers() override;
 

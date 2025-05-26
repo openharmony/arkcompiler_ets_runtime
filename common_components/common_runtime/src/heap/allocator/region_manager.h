@@ -487,13 +487,13 @@ public:
 
     void PrepareFix()
     {
-        AllocationBuffer* buffer = AllocationBuffer::GetAllocBuffer();
-        if (LIKELY_CC(buffer != nullptr)) {
-            RegionDesc* region = buffer->GetRegion();
+        AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
+            RegionDesc* region = regionBuffer.GetRegion();
             if (region != RegionDesc::NullRegion()) {
                 region->SetFixLine();
             }
-        }
+        };
+        Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
     }
 
     void PrepareFixForPin()

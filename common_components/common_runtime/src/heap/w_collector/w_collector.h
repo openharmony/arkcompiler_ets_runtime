@@ -192,6 +192,7 @@ private:
     void PreforwardConcurrencyModelRoots();
     void PreforwardFinalizerProcessorRoots();
 
+    void PrepareFix();
     void FixHeap(); // roots and ref-fields
 
     CopyTable fwdTable_;

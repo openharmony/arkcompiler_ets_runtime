@@ -406,12 +406,18 @@ void WCollector::Preforward()
     threadPool->WaitFinish();
 }
 
+void WCollector::PrepareFix()
+{
+    // make sure all objects before fixline is initialized
+    ARK_COMMON_PHASE_TIMER("PrepareFix");
+    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFix();
+    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
+    TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
+}
+
 void WCollector::FixHeap()
 {
-    WVerify::VerifyAfterForward(*this);
-
     ARK_COMMON_PHASE_TIMER("FixHeap");
-    TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
     reinterpret_cast<RegionSpace&>(theAllocator_).FixHeap();
 
     WVerify::VerifyAfterFix(*this);
@@ -432,6 +438,9 @@ void WCollector::DoGarbageCollection()
         CollectLargeGarbage();
 
         CopyFromSpace();
+        WVerify::VerifyAfterForward(*this);
+
+        PrepareFix();
         FixHeap();
         CollectPinnedGarbage();
 
@@ -457,7 +466,9 @@ void WCollector::DoGarbageCollection()
         CollectLargeGarbage();
 
         CopyFromSpace();
-        reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
+        WVerify::VerifyAfterForward(*this);
+
+        PrepareFix();
         FixHeap();
         CollectPinnedGarbage();
 
@@ -485,7 +496,12 @@ void WCollector::DoGarbageCollection()
     CollectLargeGarbage();
 
     CopyFromSpace();
-    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
+    WVerify::VerifyAfterForward(*this);
+
+    {
+        ScopedStopTheWorld stw("wgc-preparefix");
+        PrepareFix();
+    }
     FixHeap();
     CollectPinnedGarbage();
 
