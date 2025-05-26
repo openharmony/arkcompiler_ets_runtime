@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include "ecmascript/taskpool/taskpool.h"
+#include "common_components/taskpool/taskpool.h"
 
-#include "ecmascript/platform/os.h"
+#include "common_components/platform/cpu.h"
 
-namespace panda::ecmascript {
+namespace panda {
 Taskpool *Taskpool::GetCurrentTaskpool()
 {
     static Taskpool *taskpool = new Taskpool();
@@ -28,7 +28,7 @@ void Taskpool::Initialize(int threadNum,
     std::function<void(os::thread::native_handle_type)> prologueHook,
     const std::function<void(os::thread::native_handle_type)> epilogueHook)
 {
-    LockHolder lock(mutex_);
+    std::lock_guard<std::mutex> guard(mutex_);
     if (isInitialized_++ <= 0) {
         runner_ = std::make_unique<Runner>(TheMostSuitableThreadNum(threadNum), prologueHook, epilogueHook);
     }
@@ -37,7 +37,7 @@ void Taskpool::Initialize(int threadNum,
 void Taskpool::Destroy(int32_t id)
 {
     ASSERT(id != 0);
-    LockHolder lock(mutex_);
+    std::lock_guard<std::mutex> guard(mutex_);
     if (isInitialized_ <= 0) {
         return;
     }
@@ -76,4 +76,4 @@ void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
     }
     runner_->ForEachTask(f);
 }
-}  // namespace panda::ecmascript
+}  // namespace panda

@@ -15,6 +15,8 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 
+#include "ecmascript/js_thread.h"
+
 namespace panda::ecmascript::pgo {
 
 bool PGOHandler::SetAttribute(const JSThread *thread, PropertyAttributes &attr) const

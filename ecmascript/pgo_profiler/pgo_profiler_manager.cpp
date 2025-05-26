@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"

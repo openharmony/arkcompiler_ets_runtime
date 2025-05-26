@@ -19,8 +19,8 @@
 #include <array>
 #include <atomic>
 
+#include "common_components/taskpool/task.h"
 #include "ecmascript/mem/space.h"
-#include "ecmascript/taskpool/task.h"
 
 #include "ecmascript/platform/mutex.h"
 

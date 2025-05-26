@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+
+#include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"

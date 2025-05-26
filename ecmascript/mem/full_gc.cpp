@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/full_gc-inl.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_marker.h"

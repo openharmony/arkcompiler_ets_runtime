@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_string_table.h"
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime_lock.h"

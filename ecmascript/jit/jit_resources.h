@@ -17,7 +17,6 @@
 #define ECMASCRIPT_JIT_RESOURCES_H
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 class JitTask;

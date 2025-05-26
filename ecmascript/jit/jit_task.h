@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JIT_TASK_H
 #define ECMASCRIPT_JIT_TASK_H
 
+#include "common_components/taskpool/taskpool.h"
 #include "ecmascript/common.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/compiler/lazy_deopt_dependency.h"

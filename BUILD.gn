@@ -999,9 +999,6 @@ ecma_source = [
   "ecmascript/stackmap/llvm/llvm_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm/llvm_stackmap_type.cpp",
   "ecmascript/sustaining_js_handle.cpp",
-  "ecmascript/taskpool/taskpool.cpp",
-  "ecmascript/taskpool/runner.cpp",
-  "ecmascript/taskpool/task_queue.cpp",
   "ecmascript/layout_info.cpp",
   "ecmascript/regexp/regexp_executor.cpp",
   "ecmascript/regexp/regexp_opcode.cpp",
@@ -1036,6 +1033,9 @@ ecma_source += [
   "common_components/log/log.cpp",
   "common_components/objects/base_object.cpp",
   "common_components/objects/base_string.cpp",
+  "common_components/taskpool/taskpool.cpp",
+  "common_components/taskpool/runner.cpp",
+  "common_components/taskpool/task_queue.cpp",
 ]
 
 if (ets_runtime_enable_cmc_gc) {
@@ -1175,6 +1175,7 @@ config("include_llvm") {
 
 if (is_mingw) {
   ecma_platform_source += [
+    "common_components/platform/windows/cpu.cpp",
     "ecmascript/platform/common/dfx_crash_obj.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
     "ecmascript/platform/windows/async_detect.cpp",
@@ -1199,6 +1200,7 @@ if (is_mingw) {
   ]
   if (is_mac) {
     ecma_platform_source += [
+      "common_components/platform/unix/mac/cpu.cpp",
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
@@ -1212,6 +1214,7 @@ if (is_mingw) {
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
+      "common_components/platform/unix/mac/cpu.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/unix/mac/async_detect.cpp",
@@ -1225,6 +1228,7 @@ if (is_mingw) {
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
+      "common_components/platform/unix/linux/cpu.cpp",
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",
       "ecmascript/platform/unix/ohos/async_detect.cpp",
@@ -1257,6 +1261,7 @@ if (is_mingw) {
     }
   } else if (is_linux) {
     ecma_platform_source += [
+      "common_components/platform/unix/linux/cpu.cpp",
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
       "ecmascript/platform/unix/linux/async_detect.cpp",

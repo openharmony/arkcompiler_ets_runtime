@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/daemon/daemon_thread.h"
+
+#include "common_components/taskpool/taskpool.h"
+#include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/runtime.h"
 
 #ifdef ENABLE_QOS
@@ -22,7 +24,6 @@
 #endif
 
 namespace panda::ecmascript {
-
 DaemonThread *DaemonThread::instance_ = nullptr;
 
 void DaemonThread::CreateNewInstance()

@@ -38,11 +38,6 @@ size_t MallocUsableSize(void *p)
     return malloc_usable_size(p);
 }
 
-uint32_t NumberOfCpuCore()
-{
-    return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
-}
-
 size_t PhysicalSize()
 {
     auto pages = sysconf(_SC_PHYS_PAGES);
