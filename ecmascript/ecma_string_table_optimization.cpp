@@ -759,6 +759,7 @@ bool HashTrieMap::CheckWeakRef(WeakVisitor &visitor, HashTrieMap::Entry *entry)
     if (!isAlive) {
         return true;
     }
+    entry->SetValue(object);
     return false;
 }
 

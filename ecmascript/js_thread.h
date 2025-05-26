@@ -354,6 +354,8 @@ public:
 
     void IterateHandleWithCheck(RootVisitor &visitor);
 
+    void ClearCache();
+
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
     bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
 

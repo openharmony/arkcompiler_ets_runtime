@@ -353,6 +353,8 @@ group("host_unittest") {
       ":HeapDumpTestAction",
       ":HeapSnapShotTestAction",
       ":HeapTrackerFirstTestAction",
+      ":HeapTrackerSecondTestAction",
+      ":HeapTrackerThirdTestAction",
     ]
   }
 }

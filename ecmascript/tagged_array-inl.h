@@ -59,7 +59,8 @@ MAYBE_INLINE JSTaggedValue TaggedArray::Get(uint32_t idx) const
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), offset));
+    return JSTaggedValue(Barriers::GetTaggedValue(reinterpret_cast<JSTaggedType *>(ToUintPtr(this)),
+        DATA_OFFSET + offset));
 }
 
 #undef MAYBE_INLINE

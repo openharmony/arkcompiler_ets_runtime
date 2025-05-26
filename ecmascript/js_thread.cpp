@@ -526,6 +526,15 @@ void JSThread::Iterate(RootVisitor &visitor)
         glueData_.globalConst_->Iterate(visitor);
     }
 }
+
+void JSThread::ClearCache()
+{
+    JSHandle<GlobalEnv> env = GetGlobalEnv();
+    if (!env.GetTaggedValue().IsHole()) {
+        env->ClearCache(this);
+    }
+}
+
 void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
 {
     jitCodeMapVisitor(jitCodeMaps_);

@@ -49,6 +49,7 @@ HWTEST_F_L0(JSHClassTest, InitializeClass)
     EXPECT_EQ(objectClass->GetEnumCache(), JSTaggedValue::Null());
 }
 
+#ifndef USE_CMC_GC
 HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -101,6 +102,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectSize = objectClass->SizeFromJSHClass(header5);
     EXPECT_EQ(objectSize, 64U);
 }
+#endif
 
 HWTEST_F_L0(JSHClassTest, HasReferenceField)
 {
