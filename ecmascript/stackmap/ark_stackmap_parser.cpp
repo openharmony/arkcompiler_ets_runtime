@@ -126,17 +126,16 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRe
 
 // this function will increase the value of 'offset'
 uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
-                                                 uint32_t &offset) const
+                                                 uint32_t &offset, bool &skipDerived, size_t &regOffsetSize) const
 {
     LLVMStackMapType::DwarfRegType regType;
     LLVMStackMapType::OffsetType offsetType;
     LLVMStackMapType::SLeb128Type regOffset;
-    size_t regOffsetSize;
     [[maybe_unused]] bool isFull;
     uintptr_t address = 0;
     std::tie(regOffset, regOffsetSize, isFull) =
         panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(stackmapAddr + offset);
-    LLVMStackMapType::DecodeRegAndOffset(regOffset, regType, offsetType);
+    bool isBase = LLVMStackMapType::DecodeRegAndOffset(regOffset, regType, offsetType);
     if (regType == GCStackMapRegisters::SP) {
         address = callSiteSp + offsetType;
     } else if (regType == GCStackMapRegisters::FP) {
@@ -145,6 +144,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    skipDerived = !isBase;
     offset += regOffsetSize;
 
     return address;
@@ -276,11 +276,43 @@ void ArkStackMapParser::IteratorStackMap(RootVisitor& visitor, uintptr_t callsit
                                          uint32_t offset, uint16_t stackmapNum,
                                          std::map<uintptr_t, uintptr_t> &baseSet) const
 {
-    ASSERT(stackmapNum % GC_ENTRY_SIZE == 0);
     ASSERT(callsiteFp != callSiteSp);
-    for (size_t i = 0; i < stackmapNum; i += GC_ENTRY_SIZE) { // GC_ENTRY_SIZE=<base, derive>
-        uintptr_t base = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset);
-        uintptr_t derived = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset);
+    bool skipDerived = false;
+// Original layout: <base, base>..<base, derive>..
+// +----------------------+  --
+// |regNo: 6   offset: -40|    |
+// +----------------------+    | <-- base ref1    Get base address anhd derived address (equal)
+// |regNo: 6   offset: -40|    |
+// +----------------------+ <--    When iterate, i+=2
+// +----------------------+  --
+// |regNo: 7   offset: -32|    |
+// +----------------------+    | <-- derived ref1   Get base address anhd derived address (different)
+// |regNo: 7   offset: -24|    |
+// +----------------------+ <--
+// ==========>after optimization, removed the repeated info for base reference in stackmap builder
+// New layout: <base>..<base, derived>.., stackmap info are not in pair
+// +----------------------+  --
+// |regNo: 6   offset: -40|    |   When base ref, i+=1
+// +----------------------+ <--
+// +----------------------+  --    When derived ref, i+=2
+// |regNo: 7   offset: -32|    |
+// +----------------------+    |
+// |regNo: 7   offset: -24|    |
+// +----------------------+ <--
+    for (size_t i = 0; i < stackmapNum; i++) {
+        if (skipDerived) {
+            skipDerived = false;
+            continue;
+        }
+        size_t regOffsetSize;
+        // skipDerived decoded (updated) from DecodeRegAndOffset inside GetStackSlotAddress
+        uintptr_t base = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, skipDerived, regOffsetSize);
+        uintptr_t derived;
+        if (!skipDerived) { // base reference
+            derived = base;
+        } else {
+            derived = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, skipDerived, regOffsetSize);
+        }
         if (*reinterpret_cast<uintptr_t *>(base) == 0) {
             base = derived;
         }
@@ -367,13 +399,15 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead,
     LLVMStackMapType::OffsetType offsetType;
     uint32_t offset = callsiteHead.stackmapOffsetInSMSec;
     uint16_t stackmapNum = callsiteHead.stackmapNum;
-    ASSERT(stackmapNum % GC_ENTRY_SIZE == 0);
     for (uint32_t j = 0; j < stackmapNum; j++) {
         auto [regOffset, regOffsetSize, is_full] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + offset);
-        LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, offsetType);
+        bool isBase = LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, offsetType);
         offset += regOffsetSize;
         LOG_COMPILER(VERBOSE) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
+        if (isBase) {
+            LOG_COMPILER(VERBOSE) << " reg(base): " << std::dec << reg << " offset(base):" <<  offsetType;
+        }
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
     }
     offset = AlignUp(offset, LLVMStackMapType::STACKMAP_ALIGN_BYTES);

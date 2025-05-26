@@ -98,16 +98,19 @@ public:
     }
 
     static void EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
-        DwarfRegType reg, OffsetType offset, Triple triple);
-    static void DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset);
+        DwarfRegType reg, OffsetType offset, Triple triple, bool isBase = false);
+    static bool DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset);
     static void EncodeVRegsInfo(std::vector<uint8_t> &vregsInfo, size_t &vregsInfoSize,
         VRegId id, LocationTy::Kind kind);
     static void DecodeVRegsInfo(SLeb128Type vregsInfo, VRegId &id, KindType &kind);
 
 private:
     static constexpr size_t STACKMAP_TYPE_NUM = 2;
+    static constexpr size_t STACKMAP_OFFSET_MUL = 8;
+    static constexpr size_t STACKMAP_OFFSET_EXP = 3; // 2^3 = 8
     static constexpr RegType FP_VALUE = 0;
     static constexpr RegType SP_VALUE = 1;
+    static constexpr KindType NO_DERIVED = 2;
 };
 
 struct Header {
