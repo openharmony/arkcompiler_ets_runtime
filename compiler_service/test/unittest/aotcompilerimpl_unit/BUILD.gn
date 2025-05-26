@@ -26,8 +26,6 @@ ohos_unittest("AotCompilerImplUnitTest") {
   configs = [ ":module_private_config" ]
   deps = [
     "${compiler_service_root}:libcompiler_service",
-    "//third_party/googletest:gmock_main",
-    "//third_party/googletest:gtest_main",
   ]
   external_deps = [
     "ability_base:want",
@@ -35,6 +33,8 @@ ohos_unittest("AotCompilerImplUnitTest") {
     "access_token:libtokenid_sdk",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "hisysevent:libhisysevent",

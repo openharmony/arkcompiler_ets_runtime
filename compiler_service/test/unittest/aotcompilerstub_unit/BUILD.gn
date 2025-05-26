@@ -25,8 +25,6 @@ ohos_unittest("AotCompilerStubUnitTest") {
   configs = [ ":module_private_config" ]
   deps = [
     "${compiler_service_root}:libcompiler_service",
-    "//third_party/googletest:gmock_main",
-    "//third_party/googletest:gtest_main",
   ]
   external_deps = [
     "ability_base:want",
@@ -36,6 +34,8 @@ ohos_unittest("AotCompilerStubUnitTest") {
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "icu:shared_icui18n",

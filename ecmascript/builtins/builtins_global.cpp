@@ -731,7 +731,7 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
     CString abcFilePath = fileName.c_str();
     if (moduleName.size() != 0) {
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, abcFilePath, requestPath, false, ExecuteTypes::STATIC);
+            thread, abcFilePath, requestPath, false, false, ExecuteTypes::STATIC);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (curJsPandaFile == nullptr) {
             errorMsg = "Load native module failed, filename '" + abcFilePath +
