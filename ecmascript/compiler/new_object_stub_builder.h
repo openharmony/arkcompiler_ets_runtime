@@ -93,6 +93,7 @@ public:
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
                        Variable *result, Label *success, Label *failed, GateRef slotId,
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewJSFunction(GateRef glue, GateRef method, GateRef homeObject);
     void SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId);
     GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
@@ -146,6 +147,8 @@ public:
     GateRef CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind);
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     void CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit);
+    GateRef DefineMethod(GateRef glue, GateRef method, GateRef homeObject, GateRef length,
+                         GateRef env, GateRef module);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
