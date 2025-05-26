@@ -33,7 +33,7 @@ bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
     return regionInfo->IsUnmovableFromRegion();
 }
 
-bool WCollector::MarkObject(BaseObject* obj) const
+bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
 {
     bool marked = RegionSpace::MarkObject(obj);
     if (!marked) {
@@ -45,8 +45,9 @@ bool WCollector::MarkObject(BaseObject* obj) const
             LOG_COMMON(FATAL) << "Unresolved fatal";
             UNREACHABLE_CC();
         }
-
-        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
+        size_t size = cellCount == 0 ? obj->GetSize() : (cellCount + 1) * sizeof(uint64_t);
+        region->AddLiveByteCount(size);
+        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), size,
              region, region->GetRegionType(), region->GetRegionStart(), region->GetLiveByteCount());
     }
     return marked;
@@ -441,6 +442,7 @@ void WCollector::DoGarbageCollection()
 
         CopyFromSpace();
         FixHeap();
+        CollectPinnedGarbage();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
         ClearAllGCInfo();
@@ -464,7 +466,9 @@ void WCollector::DoGarbageCollection()
         CollectLargeGarbage();
 
         CopyFromSpace();
+        reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
         FixHeap();
+        CollectPinnedGarbage();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
         ClearAllGCInfo();
@@ -490,7 +494,9 @@ void WCollector::DoGarbageCollection()
     CollectLargeGarbage();
 
     CopyFromSpace();
+    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
     FixHeap();
+    CollectPinnedGarbage();
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
@@ -598,6 +604,10 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
 BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
 {
     size_t size = RegionSpace::GetAllocSize(*obj);
+    // 8: size of free object, but free object can not be copied.
+    if (size == 8) {
+        LOG_COMMON(FATAL) << "forward free obj: " << obj << "is survived: " << IsSurvivedObject(obj) ? "true" : "false";
+    }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
     if (toObj == nullptr) {
         ASSERT_LOGF(0, "OOM");

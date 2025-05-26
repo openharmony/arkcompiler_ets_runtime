@@ -57,7 +57,7 @@ public:
     void MarkNewObject(BaseObject* obj) override;
 
     bool ShouldIgnoreRequest(GCRequest& request) override;
-    bool MarkObject(BaseObject* obj) const override;
+    bool MarkObject(BaseObject* obj, size_t cellCount = 0) const override;
     bool ResurrectObject(BaseObject* obj) override;
 
     void EnumRefFieldRoot(RefField<>& ref, RootSet& rootSet) const override;
@@ -167,7 +167,6 @@ protected:
         RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
         GCStats& stats = GetGCStats();
         stats.pinnedSpaceSize = space.PinnedSpaceSize();
-        stats.pinnedGarbageSize = space.CollectPinnedGarbage();
         stats.collectedBytes += stats.pinnedGarbageSize;
     }
 

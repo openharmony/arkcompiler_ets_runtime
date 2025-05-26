@@ -101,6 +101,7 @@ public:
         metadata.traceLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
         metadata.fixLine = std::numeric_limits<uintptr_t>::max();
+        metadata.freeSlot = nullptr;
         metadata.regionEnd = reinterpret_cast<uintptr_t>(nullptr);
         metadata.toSpaceRegion = false;
     }
@@ -277,9 +278,8 @@ public:
             return true;
         }
         // top1 issue
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocMarkBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocMarkBitmap()->MarkBits(offset);
         DCHECK_CC(IsMarkedObject(obj));
         return marked;
     }
@@ -293,9 +293,8 @@ public:
             }
             return true;
         }
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocResurrectBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocResurrectBitmap()->MarkBits(offset);
         CHECK_CC(IsResurrectedObject(obj));
         return marked;
     }
@@ -309,9 +308,8 @@ public:
             }
             return true;
         }
-        size_t size = obj->GetSize();
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        bool marked = GetOrAllocEnqueueBitmap()->MarkBits(offset, size, GetRegionSize());
+        bool marked = GetOrAllocEnqueueBitmap()->MarkBits(offset);
         CHECK_CC(IsEnqueuedObject(obj));
         return marked;
     }
@@ -393,6 +391,8 @@ public:
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
         RECENT_PINNED_REGION,
+        FIXED_PINNED_REGION,
+        FULL_FIXED_PINNED_REGION,
 
         // region for raw-pointer objects which are exposed to runtime thus can not be moved by any gc.
         // raw-pointer region becomes pinned region when none of its member objects are used as raw pointer.
@@ -515,6 +515,7 @@ public:
 #endif
 
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
 
@@ -571,7 +572,7 @@ public:
     void SetRegionType(RegionType type)
     {
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE,
-            BITS_4, static_cast<uint8_t>(type));
+            BITS_5, static_cast<uint8_t>(type));
     }
 
     void SetMarkedRegionFlag(uint8_t flag)
@@ -587,10 +588,22 @@ public:
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_RESURRECTED_REGION, 1, flag);
     }
 
+    void SetRegionCellCount(uint8_t cellCount)
+    {
+        // 8: region cell count is 8 bits.
+        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8, cellCount);
+    }
+
+    uint16_t GetRegionCellCount()
+    {
+        // 8: region cell count is 8 bits.
+        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8);
+    }
+
     RegionType GetRegionType() const
     {
         return static_cast<RegionType>(metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE,
-                                                                          4)); // 4 is the length that is to be read
+                                                                          BITS_5));
     }
 
     UnitRole GetUnitRole() const { return static_cast<UnitRole>(metadata.unitRole); }
@@ -598,7 +611,7 @@ public:
     size_t GetUnitIdx() const { return RegionDesc::UnitInfo::GetUnitIdx(reinterpret_cast<const UnitInfo*>(this)); }
 
     HeapAddress GetRegionStart() const { return RegionDesc::GetUnitAddress(GetUnitIdx()); }
-
+   
     HeapAddress GetRegionEnd() const { return metadata.regionEnd; }
 
     void SetRegionAllocPtr(HeapAddress addr) { metadata.allocPtr = addr; }
@@ -644,6 +657,11 @@ public:
         metadata.traceLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
         metadata.fixLine = std::numeric_limits<uintptr_t>::max();
+    }
+
+    void ClearFreeSlot()
+    {
+        metadata.freeSlot = nullptr;
     }
 
     bool IsNewObjectSinceTrace(const BaseObject* obj)
@@ -728,6 +746,12 @@ public:
 
     bool IsLargeRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::LARGE_SIZED_UNITS; }
 
+    bool IsFixedRegion() const
+    {
+        return (GetRegionType()  == RegionType::FIXED_PINNED_REGION) ||
+            (GetRegionType()  == RegionType::FULL_FIXED_PINNED_REGION);
+    }
+    
     bool IsThreadLocalRegion() const
     {
         return GetRegionType()  == RegionType::THREAD_LOCAL_REGION;
@@ -745,6 +769,54 @@ public:
             return nullptr;
         }
         return reinterpret_cast<RegionDesc*>(UnitInfo::GetUnitInfo(metadata.prevRegionIdx));
+    }
+
+    bool CollectPinnedGarbage(BaseObject* obj, size_t cellCount)
+    {
+        std::lock_guard<std::mutex> lg(metadata.regionMutex);
+        if (IsFreePinnedObject(obj)) {
+            return false;
+        }
+        size_t size = (cellCount + 1) * sizeof(uint64_t);
+        ObjectSlot* head = reinterpret_cast<ObjectSlot*>(obj);
+        head->SetNext(metadata.freeSlot, size);
+        metadata.freeSlot = head;
+        return true;
+    }
+
+    HeapAddress GetFreeSlot()
+    {
+        if (metadata.freeSlot == nullptr) {
+            return 0;
+        }
+        ObjectSlot* res = metadata.freeSlot;
+        metadata.freeSlot = reinterpret_cast<ObjectSlot*>(res->next_);
+        res->next_ = 0;
+        res->isFree_ = 0;
+        return reinterpret_cast<HeapAddress>(res);
+    }
+
+    HeapAddress AllocPinnedFromFreeList()
+    {
+        std::lock_guard<std::mutex> lg(metadata.regionMutex);
+        HeapAddress addr = GetFreeSlot();
+        if (addr == 0) {
+            RegionDesc* region = GetNextRegion();
+            do {
+                if (region == nullptr) {
+                    break;
+                }
+                addr = region->GetFreeSlot();
+                region = region->GetNextRegion();
+            } while (addr == 0);
+        }
+        return addr;
+    }
+
+    bool IsFreePinnedObject(BaseObject* object)
+    {
+        ObjectSlot* slot = reinterpret_cast<ObjectSlot*>(object);
+        return slot->isFree_;
     }
 
     void SetPrevRegion(const RegionDesc* r)
@@ -823,14 +895,32 @@ public:
 private:
     static constexpr int32_t MAX_RAW_POINTER_COUNT = std::numeric_limits<int32_t>::max();
     static constexpr int32_t BITS_4 = 4;
+    static constexpr int32_t BITS_5 = 5;
 
     enum RegionBitOffset : uint8_t {
         BIT_OFFSET_REGION_TYPE = 0,
-        BIT_OFFSET_TRACE_REGION = BITS_4,
         // use mark-bitmap pointer instead
-        BIT_OFFSET_MARKED_REGION = 5,
+        BIT_OFFSET_MARKED_REGION = BITS_5,
         BIT_OFFSET_ENQUEUED_REGION = 6,
-        BIT_OFFSET_RESURRECTED_REGION = 7
+        BIT_OFFSET_RESURRECTED_REGION = 7,
+        BIT_OFFSET_REGION_CELLCOUNT = 8
+    };
+
+    struct ObjectSlot {
+        HeapAddress next_ : 48;
+        HeapAddress isFree_ : 1;
+        HeapAddress padding : 15;
+
+        void SetNext(ObjectSlot* slot, size_t size)
+        {
+            next_ = reinterpret_cast<HeapAddress>(slot);
+            isFree_ = 1;
+            size_t extraSize = size - sizeof(ObjectSlot);
+            if (extraSize > 0) {
+                uintptr_t start = reinterpret_cast<uintptr_t>(this) + sizeof(ObjectSlot);
+                LOGE_IF((memset_s(reinterpret_cast<void*>(start), extraSize, 0, extraSize) != EOK)) << "memset_s fail";
+            }
+        }
     };
 
     struct UnitMetadata {
@@ -841,6 +931,7 @@ private:
             uintptr_t traceLine;
             uintptr_t forwardLine;
             uintptr_t fixLine;
+            ObjectSlot* freeSlot;
             uintptr_t regionEnd;
 
             uint32_t nextRegionIdx;
@@ -868,12 +959,7 @@ private:
         // change the value, we must use specific interface implenmented by BitFields.
         union {
             struct {
-                RegionType regionType : BITS_4;
-
-                // a region allocated during trace phase, gc should not put any object in this region into satb buffer.
-                // the count of objects which can be put into satb buffer should has an upper-bound,
-                // so that concurrent tracing can converge and terminate.
-                uint8_t isTraceRegion : 1;
+                RegionType regionType : BITS_5;
 
                 // true if this unit belongs to a ghost region, which is an unreal region for keeping reclaimed
                 // from-region. ghost region is set up to memorize a from-region before from-space is forwarded. this
@@ -882,11 +968,13 @@ private:
                 uint8_t isMarked : 1;
                 uint8_t isEnqueued : 1;
                 uint8_t isResurrected : 1;
+                uint8_t cellCount : 8;
             };
             BitFields<uint16_t> regionBits;
         };
 
         bool toSpaceRegion;
+        std::mutex regionMutex;
     };
 
     class UnitInfo {
@@ -943,7 +1031,7 @@ private:
         void SetUnitRole(UnitRole role) { metadata_.unitBits.AtomicSetValue(0, BITS_4, static_cast<uint8_t>(role)); }
         void SetRegionType(RegionType type)
         {
-            metadata_.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE, BITS_4,
+            metadata_.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE, BITS_5,
                                                 static_cast<uint8_t>(type));
         }
 
@@ -991,6 +1079,7 @@ private:
         metadata.nextRegionIdx = NULLPTR_IDX;
         metadata.liveByteCount = 0;
         metadata.liveInfo = nullptr;
+        metadata.freeSlot = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
         ClearTraceCopyFixLine();
