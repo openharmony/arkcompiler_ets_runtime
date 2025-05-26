@@ -542,7 +542,12 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
             ProcessLazyDeopt(maybeAcc, resumePc, statePtr);
         }
 
-        statePtr->env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
+        JSTaggedValue env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
+        if (env.IsUndefined()) {
+            statePtr->env = JSFunction::Cast(callTarget.GetTaggedObject())->GetLexicalEnv();
+        } else {
+            statePtr->env = env;
+        }
         statePtr->callSize = GetCallSize(curDepth, resumePc);
         statePtr->fp = 0;  // need update
         statePtr->thisObj = thisObj;

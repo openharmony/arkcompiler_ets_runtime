@@ -62,13 +62,13 @@ public:
     GateRef StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef profileTypeInfo,
                             GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByValue(GateRef glue, GateRef receiver, GateRef key);
-    GateRef TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
+    GateRef TryLoadGlobalByName(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef TryStoreGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
+    GateRef TryStoreGlobalByName(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
                                  GateRef value, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef LoadGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
+    GateRef LoadGlobalVar(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
                           GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef StoreGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
+    GateRef StoreGlobalVar(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
                            GateRef value, GateRef profileTypeInfo, GateRef slotId);
     GateRef StOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
     GateRef StOwnByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value);

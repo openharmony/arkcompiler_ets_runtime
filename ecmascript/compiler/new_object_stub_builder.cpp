@@ -1132,6 +1132,9 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
             SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(glue, module));
             SetModuleToFunction(glue, result->ReadVariable(), smodule);
+            GateRef emptySFuncEnv = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                           ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX);
+            SetLexicalEnvToFunction(glue, result->ReadVariable(), emptySFuncEnv);
             Jump(&afterSendableFunc);
         }
         Bind(&isNotSendableFunc);

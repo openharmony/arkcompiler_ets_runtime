@@ -854,7 +854,8 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
+    GateRef globalEnv = builder.GetGlobalEnv(glue);
+    Return(builder.TryLoadGlobalByName(glue, globalEnv, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void TryStGlobalByNameStubBuilder::GenerateCircuit()
@@ -867,7 +868,9 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
+    GateRef globalEnv = builder.GetGlobalEnv(glue);
+    Return(builder.TryStoreGlobalByName(glue, globalEnv,
+                                         id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void LdGlobalVarStubBuilder::GenerateCircuit()
@@ -879,7 +882,8 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
+    GateRef globalEnv = builder.GetGlobalEnv(glue);
+    Return(builder.LoadGlobalVar(glue, globalEnv, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void StGlobalVarStubBuilder::GenerateCircuit()
@@ -892,7 +896,8 @@ void StGlobalVarStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.StoreGlobalVar(glue, id, info, value, profileTypeInfo, slotId));
+    GateRef globalEnv = builder.GetGlobalEnv(glue);
+    Return(builder.StoreGlobalVar(glue, globalEnv, id, info, value, profileTypeInfo, slotId));
 }
 
 void TryLoadICByNameStubBuilder::GenerateCircuit()

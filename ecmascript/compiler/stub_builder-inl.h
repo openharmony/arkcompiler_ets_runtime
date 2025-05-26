@@ -3574,9 +3574,9 @@ inline GateRef StubBuilder::GetGlobalEnv(GateRef glue)
     return env_->GetBuilder()->GetGlobalEnv(glue);
 }
 
-inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
+inline GateRef StubBuilder::GetGlobalObject(GateRef glue, GateRef globalEnv)
 {
-    return env_->GetBuilder()->GetGlobalObject(glue);
+    return env_->GetBuilder()->GetGlobalObject(glue, globalEnv);
 }
 
 inline GateRef StubBuilder::GetMethodFromFunction(GateRef glue, GateRef function)
