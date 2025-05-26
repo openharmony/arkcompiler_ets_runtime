@@ -39,13 +39,6 @@ size_t MallocUsableSize(void *p)
     return malloc_usable_size(p);
 }
 
-size_t PhysicalSize()
-{
-    auto pages = sysconf(_SC_PHYS_PAGES);
-    auto pageSize = sysconf(_SC_PAGE_SIZE);
-    return pages * pageSize;
-}
-
 int PrctlSetVMA(const void *p, const size_t size, const char *tag)
 {
     return prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, p, size, tag);

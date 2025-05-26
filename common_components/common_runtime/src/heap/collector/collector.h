@@ -26,6 +26,7 @@
 #include "common_components/common_runtime/src/heap/collector/gc_request.h"
 #include "common_components/common_runtime/src/heap/collector/gc_stats.h"
 #include "common_interfaces/thread/mutator_base.h"
+#include "common_interfaces/base/runtime_param.h"
 
 namespace panda {
 enum CollectorType {
@@ -45,7 +46,7 @@ public:
     static const char* GetGCPhaseName(GCPhase phase);
 
     // Initializer and finalizer.
-    virtual void Init() = 0;
+    virtual void Init(const RuntimeParam& param) = 0;
     virtual void Fini() {}
     const char* GetCollectorName() const;
 

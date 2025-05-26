@@ -123,11 +123,11 @@ HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
     return internalAddr + HEADER_SIZE;
 }
 
-void RegionSpace::Init(const HeapParam& vmHeapParam)
+void RegionSpace::Init(const RuntimeParam& param)
 {
     MemoryMap::Option opt = MemoryMap::DEFAULT_OPTIONS;
     opt.tag = "region_heap";
-    size_t heapSize = vmHeapParam.heapSize * 1024;
+    size_t heapSize = param.heapParam.heapSize * KB;
     size_t totalSize = RegionManager::GetHeapMemorySize(heapSize);
     size_t regionNum = RegionManager::GetHeapUnitCount(heapSize);
 #if defined(ARKCOMMON_ASAN_SUPPORT)

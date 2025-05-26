@@ -34,7 +34,7 @@ public:
 
     ~CollectorProxy() override = default;
 
-    void Init() override;
+    void Init(const RuntimeParam& param) override;
     void Fini() override;
 
     GCPhase GetGCPhase() const override { return currentCollector_->GetGCPhase(); }

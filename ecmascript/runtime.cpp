@@ -90,7 +90,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 #ifdef USE_CMC_GC
         // Init BaseRuntime before daemon thread because creating mutator may access gcphase in heap
         LOG_ECMA(INFO) << "start run with cmc gc";
-        BaseRuntime::GetInstance()->Init();
+        BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
 #endif
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;

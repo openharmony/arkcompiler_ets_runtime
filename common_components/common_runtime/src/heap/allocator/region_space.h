@@ -64,7 +64,7 @@ public:
         MemoryMap::DestroyMemoryMap(map_);
     }
 
-    void Init(const HeapParam&) override;
+    void Init(const RuntimeParam &param) override;
 
     HeapAddress Allocate(size_t size, AllocType allocType) override;
 

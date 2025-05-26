@@ -24,6 +24,8 @@
 
 #include "common_components/log/log_base.h"
 #include "common_interfaces/base/common.h"
+#include "common_interfaces/base/runtime_param.h"
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/mem/c_string.h"
@@ -147,8 +149,6 @@ enum CommandValues {
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
-    OPTION_INVALID,
-    OPTION_SPLIT_ONE,
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
@@ -204,7 +204,6 @@ enum CommandValues {
     OPTION_ENABLE_JITFORT,
     OPTION_CODESIGN_DISABLE,
     OPTION_ENABLE_ASYNC_COPYTOFORT,
-    OPTION_LAST,
     OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
     OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
     OPTION_COMPILER_ENABLE_BASELINEJIT,
@@ -212,7 +211,6 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
-    OPTION_SPLIT_TWO,
     OPTION_COMPILER_ENABLE_MEGA_IC,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
@@ -240,14 +238,15 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_COMPILER_JIT_METHOD_DICHOTOMY,
     OPTION_COMPILER_JIT_METHOD_PATH,
+    OPTION_MEM_CONFIG,
+
+    // OPTION_LAST should at the last
+    OPTION_LAST,
 };
-static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
-static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
-static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
 
 class PUBLIC_API JSRuntimeOptions {
 public:
-    JSRuntimeOptions() {}
+    JSRuntimeOptions();
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
@@ -277,6 +276,11 @@ public:
         }
 
         return option;
+    }
+
+    RuntimeParam GetRuntimeParam() const
+    {
+        return param_;
     }
 
     bool ParseCommand(const int argc, const char** argv);
@@ -499,33 +503,14 @@ public:
         }
     }
 
-    void SetArkBundleName(std::string bundleName)
+    void SetArkBundleName(const std::string &bundleName)
     {
         if (bundleName != "") {
             arkBundleName_ = bundleName;
         }
     }
 
-    void SetMemConfigProperty(std::string configProperty)
-    {
-        if (configProperty != "") {
-            std::string key;
-            std::string value;
-            for (char c: configProperty) {
-                if (isdigit(c)) {
-                    value += c;
-                } else {
-                    key += c;
-                }
-            }
-            if (key == "jsHeap") {
-                heapSize_ = static_cast<size_t>(stoi(value)) * 1_MB;
-            }
-            if (key == "openArkTools") {
-                openArkTools_ = true;
-            }
-        }
-    }
+    void SetMemConfigProperty(const std::string &configProperty);
 
     size_t GetHeapSize() const
     {
@@ -864,21 +849,6 @@ public:
     void SetSerializerBufferSizeLimit(uint64_t value)
     {
         serializerBufferSizeLimit_ = value;
-    }
-
-    uint32_t GetHeapSizeLimit() const
-    {
-        return heapSizeLimit_;
-    }
-
-    void SetHeapSizeLimit(uint32_t value)
-    {
-        heapSizeLimit_ = value;
-    }
-
-    bool WasSetHeapSizeLimit() const
-    {
-        return WasOptionSet(OPTION_HEAP_SIZE_LIMIT);
     }
 
     void SetIsWorker(bool isWorker)
@@ -2207,35 +2177,35 @@ public:
         return jitMethodPath_;
     }
 
+    static bool ParseBool(const std::string &arg, bool* argBool);
+    static bool ParseInt(const std::string &arg, int* argInt);
+    static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
+    static bool ParseUint64(const std::string &arg, uint64_t* argUInt64);
+    static bool ParseDouble(const std::string &arg, double* argDouble);
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
 private:
+    void ParseRuntimeParam(const std::string &str);
 
     static bool StartsWith(const std::string& haystack, const std::string& needle)
     {
         return std::equal(needle.begin(), needle.end(), haystack.begin());
     }
 
-    void WasSet(int option)
+    void SetOption(int option)
     {
-        if (option < OPTION_SPLIT_ONE) {
-            wasSetPartOne_ |= (1ULL << static_cast<uint64_t>(option));
-        } else if (option < OPTION_SPLIT_TWO) {
-            wasSetPartTwo_ |= (1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE));
-        } else {
-            wasSetPartThree_ |= (1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_TWO));
-        }
+        int index = option / BIT_COUNT;
+        ASSERT(index >= 0 && index < SPLIT_COUNT);
+        wasSet_[index] |= (1ULL << static_cast<uint64_t>(option % BIT_COUNT));
     }
 
     bool WasOptionSet(int option) const
     {
-        if (option < OPTION_SPLIT_ONE) {
-            return ((1ULL << static_cast<uint64_t>(option)) & wasSetPartOne_) != 0;
-        } else if (option < OPTION_SPLIT_TWO) {
-            return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE)) & wasSetPartTwo_) != 0;
-        }
-        return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_TWO)) & wasSetPartThree_) != 0;
+        int index = option / BIT_COUNT;
+        ASSERT(index >= 0 && index < SPLIT_COUNT);
+        return wasSet_[index] & (1ULL << static_cast<uint64_t>(option % BIT_COUNT));
     }
 
     bool StringToInt64(const std::string& str, int64_t& value)
@@ -2350,6 +2320,10 @@ private:
     bool ParseUint64Param(const std::string& option, uint64_t* argUInt64);
     void ParseListArgParam(const std::string& option, arg_list_t* argListStr, std::string delimiter);
 
+    static constexpr int BIT_COUNT = static_cast<int>(base::BitNumbers<uint64_t>());
+    static constexpr int SPLIT_COUNT = static_cast<int>(OPTION_LAST) / BIT_COUNT + 1;
+    uint64_t wasSet_[SPLIT_COUNT] = {0};
+
     bool enableArkTools_ {true};
     bool openArkTools_ {false};
     std::string stubFile_ {"stub.an"};
@@ -2365,7 +2339,6 @@ private:
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
     std::set<CString> traceBundleName_ = {};
-    size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
@@ -2378,7 +2351,6 @@ private:
     std::string asmOpcodeDisableRange_ {""};
     AsmInterParsedOption asmInterParsedOption_;
     uint64_t serializerBufferSizeLimit_ {2_GB};
-    uint32_t heapSizeLimit_ {512_MB};
     bool enableIC_ {true};
     std::string icuDataPath_ {"default"};
     bool startupTime_ {false};
@@ -2436,9 +2408,6 @@ private:
     bool forceBaselineCompileMain_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
-    uint64_t wasSetPartOne_ {0};
-    uint64_t wasSetPartTwo_ {0};
-    uint64_t wasSetPartThree_ {0};
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
@@ -2521,6 +2490,8 @@ private:
     bool enableMergePoly_ {true};
     std::string jitMethodDichotomy_ {"disable"};
     std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
+    size_t heapSize_ = {0};
+    RuntimeParam param_;
 };
 } // namespace panda::ecmascript
 

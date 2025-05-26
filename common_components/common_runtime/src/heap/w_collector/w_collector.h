@@ -47,12 +47,15 @@ public:
         : TraceCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))
     {
         collectorType_ = CollectorType::SMOOTH_COLLECTOR;
-        shouldSTW_ = InitShouldSTWFlag();
     }
 
     ~WCollector() override = default;
 
-    void Init() override { HeapBitmapManager::GetHeapBitmapManager().InitializeHeapBitmap(); }
+    void Init(const RuntimeParam& param) override
+    {
+        HeapBitmapManager::GetHeapBitmapManager().InitializeHeapBitmap();
+        shouldSTW_ = param.gcParam.enableStwGC;
+    }
 
     void MarkNewObject(BaseObject* obj) override;
 
@@ -72,30 +75,6 @@ public:
     bool IsOldPointer(RefField<>& ref) const override { return false; }
 
     bool IsCurrentPointer(RefField<>& ref) const override { return false; }
-
-    uint8_t InitShouldSTWFlag()
-    {
-        auto useStwGc = std::getenv("arkUseStwGc");
-        if (useStwGc == nullptr) {
-            return 0; // default to 0
-        }
-        if (strlen(useStwGc) != 1) {
-            LOG_COMMON(ERROR) << "unsupported value of arkUseStwGc, should be 0 or 1.";
-            return 0; // default to 2
-        }
-
-        switch (useStwGc[0]) {
-            case '0':
-                return 0;
-            case '1':
-                return 1; // 1: cm gc
-            case '2':
-                return 2; // 2: stw-gc
-            default:
-                LOG_COMMON(ERROR) << "unsupported value of arkUseStwGc, should be 0 or 1 or 2.";
-        }
-        return 0; // default to 0
-    }
 
     void AddRawPointerObject(BaseObject* obj) override
     {
@@ -198,7 +177,7 @@ private:
     CopyTable fwdTable_;
 
     // gc index 0 or 1 is used to distinguish previous gc and current gc.
-    uint8_t shouldSTW_ = true;
+    uint8_t shouldSTW_ = false;
 };
 } // namespace panda
 #endif // ~ARK_COMMON_WCOLLECTOR_H
