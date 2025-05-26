@@ -12305,6 +12305,44 @@ GateRef StubBuilder::NeedBarrier(GateRef kind){
     return ret;
 }
 
+void StubBuilder::StartTraceLoadValueDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef receiver,
+    [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId, GateRef key)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD_VALUE
+    CallRuntime(glue, RTSTUB_ID(TraceLoadValueDetail), {receiver, profileTypeInfo, slotId, key});
+#endif
+}
+
+
+void StubBuilder::StartTraceLoadValueSlowPath([[maybe_unused]]GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD_VALUE
+    CallRuntime(glue, RTSTUB_ID(TraceLoadValueSlowPath), {});
+#endif
+}
+
+void StubBuilder::EndTraceLoadValue([[maybe_unused]]GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD_VALUE
+    CallRuntime(glue, RTSTUB_ID(TraceLoadValueEnd), {});
+#endif
+}
+
+void StubBuilder::StartTraceCallDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef profileTypeInfo, 
+                                       [[maybe_unused]] GateRef slotId)
+{
+#if ECMASCRIPT_ENABLE_TRACE_CALL
+    CallRuntime(glue, RTSTUB_ID(TraceCallDetail), {profileTypeInfo, slotId});
+#endif
+}
+
+void StubBuilder::EndTraceCall([[maybe_unused]] GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_CALL
+    CallRuntime(glue, RTSTUB_ID(TraceLoadValueEnd), {});
+#endif
+}
+
 void StubBuilder::StartTraceLoadDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef receiver,
                                        [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId)
 {
@@ -12360,6 +12398,19 @@ void StubBuilder::EndTraceStore([[maybe_unused]] GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_TRACE_STORE
     CallRuntime(glue, RTSTUB_ID(TraceStoreEnd), {});
+#endif
+}
+
+void StubBuilder::StartTraceDefineFunc(GateRef glue, GateRef methodId, GateRef profileTypeInfo, GateRef slotId)
+{
+#if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
+    CallRuntime(glue, RTSTUB_ID(TraceDefineFunc), {methodId, profileTypeInfo, IntToTaggedInt(slotId)});
+#endif
+}
+void StubBuilder::EndTraceDefineFunc(GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
+    CallRuntime(glue, RTSTUB_ID(TraceDefineFuncEnd), {});
 #endif
 }
 
