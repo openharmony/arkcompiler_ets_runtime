@@ -794,7 +794,7 @@ void AArch64AsmEmitter::EmitHeapConstant(Emitter &emitter, const Insn &insn) con
     (void)emitter.Emit(", [");
     opnd1.Accept(visitor);
     (void)emitter.Emit(",#");
-    uint64 slotIndex = static_cast<ImmOperand&>(opnd2).GetValue();
+    int64_t slotIndex = static_cast<ImmOperand&>(opnd2).GetValue();
     (void)emitter.Emit(slotIndex * k8ByteSize).Emit("]  // __heap_constant(");
     opnd2.Accept(visitor);
     (void)emitter.Emit(")\n");

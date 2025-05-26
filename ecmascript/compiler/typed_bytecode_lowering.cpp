@@ -2167,6 +2167,7 @@ void TypedBytecodeLowering::ConvertCallTargetCheckToHeapConstantCheckAndLowerCal
     JSHandle<JSTaggedValue> heapObject = jitCompilationEnv->GetHeapConstantHandle(heapConstantIndex);
     JSHandle<JSFunction> jsFunc = JSHandle<JSFunction>::Cast(heapObject);
     Method *calleeMethod = Method::Cast(jsFunc->GetMethod());
+    ASSERT(calleeMethod->GetMethodLiteral() != nullptr);
     if (calleeMethod->GetMethodLiteral()->IsFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {

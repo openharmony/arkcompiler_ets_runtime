@@ -145,7 +145,7 @@ private:
     std::unordered_map<GateRef, maple::litecg::Expr> derivedrefGate;
     struct ConstTableInfo {
         bool needConstantTable = false;
-        maple::litecg::PregIdx constTable;
+        maple::litecg::PregIdx constTable = 0;
     } constantTableInfo;
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
