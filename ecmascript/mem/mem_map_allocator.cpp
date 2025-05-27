@@ -29,7 +29,7 @@ MemMapAllocator *MemMapAllocator::GetInstance()
 void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignment)
 {
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
-    size_t initialRegularObjectCapacity = std::min(capacity_ / 2, INITIAL_REGULAR_OBJECT_CAPACITY);
+    size_t initialRegularObjectCapacity = std::min(capacity_ / 3, INITIAL_REGULAR_OBJECT_CAPACITY);
     size_t i = 0;
     while (i < MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(REGULAR_OBJECT_MEM_MAP_BEGIN_ADDR)) +
@@ -52,7 +52,7 @@ void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignme
 
 void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 {
-    size_t initialHugeObjectCapacity = std::min(capacity_ / 2, INITIAL_HUGE_OBJECT_CAPACITY);
+    size_t initialHugeObjectCapacity = std::min(capacity_ / 3, INITIAL_HUGE_OBJECT_CAPACITY);
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
@@ -81,8 +81,9 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 {
     size_t initialNonmovableObjectCapacity = std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY);
+
 #if defined(PANDA_TARGET_64)
-    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity + 4_GB;
+    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity * 2;
 #else
     size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity;
 #endif
@@ -99,7 +100,7 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
             break;
         } else {
             PageUnmap(memMap);
-            LOG_ECMA(ERROR) << "Huge object mem map big addr fail: " << errno;
+            LOG_ECMA(ERROR) << "Nonmovable object mem map big addr fail: " << errno;
         }
         i++;
     }
@@ -111,14 +112,28 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 #endif
 }
 
+// Truncate mem to make sure align to same range inner 4G.
 MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
 {
 #if defined(PANDA_TARGET_64)
-    uintptr_t leftUnmapAddr = ToUintPtr(memMap.GetMem());
-    auto remainderAddr = AlignUp(leftUnmapAddr, 4_GB);
-    size_t leftUnMapSize = remainderAddr - leftUnmapAddr;
-    size_t rightUnMapSize = static_cast<size_t>(4_GB) - leftUnMapSize;
+    uintptr_t startAddr = ToUintPtr(memMap.GetMem());
+    uintptr_t alignAddr = AlignUp(startAddr, 4_GB);
+
+    size_t leftSize = alignAddr - startAddr;
+    uintptr_t remainderAddr = alignAddr;
+    if (leftSize > memMap.GetSize()) {
+        remainderAddr = startAddr;
+    } else if (leftSize > targetSize) {
+        remainderAddr = alignAddr - targetSize;
+    }
+
+    uintptr_t leftUnmapAddr = startAddr;
+    size_t leftUnmapSize = remainderAddr - leftUnmapAddr;
+    PageUnmap(MemMap(ToVoidPtr(leftUnmapAddr), leftUnmapSize));
+
     uintptr_t rightUnmapAddr = remainderAddr + targetSize;
+    size_t rightUnmapSize = (startAddr + memMap.GetSize()) - rightUnmapAddr;
+    PageUnmap(MemMap(ToVoidPtr(rightUnmapAddr), rightUnmapSize));
 
     static constexpr uint64_t mask = 0xFFFFFFFF00000000;
     TaggedStateWord::BASE_ADDRESS = remainderAddr & mask;
@@ -127,8 +142,6 @@ MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
     PageTag(reminderMemMap.GetOriginAddr(), reminderMemMap.GetSize(), PageTagType::HEAP);
     PageRelease(reminderMemMap.GetMem(), reminderMemMap.GetSize());
 
-    PageUnmap(MemMap(ToVoidPtr(leftUnmapAddr), leftUnMapSize));
-    PageUnmap(MemMap(ToVoidPtr(rightUnmapAddr), rightUnMapSize));
     return reminderMemMap;
 #else
     TaggedStateWord::BASE_ADDRESS = 0;
@@ -173,10 +186,10 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
 
     if (regular) {
         if (isCompress) {
-            return AllocateFromMemPool(compressMemMapPool_, threadId, size, alignment, spaceName, isMachineCode,
+            return AllocateFromCompressPool(threadId, size, alignment, spaceName, isMachineCode,
                 isEnableJitFort, shouldPageTag, type);
         } else {
-            return AllocateFromMemPool(memMapPool_, threadId, size, alignment, spaceName, isMachineCode,
+            return AllocateFromMemPool(threadId, size, alignment, spaceName, isMachineCode,
                 isEnableJitFort, shouldPageTag, type);
         }
     } else {
@@ -193,11 +206,11 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
     }
 }
 
-MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t threadId, size_t size, size_t alignment,
-                                            const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
-                                            bool shouldPageTag, PageTagType type)
+MemMap MemMapAllocator::AllocateFromCompressPool(const uint32_t threadId, size_t size, size_t alignment,
+                                                 const std::string &spaceName, bool isMachineCode,
+                                                 bool isEnableJitFort, bool shouldPageTag, PageTagType type)
 {
-    MemMap mem = pool.GetRegularMemFromCommitted(size);
+    MemMap mem = compressMemMapPool_.GetRegularMemFromCommitted(size);
     if (mem.GetMem() != nullptr) {
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
         return mem;
@@ -207,7 +220,42 @@ MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t thr
         return MemMap();
     }
 
-    mem = pool.GetMemFromCache(size);
+    mem = compressMemMapPool_.GetMemFromCache(size);
+    if (mem.GetMem() != nullptr) {
+        memMapTotalSize_ += size;
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        return mem;
+    }
+
+#if !defined(PANDA_TARGET_64)
+    mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
+    compressMemMapPool_.InsertMemMap(mem);
+    mem = compressMemMapPool_.SplitMemFromCache(mem);
+    if (mem.GetMem() != nullptr) {
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        memMapTotalSize_ += mem.GetSize();
+        return mem;
+    }
+#endif
+    LOG_GC(ERROR) << "compress pool overflow";
+    return MemMap();
+}
+
+MemMap MemMapAllocator::AllocateFromMemPool(const uint32_t threadId, size_t size, size_t alignment,
+                                            const std::string &spaceName, bool isMachineCode, bool isEnableJitFort,
+                                            bool shouldPageTag, PageTagType type)
+{
+    MemMap mem = memMapPool_.GetRegularMemFromCommitted(size);
+    if (mem.GetMem() != nullptr) {
+        InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
+        return mem;
+    }
+    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+        LOG_GC(ERROR) << "memory map overflow";
+        return MemMap();
+    }
+
+    mem = memMapPool_.GetMemFromCache(size);
     if (mem.GetMem() != nullptr) {
         memMapTotalSize_ += size;
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
@@ -215,8 +263,8 @@ MemMap MemMapAllocator::AllocateFromMemPool(MemMapPool &pool, const uint32_t thr
     }
 
     mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
-    pool.InsertMemMap(mem);
-    mem = pool.SplitMemFromCache(mem);
+    memMapPool_.InsertMemMap(mem);
+    mem = memMapPool_.SplitMemFromCache(mem);
     if (mem.GetMem() != nullptr) {
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
         memMapTotalSize_ += mem.GetSize();

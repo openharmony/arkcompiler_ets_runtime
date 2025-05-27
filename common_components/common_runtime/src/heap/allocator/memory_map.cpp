@@ -82,7 +82,7 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     void* mappedAddr = nullptr;
     reqSize = AllocUtilRndUp<size_t>(reqSize, ALLOC_UTIL_PAGE_SIZE);
 #ifdef PANDA_TARGET_64
-    size_t needReqSize = reqSize + MAX_SUPPORT_CAPACITY;
+    size_t needReqSize = reqSize * 2;
 #else
     size_t needReqSize = reqSize;
 #endif
@@ -99,26 +99,35 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     mappedAddr = mmap(opt.reqBase, needReqSize, PROT_NONE, opt.flags, -1, 0);
 #endif
 
+    uintptr_t baseAddr = 0x0;
 #ifdef PANDA_TARGET_64
-    auto alignResult = AllocUtilRndUp(reinterpret_cast<uintptr_t>(mappedAddr), MAX_SUPPORT_CAPACITY);
-    size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(mappedAddr);
-    size_t rightSize = MAX_SUPPORT_CAPACITY - leftSize;
-    void *alignEndResult = reinterpret_cast<void *>(alignResult + reqSize);
+    uintptr_t startAddr = reinterpret_cast<uintptr_t>(mappedAddr);
+    uintptr_t alignAddr = AllocUtilRndUp(startAddr, MAX_SUPPORT_CAPACITY);
 
-    static constexpr uint64_t mask = 0xFFFFFFFF;
-    SetBaseAddress(alignResult & (mask << 32));
+    size_t leftSize = alignAddr - startAddr;
+    uintptr_t remainderAddr = alignAddr;
+    if (leftSize > needReqSize) {
+        remainderAddr = startAddr;
+    } else if (leftSize > reqSize) {
+        remainderAddr = alignAddr - reqSize;
+    }
+    mappedAddr = reinterpret_cast<void *>(remainderAddr);
+    baseAddr = remainderAddr & (0xFFFFFFFFULL << 32);
 
+    auto leftUnmapAddr = reinterpret_cast<void *>(startAddr);
+    size_t leftUnmapSize = remainderAddr - reinterpret_cast<uintptr_t>(leftUnmapAddr);
+
+    auto rightUnmapAddr = reinterpret_cast<void *>(remainderAddr + reqSize);
+    size_t rightUnmapSize = (startAddr + needReqSize) - reinterpret_cast<uintptr_t>(rightUnmapAddr);
 #ifdef _WIN64
-    VirtualFree(mappedAddr, leftSize, MEM_DECOMMIT);
-    VirtualFree(alignEndResult, rightSize, MEM_DECOMMIT);
+    VirtualFree(leftUnmapAddr, leftUnmapSize, MEM_DECOMMIT);
+    VirtualFree(rightUnmapAddr, rightUnmapSize, MEM_DECOMMIT);
 #else
-    munmap(mappedAddr, leftSize);
-    munmap(alignEndResult, rightSize);
+    munmap(leftUnmapAddr, leftUnmapSize);
+    munmap(rightUnmapAddr, rightUnmapSize);
 #endif
-    mappedAddr = reinterpret_cast<void *>(alignResult);
-#else
-    SetBaseAddress(0x0);
 #endif
+    SetBaseAddress(baseAddr);
 
     bool failure = false;
 #if defined(_WIN64) || defined(__APPLE__)
