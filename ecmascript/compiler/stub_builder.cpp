@@ -2316,7 +2316,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
     return ret;
 }
 
-GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
+GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef globalEnv, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2324,7 +2324,6 @@ GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
     Label exit(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef globalEnv = GetGlobalEnv(glue);
     GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::GLOBAL_RECORD);
     GateRef recordEntry = FindEntryFromHashTable<NameDictionary>(glue, globalRecord, key);
     Label foundInGlobalRecord(env);
@@ -12916,6 +12915,29 @@ GateRef StubBuilder::ComputeStringHashcode(GateRef glue, GateRef str)
     }
     Bind(&exit);
     auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrenEnvIsUndefined), BoolNot(TaggedIsUndefined(currentEnv)));
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label fromGlue(env);
+    Label exit(env);
+    DEFVARIABLE(globalEnv, VariableType::JS_ANY(), Undefined());
+
+    globalEnv = GetValueFromTaggedArray(glue, currentEnv, Int32(BaseEnv::GLOBAL_ENV_INDEX));
+    BRANCH_UNLIKELY(TaggedIsHole(*globalEnv), &fromGlue, &exit);
+    Bind(&fromGlue);
+    {
+        globalEnv = GetGlobalEnv(glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *globalEnv;
     env->SubCfgExit();
     return ret;
 }

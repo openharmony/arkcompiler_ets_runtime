@@ -300,9 +300,10 @@ void BaselineTryLdGLobalByNameImm8ID16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -376,8 +377,8 @@ void BaselineLdsymbolStubBuilder::GenerateCircuit()
 void BaselineLdglobalStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdglobal, GLUE));
-
-    GateRef result = GetGlobalObject(glue);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef result = GetGlobalObject(glue, globalEnv);
 
     Return(result);
 }
@@ -2773,9 +2774,10 @@ void BaselineTryldglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -2790,10 +2792,11 @@ void BaselineTrystglobalbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result =
-        builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
+        builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
 
@@ -2808,10 +2811,11 @@ void BaselineTrystglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result =
-        builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
+        builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
 
@@ -2827,9 +2831,10 @@ void BaselineLdglobalvarImm16Id16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.LoadGlobalVar(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.LoadGlobalVar(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -2847,9 +2852,10 @@ void BaselineStglobalvarImm16Id16StubBuilder::GenerateCircuit()
     GateRef func = GetFunctionFromFrame(glue, frame);
     GateRef method = GetMethodFromFunction(glue, func);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef globalEnv = GetGlobalEnv(glue);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.StoreGlobalVar(glue, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreGlobalVar(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId);
     CHECK_EXCEPTION(result);
 }
 

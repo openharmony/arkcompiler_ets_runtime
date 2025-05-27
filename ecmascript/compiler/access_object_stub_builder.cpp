@@ -484,7 +484,8 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef globalEnv,
+                                                     GateRef prop, const StringIdInfo &info,
                                                      GateRef profileTypeInfo, GateRef slotId,
                                                      ProfileOperation callback)
 {
@@ -504,7 +505,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef record = LdGlobalRecord(glue, propKey);
+        GateRef record = LdGlobalRecord(glue, globalEnv, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
         BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
@@ -515,7 +516,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
         }
         Bind(&notFoundInRecord);
         {
-            GateRef globalObject = GetGlobalObject(glue);
+            GateRef globalObject = GetGlobalObject(glue, globalEnv);
             result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
             BRANCH(TaggedIsHole(*result), &slowPath, &exit);
         }
@@ -534,7 +535,8 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef globalEnv,
+                                                      GateRef prop, const StringIdInfo &info,
                                                       GateRef value, GateRef profileTypeInfo, GateRef slotId,
                                                       ProfileOperation callback)
 {
@@ -553,7 +555,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef record = LdGlobalRecord(glue, propKey);
+        GateRef record = LdGlobalRecord(glue, globalEnv, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
         BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
@@ -564,7 +566,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
         }
         Bind(&notFoundInRecord);
         {
-            GateRef globalObject = GetGlobalObject(glue);
+            GateRef globalObject = GetGlobalObject(glue, globalEnv);
             result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
             Label isFoundInGlobal(env);
             Label notFoundInGlobal(env);
@@ -584,7 +586,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef globalObject = GetGlobalObject(glue);
+        GateRef globalObject = GetGlobalObject(glue, globalEnv);
         result = CallRuntime(glue, RTSTUB_ID(StoreMiss),
                              { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
                                IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalTryStoreIC))) });
@@ -597,7 +599,8 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef globalEnv,
+                                               GateRef prop, const StringIdInfo &info,
                                                GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
@@ -615,14 +618,14 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
     builder.TryLoadGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
-        GateRef globalObject = GetGlobalObject(glue);
+        GateRef globalObject = GetGlobalObject(glue, globalEnv);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
-        GateRef globalObject = GetGlobalObject(glue);
+        GateRef globalObject = GetGlobalObject(glue, globalEnv);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(glue, RTSTUB_ID(LdGlobalICVar),
                              { globalObject, propKey, profileTypeInfo, IntToTaggedInt(slotId) });
@@ -635,7 +638,8 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef globalEnv,
+                                                GateRef prop, const StringIdInfo &info,
                                                 GateRef value, GateRef profileTypeInfo, GateRef slotId)
 {
     auto env = GetEnvironment();
@@ -660,7 +664,7 @@ GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, cons
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef globalObject = GetGlobalObject(glue);
+        GateRef globalObject = GetGlobalObject(glue, globalEnv);
         result = CallRuntime(glue, RTSTUB_ID(StoreMiss),
                              { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
                                IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalStoreIC))) });

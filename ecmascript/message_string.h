@@ -88,7 +88,8 @@ namespace panda::ecmascript {
     V(ModuleEnvMustBeDefined, "Environment of current module must not be undefined")                \
     V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")               \
     V(RecordNameMustBeString, "RecordName must be string")                                          \
-    V(LexicalEnvIsUndefined, "LexicalEnv is undefined for builtin function")
+    V(LexicalEnvIsUndefined, "LexicalEnv is undefined for builtin function")                        \
+    V(CurrenEnvIsUndefined, "CurrentEnv is undefined")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

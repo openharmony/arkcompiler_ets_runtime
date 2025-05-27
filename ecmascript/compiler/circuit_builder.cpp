@@ -567,9 +567,8 @@ GateRef CircuitBuilder::GetGlobalEnv(GateRef glue)
     return Load(VariableType::JS_ANY(), glue, glue, globalEnvOffset);
 }
 
-GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
+GateRef CircuitBuilder::GetGlobalObject(GateRef glue, GateRef globalEnv)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
     return GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::JS_GLOBAL_OBJECT_INDEX);
 }
 

@@ -690,7 +690,7 @@ public:
     void TryMigrateToGenericKindForJSObject(GateRef glue, GateRef receiver, GateRef oldKind);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef TaggedToElementKind(GateRef glue, GateRef value);
-    GateRef LdGlobalRecord(GateRef glue, GateRef key);
+    GateRef LdGlobalRecord(GateRef glue, GateRef globalEnv, GateRef key);
     GateRef LoadFromField(GateRef glue, GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef glue, GateRef cell);
     GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key);
@@ -908,7 +908,8 @@ public:
     void SetByteOffset(GateRef glue, GateRef typedArray, GateRef offset);
     void SetTypedArrayLength(GateRef glue, GateRef typedArray, GateRef arrayLength);
     GateRef GetGlobalEnv(GateRef glue);
-    GateRef GetGlobalObject(GateRef glue);
+    GateRef GetGlobalObject(GateRef glue, GateRef globalEnv);
+    GateRef GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv);
     GateRef GetMethodFromFunction(GateRef glue, GateRef function);
     GateRef GetModuleFromFunction(GateRef glue, GateRef function);
     GateRef GetLengthFromFunction(GateRef function);

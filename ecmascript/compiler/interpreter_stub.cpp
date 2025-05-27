@@ -473,7 +473,9 @@ DECLARE_ASM_HANDLER(HandleLdsymbol)
 DECLARE_ASM_HANDLER(HandleLdglobal)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    varAcc = GetGlobalObject(glue);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    varAcc = GetGlobalObject(glue, globalEnv);
     DISPATCH_WITH_ACC(LDGLOBAL);
 }
 
@@ -577,7 +579,8 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     Label dispatch(env);
     Label slowPath(env);
     // For the args, we use ElementsKind::GENERIC as the kind
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                              static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
     NewObjectStubBuilder newBuilder(this);
@@ -3115,7 +3118,9 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(TRYLDGLOBALBYNAME_IMM8_ID16));
 }
 
@@ -3126,7 +3131,9 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(TRYLDGLOBALBYNAME_IMM16_ID16));
 }
 
@@ -3135,7 +3142,9 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm8Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst8_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(TRYSTGLOBALBYNAME_IMM8_ID16));
 }
 
@@ -3144,7 +3153,9 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(TRYSTGLOBALBYNAME_IMM16_ID16));
 }
 
@@ -3155,7 +3166,9 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.LoadGlobalVar(glue, 0, info, profileTypeInfo, slotId, callback);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.LoadGlobalVar(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDGLOBALVAR_IMM16_ID16));
 }
 
@@ -3164,7 +3177,9 @@ DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
-    GateRef result = builder.StoreGlobalVar(glue, 0, info, acc, profileTypeInfo, slotId);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+    GateRef result = builder.StoreGlobalVar(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId);
     CHECK_EXCEPTION(result, INT_PTR(STGLOBALVAR_IMM16_ID16));
 }
 
