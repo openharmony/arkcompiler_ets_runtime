@@ -532,6 +532,7 @@ public:
         JSHandle<ConstantPool> sharedCP, JSHandle<ConstantPool> unsharedCP);
 
     static bool PUBLIC_API IsAotMethodLiteralInfo(JSTaggedValue literalInfo);
+    static JSTaggedValue PUBLIC_API GetIhcFromAOTLiteralInfo(JSTaggedValue constpool, uint32_t index);
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
         uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),

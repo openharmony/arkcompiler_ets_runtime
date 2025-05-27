@@ -2856,33 +2856,100 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
 }
 
+bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, GateRef length, GateRef methodId,
+                                                GateRef lexEnv, GateRef slotId)
+{
+    if (!compilationEnv_->SupportHeapConstant()) {
+        return false;
+    }
+    Label success(&builder_);
+    Label failed(&builder_);
+    if (!acc_.IsConstant(methodId) || !acc_.IsConstant(slotId)) {
+        return false;
+    }
+    auto slotIdValue = acc_.GetConstantValue(slotId);
+    auto methodIdValue = acc_.GetConstantValue(methodId);
+    if (slotIdValue == ProfileTypeInfo::INVALID_SLOT_INDEX) {
+        return false;
+    }
+    auto constPool = compilationEnv_->FindConstpool(compilationEnv_->GetJSPandaFile(), 0);
+    auto unsharedConstPool = compilationEnv_->FindOrCreateUnsharedConstpool(methodLiteral_->GetMethodId().GetOffset());
+    // not optimize if it may use ihc to define function
+    if (!unsharedConstPool.IsHole() &&
+        !ConstantPool::GetIhcFromAOTLiteralInfo(unsharedConstPool, methodIdValue).IsUndefined()) {
+        return false;
+    }
+
+    auto method = ConstantPool::GetMethodFromCache(constPool, methodIdValue);
+    if (!method.IsMethod()) {
+        return false;
+    }
+    auto methodObj = Method::Cast(method);
+    if (methodObj->IsSendableMethod() || methodObj->IsNativeWithCallField() || methodObj->IsAotWithCallField()) {
+        return false;
+    }
+    auto kind = methodObj->GetFunctionKind();
+
+    auto jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+    auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(acc_.TryGetMethodOffset(gate));
+    auto profileTypeInfo = func->GetProfileTypeInfo();
+    if (profileTypeInfo.IsUndefined()) {
+        return false;
+    }
+    auto constPoolId =
+        static_cast<uint32_t>(ConstantPool::Cast(constPool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+    auto methodHandle = jitCompilationEnv->NewJSHandle(method);
+    auto index = jitCompilationEnv->RecordHeapConstant(
+        {constPoolId, methodIdValue, JitCompilationEnv::IN_SHARED_CONSTANTPOOL}, methodHandle);
+    GateRef methodNode = builder_.HeapConstant(index);
+    GateRef result;
+    JSHandle<JSTaggedValue> hclass;
+    int callTarget = CommonStubCSigns::NUM_OF_STUBS;
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION: {
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProto();
+            callTarget = CommonStubCSigns::DefineNormalFuncForJit;
+            break;
+        }
+        case FunctionKind::ARROW_FUNCTION: {
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProto();
+            callTarget = CommonStubCSigns::DefineArrowFuncForJit;
+            break;
+        }
+        case FunctionKind::BASE_CONSTRUCTOR: {
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithProto();
+            callTarget = CommonStubCSigns::DefineBaseConstructorForJit;
+            break;
+        }
+        default:
+            return false;
+    }
+
+    result = builder_.CallStub(glue_, gate, callTarget,
+                               {glue_, jsFunc, builder_.TaggedValueConstant(hclass.GetTaggedValue()), methodNode,
+                                builder_.TruncInt64ToInt32(length), lexEnv, slotId});
+    BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);
+    CREATE_DOUBLE_EXIT(success, failed)
+    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
+    return true;
+}
+
 void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
     Jit::JitLockHolder lock(compilationEnv_, "SlowPathLowering");
     Environment env(gate, circuit_, &builder_);
     GateRef methodId = acc_.GetValueIn(gate, 1);
 
-    FunctionKind kind = FunctionKind::LAST_FUNCTION_KIND;
-    if (acc_.IsConstantNumber(methodId)) {
-        // try to speed up the kind checking
-        JSTaggedValue unsharedCp;
-        if (compilationEnv_->IsJitCompiler()) {
-            unsharedCp = compilationEnv_->FindConstpool(compilationEnv_->GetJSPandaFile(), 0);
-        } else {
-            auto methodOffset = acc_.TryGetMethodOffset(gate);
-            unsharedCp = compilationEnv_->FindOrCreateUnsharedConstpool(methodOffset);
-        }
-        auto obj = compilationEnv_->GetMethodFromCache(unsharedCp, acc_.GetConstantValue(methodId));
-        if (obj != JSTaggedValue::Undefined()) {
-            kind = Method::Cast(obj)->GetFunctionKind();
-        }
-    }
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef length = acc_.GetValueIn(gate, 2);
     GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: Get current env
     GateRef slotId = acc_.GetValueIn(gate, 0);
     Label success(&builder_);
     Label failed(&builder_);
+    if (OptimizeDefineFuncForJit(gate, jsFunc, length, methodId, lexEnv, slotId)) {
+        return;
+    }
+
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::Definefunc,
         {glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length), lexEnv, slotId});
     BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);

@@ -408,6 +408,11 @@ public:
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);
 
+    static constexpr uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSFunction::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
+
     static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function

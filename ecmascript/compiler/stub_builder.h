@@ -893,7 +893,8 @@ public:
     GateRef GetFuncEntryDesAddress(GateRef machineCode);
     GateRef IsAlign(GateRef address, GateRef alignByte);
     void SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value,
+                               MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetBaselineJitCodeToFunction(GateRef glue, GateRef function, GateRef value,

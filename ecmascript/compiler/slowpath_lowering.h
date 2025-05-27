@@ -345,6 +345,8 @@ private:
     void LowerLdLazyExternalModuleVar(GateRef gate);
     void LowerLdLazySendableExternalModuleVar(GateRef gate);
     GateRef GetStringFromConstPool(GateRef gate, GateRef stringId, uint32_t stringIdIdx);
+    bool OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, GateRef length, GateRef methodId, GateRef lexEnv,
+                                  GateRef slotId);
 
     CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};

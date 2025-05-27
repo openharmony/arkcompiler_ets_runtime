@@ -589,6 +589,54 @@ GateRef NewObjectStubBuilder::NewJSProxy(GateRef glue, GateRef target, GateRef h
     return ret;
 }
 
+GateRef NewObjectStubBuilder::DefineFuncForJit(GateRef glue, GateRef method, GateRef hclass, FunctionKind targetKind)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    Label initialize(env);
+    NewJSObject(&result, &initialize, hclass, GetObjectSizeFromHClass(hclass));
+    Bind(&initialize);
+    SetExtensibleToBitfield(glue, hclass, true);
+    GateRef func = *result;
+
+    SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+    SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+
+    if (targetKind == FunctionKind::BASE_CONSTRUCTOR) {
+        auto funcprotoAccessor =
+            GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
+        Store(VariableType::JS_ANY(), glue, func,
+              IntPtr(JSFunction::GetInlinedPropertyOffset(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX)),
+              funcprotoAccessor, MemoryAttribute::NoBarrier());
+    } else {
+        ASSERT(targetKind == FunctionKind::ARROW_FUNCTION || targetKind == FunctionKind::NORMAL_FUNCTION);
+    }
+    auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_NAME_ACCESSOR);
+    Store(VariableType::JS_ANY(), glue, func,
+          IntPtr(JSFunction::GetInlinedPropertyOffset(JSFunction::NAME_INLINE_PROPERTY_INDEX)), funcAccessor,
+          MemoryAttribute::NoBarrier());
+    funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+    Store(VariableType::JS_ANY(), glue, func,
+          IntPtr(JSFunction::GetInlinedPropertyOffset(JSFunction::LENGTH_INLINE_PROPERTY_INDEX)), funcAccessor,
+          MemoryAttribute::NoBarrier());
+
+    SetCallableToBitfield(glue, hclass, true);
+    SetMethodToFunction(glue, func, method);
+    SetBitFieldToFunction(glue, func, Int32(0), MemoryAttribute::NoBarrier());
+    SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    SetBaselineJitCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    SetCodeEntryToFunctionFromMethod(glue, func, method);
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size)
 {
     auto env = GetEnvironment();
@@ -1171,6 +1219,58 @@ GateRef NewObjectStubBuilder::DefineMethod(GateRef glue, GateRef method, GateRef
     SetLexicalEnvToFunction(glue, func, lexEnv);
     SetModuleToFunction(glue, func, module);
     return func;
+}
+
+void NewObjectStubBuilder::NewJSFunctionForJit(GateRef glue, GateRef jsFunc, GateRef hclass, GateRef method,
+                                               GateRef length, GateRef lexEnv, Variable *result, Label *success,
+                                               Label *failed, GateRef slotId, FunctionKind targetKind)
+{
+    auto env = GetEnvironment();
+    Label hasException(env);
+    Label notException(env);
+    Label isSendableFunc(env);
+    Label isNotSendableFunc(env);
+    Label afterSendableFunc(env);
+    Label slotValueUpdate(env);
+    Label slotValueNotUndefined(env);
+    Label profileTypeInfoEnd(env);
+    SetGlue(glue);
+    result->WriteVariable(DefineFuncForJit(glue, method, hclass, targetKind));
+    BRANCH(HasPendingException(glue), &hasException, &notException);
+    Bind(&hasException);
+    {
+        Jump(failed);
+    }
+    Bind(&notException);
+    {
+        GateRef module = GetModuleFromFunction(glue, jsFunc);
+        SetLengthToFunction(glue, result->ReadVariable(), length);
+        SetLexicalEnvToFunction(glue, result->ReadVariable(), lexEnv);
+        SetModuleToFunction(glue, result->ReadVariable(), module);
+        SetHomeObjectToFunction(glue, result->ReadVariable(), GetHomeObjectFromFunction(glue, jsFunc));
+#if ECMASCRIPT_ENABLE_IC
+        GateRef profileTypeInfo = GetProfileTypeInfo(glue, jsFunc);
+        GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
+
+        BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetRawProfileTypeInfoToFunction(glue, result->ReadVariable(), newProfileTypeInfoCell);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        {
+            UpdateProfileTypeInfoCellType(glue, slotValue);
+            SetRawProfileTypeInfoToFunction(glue, result->ReadVariable(), slotValue);
+            TryToJitReuseCompiledFunc(glue, result->ReadVariable(), slotValue);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&profileTypeInfoEnd);
+#endif
+        Jump(success);
+    }
 }
 
 void NewObjectStubBuilder::SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId)

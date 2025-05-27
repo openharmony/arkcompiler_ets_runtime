@@ -641,6 +641,9 @@ private:
     V(GetBaselineBuiltinFp)                          \
     V(StringIteratorNext)                            \
     V(Definefunc)                                    \
+    V(DefineNormalFuncForJit)                        \
+    V(DefineArrowFuncForJit)                         \
+    V(DefineBaseConstructorForJit)                   \
     V(DefineField)                                   \
     V(CallArg0Stub)                                  \
     V(CallArg1Stub)                                  \

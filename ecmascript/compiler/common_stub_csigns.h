@@ -149,7 +149,10 @@ namespace panda::ecmascript::kungfu {
     V(FindEntryFromNameDictionary)    \
     V(ReverseBarrier)                 \
     V(GetValueWithBarrier)            \
-    V(ComputeStringHashcode)
+    V(ComputeStringHashcode)          \
+    V(DefineNormalFuncForJit)         \
+    V(DefineArrowFuncForJit)          \
+    V(DefineBaseConstructorForJit)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

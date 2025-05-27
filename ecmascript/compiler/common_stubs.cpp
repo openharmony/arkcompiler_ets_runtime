@@ -85,6 +85,36 @@ void DefinefuncStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+#define JIT_DEFINEFUNC_STUB_GENERATOR(Name, kind)                                                                      \
+    void Define##Name##ForJitStubBuilder::GenerateCircuit()                                                            \
+    {                                                                                                                  \
+        auto env = GetEnvironment();                                                                                   \
+        GateRef glue = PtrArgument(0);                                                                                 \
+        GateRef jsFunc = TaggedArgument(1);                                                                            \
+        GateRef hclass = TaggedArgument(2); /* 2: 3rd argument */                                                      \
+        GateRef method = TaggedArgument(3); /* 3: 4th argument */                                                      \
+        GateRef length = Int32Argument(4);  /* 4: 5th argument */                                                      \
+        GateRef lexEnv = TaggedArgument(5); /* 5: 6th argument */                                                      \
+        GateRef slotId = Int32Argument(6);  /* 6: 7th argument */                                                      \
+        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());                                                      \
+        Label exit(env);                                                                                               \
+        Label failed(env);                                                                                             \
+        NewObjectStubBuilder newBuilder(this);                                                                         \
+        newBuilder.NewJSFunctionForJit(glue, jsFunc, hclass, method, length, lexEnv, &result, &exit, &failed, slotId,  \
+                                       kind);                                                                          \
+        Bind(&failed);                                                                                                 \
+        {                                                                                                              \
+            result = Exception();                                                                                      \
+            Jump(&exit);                                                                                               \
+        }                                                                                                              \
+        Bind(&exit);                                                                                                   \
+        Return(*result);                                                                                               \
+    }
+
+JIT_DEFINEFUNC_STUB_GENERATOR(NormalFunc, FunctionKind::NORMAL_FUNCTION)
+JIT_DEFINEFUNC_STUB_GENERATOR(ArrowFunc, FunctionKind::ARROW_FUNCTION)
+JIT_DEFINEFUNC_STUB_GENERATOR(BaseConstructor, FunctionKind::BASE_CONSTRUCTOR)
+
 void CallArg0StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG0_IMM8);
