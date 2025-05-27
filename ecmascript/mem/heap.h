@@ -18,15 +18,16 @@
 
 #include "common_components/taskpool/task.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/linear_space.h"
+#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/shared_heap/shared_space.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
-#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 
 namespace panda::test {
