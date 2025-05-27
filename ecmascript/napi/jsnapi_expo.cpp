@@ -5719,10 +5719,10 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
 
 uintptr_t JSNApi::GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
 {
+    CROSS_THREAD_CHECK(vm);
     if (localAddress == 0) {
         return 0;
     }
-    CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
     return thread->NewXRefGlobalHandle(value);
@@ -5850,10 +5850,10 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 
 void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 {
+    CROSS_THREAD_CHECK(vm);
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
-    CROSS_THREAD_CHECK(vm);
     thread->DisposeXRefGlobalHandle(addr);
 }
 
@@ -6320,21 +6320,21 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-    Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
-    {
-        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-        ecmascript::ThreadManagedScope managedScope(thread);
-        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-        if (thread->HasPendingException()) {
-            thread->HandleUncaughtException();
-            return JSValueRef::Undefined(vm);
-        }
-        ecmascript::CString moduleName = moduleInfo.first.c_str();
-        ecmascript::CString abcPath = moduleInfo.second.c_str();
-        JSHandle<JSTaggedValue> moduleNamespace =
-            ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, file.c_str(), moduleName, abcPath);
-        return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+    if (thread->HasPendingException()) {
+        thread->HandleUncaughtException();
+        return JSValueRef::Undefined(vm);
     }
+    ecmascript::CString moduleName = moduleInfo.first.c_str();
+    ecmascript::CString abcPath = moduleInfo.second.c_str();
+    JSHandle<JSTaggedValue> moduleNamespace =
+        ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, file.c_str(), moduleName, abcPath);
+    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
 
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
