@@ -210,6 +210,9 @@ void EcmaVM::InitializePGOProfiler()
                   << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
+#ifdef USE_CMC_GC
+        ThreadNativeScope scope(thread_);
+#endif
         pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
     }
     pgo::PGOTrace::GetInstance()->SetEnable(options_.GetPGOTrace() || ohos::AotTools::GetPgoTraceEnable());
