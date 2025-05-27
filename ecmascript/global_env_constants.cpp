@@ -417,6 +417,8 @@ void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory
                 JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR));
     SetConstant(ConstantIndex::JS_API_BITVECTOR_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSAPIBitVectorIterator::SIZE, JSType::JS_API_BITVECTOR_ITERATOR));
+    SetConstant(ConstantIndex::XREF_OBJECT_HCLASS_INDEX,
+                factory->NewEcmaHClass(hClass, JSObject::SIZE, JSType::JS_XREF_OBJECT));
 }
 
 void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)

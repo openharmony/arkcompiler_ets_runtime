@@ -142,6 +142,8 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     vmOpt.SetFastAOTCompileMode(true);
     vmOpt.SetOptLevel(DEFAULT_OPT_LEVEL);
     cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
+    cOptions.isEnableOptTrackField_ = false;
+    cOptions.isEnableLoweringBuiltin_ = false;
 }
 
 bool AotCompilerPreprocessor::MethodHasTryCatch(const JSPandaFile *jsPandaFile,

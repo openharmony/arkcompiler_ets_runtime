@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "aot_args_handler.h"
 #include "ecmascript/compiler/aot_file/aot_version.h"
 
 namespace OHOS::ArkCompiler {
@@ -48,22 +49,13 @@ public:
 #endif
 
 protected:
-    int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
-                                 const std::string &keyName, int32_t &bundleID);
-    int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
-                                const std::string &keyName, std::string &bundleArg);
-    int32_t PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
-    void GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const;
     void DropCapabilities() const;
-    void GetAotArgsVector(std::vector<const char*> &argv) const;
     void ExecuteInChildProcess() const;
     int32_t PrintAOTCompilerResult(const int compilerStatus) const;
     void ExecuteInParentProcess(pid_t childPid, int32_t &ret);
-    void GetCodeSignArgs(std::string &appSignature, std::string &fileName) const;
     int32_t AOTLocalCodeSign(std::vector<int16_t> &sigData) const;
     int32_t RemoveAotFiles() const;
     void InitState(const pid_t childPid);
-    void AddExpandArgs(std::vector<std::string> &argVector);
     void ResetState();
     void PauseAotCompiler();
     void AllowAotCompiler();
@@ -77,15 +69,8 @@ protected:
     AotCompilerImpl& operator=(AotCompilerImpl&&) = delete;
 protected:
     std::atomic<bool> allowAotCompiler_ {true};
-    mutable std::mutex hapArgsMutex_;
     mutable std::mutex stateMutex_;
-    struct HapArgs {
-        std::vector<std::string> argVector;
-        std::string fileName;
-        std::string signature;
-        int32_t bundleUid {0};
-        int32_t bundleGid {0};
-    } hapArgs_;
+    std::unique_ptr<AOTArgsHandler> argsHandler_;
     struct AOTState {
         bool running {false};
         pid_t childPid {-1};

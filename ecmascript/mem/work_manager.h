@@ -41,6 +41,7 @@ enum ParallelGCTaskPhase {
     OLD_HANDLE_GLOBAL_POOL_TASK,
     COMPRESS_HANDLE_GLOBAL_POOL_TASK,
     CONCURRENT_HANDLE_GLOBAL_POOL_TASK,
+    UNIFIED_HANDLE_GLOBAL_POOL_TASK,
     UNDEFINED_TASK,
     TASK_LAST  // Count of different Task phase
 };
@@ -253,6 +254,8 @@ public:
     inline void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
     inline size_t Finish() override;
     inline void Finish(size_t &aliveSize, size_t &promotedSize);
+
+    inline void PushObjectToGlobal(TaggedObject *object);
 
     inline uint32_t GetTotalThreadNum()
     {

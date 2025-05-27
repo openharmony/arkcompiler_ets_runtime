@@ -389,6 +389,11 @@ private:
     NodeList<T> *freePrev_ {nullptr};
 };
 
+enum class NodeKind : uint8_t {
+    NORMAL_NODE,
+    UNIFIED_NODE,
+};
+
 template<typename T>
 class EcmaGlobalStorage {
 public:
@@ -398,77 +403,92 @@ public:
         : thread_(thread), allocator_(allocator)
     {
         topGlobalNodes_ = lastGlobalNodes_ = allocator_->New<NodeList<T>>();
+        topXRefGlobalNodes_ = lastXRefGlobalNodes_ = allocator_->New<NodeList<T>>();
         topWeakGlobalNodes_ = lastWeakGlobalNodes_ = allocator_->New<NodeList<WeakNode>>();
     }
 
     ~EcmaGlobalStorage()
     {
-        auto *weakNext = topWeakGlobalNodes_;
-        NodeList<WeakNode> *weakCurrent = nullptr;
-        while (weakNext != nullptr) {
-            weakCurrent = weakNext;
-            weakNext = weakCurrent->GetNext();
-            weakCurrent->IterateUsageGlobal([] (WeakNode *node) {
-                node->SetUsing(false);
-                node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                node->CallFreeGlobalCallback();
-                node->CallNativeFinalizeCallback();
-            });
-            allocator_->Delete(weakCurrent);
-        }
+        auto clearWeakNodeCallback = [] (WeakNode *node) {
+            node->SetUsing(false);
+            node->SetObject(JSTaggedValue::Undefined().GetRawData());
+            node->CallFreeGlobalCallback();
+            node->CallNativeFinalizeCallback();
+        };
+        auto clearNodeCallback = [] (T *node) {
+            node->SetUsing(false);
+            node->SetObject(JSTaggedValue::Undefined().GetRawData());
+        };
 
-        auto *next = topGlobalNodes_;
-        NodeList<T> *current = nullptr;
+        IterateNodeList<decltype(clearWeakNodeCallback), WeakNode>(clearWeakNodeCallback, topWeakGlobalNodes_);
+        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topXRefGlobalNodes_);
+        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topGlobalNodes_);
+    }
+
+    template<class Callback, class S>
+    inline void IterateNodeList(Callback callback, NodeList<S> *nodeList)
+    {
+        auto *next = nodeList;
+        NodeList<S> *current = nullptr;
         while (next != nullptr) {
             current = next;
             next = current->GetNext();
-            current->IterateUsageGlobal([] (T *node) {
-                node->SetUsing(false);
-                node->SetObject(JSTaggedValue::Undefined().GetRawData());
-            });
-            allocator_->Delete(current);
+            ASSERT(current != next);
+            current->IterateUsageGlobal(callback);
         }
     }
 
+    template<NodeKind nodeKind>
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
     {
-        return NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+        if constexpr(nodeKind == NodeKind::NORMAL_NODE) {
+            return NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+        } else if constexpr(nodeKind == NodeKind::UNIFIED_NODE) {
+            return NewGlobalHandleImplement(&lastXRefGlobalNodes_, &xRefFreeListNodes_, value);
+        }
     }
 
+    template<NodeKind nodeKind>
     inline void DisposeGlobalHandle(uintptr_t nodeAddr)
     {
         T *node = reinterpret_cast<T *>(nodeAddr);
         if (!node->IsUsing()) {
             return;
         }
-        if (node->IsWeak()) {
-            DisposeGlobalHandleInner(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
-                &lastWeakGlobalNodes_);
-        } else {
-            DisposeGlobalHandleInner(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
+        if constexpr(nodeKind == NodeKind::UNIFIED_NODE) {
+            DisposeGlobalHandleInner(node, &xRefFreeListNodes_, &topXRefGlobalNodes_,
+                &lastXRefGlobalNodes_);
+        } else if constexpr(nodeKind == NodeKind::NORMAL_NODE) {
+            if (node->IsWeak()) {
+                DisposeGlobalHandleInner(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
+                    &lastWeakGlobalNodes_);
+            } else {
+                DisposeGlobalHandleInner(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
+            }
         }
     }
 
-    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallBack = nullptr,
-                             WeakClearCallback nativeFinalizeCallBack = nullptr)
+    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallback = nullptr,
+                             WeakClearCallback nativeFinalizeCallback = nullptr)
     {
         auto value = reinterpret_cast<T *>(nodeAddr)->GetObject();
-        DisposeGlobalHandle(nodeAddr);
+        DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
         uintptr_t addr = NewGlobalHandleImplement(&lastWeakGlobalNodes_, &weakFreeListNodes_, value);
         WeakNode *node = reinterpret_cast<WeakNode *>(addr);
         node->SetReference(ref);
-        node->SetFreeGlobalCallback(freeGlobalCallBack);
-        node->SetNativeFinalizeCallback(nativeFinalizeCallBack);
+        node->SetFreeGlobalCallback(freeGlobalCallback);
+        node->SetNativeFinalizeCallback(nativeFinalizeCallback);
         return addr;
     }
 
     inline uintptr_t ClearWeak(uintptr_t nodeAddr)
     {
         auto value = reinterpret_cast<T *>(nodeAddr)->GetObject();
-        DisposeGlobalHandle(nodeAddr);
+        DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
         uintptr_t ret = NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
         return ret;
     }
+
     inline bool IsWeak(uintptr_t addr) const
     {
         T *node = reinterpret_cast<T *>(addr);
@@ -478,27 +498,27 @@ public:
     template<class Callback>
     void IterateUsageGlobal(Callback &&callback)
     {
-        NodeList<T> *next = topGlobalNodes_;
-        NodeList<T> *current = nullptr;
-        while (next != nullptr) {
-            current = next;
-            next = current->GetNext();
-            ASSERT(current != next);
-            current->IterateUsageGlobal(callback);
+        IterateNodeList<Callback, T>(callback, topGlobalNodes_);
+        if (nodeKind_ == NodeKind::UNIFIED_NODE) {
+            return;
         }
+        IterateNodeList<Callback, T>(callback, topXRefGlobalNodes_);
     }
 
     template<class Callback>
     void IterateWeakUsageGlobal(Callback callback)
     {
-        NodeList<WeakNode> *next = topWeakGlobalNodes_;
-        NodeList<WeakNode> *current = nullptr;
-        while (next != nullptr) {
-            current = next;
-            next = current->GetNext();
-            ASSERT(current != next);
-            current->IterateUsageGlobal(callback);
-        }
+        IterateNodeList<Callback, WeakNode>(callback, topWeakGlobalNodes_);
+    }
+
+    void SetNodeKind(NodeKind nodeKind)
+    {
+        nodeKind_ = nodeKind;
+    }
+
+    NodeKind GetNodeKind()
+    {
+        return nodeKind_;
     }
 
 private:
@@ -578,10 +598,15 @@ private:
     }
 
     [[maybe_unused]] JSThread *thread_ {nullptr};
+    NodeKind nodeKind_ {NodeKind::NORMAL_NODE};
     NativeAreaAllocator *allocator_ {nullptr};
     NodeList<T> *topGlobalNodes_ {nullptr};
     NodeList<T> *lastGlobalNodes_ {nullptr};
     NodeList<T> *freeListNodes_ {nullptr};
+
+    NodeList<T> *topXRefGlobalNodes_ {nullptr};
+    NodeList<T> *lastXRefGlobalNodes_ {nullptr};
+    NodeList<T> *xRefFreeListNodes_ {nullptr};
 
     NodeList<WeakNode> *topWeakGlobalNodes_ {nullptr};
     NodeList<WeakNode> *lastWeakGlobalNodes_ {nullptr};
