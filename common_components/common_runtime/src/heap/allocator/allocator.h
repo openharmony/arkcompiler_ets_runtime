@@ -16,7 +16,6 @@
 #define ARK_COMMON_ALLOCATOR_H
 
 #include "common_components/common_runtime/src/heap/allocator/alloc_buffer_manager.h"
-#include "common_components/common_runtime/src/heap/gc_thread_pool.h"
 #include "common_components/common_runtime/src/heap/heap.h"
 
 namespace panda {

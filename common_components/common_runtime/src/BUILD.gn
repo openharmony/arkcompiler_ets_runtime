@@ -29,7 +29,6 @@ source_Base = [
 source_Common = [ "common/run_type.cpp" ]
 
 source_Heap = [
-  "heap/gc_thread_pool.cpp",
   "heap/heap.cpp",
   "heap/allocator/allocator.cpp",
   "heap/allocator/treap.cpp",

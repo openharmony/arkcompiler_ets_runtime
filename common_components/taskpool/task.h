@@ -16,6 +16,9 @@
 #ifndef COMMON_COMPONENTS_TASKPOOL_TASK_H
 #define COMMON_COMPONENTS_TASKPOOL_TASK_H
 
+#include <condition_variable>
+#include <mutex>
+
 #include "libpandabase/macros.h"
 
 namespace panda {
@@ -62,6 +65,51 @@ public:
 private:
     int32_t id_ {0};
     volatile bool terminate_ {false};
+};
+
+class TaskPackMonitor {
+public:
+    explicit TaskPackMonitor(int running, int maxRunning) : running_(running), maxRunning_(maxRunning)
+    {
+        ASSERT(running_ >= 0);
+        ASSERT(running_ <= maxRunning_);
+    }
+    ~TaskPackMonitor() = default;
+
+    void WaitAllFinished()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while (running_ > 0) {
+            cv_.wait(lock);
+        }
+    }
+
+    bool TryAddNewOne()
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        ASSERT(running_ >= 0);
+        if (running_ < maxRunning_) {
+            ++running_;
+            return true;
+        }
+        return false;
+    }
+
+    void NotifyFinishOne()
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (--running_ == 0) {
+            cv_.notify_all();
+        }
+    }
+
+    NO_COPY_SEMANTIC(TaskPackMonitor);
+    NO_MOVE_SEMANTIC(TaskPackMonitor);
+private:
+    int running_ {0};
+    int maxRunning_ {0};
+    std::condition_variable cv_;
+    std::mutex mutex_;
 };
 }  // namespace panda
 #endif  // COMMON_COMPONENTS_TASKPOOL_TASK_H

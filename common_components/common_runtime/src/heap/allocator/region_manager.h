@@ -27,11 +27,12 @@
 #include "common_components/common_runtime/src/heap/allocator/free_region_manager.h"
 #include "common_components/common_runtime/src/heap/allocator/region_list.h"
 #include "common_components/common_runtime/src/heap/allocator/slot_list.h"
-#include "common_components/common_runtime/src/heap/gc_thread_pool.h"
 
 namespace panda {
 class TraceCollector;
 class CompactCollector;
+class RegionManager;
+class Taskpool;
 // RegionManager needs to know header size and alignment in order to iterate objects linearly
 // and thus its Alloc should be rewrite with AllocObj(objSize)
 class RegionManager {
@@ -87,7 +88,8 @@ public:
 
     RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false);
 
-    void CopyFromRegions(GCThreadPool* threadPool);
+    void ParallelCopyFromRegions(RegionDesc &startRegion, size_t regionCnt);
+    void CopyFromRegions(Taskpool *threadPool);
     void CopyFromRegions();
     void CopyRegion(RegionDesc* region);
     void FixAllRegionLists();

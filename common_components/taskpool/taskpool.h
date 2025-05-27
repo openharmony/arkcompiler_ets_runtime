@@ -46,6 +46,7 @@ public:
 
     void PostTask(std::unique_ptr<Task> task) const
     {
+        ASSERT(isInitialized_ > 0);
         if (isInitialized_ > 0) {
             runner_->PostTask(std::move(task));
         }
@@ -53,6 +54,7 @@ public:
 
     void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds) const
     {
+        ASSERT(isInitialized_ > 0);
         if (isInitialized_ > 0) {
             runner_->PostDelayedTask(std::move(task), delayMilliseconds);
         }
