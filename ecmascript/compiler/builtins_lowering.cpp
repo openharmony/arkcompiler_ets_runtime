@@ -252,9 +252,11 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 
 GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef constantFunction = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
+    GateRef globalEnvFunction =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), acc_.GetGlueFromArgList(), builder_.GetGlobalEnv(),
+                                   static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
-    return builder_.Equal(function, constantFunction);
+    return builder_.Equal(function, globalEnvFunction);
 }
 
 GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id)
@@ -532,7 +534,8 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
     Environment env(gate, circuit_, &builder_);
     size_t numIn = acc_.GetNumValueIn(gate);
     GateRef glue = acc_.GetGlueFromArgList();
-    GateRef function = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
+    GateRef function = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, builder_.GetGlobalEnv(),
+                                                  static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef nativeCode = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), function,
         builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));
     std::vector<GateRef> args(static_cast<size_t>(BuiltinsArgs::NUM_OF_INPUTS), builder_.Undefined());

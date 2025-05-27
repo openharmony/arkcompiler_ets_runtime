@@ -65,7 +65,8 @@ private:
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
                                            std::string_view name, int length) const;
-    void RegisterBuiltinToGlobal(kungfu::BuiltinsStubCSigns::ID builtinId, JSHandle<JSFunction> function) const;
+    void RegisterBuiltinToGlobalEnv(const JSHandle<GlobalEnv> &env, kungfu::BuiltinsStubCSigns::ID builtinId,
+                                    JSHandle<JSFunction> function) const;
 
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                      EcmaEntrypoint func, int length,

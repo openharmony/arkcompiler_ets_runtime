@@ -20,6 +20,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_env_fields.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -227,279 +228,10 @@ public:
         }
     }
 
-    static ConstantIndex GetConstantIndex(ID builtinId)
-    {
-#define ID_TO_IDX4(Method, Object, Unused, Index)                                            \
-        {BuiltinsStubCSigns::ID::Object##Method, ConstantIndex::Index##_INDEX},
-#define ID_TO_IDX6(Method, Object, Unused1, Unused2, Unused3, Index)                         \
-        {BuiltinsStubCSigns::ID::Object##Method, ConstantIndex::Index##_INDEX},
-        static std::unordered_map<BuiltinsStubCSigns::ID, ConstantIndex> callThisBuiltinsIds = {
-            BUILTINS_METHOD_STUB_LIST(ID_TO_IDX4, ID_TO_IDX4, ID_TO_IDX4, ID_TO_IDX6)
-        };
-#undef ID_TO_IDX4
-#undef ID_TO_IDX6
-        switch (builtinId) {
-            case BuiltinsStubCSigns::ID::NONE:
-                return ConstantIndex::INVALID;
-            case BuiltinsStubCSigns::ID::MathAcos:
-                return ConstantIndex::MATH_ACOS_INDEX;
-            case BuiltinsStubCSigns::ID::MathAcosh:
-                return ConstantIndex::MATH_ACOSH_INDEX;
-            case BuiltinsStubCSigns::ID::MathAsin:
-                return ConstantIndex::MATH_ASIN_INDEX;
-            case BuiltinsStubCSigns::ID::MathAsinh:
-                return ConstantIndex::MATH_ASINH_INDEX;
-            case BuiltinsStubCSigns::ID::MathAtan:
-                return ConstantIndex::MATH_ATAN_INDEX;
-            case BuiltinsStubCSigns::ID::MathAtan2:
-                return ConstantIndex::MATH_ATAN2_INDEX;
-            case BuiltinsStubCSigns::ID::MathAtanh:
-                return ConstantIndex::MATH_ATANH_INDEX;
-            case BuiltinsStubCSigns::ID::MathCos:
-                return ConstantIndex::MATH_COS_INDEX;
-            case BuiltinsStubCSigns::ID::MathCosh:
-                return ConstantIndex::MATH_COSH_INDEX;
-            case BuiltinsStubCSigns::ID::MathSign:
-                return ConstantIndex::MATH_SIGN_INDEX;
-            case BuiltinsStubCSigns::ID::MathSin:
-                return ConstantIndex::MATH_SIN_INDEX;
-            case BuiltinsStubCSigns::ID::MathSinh:
-                return ConstantIndex::MATH_SINH_INDEX;
-            case BuiltinsStubCSigns::ID::MathTan:
-                return ConstantIndex::MATH_TAN_INDEX;
-            case BuiltinsStubCSigns::ID::MathTanh:
-                return ConstantIndex::MATH_TANH_INDEX;
-            case BuiltinsStubCSigns::ID::MathAbs:
-                return ConstantIndex::MATH_ABS_INDEX;
-            case BuiltinsStubCSigns::ID::MathLog:
-                return ConstantIndex::MATH_LOG_INDEX;
-            case BuiltinsStubCSigns::ID::MathLog2:
-                return ConstantIndex::MATH_LOG2_INDEX;
-            case BuiltinsStubCSigns::ID::MathLog10:
-                return ConstantIndex::MATH_LOG10_INDEX;
-            case BuiltinsStubCSigns::ID::MathLog1p:
-                return ConstantIndex::MATH_LOG1P_INDEX;
-            case BuiltinsStubCSigns::ID::MathExp:
-                return ConstantIndex::MATH_EXP_INDEX;
-            case BuiltinsStubCSigns::ID::MathExpm1:
-                return ConstantIndex::MATH_EXPM1_INDEX;
-            case BuiltinsStubCSigns::ID::MathClz32:
-                return ConstantIndex::MATH_CLZ32_INDEX;
-            case BuiltinsStubCSigns::ID::MathPow:
-                return ConstantIndex::MATH_POW_INDEX;
-            case BuiltinsStubCSigns::ID::MathCbrt:
-                return ConstantIndex::MATH_CBRT_INDEX;
-            case BuiltinsStubCSigns::ID::MathTrunc:
-                return ConstantIndex::MATH_TRUNC_INDEX;
-            case BuiltinsStubCSigns::ID::MathCeil:
-                return ConstantIndex::MATH_CEIL_INDEX;
-            case BuiltinsStubCSigns::ID::MathFloor:
-                return ConstantIndex::MATH_FLOOR_INDEX;
-            case BuiltinsStubCSigns::ID::MathMin:
-                return ConstantIndex::MATH_MIN_INDEX;
-            case BuiltinsStubCSigns::ID::MathMax:
-                return ConstantIndex::MATH_MAX_INDEX;
-            case BuiltinsStubCSigns::ID::MathSqrt:
-                return ConstantIndex::MATH_SQRT_INDEX;
-            case BuiltinsStubCSigns::ID::MathRound:
-                return ConstantIndex::MATH_ROUND_INDEX;
-            case BuiltinsStubCSigns::ID::MathFRound:
-                return ConstantIndex::MATH_FROUND_INDEX;
-            case BuiltinsStubCSigns::ID::MathImul:
-                return ConstantIndex::MATH_IMUL_INDEX;
-            case BuiltinsStubCSigns::ID::MapGet:
-                return ConstantIndex::MAP_GET_INDEX;
-            case BuiltinsStubCSigns::ID::MapHas:
-                return ConstantIndex::MAP_HAS_INDEX;
-            case BuiltinsStubCSigns::ID::MapKeys:
-                return ConstantIndex::MAP_KEYS_INDEX;
-            case BuiltinsStubCSigns::ID::MapValues:
-                return ConstantIndex::MAP_VALUES_INDEX;
-            case BuiltinsStubCSigns::ID::MapEntries:
-                return ConstantIndex::MAP_ENTRIES_INDEX;
-            case BuiltinsStubCSigns::ID::SetHas:
-                return ConstantIndex::SET_HAS_INDEX;
-            case BuiltinsStubCSigns::ID::MapDelete:
-                return ConstantIndex::MAP_DELETE_INDEX;
-            case BuiltinsStubCSigns::ID::SetDelete:
-                return ConstantIndex::SET_DELETE_INDEX;
-            case BuiltinsStubCSigns::ID::SetValues:
-                return ConstantIndex::SET_VALUES_INDEX;
-            case BuiltinsStubCSigns::ID::SetEntries:
-                return ConstantIndex::SET_ENTRIES_INDEX;
-            case BuiltinsStubCSigns::ID::MapClear:
-                return ConstantIndex::MAP_CLEAR_INDEX;
-            case BuiltinsStubCSigns::ID::SetClear:
-                return ConstantIndex::SET_CLEAR_INDEX;
-            case BuiltinsStubCSigns::ID::SetAdd:
-                return ConstantIndex::SET_ADD_INDEX;
-            case BuiltinsStubCSigns::ID::StringLocaleCompare:
-                return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::StringCharCodeAt:
-                return ConstantIndex::STRING_CHAR_CODE_AT_INDEX;
-            case BuiltinsStubCSigns::ID::StringSubstring:
-                return ConstantIndex::STRING_SUB_STRING_INDEX;
-            case BuiltinsStubCSigns::ID::StringSubStr:
-                return ConstantIndex::STRING_SUB_STR_INDEX;
-            case BuiltinsStubCSigns::ID::StringSlice:
-                return ConstantIndex::STRING_SLICE_INDEX;
-            case BuiltinsStubCSigns::ID::ArraySort:
-                return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::JsonStringify:
-                return ConstantIndex::JSON_STRINGIFY_FUNCTION_INDEX;
-            case BuiltinsStubCSigns::ID::MapIteratorProtoNext:
-                return ConstantIndex::MAP_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::SetIteratorProtoNext:
-                return ConstantIndex::SET_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
-                return ConstantIndex::STRING_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
-                return ConstantIndex::ARRAY_ITERATOR_PROTO_NEXT_INDEX;
-            case BuiltinsStubCSigns::ID::IteratorProtoReturn:
-                return ConstantIndex::ITERATOR_PROTO_RETURN_INDEX;
-            case BuiltinsStubCSigns::ID::StringFromCharCode:
-                return ConstantIndex::STRING_FROM_CHAR_CODE_INDEX;
-            case BuiltinsStubCSigns::ID::DateGetTime:
-                return ConstantIndex::DATE_GET_TIME_INDEX;
-            case BuiltinsStubCSigns::ID::DateNow:
-                return ConstantIndex::DATE_NOW_INDEX;
-            case BuiltinsStubCSigns::ID::TypedArrayEntries:
-                return ConstantIndex::TYPED_ARRAY_ENTRIES_INDEX;
-            case BuiltinsStubCSigns::ID::TypedArrayKeys:
-                return ConstantIndex::TYPED_ARRAY_KEYS_INDEX;
-            case BuiltinsStubCSigns::ID::TypedArrayValues:
-                return ConstantIndex::TYPED_ARRAY_VALUES_INDEX;
-            case BuiltinsStubCSigns::ID::GlobalIsFinite:
-                return ConstantIndex::GLOBAL_IS_FINITE_INDEX;
-            case BuiltinsStubCSigns::ID::GlobalIsNan:
-                return ConstantIndex::GLOBAL_IS_NAN_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayBufferIsView:
-                return ConstantIndex::ARRAY_BUFFER_IS_VIEW_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetFloat32:
-                return ConstantIndex::DATA_VIEW_GET_FLOAT32_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetFloat64:
-                return ConstantIndex::DATA_VIEW_GET_FLOAT64_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetInt8:
-                return ConstantIndex::DATA_VIEW_GET_INT8_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetInt16:
-                return ConstantIndex::DATA_VIEW_GET_INT16_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetInt32:
-                return ConstantIndex::DATA_VIEW_GET_INT32_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetUint16:
-                return ConstantIndex::DATA_VIEW_GET_UINT16_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetUint32:
-                return ConstantIndex::DATA_VIEW_GET_UINT32_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewGetUint8:
-                return ConstantIndex::DATA_VIEW_GET_UINT8_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetFloat32:
-                return ConstantIndex::DATA_VIEW_SET_FLOAT32_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetFloat64:
-                return ConstantIndex::DATA_VIEW_SET_FLOAT64_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetInt8:
-                return ConstantIndex::DATA_VIEW_SET_INT8_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetInt16:
-                return ConstantIndex::DATA_VIEW_SET_INT16_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetInt32:
-                return ConstantIndex::DATA_VIEW_SET_INT32_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetUint8:
-                return ConstantIndex::DATA_VIEW_SET_UINT8_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetUint16:
-                return ConstantIndex::DATA_VIEW_SET_UINT16_INDEX;
-            case BuiltinsStubCSigns::ID::DataViewSetUint32:
-                return ConstantIndex::DATA_VIEW_SET_UINT32_INDEX;
-            case BuiltinsStubCSigns::ID::BigIntAsIntN:
-                return ConstantIndex::BIGINT_AS_INTN_INDEX;
-            case BuiltinsStubCSigns::ID::BigIntAsUintN:
-                return ConstantIndex::BIGINT_AS_UINTN_INDEX;
-            case BuiltinsStubCSigns::ID::NumberIsFinite:
-                return ConstantIndex::NUMBER_IS_FINITE_INDEX;
-            case BuiltinsStubCSigns::ID::NumberIsInteger:
-                return ConstantIndex::NUMBER_IS_INTEGER_INDEX;
-            case BuiltinsStubCSigns::ID::NumberIsNaN:
-                return ConstantIndex::NUMBER_IS_NAN_INDEX;
-            case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
-                return ConstantIndex::NUMBER_IS_SAFEINTEGER_INDEX;
-            case BuiltinsStubCSigns::ID::NumberParseFloat:
-                return ConstantIndex::NUMBER_PARSE_FLOAT_INDEX;
-            case BuiltinsStubCSigns::ID::NumberParseInt:
-                return ConstantIndex::NUMBER_PARSE_INT_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectIs:
-                return ConstantIndex::OBJECT_IS_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
-                return ConstantIndex::OBJECT_GET_PROTOTYPE_OF_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectGetProto:
-                return ConstantIndex::OBJECT_GET_PROTO_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectCreate:
-                return ConstantIndex::OBJECT_CREATE_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectIsPrototypeOf:
-                return ConstantIndex::OBJECT_IS_PROTOTYPE_OF_INDEX;
-            case BuiltinsStubCSigns::ID::ObjectHasOwnProperty:
-                return ConstantIndex::OBJECT_HAS_OWN_PROPERTY_INDEX;
-            case BuiltinsStubCSigns::ID::ReflectGetPrototypeOf:
-                return ConstantIndex::REFLECT_GET_PROTOTYPE_OF_INDEX;
-            case BuiltinsStubCSigns::ID::ReflectGet:
-                return ConstantIndex::REFLECT_GET_INDEX;
-            case BuiltinsStubCSigns::ID::ReflectHas:
-                return ConstantIndex::REFLECT_HAS_INDEX;
-            case BuiltinsStubCSigns::ID::ReflectConstruct:
-                return ConstantIndex::REFLECT_CONSTRUCT_INDEX;
-            case BuiltinsStubCSigns::ID::ReflectApply:
-                return ConstantIndex::REFLECT_APPLY_INDEX;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeApply:
-                return ConstantIndex::FUNCTION_PROTOTYPE_APPLY_INDEX;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeBind:
-                return ConstantIndex::FUNCTION_PROTOTYPE_BIND_INDEX;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeCall:
-                return ConstantIndex::FUNCTION_PROTOTYPE_CALL_INDEX;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
-                return ConstantIndex::FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayIndexOf:
-                return ConstantIndex::ARRAY_INDEXOF_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayIncludes:
-                return ConstantIndex::ARRAY_INCLUDES_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayValues:
-                return ConstantIndex::ARRAY_VALUES_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayEntries:
-                return ConstantIndex::ARRAY_ENTRIES_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayKeys:
-                return ConstantIndex::ARRAY_KEYS_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayForEach:
-                return ConstantIndex::ARRAY_FOREACH_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayFind:
-                return ConstantIndex::ARRAY_FIND_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayFindIndex:
-                return ConstantIndex::ARRAY_FINDINDEX_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayFilter:
-                return ConstantIndex::ARRAY_FILTER_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayMap:
-                return ConstantIndex::ARRAY_MAP_INDEX;
-            case BuiltinsStubCSigns::ID::ArraySome:
-                return ConstantIndex::ARRAY_SOME_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayEvery:
-                return ConstantIndex::ARRAY_EVERY_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayPop:
-                return ConstantIndex::ARRAY_POP_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayPush:
-                return ConstantIndex::ARRAY_PUSH_INDEX;
-            case BuiltinsStubCSigns::ID::ArraySlice:
-                return ConstantIndex::ARRAY_SLICE_INDEX;
-            case BuiltinsStubCSigns::ID::ArrayConcat:
-                return ConstantIndex::ARRAY_CONCAT_INDEX;
-            case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
-                return ConstantIndex::GLOBAL_DECODE_URI_COMPONENT;
-            default:
-                if (callThisBuiltinsIds.count(builtinId)) {
-                    return callThisBuiltinsIds.at(builtinId);
-                }
-                LOG_COMPILER(DEBUG) << "GetConstantIndex Invalid Id:" << builtinId;
-                return ConstantIndex::INVALID;
-        }
-    }
-
     static bool CheckBuiltinsIdInvalid(ID builtinId)
     {
-        auto result = kungfu::BuiltinsStubCSigns::GetConstantIndex(builtinId);
-        return result == ConstantIndex::INVALID;
+        auto result = kungfu::BuiltinsStubCSigns::GetGlobalEnvFieldIndex(builtinId);
+        return result == GlobalEnvField::INVALID;
     }
 
     static size_t GetGlobalEnvIndex(ID builtinId);
@@ -639,6 +371,29 @@ public:
         return "unnamed-builtin-"+std::to_string(id);
     }
 
+    static GlobalEnvField GetGlobalEnvFieldIndex(ID builtinId)
+    {
+        ASSERT(builtinId != kungfu::BuiltinsStubCSigns::ID::INVALID);
+#define GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX(type, name, index) \
+    case kungfu::BuiltinsStubCSigns::ID::name:                \
+        return GlobalEnvField::index;
+#define GET_BUILTIN_METHOD_STUB_INDEX_IMPL4(name, builtin, unused, index) \
+    GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX(unused, builtin##name, index##_INDEX)
+#define GET_BUILTIN_METHOD_STUB_INDEX_IMPL6(name, builtin, unused0, unused1, unused2, index) \
+    GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX(unused0, builtin##name, index##_INDEX)
+        switch (builtinId) {
+            GLOBAL_ENV_INLINED_BUILTINS(GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX)
+            BUILTINS_METHOD_STUB_LIST(GET_BUILTIN_METHOD_STUB_INDEX_IMPL4, GET_BUILTIN_METHOD_STUB_INDEX_IMPL4,
+                                      GET_BUILTIN_METHOD_STUB_INDEX_IMPL4, GET_BUILTIN_METHOD_STUB_INDEX_IMPL6)
+            default:
+                LOG_ECMA(DEBUG) << "GetGlobalEnvFieldIndex Invalid Id:" << builtinId;
+                return GlobalEnvField::INVALID;
+        }
+#undef SET_BUILTIN_METHOD_STUB_IMPL6
+#undef SET_BUILTIN_METHOD_STUB_IMPL4
+#undef SET_BUILTIN_FUNCTION_CASE
+    }
+
 private:
     static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];
     static CallSignature builtinsCSign_;
@@ -669,7 +424,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS2(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis2(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
-#define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
+#define GET_TYPED_ENV_FIELD_INEDX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvFieldIndex(id)
 #define IS_INVALID_ID(id) kungfu::BuiltinsStubCSigns::CheckBuiltinsIdInvalid(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
 #define IS_SIDE_EFFECT_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsSideEffectBuiltin(id)

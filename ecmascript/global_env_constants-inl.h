@@ -70,10 +70,6 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
             * static_cast<int>(ConstantIndex::Index);                        \
     }
 
-#define DECL_GET_IMPL_BUILTIN4(Method, Object, Unused, Index)                                 \
-    DECL_GET_IMPL_COMMON(JSTaggedValue, Object##Method, Index##_INDEX)
-#define DECL_GET_IMPL_BUILTIN6(Method, Object, Unused0, Unused1, Unused2, Index)              \
-    DECL_GET_IMPL_COMMON(JSTaggedValue, Object##Method, Index##_INDEX)
 #define DECL_GET_IMPL_STRING(Name, Index, Token) DECL_GET_IMPL_COMMON(JSTaggedValue, Name, Index)
 #define DECL_GET_IMPL_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_IMPL_COMMON(Type, Name, Index)
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
@@ -85,15 +81,10 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE);  // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)            // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)          // NOLINT(readability-const-return-type)
-    BUILTINS_METHOD_STUB_LIST(DECL_GET_IMPL_BUILTIN4, DECL_GET_IMPL_BUILTIN4,                 \
-                              DECL_GET_IMPL_BUILTIN4, DECL_GET_IMPL_BUILTIN6)
-    GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_IMPL_WITH_TYPE)          // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)                    // NOLINT(readability-const-return-type)
 #undef DECL_GET_IMPL_WITH_TYPE
 #undef DECL_GET_IMPL_STRING
 #undef DECL_GET_IMPL_COMMON
-#undef DECL_GET_IMPL_BUILTIN4
-#undef DECL_GET_IMPL_BUILTIN6
 // clang-format on
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H

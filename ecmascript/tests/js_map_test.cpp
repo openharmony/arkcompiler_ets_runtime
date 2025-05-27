@@ -109,8 +109,8 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     JSHandle<JSTaggedValue> setfunc =
         JSObject::GetProperty(thread, mapvalue, thread->GlobalConstants()->GetHandledSetString()).GetValue();
-    JSHandle<JSTaggedValue> getfunc = thread->GlobalConstants()->GetHandledMapGet();
-    JSHandle<JSTaggedValue> deletefunc = thread->GlobalConstants()->GetHandledMapDelete();
+    JSHandle<JSTaggedValue> getfunc = thread->GetGlobalEnv()->GetMapGet();
+    JSHandle<JSTaggedValue> deletefunc = thread->GetGlobalEnv()->GetMapDelete();
 
     for (int i = 0; i < 10; i++) {
         JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
