@@ -60,7 +60,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
         return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
     }
     CString abcModuleName = ModulePathHelper::GetModuleNameWithBaseFile(abcFilePath);
-    CString srcPrefix = base::ConcatToCString(abcModuleName, ModulePathHelper::PHYCICAL_FILE_PATH);
+    CString srcPrefix = base::ConcatToCString(abcModuleName, ModulePathHelper::PHYCICAL_FILE_PATH.data());
     path += abcModuleName;
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
@@ -74,7 +74,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
     JSThread *thread = vm->GetJSThread();
     CString moduleName = ModulePathHelper::GetModuleNameWithPath(modulePath);
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
-    CString srcPrefix = base::ConcatToCString(moduleName, ModulePathHelper::PHYCICAL_FILE_PATH);
+    CString srcPrefix = base::ConcatToCString(moduleName, ModulePathHelper::PHYCICAL_FILE_PATH.data());
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
         return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath, isHybrid);

@@ -199,7 +199,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
             } else {
                 // inputFileName: xxx/xxx.abc
                 outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                                MODULE_DEFAULE_ETS + inputFileName;
+                                MODULE_DEFAULE_ETS.data() + inputFileName;
             }
 #endif
         }
@@ -221,7 +221,7 @@ CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const C
         return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PathHelper::SLASH_TAG,
                                      entryPath, path, PathHelper::NORMALIZED_OHMURL_TAG, version);
     }
-    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH, path,
+    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH.data(), path,
         PathHelper::NORMALIZED_OHMURL_TAG, version);
 }
 
@@ -804,7 +804,7 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
         // get rid of Index, get pure perfix(@bundle.bundleName/moduleName).
         size_t index = outEntryPoint.rfind(PathHelper::SLASH_TAG);
         // get rid of src/main. Concat perfix and input relative path.
-        if (relativePath.find(PHYCICAL_FILE_PATH, 0) == 0) {
+        if (relativePath.find(PHYCICAL_FILE_PATH.data(), 0) == 0) {
             requestPath = base::ConcatToCString(outEntryPoint.substr(0, index), PathHelper::SLASH_TAG,
                 requestPath.substr(pos + PHYCICAL_FILE_PATH_LEN));
             return;
@@ -1024,7 +1024,7 @@ CString ModulePathHelper::TranslateNapiFileRequestPath(JSThread *thread, const C
     if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack()) {
         CString moduleName = GetModuleNameWithPath(modulePath);
         CString res(1, PathHelper::NORMALIZED_OHMURL_TAG);
-        base::AppendToBaseString(res, moduleName, PHYCICAL_FILE_PATH,
+        base::AppendToBaseString(res, moduleName, PHYCICAL_FILE_PATH.data(),
             PathHelper::SLASH_TAG, requestName, PathHelper::NORMALIZED_OHMURL_TAG);
         return res;
     } else {

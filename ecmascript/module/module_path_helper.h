@@ -88,12 +88,12 @@ public:
     static constexpr std::string_view PACKAGE_ENTRY_FILE = "/index";
     static constexpr std::string_view BUNDLE_INSTALL_PATH = "/data/storage/el1/bundle/";
     static constexpr std::string_view MERGE_ABC_ETS_MODULES = "/ets/modules.abc";
-    static constexpr char ABC[] = ".abc";
-    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
+    static constexpr std::string_view ABC = ".abc";
+    static constexpr std::string_view MODULE_DEFAULE_ETS = "/ets/";
     static constexpr std::string_view BUNDLE_SUB_INSTALL_PATH = "/data/storage/el1/";
     static constexpr std::string_view PREVIEW_OF_ACROSS_HAP_FLAG = "[preview]";
     static constexpr std::string_view PREVIER_TEST_DIR = ".test";
-    static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
+    static constexpr std::string_view PHYCICAL_FILE_PATH = "/src/main";
     static constexpr std::string_view VMA_NAME_ARKTS_CODE = "ArkTS Code";
     static constexpr std::string_view ENTRY_MAIN_FUNCTION = "_GLOBAL::func_main_0";
     static constexpr std::string_view ENTRY_FUNCTION_NAME = "func_main_0";
@@ -225,7 +225,7 @@ public:
             LOG_FULL(FATAL) << "The OhmUrl is invalid";
         }
         CString entry = filePath.substr(index + 1);
-        return {filePath + ABC, entry};
+        return {filePath + ABC.data(), entry};
     }
 
     /*
