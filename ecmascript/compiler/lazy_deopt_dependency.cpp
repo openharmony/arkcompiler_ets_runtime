@@ -30,6 +30,11 @@ void CombinedDependencies::Register(JSHClass *hclass, DependentGroup group)
     deps_[hclass] |= static_cast<uint32_t>(group);
 }
 
+void CombinedDependencies::Register(uint32_t detectorID, DependentGroup group)
+{
+    detectorDeps_[detectorID] |= static_cast<uint32_t>(group);
+}
+
 void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc)
 {
     JSMutableHandle<JSHClass> hclass(thread, JSTaggedValue::Undefined());
@@ -42,13 +47,50 @@ void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> 
             jsFunc, groups, dependentInfos);
         hclass->SetDependentInfos(thread, infos.GetTaggedValue());
     }
+    for (auto iter : detectorDeps_) {
+        uint32_t detectorID = iter.first;
+        uint32_t groups = iter.second;
+        JSHandle<DependentInfos> dependentInfos = JSHandle<DependentInfos>::Cast(
+            JSObject::GetOrCreateDetectorDependentInfos(thread, detectorID, globalEnv_));
+        JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
+            jsFunc, groups, dependentInfos);
+        globalEnv_->SetDependentInfos(detectorID, JSHandle<JSTaggedValue>::Cast(infos));
+    }
 }
+
+// ---------------------------- LazyDeoptAllDependencies ----------------------------
 
 void LazyDeoptAllDependencies::RegisterDependency(const LazyDeoptDependency *dependency)
 {
     if (dependency != nullptr) {
         dependencies_.push_back(dependency);
     }
+}
+
+bool LazyDeoptAllDependencies::DependOnArrayDetector(GlobalEnv *globalEnv)
+{
+    return DependOnDetector(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT, globalEnv);
+}
+
+bool LazyDeoptAllDependencies::DependOnDetector(uint32_t detectorID, GlobalEnv *globalEnv)
+{
+    SetGlobalEnv(globalEnv);
+    LazyDeoptDependency *dependency = new DetectorDependency(detectorID, globalEnv);
+    if (dependency->IsValid()) {
+        RegisterDependency(dependency);
+        return true;
+    }
+    return false;
+}
+
+bool LazyDeoptAllDependencies::DependOnNotPrototype(JSHClass *hclass)
+{
+    LazyDeoptDependency *dependency = new NotPrototypeDependency(hclass);
+    if (dependency->IsValid()) {
+        RegisterDependency(dependency);
+        return true;
+    }
+    return false;
 }
 
 bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
@@ -62,7 +104,8 @@ bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
 }
 
 bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass,
-                                                        JSHClass *holderHClass)
+                                                        JSHClass *holderHClass,
+                                                        GlobalEnv *globalEnv)
 {
     // For "stobjbyname", the holder may not the actual holder.
     // So when receiverHClass == holderHClass,
@@ -70,7 +113,18 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
     if (receiverHClass == holderHClass) {
         holderHClass = nullptr;
     }
-    JSTaggedValue current = receiverHClass->GetPrototype();
+    JSTaggedValue current;
+    if (!receiverHClass->IsCompositeHClass()) {
+        if (receiverHClass->IsString()) {
+            ASSERT(globalEnv != nullptr);
+            current = globalEnv->GetStringPrototype().GetTaggedValue();
+            holderHClass = nullptr;
+        } else {
+            return false;
+        }
+    } else {
+        current = receiverHClass->GetPrototype();
+    }
     bool success = true;
     while (current.IsHeapObject()) {
         auto currentHC = current.GetTaggedObject()->GetClass();
@@ -109,7 +163,7 @@ bool LazyDeoptAllDependencies::Commit(LazyDeoptAllDependencies *dependencies,
         return false;
     }
     JSHandle<JSTaggedValue> jsFuncHandle(thread, jsFunc);
-    CombinedDependencies cbDependencies;
+    CombinedDependencies cbDependencies(dependencies->globalEnv_);
     for (auto dep : dependencies->dependencies_) {
         dep->Install(&cbDependencies);
     }

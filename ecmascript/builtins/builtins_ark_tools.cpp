@@ -299,9 +299,10 @@ JSTaggedValue BuiltinsArkTools::ForceLazyDeopt(EcmaRuntimeCallInfo *info)
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    ASSERT(info->GetArgsNumber() == 2);  // 2 : object and exception-flag
+    ASSERT(info->GetArgsNumber() == 3);  // 3 : object, lazy-deopt-type, exception-flag
 
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    int type = GetCallArg(info, 1)->GetInt();
     if (!object->IsHeapObject()) {
         return JSTaggedValue::Undefined();
     }
@@ -312,8 +313,8 @@ JSTaggedValue BuiltinsArkTools::ForceLazyDeopt(EcmaRuntimeCallInfo *info)
     }
     JSHandle<DependentInfos> infosHandle(thread, infos);
     DependentInfos::DeoptimizeGroups(
-        infosHandle, thread, DependentInfos::DependentGroup::PROTOTYPE_CHECK);
-    if (GetCallArg(info, 1)->IsTrue()) {
+        infosHandle, thread, static_cast<DependentInfos::DependentGroup>(type));
+    if (GetCallArg(info, 2)->IsTrue()) {    // 2 : Has exception
         THROW_TYPE_ERROR_AND_RETURN(thread, "user-defined exception", JSTaggedValue::Exception());
     }
     return JSTaggedValue::True();

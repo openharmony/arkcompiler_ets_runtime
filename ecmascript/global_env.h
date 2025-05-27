@@ -180,7 +180,7 @@ public:
         return !GetArrayPrototypeChangedGuardians();
     }
 
-    void ResetGuardians()
+    void InitializeGuardians()
     {
         SetArrayPrototypeChangedGuardians(true);
     }
@@ -304,6 +304,37 @@ public:
     NEXT_BIT_FIELD(BitField, NumberStringNotRegexpLikeDetector, bool, DETECTOR_BITS, TypedArraySpeciesProtectDetector)
     NEXT_BIT_FIELD(BitField, RegExpFlagsDetector, bool, DETECTOR_BITS, NumberStringNotRegexpLikeDetector)
     NEXT_BIT_FIELD(BitField, RegExpSpeciesDetector, bool, DETECTOR_BITS, RegExpFlagsDetector)
+    NEXT_BIT_FIELD(BitField, LastBitField, bool, DETECTOR_BITS, RegExpSpeciesDetector)
+
+    bool GetDetectorValue(uint32_t detectorID)
+    {
+        ASSERT(detectorID < LastBitFieldBits::START_BIT);
+        uint32_t bitField = GetBitField();
+        return (bitField >> detectorID) & 1;
+    }
+    
+    bool HasDependentInfos(uint32_t detectorID)
+    {
+        auto array = JSHandle<TaggedArray>::Cast(GetDetectorDependentInfos());
+        ASSERT(detectorID < array->GetLength());
+        return array->Get(detectorID) != JSTaggedValue::Undefined();
+    }
+
+    JSHandle<JSTaggedValue> GetDependentInfos(uint32_t detectorID)
+    {
+        auto array = JSHandle<TaggedArray>::Cast(GetDetectorDependentInfos());
+        ASSERT(detectorID < array->GetLength());
+        return JSHandle<JSTaggedValue>(GetJSThread(), array->Get(detectorID));
+    }
+
+    void SetDependentInfos(uint32_t detectorID, JSHandle<JSTaggedValue> dependentInfos)
+    {
+        auto array = JSHandle<TaggedArray>::Cast(GetDetectorDependentInfos());
+        ASSERT(detectorID < array->GetLength());
+        array->Set(GetJSThread(), detectorID, dependentInfos);
+    }
+
+    void NotifyDetectorDeoptimize(uint32_t detectorID);
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

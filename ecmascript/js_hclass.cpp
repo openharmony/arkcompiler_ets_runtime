@@ -612,14 +612,14 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<Glo
             NotifyHclassChanged(thread, hclass, newProtoClass);
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedTransitionClass(thread, *newProtoClass);
-            newProtoClass->SetIsPrototype(true);
+            NotifyHClassNotPrototypeChanged(const_cast<JSThread *>(thread), newProtoClass);
             // still dump for class in this path now
             if (!isChangeProto) {
                 thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
             }
         } else {
             // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
-            hclass->SetIsPrototype(true);
+            NotifyHClassNotPrototypeChanged(const_cast<JSThread *>(thread), hclass);
         }
     }
 }
@@ -974,6 +974,21 @@ void JSHClass::MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass
     }
 }
 
+void JSHClass::NotifyHClassNotPrototypeChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass)
+{
+    if (jsHClass->IsPrototype()) {
+        return;
+    }
+    jsHClass->SetIsPrototype(true);
+    JSTaggedValue infos = jsHClass->GetDependentInfos();
+    if (!infos.IsHeapObject()) {
+        return;
+    }
+    JSHandle<DependentInfos> infosHandle(thread, infos);
+    DependentInfos::DeoptimizeGroups(
+        infosHandle, thread, DependentInfos::DependentGroup::IS_PROTOTYPE_CHECK);
+}
+
 void JSHClass::NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass)
 {
     if (!jsHClass->IsStable()) {
@@ -1089,7 +1104,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     //
     // Good neww is our AOT hclass can not be shared, hence we can set newHclass IsPrototype as true at here.
     if (newHclass->IsAOT() && !newHclass->IsPrototype()) {
-        newHclass->SetIsPrototype(true);
+        NotifyHClassNotPrototypeChanged(const_cast<JSThread *>(thread), newHclass);
     }
     NotifyLeafHClassChanged(const_cast<JSThread *>(thread), oldHclass);
     JSHClass::NoticeThroughChain<false>(thread, oldHclass, addedKey);

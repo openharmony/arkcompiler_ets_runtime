@@ -592,11 +592,22 @@ JSHandle<JSTaggedValue> JSObject::GetOrCreateDependentInfos(JSThread *thread, JS
 {
     if (!jsHClass->HasDependentInfos()) {
         JSHandle<DependentInfos> dependentInfos = thread->GetEcmaVM()->GetFactory()->NewDependentInfos(0);
-        jsHClass->SetDependentInfos(thread, dependentInfos.GetTaggedValue());
         return JSHandle<JSTaggedValue>::Cast(dependentInfos);
     }
     JSHandle<DependentInfos> dependentInfos(thread, jsHClass->GetDependentInfos());
     return JSHandle<JSTaggedValue>::Cast(dependentInfos);
+}
+
+// static
+JSHandle<JSTaggedValue> JSObject::GetOrCreateDetectorDependentInfos(JSThread *thread,
+                                                                    uint32_t detectorID,
+                                                                    GlobalEnv *globalEnv)
+{
+    if (!globalEnv->HasDependentInfos(detectorID)) {
+        JSHandle<DependentInfos> dependentInfos = thread->GetEcmaVM()->GetFactory()->NewDependentInfos(0);
+        return JSHandle<JSTaggedValue>::Cast(dependentInfos);
+    }
+    return globalEnv->GetDependentInfos(detectorID);
 }
 
 JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,

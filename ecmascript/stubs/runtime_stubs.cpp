@@ -837,6 +837,7 @@ DEF_RUNTIME_STUBS(NoticeThroughChainAndRefreshUser)
     JSHandle<JSHClass> oldHClassHandle = GetHArg<JSHClass>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSHClass> newHClassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
 
+    JSHClass::NotifyHClassNotPrototypeChanged(thread, newHClassHandle);
     JSHClass::NoticeThroughChain(thread, oldHClassHandle);
     JSHClass::RefreshUsers(thread, oldHClassHandle, newHClassHandle);
     return JSTaggedValue::Hole().GetRawData();
@@ -3154,6 +3155,14 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
     JSTaggedValue result = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue hint = GetArg(argv, argc, 1);  // 1: means the first parameter
     return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NotifyArrayPrototypeChanged)
+{
+    RUNTIME_STUBS_HEADER(NotifyArrayPrototypeChanged);
+    thread->GetEcmaVM()->GetGlobalEnv()->
+        NotifyDetectorDeoptimize(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT);
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(UpdateAOTHClass)

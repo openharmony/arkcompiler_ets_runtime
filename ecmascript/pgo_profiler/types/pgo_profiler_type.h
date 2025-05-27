@@ -569,7 +569,9 @@ template <typename PGOProfileType, typename PGOSampleType>
 class PGOObjectTemplate {
 public:
     PGOObjectTemplate() = default;
-    PGOObjectTemplate(PGOProfileType type) : receiverType_(type) {}
+    PGOObjectTemplate(PGOProfileType receiverType) : receiverType_(receiverType) {}
+    PGOObjectTemplate(PGOProfileType receiverType, JSHClass *receiver)
+        : receiverType_(receiverType), receiver_(receiver) {}
     PGOObjectTemplate(PGOProfileType receiverType, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra,
                       PGOSampleType accessorMethod, PrimitiveType primitiveType)
         : receiverType_(receiverType), receiver_(receiver), holder_(hold), holdTra_(holdTra),
@@ -752,7 +754,7 @@ public:
     // Only Use For JIT
     JSHClass* GetReceiverHclass() const
     {
-        ASSERT(receiverType_.IsJITClassType());
+        ASSERT(receiverType_.IsJITClassType() || receiverType_.IsBuiltinsType());
         return receiver_;
     }
     JSHClass* GetHolderHclass() const

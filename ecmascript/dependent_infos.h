@@ -20,7 +20,9 @@
 
 namespace panda::ecmascript {
 #define LAZY_DEOPT_TYPE_LIST(V)          \
-    V(PROTOTYPE_CHECK, 1ULL << 0)
+    V(PROTOTYPE_CHECK,    1ULL << 0)     \
+    V(IS_PROTOTYPE_CHECK, 1ULL << 1)     \
+    V(DETECTOR_CHECK,     1ULL << 2)
 
 /*
  * -------------- Structure of DependentInfos --------------

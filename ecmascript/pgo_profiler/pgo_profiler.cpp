@@ -1216,7 +1216,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
 
 void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
 {
-    if (!hclass->HasProfileType()) {
+    if (!hclass->IsCompositeHClass()) {
         return;
     }
     JSHClass *ihc1 = JSHClass::FindRootHClass(hclass);
@@ -1575,7 +1575,7 @@ bool PGOProfiler::AddTransitionObjectInfo(ProfileType recordType,
                                           JSHClass* holdTra,
                                           PGOSampleType accessorMethod)
 {
-    if (!receiver->HasProfileType()) {
+    if (!receiver->IsCompositeHClass()) {
         return false;
     }
     auto receiverRootType = FindRootProfileType(receiver);

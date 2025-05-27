@@ -172,7 +172,7 @@ bool TypeInfoAccessor::IsTrustedStringType(
                 return true;
             case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
             case EcmaOpcode::LDOBJBYVALUE_IMM16_V8: {
-                LoadBulitinObjTypeInfoAccessor tacc(env, circuit, gate, chunk);
+                LoadBuiltinObjTypeInfoAccessor tacc(env, circuit, gate, chunk);
                 if (tacc.IsMono()) {
                     return tacc.IsBuiltinsString();
                 }
@@ -1227,9 +1227,24 @@ bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
     return true;
 }
 
-LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
+void LoadBuiltinObjTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
+{
+}
+
+void LoadBuiltinObjTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsBuiltinsType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
+    }
+}
+
+LoadBuiltinObjTypeInfoAccessor::LoadBuiltinObjTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
                                                                GateRef gate, Chunk *chunk)
-    : AccBuiltinObjTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD)
+    : AccBuiltinObjTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), jitTypes_(chunk_)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
@@ -1267,6 +1282,13 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const Compilation
         default:
             UNREACHABLE();
     }
+
+    if (IsAot()) {
+        strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+    } else {
+        strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+    }
+    strategy_->FetchPGORWTypesDual();
     FetchBuiltinsTypes();
 }
 
@@ -1335,7 +1357,7 @@ bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newTy
     return false;
 }
 
-StoreBulitinObjTypeInfoAccessor::StoreBulitinObjTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
+StoreBuiltinObjTypeInfoAccessor::StoreBuiltinObjTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
                                                                  GateRef gate, Chunk *chunk)
     : AccBuiltinObjTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE)
 {

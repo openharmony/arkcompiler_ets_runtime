@@ -29,7 +29,7 @@
     V("getInlinedPropertiesCount",      GetInlinedPropertiesCount,      1, INVALID)       \
     V("excutePendingJob",               ExcutePendingJob,               0, INVALID)       \
     V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
-    V("forceLazyDeopt",                 ForceLazyDeopt,                 2, INVALID)       \
+    V("forceLazyDeopt",                 ForceLazyDeopt,                 3, INVALID)       \
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
     V("currentEnvIsGlobal",             CurrentEnvIsGlobal,             1, INVALID)       \

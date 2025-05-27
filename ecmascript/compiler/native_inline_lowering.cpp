@@ -1541,6 +1541,7 @@ void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, Buil
     }
     Environment env(gate, circuit_, &builder_);
     auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef frameState = acc_.GetFrameState(gate);
     GateRef ret = Circuit::NullGate();
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
@@ -1559,9 +1560,10 @@ void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, Buil
         AddTraceLogs(gate, id);
     }
     if (argc == 1) {
-        ret = builder_.ArrayForEach(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+        ret = builder_.ArrayForEach(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
     } else {
-        ret = builder_.ArrayForEach(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); // 2:provide using This
+        ret = builder_.ArrayForEach(thisValue, callBackFn,
+            acc_.GetValueIn(gate, 2), frameState, pcOffset); // 2 : provide using This
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -1586,6 +1588,7 @@ void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
     }
+    GateRef frameState = acc_.GetFrameState(gate);
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef ret = Circuit::NullGate();
 
@@ -1600,10 +1603,11 @@ void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
     GateRef callIDRef = builder_.Int32(static_cast<int32_t>(id));
 
     if (argc == 1) {
-        ret = builder_.ArrayFindOrFindIndex(thisValue, callBackFn, builder_.UndefineConstant(), callIDRef, pcOffset);
+        ret = builder_.ArrayFindOrFindIndex(thisValue, callBackFn,
+            builder_.UndefineConstant(), callIDRef, frameState, pcOffset);
     } else {
         ret = builder_.ArrayFindOrFindIndex(
-            thisValue, callBackFn, acc_.GetValueIn(gate, 2), callIDRef, pcOffset); // 2:provide using This
+            thisValue, callBackFn, acc_.GetValueIn(gate, 2), callIDRef, frameState, pcOffset); // 2:provide using This
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -1707,12 +1711,14 @@ void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, Builtin
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+    GateRef frameState = acc_.GetFrameState(gate);
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef ret = Circuit::NullGate();
     if (argc == 1) {
-        ret = builder_.ArraySome(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+        ret = builder_.ArraySome(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
     } else {
-        ret = builder_.ArraySome(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
+        ret = builder_.ArraySome(thisValue, callBackFn,
+            acc_.GetValueIn(gate, 2), frameState, pcOffset); // 2: provide usingThis
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -1742,12 +1748,14 @@ void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, Builti
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+    GateRef frameState = acc_.GetFrameState(gate);
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef ret = Circuit::NullGate();
     if (argc == 1) {
-        ret = builder_.ArrayEvery(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+        ret = builder_.ArrayEvery(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
     } else {
-        ret = builder_.ArrayEvery(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
+        ret = builder_.ArrayEvery(thisValue, callBackFn,
+            acc_.GetValueIn(gate, 2), frameState, pcOffset); // 2: provide usingThis
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }

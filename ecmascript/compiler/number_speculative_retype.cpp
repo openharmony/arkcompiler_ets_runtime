@@ -345,6 +345,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_APPLY:
         case OpCode::FUNCTION_PROTOTYPE_BIND:
         case OpCode::FUNCTION_PROTOTYPE_CALL:
+        case OpCode::BUILTIN_INSTANCE_HCLASS_CHECK:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::FLATTEN_TREE_STRING_CHECK:
         case OpCode::ARRAY_POP:

@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/js_object-inl.h"
@@ -47,6 +48,9 @@ void GlobalEnv::Init(JSThread *thread)
     SetModuleManagerNativePointer(thread, ModuleManager::CreateModuleManagerNativePointer(thread));
     ClearBitField();
     SetJSThread(thread);
+
+    auto array = vm->GetFactory()->NewTaggedArray(LastBitFieldBits::START_BIT, JSTaggedValue::Undefined());
+    SetDetectorDependentInfos(thread, array);
 }
 
 void GlobalEnv::Iterate(RootVisitor &v)
@@ -82,6 +86,18 @@ JSHandle<JSTaggedValue> GlobalEnv::GetStringFunctionByName(JSThread *thread, con
     return JSObject::GetProperty(thread, stringFuncObj, nameKey).GetValue();
 }
 
+void GlobalEnv::NotifyDetectorDeoptimize(uint32_t detectorID)
+{
+    JSHandle<JSTaggedValue> dependentInfos = GetDependentInfos(detectorID);
+    if (!dependentInfos->IsHeapObject()) {
+        return;
+    }
+    JSThread *thread = GetJSThread();
+    DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos>::Cast(dependentInfos),
+        thread, DependentInfos::DependentGroup::DETECTOR_CHECK);
+    SetDependentInfos(detectorID, thread->GlobalConstants()->GetHandledUndefined());
+}
+
 void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
 {
     if (!GetArrayPrototypeChangedGuardians()) {
@@ -92,6 +108,7 @@ void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver
     }
     if (receiver.GetTaggedValue() == GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == GetArrayPrototype().GetTaggedValue()) {
+        NotifyDetectorDeoptimize(ArrayPrototypeChangedGuardiansBits::START_BIT);
         SetArrayPrototypeChangedGuardians(false);
         return;
     }

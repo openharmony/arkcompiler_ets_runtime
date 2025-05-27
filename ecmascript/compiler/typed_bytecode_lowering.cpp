@@ -1023,6 +1023,12 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex,
                                                       value);
             } else {
+                if (!tacc.IsPrototypeHclass(0)) {
+                    if (!TryLazyDeoptNotPrototype(tacc, 0, gate)) {
+                        builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(tacc.GetReceiver())),
+                            frameState, DeoptType::PROTOTYPECHANGED3);
+                    }
+                }
                 GateRef ret = builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool,
                     holderHClassIndex, value, builder_.TruncInt64ToInt32(tacc.GetKey()),
                     builder_.Boolean(tacc.IsPrototypeHclass(0)), frameState);
@@ -1111,8 +1117,10 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
         builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     }
     if (!tacc.IsPrototypeHclass(i)) {
-        builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(receiverHC)), frameState,
-                            DeoptType::PROTOTYPECHANGED3);
+        if (!TryLazyDeoptNotPrototype(tacc, i, gate)) {
+            builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(tacc.GetReceiver())),
+                frameState, DeoptType::PROTOTYPECHANGED3);
+        }
     } else {
         builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
                         BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");
@@ -1185,7 +1193,7 @@ GateRef TypedBytecodeLowering::BuildNamedPropertyAccess(
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    LoadBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono()) {
         if (tacc.IsBuiltinsType()) {
@@ -1211,7 +1219,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
     return false; // No lowering performed
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc)
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     JSTaggedValue key = tacc.GetKeyTaggedValue();
     if (key.IsUndefined()) {
@@ -1255,7 +1263,7 @@ static void SetPlrLdFromIterResult(GlobalEnvField index, PropertyLookupResult &p
     }
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc,
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBuiltinObjTypeInfoAccessor &tacc,
                                                                  GlobalIndex globalsId)
 {
     GateRef receiver = tacc.GetReceiver();
@@ -1314,7 +1322,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
 
 bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    LoadBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef receiver = tacc.GetReceiver();
     if (acc_.GetOpCode(receiver) != OpCode::LOAD_BUILTIN_OBJECT) {
         return false;
@@ -1344,7 +1352,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
     return false;
 }
 
-void TypedBytecodeLowering::LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::LowerTypedLdArrayLength(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef gate = tacc.GetGate();
     GateRef array = tacc.GetReceiver();
@@ -1360,7 +1368,7 @@ void TypedBytecodeLowering::LowerTypedLdArrayLength(const LoadBulitinObjTypeInfo
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef gate = tacc.GetGate();
     GateRef array = tacc.GetReceiver();
@@ -1374,7 +1382,7 @@ void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBulitinObjTyp
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef gate = tacc.GetGate();
     GateRef str = tacc.GetReceiver();
@@ -1388,7 +1396,7 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef gate = tacc.GetGate();
     GateRef jsMap = tacc.GetReceiver();
@@ -1400,7 +1408,7 @@ void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAcce
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc,
+bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBuiltinObjTypeInfoAccessor &tacc,
                                                                      BuiltinTypeId type)
 {
     GateRef gate = tacc.GetGate();
@@ -1438,14 +1446,31 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     AddProfiling(gate);
     GateRef receiver = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
-        // For Array type only: array stability shall be ensured.
+        /**
+         * Fixme: Cannot detect changes to Number.prototype.
+         */
         ElementsKind kind = ElementsKind::NONE;
         if (type == BuiltinTypeId::ARRAY) {
-            builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
             kind = tacc.TryGetArrayElementsKind();
         }
-
-        builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
+        if (enableLazyDeopt_) {
+            builder_.BuiltinInstanceHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
+            if (!TryLazyDeoptBuiltinStableProtoChain(const_cast<LoadBuiltinObjTypeInfoAccessor&>(tacc), 0,
+                gate, compilationEnv_->GetGlobalEnv())) {
+                return false;
+            }
+            if (type == BuiltinTypeId::ARRAY) {
+                if (!TryLazyDeoptArrayGuardianCheck(gate)) {
+                    return false;
+                }
+            }
+        } else {
+            // For Array type only: array stability shall be ensured.
+            if (type == BuiltinTypeId::ARRAY) {
+                builder_.StableArrayCheck(receiver, ElementsKind::GENERIC, ArrayMetaDataAccessor::CALL_BUILTIN_METHOD);
+            }
+            builder_.BuiltinPrototypeHClassCheck(receiver, type, kind, isPrototypeOfPrototype);
+        }
     }
     // Successfully goes to typed path
     GateRef plrGate = builder_.Int32(plr.GetData());
@@ -1457,7 +1482,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByIndexForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    LoadBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
     if (tacc.IsMono()) {
@@ -1480,7 +1505,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByIndex(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerTypedStObjByIndexForBuiltin(GateRef gate)
 {
-    StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    StoreBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (tacc.HasNoType()) {
         return false;
     }
@@ -1515,7 +1540,7 @@ void TypedBytecodeLowering::LowerTypedStObjByIndex(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
 {
-    LoadBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    LoadBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     GateRef result = Circuit::NullGate();
     // Just supported mono.
     if (tacc.IsMono()) {
@@ -1588,7 +1613,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByValue(GateRef gate)
     }
 }
 
-GateRef TypedBytecodeLowering::LoadStringByIndex(const LoadBulitinObjTypeInfoAccessor &tacc)
+GateRef TypedBytecodeLowering::LoadStringByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     GateRef propKey = tacc.GetKey();
@@ -1604,7 +1629,7 @@ GateRef TypedBytecodeLowering::LoadStringByIndex(const LoadBulitinObjTypeInfoAcc
     return builder_.LoadElement<TypedLoadOp::STRING_LOAD_ELEMENT>(receiver, propKey);
 }
 
-GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc)
+GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     GateRef propKey = tacc.GetKey();
@@ -1636,7 +1661,7 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
     return result;
 }
 
-GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBulitinObjTypeInfoAccessor &tacc)
+GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     GateRef propKey = tacc.GetKey();
@@ -1667,7 +1692,7 @@ GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBulitinObjTy
     return res;
 }
 
-GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc)
+GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     ParamType receiverType = tacc.GetParamType();
@@ -1707,7 +1732,7 @@ GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInf
     return Circuit::NullGate();
 }
 
-void TypedBytecodeLowering::StoreJSArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::StoreJSArrayByIndex(const StoreBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     GateRef propKey = tacc.GetKey();
@@ -1729,7 +1754,7 @@ void TypedBytecodeLowering::StoreJSArrayByIndex(const StoreBulitinObjTypeInfoAcc
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }
 
-void TypedBytecodeLowering::StoreTypedArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc)
+void TypedBytecodeLowering::StoreTypedArrayByIndex(const StoreBuiltinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
     ParamType receiverType = tacc.GetParamType();
@@ -1779,7 +1804,7 @@ void TypedBytecodeLowering::StoreTypedArrayByIndex(const StoreBulitinObjTypeInfo
 
 bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
 {
-    StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    StoreBuiltinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     // Just supported mono.
     if (tacc.IsMono() && !tacc.IsStoreOutOfBounds()) {
         if (tacc.IsBuiltinsArray()) {

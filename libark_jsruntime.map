@@ -389,6 +389,10 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnArrayDetector*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnDetector*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnNotPrototype*;
+      panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableHClass*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableProtoChain*;
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;

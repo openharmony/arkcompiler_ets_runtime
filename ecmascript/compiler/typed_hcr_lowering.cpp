@@ -32,6 +32,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::PRIMITIVE_TYPE_CHECK:
             LowerPrimitiveTypeCheck(gate);
             break;
+        case OpCode::BUILTIN_INSTANCE_HCLASS_CHECK:
+            LowerBuiltinInstanceHClassCheck(gate);
+            break;
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
             LowerBuiltinPrototypeHClassCheck(gate);
             break;
@@ -798,6 +801,23 @@ void TypedHCRLowering::BuiltinInstanceStringTypeCheck(GateRef gate)
     GateRef glue = acc_.GetGlueFromArgList();
     GateRef typeCheck = builder_.TaggedObjectIsString(glue, receiver, compilationEnv_);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH2);
+}
+
+void TypedHCRLowering::LowerBuiltinInstanceHClassCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+    BuiltinPrototypeHClassAccessor accessor = acc_.GetBuiltinHClassAccessor(gate);
+    BuiltinTypeId type = accessor.GetBuiltinTypeId();
+    // BuiltinTypeId::STRING represents primitive string, only need to check the type of hclass here.
+    if (type == BuiltinTypeId::STRING) {
+        BuiltinInstanceStringTypeCheck(gate);
+    } else {
+        BuiltinInstanceHClassCheck(&env, gate); // check IHC
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerBuiltinPrototypeHClassCheck(GateRef gate)
@@ -3091,10 +3111,7 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
         builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     }
-    if (!isPrototype) {
-        builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(receiverHC)), frameState,
-                            DeoptType::PROTOTYPECHANGED3);
-    } else {
+    if (isPrototype) {
         builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");
         builder_.Bind(&isProto);

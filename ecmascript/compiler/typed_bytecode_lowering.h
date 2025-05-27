@@ -168,14 +168,14 @@ private:
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder,
                                      GateRef value, PropertyLookupResult plr, uint32_t receiverHClassIndex = 0);
     bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate);
-    bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
-    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc);
-    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc, GlobalIndex globalsId);
-    void LowerTypedLdArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
-    void LowerTypedLdTypedArrayLength(const LoadBulitinObjTypeInfoAccessor &tacc);
-    void LowerTypedLdStringLength(const LoadBulitinObjTypeInfoAccessor &tacc);
-    void LowerTypedLdMapSize(const LoadBulitinObjTypeInfoAccessor &tacc);
-    bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBulitinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForBuiltinsId(const LoadBuiltinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
+    bool TryLowerTypedLdObjByNameForBuiltin(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    bool TryLowerTypedLdObjByNameForGlobalsId(const LoadBuiltinObjTypeInfoAccessor &tacc, GlobalIndex globalsId);
+    void LowerTypedLdArrayLength(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdTypedArrayLength(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdStringLength(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    void LowerTypedLdMapSize(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    bool TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBuiltinObjTypeInfoAccessor &tacc, BuiltinTypeId type);
 
     void LowerTypedLdObjByIndex(GateRef gate);
     bool TryLowerTypedLdObjByIndexForBuiltin(GateRef gate);
@@ -245,17 +245,31 @@ private:
     void LowerTypedTypeOf(GateRef gate);
     void LowerInstanceOf(GateRef gate);
     void LowerGetIterator(GateRef gate);
-    GateRef LoadStringByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
-    GateRef LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
-    GateRef LoadTypedArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
-    GateRef LoadElmentFromFloat64Array(const LoadBulitinObjTypeInfoAccessor &tacc);
-    void StoreJSArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc);
-    void StoreTypedArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc);
+    GateRef LoadStringByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    GateRef LoadJSArrayByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    GateRef LoadTypedArrayByIndex(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    GateRef LoadElmentFromFloat64Array(const LoadBuiltinObjTypeInfoAccessor &tacc);
+    void StoreJSArrayByIndex(const StoreBuiltinObjTypeInfoAccessor &tacc);
+    void StoreTypedArrayByIndex(const StoreBuiltinObjTypeInfoAccessor &tacc);
 
     void AddBytecodeCount(EcmaOpcode op);
     void DeleteBytecodeCount(EcmaOpcode op);
     void AddHitBytecodeCount();
     
+    void TraceLazyDeoptNum([[maybe_unused]] std::string_view func,
+                           [[maybe_unused]] bool success, [[maybe_unused]] GateRef gate)
+    {
+#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
+        if (success) {
+            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptNum),
+                Gate::InvalidGateRef, {}, gate);
+        } else {
+            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptFailNum),
+                Gate::InvalidGateRef, {}, gate);
+        }
+#endif
+    }
+
     template<class T>
     bool TryLazyDeoptStableProtoChain(T& tacc, size_t index, [[maybe_unused]] GateRef gate)
     {
@@ -269,18 +283,56 @@ private:
         bool success = compilationEnv_->GetDependencies()->
                                         DependOnStableProtoChain(receiverHC,
                                                                  holderHC);
-#if ECMASCRIPT_ENABLE_LAZY_DEOPT_TRACE
-        if (success) {
-            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptNum),
-                Gate::InvalidGateRef, {}, gate);
-        } else {
-            builder_.CallRuntime(glue_, RTSTUB_ID(TraceLazyDeoptFailNum),
-                Gate::InvalidGateRef, {}, gate);
-        }
-#endif
+        TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
         return success;
     }
 
+    bool TryLazyDeoptNotPrototype(StoreObjByNameTypeInfoAccessor& tacc,
+                                  size_t index, [[maybe_unused]] GateRef gate)
+    {
+        // enableLazyDeopt_ is always false in Aot now.
+        if (!enableLazyDeopt_) {
+            return false;
+        }
+
+        auto receiverHC = tacc.GetReceiverHClass(index);
+        bool success = compilationEnv_->GetDependencies()->
+                                        DependOnNotPrototype(receiverHC);
+        TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
+        return success;
+    }
+
+    bool TryLazyDeoptBuiltinStableProtoChain(LoadBuiltinObjTypeInfoAccessor& tacc,
+                                             size_t index, [[maybe_unused]] GateRef gate,
+                                             JSHandle<GlobalEnv> globalEnv)
+    {
+        // enableLazyDeopt_ is always false in Aot now.
+        if (!enableLazyDeopt_) {
+            return false;
+        }
+
+        auto receiverHC = tacc.GetReceiverHClass(index);
+        bool success = compilationEnv_->GetDependencies()->
+                                        DependOnStableProtoChain(receiverHC,
+                                                                 nullptr,
+                                                                 globalEnv.GetObject<GlobalEnv>());
+        TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
+        return success;
+    }
+
+    bool TryLazyDeoptArrayGuardianCheck([[maybe_unused]] GateRef gate)
+    {
+        // enableLazyDeopt_ is always false in Aot now.
+        if (!enableLazyDeopt_) {
+            return false;
+        }
+
+        bool success = compilationEnv_->GetDependencies()->
+                                        DependOnArrayDetector(compilationEnv_->GetGlobalEnv().GetObject<GlobalEnv>());
+        TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
+        return success;
+    }
+    
     GateRef InternStringCheck(GateRef gate);
     template<TypedBinOp Op>
     void SpeculateInternStrings(const BinOpTypeInfoAccessor& tacc);

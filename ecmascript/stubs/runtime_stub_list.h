@@ -254,6 +254,7 @@ namespace panda::ecmascript {
     V(NewCOWTaggedArray)                        \
     V(NewMutantTaggedArray)                     \
     V(NewCOWMutantTaggedArray)                  \
+    V(NotifyArrayPrototypeChanged)              \
     V(CopyArray)                                \
     V(NumberToString)                           \
     V(IntToString)                              \
