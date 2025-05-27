@@ -1172,7 +1172,7 @@ std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBund
     return {filePath, bundleAndModuleName};
 }
 
-std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNormalized(std::string ohmUrl)
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl)
 {
     CVector<CString> res = SplitNormalizedOhmurl(CString(ohmUrl));
     if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
