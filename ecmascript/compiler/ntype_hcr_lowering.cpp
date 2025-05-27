@@ -19,7 +19,7 @@
 namespace panda::ecmascript::kungfu {
 GateRef NTypeHCRLowering::VisitGate(GateRef gate)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::CREATE_ARRAY: {

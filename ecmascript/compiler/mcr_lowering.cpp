@@ -344,7 +344,7 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             if (dstType == ValueType::TAGGED_DOUBLE) {
                 result = ConvertFloat64ToTaggedDouble(value);
             } else if (dstType == ValueType::INT32) {
-                result = ConvertFloat64ToInt32(acc_.GetGlueFromArgList(), value);
+                result = ConvertFloat64ToInt32(glue_, value);
             } else {
                 ASSERT(dstType == ValueType::BOOL);
                 result = ConvertFloat64ToBool(value);
@@ -363,7 +363,7 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             result = ConvertTaggedDoubleToFloat64(value);
             break;
         case ValueType::CHAR: {
-            GateRef glue = acc_.GetGlueFromArgList();
+            GateRef glue = glue_;
             if (dstType == ValueType::ECMA_STRING) {
                 if (env_->IsJitCompiler()) {
                     result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToString, {glue, value });
@@ -476,7 +476,7 @@ GateRef MCRLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
     result = ConvertTaggedIntToInt32(gate);
     builder_.Jump(exit);
     builder_.Bind(&isDouble);
-    result = ConvertFloat64ToInt32(acc_.GetGlueFromArgList(), ConvertTaggedDoubleToFloat64(gate));
+    result = ConvertFloat64ToInt32(glue_, ConvertTaggedDoubleToFloat64(gate));
     builder_.Jump(exit);
     builder_.Bind(exit);
     return *result;
@@ -617,7 +617,7 @@ void MCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameSt
     ValueType dst = acc_.GetDstType(gate);
     ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
     if (dst == ValueType::INT32) {
-        result = ConvertTaggedDoubleToInt32(acc_.GetGlueFromArgList(), value);
+        result = ConvertTaggedDoubleToInt32(glue_, value);
     } else {
         result = ConvertTaggedDoubleToFloat64(value);
     }

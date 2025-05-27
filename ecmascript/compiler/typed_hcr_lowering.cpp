@@ -24,7 +24,7 @@
 namespace panda::ecmascript::kungfu {
 GateRef TypedHCRLowering::VisitGate(GateRef gate)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     auto op = acc_.GetOpCode(gate);
     [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
     switch (op) {
@@ -703,7 +703,7 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
     ElementsKind kind = accessor.GetElementsKind();
     GateRef frameState = GetFrameState(gate);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef ihcMatches = Circuit::NullGate();
     if (type == BuiltinTypeId::ARRAY) {
@@ -759,7 +759,7 @@ void TypedHCRLowering::BuiltinPrototypeHClassCheck(Environment *env, GateRef gat
     BuiltinTypeId type = accessor.GetBuiltinTypeId();
     bool isPrototypeOfPrototype = accessor.IsPrototypeOfPrototype();
     GateRef frameState = GetFrameState(gate);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     // Only HClasses recorded in the JSThread during builtin initialization are available
     [[maybe_unused]] JSHClass *initialPrototypeHClass = compilationEnv_->GetBuiltinPrototypeHClass(type);
@@ -995,7 +995,7 @@ void TypedHCRLowering::LowerStoreProperty(GateRef gate)
         } else {
             auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
             builder_.SetValueToTaggedArray(
-                VariableType::JS_ANY(), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+                VariableType::JS_ANY(), glue_, properties, builder_.Int32(plr.GetOffset()), value);
         }
     } else if (op == OpCode::STORE_PROPERTY_NO_BARRIER) {
         if (plr.IsInlinedProps()) {
@@ -1003,7 +1003,7 @@ void TypedHCRLowering::LowerStoreProperty(GateRef gate)
         } else {
             auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
             builder_.SetValueToTaggedArray(
-                GetVarType(plr), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+                GetVarType(plr), glue_, properties, builder_.Int32(plr.GetOffset()), value);
         }
     } else {
         UNREACHABLE();
@@ -2268,7 +2268,7 @@ void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variabl
         {
             Label validDoubleLength(&builder_);
             GateRef doubleLength = builder_.GetDoubleOfTDouble(len);
-            GateRef doubleToInt = builder_.TruncDoubleToInt(acc_.GetGlueFromArgList(), doubleLength, base::INT32_BITS);
+            GateRef doubleToInt = builder_.TruncDoubleToInt(glue_, doubleLength, base::INT32_BITS);
             GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
@@ -2617,7 +2617,7 @@ void TypedHCRLowering::LowerLoadBuiltinObject(GateRef gate)
     }
     Environment env(gate, circuit_, &builder_);
     auto frameState = GetFrameState(gate);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     auto builtinEntriesOffset = JSThread::GlueData::GetBuiltinEntriesOffset(false);
     size_t index = acc_.GetIndex(gate);
     auto boxOffset = builtinEntriesOffset + BuiltinIndex::GetInstance().GetBuiltinBoxOffset(index);
@@ -3170,7 +3170,7 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
         } else {
             auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
             builder_.SetValueToTaggedArray(
-                VariableType::JS_ANY(), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+                VariableType::JS_ANY(), glue_, properties, builder_.Int32(plr.GetOffset()), value);
         }
     } else {
         if (plr.IsInlinedProps()) {
@@ -3178,7 +3178,7 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
         } else {
             auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), holder, JSObject::PROPERTIES_OFFSET);
             builder_.SetValueToTaggedArray(
-                GetVarType(plr), acc_.GetGlueFromArgList(), properties, builder_.Int32(plr.GetOffset()), value);
+                GetVarType(plr), glue_, properties, builder_.Int32(plr.GetOffset()), value);
         }
     }
 }
