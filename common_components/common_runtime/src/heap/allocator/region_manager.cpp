@@ -797,6 +797,7 @@ static void FixOldRegion(TraceCollector& collector, RegionDesc* region)
         if (collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else {
+            FillFreeObject(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "fix: skip dead old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
     });
