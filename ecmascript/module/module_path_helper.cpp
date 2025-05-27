@@ -1159,7 +1159,7 @@ std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrl(std::string 
     return {"", ""};
 }
 
-std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBundle(std::string ohmUrl)
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBundle(const std::string &ohmUrl)
 {
     std::string moduleRequestName(ohmUrl.substr(PREFIX_BUNDLE_LEN));
     size_t index = moduleRequestName.find('/');

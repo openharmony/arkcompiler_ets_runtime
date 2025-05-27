@@ -214,8 +214,8 @@ public:
     static bool CheckAndGetRecordName(JSThread *thread, const CString &ohmUrl, CString &recordName);
     static bool ValidateAbcPath(const CString &baseFileName, ValidateFilePath checkMode);
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
-    static std::pair<std::string, std::string> ResolveOhmUrlStartWithBundle(std::string ohmUrl);
-    static std::pair<std::string, std::string> ResolveOhmUrlStartWithNormalized(std::string ohmUrl);
+    static std::pair<std::string, std::string> ResolveOhmUrlStartWithBundle(const std::string &ohmUrl);
+    static std::pair<std::string, std::string> ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl);
 
     inline static std::pair<CString, CString> ResolvePath(const char *path)
     {
