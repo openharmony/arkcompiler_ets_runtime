@@ -1496,9 +1496,6 @@ public:
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
-    void PushContext(EcmaContext *context);
-    void PopContext();
-
     void SetStackStart(uint64_t stackStart)
     {
         glueData_.stackStart_ = stackStart;
