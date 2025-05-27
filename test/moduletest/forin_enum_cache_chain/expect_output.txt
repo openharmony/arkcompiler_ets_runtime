@@ -177,3 +177,10 @@ x
 y
 z
 =====Test 9: end=====
+====Test 10: start====
+x
+y
+z
+x
+y
+=====Test 10: end=====

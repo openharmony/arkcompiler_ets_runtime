@@ -192,3 +192,22 @@
     }
     print("=====Test 9: end=====");
 }
+
+{
+    print("====Test 10: start====");
+    class A {}
+    class B extends A {}
+    let b = new B();
+    b.x = 1;
+    b.y = 2;
+    A.prototype.z = 1;
+    for (let i = 0; i < 2; i++) {
+        for (let j in b) {
+            print(j);
+            if (i == 1) {
+              delete A.prototype.z;
+            }
+        }
+    }
+    print("=====Test 10: end=====");
+}
