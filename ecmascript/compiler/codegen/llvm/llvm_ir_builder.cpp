@@ -849,6 +849,20 @@ void LLVMIRBuilder::SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMV
     }
 }
 
+void LLVMIRBuilder::SetCallSiteFunctionAttr(CallSiteAttribute attr, LLVMValueRef call)
+{
+    if (attr.readOnly) {
+        unsigned readOnlyAttrKind = LLVMGetEnumAttributeKindForName(READONLY_ATTR.data(), READONLY_ATTR.size());
+        LLVMAttributeRef readOnlyAttribute = LLVMCreateEnumAttribute(context_, readOnlyAttrKind, 0);
+        LLVMAddCallSiteAttribute(call, LLVMAttributeFunctionIndex, readOnlyAttribute);
+    }
+    if (attr.cold) {
+        unsigned coldAttrKind = LLVMGetEnumAttributeKindForName(COLD_ATTR.data(), COLD_ATTR.size());
+        LLVMAttributeRef coldAttribute = LLVMCreateEnumAttribute(context_, coldAttrKind, 0);
+        LLVMAddCallSiteAttribute(call, LLVMAttributeFunctionIndex, coldAttribute);
+    }
+}
+
 bool LLVMIRBuilder::IsHeapPointerType(LLVMTypeRef valueType)
 {
     return LLVMGetTypeKind(valueType) == LLVMPointerTypeKind && LLVMGetPointerAddressSpace(valueType) > 0;
@@ -1012,6 +1026,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef rtoffset;
     LLVMValueRef rtbaseoffset;
     LLVMValueRef callee;
+    CallSiteAttribute attr;
     CallExceptionKind kind = CallExceptionKind::NO_PC_OFFSET;
     bool isNoGC = false;
     if (op == OpCode::CALL) {
@@ -1025,6 +1040,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         }
         kind = GetCallExceptionKind(op);
+        attr.readOnly = CommonStubCSigns::IsReadOnly(index);
+        attr.cold = CommonStubCSigns::IsCold(index);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         // enableOptDirectCall_ optimization can be used for this case if the callee is asm stub.
         UpdateLeaveFrame(glue);
@@ -1160,6 +1177,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
                 extraParameterCnt, "");
         }
         SetCallConvAttr(calleeDescriptor, call);
+        SetCallSiteFunctionAttr(attr, call);
     }
     if (isNoGC) {
         SetGCLeafFunction(call);

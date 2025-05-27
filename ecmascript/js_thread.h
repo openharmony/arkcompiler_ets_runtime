@@ -1066,6 +1066,7 @@ public:
 
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
+                                                 base::AlignedPointer,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
                                                  base::AlignedBool,
@@ -1105,13 +1106,17 @@ public:
                                                  base::AlignedUint32,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedPointer,
                                                  base::AlignedUint32,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
                                                  ElementsHClassEntries> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
+#ifdef USE_CMC_GC
+            ThreadHolderIndex,
+#else
+            StateAndFlagsIndex,
+#endif
             ExceptionIndex,
             GlobalObjIndex,
             ArrayElementsGuardiansIndex,
@@ -1151,11 +1156,6 @@ public:
             UnsharedConstpoolsArrayLenIndex,
             UnsharedConstpoolsIndex,
             RandomStatePtrIndex,
-#ifdef USE_CMC_GC
-            ThreadHolderIndex,
-#else
-            StateAndFlagsIndex,
-#endif
             TaskInfoIndex,
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
@@ -1164,6 +1164,17 @@ public:
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
+#ifdef USE_CMC_GC
+        static size_t GetThreadHolderOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
+        }
+#else
+        static size_t GetStateAndFlagsOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
+        }
+#endif
         static size_t GetExceptionOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ExceptionIndex)>(isArch32);
@@ -1380,18 +1391,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsArrayLenIndex)>(isArch32);
         }
 
-#ifdef USE_CMC_GC
-        static size_t GetThreadHolderOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
-        }
-#else
-        static size_t GetStateAndFlagsOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
-        }
-#endif
-
         static size_t GetRandomStatePtrOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::RandomStatePtrIndex)>(isArch32);
@@ -1418,6 +1417,11 @@ public:
         }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
+#ifdef USE_CMC_GC
+        alignas(EAS) uintptr_t threadHolder_ {0};
+#else
+        alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
+#endif
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
         alignas(EAS) bool arrayPrototypeChangedGuardians_ {true};
@@ -1457,11 +1461,6 @@ public:
         alignas(EAS) uint32_t unsharedConstpoolsArrayLen_ {0};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
-#ifdef USE_CMC_GC
-        alignas(EAS) uintptr_t threadHolder_ {0};
-#else
-        alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
-#endif
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
