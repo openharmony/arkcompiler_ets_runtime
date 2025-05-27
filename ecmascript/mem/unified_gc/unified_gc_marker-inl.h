@@ -130,11 +130,11 @@ void UnifiedGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 inline void UnifiedGCMarker::HandleJSXRefObject(TaggedObject *object)
 {
-JSTaggedValue value(object);
-if (value.IsJSXRefObject()) {
-    auto stsVMInterface = heap_->GetEcmaVM()->GetCrossVMOperator()->GetSTSVMInterface();
-    stsVMInterface->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(0));
-}
+    JSTaggedValue value(object);
+    if (value.IsJSXRefObject()) {
+        auto stsVMInterface = heap_->GetEcmaVM()->GetCrossVMOperator()->GetSTSVMInterface();
+        stsVMInterface->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(0));
+    }
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
 }  // namespace panda::ecmascript
