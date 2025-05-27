@@ -1963,13 +1963,14 @@ DEF_CALL_SIGNATURE(ReverseTypedArray)
 
 DEF_CALL_SIGNATURE(ReverseArray)
 {
-    constexpr size_t paramCount = 2;
+    constexpr size_t paramCount = 3;
     // 3 : 3 input parameters
     CallSignature ArrayReverse("ReverseArray", 0, paramCount,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = ArrayReverse;
     // 3 : 3 input parameters
     std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT32()
     };
@@ -3568,13 +3569,14 @@ DEF_CALL_SIGNATURE(ReverseBarrier)
 
 DEF_CALL_SIGNATURE(ObjectCopy)
 {
-    constexpr size_t paramCount = 3;
+    constexpr size_t paramCount = 4;
     // 3 : 3 input parameters
     CallSignature ArrayCopy("ObjectCopy", 0, paramCount,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = ArrayCopy;
     // 3 : 3 input parameters
     std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT32()

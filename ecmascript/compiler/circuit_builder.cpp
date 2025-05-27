@@ -533,7 +533,7 @@ GateRef CircuitBuilder::GetGlobalConstantValue(ConstantIndex index)
 GateRef CircuitBuilder::HasPendingException(GateRef glue)
 {
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
-    GateRef exception = Load(VariableType::JS_ANY(), glue, glue, exceptionOffset);
+    GateRef exception = LoadWithoutBarrier(VariableType::JS_ANY(), glue, exceptionOffset);
     return TaggedIsNotHole(exception);
 }
 
@@ -659,7 +659,7 @@ GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
     GateRef gConstAddr = LoadWithoutBarrier(VariableType::JS_ANY(), glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     GateRef offset = GetGlobalConstantOffset(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    return Load(VariableType::JS_ANY(), glue, gConstAddr, offset);
+    return LoadWithoutBarrier(VariableType::JS_ANY(), gConstAddr, offset);
 }
 
 GateRef CircuitBuilder::GetPrototypeFromHClass(GateRef glue, GateRef hClass)
@@ -1021,10 +1021,10 @@ void CircuitBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef
     Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
-GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef glue, GateRef env, size_t index)
+GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, [[maybe_unused]] GateRef glue, GateRef env, size_t index)
 {
     auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
-    return Load(type, glue, env, valueIndex);
+    return LoadWithoutBarrier(type, env, valueIndex);
 }
 
 GateRef CircuitBuilder::GetCodeAddr(GateRef jsFunc)
@@ -1388,10 +1388,10 @@ GateRef CircuitBuilder::GetPrototype(GateRef glue, GateRef object)
 
 GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
-    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue, glue,
-                              IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    GateRef gConstAddr = LoadWithoutBarrier(VariableType::JS_ANY(), glue,
+                                            IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
-    return Load(type, glue, gConstAddr, constantIndex);
+    return LoadWithoutBarrier(type, gConstAddr, constantIndex);
 }
 
 GateRef CircuitBuilder::TransProtoWithoutLayout(GateRef glue, GateRef hClass, GateRef proto)

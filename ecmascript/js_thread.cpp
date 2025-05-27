@@ -489,6 +489,14 @@ void JSThread::Iterate(RootVisitor &visitor)
     }
     if (!glueData_.currentEnv_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));
+#ifdef USE_CMC_GC
+        // TODO: check the correctness of this scheme when multiple GlobalEnv capability is enabled
+        JSTaggedValue value = glueData_.currentEnv_;
+        if (value.IsJSGlobalEnv()) {
+            GlobalEnv *currentGlobalEnv = reinterpret_cast<GlobalEnv *>(value.GetTaggedObject());
+            currentGlobalEnv->Iterate(visitor);
+        }
+#endif
     }
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));

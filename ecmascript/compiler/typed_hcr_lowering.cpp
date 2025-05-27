@@ -2091,8 +2091,8 @@ void TypedHCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
         UNREACHABLE();
     }
 
-    GateRef result =
-        builder_.Load(VariableType::JS_POINTER(), glue, gConstAddr, builder_.GetGlobalConstantOffset(index));
+    GateRef result = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), gConstAddr,
+                                                 builder_.GetGlobalConstantOffset(index));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

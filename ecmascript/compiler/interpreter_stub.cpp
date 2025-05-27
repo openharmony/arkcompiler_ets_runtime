@@ -597,7 +597,7 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-        GateRef receiver = Load(VariableType::JS_ANY(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        GateRef receiver = LoadPrimitive(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
@@ -5335,7 +5335,7 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
     Label pcIsInvalid(env);
     Label pcNotInvalid(env);
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
-    GateRef exception = Load(VariableType::JS_ANY(), glue, glue, exceptionOffset);
+    GateRef exception = LoadPrimitive(VariableType::JS_ANY(), glue, exceptionOffset);
     varPc = TaggedCastToIntPtr(CallRuntime(glue, RTSTUB_ID(UpFrame), {}));
     varSp = GetCurrentFrame(glue);
     BRANCH(IntPtrEqual(*varPc, IntPtr(0)), &pcIsInvalid, &pcNotInvalid);
