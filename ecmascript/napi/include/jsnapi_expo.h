@@ -1871,7 +1871,7 @@ public:
     static bool IsObjectAlive(const EcmaVM *vm, uintptr_t addr);
     static bool IsValidHeapObject(const EcmaVM *vm, uintptr_t addr);
 
-     //set VM apiVersion
+    //set VM apiVersion
     static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);
 
     // Napi Update SubStackInfo
@@ -2139,6 +2139,5 @@ class PUBLIC_API HandshakeHelper final {
     static void DoHandshake(EcmaVM *vm, void *stsiface, void **ecmaiface);
 };
 #endif  // PANDA_JS_ETS_HYBRID_MODE
-
 }  // namespace panda
 #endif
