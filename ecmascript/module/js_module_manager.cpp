@@ -406,10 +406,24 @@ JSTaggedValue ModuleManager::CreateModuleManagerNativePointer(JSThread *thread)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = new ModuleManager(vm);
+    moduleManager->SyncModuleExecuteMode(thread);
     auto factory = vm->GetFactory();
     JSHandle<JSNativePointer> nativePointer = factory->NewJSNativePointer(reinterpret_cast<void *>(moduleManager),
                                                                           nullptr, nullptr, true);
     vm->AddModuleManager(moduleManager);
     return nativePointer.GetTaggedValue();
+}
+
+void ModuleManager::SyncModuleExecuteMode(JSThread *thread)
+{
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    if (!globalEnv.GetTaggedValue().IsHole()) {
+        JSHandle<JSNativePointer> nativePointer(globalEnv->GetModuleManagerNativePointer());
+        ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(nativePointer->GetExternalPointer());
+        if (moduleManager == nullptr) {
+            return;
+        }
+        SetExecuteMode(moduleManager->GetExecuteMode());
+    }
 }
 } // namespace panda::ecmascript

@@ -107,6 +107,7 @@ public:
         return vm_->IsBundlePack();
     }
     static JSTaggedValue CreateModuleManagerNativePointer(JSThread *thread);
+    void SyncModuleExecuteMode(JSThread *thread);
 
     // fast path ldexternalmodulevar for jit
     static bool CheckModuleValueOutterResolved(int32_t index, JSFunction *jsFunc);
