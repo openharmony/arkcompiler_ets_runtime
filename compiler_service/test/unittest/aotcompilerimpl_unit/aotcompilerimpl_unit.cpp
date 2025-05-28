@@ -173,12 +173,12 @@ public:
  * @tc.desc: AotCompilerImpl::GetInstance()
  * @tc.type: Func
 */
-    HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_001, TestSize.Level0)
-    {
-        AotCompilerImpl *aotImplPtr = nullptr;
-        aotImplPtr = &AotCompilerImplMock::GetInstance();
-        EXPECT_NE(aotImplPtr, nullptr);
-    }
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_001, TestSize.Level0)
+{
+    AotCompilerImpl *aotImplPtr = nullptr;
+    aotImplPtr = &AotCompilerImplMock::GetInstance();
+    EXPECT_NE(aotImplPtr, nullptr);
+}
 
 /**
 * @tc.name: AotCompilerImplTest_002
@@ -417,16 +417,16 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_014, TestSize.Level0)
     int32_t ret = ERR_FAIL;
 #ifdef CODE_SIGN_ENABLE
     aotImplMock.PauseAotCompilerMock();
-ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
-EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+    ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
 
-aotImplMock.AllowAotCompilerMock();
-ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
-EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+    aotImplMock.AllowAotCompilerMock();
+    ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 
-aotImplMock.AllowAotCompilerMock();
-ret = aotImplMock.EcmascriptAotCompiler(argsMapForTest, sigData);
-EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+    aotImplMock.AllowAotCompilerMock();
+    ret = aotImplMock.EcmascriptAotCompiler(argsMapForTest, sigData);
+    EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
 #else
     ret = aotImplMock.EcmascriptAotCompiler(argsMapForTest, sigData);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
