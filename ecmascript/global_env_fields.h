@@ -17,6 +17,7 @@
 #define ECMASCRIPT_GLOBAL_ENV_FIELDS_H
 
 #include <cstdint>
+#include "compiler/builtins/builtins_call_signature_list.h"
 
 #define GLOBAL_ENV_SELF_FIELD(V)                                                                    \
     V(JSTaggedValue, GlobalEnv, GLOBAL_ENV_INDEX)
@@ -382,20 +383,109 @@
     V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                              \
     V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)
 
+#if ENABLE_NEXT_OPTIMIZATION
+#define CONDITION_GLOBAL_REFLECT_HAS(V)
+#else
+#define CONDITION_GLOBAL_REFLECT_HAS(V) V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX)
+#endif
+
+// Use for builtins inlining
+#define GLOBAL_ENV_INLINED_BUILTINS(V)                                                    \
+    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX)                                           \
+    V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX)                                           \
+    V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX)                                         \
+    V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX)                                           \
+    V(JSTaggedValue, MathAsinh, MATH_ASINH_INDEX)                                         \
+    V(JSTaggedValue, MathAtan, MATH_ATAN_INDEX)                                           \
+    V(JSTaggedValue, MathAtan2, MATH_ATAN2_INDEX)                                         \
+    V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX)                                         \
+    V(JSTaggedValue, MathCos, MATH_COS_INDEX)                                             \
+    V(JSTaggedValue, MathCosh, MATH_COSH_INDEX)                                           \
+    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX)                                           \
+    V(JSTaggedValue, MathSin, MATH_SIN_INDEX)                                             \
+    V(JSTaggedValue, MathSinh, MATH_SINH_INDEX)                                           \
+    V(JSTaggedValue, MathTan, MATH_TAN_INDEX)                                             \
+    V(JSTaggedValue, MathTanh, MATH_TANH_INDEX)                                           \
+    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX)                                         \
+    V(JSTaggedValue, MathLog, MATH_LOG_INDEX)                                             \
+    V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX)                                           \
+    V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX)                                         \
+    V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX)                                         \
+    V(JSTaggedValue, MathExp, MATH_EXP_INDEX)                                             \
+    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX)                                         \
+    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX)                                         \
+    V(JSTaggedValue, MathAbs, MATH_ABS_INDEX)                                             \
+    V(JSTaggedValue, MathPow, MATH_POW_INDEX)                                             \
+    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX)                                           \
+    V(JSTaggedValue, MathMin, MATH_MIN_INDEX)                                             \
+    V(JSTaggedValue, MathMax, MATH_MAX_INDEX)                                             \
+    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX)                                         \
+    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX)                                       \
+    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX)                                           \
+    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX)                                         \
+    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX)                                           \
+    V(JSTaggedValue, BigIntAsIntN, BIGINT_AS_INTN_INDEX)                                  \
+    V(JSTaggedValue, BigIntAsUintN, BIGINT_AS_UINTN_INDEX)                                \
+    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX)                              \
+    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX)                                    \
+    V(JSTaggedValue, StringLocaleCompare, STRING_LOCALE_COMPARE_INDEX)                    \
+    V(JSTaggedValue, ArraySort, ARRAY_SORT_INDEX)                                         \
+    V(JSTaggedValue, JsonStringify, JSON_STRINGFY_INDEX)                                  \
+    V(JSTaggedValue, MapIteratorProtoNext, MAP_ITERATOR_PROTO_NEXT_INDEX)                 \
+    V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX)                 \
+    V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX)           \
+    V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX)             \
+    V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX)                    \
+    V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX)                       \
+    V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX)                     \
+    V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX)                     \
+    V(JSTaggedValue, DataViewGetInt8, DATA_VIEW_GET_INT8_INDEX)                           \
+    V(JSTaggedValue, DataViewGetInt16, DATA_VIEW_GET_INT16_INDEX)                         \
+    V(JSTaggedValue, DataViewGetInt32, DATA_VIEW_GET_INT32_INDEX)                         \
+    V(JSTaggedValue, DataViewGetUint16, DATA_VIEW_GET_UINT16_INDEX)                       \
+    V(JSTaggedValue, DataViewGetUint32, DATA_VIEW_GET_UINT32_INDEX)                       \
+    V(JSTaggedValue, DataViewGetUint8, DATA_VIEW_GET_UINT8_INDEX)                         \
+    V(JSTaggedValue, DataViewSetInt8, DATA_VIEW_SET_INT8_INDEX)                           \
+    V(JSTaggedValue, DataViewSetInt16, DATA_VIEW_SET_INT16_INDEX)                         \
+    V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX)                         \
+    V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX)                       \
+    V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX)                       \
+    V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX)                                    \
+    V(JSTaggedValue, DateNow, DATE_NOW_INDEX)                                             \
+    V(JSTaggedValue, ObjectIs, OBJECT_IS_INDEX)                                           \
+    V(JSTaggedValue, ObjectGetProto, OBJECT_GET_PROTO_INDEX)                              \
+    V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX)                   \
+    V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX)               \
+    CONDITION_GLOBAL_REFLECT_HAS(V)                                                       \
+    V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX)                           \
+    V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX)                                   \
+    V(JSTaggedValue, FunctionPrototypeHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX) \
+    V(JSTaggedValue, ArrayKeys, ARRAY_KEYS_INDEX)                                         \
+    V(JSTaggedValue, ArrayEntries, ARRAY_ENTRIES_INDEX)                                   \
+    V(JSTaggedValue, GlobalDecodeURIComponent, GLOBAL_DECODE_URI_COMPONENT_INDEX)
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SELF_FIELD(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
-    GLOBAL_ENV_CONTAINER_ITERATORS(V)
+    GLOBAL_ENV_CONTAINER_ITERATORS(V)                       \
+    GLOBAL_ENV_INLINED_BUILTINS(V)
 
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
-    enum class GlobalEnvField: uint16_t {
-        GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
-        FINAL_INDEX,
-        INVALID = -1
-    };
+#define INDEX_FILTER_BUILTIN4(ARG1, ARG2, ARG3, Index) Index##_INDEX,
+#define INDEX_FILTER_BUILTIN6(ARG1, ARG2, ARG3, ARG4, ARG5, Index) Index##_INDEX,
+// clang-format off
+enum class GlobalEnvField : uint16_t {
+    GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
+    BUILTINS_METHOD_STUB_LIST(INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN4,
+                              INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN6)
+    FINAL_INDEX,
+    INVALID = -1
+};
+// clang-format on
+#undef INDEX_FILTER_BUILTIN6
+#undef INDEX_FILTER_BUILTIN4
 #undef GLOBAL_ENV_FIELD_ENUM_ITEM
 
 #define DETECTOR_SYMBOL_LIST(V)                      \
@@ -404,5 +494,5 @@ namespace panda::ecmascript {
     V(MatchAllSymbol, "Symbol.matchAll",  matchAll)  \
     V(IteratorSymbol, "Symbol.iterator",  iterator)  \
     V(SpeciesSymbol,  "Symbol.species",   species)
-} // namespace panda::ecmascript
+}  // namespace panda::ecmascript
 #endif // ECMASCRIPT_GLOBAL_ENV_FIELDS_H

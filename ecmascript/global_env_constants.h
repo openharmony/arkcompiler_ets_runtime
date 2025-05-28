@@ -153,87 +153,6 @@ class ObjectFactory;
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)
 
-#if ENABLE_NEXT_OPTIMIZATION
-#define CONDITION_GLOBAL_REFLECT_HAS(V)
-#else
-#define CONDITION_GLOBAL_REFLECT_HAS(V) V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX, ecma_roots_special)
-#endif
-
-// Use for builtins inlining
-#define GLOBAL_ENV_INLINED_BUILTINS(V)                                                                  \
-    V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathAcos, MATH_ACOS_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathAcosh, MATH_ACOSH_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathAsin, MATH_ASIN_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathAsinh, MATH_ASINH_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathAtan, MATH_ATAN_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathAtan2, MATH_ATAN2_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathAtanh, MATH_ATANH_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathCos, MATH_COS_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathCosh, MATH_COSH_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathSign, MATH_SIGN_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathSin, MATH_SIN_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathSinh, MATH_SINH_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathTan, MATH_TAN_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathTanh, MATH_TANH_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathTrunc, MATH_TRUNC_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathLog, MATH_LOG_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathLog2, MATH_LOG2_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathLog10, MATH_LOG10_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathLog1p, MATH_LOG1P_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathExp, MATH_EXP_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathExpm1, MATH_EXPM1_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathClz32, MATH_CLZ32_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathAbs, MATH_ABS_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathPow, MATH_POW_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathCbrt, MATH_CBRT_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathMin, MATH_MIN_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathMax, MATH_MAX_INDEX, ecma_roots_builtins)                                      \
-    V(JSTaggedValue, MathRound, MATH_ROUND_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathFRound, MATH_FROUND_INDEX, ecma_roots_builtins)                                \
-    V(JSTaggedValue, MathCeil, MATH_CEIL_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, MathFloor, MATH_FLOOR_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, MathImul, MATH_IMUL_INDEX, ecma_roots_builtins)                                    \
-    V(JSTaggedValue, BigIntAsIntN, BIGINT_AS_INTN_INDEX, ecma_roots_builtins)                           \
-    V(JSTaggedValue, BigIntAsUintN, BIGINT_AS_UINTN_INDEX, ecma_roots_builtins)                         \
-    V(JSTaggedValue, GlobalIsFinite, GLOBAL_IS_FINITE_INDEX, ecma_roots_builtins)                       \
-    V(JSTaggedValue, GlobalIsNan, GLOBAL_IS_NAN_INDEX, ecma_roots_builtins)                             \
-    V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_builtins)         \
-    V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_builtins)                 \
-    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_builtins)         \
-    V(JSTaggedValue, MapIteratorProtoNext, MAP_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)          \
-    V(JSTaggedValue, SetIteratorProtoNext, SET_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)          \
-    V(JSTaggedValue, StringIteratorProtoNext, STRING_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)    \
-    V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
-    V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
-    V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX, ecma_roots_builtins)                \
-    V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX, ecma_roots_builtins)              \
-    V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX, ecma_roots_builtins)              \
-    V(JSTaggedValue, DataViewGetInt8, DATA_VIEW_GET_INT8_INDEX, ecma_roots_builtins)                    \
-    V(JSTaggedValue, DataViewGetInt16, DATA_VIEW_GET_INT16_INDEX, ecma_roots_builtins)                  \
-    V(JSTaggedValue, DataViewGetInt32, DATA_VIEW_GET_INT32_INDEX, ecma_roots_builtins)                  \
-    V(JSTaggedValue, DataViewGetUint16, DATA_VIEW_GET_UINT16_INDEX, ecma_roots_builtins)                \
-    V(JSTaggedValue, DataViewGetUint32, DATA_VIEW_GET_UINT32_INDEX, ecma_roots_builtins)                \
-    V(JSTaggedValue, DataViewGetUint8, DATA_VIEW_GET_UINT8_INDEX, ecma_roots_builtins)                  \
-    V(JSTaggedValue, DataViewSetInt8, DATA_VIEW_SET_INT8_INDEX, ecma_roots_builtins)                    \
-    V(JSTaggedValue, DataViewSetInt16, DATA_VIEW_SET_INT16_INDEX, ecma_roots_builtins)                  \
-    V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX, ecma_roots_builtins)                  \
-    V(JSTaggedValue, DataViewSetUint16, DATA_VIEW_SET_UINT16_INDEX, ecma_roots_builtins)                \
-    V(JSTaggedValue, DataViewSetUint32, DATA_VIEW_SET_UINT32_INDEX, ecma_roots_builtins)                \
-    V(JSTaggedValue, DateGetTime, DATE_GET_TIME_INDEX, ecma_roots_special)                              \
-    V(JSTaggedValue, DateNow, DATE_NOW_INDEX, ecma_roots_special)                                       \
-    V(JSTaggedValue, ObjectIs, OBJECT_IS_INDEX, ecma_roots_special)                                     \
-    V(JSTaggedValue, ObjectGetPrototo, OBJECT_GET_PROTO_INDEX, ecma_roots_special)                      \
-    V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX, ecma_roots_special)             \
-    V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX, ecma_roots_special)         \
-    CONDITION_GLOBAL_REFLECT_HAS(V)                                                                     \
-    V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX, ecma_roots_special)                     \
-    V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX, ecma_roots_special)                             \
-    V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)    \
-    V(JSTaggedValue, ArrayKeys, ARRAY_KEYS_INDEX, ecma_roots_builtins)                                  \
-    V(JSTaggedValue, ArrayEntries, ARRAY_ENTRIES_INDEX, ecma_roots_builtins)                            \
-    V(JSTaggedValue, GloablDecodeURIComponent, GLOBAL_DECODE_URI_COMPONENT, ecma_roots_builtins)
-
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
     V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
@@ -627,8 +546,6 @@ class ObjectFactory;
 enum class ConstantIndex : size_t {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 
-#define INDEX_FILTER_BUILTIN4(ARG1, ARG2, ARG3, Index)  Index##_INDEX,
-#define INDEX_FILTER_BUILTIN6(ARG1, ARG2, ARG3, ARG4, ARG5, Index)  Index##_INDEX,
 #define INDEX_FILTER_COMMON(Index) Index,
 #define INDEX_FILTER_WITH_TYPE(Type, Name, Index, Desc) INDEX_FILTER_COMMON(Index)
 #define INDEX_FILTER_STRING(Name, Index, Token) INDEX_FILTER_COMMON(Index)
@@ -642,9 +559,6 @@ enum class ConstantIndex : size_t {
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
-    BUILTINS_METHOD_STUB_LIST(INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN4,                       \
-                              INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN6)
-    GLOBAL_ENV_INLINED_BUILTINS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
 #undef INDEX_FILTER_STRING
 #undef INDEX_FILTER_WITH_TYPE
@@ -704,7 +618,6 @@ public:
     const Type Get##Name() const;                   \
     const JSHandle<Type> GetHandled##Name() const;  \
     static size_t GetOffsetOf##Name();
-#define DECL_GET_BUILTIN(Method, Object, ...)  DECL_GET_COMMON(JSTaggedValue, Object##Method)
 #define DECL_GET_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_COMMON(Type, Name)
 #define DECL_GET_STRING(Name, Index, Token) DECL_GET_COMMON(JSTaggedValue, Name)
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
@@ -716,8 +629,6 @@ public:
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
-    BUILTINS_METHOD_STUB_LIST(DECL_GET_BUILTIN, DECL_GET_BUILTIN, DECL_GET_BUILTIN, DECL_GET_BUILTIN)
-    GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
 #undef DECL_GET_STRING
 #undef DECL_GET_WITH_TYPE
