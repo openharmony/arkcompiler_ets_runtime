@@ -181,9 +181,8 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleForHotReload(JS
                                                                               const CString &recordName,
                                                                               const ExecuteTypes &executeType)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false, false, executeType);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, moduleFileName, recordName, false, false, executeType);
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
@@ -209,8 +208,8 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
                                                                            const ExecuteTypes &executeType)
 {
     if (jsPandaFile == nullptr) {
-        std::shared_ptr<JSPandaFile> file =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false, false, executeType);
+        std::shared_ptr<JSPandaFile> file = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, moduleFileName, recordName, false, false, executeType);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (file == nullptr) {
             CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";

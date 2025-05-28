@@ -474,8 +474,8 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     bool isSingletonPattern)
 {
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry, false, false, ExecuteTypes::STATIC);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, abcFilePath, entry, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_URI_ERROR);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "When the route jump, loading panda file failed. Current file is " << abcFilePath;
@@ -517,8 +517,8 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     if (!isValid) {
         return false;
     }
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entry, false, false, ExecuteTypes::STATIC);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, abcFilePath, entry, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "When checking if module is in abc file, loading panda file failed. Current file is " <<

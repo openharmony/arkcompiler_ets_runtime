@@ -221,8 +221,8 @@ CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const C
         return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PathHelper::SLASH_TAG,
                                      entryPath, path, PathHelper::NORMALIZED_OHMURL_TAG, version);
     }
-    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH.data(), path,
-        PathHelper::NORMALIZED_OHMURL_TAG, version);
+    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH.data(),
+        path, PathHelper::NORMALIZED_OHMURL_TAG, version);
 }
 
 CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const CString &normalizedpath,
