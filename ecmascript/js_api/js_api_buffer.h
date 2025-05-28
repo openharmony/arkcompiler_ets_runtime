@@ -53,7 +53,8 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
         double right = (type##_MAX);                                                                                  \
         if (valueNum > right || valueNum < left) {                                                                    \
             std::ostringstream oss;                                                                                   \
-            oss << "The value of \"value\" is out of range. It must be >= " << left << " and <= " << right            \
+            oss << std::fixed << std::setprecision(0)                                                                 \
+                << "The value of \"value\" is out of range. It must be >= " << left << " and <= " << right            \
                 << ". Received value is: ";                                                                           \
             if (value->IsInt()) {                                                                                     \
                 oss << std::fixed << std::setprecision(0) << valueNum;                                                \
@@ -66,7 +67,8 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
         if (offset + NumberSize::type > buffer->GetLength()) {                                                        \
             std::ostringstream oss;                                                                                   \
             oss << "The value of \"offset\" is out of range. It must be >= " << 0                                     \
-                << " and <= " << buffer->GetLength() - NumberSize::type << ". Received value is: " << offset;         \
+                << " and <= " << static_cast<int64_t>(buffer->GetLength()) - NumberSize::type                         \
+                << ". Received value is: " << offset;                                                                 \
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());   \
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                              \
         }                                                                                                             \
@@ -83,7 +85,8 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
         if (offset + NumberSize::type > buffer->GetLength()) {                                                        \
             std::ostringstream oss;                                                                                   \
             oss << "The value of \"offset\" is out of range. It must be >= " << 0                                     \
-                << " and <= " << buffer->GetLength() - NumberSize::type << ". Received value is: " << offset;         \
+                << " and <= " << static_cast<int64_t>(buffer->GetLength()) - NumberSize::type                         \
+                << ". Received value is: " << offset;                                                                 \
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());   \
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                              \
         }                                                                                                             \
@@ -122,9 +125,9 @@ public:
     static constexpr uint32_t UINT8_MIN = 0;
     static constexpr uint32_t UINT16_MIN = 0;
     static constexpr uint32_t UINT32_MIN = 0;
-    static constexpr float FLOAT32_MIN = std::numeric_limits<float>::min();
+    static constexpr float FLOAT32_MIN = -std::numeric_limits<float>::max();
     static constexpr float FLOAT32_MAX = std::numeric_limits<float>::max();
-    static constexpr double FLOAT64_MIN = std::numeric_limits<double>::min();
+    static constexpr double FLOAT64_MIN = -std::numeric_limits<double>::max();
     static constexpr double FLOAT64_MAX = std::numeric_limits<double>::max();
     static JSAPIFastBuffer *Cast(TaggedObject *object)
     {
@@ -163,8 +166,8 @@ public:
     static void ExtendBufferCapacity(JSThread *thread, JSHandle<JSAPIFastBuffer> &dst, uint32_t capacity);
     static JSTaggedValue WriteStringLoop(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer, std::string_view data,
                                          uint32_t start, uint32_t end);
-    static JSTaggedValue WriteBufferObjectLoop(JSHandle<JSAPIFastBuffer> &buffer, JSHandle<JSTaggedValue> &srcObj,
-                                               uint32_t start, uint32_t end);
+    static JSTaggedValue WriteBufferObjectLoop(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer,
+                                               JSHandle<JSTaggedValue> &srcObj, uint32_t start, uint32_t end);
     static JSTaggedValue Copy(JSThread *thread, const JSHandle<JSTaggedValue> &dst, const JSHandle<JSTaggedValue> &src,
                               uint32_t tStart, uint32_t sStart, uint32_t sEnd);
     static JSTaggedValue FromArrayBuffer(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
@@ -182,7 +185,7 @@ public:
     static JSTaggedValue AllocateFromBufferObject(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
                                                   const JSHandle<JSTaggedValue> &src, uint32_t byteLength = 0,
                                                   uint32_t byteOffset = 0);
-    static JSHandle<JSTypedArray> NewUint8Array(JSThread *thread, uint32_t length, uint32_t byteOffset = 0);
+    static JSHandle<JSTypedArray> NewUint8Array(JSThread *thread, uint32_t length);
     static JSTaggedValue AllocateFastBuffer(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
                                             uint32_t byteLength, uint32_t byteOffset = 0);
     static JSTaggedValue FromBufferToArray(JSThread *thread, JSHandle<JSTaggedValue> &value);

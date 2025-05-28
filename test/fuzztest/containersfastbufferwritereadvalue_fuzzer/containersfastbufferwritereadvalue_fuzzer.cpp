@@ -98,60 +98,59 @@ namespace OHOS {
             }
             FuzzedDataProvider fdp(data, size);
             JSHandle<JSAPIFastBuffer> buf1 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
-            {
                 int32_t offset = fdp.ConsumeIntegral<int32_t>();
                 int32_t value = fdp.ConsumeIntegral<int32_t>();
-                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-                callInfo->SetFunction(JSTaggedValue::Undefined());
-                callInfo->SetThis(buf1.GetTaggedValue());
-                callInfo->SetCallArg(0, JSTaggedValue(value));
-                callInfo->SetCallArg(1, JSTaggedValue(offset));
-                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::WriteUInt8(callInfo);
-                ret = ContainersBuffer::WriteUInt8(callInfo);
-                ret = ContainersBuffer::WriteUInt16BE(callInfo);
-                ret = ContainersBuffer::WriteUInt16LE(callInfo);
-                ret = ContainersBuffer::WriteUInt32BE(callInfo);
-                ret = ContainersBuffer::WriteUInt32LE(callInfo);
-                ret = ContainersBuffer::WriteInt8(callInfo);
-                ret = ContainersBuffer::WriteInt16BE(callInfo);
-                ret = ContainersBuffer::WriteInt16LE(callInfo);
-                ret = ContainersBuffer::WriteInt32BE(callInfo);
-                ret = ContainersBuffer::WriteInt32LE(callInfo);
-            }
-            {
-                int32_t offset = fdp.ConsumeIntegral<int32_t>();
-                double value = fdp.ConsumeFloatingPoint<double>();
-                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-                callInfo->SetFunction(JSTaggedValue::Undefined());
-                callInfo->SetThis(buf1.GetTaggedValue());
-                callInfo->SetCallArg(0, JSTaggedValue(value));
-                callInfo->SetCallArg(1, JSTaggedValue(offset));
-                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::WriteFloat32BE(callInfo);
-                ret = ContainersBuffer::WriteFloat32LE(callInfo);
-                ret = ContainersBuffer::WriteFloat64BE(callInfo);
-                ret = ContainersBuffer::WriteFloat64LE(callInfo);
-            }
-            {
-                int32_t offset = fdp.ConsumeIntegral<int32_t>();
-                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-                callInfo->SetFunction(JSTaggedValue::Undefined());
-                callInfo->SetThis(buf1.GetTaggedValue());
-                callInfo->SetCallArg(0, JSTaggedValue(offset));
-                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::ReadUInt8(callInfo);
-                ret = ContainersBuffer::ReadUInt16BE(callInfo);
-                ret = ContainersBuffer::ReadUInt16LE(callInfo);
-                ret = ContainersBuffer::ReadUInt32BE(callInfo);
-                ret = ContainersBuffer::ReadUInt32LE(callInfo);
-                ret = ContainersBuffer::ReadInt8(callInfo);
-                ret = ContainersBuffer::ReadInt16BE(callInfo);
-                ret = ContainersBuffer::ReadInt16LE(callInfo);
-                ret = ContainersBuffer::ReadInt32BE(callInfo);
-                ret = ContainersBuffer::ReadInt32LE(callInfo);
-                ret = ContainersBuffer::ReadFloat32BE(callInfo);
-                ret = ContainersBuffer::ReadFloat32LE(callInfo);
-                ret = ContainersBuffer::ReadFloat64BE(callInfo);
-                ret = ContainersBuffer::ReadFloat64LE(callInfo);
-            }
+                double doubleValue = fdp.ConsumeFloatingPoint<double>();
+
+                EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
+                callInfo1->SetFunction(JSTaggedValue::Undefined());
+                callInfo1->SetThis(buf1.GetTaggedValue());
+                // 0 : means the first parameter
+                callInfo1->SetCallArg(0, JSTaggedValue(value));
+                // 1 : means the second parameter
+                callInfo1->SetCallArg(1, JSTaggedValue(offset));
+                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::WriteUInt8(callInfo1);
+                ret = ContainersBuffer::WriteUInt8(callInfo1);
+                ret = ContainersBuffer::WriteUInt16BE(callInfo1);
+                ret = ContainersBuffer::WriteUInt16LE(callInfo1);
+                ret = ContainersBuffer::WriteUInt32BE(callInfo1);
+                ret = ContainersBuffer::WriteUInt32LE(callInfo1);
+                ret = ContainersBuffer::WriteInt8(callInfo1);
+                ret = ContainersBuffer::WriteInt16BE(callInfo1);
+                ret = ContainersBuffer::WriteInt16LE(callInfo1);
+                ret = ContainersBuffer::WriteInt32BE(callInfo1);
+                ret = ContainersBuffer::WriteInt32LE(callInfo1);
+                EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 8);
+                callInfo2->SetFunction(JSTaggedValue::Undefined());
+                callInfo2->SetThis(buf1.GetTaggedValue());
+                // 0 : means the first parameter
+                callInfo2->SetCallArg(0, JSTaggedValue(doubleValue));
+                // 1 : means the second parameter
+                callInfo2->SetCallArg(1, JSTaggedValue(offset));
+                ret = ContainersBuffer::WriteFloat32BE(callInfo2);
+                ret = ContainersBuffer::WriteFloat32LE(callInfo2);
+                ret = ContainersBuffer::WriteFloat64BE(callInfo2);
+                ret = ContainersBuffer::WriteFloat64LE(callInfo2);
+                
+                EcmaRuntimeCallInfo *callInfo3 = CreateEcmaRuntimeCallInfo(thread, 8);
+                callInfo3->SetFunction(JSTaggedValue::Undefined());
+                callInfo3->SetThis(buf1.GetTaggedValue());
+                // 0 : means the first parameter
+                callInfo3->SetCallArg(0, JSTaggedValue(offset));
+                ret = ContainersBuffer::ReadUInt8(callInfo3);
+                ret = ContainersBuffer::ReadUInt16BE(callInfo3);
+                ret = ContainersBuffer::ReadUInt16LE(callInfo3);
+                ret = ContainersBuffer::ReadUInt32BE(callInfo3);
+                ret = ContainersBuffer::ReadUInt32LE(callInfo3);
+                ret = ContainersBuffer::ReadInt8(callInfo3);
+                ret = ContainersBuffer::ReadInt16BE(callInfo3);
+                ret = ContainersBuffer::ReadInt16LE(callInfo3);
+                ret = ContainersBuffer::ReadInt32BE(callInfo3);
+                ret = ContainersBuffer::ReadInt32LE(callInfo3);
+                ret = ContainersBuffer::ReadFloat32BE(callInfo3);
+                ret = ContainersBuffer::ReadFloat32LE(callInfo3);
+                ret = ContainersBuffer::ReadFloat64BE(callInfo3);
+                ret = ContainersBuffer::ReadFloat64LE(callInfo3);
         }
         JSNApi::DestroyJSVM(vm);
     }

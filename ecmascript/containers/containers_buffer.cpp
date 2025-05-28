@@ -24,6 +24,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_typed_array.h"
@@ -62,6 +63,20 @@ int32_t GetValueInt32(JSHandle<JSTaggedValue> valueHandle)
 uint32_t GetValueUInt32(JSHandle<JSTaggedValue> valueHandle)
 {
     return static_cast<uint32_t>(GetValueInt32(valueHandle));
+}
+
+JSTypedArray *GetUInt8ArrayFromBufferObject(JSTaggedValue buffer)
+{
+    if (buffer.IsJSUint8Array()) {
+        return JSTypedArray::Cast(buffer.GetTaggedObject());
+    }
+    ASSERT(buffer.IsJSAPIBuffer());
+    return JSTypedArray::Cast(JSAPIFastBuffer::Cast(buffer.GetTaggedObject())->GetFastBufferData().GetTaggedObject());
+}
+
+JSTypedArray *GetUInt8ArrayFromBufferObject(JSHandle<JSTaggedValue> buffer)
+{
+    return GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue());
 }
 
 bool IsNegetiveNumber(JSHandle<JSTaggedValue> &v)
@@ -166,8 +181,7 @@ JSTaggedValue ContainersBuffer::GetByteOffset(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(GetByteOffset);
-    auto array = JSTypedArray::Cast(JSHandle<JSAPIFastBuffer>::Cast(self)->GetFastBufferData().GetTaggedObject());
-    return JSTaggedValue(array->GetByteOffset());
+    return JSTaggedValue(JSHandle<JSAPIFastBuffer>::Cast(self)->GetOffset());
 }
 
 JSTaggedValue ContainersBuffer::GetArrayBuffer(EcmaRuntimeCallInfo *argv)
@@ -190,34 +204,32 @@ JSTaggedValue ContainersBuffer::Compare(EcmaRuntimeCallInfo *argv)
     CONTAINER_BUFFER_CHECK(Compare);
     auto value = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(value);
-    uint32_t tEnd;
-    if (value->IsJSAPIBuffer()) {
-        tEnd = JSHandle<JSAPIFastBuffer>::Cast(value)->GetLength();
-    } else if (value->IsJSUint8Array()) {
-        tEnd = JSHandle<JSTypedArray>::Cast(value)->GetByteLength();
-    }
     auto src = JSHandle<JSAPIFastBuffer>::Cast(self);
+    uint32_t tStart = 0;
+    uint32_t tEnd = (value->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>::Cast(value)->GetLength()
+                                            : JSHandle<JSTypedArray>::Cast(value)->GetByteLength());
+    uint32_t srcLength = src->GetLength();
+    uint32_t dstLength = tEnd;
     auto targetStart = GetCallArg(argv, 1);  // 1 means the second arg
     auto targetEnd = GetCallArg(argv, 2);    // 2 means the third arg
     auto sourceStart = GetCallArg(argv, 3);  // 3 means the fourth arg
     auto sourceEnd = GetCallArg(argv, 4);    // 4 means the fifth arg
-    uint32_t tStart = 0;
     if (targetStart->IsNumber()) {
-        RANGE_ERROR_CHECK(targetStart, targetStart, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(targetStart, targetStart, 0, dstLength);
         tStart = GetValueUInt32(targetStart);
     }
     if (targetEnd->IsNumber()) {
-        RANGE_ERROR_CHECK(targetEnd, targetEnd, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(targetEnd, targetEnd, 0, dstLength);
         tEnd = GetValueUInt32(targetEnd);
     }
     uint32_t sStart = 0;
     if (sourceStart->IsNumber()) {
-        RANGE_ERROR_CHECK(sourceStart, sourceStart, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(sourceStart, sourceStart, 0, srcLength);
         sStart = GetValueUInt32(sourceStart);
     }
     uint32_t sEnd = src->GetLength();
     if (sourceEnd->IsNumber()) {
-        RANGE_ERROR_CHECK(sourceEnd, sourceEnd, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(sourceEnd, sourceEnd, 0, srcLength);
         sEnd = GetValueUInt32(sourceEnd);
     }
     if (sStart >= sEnd) {
@@ -239,9 +251,7 @@ JSTaggedValue ContainersBuffer::Equals(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(Equals);
     auto value = GetCallArg(argv, 0);  // 0 means the first arg
-    if (value->IsNull() || value->IsUndefined()) {
-        return JSTaggedValue(false);
-    }
+    CHECK_NULL_OR_UNDEFINED(value);
     auto src = JSHandle<JSAPIFastBuffer>::Cast(self);
     uint32_t tEnd;
     if (value->IsJSAPIBuffer()) {
@@ -346,8 +356,8 @@ JSTaggedValue ContainersBuffer::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(value);
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);  // 1 means the second arg
-    int32_t length = static_cast<int32_t>(buffer->GetLength());
-    int32_t offsetIndex = buffer->GetLength() - 1;
+    int64_t length = static_cast<int64_t>(buffer->GetLength());
+    int64_t offsetIndex = length - 1;
     if (offset->IsNumber()) {
         if (offset->GetNumber() < -length) {
             return JSTaggedValue(-1);
@@ -372,7 +382,7 @@ JSTaggedValue ContainersBuffer::LastIndexOf(EcmaRuntimeCallInfo *argv)
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
     }
-    return JSAPIFastBuffer::IndexOf(thread, buffer, value, offsetIndex, encodingType, true);
+    return JSAPIFastBuffer::IndexOf(thread, buffer, value, static_cast<uint32_t>(offsetIndex), encodingType, true);
 }
 
 JSTaggedValue ContainersBuffer::Entries(EcmaRuntimeCallInfo *argv)
@@ -416,13 +426,11 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(Fill);
     JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
-    if (buffer->GetLength() == 0) {
+    uint32_t length = buffer->GetLength();
+    if (length == 0) {
         return buffer.GetTaggedValue();
     }
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);  // 0 means the first arg
-    if (value->IsUndefined() || value->IsNull()) {
-        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue(0));
-    }
     JSHandle<JSTaggedValue> start = GetCallArg(argv, 1);  // 1 means the second arg
     if (start->IsString()) {
         JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
@@ -433,22 +441,22 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(start));
-        return JSAPIFastBuffer::Fill(thread, buffer, value, encodingType, 0, buffer->GetLength());
+        return JSAPIFastBuffer::Fill(thread, buffer, value, encodingType, 0, length);
     }
     JSHandle<JSTaggedValue> end = GetCallArg(argv, 2);       // 2 means the third arg
     JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 3);  // 3 means the fourth arg
     uint32_t startIndex = 0;
     if (start->IsNumber()) {
-        RANGE_ERROR_CHECK(start, start, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(start, offset, 0, length);
         startIndex = GetValueUInt32(start);
     }
-    uint32_t endIndex = buffer->GetLength();
-    if (endIndex == 0) {
-        return buffer.GetTaggedValue();
-    }
+    uint32_t endIndex = length;
     if (end->IsNumber()) {
-        RANGE_ERROR_CHECK(end, end, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(end, end, 0, length);
         endIndex = GetValueUInt32(end);
+    }
+    if (endIndex <= startIndex) {
+        return buffer.GetTaggedValue();
     }
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
@@ -546,6 +554,9 @@ JSTaggedValue ContainersBuffer::ToString(EcmaRuntimeCallInfo *argv)
         }
     }
     uint32_t endIndex = buffer->GetLength();
+    if (startIndex >= endIndex) {
+        return thread->GlobalConstants()->GetHandledEmptyString().GetTaggedValue();
+    }
     if (end->IsNumber()) {
         if (end->GetNumber() <= startIndex) {
             return thread->GlobalConstants()->GetHandledEmptyString().GetTaggedValue();
@@ -568,6 +579,9 @@ JSTaggedValue ContainersBuffer::Copy(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIFastBuffer> src = JSHandle<JSAPIFastBuffer>::Cast(self);
     JSHandle<JSTaggedValue> dst = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(dst);
+    uint32_t srcLength = src->GetLength();
+    uint32_t dstLength = dst->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>(dst)->GetLength()
+                                              : JSHandle<JSTypedArray>(dst)->GetArrayLength();
     auto targetStart = GetCallArg(argv, 1);  // 1 means the second arg
     auto sourceStart = GetCallArg(argv, 2);  // 2 means the third arg
     auto sourceEnd = GetCallArg(argv, 3);    // 3 means the fourth arg
@@ -581,13 +595,12 @@ JSTaggedValue ContainersBuffer::Copy(EcmaRuntimeCallInfo *argv)
         RANGE_ERROR_CHECK(sourceStart, sourceStart, 0, UINT32_MAX);
         sStart = GetValueUInt32(sourceStart);
     }
-    uint32_t sEnd = src->GetLength();
+    uint32_t sEnd = srcLength;
     if (sourceEnd->IsNumber()) {
-        RANGE_ERROR_CHECK(sourceEnd, sourceEnd, 0, UINT32_MAX);
-        sEnd = std::min(sEnd, GetValueUInt32(sourceEnd));
+        RANGE_ERROR_CHECK(sourceEnd, sourceEnd, 0, srcLength);
+        sEnd = GetValueUInt32(sourceEnd);
     }
-    uint32_t length = src->GetLength();
-    if (sEnd <= sStart || sStart >= length) {
+    if (sEnd <= sStart || sStart >= srcLength || tStart >= dstLength) {
         return JSTaggedValue(0);
     }
     return JSAPIFastBuffer::Copy(thread, dst, self, tStart, sStart, sEnd);
@@ -600,18 +613,24 @@ JSTaggedValue ContainersBuffer::WriteUIntBE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, WriteUIntBE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(WriteUIntBE);
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);       // 0 means the first arg
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);      // 1 means the second arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 2);  // 2 means the third arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);             // 0 means the first arg
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::WriteBytesValue(thread, buffer, value, offsetIndex,
-                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()));
+                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -622,18 +641,24 @@ JSTaggedValue ContainersBuffer::WriteUIntLE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, WriteUIntLE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(WriteUIntLE)
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);       // 0 means the first arg
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);      // 1 means the second arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 2);  // 2 means the third arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);             // 0 means the first arg
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     CHECK_NULL_OR_UNDEFINED(value);
     uint32_t offsetIndex = 0;
     if (offset->IsInt()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::WriteBytesValue(thread, buffer, value, offsetIndex,
-                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()), true);
+                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength), true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -644,17 +669,23 @@ JSTaggedValue ContainersBuffer::ReadUIntBE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, ReadUIntBE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(ReadUIntBE)
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);      // 0 means the first arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 1);  // 1 means the second arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);            // 0 means the first arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
-    auto ret = JSAPIFastBuffer::ReadBytes(thread, buffer, offsetIndex,
-                                          static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()));
+    auto ret =
+        JSAPIFastBuffer::ReadBytes(thread, buffer, offsetIndex, static_cast<JSAPIFastBuffer::ByteLength>(byteLength));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -665,17 +696,23 @@ JSTaggedValue ContainersBuffer::ReadUIntLE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, ReadUIntLE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(ReadUIntLE)
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);      // 0 means the first arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 1);  // 1 means the second arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);            // 0 means the first arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::ReadBytes(thread, buffer, offsetIndex,
-                                          static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()), true);
+                                          static_cast<JSAPIFastBuffer::ByteLength>(byteLength), true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -687,18 +724,24 @@ JSTaggedValue ContainersBuffer::WriteIntBE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, WriteIntBE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(WriteIntBE)
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);       // 0 means the first arg
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);      // 1 means the second arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 2);  // 2 means the third arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);             // 0 means the first arg
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
-    if (offset->IsInt()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+    if (offset->IsNumber()) {
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::WriteBytesValue(thread, buffer, value, offsetIndex,
-                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()));
+                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -709,18 +752,24 @@ JSTaggedValue ContainersBuffer::WriteIntLE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, WriteIntLE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(WriteIntLE)
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);       // 0 means the first arg
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);      // 1 means the second arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 2);  // 2 means the third arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);             // 0 means the first arg
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
-    if (offset->IsInt()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+    if (offset->IsNumber()) {
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::WriteBytesValue(thread, buffer, value, offsetIndex,
-                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()), true);
+                                                static_cast<JSAPIFastBuffer::ByteLength>(byteLength), true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -731,17 +780,23 @@ JSTaggedValue ContainersBuffer::ReadIntBE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, ReadIntBE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(ReadIntBE)
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);      // 0 means the first arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 1);  // 1 means the second arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);            // 0 means the first arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
-    auto ret = JSAPIFastBuffer::ReadInt(thread, buffer, offsetIndex,
-                                        static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()));
+    auto ret =
+        JSAPIFastBuffer::ReadInt(thread, buffer, offsetIndex, static_cast<JSAPIFastBuffer::ByteLength>(byteLength));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }
@@ -752,17 +807,23 @@ JSTaggedValue ContainersBuffer::ReadIntLE(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Buffer, ReadIntLE);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(ReadIntLE)
-    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);      // 0 means the first arg
-    JSHandle<JSTaggedValue> byteLength = GetCallArg(argv, 1);  // 1 means the second arg
+    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);            // 0 means the first arg
+    JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
+    if (!byteLengthHandle->IsNumber()) {
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
-        RANGE_ERROR_CHECK(offset, offset, 0, UINT32_MAX);
+        RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
-    JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     auto ret = JSAPIFastBuffer::ReadInt(thread, buffer, offsetIndex,
-                                        static_cast<JSAPIFastBuffer::ByteLength>(byteLength->GetInt()), true);
+                                        static_cast<JSAPIFastBuffer::ByteLength>(byteLength), true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
 }

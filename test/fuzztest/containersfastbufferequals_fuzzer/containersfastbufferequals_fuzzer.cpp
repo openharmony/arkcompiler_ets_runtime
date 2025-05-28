@@ -98,31 +98,29 @@ namespace OHOS {
             }
             FuzzedDataProvider fdp(data, size);
             ObjectFactory *factory = vm->GetFactory();
+            std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+            JSHandle<EcmaString> str = factory->NewFromStdString(rdStr);
+            
             JSHandle<JSAPIFastBuffer> buf1 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
             JSHandle<JSAPIFastBuffer> buf2 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
-            {
-                EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6);
-                callInfo1->SetFunction(JSTaggedValue::Undefined());
-                callInfo1->SetThis(buf1.GetTaggedValue());
-                std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-                JSHandle<EcmaString> str = factory->NewFromASCII(rdStr);
-                callInfo1->SetCallArg(0, JSTaggedValue(*str));
-                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Write(callInfo1);
-            }
-            {
-                EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 6);
-                callInfo2->SetFunction(JSTaggedValue::Undefined());
-                callInfo2->SetThis(buf2.GetTaggedValue());
-                std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-                JSHandle<EcmaString> str = factory->NewFromASCII(rdStr);
-                callInfo2->SetCallArg(0, JSTaggedValue(*str));
-                [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Write(callInfo2);
-            }
+            EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(buf1.GetTaggedValue());
+            // 0 : means the first parameter
+            callInfo1->SetCallArg(0, JSTaggedValue(*str));
+            [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Write(callInfo1);
+            EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo2->SetFunction(JSTaggedValue::Undefined());
+            callInfo2->SetThis(buf2.GetTaggedValue());
+            // 0 : means the first parameter
+            callInfo2->SetCallArg(0, JSTaggedValue(*str));
+            ret = ContainersBuffer::Write(callInfo2);
             EcmaRuntimeCallInfo *callInfo3 = CreateEcmaRuntimeCallInfo(thread, 6);
             callInfo3->SetFunction(JSTaggedValue::Undefined());
             callInfo3->SetThis(buf1.GetTaggedValue());
+            // 0 : means the first parameter
             callInfo3->SetCallArg(0, buf2.GetTaggedValue());
-            [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Equals(callInfo3);
+            ret = ContainersBuffer::Equals(callInfo3);
         }
         JSNApi::DestroyJSVM(vm);
     }
