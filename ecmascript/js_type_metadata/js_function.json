@@ -22,22 +22,27 @@
             "size": 8
         },
         {
-            "name": "RawProfileTypeInfo",
+            "name": "InterfaceType",
             "offset": 32,
             "size": 8
         },
         {
-            "name": "HomeObject",
+            "name": "RawProfileTypeInfo",
             "offset": 40,
             "size": 8
         },
         {
-            "name": "Module",
+            "name": "HomeObject",
             "offset": 48,
+            "size": 8
+        },
+        {
+            "name": "Module",
+            "offset": 56,
             "size": 8
         }
     ],
-    "end_offset": 64,
+    "end_offset": 72,
     "parents": [
         "JS_FUNCTION_BASE"
     ]

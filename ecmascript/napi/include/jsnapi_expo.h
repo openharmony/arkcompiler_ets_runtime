@@ -1839,6 +1839,10 @@ public:
 
     // Napi Update SubStackInfo
     static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
+
+    // 1.2runtime interface info
+    static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
+
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);

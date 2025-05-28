@@ -96,6 +96,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetInterfaceType(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
