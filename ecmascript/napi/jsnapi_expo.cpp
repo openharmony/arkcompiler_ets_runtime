@@ -6336,7 +6336,6 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 
-
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                           const std::string &module_path, bool isHybrid)
 {
