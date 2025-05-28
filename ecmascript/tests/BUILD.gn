@@ -151,6 +151,33 @@ host_unittest_action("JS_Dump_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_DynamicTypeConverter_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "dynamic_type_converter_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("ECMA_StringHash_Test") {
   module_out_path = module_output_path
 
@@ -3605,7 +3632,8 @@ group("unittest") {
     ]
 
     deps += [
-      ":Dynamic_Object_Accessor_Test"
+      ":Dynamic_Object_Accessor_Test",
+      ":JS_DynamicTypeConverter_Test",
     ]
   }
 }
@@ -3912,7 +3940,8 @@ group("host_unittest") {
     ]
 
     deps += [
-      ":Dynamic_Object_Accessor_TestAction"
+      ":Dynamic_Object_Accessor_TestAction",
+      ":JS_DynamicTypeConverter_TestAction",
     ]
   }
 }
