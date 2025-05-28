@@ -335,6 +335,10 @@ void WCollector::PreforwardStaticRoots()
 
     VisitRoots(visitor, false);
     VisitWeakRoots(weakVisitor);
+    MutatorManager::Instance().VisitAllMutators([](Mutator& mutator) {
+        // Request finalize callback in each vm-thread when gc finished.
+        mutator.SetCallbackRequest();
+    });
 
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
@@ -546,6 +550,10 @@ void WCollector::ProcessWeakReferences()
         return true;
     };
     VisitWeakRoots(weakVisitor);
+    MutatorManager::Instance().VisitAllMutators([](Mutator& mutator) {
+        // Request finalize callback in each vm-thread when gc finished.
+        mutator.SetCallbackRequest();
+    });
 #endif
 }
 
