@@ -42,7 +42,6 @@ constexpr unsigned int NUMBER_TEN = 10;
 constexpr unsigned int NUMBER_SIXTEEN = 16;
 constexpr unsigned int INTEGER_MAX_LEN = 9;
 
-constexpr unsigned char CODE_SPACE = 0x20;
 constexpr unsigned char ASCII_END = 0X7F;
 enum class Tokens : uint8_t {
         // six structural tokens

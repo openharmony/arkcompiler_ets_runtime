@@ -357,6 +357,10 @@ config("ark_jsruntime_common_config") {
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
   }
+  
+  if (enable_next_optimization) {
+    defines += [ "NEXT_OPTIMIZATION_MACRO" ]
+  }
 
   cflags_cc = [
     "-Wall",
@@ -675,7 +679,6 @@ ecma_source = [
   "ecmascript/base/error_helper.cpp",
   "ecmascript/base/json_helper.cpp",
   "ecmascript/base/json_parser.cpp",
-  "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
   "ecmascript/base/sort_helper.cpp",
@@ -1055,6 +1058,12 @@ if (current_cpu == "arm64") {
   ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
 } else if (current_cpu == "arm") {
   ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
+}
+
+if (enable_next_optimization) {
+  ecma_source += [ "ecmascript/base/json_stringifier_optimized.cpp" ]
+} else {
+  ecma_source += [ "ecmascript/base/json_stringifier.cpp" ]
 }
 
 hitrace_scope_source = []

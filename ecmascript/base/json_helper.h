@@ -26,6 +26,15 @@ constexpr int HEX_DIGIT_MASK = 0xF;
 constexpr int HEX_SHIFT_THREE = 12;
 constexpr int HEX_SHIFT_TWO = 8;
 constexpr int HEX_SHIFT_ONE = 4;
+constexpr uint8_t CODE_SPACE = 0x20;
+#if !ENABLE_NEXT_OPTIMIZATION
+constexpr uint8_t ZERO_FIRST = 0xc0; // \u0000 => c0 80
+constexpr uint8_t ALONE_SURROGATE_3B_FIRST = 0xed;
+constexpr uint8_t ALONE_SURROGATE_3B_SECOND_START = 0xa0;
+constexpr uint8_t ALONE_SURROGATE_3B_SECOND_END = 0xbf;
+constexpr uint8_t ALONE_SURROGATE_3B_THIRD_START = 0x80;
+constexpr uint8_t ALONE_SURROGATE_3B_THIRD_END = 0xbf;
+#endif
 
 class JsonHelper {
 public:
@@ -63,24 +72,33 @@ public:
         return type == TransformType::SENDABLE || type == TransformType::BIGINT;
     }
 
-    static inline void AppendUnicodeEscape(uint32_t ch, CString& output)
+    template <typename T>
+    static inline void AppendUnicodeEscape(uint32_t ch, T& output)
     {
         static constexpr char HEX_DIGIT[] = "0123456789abcdef";
-        output += "\\u";
-        output += HEX_DIGIT[(ch >> HEX_SHIFT_THREE) & HEX_DIGIT_MASK];
-        output += HEX_DIGIT[(ch >> HEX_SHIFT_TWO) & HEX_DIGIT_MASK];
-        output += HEX_DIGIT[(ch >> HEX_SHIFT_ONE) & HEX_DIGIT_MASK];
-        output += HEX_DIGIT[ch & HEX_DIGIT_MASK];
+        AppendString(output, "\\u");
+        AppendChar(output, HEX_DIGIT[(ch >> HEX_SHIFT_THREE) & HEX_DIGIT_MASK]);
+        AppendChar(output, HEX_DIGIT[(ch >> HEX_SHIFT_TWO) & HEX_DIGIT_MASK]);
+        AppendChar(output, HEX_DIGIT[(ch >> HEX_SHIFT_ONE) & HEX_DIGIT_MASK]);
+        AppendChar(output, HEX_DIGIT[ch & HEX_DIGIT_MASK]);
     }
 
-    static bool IsFastValueToQuotedString(const CString& str);
-    static bool IsFastValueToQuotedString(const Span<const uint8_t>& sp);
-    
+#if ENABLE_NEXT_OPTIMIZATION
+    static bool IsFastValueToQuotedString(const Span<const uint8_t> &sp);
+#else
+    static bool IsFastValueToQuotedString(const CString &str);
+#endif
+
     // String values are wrapped in QUOTATION MARK (") code units. The code units " and \ are escaped with \ prefixes.
     // Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
     // \b (BACKSPACE), \f (FORM FEED), \n (LINE FEED), \r (CARRIAGE RETURN), \t (CHARACTER TABULATION).
+#if ENABLE_NEXT_OPTIMIZATION
+    static void AppendQuotedValueToC16String(const Span<const uint16_t> &sp, uint32_t &index, C16String &output);
+    template <typename SrcType, typename DstType>
+    static void AppendValueToQuotedString(const Span<const SrcType> &sp, DstType &output);
+#else
     static void AppendValueToQuotedString(const CString& str, CString& output);
-    static void AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output);
+#endif
 
     static inline bool CompareKey(const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &a,
                                   const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &b)

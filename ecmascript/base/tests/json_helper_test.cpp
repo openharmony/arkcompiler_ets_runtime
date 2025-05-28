@@ -23,6 +23,7 @@ namespace panda::test {
 class JsonHelperTest : public BaseTestWithScope<false> {
 };
 
+#if ENABLE_NEXT_OPTIMIZATION
 /**
  * @tc.name: IsFastValueToQuotedString
  * @tc.desc: Check basic Ascii characters
@@ -85,23 +86,5 @@ HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_003)
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp2));
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp3));
 }
-
-/**
- * @tc.name: IsFastValueToQuotedString
- * @tc.desc: Check Extended Ascii characters
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_004)
-{
-    for (uint16_t c = 128; c < 256; c++) {
-        if (c == 0xc0 || c == 0xed) {
-            EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(
-              Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&c), 1)));
-        } else {
-            EXPECT_TRUE(JsonHelper::IsFastValueToQuotedString(
-              Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&c), 1)));
-        }
-    }
-}
+#endif
 }

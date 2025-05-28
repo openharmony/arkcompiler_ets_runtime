@@ -688,11 +688,6 @@ CString NumberHelper::IntToString(int number)
     return ToCString(number);
 }
 
-void NumberHelper::AppendIntToString(CString &str, int number)
-{
-    return AppendToCString(str, number);
-}
-
 JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int number)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

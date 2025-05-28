@@ -18,35 +18,26 @@
 
 
 namespace panda::ecmascript::base {
-constexpr uint8_t CODE_SPACE = 0x20;
-constexpr uint8_t ZERO_FIRST = 0xc0; // \u0000 => c0 80
-constexpr uint8_t ALONE_SURROGATE_3B_FIRST = 0xed;
-constexpr uint8_t ALONE_SURROGATE_3B_SECOND_START = 0xa0;
-constexpr uint8_t ALONE_SURROGATE_3B_SECOND_END = 0xbf;
-constexpr uint8_t ALONE_SURROGATE_3B_THIRD_START = 0x80;
-constexpr uint8_t ALONE_SURROGATE_3B_THIRD_END = 0xbf;
 
-namespace {
-
+#if ENABLE_NEXT_OPTIMIZATION
 constexpr int K_JSON_ESCAPE_TABLE_ENTRY_SIZE = 8;
 
 // Table for escaping Latin1 characters.
 // Table entries start at a multiple of 8 with the first byte indicating length.
 constexpr const char* const JSON_ESCAPE_TABLE =
-    "\6\\u0000 \6\\u0001 \6\\u0002 \6\\u0003 \6\\u0004 \6\\u0005 \6\\u0006 \6\\u0007 "
-    "\2\\b     \2\\t     \2\\n     \6\\u000b \2\\f     \2\\r     \6\\u000e \6\\u000f "
-    "\6\\u0010 \6\\u0011 \6\\u0012 \6\\u0013 \6\\u0014 \6\\u0015 \6\\u0016 \6\\u0017 "
-    "\6\\u0018 \6\\u0019 \6\\u001a \6\\u001b \6\\u001c \6\\u001d \6\\u001e \6\\u001f "
-    "\1       \1!      \2\\\"     \1#      \1$      \1%      \1&      \1'      "
-    "\1(      \1)      \1*      \1+      \1,      \1-      \1.      \1/      "
-    "\1""0      \1""1      \1""2      \1""3      \1""4      \1""5      \1""6      \1""7      "
-    "\18      \19      \1:      \1;      \1<      \1=      \1>      \1?      "
-    "\1@      \1A      \1B      \1C      \1D      \1E      \1F      \1G      "
-    "\1H      \1I      \1J      \1K      \1L      \1M      \1N      \1O      "
-    "\1P      \1Q      \1R      \1S      \1T      \1U      \1V      \1W      "
-    "\1X      \1Y      \1Z      \1[      \2\\\\     \1]      \1^      \1_      ";
+    "\\u0000\0 \\u0001\0 \\u0002\0 \\u0003\0 \\u0004\0 \\u0005\0 \\u0006\0 \\u0007\0 "
+    "\\b\0     \\t\0     \\n\0     \\u000b\0 \\f\0     \\r\0     \\u000e\0 \\u000f\0 "
+    "\\u0010\0 \\u0011\0 \\u0012\0 \\u0013\0 \\u0014\0 \\u0015\0 \\u0016\0 \\u0017\0 "
+    "\\u0018\0 \\u0019\0 \\u001a\0 \\u001b\0 \\u001c\0 \\u001d\0 \\u001e\0 \\u001f\0 "
+    " \0      !\0      \\\"\0     #\0      $\0      %\0      &\0      '\0      "
+    "(\0      )\0      *\0      +\0      ,\0      -\0      .\0      /\0      "
+    "0\0      1\0      2\0      3\0      4\0      5\0      6\0      7\0      "
+    "8\0      9\0      :\0      ;\0      <\0      =\0      >\0      ?\0      "
+    "@\0      A\0      B\0      C\0      D\0      E\0      F\0      G\0      "
+    "H\0      I\0      J\0      K\0      L\0      M\0      N\0      O\0      "
+    "P\0      Q\0      R\0      S\0      T\0      U\0      V\0      W\0      "
+    "X\0      Y\0      Z\0      [\0      \\\\\0     ]\0      ^\0      _\0      ";
 
-// excluding 0xc0, 0xed
 constexpr bool JSON_DO_NOT_ESCAPE_FLAG_TABLE[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -60,9 +51,9 @@ constexpr bool JSON_DO_NOT_ESCAPE_FLAG_TABLE[] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
@@ -71,13 +62,22 @@ constexpr bool DoNotEscape(uint8_t c)
     return JSON_DO_NOT_ESCAPE_FLAG_TABLE[c];
 }
 
-inline void AppendCString(CString& output, const char* s)
+bool DoNotEscape(uint16_t c)
 {
-    output.append(s + 1, *s);
+    return (c >= 0x20 && c <= 0x21) ||
+           (c >= 0x23 && c != 0x5C && (c < 0xD800 || c > 0xDFFF));
 }
 
-}  // namespace
-
+bool JsonHelper::IsFastValueToQuotedString(const Span<const uint8_t> &sp)
+{
+    for (const auto utf8Ch : sp) {
+        if (!DoNotEscape(utf8Ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+#else
 bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 {
     for (const auto item : str) {
@@ -102,17 +102,65 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
     }
     return true;
 }
+#endif
 
-bool JsonHelper::IsFastValueToQuotedString(const Span<const uint8_t>& sp)
+#if ENABLE_NEXT_OPTIMIZATION
+void JsonHelper::AppendQuotedValueToC16String(const Span<const uint16_t> &sp, uint32_t &index, C16String &output)
 {
-    for (const auto ch : sp) {
-        if (!DoNotEscape(ch)) {
-            return false;
+    auto ch = sp[index];
+    if (utf_helper::IsUTF16Surrogate(ch)) {
+        // utf-16 to quoted string
+        if (ch <= utf_helper::DECODE_LEAD_HIGH) {
+            if (index + 1 < sp.size() && utf_helper::IsUTF16LowSurrogate(sp[index + 1])) {
+                AppendChar(output, ch);
+                AppendChar(output, sp[index + 1]);
+                ++index;
+            } else {
+                AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
+            }
+        } else {
+            AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
         }
+    } else {
+        ASSERT(ch < 0x60);
+        AppendString(output, &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE]);
     }
-    return true;
 }
 
+template <typename SrcType, typename DstType>
+void JsonHelper::AppendValueToQuotedString(const Span<const SrcType> &sp, DstType &output)
+{
+    static_assert(sizeof(typename DstType::value_type) >= sizeof(SrcType));
+    AppendString(output, "\"");
+    if constexpr (sizeof(SrcType) == 1) {
+        if (IsFastValueToQuotedString(sp)) {
+            AppendString(output, reinterpret_cast<const char *>(sp.data()), sp.size());
+            AppendString(output, "\"");
+            return;
+        }
+    }
+    uint32_t len = sp.size();
+    for (uint32_t i = 0; i < len; ++i) {
+        auto ch = sp[i];
+        if (DoNotEscape(ch)) {
+            AppendChar(output, ch);
+        } else if constexpr (sizeof(SrcType) != 1) {
+            AppendQuotedValueToC16String(sp, i, output);
+        } else {
+            ASSERT(ch < 0x60);
+            AppendString(output, &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE]);
+        }
+    }
+    AppendString(output, "\"");
+}
+template void JsonHelper::AppendValueToQuotedString<uint8_t, CString>(
+    const Span<const uint8_t> &sp, CString &output);
+template void JsonHelper::AppendValueToQuotedString<uint8_t, C16String>(
+    const Span<const uint8_t> &sp, C16String &output);
+template void JsonHelper::AppendValueToQuotedString<uint16_t, C16String>(
+    const Span<const uint16_t> &sp, C16String &output);
+
+#else
 void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
 {
     output += "\"";
@@ -174,40 +222,5 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
     }
     output += "\"";
 }
-
-void JsonHelper::AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output)
-{
-    output += "\"";
-    bool isFast = IsFastValueToQuotedString(sp); // fast mode
-    if (isFast) {
-        output.append(reinterpret_cast<const char*>(sp.data()), sp.size());
-        output += "\"";
-        return;
-    }
-    for (uint32_t i = 0; i < sp.size(); ++i) {
-        const auto ch = sp[i];
-        if (DoNotEscape(ch)) {
-            output += ch;
-        } else if (ch == ZERO_FIRST) {
-            output += "\\u0000";
-            ++i;
-        } else if (ch == ALONE_SURROGATE_3B_FIRST) {
-            if (i + 2 < sp.size() && // 2: Check 2 more characters
-                sp[i + 1] >= ALONE_SURROGATE_3B_SECOND_START && // 1: 1st character after ch
-                sp[i + 1] <= ALONE_SURROGATE_3B_SECOND_END && // 1: 1st character after ch
-                sp[i + 2] >= ALONE_SURROGATE_3B_THIRD_START && // 2: 2nd character after ch
-                sp[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: 2nd character after ch
-                auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(sp.data() + i, 3); // 3: Parse 3 characters
-                ASSERT(unicodeRes.first != utf_helper::INVALID_UTF8);
-                AppendUnicodeEscape(static_cast<uint32_t>(unicodeRes.first), output);
-                i += 2; // 2 : Skip 2 characters
-                } else {
-                    output += ch;
-                }
-        } else {
-            AppendCString(output, &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE]);
-        }
-    }
-    output += "\"";
-}
+#endif
 } // namespace panda::ecmascript::base

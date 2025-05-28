@@ -280,6 +280,10 @@ group("ark_js_assert_moduletest") {
     "getvaluefrombuffer",
   ]
 
+  if (enable_next_optimization) {
+    assert_test_list += ["jsonstringifier_optimized"]
+  }
+
   deps = []
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AssertAction" ]
@@ -393,6 +397,11 @@ group("ark_asm_assert_test") {
     "getpropertybyic",
     "getvaluefrombuffer",
   ]
+
+  if (enable_next_optimization) {
+    assert_test_list += ["jsonstringifier_optimized"]
+  }
+
   deps = []
 
   foreach(test, assert_test_list) {
