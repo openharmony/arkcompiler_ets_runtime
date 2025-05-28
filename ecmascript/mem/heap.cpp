@@ -1488,6 +1488,9 @@ void Heap::ProcessGCCallback()
 {
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
+#ifdef USE_CMC_GC
+    thread_->InvokeWeakNodeFreeGlobalCallBack();
+#endif
     thread_->InvokeWeakNodeNativeFinalizeCallback();
     // PostTask for ProcessNativeDelete
     CleanCallback();

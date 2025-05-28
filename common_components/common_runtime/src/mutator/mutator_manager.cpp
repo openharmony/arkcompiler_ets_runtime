@@ -376,10 +376,6 @@ void MutatorManager::TransitionAllMutatorsToGCPhase(GCPhase phase)
     // Broadcast mutator phase transition signal to all mutators
     VisitAllMutators([&undoneMutators, phase](Mutator& mutator) {
         mutator.SetSuspensionFlag(Mutator::SuspensionType::SUSPENSION_FOR_GC_PHASE);
-        // Request finalize callback in each vm-thread when gc finished.
-        if (phase == GCPhase::GC_PHASE_IDLE) {
-            mutator.SetCallbackRequest();
-        }
         undoneMutators.push_back(&mutator);
     });
     EnsurePhaseTransition(phase, undoneMutators);
