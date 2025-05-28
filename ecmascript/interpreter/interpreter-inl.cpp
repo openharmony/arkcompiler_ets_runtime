@@ -241,8 +241,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             {                                                                   \
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
                 JSHandle<JSTaggedValue>func(thread, funcValue);                 \
-                std::string message = EcmaStringAccessor(                       \
-                    JSTaggedValue::ToString(thread, func)).ToStdString();       \
+                std::string message = JSTaggedValue::ExceptionToString(         \
+                    thread, func);                                              \
                 message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
                     ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
@@ -267,8 +267,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             {                                                                   \
                 [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
                 JSHandle<JSTaggedValue>func(thread, funcValue);                 \
-                std::string message = EcmaStringAccessor(                       \
-                    JSTaggedValue::ToString(thread, func)).ToStdString();       \
+                std::string message = JSTaggedValue::ExceptionToString(         \
+                    thread, func);                                              \
                 message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
                     ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \

@@ -2794,7 +2794,7 @@ DEF_RUNTIME_STUBS(ThrowNotCallableException)
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
-    std::string message = EcmaStringAccessor(JSTaggedValue::ToString(thread, func)).ToStdString();
+    std::string message = JSTaggedValue::ExceptionToString(thread, func);
     message.append(" is not callable");
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);
     thread->SetException(error.GetTaggedValue());

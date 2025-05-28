@@ -855,6 +855,47 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, JSTaggedValue val
     return ToString(thread, tagged);
 }
 
+std::string JSTaggedValue::ExceptionToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (tagged->IsECMAObject()) {
+        return "Object";
+    }
+
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<EcmaString> value = JSHandle<EcmaString>(globalConst->GetHandledEmptyString());
+    if (tagged->IsString()) {
+        value = JSHandle<EcmaString>(tagged);
+    } else if (tagged->IsSpecial()) {
+        switch (tagged->GetRawData()) {
+            case VALUE_UNDEFINED:
+                value = JSHandle<EcmaString>(globalConst->GetHandledUndefinedString());
+                break;
+            case VALUE_NULL:
+                value = JSHandle<EcmaString>(globalConst->GetHandledNullString());
+                break;
+            case VALUE_TRUE:
+                value = JSHandle<EcmaString>(globalConst->GetHandledTrueString());
+                break;
+            case VALUE_FALSE:
+                value = JSHandle<EcmaString>(globalConst->GetHandledFalseString());
+                break;
+            case VALUE_HOLE:
+                break;
+            default:
+                break;
+        }
+    } else if (tagged->IsNumber()) {
+        value = base::NumberHelper::NumberToString(thread, tagged.GetTaggedValue());
+    } else if (tagged->IsBigInt()) {
+        JSHandle<BigInt> taggedValue(tagged);
+        value = BigInt::ToString(thread, taggedValue);
+    } else if (tagged->IsNativePointer()) {
+        value = NativePointerToString(thread, tagged);
+    }
+
+    return EcmaStringAccessor(value).ToStdString();
+}
+
 JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     if (tagged->IsString()) {
