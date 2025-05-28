@@ -1695,6 +1695,7 @@ public:
 
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
+    static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm, const Local<JSValueRef> &context);
     static void ExecutePendingJob(const EcmaVM *vm);
 
     // Memory

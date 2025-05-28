@@ -5653,6 +5653,18 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(global);
 }
 
+Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm, const Local<JSValueRef> &context)
+{
+    JSThread* thread = vm->GetJSThread();
+    ecmascript::ThreadManagedScope scope(thread);
+    if (!context->IsJsGlobalEnv(vm)) {
+        return JSValueRef::Undefined(vm);
+    }
+    JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context));
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    return JSNApiHelper::ToLocal<ObjectRef>(global);
+}
+
 void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
