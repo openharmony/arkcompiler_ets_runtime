@@ -727,6 +727,87 @@ HWTEST_F_L0(JSTaggedValueTest, ToString)
     CheckOkString(thread, JSHandle<JSTaggedValue>::Cast(JSTaggedValue::ToObject(thread, value3)), rightCStr);
 }
 
+void CheckOkExceptionString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, std::string &rightCStr)
+{
+    std::string result = JSTaggedValue::ExceptionToString(thread, tagged);
+    EXPECT_EQ(result, rightCStr);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, ExceptionToString)
+{
+    std::string rightCStr = "";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue()), rightCStr);
+
+    JSHandle<JSSymbol> symbol = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+    CheckOkExceptionString(thread,  JSHandle<JSTaggedValue>::Cast(symbol), rightCStr);
+
+    rightCStr = "undefined";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()), rightCStr);
+
+    rightCStr = "null";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null()), rightCStr);
+
+    rightCStr = "true";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()), rightCStr);
+
+    rightCStr = "false";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::False()), rightCStr);
+
+    rightCStr = "hello world";
+    CheckOkExceptionString(thread,
+                  JSHandle<JSTaggedValue>(thread->GetEcmaVM()->GetFactory()->NewFromASCII(rightCStr)),
+                  rightCStr);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, ExceptionToString1)
+{
+    std::string rightCStr = "1";
+    double num = 1;
+    JSTaggedNumber numberNum = JSTaggedNumber(num);
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, numberNum), rightCStr);
+
+    num = 1.23;
+    numberNum = JSTaggedNumber(num);
+    rightCStr = "1.23";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>(thread, numberNum), rightCStr);
+
+    int numInt = 2;
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(numInt));
+    rightCStr = "2";
+    CheckOkExceptionString(thread, value1, rightCStr);
+
+    rightCStr = "4294967295";
+    JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, 2);
+    newBigint->SetDigit(0, std::numeric_limits<uint32_t>::max());
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>::Cast(newBigint), rightCStr);
+
+    num = 1.23;
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(num));
+    rightCStr = "1.23";
+    CheckOkExceptionString(thread, value2, rightCStr);
+
+    bool valueBool = true;
+    JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(valueBool));
+    rightCStr = "true";
+    CheckOkExceptionString(thread, value3, rightCStr);
+
+    JSHandle<JSTaggedValue> value4(thread, JSTaggedValue(valueBool));
+    rightCStr = "Object";
+    CheckOkExceptionString(thread, JSHandle<JSTaggedValue>::Cast(JSTaggedValue::ToObject(thread, value4)), rightCStr);
+
+    auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
+    auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
+        if (pointer == nullptr) {
+            return;
+        }
+        delete reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
+    };
+    JSHandle<JSNativePointer> pointer = thread->GetEcmaVM()->GetFactory()->NewSJSNativePointer(
+        newBitSetVector, deleter, newBitSetVector);
+    std::string result = JSTaggedValue::ExceptionToString(thread, JSHandle<JSTaggedValue>::Cast(pointer));
+    EXPECT_EQ(result.find("[External:") != std::string::npos, true);
+}
+
 HWTEST_F_L0(JSTaggedValueTest, CanonicalNumericIndexString)
 {
     JSTaggedValue result;
