@@ -483,7 +483,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                 GlobalEnv::ARRAY_FUNCTION_INDEX);
                             GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
                                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                            NewObjectStubBuilder newBuilder(this);
+                            NewObjectStubBuilder newBuilder(this, globalEnv);
                             newBuilder.SetParameters(glue, 0);
                             GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
                             BRANCH(TaggedIsException(newArray), exit, &setProperties);
@@ -596,7 +596,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     BRANCH(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
     Bind(&isEmptyArray);
     {
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
@@ -810,7 +810,7 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     BRANCH(Int64Equal(len, Int64(0)), &isEmptyArray, &notEmptyArray);
     Bind(&isEmptyArray);
     {
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
@@ -1174,7 +1174,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
     Bind(&createIterResult);
     {
         Label afterCreate(env);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.CreateJSIteratorResult(glue, &res, *iterValue, TaggedFalse(), &afterCreate);
         Bind(&afterCreate);
         result->WriteVariable(*res);
@@ -1184,7 +1184,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
     {
         SetIteratedArrayOfArrayIterator(glue, thisValue, Undefined());
         Label afterCreate(env);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.CreateJSIteratorResult(glue, &res, Undefined(), TaggedTrue(), &afterCreate);
         Bind(&afterCreate);
         result->WriteVariable(*res);
@@ -2829,7 +2829,7 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
     GateRef globalEnv = GetCurrentGlobalEnv();
     auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
     result = newBuilder.NewJSArrayWithSize(intialHClass, count);
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
@@ -5133,7 +5133,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                 BRANCH(Int64GreaterThan(*arrayLength, Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
                 Bind(&lengthValid);
                 {
-                    NewObjectStubBuilder newBuilder(this);
+                    NewObjectStubBuilder newBuilder(this, globalEnv);
                     newBuilder.SetParameters(glue, 0);
                     res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
                     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);

@@ -1117,7 +1117,7 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                 BRANCH(Int32Equal(*newLen, Int32(0)), &newLenEmpty, &newLenNotEmpty);
                 Bind(&newLenEmpty);
                 {
-                    NewObjectStubBuilder newBuilder(this);
+                    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                     result->WriteVariable(newBuilder.CreateEmptyArray(glue));
                     Jump(exit);
                 }
@@ -1858,7 +1858,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
         BRANCH(Int32Equal(numArgsAsInt32, Int32(0)), &noArgs, slowPath);
         // Creates a new empty array on fast path
         Bind(&noArgs);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
@@ -2363,7 +2363,7 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
                     BRANCH(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
                     Bind(&isEmptyArray);
                     {
-                        NewObjectStubBuilder newBuilder(this);
+                        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
                         Jump(exit);
                     }
@@ -2426,7 +2426,7 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
         GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
     BRANCH(TaggedIsException(newArray), exit, &setProperties);

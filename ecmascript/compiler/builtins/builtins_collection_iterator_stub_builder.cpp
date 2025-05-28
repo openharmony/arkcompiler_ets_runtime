@@ -181,7 +181,7 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
     Bind(&iterDone);
     {
         Label afterCreate(env);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.CreateJSIteratorResult(glue_, &res, *iterValue, *isDone, &afterCreate);
         Bind(&afterCreate);
         result->WriteVariable(*res);

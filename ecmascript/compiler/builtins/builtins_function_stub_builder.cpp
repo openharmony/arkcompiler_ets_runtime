@@ -59,7 +59,7 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                 BRANCH(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
                 Bind(&targetIsHole);
                 {
-                    NewObjectStubBuilder newBuilder(this);
+                    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                     GateRef argList = newBuilder.CreateListFromArrayLike(glue, arrayObj);
                     // 4. ReturnIfAbrupt(argList).
                     Label isPendingException(env);
@@ -178,7 +178,7 @@ void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
             //    values provided after thisArg in order.
             GateRef argsArray = NewTaggedArrayFromArgs(glue, Int32(1), *argsLength, numArgs);
             // 4. Let F be BoundFunctionCreate(Target, thisArg, args).
-            NewObjectStubBuilder newBuilder(this);
+            NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
             GateRef boundFunction = newBuilder.NewJSBoundFunction(glue, target, thisArg, argsArray);
             // use default name and length property because they are not changed
             res->WriteVariable(boundFunction);

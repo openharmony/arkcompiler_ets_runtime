@@ -774,7 +774,7 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
             }
             Bind(&sliceString);
             {
-                NewObjectStubBuilder newBuilder(this);
+                NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                 newBuilder.SetParameters(glue, 0);
                 newBuilder.AllocSlicedStringObject(&result, &exit, from, len, &thisFlat);
             }
@@ -2841,7 +2841,7 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
               Int32Add(position, Int32(1)));
         // CreateIterResultObject(firstStr, false)
         Label afterCreate(env);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.CreateJSIteratorResult(glue, &result, firstStr, TaggedFalse(), &afterCreate);
         Bind(&afterCreate);
         res->WriteVariable(*result);
@@ -2853,7 +2853,7 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
               Undefined());
         // CreateIterResultObject(undefined, true)
         Label afterCreate(env);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.CreateJSIteratorResult(glue, &result, Undefined(), TaggedTrue(), &afterCreate);
         Bind(&afterCreate);
         res->WriteVariable(*result);

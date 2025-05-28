@@ -1481,7 +1481,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             Bind(&loopExit);
             Label hasException2(env);
             Label notHasException2(env);
-            NewObjectStubBuilder newBuilder(this);
+            NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
             BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
@@ -1587,7 +1587,7 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
     }
     Bind(&newTypedArray);
     {
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
         BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
@@ -1689,7 +1689,7 @@ void BuiltinsTypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, Ga
     BRANCH(Int32Equal(arrayLen, Int32(0)), slowPath, &isNotZero);
     Bind(&isNotZero);
     GateRef elementSize = Int32Div(oldByteLength, arrayLen);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     *result = newBuilder.NewTaggedSubArray(glue, thisValue, elementSize, *newLength, *beginIndex, objHclass, buffer);
     Jump(exit);
 }
@@ -1723,7 +1723,7 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     value = GetCallArg1(numArgs);
     GateRef hclass = LoadHClass(glue, thisValue);
     GateRef jsType = GetObjectType(hclass);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     Label hasException0(env);
@@ -2472,7 +2472,7 @@ void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     GateRef jsType = GetObjectType(LoadHClass(glue, thisValue));
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     Label hasException0(env);
@@ -2652,7 +2652,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     {
         DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
         DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
         BRANCH(HasPendingException(glue), &newTypedArrayException, &newTypedArrayNoException);
@@ -2717,7 +2717,7 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     Bind(&defaultConstr);
 
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
     Label newTypedArrayhasException(env);

@@ -2044,7 +2044,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
                                                    ConstantIndex::ENUMERABLE_STRING_INDEX);
     GateRef configurableStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                      ConstantIndex::CONFIGURABLE_STRING_INDEX);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     newBuilder.SetParameters(glue_, 0);
     GateRef descriptors = newBuilder.CreateEmptyObject(glue_);
     Label loopHead(env);
