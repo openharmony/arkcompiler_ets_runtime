@@ -51,7 +51,6 @@ void MutatorManager::BindMutator(Mutator& mutator) const
 void MutatorManager::UnbindMutator(Mutator& mutator) const
 {
     ThreadLocalData* tlData = ThreadLocal::GetThreadLocalData();
-    ASSERT_LOGF(tlData->mutator == &mutator, "mutator in ThreadLocalData doesn't match in arkthread");
     tlData->mutator = nullptr;
     tlData->buffer = nullptr;
 }

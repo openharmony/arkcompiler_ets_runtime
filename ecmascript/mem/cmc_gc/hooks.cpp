@@ -95,6 +95,10 @@ private:
 
 void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     ecmascript::VMRootVisitType type = isMark ? ecmascript::VMRootVisitType::MARK :
                                                 ecmascript::VMRootVisitType::UPDATE_ROOT;
     CMCRootVisitor visitor(visitorFunc);
@@ -122,6 +126,10 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 
 void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     CMCWeakVisitor visitor(visitorFunc);
 
     ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);

@@ -1416,9 +1416,6 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if (ets_runtime_enable_cmc_gc) {
     deps += [ ":libcommon_components_set" ]
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
@@ -1465,9 +1462,6 @@ ohos_source_set("libark_jsruntime_static") {
 
   if (ets_runtime_enable_cmc_gc) {
     deps += [ ":libcommon_components_set" ]
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
   }
 
   external_deps = []

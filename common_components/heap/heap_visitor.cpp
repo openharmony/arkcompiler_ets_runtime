@@ -18,32 +18,47 @@
 #include "common_components/base_runtime/hooks.h"
 
 namespace panda {
-// The "weak" functions below are needed for linking ets_runtime tools like
-// ark_stub_compiler and profdump.
-void __attribute__((weak)) VisitStaticRoots(const RefFieldVisitor &visitor)
+VisitStaticRootsHookFunc g_visitStaticRootsHook = nullptr;
+UpdateStaticRootsHookFunc g_updateStaticRootsHook = nullptr;
+SweepStaticRootsHookFunc g_sweepStaticRootsHook = nullptr;
+
+void RegisterVisitStaticRootsHook(VisitStaticRootsHookFunc func)
 {
+    g_visitStaticRootsHook = func;
 }
-void __attribute__((weak)) UpdateStaticRoots(const RefFieldVisitor &visitor)
+
+void RegisterUpdateStaticRootsHook(UpdateStaticRootsHookFunc func)
 {
+    g_updateStaticRootsHook = func;
 }
-void __attribute__((weak)) SweepStaticRoots(const WeakRefFieldVisitor &visitor)
+
+void RegisterweepStaticRootsHook(SweepStaticRootsHookFunc func)
 {
+    g_sweepStaticRootsHook = func;
 }
 
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {
     VisitDynamicRoots(visitor, isMark);
     if (isMark) {
-        VisitStaticRoots(visitor);
+        if (g_visitStaticRootsHook != nullptr) {
+            g_visitStaticRootsHook(visitor);
+        }
     } else {
-        UpdateStaticRoots(visitor);
+        if (g_updateStaticRootsHook != nullptr) {
+            g_updateStaticRootsHook(visitor);
+        }
     }
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakRoots(visitor);
-    UpdateStaticRoots(visitor);
-    SweepStaticRoots(visitor);
+    if (g_updateStaticRootsHook != nullptr) {
+        g_updateStaticRootsHook(visitor);
+    }
+    if (g_sweepStaticRootsHook != nullptr) {
+        g_sweepStaticRootsHook(visitor);
+    }
 }
 }  // namespace panda
