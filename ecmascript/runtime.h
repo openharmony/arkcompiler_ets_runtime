@@ -42,6 +42,7 @@ using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 class Runtime {
 public:
     PUBLIC_API static Runtime *GetInstance();
+    PUBLIC_API static bool HasInstance();
 
     static void CreateIfFirstVm(const JSRuntimeOptions &options);
     static void DestroyIfLastVm();

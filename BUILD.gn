@@ -1561,11 +1561,6 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
@@ -1613,11 +1608,6 @@ ohos_source_set("libark_jsruntime_static") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   external_deps = []
   if (!is_arkui_x) {

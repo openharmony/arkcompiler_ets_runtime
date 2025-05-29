@@ -100,6 +100,11 @@ private:
 
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 {
+    // todo 梁婷婷
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     BaseClassRoots &baseClassRoots = BaseRuntime::GetInstance()->GetBaseClassRoots();
     // When visit roots, the language of the object is not used, so using the visitorFunc will work for
     // both dynamic and static.
@@ -108,6 +113,10 @@ void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicGlobalRoot", "");
     CMCRootVisitor visitor(visitorFunc);
 
@@ -126,6 +135,9 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicLocalRoots", "");
     CMCRootVisitor visitor(visitorFunc);
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
@@ -135,7 +147,6 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 
         auto profiler = vm->GetPGOProfiler();
         if (profiler != nullptr) {
-            profiler->IteratePGOPreFuncList(visitor);
         }
     });
 
@@ -156,6 +167,9 @@ void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakGlobalRootsOld", "");
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     CMCWeakVisitor visitor(visitorFunc);
 
     panda::ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);
@@ -178,6 +192,9 @@ void InvokeSharedNativePointerCallbacks()
 
 void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakLocalRoots", "");
     CMCWeakVisitor visitor(visitorFunc);
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
@@ -223,6 +240,9 @@ void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicThreadRoot", "");
     auto ecmaVm = reinterpret_cast<panda::ecmascript::EcmaVM*>(vm);
     if (!ecmaVm->GetAssociatedJSThread()->ReadyForGCIterating()) {
@@ -242,6 +262,9 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 
 void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm)
 {
+    if (!ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakThreadRoot", "");
     auto ecmaVm = reinterpret_cast<panda::ecmascript::EcmaVM*>(vm);
     auto thread = ecmaVm->GetAssociatedJSThread();
