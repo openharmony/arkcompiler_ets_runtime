@@ -41,7 +41,7 @@ void BuiltinsProxyStubBuilder::GenProxyConstructor(GateRef nativeCode, GateRef f
     BRANCH(IsEcmaObject(glue_, handler), &handleIsEcma, &slowPath);
     Bind(&handleIsEcma);
     {
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         newBuilder.SetParameters(glue_, IntPtr(0));
         res = newBuilder.NewJSProxy(glue_, target, handler);
         Jump(&exit);

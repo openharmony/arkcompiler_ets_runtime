@@ -11271,13 +11271,15 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     BRANCH(IsSendableFunction(method), &isSendableFunc, &isNotSendableFunc);
     Bind(&isSendableFunc);
     {
-        NewObjectStubBuilder newBuilder(this);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        NewObjectStubBuilder newBuilder(this, globalEnv);
         result = newBuilder.NewJSSendableFunction(glue, method, targetKind);
         Jump(&afterDealWithCompiledStatus);
     }
     Bind(&isNotSendableFunc);
     {
-        NewObjectStubBuilder newBuilder(this);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        NewObjectStubBuilder newBuilder(this, globalEnv);
         result = newBuilder.NewJSFunction(glue, method, targetKind);
         Jump(&afterDealWithCompiledStatus);
     }

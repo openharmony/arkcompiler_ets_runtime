@@ -32,8 +32,12 @@ class NewObjectStubBuilder : public StubBuilder {
 public:
     explicit NewObjectStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
+    NewObjectStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent), globalEnv_(globalEnv) {}
     explicit NewObjectStubBuilder(Environment *env)
         : StubBuilder(env) {}
+    NewObjectStubBuilder(Environment *env, GateRef globalEnv)
+        : StubBuilder(env), globalEnv_(globalEnv) {}
     ~NewObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(NewObjectStubBuilder);
     NO_COPY_SEMANTIC(NewObjectStubBuilder);
@@ -48,6 +52,15 @@ public:
     void SetGlue(GateRef glue)
     {
         glue_ = glue;
+    }
+
+    inline GateRef GetCurrentGlobalEnv()
+    {
+        if (globalEnv_ == Gate::InvalidGateRef) {
+            LOG_FULL(FATAL) << "globalEnv_ is InvalidGateRef";
+            UNREACHABLE();
+        }
+        return globalEnv_;
     }
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
@@ -139,7 +152,7 @@ public:
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget);
-    GateRef NewFloat32ArrayObj(GateRef glue, GateRef globalEnv);
+    GateRef NewFloat32ArrayObj(GateRef glue);
     GateRef NewFloat32ArrayWithSize(GateRef glue, GateRef size);
     GateRef NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath);
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
@@ -172,6 +185,7 @@ private:
     void InitializeObject(Variable *result);
     GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
+    const GateRef globalEnv_ {Gate::InvalidGateRef};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H

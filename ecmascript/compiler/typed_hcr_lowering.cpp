@@ -2194,7 +2194,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             builder_.Int64GreaterThan(*arrayLength, builder_.Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
         builder_.Bind(&lengthValid);
         {
-            NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+            NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
             newBuilder.SetParameters(glue, 0);
             res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
             GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
@@ -2235,7 +2235,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef g
 
 void TypedHCRLowering::NewFloat32ArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
 {
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
     newBuilder.SetParameters(glue, 0);
     GateRef res = newBuilder.NewFloat32ArrayWithSize(glue, builder_.Int32(0));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
@@ -2314,18 +2314,19 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
     Label arrayCreateByLength(&builder_);
     Label arrayCreate(&builder_);
     ConvertFloat32ArrayConstructorLength(arg0, &arrayLength, &arrayCreateByLength, &arrayCreate);
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
-    newBuilder.SetParameters(glue, 0);
     builder_.Bind(&arrayCreateByLength);
     {
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        newBuilder.SetParameters(glue, 0);
         GateRef truncedLength = builder_.TruncInt64ToInt32(*arrayLength);
         res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
         builder_.Jump(&exit);
     }
     builder_.Bind(&arrayCreate);
     {
-        GateRef globalEnv = builder_.GetGlobalEnv(glue);
-        GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue, globalEnv);
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        newBuilder.SetParameters(glue, 0);
+        GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue);
         GateRef argc = builder_.Int64(4); // 4: means func newtarget thisObj arg0
         GateRef argv = builder_.IntPtr(0);
         std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
@@ -2342,7 +2343,7 @@ void TypedHCRLowering::NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
     GateRef intialHClass =
         builder_.Load(VariableType::JS_ANY(), glue, newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef arrayLength = builder_.Int64(0);
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
     newBuilder.SetParameters(glue, 0);
     GateRef res = newBuilder.NewJSArrayWithSize(intialHClass, arrayLength);
     GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);

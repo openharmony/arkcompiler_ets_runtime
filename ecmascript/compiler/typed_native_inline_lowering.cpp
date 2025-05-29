@@ -3048,7 +3048,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
     BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
     builder_.Bind(&lengthIsZero);
     {
-        NewObjectStubBuilder newBuilder(&env);
+        NewObjectStubBuilder newBuilder(&env, builder_.GetGlobalEnv(glue));
         result = newBuilder.CreateEmptyArray(glue);
         builder_.Jump(&quit);
     }
@@ -3147,7 +3147,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
     BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
     builder_.Bind(&lengthIsZero);
     {
-        NewObjectStubBuilder newBuilder(&env);
+        NewObjectStubBuilder newBuilder(&env, builder_.GetGlobalEnv(glue));
         result = newBuilder.CreateEmptyArray(glue);
         builder_.Jump(&exit);
     }
@@ -3500,7 +3500,7 @@ void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
     builder_.Branch(builder_.Int32Equal(sliceCount, builder_.Int32(0)), &sliceCountIsZero, &sliceCountIsNotZero);
     builder_.Bind(&sliceCountIsZero);
     {
-        NewObjectStubBuilder newObject(&env);
+        NewObjectStubBuilder newObject(&env, builder_.GetGlobalEnv(glue));
         res = newObject.CreateEmptyArray(glue);
         builder_.Jump(&exit);
     }
@@ -3696,8 +3696,9 @@ void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
     }
     builder_.Bind(&returnEmptyArray);
     {
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
-        res->WriteVariable(newBuilder.CreateEmptyArray(glue_));
+        GateRef glue = acc_.GetGlueFromArgList();
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        res->WriteVariable(newBuilder.CreateEmptyArray(glue));
         builder_.Jump(exit);
     }
 }

@@ -167,7 +167,7 @@ void NewFloat32ArrayWithNoArgsStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    NewObjectStubBuilder objBuilder(env);
+    NewObjectStubBuilder objBuilder(env, GetGlobalEnv(glue));
     objBuilder.SetParameters(glue, 0);
     GateRef res = objBuilder.NewFloat32ArrayWithSize(glue, Int32(0));
     Return(res);
@@ -222,10 +222,10 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
             }
         }
     }
-    NewObjectStubBuilder newBuilder(env);
-    newBuilder.SetParameters(glue, 0);
     Bind(&arrayCreateByLength);
     {
+        NewObjectStubBuilder newBuilder(env, GetGlobalEnv(glue));
+        newBuilder.SetParameters(glue, 0);
         GateRef truncedLength = TruncInt64ToInt32(*arrayLength);
         res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
         Jump(&exit);
@@ -552,7 +552,7 @@ void CreateObjectHavingMethodStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef env = Int32Argument(2); /* 2 : 3rd parameter is index */
 
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     newBuilder.SetParameters(glue, 0);
     GateRef result = newBuilder.CreateObjectHavingMethod(glue, obj, env);
     Return(result);
@@ -584,9 +584,9 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     }
     Bind(&numArgsNotGreater);
     // 2. Construct RestArguments object.
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
     GateRef globalEnv = GetGlobalEnv(glue);
+    NewObjectStubBuilder newBuilder(this, globalEnv);
+    newBuilder.SetParameters(glue, 0);
     GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                              static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
     arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
@@ -613,7 +613,7 @@ void GetUnmappedArgsStubBuilder::GenerateCircuit()
 
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef startIdx = Int32(0);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     newBuilder.SetParameters(glue, 0);
 
     Label fillArguments(env);
@@ -900,7 +900,7 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     GateRef globalEnv = builder.GetGlobalEnv(glue);
     Return(builder.TryStoreGlobalByName(glue, globalEnv,
-                                         id, info, value, profileTypeInfo, slotId, ProfileOperation()));
+                                        id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void LdGlobalVarStubBuilder::GenerateCircuit()
@@ -1158,7 +1158,7 @@ void ConstructorCheckStubBuilder::GenerateCircuit()
 void CreateEmptyArrayStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     Return(newBuilder.CreateEmptyArray(glue));
 }
 
@@ -1168,7 +1168,7 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef index = Int32Argument(1);
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     Return(newBuilder.CreateArrayWithBuffer(
         glue, index, jsFunc, { IntPtr(0), 0, true }, Undefined(), slotId, ProfileOperation()));
 }
@@ -1324,7 +1324,7 @@ void GetpropiteratorStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
     GateRef result = newBuilder.EnumerateObjectProperties(glue, object);
     Return(result);
 }
