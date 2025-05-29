@@ -338,7 +338,7 @@ bool EcmaVM::Initialize()
     bool builtinsLazyEnabled = GetJSOptions().IsWorker() && GetJSOptions().GetEnableBuiltinsLazy();
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(builtinsLazyEnabled);
-    thread_->SetCurrentEnv(globalEnv.GetTaggedValue());
+    thread_->SetGlueGlobalEnv(globalEnv.GetTaggedValue());
     ptManager_ = new kungfu::PGOTypeManager(this);
     optCodeProfiler_ = new OptCodeProfiler();
     if (options_.GetTypedOpProfiler()) {

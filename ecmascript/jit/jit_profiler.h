@@ -52,7 +52,7 @@ public:
                                     ProfileTypeInfo *rawProfileTypeInfo,
                                     EntityId methodId, ApEntityId abcId, const uint8_t *pcStart,
                                     uint32_t codeSize, const panda_file::File::Header *header,
-                                    JSHandle<JSFunction> jsFunction,
+                                    JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env,
                                     bool useRawProfileTypeInfo = false);
 
     std::unordered_map<int32_t, const PGOSampleType *> GetOpTypeMap()
@@ -205,6 +205,7 @@ private:
     CompilationEnv *compilationEnv_ {nullptr};
     Chunk *chunk_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
+    JSHandle<GlobalEnv> env_;
 };
 
 }

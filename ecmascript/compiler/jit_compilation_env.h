@@ -248,6 +248,7 @@ public:
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
+    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSPandaFile *jsPandaFile_ {nullptr};
     MethodLiteral *methodLiteral_ {nullptr};
     const uint8_t* pcStart_ {nullptr};

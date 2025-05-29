@@ -423,6 +423,7 @@ public:
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
 
     JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
+    JSHClass *GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind, bool isPrototype) const;
 
     GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {
@@ -880,13 +881,13 @@ public:
 
     JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
 
-    JSTaggedValue GetCurrentEnv() const
+    JSTaggedValue GetGlueGlobalEnv() const
     {
         // change to current
         return glueData_.currentEnv_;
     }
 
-    void SetCurrentEnv(JSTaggedValue env)
+    void SetGlueGlobalEnv(JSTaggedValue env)
     {
         ASSERT(env != JSTaggedValue::Hole());
         glueData_.currentEnv_ = env;
@@ -1978,12 +1979,12 @@ class SaveEnv {
 public:
     explicit SaveEnv(JSThread* thread): thread_(thread)
     {
-        env_ = JSHandle<JSTaggedValue>(thread_, thread->GetCurrentEnv());
+        env_ = JSHandle<JSTaggedValue>(thread_, thread->GetGlueGlobalEnv());
     }
 
     ~SaveEnv()
     {
-        thread_->SetCurrentEnv(env_.GetTaggedValue());
+        thread_->SetGlueGlobalEnv(env_.GetTaggedValue());
     }
 
 private:
@@ -1995,7 +1996,7 @@ class SaveAndSwitchEnv : public SaveEnv {
 public:
     SaveAndSwitchEnv(JSThread* thread, JSTaggedValue newEnv): SaveEnv(thread)
     {
-        thread->SetCurrentEnv(newEnv);
+        thread->SetGlueGlobalEnv(newEnv);
     }
 };
 }  // namespace panda::ecmascript

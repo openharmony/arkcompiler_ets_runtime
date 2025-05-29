@@ -801,7 +801,7 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
     compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
         compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),
         calleeAbcId, calleeMethod->GetBytecodeArray(), calleeCodeSize, calleeFile->GetPandaFile()->GetHeader(),
-        JSHandle<JSFunction>::Cast(calleeMethodHandle), true);
+        JSHandle<JSFunction>::Cast(calleeMethodHandle), jitCompilationEnv->GetGlobalEnv(), true);
     return true;
 }
 

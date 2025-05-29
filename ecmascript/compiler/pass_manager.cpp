@@ -92,13 +92,15 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         Chunk chunk(compilationEnv_->GetNativeAreaAllocator());
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
-            static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);
+            auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+            jitCompilationEnv->SetProfileTypeInfo(profileTypeInfo);
             jitProfiler_->SetCompilationEnv(compilationEnv_);
             jitProfiler_->InitChunk(&chunk);
             jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
-                                          header, static_cast<JitCompilationEnv*>(compilationEnv_)->GetJsFunction());
+                                          header, jitCompilationEnv->GetJsFunction(),
+                                          jitCompilationEnv->GetGlobalEnv());
         } else {
             jitProfiler_ = nullptr;
         }

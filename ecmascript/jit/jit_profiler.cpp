@@ -30,10 +30,11 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                                   ProfileTypeInfo *rawProfileTypeInfo,
                                   EntityId methodId, ApEntityId abcId, const uint8_t *pcStart, uint32_t codeSize,
                                   [[maybe_unused]]const panda_file::File::Header *header,
-                                  JSHandle<JSFunction> jsFunction, bool useRawProfileTypeInfo)
+                                  JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env, bool useRawProfileTypeInfo)
 {
     Clear();
     jsFunction_ = jsFunction;
+    env_ = env;
     if (useRawProfileTypeInfo) {
         profileTypeInfo_ = rawProfileTypeInfo;
     }
@@ -924,9 +925,8 @@ void JITProfiler::ConvertInstanceof(int32_t bcOffset, uint32_t slotId)
         if (object->GetClass()->IsHClass()) {
             JSHClass *hclass = JSHClass::Cast(object);
             // Since pgo does not support symbol, we choose to return if hclass having @@hasInstance
-            JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-            JSTaggedValue key = env->GetHasInstanceSymbol().GetTaggedValue();
-            JSHClass *functionPrototypeHC = JSObject::Cast(env->GetFunctionPrototype().GetTaggedValue())->GetClass();
+            JSTaggedValue key = env_->GetHasInstanceSymbol().GetTaggedValue();
+            JSHClass *functionPrototypeHC = JSObject::Cast(env_->GetFunctionPrototype().GetTaggedValue())->GetClass();
             JSTaggedValue foundHClass = TryFindKeyInPrototypeChain(object, hclass, key);
             if (!foundHClass.IsUndefined() && JSHClass::Cast(foundHClass.GetTaggedObject()) != functionPrototypeHC) {
                 return;
@@ -1092,7 +1092,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
-        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
+        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(env_, receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
@@ -1103,8 +1103,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
         // When JSType cannot uniquely identify builtins object, it is necessary to
         // query the receiver on the global constants.
         if (builtinsId == BuiltinTypeId::OBJECT) {
-            JSHandle<GlobalEnv> env = mainThread_->GetEcmaVM()->GetGlobalEnv();
-            exceptRecvHClass = JSHClass::Cast(env->GetIteratorResultClass().GetTaggedValue().GetTaggedObject());
+            exceptRecvHClass = JSHClass::Cast(env_->GetIteratorResultClass().GetTaggedValue().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
                 GlobalIndex globalsId;
                 globalsId.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX));
@@ -1129,7 +1128,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
-        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
+        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(env_, receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {

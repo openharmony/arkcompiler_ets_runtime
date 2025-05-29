@@ -276,6 +276,9 @@ private:
     bool IsSkippableCtor(uint32_t entityId);
     bool InsertDefinedCtor(uint32_t entityId);
 
+    inline void SetCurrentGlobalEnv(JSTaggedValue globalEnv);
+    inline JSHandle<GlobalEnv> GetCurrentGlobalEnv() const;
+
     class WorkNode {
     public:
         WorkNode(JSTaggedType value): value_(value) {}
@@ -350,6 +353,7 @@ private:
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT {50};
     static constexpr uint32_t MS_PRE_SECOND {1000};
+    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM* vm_ {nullptr};
     bool isEnable_ {false};
