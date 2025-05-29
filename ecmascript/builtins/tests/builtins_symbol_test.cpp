@@ -200,9 +200,8 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterValueOf)
 HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterFor)
 {
     auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
 
-    JSHandle<SymbolTable> tableHandle(env->GetRegisterSymbols());
+    JSHandle<SymbolTable> tableHandle(thread, ecmaVM->GetRegisterSymbols());
 
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("ccc");
     ASSERT_EQ(EcmaStringAccessor(string).GetLength(), 3U);
@@ -223,7 +222,6 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterFor)
 HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
 {
     auto ecmaVM = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
 
     JSHandle<JSSymbol> symbol = ecmaVM->GetFactory()->NewPublicSymbolWithChar("bbb");
 
@@ -241,7 +239,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
     args[0] = otherSymbol.GetTaggedValue();
     auto otherResult = SymbolAlgorithm(thread, JSTaggedValue::Undefined(), args, 6, AlgorithmType::BUILTIN_KEY_FOR);
     ASSERT_TRUE(otherResult.IsString());
-    JSHandle<SymbolTable> tableHandle(env->GetRegisterSymbols());
+    JSHandle<SymbolTable> tableHandle(thread, ecmaVM->GetRegisterSymbols());
     JSTaggedValue stringValue(*string);
     ASSERT_EQ(tableHandle->ContainsKey(stringValue), true);
 

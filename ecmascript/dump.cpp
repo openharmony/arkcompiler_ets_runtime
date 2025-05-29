@@ -2841,8 +2841,6 @@ void GlobalEnv::Dump(std::ostream &os) const
     globalConst->GetTrueString().Dump(os);
     os << " - FalseString: ";
     globalConst->GetFalseString().Dump(os);
-    os << " - RegisterSymbols: ";
-    GetRegisterSymbols().GetTaggedValue().Dump(os);
     os << " - ThrowTypeError: ";
     GetThrowTypeError().GetTaggedValue().Dump(os);
     os << " - GetPrototypeOfString: ";

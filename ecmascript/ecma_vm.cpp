@@ -59,6 +59,7 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/symbol_table.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -364,6 +365,7 @@ bool EcmaVM::Initialize()
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
+    SetRegisterSymbols(SymbolTable::Create(thread_).GetTaggedValue());
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
@@ -873,7 +875,10 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
         aotFileManager_->Iterate(v);
     }
     if (!microJobQueue_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&microJobQueue_)));
+    }
+    if (!registerSymbols_.IsHole()) {
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&registerSymbols_)));
     }
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.

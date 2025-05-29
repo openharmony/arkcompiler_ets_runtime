@@ -1475,8 +1475,8 @@ bool JSTaggedValue::CanBeHeldWeakly(JSThread *thread, const JSHandle<JSTaggedVal
     }
     // 2. If v is a Symbol and KeyForSymbol(v) is undefined, return true.
     if (tagged->IsSymbol()) {
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        auto *table = env->GetRegisterSymbols().GetObject<SymbolTable>();
+        JSTaggedValue symbolTable = thread->GetEcmaVM()->GetRegisterSymbols();
+        auto *table = SymbolTable::Cast(symbolTable.GetTaggedObject());
         JSTaggedValue key = table->FindSymbol(tagged.GetTaggedValue());
         if (key.IsUndefined()) {
             return true;

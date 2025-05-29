@@ -1090,6 +1090,16 @@ public:
     {
         return apiVersion_;
     }
+    
+    JSTaggedValue GetRegisterSymbols() const
+    {
+        return registerSymbols_;
+    }
+
+    void SetRegisterSymbols(JSTaggedValue value)
+    {
+        registerSymbols_ = value;
+    }
 
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
@@ -1464,6 +1474,7 @@ private:
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     void* data_{nullptr};
 
+    JSTaggedValue registerSymbols_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     std::atomic<bool> isProcessingPendingJob_ {false};
 
