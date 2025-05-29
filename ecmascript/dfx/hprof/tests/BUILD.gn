@@ -82,7 +82,10 @@ host_unittest_action("HeapDumpTest") {
     "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
   ]
 
-  external_deps = [ "cJSON:cjson_static" ]
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "cJSON:cjson_static",
+  ]
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps

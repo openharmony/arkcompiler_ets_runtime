@@ -507,11 +507,6 @@ public:
         return stringTable_;
     }
 
-    bool BuildSnapshotForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap,
-                                CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap);
-    void GenerateNodeForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap, CUnorderedSet<uint64_t> &rootSetMap,
-                               CUnorderedMap<uint64_t, CString *> &strTableIdMap);
-
     StringId GenerateStringId(TaggedObject *obj)
     {
         JSTaggedValue entry(obj);
@@ -547,7 +542,6 @@ private:
     void EraseNodeUnique(Node *node);
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
-    void FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *refSet);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 

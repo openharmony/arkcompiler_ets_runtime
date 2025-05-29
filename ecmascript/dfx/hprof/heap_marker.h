@@ -35,9 +35,15 @@ public:
     void Clear();
     void IterateMarked(const std::function<void(JSTaggedType)> &cb);
 
+    uint32_t Count() const
+    {
+        return count_;
+    }
+
 private:
     static constexpr size_t BITSET_SIZE = DEFAULT_REGION_SIZE >> TAGGED_TYPE_SIZE_LOG;
     CUnorderedMap<Region *, std::bitset<BITSET_SIZE>> regionBitsetMap_ {};
+    uint32_t count_ {0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_MARKER_H

@@ -73,7 +73,7 @@ public:
     explicit HeapSnapshotJSONSerializer() = default;
     ~HeapSnapshotJSONSerializer() = default;
 
-    static bool Serialize(RawHeapTranslate *snapshot, StreamWriter *writer);
+    static bool Serialize(RawHeap *rawheap, StreamWriter *writer);
 
 private:
     static constexpr char ASCII_US = 31;
@@ -81,10 +81,10 @@ private:
     static constexpr uint8_t UTF8_MAX_BYTES = 4;
 
 private:
-    static void SerializeSnapshotHeader(RawHeapTranslate *snapshot, StreamWriter *writer);
-    static void SerializeNodes(RawHeapTranslate *snapshot, StreamWriter *writer);
-    static void SerializeEdges(RawHeapTranslate *snapshot, StreamWriter *writer);
-    static void SerializeStringTable(RawHeapTranslate *snapshot, StreamWriter *writer);
+    static void SerializeSnapshotHeader(RawHeap *rawheap, StreamWriter *writer);
+    static void SerializeNodes(RawHeap *rawheap, StreamWriter *writer);
+    static void SerializeEdges(RawHeap *rawheap, StreamWriter *writer);
+    static void SerializeStringTable(RawHeap *rawheap, StreamWriter *writer);
     static void SerializeString(const char *str, StreamWriter *writer);
     static void SerializerSnapshotClosure(StreamWriter *writer);
 };

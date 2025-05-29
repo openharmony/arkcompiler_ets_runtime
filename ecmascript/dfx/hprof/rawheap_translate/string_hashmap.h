@@ -52,10 +52,10 @@ public:
         return orderedKey_.size();
     }
 
+    static constexpr uint32_t CUSTOM_STRID_START = 3;
+
 private:
     StringKey GenerateStringKey(const std::string &cstr) const;
-
-    static constexpr uint32_t CUSTOM_STRID_START = 3;
 
     std::vector<StringKey> orderedKey_;  // Used for Serialize Order
     size_t index_ {2};  // 2: Offset the String-Table Header

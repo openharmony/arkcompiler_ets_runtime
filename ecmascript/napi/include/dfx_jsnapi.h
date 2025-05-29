@@ -71,7 +71,6 @@ public:
     static void DumpCpuProfile(const EcmaVM *vm);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
-    static void GenerateHeapSnapshotByBinFile(const EcmaVM *vm, std::string &inputFilePath, std::string &outputPath);
     static void DumpHeapSnapshotWithVm(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static void TriggerGCWithVm(const EcmaVM *vm);

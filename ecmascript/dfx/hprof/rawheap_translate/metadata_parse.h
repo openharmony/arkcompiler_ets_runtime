@@ -17,104 +17,72 @@
 #define METADATA_JSON_PARSE_H
 
 #include "cJSON.h"
+#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
-struct MetaData;
-using JSType = uint8_t;
-using NodeType = uint8_t;
-using ObjRangeVisitor = std::function<void(std::shared_ptr<MetaData> &, uint32_t)>;
-
-static constexpr NodeType DEFAULT_NODETYPE = 8;
-static constexpr NodeType FRAMEWORK_NODETYPE = 14;
-
-struct Field {
-    std::string name;
-    uint32_t offset;
-    uint32_t size;
-
-    Field() : offset(0), size(0) {}
-};
-
-struct MetaData {
-    std::string name;
-    std::vector<std::shared_ptr<Field>> fields;
-    uint32_t endOffset;
-    std::vector<std::string> parents;
-    std::string visitType;
-
-    MetaData() : endOffset(0) {}
-
-    bool IsArray()
-    {
-        return visitType == "Array";
-    }
-};
-
-struct Layout {
-    std::string name;
-    uint32_t keyIndex;
-    uint32_t valueIndex;
-    uint32_t detailIndex;
-    uint32_t entrySize;
-    uint32_t headerSize;
-
-    Layout() : keyIndex(0), valueIndex(0), detailIndex(0), entrySize(0), headerSize(0) {}
-};
-
-class Meta {
+class MetaParser {
 public:
-    Meta() = default;
-    ~Meta()
+    MetaParser() = default;
+    ~MetaParser()
     {
-        metadata_.clear();
-        enumsMapJSType_.clear();
-        enumsMapNodeType_.clear();
-        layout_.clear();
-        typeDesc_.clear();
-        enumsVec_.clear();
+        for (auto &meta : orderedMeta_) {
+            delete meta;
+        }
+        meta_.clear();
+        orderedMeta_.clear();
     }
 
     bool Parse(const cJSON *object);
-    void VisitObjectBody(const std::string &name, const ObjRangeVisitor &visitor, uint32_t &baseOffset);
-    uint32_t GetNativateSize(char *obj, char *hclass);
-    NodeType GetNodeTypeFromHClass(char *hclass);
-    std::string GetTypeNameFromHClass(char *hclass);
-    std::shared_ptr<Layout> GetObjectLayout(const std::string &name);
-    bool IsString(char *hclass);
-    bool IsDictionaryMode(char *hclass);
-    bool IsJSObject(char *hclass);
-    bool IsGlobalEnv(char *hclass);
+    JSType GetJSTypeFromHClass(Node *hclass);
+    JSType GetJSTypeFromTypeName(const std::string &name);
+    NodeType GetNodeType(JSType type);
+    uint32_t GetNativateSize(Node *node, JSType type);
+    std::string GetTypeName(JSType type);
+    MetaData* GetMetaData(const std::string &name);
+    MetaData* GetMetaData(const JSType type);
+    bool IsNativePointer(JSType type);
+    bool IsString(JSType type);
+    bool IsDictionaryMode(JSType type);
+    bool IsJSObject(JSType type);
+    bool IsGlobalEnv(JSType type);
+    bool IsArray(JSType type);
+
+    BitField* GetBitField()
+    {
+        return &bitField_;
+    }
+
+    std::string GetMetaVersion()
+    {
+        return version_;
+    }
 
 private:
     bool ParseTypeEnums(const cJSON *json);
     bool ParseTypeList(const cJSON *json);
-    bool ParseTypeLayout(const cJSON *json);
+    bool ParseTypeLayoutAndDesc(const cJSON *json);
     bool ParseVersion(const cJSON *json);
-    bool SetObjTypeBitFieldOffset();
-    bool SetNativatePointerBindingSizeOffset();
-    std::shared_ptr<MetaData> GetMetaData(const std::string &name);
-    JSType GetObjTypeFromHClass(char *hclass);
-    JSType GetObjTypeFromTypeName(const std::string &name);
-    std::string GetTypeDesc(const std::string &name);
+    void ParseParents(const cJSON *array, MetaData *metadata);
+    void ParseOffsets(const cJSON *array, MetaData *metadata);
+    void SetBitField(const std::string &metaName, const std::string &fieldName, Field &field);
+    void FillMetaData(MetaData *parent, MetaData *meta);
+    void GenerateMetaData();
+    MetaData* FindOrCreateMetaData(const std::string &name);
 
-    static void IterateJSONArray(const cJSON *array, const std::function<void(const cJSON *, int)> &visitor);
+    static void IterateJSONArray(const cJSON *array, const std::function<void(const cJSON *)> &visitor);
     static bool GetArray(const cJSON *json, const char *key, cJSON **value);
     static bool GetString(const cJSON *json, const char *key, std::string &value);
     static bool GetString(const cJSON *json, std::string &value);
     static bool GetUInt32(const cJSON *json, const char *key, uint32_t &value);
     static bool GetUInt32(const cJSON *json, uint32_t &value);
 
-    std::unordered_map<std::string, std::shared_ptr<MetaData>> metadata_ {};
-    std::unordered_map<std::string, JSType> enumsMapJSType_ {};
-    std::unordered_map<std::string, uint8_t> enumsMapNodeType_ {};
-    std::unordered_map<std::string, std::shared_ptr<Layout>> layout_ {};
-    std::unordered_map<std::string, std::string> typeDesc_ {};
-    std::vector<std::string> enumsVec_ {};
-    uint32_t objTypeBitFieldOffset_ {0};
-    uint32_t objTypeBitFieldSize_ {0};
-    uint32_t nativatePointerBindingSizeOffset_ {0};
-    uint32_t nativatePointerBindingSize_ {0};
+    std::string version_;
+    std::unordered_map<std::string, MetaData *> meta_ {};
+    std::vector<MetaData *> orderedMeta_ {};
+    DictionaryLayout dictionaryLayout_;
+    TypeRange typeRange_;
+    BitField bitField_;
 };
 }  // namespace rawheap_translate
 #endif  // METADATA_JSON_PARSE_H

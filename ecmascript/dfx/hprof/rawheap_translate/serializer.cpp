@@ -19,13 +19,13 @@ namespace rawheap_translate {
 bool StreamWriter::Initialize(const std::string &filePath)
 {
     if (filePath.empty() || filePath.size() > PATH_MAX) {
-        LOG_ERROR("filename is illegal!");
+        LOG_ERROR_ << "filename is illegal!";
         return false;
     }
 
     fileStream_.open(filePath, std::ios::out);
     if (fileStream_.fail()) {
-        LOG_ERROR("FileStream: open file failed");
+        LOG_ERROR_ << "open file failed";
         return false;
     }
 
@@ -48,7 +48,7 @@ void StreamWriter::WriteString(const std::string &str)
             break;
         }
         if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
-            LOG_ERROR("StreamWriter::WriteString: memcpy_s failed!");
+            LOG_ERROR_ << "memcpy_s failed!";
             break;
         }
         cur += writeSize;
@@ -69,28 +69,25 @@ void StreamWriter::EndOfStream()
     }
 }
 
-bool HeapSnapshotJSONSerializer::Serialize(RawHeapTranslate *snapshot, StreamWriter *writer)
+bool HeapSnapshotJSONSerializer::Serialize(RawHeap *rawheap, StreamWriter *writer)
 {
     // Serialize Node/Edge/String-Table
-    LOG_INFO("HeapSnapshotJSONSerializer::Serialize begin");
-
-    SerializeSnapshotHeader(snapshot, writer);     // 1.
-    SerializeNodes(snapshot, writer);              // 2.
-    SerializeEdges(snapshot, writer);              // 3.
+    SerializeSnapshotHeader(rawheap, writer);     // 1.
+    SerializeNodes(rawheap, writer);              // 2.
+    SerializeEdges(rawheap, writer);              // 3.
 
     writer->WriteString("\"trace_function_infos\":[],");  // 4.
     writer->WriteString("\"trace_tree\":[],");
     writer->WriteString("\"samples\":[],");
     writer->WriteString("\"locations\":[],\n");
 
-    SerializeStringTable(snapshot, writer);        // 8.
+    SerializeStringTable(rawheap, writer);        // 8.
     SerializerSnapshotClosure(writer);   // 9.
 
-    LOG_INFO("HeapSnapshotJSONSerializer::Serialize exit");
     return true;
 }
 
-void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeapTranslate *snapshot, StreamWriter *writer)
+void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeap *rawheap, StreamWriter *writer)
 {
     writer->WriteString("{\"snapshot\":\n");  // 1.
     writer->WriteString("{\"meta\":\n");      // 2.
@@ -122,20 +119,20 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeapTranslate *snaps
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     // 10.
     writer->WriteString("\"location_fields\":[\"object_index\",\"script_id\",\"line\",\"column\"]},\n\"node_count\":");
-    writer->WriteNumber(snapshot->GetNodeCount());                         // 11.
+    writer->WriteNumber(rawheap->GetNodeCount());                         // 11.
     writer->WriteString(",\n\"edge_count\":");
-    writer->WriteNumber(snapshot->GetEdgeCount());                         // 12.
+    writer->WriteNumber(rawheap->GetEdgeCount());                         // 12.
     writer->WriteString(",\n\"trace_function_count\":");
     writer->WriteNumber(0);   // 13.
     writer->WriteString("\n},\n");  // 14.
 }
 
-void HeapSnapshotJSONSerializer::SerializeNodes(RawHeapTranslate *snapshot, StreamWriter *writer)
+void HeapSnapshotJSONSerializer::SerializeNodes(RawHeap *rawheap, StreamWriter *writer)
 {
-    auto nodes = snapshot->GetNodes();
+    auto nodes = rawheap->GetNodes();
     writer->WriteString("\"nodes\":[");  // Section Header
     size_t i = 0;
-    for (auto node : nodes) {
+    for (auto node : *nodes) {
         if (i > 0) {
             writer->WriteChar(',');  // add comma except first line
         }
@@ -154,7 +151,7 @@ void HeapSnapshotJSONSerializer::SerializeNodes(RawHeapTranslate *snapshot, Stre
         writer->WriteChar('0');                                                              // 7.detachedness default 0
         writer->WriteChar(',');
         writer->WriteNumber(node->nativeSize);
-        if (i == nodes.size() - 1) {    // add comma at last the line
+        if (i == nodes->size() - 1) {    // add comma at last the line
             writer->WriteString("],\n"); // 7. detachedness default
         } else {
             writer->WriteString("\n");   // 7.
@@ -163,12 +160,12 @@ void HeapSnapshotJSONSerializer::SerializeNodes(RawHeapTranslate *snapshot, Stre
     }
 }
 
-void HeapSnapshotJSONSerializer::SerializeEdges(RawHeapTranslate *snapshot, StreamWriter *writer)
+void HeapSnapshotJSONSerializer::SerializeEdges(RawHeap *rawheap, StreamWriter *writer)
 {
-    auto edges = snapshot->GetEdges();
+    auto edges = rawheap->GetEdges();
     writer->WriteString("\"edges\":[");
     size_t i = 0;
-    for (auto edge : edges) {
+    for (auto edge : *edges) {
         if (i > 0) {  // add comma except the first line
             writer->WriteChar(',');
         }
@@ -177,7 +174,7 @@ void HeapSnapshotJSONSerializer::SerializeEdges(RawHeapTranslate *snapshot, Stre
         writer->WriteNumber(static_cast<int>(edge->nameOrIndex));  // 2. Use StringId
         writer->WriteChar(',');
 
-        if (i == edges.size() - 1) {  // add comma at last the line
+        if (i == edges->size() - 1) {  // add comma at last the line
             writer->WriteNumber(edge->to->index * NODE_FIELD_COUNT);  // 3.
             writer->WriteString("],\n");
         } else {
@@ -188,9 +185,9 @@ void HeapSnapshotJSONSerializer::SerializeEdges(RawHeapTranslate *snapshot, Stre
     }
 }
 
-void HeapSnapshotJSONSerializer::SerializeStringTable(RawHeapTranslate *snapshot, StreamWriter *writer)
+void HeapSnapshotJSONSerializer::SerializeStringTable(RawHeap *rawheap, StreamWriter *writer)
 {
-    auto stringTable = snapshot->GetEcmaStringTable();
+    auto stringTable = rawheap->GetStringTable();
     writer->WriteString("\"strings\":[\"<dummy>\",\n");
     writer->WriteString("\"\",\n");
     writer->WriteString("\"GC roots\",\n");

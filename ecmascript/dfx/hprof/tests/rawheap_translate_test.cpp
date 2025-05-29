@@ -34,14 +34,14 @@ public:
 
     void SetUp() override
     {
-        meta = std::make_unique<rawheap_translate::Meta>();
+        metaParser = std::make_unique<rawheap_translate::MetaParser>();
     }
 
     void TearDown() override
     {
     }
 
-    std::unique_ptr<rawheap_translate::Meta> meta {nullptr};
+    std::unique_ptr<rawheap_translate::MetaParser> metaParser {nullptr};
 };
 
 HWTEST_F_L0(RawHeapTranslateTest, MetaDataParse)
@@ -119,15 +119,13 @@ HWTEST_F_L0(RawHeapTranslateTest, MetaDataParse)
     cJSON *metadataCJson = cJSON_ParseWithOpts(metadataJson.c_str(), nullptr, true);
     ASSERT_TRUE(metadataCJson != nullptr);
 
-    bool result = meta->Parse(metadataCJson);
+    bool result = metaParser->Parse(metadataCJson);
     cJSON_Delete(metadataCJson);
     ASSERT_TRUE(result);
 
-    auto visit = [] ([[maybe_unused]]std::shared_ptr<rawheap_translate::MetaData> &metadata,
-                     [[maybe_unused]]int offset) {};
-    uint32_t baseOffset = 0;
-    meta->VisitObjectBody("JS_OBJECT", visit, baseOffset);
-    ASSERT_TRUE(baseOffset == 32);  // 32: 16 + 8 + 8 = 32, all parent endOffset count total
+    rawheap_translate::MetaData *meta = metaParser->GetMetaData("JS_OBJECT");
+    ASSERT_TRUE(meta != nullptr);
+    ASSERT_EQ(meta->endOffset, 32);  // 32: 16 + 8 + 8 = 32, all parent endOffset count total
 }
 
 HWTEST_F_L0(RawHeapTranslateTest, BytesToNumber)

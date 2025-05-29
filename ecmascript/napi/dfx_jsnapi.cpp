@@ -236,18 +236,6 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
 #endif
 }
 
-void DFXJSNApi::GenerateHeapSnapshotByBinFile([[maybe_unused]] const EcmaVM *vm,
-                                              [[maybe_unused]] std::string &inputFilePath,
-                                              [[maybe_unused]] std::string &outputPath)
-{
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    auto *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm));
-    heapProfile->GenerateHeapSnapshot(inputFilePath, outputPath);
-#else
-    LOG_ECMA(ERROR) << "Not support GenerateHeapSnapshotByBinFile";
-#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
-}
-
 // tid = 0: TriggerGC all vm; tid != 0: TriggerGC tid vm
 void DFXJSNApi::TriggerGC([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint32_t tid)
 {

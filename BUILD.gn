@@ -26,7 +26,6 @@ group("ark_js_packages") {
     ":js_type_metadata",
     ":libark_jsruntime",
     "ecmascript/compiler:stub.an",
-    "ecmascript/dfx/hprof:ark_js_heap_snapshot_tool",
     "ecmascript/dfx/hprof/rawheap_translate:rawheap_translator",
     "ecmascript/js_vm:ark_js_vm",
     "ecmascript/quick_fix:quick_fix",
@@ -83,7 +82,6 @@ ohos_static_library("ark_js_host_linux_tools_packages") {
   deps = []
 
   deps += [
-    "ecmascript/dfx/hprof:ark_js_heap_snapshot_tool(${host_toolchain})",
     "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
     "ecmascript/quick_fix:quick_fix(${host_toolchain})",
   ]
@@ -1085,6 +1083,7 @@ if (!is_mingw && !is_mac && target_os != "ios") {
       "ecmascript/dfx/hprof/heap_snapshot.cpp",
       "ecmascript/dfx/hprof/heap_snapshot_json_serializer.cpp",
       "ecmascript/dfx/hprof/heap_tracker.cpp",
+      "ecmascript/dfx/hprof/rawheap_dump.cpp",
       "ecmascript/dfx/hprof/string_hashmap.cpp",
       "ecmascript/dfx/stackinfo/js_stackgetter.cpp",
       "ecmascript/base/block_hook_scope.cpp",

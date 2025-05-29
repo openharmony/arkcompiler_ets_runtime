@@ -16,8 +16,7 @@
 #ifndef RAWHEAP_TRANSLATE_H
 #define RAWHEAP_TRANSLATE_H
 
-#include <optional>
-#include <utility>
+#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
 
@@ -26,145 +25,85 @@ class HeapDumpTestHelper;
 };
 
 namespace rawheap_translate {
-struct AddrTableItem {
-    uint64_t addr;
-    uint64_t id;
-    uint32_t objSize;
-    uint32_t offset; // offset to the file
-};
-
-struct Node {
-    uint64_t nodeId;  // Range from 1
-    uint32_t index;
-    StringId strId;
-    uint8_t type;
-    uint32_t size;
-    uint32_t nativeSize;
-    size_t edgeCount;
-    char *data;
-
-    Node(uint32_t nodeIndex)
-        : nodeId(0),
-          index(nodeIndex),
-          strId(1),  // 1: for empty string
-          type(8),  // 8: default node type
-          size(0),
-          nativeSize(0),
-          edgeCount(0),
-          data(nullptr)
-    {
-    }
-};
-
-enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
-
-struct Edge {
-    EdgeType type;
-    std::shared_ptr<Node> from;
-    std::shared_ptr<Node> to;
-    uint32_t nameOrIndex;
-
-    Edge(EdgeType edgeType, std::shared_ptr<Node> nodeFrom, std::shared_ptr<Node> nodeTo, uint32_t index)
-        : type(edgeType),
-          from(nodeFrom),
-          to(nodeTo),
-          nameOrIndex(index)
-    {
-    }
-};
-
-class RawHeapTranslate {
+class RawHeap {
 public:
-    RawHeapTranslate()
-        : meta_(std::make_unique<Meta>(Meta())),
-          strTable_(std::make_shared<StringHashMap>(StringHashMap())) {}
+    RawHeap() : strTable_(new StringHashMap()) {}
+    virtual ~RawHeap();
 
-    ~RawHeapTranslate()
-    {
-        for (auto mem : memBuf_) {
-            delete mem;
-        }
-        memBuf_.clear();
-        nodes_.clear();
-        edges_.clear();
-        nodesMap_.clear();
-    }
+    virtual bool Parse(FileReader &file, uint32_t rawheapFileSize) = 0;
+    virtual void Translate() = 0;
 
-    bool Translate(const std::string &rawheapPath);
+    std::vector<Node *>* GetNodes();
+    std::vector<Edge *>* GetEdges();
+    size_t GetNodeCount();
+    size_t GetEdgeCount();
+    StringHashMap* GetStringTable();
+    std::string GetVersion();
 
-    std::vector<std::shared_ptr<Node>> GetNodes()
-    {
-        return nodes_;
-    }
+protected:
+    Node *CreateNode();
+    void InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type);
+    StringId InsertAndGetStringId(const std::string &str);
+    void SetVersion(const std::string &version);
 
-    std::vector<std::shared_ptr<Edge>> GetEdges()
-    {
-        return edges_;
-    }
-
-    std::shared_ptr<StringHashMap> GetEcmaStringTable()
-    {
-        return strTable_;
-    }
-
-    size_t GetNodeCount()
-    {
-        return nodes_.size();
-    }
-
-    size_t GetEdgeCount()
-    {
-        return edges_.size();
-    }
+    static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
 private:
-    bool ParseMetaData(std::ifstream &file, uint32_t &offset);
-    bool ReadMetaDataJson(std::ifstream &file, uint32_t &offset, cJSON **json);
-    void DelMetaDataJson(cJSON *json);
+    StringHashMap *strTable_ {nullptr};
+    std::vector<Node *> nodes_ {};
+    std::vector<Edge *> edges_ {};
+    std::string version_;
+    uint32_t nodeIndex_ {0};
+};
 
-    bool ReadSectionInfo(std::ifstream &file, uint32_t endOffset, std::vector<uint32_t> &sections);
-    bool ReadVersion(std::ifstream &file, uint32_t offset, uint32_t size);
-    bool ReadObjTableBySection(std::ifstream &file, const std::vector<uint32_t> &sections);
-    bool ReadObjTable(std::ifstream &file, uint32_t offset, uint32_t size);
-    bool ReadStringTable(std::ifstream &file, uint32_t offset, uint32_t size);
-    bool ReadRootTable(std::ifstream &file, uint32_t offset, uint32_t size);
-    bool ReadFileAtOffset(std::ifstream &file, uint32_t offset, uint32_t size, char *buf);
+class RawHeapTranslateV1 : public RawHeap {
+public:
+    RawHeapTranslateV1(MetaParser *meta) : metaParser_(meta) {}
+    ~RawHeapTranslateV1();
 
-    void CreateNode(AddrTableItem &item, char *data);
-    void FillNodesAndBuildEdges();
-    void FillNodes(const std::shared_ptr<Node> &node, char *hclass);
-    void BuildEdges(const std::shared_ptr<Node> &from, char *hclass);
-    void BuildFieldsEdges(
-        const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
-    void BuildGlobalEnvEdges(const std::shared_ptr<Node> &from);
-    void BuildArrayEdges(const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
-    void BuildDictionaryEdges(
-        const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
-    void BuildJSObjectInlEdges(const std::shared_ptr<Node> &from, char *hclass, uint32_t offset);
-    void CreateEdge(const std::shared_ptr<Node> &from, const std::shared_ptr<Node> &to, EdgeType type, uint32_t index);
-    void SetNodeStringId(char *addr, uint32_t size, StringId strId);
-    bool ByteToAddrTableItem(std::ifstream &file, uint32_t offset, uint32_t objNum, std::vector<AddrTableItem> &table);
-    std::optional<std::shared_ptr<Node>> FindNodeFromAddr(uint64_t addr, EdgeType *type);
-    std::optional<std::pair<uint32_t, uint32_t>> CheckAndGetHead(
-        std::ifstream &file, uint32_t offset, uint32_t assertNum);
+    bool Parse(FileReader &file, uint32_t rawheapFileSize) override;
+    void Translate() override;
 
-    static std::shared_ptr<Field> FindFieldInMetaData(
-        const std::shared_ptr<MetaData> &metadata, const std::string &name);
-    static void CheckAndRemoveWeak(uint64_t &addr, EdgeType *type);
+private:
+    struct AddrTableItem {
+        uint64_t addr = 0;
+        uint64_t id = 0;
+        uint32_t objSize = 0;
+        uint32_t offset = 0;
+    };
+
+    bool ReadVersion(FileReader &file);
+    bool ReadRootTable(FileReader &file);
+    bool ReadStringTable(FileReader &file);
+    bool ReadObjectTable(FileReader &file, uint32_t offset, uint32_t totalSize);
+    bool ParseStringTable(FileReader &file);
+    void AddSyntheticRootNode(std::vector<uint64_t> &roots);
+    void SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId);
+    Node* FindOrCreateNode(uint64_t addr);
+    Node* FindNode(uint64_t addr);
+
+    void FillNodes(Node *node, JSType type);
+    void BuildEdges(Node *node, JSType type);
+    void BuildGlobalEnvEdges(Node *node, JSType type);
+    void BuildArrayEdges(Node *node, JSType type);
+    void BuildFieldEdges(Node *node, JSType type);
+    void BuildJSObjectEdges(Node *node, JSType type);
+    void CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type);
+    void CreateHClassEdge(Node *node, Node *hclass);
+    EdgeType GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr);
+
     static bool IsHeapObject(uint64_t addr);
+    static bool IsWeak(uint64_t addr);
+    static void RemoveWeak(uint64_t &addr);
     static constexpr uint64_t TAG_WEAK = 0x01ULL;
     static constexpr uint64_t TAG_WEAK_MASK = 0x01ULL;
     static constexpr uint64_t TAG_HEAPOBJECT_MASK = (0xFFFFULL << 48) | 0x02ULL | 0x04ULL;  // 48 means 6 byte shift
 
-    std::vector<char *> memBuf_ {};
-    std::unique_ptr<Meta> meta_ {nullptr};
-    std::shared_ptr<StringHashMap> strTable_ {nullptr};
-    std::vector<std::shared_ptr<Node>> nodes_ {};
-    std::vector<std::shared_ptr<Edge>> edges_ {};
-    std::unordered_map<uint64_t, std::shared_ptr<Node>> nodesMap_ {};
-
+    MetaParser *metaParser_ {nullptr};
+    std::vector<char *> mem_ {};
+    std::vector<uint32_t> sections_ {};
+    std::unordered_map<uint64_t, Node *> nodesMap_ {};
     friend class panda::test::HeapDumpTestHelper;
 };
-
 }  // namespace rawheap_translate
-#endif
+#endif  // RAWHEAP_TRANSLATE_H

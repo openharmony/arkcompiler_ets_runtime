@@ -16,546 +16,437 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 
 namespace rawheap_translate {
-bool RawHeapTranslate::Translate(const std::string &rawheapPath)
+RawHeap::~RawHeap()
 {
-    uint32_t fileSize = 0;
-    std::ifstream rawheapFile;
-    if (!FileCheckAndOpenBinary(rawheapPath, rawheapFile, fileSize)) {
+    delete strTable_;
+    nodes_.clear();
+    edges_.clear();
+}
+
+std::vector<Node *>* RawHeap::GetNodes()
+{
+    return &nodes_;
+}
+
+std::vector<Edge *>* RawHeap::GetEdges()
+{
+    return &edges_;
+}
+
+size_t RawHeap::GetNodeCount()
+{
+    return nodes_.size();
+}
+
+size_t RawHeap::GetEdgeCount()
+{
+    return edges_.size();
+}
+
+StringHashMap *RawHeap::GetStringTable()
+{
+    return strTable_;
+}
+
+std::string RawHeap::GetVersion()
+{
+    return version_;
+}
+
+Node *RawHeap::CreateNode()
+{
+    Node *node = new Node(nodeIndex_++);
+    nodes_.push_back(node);
+    return node;
+}
+
+void RawHeap::InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type)
+{
+    Edge *edge = new Edge(toNode, indexOrStrId, type);
+    edges_.push_back(edge);
+}
+
+StringId RawHeap::InsertAndGetStringId(const std::string &str)
+{
+    return strTable_->InsertStrAndGetStringId(str);
+}
+
+void RawHeap::SetVersion(const std::string &version)
+{
+    version_ = version;
+}
+
+bool RawHeap::ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section)
+{
+    if (!file.CheckAndGetHeaderAt(offset - sizeof(uint64_t), sizeof(uint32_t))) {
+        LOG_ERROR_ << "sections header error!";
         return false;
     }
 
-    std::vector<uint32_t> sections;
-    if (!ParseMetaData(rawheapFile, fileSize) ||
-        !ReadSectionInfo(rawheapFile, fileSize, sections) ||
-        !ReadVersion(rawheapFile, 0, sections[0]) ||
-        !ReadObjTableBySection(rawheapFile, sections) ||
-        !ReadStringTable(rawheapFile, sections[2], sections[3]) ||  // 2: str offset, 3: str size
-        !ReadRootTable(rawheapFile, sections[0], sections[1])) {
+    uint32_t sectionHeaderOffset = offset - (file.GetHeaderLeft() + 2) * sizeof(uint32_t);
+    section.resize(file.GetHeaderLeft());
+    if (!file.Seek(sectionHeaderOffset) || !file.ReadArray(section, file.GetHeaderLeft())) {
+        LOG_ERROR_ << "read sections error!";
         return false;
     }
 
-    FillNodesAndBuildEdges();
     return true;
 }
 
-bool RawHeapTranslate::ParseMetaData(std::ifstream &file, uint32_t &offset)
+RawHeapTranslateV1::~RawHeapTranslateV1()
 {
-    cJSON *object = nullptr;
-    if (!ReadMetaDataJson(file, offset, &object)) {
-        return false;
+    for (auto &mem : mem_) {
+        delete[] mem;
     }
-
-    bool result = meta_->Parse(object);
-    DelMetaDataJson(object);
-    return result;
+    mem_.clear();
+    sections_.clear();
+    nodesMap_.clear();
 }
 
-bool RawHeapTranslate::ReadMetaDataJson(std::ifstream &file, uint32_t &offset, cJSON **json)
+bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
 {
-    auto result = CheckAndGetHead(file, offset - sizeof(uint64_t), 0);
-    if (!result.has_value()) {
-        LOG_ERROR("RawHeapTranslate::ReadMetaDataJson: metadata header error!");
+    if (!ReadVersion(file) || !ReadSectionInfo(file, rawheapFileSize, sections_) ||
+        !ReadRootTable(file) || !ReadStringTable(file)) {
         return false;
     }
 
-    auto [metaOffset, metaSize] = result.value();
-    std::vector<char> metaJson(metaSize);
-    if (!ReadFileAtOffset(file, metaOffset, metaSize, metaJson.data())) {
-        return false;
+    // 4: object table section start from 4, step is 2
+    for (int i = 4; i < sections_.size(); i += 2) {
+        if (!ReadObjectTable(file, sections_[i], sections_[i + 1])) {
+            return false;
+        }
     }
-
-    cJSON *object = cJSON_ParseWithOpts(metaJson.data(), nullptr, true);
-    if (!object) {
-        LOG_ERROR("RawHeapTranslate::ReadMetaDataJson: json format error!");
-        return false;
-    }
-    
-    *json = object;
-    offset = metaOffset;
     return true;
 }
 
-void RawHeapTranslate::DelMetaDataJson(cJSON *json)
+void RawHeapTranslateV1::Translate()
 {
-    cJSON_Delete(json);
-}
+    uint32_t missNodeCnt = 0;
+    auto nodes = GetNodes();
+    for (auto it = nodes->begin() + 1; it != nodes->end(); ++it) {
+        Node *node = *it;
+        Node *hclass = FindNode(ByteToU64(node->data));
+        if (hclass == nullptr) {
+            ++missNodeCnt;
+            continue;
+        }
 
-bool RawHeapTranslate::ReadSectionInfo(std::ifstream &file, uint32_t endOffset, std::vector<uint32_t> &sections)
-{
-    auto result = CheckAndGetHead(file, endOffset - sizeof(uint64_t), sizeof(uint32_t));
-    if (!result.has_value()) {
-        LOG_ERROR("RawHeapTranslate::ReadSectionInfo: sections header error!");
-        return false;
+        JSType type = metaParser_->GetJSTypeFromHClass(hclass);
+        FillNodes(node, type);
+        CreateHClassEdge(node, hclass);
+        if (!metaParser_->IsString(type)) {
+            BuildEdges(node, type);
+        }
     }
 
-    auto [secSize, unitSize] = result.value();
-    uint32_t sectionSize = secSize * unitSize;
-    std::vector<char> sectionBytes(sectionSize);
-    if (!ReadFileAtOffset(file, endOffset - sectionSize - sizeof(uint64_t), sectionSize, sectionBytes.data())) {
-        return false;
+    if (missNodeCnt > 0) {
+        LOG_ERROR_ << missNodeCnt << " nodes missed hclass!";
+    } else {
+        LOG_INFO_ << "success!";
     }
-
-    sections.resize(secSize);
-    ByteToU32Array(sectionBytes.data(), sections.data(), secSize);
-    LOG_INFO("RawHeapTranslate::ReadSectionInfo: sectionSize=" + std::to_string(secSize));
-    return true;
 }
 
-bool RawHeapTranslate::ReadVersion(std::ifstream &file, uint32_t offset, uint32_t size)
+bool RawHeapTranslateV1::ReadVersion(FileReader &file)
 {
+    uint32_t size = 8;  // 8: version size
     std::vector<char> version(size);
-    if (!ReadFileAtOffset(file, offset, size, version.data())) {
+    if (!file.Seek(0) || !file.Read(version.data(), size)) {
         return false;
     }
-    LOG_INFO("Rawheap version is " + std::string(version.data()));
+    SetVersion(std::string(version.data()));
+    LOG_INFO_ << "current rawheap version is " << GetVersion();
     return true;
 }
 
-bool RawHeapTranslate::ReadObjTableBySection(std::ifstream &file, const std::vector<uint32_t> &sections)
+bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
 {
-    LOG_INFO("RawHeapTranslate::Translate: start to read objects");
-    // 4: index of obj table section start from 4
-    // 2: step is 2
-    for (size_t secIndex = 4; secIndex < sections.size(); secIndex += 2) {
-        uint32_t offset = sections[secIndex];
-        uint32_t size = sections[secIndex + 1];
-        if (!ReadObjTable(file, offset, size)) {
+    if (!file.CheckAndGetHeaderAt(sections_[0], sizeof(uint64_t))) {
+        LOG_ERROR_ << "root table header error!";
+        return false;
+    }
+
+    std::vector<uint64_t> roots(file.GetHeaderLeft());
+    if (!file.ReadArray(roots, file.GetHeaderLeft())) {
+        LOG_ERROR_ << "read root addr error!";
+        return false;
+    }
+
+    AddSyntheticRootNode(roots);
+    LOG_INFO_ << "root node count " << file.GetHeaderLeft();
+    return true;
+}
+
+bool RawHeapTranslateV1::ReadStringTable(FileReader &file)
+{
+    // 2: string table start from sections_[2]
+    if (!file.CheckAndGetHeaderAt(sections_[2], 0)) {
+        LOG_ERROR_ << "string table header error!";
+        return false;
+    }
+
+    uint32_t strCnt = file.GetHeaderLeft();
+    for (uint32_t i = 0; i < strCnt; ++i) {
+        ParseStringTable(file);
+    }
+
+    LOG_INFO_ << "string table count " << strCnt;
+    return true;
+}
+
+bool RawHeapTranslateV1::ReadObjectTable(FileReader &file, uint32_t offset, uint32_t totalSize)
+{
+    if (!file.CheckAndGetHeaderAt(offset, sizeof(AddrTableItem))) {
+        LOG_ERROR_ << "object table header error!";
+        return false;
+    }
+
+    uint32_t tableSize = file.GetHeaderLeft() * file.GetHeaderRight();
+    uint32_t memSize = totalSize - tableSize - sizeof(uint64_t);
+    std::vector<char> objTableData(tableSize);
+    char *mem = new char[memSize];
+    if (!file.Read(objTableData.data(), tableSize) || !file.Read(mem, memSize)) {
+        delete[] mem;
+        return false;
+    }
+
+    mem_.push_back(mem);
+    char *data = objTableData.data();
+    for (uint32_t i = 0; i < file.GetHeaderLeft(); ++i) {
+        uint64_t addr = ByteToU64(data);
+        Node *node = FindOrCreateNode(addr);
+        data += sizeof(uint64_t);
+
+        node->nodeId = ByteToU64(data);
+        data += sizeof(uint64_t);
+
+        node->size = ByteToU32(data);
+        data += sizeof(uint32_t);
+
+        uint32_t memOffset = ByteToU32(data) - tableSize;
+        data += sizeof(uint32_t);
+
+        if (memOffset + sizeof(uint64_t) > memSize) {
+            LOG_ERROR_ << "object memory offset error!";
             return false;
         }
+
+        node->data = mem + memOffset;
     }
-    LOG_INFO("RawHeapTranslate::Translate: read objects finish!");
+    LOG_INFO_ << "section objects count " << file.GetHeaderLeft();
     return true;
 }
 
-bool RawHeapTranslate::ReadObjTable(std::ifstream &file, uint32_t offset, uint32_t size)
+bool RawHeapTranslateV1::ParseStringTable(FileReader &file)
 {
-    auto result = CheckAndGetHead(file, offset, sizeof(AddrTableItem));
-    if (!result.has_value()) {
-        LOG_ERROR("RawHeapTranslate::ReadObjTable: obj table header error!");
+    constexpr int HEADER_SIZE = sizeof(uint64_t) / sizeof(uint32_t);
+    std::vector<uint32_t> header(HEADER_SIZE);
+    if (!file.ReadArray(header, HEADER_SIZE)) {
         return false;
     }
 
-    auto [objNum, unitSize] = result.value();
-    uint32_t baseOffset = sizeof(uint64_t) + offset;
-    std::vector<AddrTableItem> objTable;
-    if (!ByteToAddrTableItem(file, baseOffset, objNum, objTable)) {
+    std::vector<uint64_t> objects(header[1]);
+    if (!file.ReadArray(objects, header[1])) {
+        LOG_ERROR_ << "read objects addr error!";
         return false;
     }
 
-    uint32_t tableSize = objNum * unitSize;
-    uint32_t curOffset = baseOffset + tableSize;
-    uint32_t objMemSize = size - tableSize - sizeof(uint64_t);
-    char *objMem = new char[objMemSize];
-    if (!ReadFileAtOffset(file, curOffset, objMemSize, objMem)) {
-        delete[] objMem;
+    std::vector<char> str(header[0] + 1);
+    if (!file.Read(str.data(), header[0] + 1)) {
+        LOG_ERROR_ << "read string error!";
         return false;
     }
-    memBuf_.emplace_back(objMem);
 
-    for (uint32_t i = 0; i < objNum; i++) {
-        uint32_t nextOffset = i + 1 < objNum ? objTable[i + 1].offset : size - sizeof(uint64_t);
-        auto actSize = nextOffset - objTable[i].offset;
-        if (actSize != objTable[i].objSize && actSize != sizeof(uint64_t)) {
-            LOG_ERROR("RawHeapTranslate::ReadObjTable: expected objSize=" + std::to_string(objTable[i].objSize));
-            continue;
-        }
-        uint32_t objMemOffset = objTable[i].offset - tableSize;
-        if (objMemOffset > objMemSize) {
-            LOG_ERROR("RawHeapTranslate::ReadObjTable: obj out of memory buf!");
-            return false;
-        }
-        CreateNode(objTable[i], objMem + objMemOffset);
-    }
-
-    LOG_INFO("RawHeapTranslate::ReadObjTable: read object, cnt=" + std::to_string(objNum));
+    StringId strId = InsertAndGetStringId(std::string(str.data()));
+    SetNodeStringId(objects, strId);
     return true;
 }
 
-bool RawHeapTranslate::ReadStringTable(std::ifstream &file, uint32_t offset, uint32_t size)
+void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
 {
-    if (size == 0) {
-        LOG_ERROR("RawHeapTranslate::ReadStringTable: string section size is 0");
-        return false;
-    }
-    char *strSection = new char[size];
-    if (!ReadFileAtOffset(file, offset, size, strSection)) {
-        delete[] strSection;
-        return false;
-    }
+    Node *syntheticRoot = CreateNode();
+    syntheticRoot->nodeId = 1;      // 1: means root node
+    syntheticRoot->type = 9;        // 9: means SYNTHETIC node type
+    syntheticRoot->strId = InsertAndGetStringId("SyntheticRoot");
+    syntheticRoot->edgeCount = roots.size();
 
-    uint32_t strNum = ByteToU32(strSection);
-    char *curStrSection = strSection + sizeof(uint32_t) * 2;
-    uint32_t strIndex = 0;
-    while (strIndex++ < strNum) {
-        uint32_t strSize = ByteToU32(curStrSection);
-        uint32_t objCnt = ByteToU32(curStrSection + sizeof(uint32_t));
-        char *objAddr = curStrSection + sizeof(uint32_t) * 2;
-        uint32_t strOffset = sizeof(uint32_t) * 2 + sizeof(uint64_t) * objCnt;
-        char *str = curStrSection + strOffset;
-        StringId strId = strTable_->InsertStrAndGetStringId(std::string(str));
-        SetNodeStringId(objAddr, objCnt, strId);
-        curStrSection += strOffset + strSize + 1;
-    }
-
-    delete[] strSection;
-    LOG_INFO("RawHeapTranslate::ReadStringTable: read string table, cnt=" + std::to_string(strNum));
-    return true;
-}
-
-bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, [[maybe_unused]]uint32_t size)
-{
-    auto result = CheckAndGetHead(file, offset, sizeof(uint64_t));
-    if (!result.has_value()) {
-        LOG_ERROR("RawHeapTranslate::ReadObjTable: obj table header error!");
-        return false;
-    }
-
-    auto [rootNum, unitSize] = result.value();
-    std::vector<char> roots(rootNum * unitSize);
-    if (!ReadFileAtOffset(file, offset + sizeof(uint64_t), rootNum * unitSize, roots.data())) {
-        return false;
-    }
-
-    auto syntheticRoot = std::make_shared<Node>(Node(0));
-    syntheticRoot->nodeId = 1;  // 1: means root node
-    syntheticRoot->type = 9;  // 9: means SYNTHETIC node type
-    syntheticRoot->strId = strTable_->InsertStrAndGetStringId("SyntheticRoot");
-    nodes_.insert(nodes_.begin(), syntheticRoot);
-    StringId edgeStrId = strTable_->InsertStrAndGetStringId("-subroot-");
+    StringId strId = InsertAndGetStringId("-subroot-");
     EdgeType type = EdgeType::SHORTCUT;
-
-    char *addr = roots.data();
-    std::vector<std::shared_ptr<Edge>> rootEdges;
-    for (uint32_t i = 0; i < rootNum; i++) {
-        uint64_t rootAddr = ByteToU64(addr);
-        addr += sizeof(uint64_t);
-        auto rootNode = nodesMap_.find(rootAddr);
-        if (rootNode == nodesMap_.end()) {
-            continue;
-        }
-        auto edge = std::make_shared<Edge>(Edge(type, syntheticRoot, rootNode->second, edgeStrId));
-        rootEdges.emplace_back(edge);
-        syntheticRoot->edgeCount++;
-    }
-
-    edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
-    LOG_INFO("RawHeapTranslate::ReadRootTable: find root obj " + std::to_string(rootNum));
-    return true;
-}
-
-bool RawHeapTranslate::ReadFileAtOffset(std::ifstream &file, uint32_t offset, uint32_t size, char *buf)
-{
-    if (buf == nullptr) {
-        LOG_ERROR("RawHeapTranslate::ReadFileAtOffset: file buf is nullptr!");
-        return false;
-    }
-    if (!file.is_open()) {
-        LOG_ERROR("RawHeapTranslate::ReadFileAtOffset: file not open!");
-        return false;
-    }
-    file.clear();
-    if (!file.seekg(offset)) {
-        LOG_ERROR("RawHeapTranslate::ReadFileAtOffset: file set offset failed, offset=" + std::to_string(offset));
-        return false;
-    }
-    if (file.read(buf, size).fail()) {
-        LOG_ERROR("RawHeapTranslate::ReadFileAtOffset: file read failed, offset=" + std::to_string(offset));
-        return false;
-    }
-    return true;
-}
-
-void RawHeapTranslate::CreateNode(AddrTableItem &item, char *data)
-{
-    static uint32_t nodeIndex = 1;
-    auto node = std::make_shared<Node>(Node(nodeIndex++));
-    node->nodeId = item.id;
-    node->size = item.objSize;
-    node->data = data;
-    nodes_.emplace_back(node);
-    nodesMap_.emplace(item.addr, node);
-}
-
-void RawHeapTranslate::FillNodesAndBuildEdges()
-{
-    LOG_INFO("RawHeapTranslate::FillNodesAndBuildEdges: start to build edges!");
-    int missNodes = 0;
-    StringId hclassStrId = strTable_->InsertStrAndGetStringId("hclass");
-    for (size_t i = 1; i < nodes_.size(); i++) {
-        auto node = nodes_[i];
-        auto result = FindNodeFromAddr(ByteToU64(node->data), nullptr);
-        if (!result.has_value()) {
-            missNodes++;
-            continue;
-        }
-        auto hclass = result.value();
-        FillNodes(node, hclass->data);
-        if (hclass->nodeId == node->nodeId) {
-            continue;
-        }
-        CreateEdge(node, hclass, EdgeType::DEFAULT, hclassStrId);
-        if (meta_->IsString(hclass->data)) {
-            continue;
-        }
-        BuildEdges(node, hclass->data);
-    }
-    LOG_INFO("RawHeapTranslate::FillNodesAndBuildEdges: build edges finish!");
-    if (missNodes > 0) {
-        LOG_ERROR("RawHeapTranslate::FillNodesAndBuildEdges: " + std::to_string(missNodes) + " nodes missed hclass!");
+    for (auto addr : roots) {
+        Node *root = FindOrCreateNode(addr);
+        InsertEdge(root, strId, type);
     }
 }
 
-void RawHeapTranslate::FillNodes(const std::shared_ptr<Node> &node, char *hclass)
+void RawHeapTranslateV1::SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId)
 {
-    node->nativeSize = meta_->GetNativateSize(node->data, hclass);
-    node->type = meta_->GetNodeTypeFromHClass(hclass);
-    if (node->strId < 3 && !meta_->IsString(hclass)) {  // 3: custom strId start from 3
-        std::string name = meta_->GetTypeNameFromHClass(hclass);
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-        node->strId = strTable_->InsertStrAndGetStringId(name);
-    } else if (!meta_->IsString(hclass)) {
-        StringKey stringKey = strTable_->GetKeyByStringId(node->strId);
-        std::string nodeName = strTable_->GetStringByKey(stringKey);
-        if (nodeName.find("_GLOBAL") != std::string::npos) {
-            node->type = FRAMEWORK_NODETYPE;
-        }
+    for (auto addr : objects) {
+        Node *node = FindOrCreateNode(addr);
+        node->strId = strId;
     }
 }
 
-void RawHeapTranslate::BuildEdges(const std::shared_ptr<Node> &from, char *hclass)
+Node *RawHeapTranslateV1::FindOrCreateNode(uint64_t addr)
 {
-    if (meta_->IsGlobalEnv(hclass)) {
-        BuildGlobalEnvEdges(from);
-        return;
+    Node *node = FindNode(addr);
+    if (node != nullptr) {
+        return node;
     }
-
-    std::string typeName = meta_->GetTypeNameFromHClass(hclass);
-    auto visitor = [&from, this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
-        if (!metadata->IsArray()) {
-            BuildFieldsEdges(from, metadata, offset);
-            return;
-        }
-        BuildArrayEdges(from, metadata, offset);
-    };
-    uint32_t baseOffset = 0;
-    meta_->VisitObjectBody(typeName, visitor, baseOffset);
-    BuildJSObjectInlEdges(from, hclass, baseOffset);
+    node = CreateNode();
+    nodesMap_.emplace(addr, node);
+    return node;
 }
 
-void RawHeapTranslate::BuildFieldsEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
+Node *RawHeapTranslateV1::FindNode(uint64_t addr)
 {
-    for (const auto &field : metadata->fields) {
-        if (field->size != sizeof(uint64_t) || offset + sizeof(uint64_t) > from->size) {
-            continue;
-        }
-        uint64_t addr = ByteToU64(from->data + offset + field->offset);
-        EdgeType type = EdgeType::DEFAULT;
-        auto result = FindNodeFromAddr(addr, &type);
-        if (!result.has_value()) {
-            continue;
-        }
-        StringId strId = strTable_->InsertStrAndGetStringId(field->name);
-        CreateEdge(from, result.value(), type, strId);
-    }
-}
-
-void RawHeapTranslate::BuildGlobalEnvEdges(const std::shared_ptr<Node> &from)
-{
-    uint32_t index = sizeof(uint64_t);
-    while ((index + sizeof(uint64_t)) < from->size) {
-        uint64_t addr = ByteToU64(from->data + index);
-        index += sizeof(uint64_t);
-        auto result = FindNodeFromAddr(addr, nullptr);
-        if (!result.has_value()) {
-            continue;
-        }
-        CreateEdge(from, result.value(), EdgeType::DEFAULT, result.value()->strId);
-    }
-}
-
-void RawHeapTranslate::BuildArrayEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
-{
-    auto lengthField = FindFieldInMetaData(metadata, "Length");
-    auto dataField = FindFieldInMetaData(metadata, "Data");
-    if (!lengthField || !dataField) {
-        LOG_ERROR("RawHeapTranslate::BuildArrayEdges: field length or data of array not found!");
-        return;
-    }
-
-    uint32_t len = ByteToU32(from->data + offset + lengthField->offset);
-    uint32_t step = dataField->size;
-    if (step != sizeof(uint64_t) || len <= 0 || len * step + offset > from->size) {
-        return;
-    }
-
-    uint32_t index = offset + dataField->offset;
-    uint32_t itemIndex = 0;
-    uint32_t itemCnt = 0;
-    while (itemCnt++ < len && index < from->size) {
-        uint64_t addr = ByteToU64(from->data + index);
-        index += step;
-        auto result = FindNodeFromAddr(addr, nullptr);
-        if (!result.has_value()) {
-            continue;
-        }
-        CreateEdge(from, result.value(), EdgeType::ELEMENT, itemIndex++);
-    }
-}
-
-void RawHeapTranslate::BuildDictionaryEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
-{
-    auto lengthField = FindFieldInMetaData(metadata, "Length");
-    auto dataField = FindFieldInMetaData(metadata, "Data");
-    auto layout = meta_->GetObjectLayout("Dictionary");
-    if (!lengthField || !dataField || !layout) {
-        LOG_ERROR("RawHeapTranslate::BuildDictionaryEdges: field length or data or layout of dictionary not found!");
-        return;
-    }
-
-    uint32_t len = ByteToU32(from->data + offset + lengthField->offset);
-    uint32_t step = dataField->size;
-    if (step != sizeof(uint64_t) || len <= 0 || len * step + offset > from->size) {
-        return;
-    }
-
-    uint32_t eleIndex = 0;
-    uint32_t index = offset + dataField->offset + layout->headerSize * step;
-    while (index < from->size) {
-        std::vector<uint64_t> item(layout->entrySize);
-        ByteToU64Array(from->data + index, item.data(), layout->entrySize);
-        index += layout->entrySize * step;
-
-        auto value = FindNodeFromAddr(item[layout->valueIndex], nullptr);
-        if (!value.has_value()) {
-            continue;
-        }
-        CreateEdge(from, value.value(), EdgeType::ELEMENT, eleIndex++);
-    }
-}
-
-void RawHeapTranslate::BuildJSObjectInlEdges(const std::shared_ptr<Node> &from, char *hclass, uint32_t offset)
-{
-    if (!meta_->IsJSObject(hclass)) {
-        return;
-    }
-
-    StringId strId = strTable_->InsertStrAndGetStringId("InlineProperty");
-    uint32_t propOffset = offset;
-    while (propOffset + sizeof(uint64_t) <= from->size) {
-        uint64_t addr = ByteToU64(from->data + propOffset);
-        propOffset += sizeof(uint64_t);
-        auto result = FindNodeFromAddr(addr, nullptr);
-        if (!result.has_value()) {
-            continue;
-        }
-        CreateEdge(from, result.value(), EdgeType::DEFAULT, strId);
-    }
-}
-
-void RawHeapTranslate::CreateEdge(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<Node> &to, EdgeType type, uint32_t index)
-{
-    auto edge = std::make_shared<Edge>(Edge(type, from, to, index));
-    edges_.emplace_back(edge);
-    from->edgeCount++;
-}
-
-void RawHeapTranslate::SetNodeStringId(char *addr, uint32_t size, StringId strId)
-{
-    char *objAddr = addr;
-    for (uint32_t i = 0; i < size; i++) {
-        auto node = nodesMap_.find(ByteToU64(objAddr));
-        if (node != nodesMap_.end()) {
-            node->second->strId = strId;
-        }
-        objAddr += sizeof(uint64_t);
-    }
-}
-
-bool RawHeapTranslate::ByteToAddrTableItem(
-    std::ifstream &file, uint32_t offset, uint32_t objNum, std::vector<AddrTableItem> &table)
-{
-    uint32_t unitSize = sizeof(AddrTableItem);
-    uint32_t tableSize = objNum * unitSize;
-    std::vector<char> tableByte(tableSize);
-    if (!ReadFileAtOffset(file, offset, tableSize, tableByte.data())) {
-        return false;
-    }
-    table.resize(objNum);
-    char *item = tableByte.data();
-    for (uint32_t i = 0; i < objNum; i++) {
-        table[i].addr = ByteToU64(item);
-        item += sizeof(uint64_t);
-
-        table[i].id = ByteToU64(item);
-        item += sizeof(uint64_t);
-
-        table[i].objSize = ByteToU32(item);
-        item += sizeof(uint32_t);
-
-        table[i].offset = ByteToU32(item);
-        item += sizeof(uint32_t);
-    }
-    return true;
-}
-
-std::optional<std::shared_ptr<Node>> RawHeapTranslate::FindNodeFromAddr(uint64_t addr, EdgeType *type)
-{
-    if (!IsHeapObject(addr)) {
-        return std::nullopt;
-    }
-    CheckAndRemoveWeak(addr, type);
-    auto node = nodesMap_.find(addr);
-    if (node == nodesMap_.end()) {
-        return std::nullopt;
-    }
-    return node->second;
-}
-
-std::optional<std::pair<uint32_t, uint32_t>> RawHeapTranslate::CheckAndGetHead(
-    std::ifstream &file, uint32_t offset, uint32_t assertNum)
-{
-    uint32_t headSize = sizeof(uint64_t);
-    std::vector<char> head(headSize);
-    if (!ReadFileAtOffset(file, offset, headSize, head.data())) {
-        return std::nullopt;
-    }
-
-    uint32_t firstNum = ByteToU32(head.data());
-    uint32_t secondNum = ByteToU32(head.data() + sizeof(uint32_t));
-    if (assertNum != 0 && secondNum != assertNum) {
-        return std::nullopt;
-    }
-    
-    return std::pair<uint32_t, uint32_t>(firstNum, secondNum);
-}
-
-std::shared_ptr<Field> RawHeapTranslate::FindFieldInMetaData(
-    const std::shared_ptr<MetaData> &metadata, const std::string &name)
-{
-    for (const auto &field : metadata->fields) {
-        if (field->name == name) {
-            return field;
-        }
+    auto it = nodesMap_.find(addr);
+    if (it != nodesMap_.end()) {
+        return it->second;
     }
     return nullptr;
 }
 
-void RawHeapTranslate::CheckAndRemoveWeak(uint64_t &addr, EdgeType *type)
+void RawHeapTranslateV1::FillNodes(Node *node, JSType type)
 {
-    if ((addr & TAG_WEAK_MASK) == TAG_WEAK) {
-        addr &= (~TAG_WEAK);
-        if (type != nullptr) {
-            *type = EdgeType::WEAK;
+    node->type = metaParser_->GetNodeType(type);
+    node->nativeSize = metaParser_->GetNativateSize(node, type);
+    if (node->strId >= StringHashMap::CUSTOM_STRID_START) {
+        StringKey stringKey = GetStringTable()->GetKeyByStringId(node->strId);
+        std::string nodeName = GetStringTable()->GetStringByKey(stringKey);
+        if (nodeName.find("_GLOBAL") != std::string::npos) {
+            node->type = FRAMEWORK_NODETYPE;
+        }
+    } else if (!metaParser_->IsString(type)) {
+        std::string name = metaParser_->GetTypeName(type);
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        node->strId = InsertAndGetStringId(name);
+    }
+}
+
+void RawHeapTranslateV1::BuildEdges(Node *node, JSType type)
+{
+    if (metaParser_->IsArray(type)) {
+        BuildArrayEdges(node, type);
+    } else if (metaParser_->IsGlobalEnv(type)) {
+        BuildGlobalEnvEdges(node, type);
+    } else {
+        BuildFieldEdges(node, type);
+        if (metaParser_->IsJSObject(type)) {
+            BuildJSObjectEdges(node, type);
         }
     }
 }
 
-bool RawHeapTranslate::IsHeapObject(uint64_t addr)
+void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node, JSType type)
+{
+    uint32_t offset = sizeof(uint64_t);
+    while ((offset + sizeof(uint64_t)) <= node->size) {
+        uint64_t addr = ByteToU64(node->data + offset);
+        offset += sizeof(uint64_t);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        CreateEdge(node, addr, 1, edgeType);
+    }
+}
+
+void RawHeapTranslateV1::BuildArrayEdges(Node *node, JSType type)
+{
+    BitField *bitField = metaParser_->GetBitField();
+    uint32_t lengthOffset = bitField->taggedArrayLengthField.offset;
+    uint32_t dataOffset = bitField->taggedArrayDataField.offset;
+    uint32_t step = bitField->taggedArrayDataField.size;
+
+    uint32_t len = ByteToU32(node->data + lengthOffset);
+    if (step != sizeof(uint64_t) || len <= 0) {
+        return;
+    }
+
+    uint32_t offset = dataOffset;
+    uint32_t index = 0;
+    while (index < len && offset + step <= node->size) {
+        uint64_t addr = ByteToU64(node->data + offset);
+        offset += step;
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        CreateEdge(node, addr, index++, edgeType);
+    }
+}
+
+void RawHeapTranslateV1::BuildFieldEdges(Node *node, JSType type)
+{
+    MetaData *meta = metaParser_->GetMetaData(type);
+    if (meta == nullptr) {
+        return;
+    }
+
+    for (const auto &field : meta->fields) {
+        if (field.size != sizeof(uint64_t)) {
+            continue;
+        }
+        uint64_t addr = ByteToU64(node->data + field.offset);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        StringId strId = InsertAndGetStringId(field.name);
+        CreateEdge(node, addr, strId, edgeType);
+    }
+}
+
+void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
+{
+    MetaData *meta = metaParser_->GetMetaData(type);
+    if (meta == nullptr) {
+        return;
+    }
+
+    StringId inlinePropertyStrId = InsertAndGetStringId("InlineProperty");
+    uint32_t offset = meta->endOffset;
+    while (offset + sizeof(uint64_t) <= node->size) {
+        uint64_t addr = ByteToU64(node->data + offset);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        CreateEdge(node, addr, inlinePropertyStrId, edgeType);
+        offset += sizeof(uint64_t);
+    }
+}
+
+void RawHeapTranslateV1::CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type)
+{
+    Node *to = FindNode(addr);
+    if (to == nullptr || to == node) {
+        return;
+    }
+    InsertEdge(to, nameOrIndex, type);
+    node->edgeCount++;
+}
+
+void RawHeapTranslateV1::CreateHClassEdge(Node *node, Node *hclass)
+{
+    static StringId hclassStrId = InsertAndGetStringId("hclass");
+    InsertEdge(hclass, hclassStrId, EdgeType::DEFAULT);
+    node->edgeCount++;
+}
+
+EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr)
+{
+    EdgeType edgeType = EdgeType::DEFAULT;
+    if (IsWeak(addr)) {
+        RemoveWeak(addr);
+        edgeType = EdgeType::WEAK;
+    }
+    if (metaParser_->IsArray(type)) {
+        edgeType = EdgeType::ELEMENT;
+    }
+    return edgeType;
+}
+
+bool RawHeapTranslateV1::IsHeapObject(uint64_t addr)
 {
     return ((addr & TAG_HEAPOBJECT_MASK) == 0U);
 }
-} // namespace rawheap_translate
+
+bool RawHeapTranslateV1::IsWeak(uint64_t addr)
+{
+    return (addr & TAG_WEAK_MASK) == TAG_WEAK;
+}
+
+void RawHeapTranslateV1::RemoveWeak(uint64_t &addr)
+{
+    addr &= (~TAG_WEAK);
+}
+}
+// namespace rawheap_translate
