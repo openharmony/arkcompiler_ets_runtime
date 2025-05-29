@@ -159,6 +159,7 @@
       panda::ecmascript::Close*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConstantPool::GetStringFromCacheForJit*;
+      panda::ecmascript::ConstantPool::GetIhcFromAOTLiteralInfo*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
