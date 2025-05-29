@@ -22,14 +22,12 @@
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/symbol_table.h"
 #include "ecmascript/template_map.h"
 
 namespace panda::ecmascript {
 void GlobalEnv::Init(JSThread *thread)
 {
     SetGlobalEnv(thread, JSTaggedValue(this));
-    SetRegisterSymbols(thread, SymbolTable::Create(thread));
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
     auto* vm = thread->GetEcmaVM();
     JSTaggedValue emptyStr = thread->GlobalConstants()->GetEmptyString();

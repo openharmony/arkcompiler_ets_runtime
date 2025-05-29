@@ -188,8 +188,6 @@
     V(JSTaggedValue, SharedArrayIteratorPrototype, SHARED_ARRAY_ITERATOR_PROTOTYPE_INDEX)           \
     V(JSTaggedValue, StringIteratorPrototype, STRING_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, AsyncFromSyncIteratorPrototype, ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_INDEX)      \
-    /* SymbolTable *RegisterSymbols */                                                              \
-    V(JSTaggedValue, RegisterSymbols, SYMBOLS_INDEX)                                                \
     V(JSTaggedValue, ThrowTypeError, THROW_TYPE_ERROR_INDEX)                                        \
     V(JSTaggedValue, PromiseFunction, PROMISE_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, PromiseReactionJob, PROMISE_REACTION_JOB_INDEX)                                \

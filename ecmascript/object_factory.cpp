@@ -2630,8 +2630,7 @@ JSHandle<JSSymbol> ObjectFactory::NewPublicSymbol(const JSHandle<JSTaggedValue> 
 
 JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTable(const JSHandle<JSTaggedValue> &name)
 {
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<SymbolTable> tableHandle(env->GetRegisterSymbols());
+    JSHandle<SymbolTable> tableHandle(thread_, vm_->GetRegisterSymbols());
     if (tableHandle->ContainsKey(name.GetTaggedValue())) {
         JSTaggedValue objValue = tableHandle->GetSymbol(name.GetTaggedValue());
         return JSHandle<JSSymbol>(thread_, objValue);
@@ -2641,7 +2640,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTable(const JSHandle<JSTaggedValu
     JSHandle<JSTaggedValue> valueHandle(obj);
     JSHandle<JSTaggedValue> keyHandle(name);
     JSHandle<SymbolTable> table = SymbolTable::Insert(thread_, tableHandle, keyHandle, valueHandle);
-    env->SetRegisterSymbols(thread_, table);
+    vm_->SetRegisterSymbols(table.GetTaggedValue());
     return obj;
 }
 

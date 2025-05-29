@@ -180,8 +180,8 @@ JSTaggedValue BuiltinsSymbol::KeyFor(EcmaRuntimeCallInfo *argv)
     // If SameValue(e.[[symbol]], sym) is true, return e.[[key]].
     // 3.Assert: GlobalSymbolRegistry does not currently contain an entry for sym.
     // 4.Return undefined.
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    auto *table = env->GetRegisterSymbols().GetObject<SymbolTable>();
+    JSTaggedValue symbolTable = thread->GetEcmaVM()->GetRegisterSymbols();
+    auto *table = SymbolTable::Cast(symbolTable.GetTaggedObject());
     JSTaggedValue key = table->FindSymbol(sym.GetTaggedValue());
     if (key.IsUndefined()) {
         return JSTaggedValue::Undefined();
