@@ -17,8 +17,27 @@
 
 #include "common_components/base_runtime/hooks.h"
 #include "common_components/mutator/mutator.h"
-
 namespace common {
+
+VisitStaticRootsHookFunc g_visitStaticRootsHook = nullptr;
+UpdateStaticRootsHookFunc g_updateStaticRootsHook = nullptr;
+SweepStaticRootsHookFunc g_sweepStaticRootsHook = nullptr;
+
+void RegisterVisitStaticRootsHook(VisitStaticRootsHookFunc func)
+{
+    g_visitStaticRootsHook = func;
+}
+
+void RegisterUpdateStaticRootsHook(UpdateStaticRootsHookFunc func)
+{
+    g_updateStaticRootsHook = func;
+}
+
+void RegisterweepStaticRootsHook(SweepStaticRootsHookFunc func)
+{
+    g_sweepStaticRootsHook = func;
+}
+
 
 void VisitRoots(const RefFieldVisitor &visitor)
 {
@@ -26,9 +45,13 @@ void VisitRoots(const RefFieldVisitor &visitor)
     VisitDynamicLocalRoots(visitor);
     VisitBaseRoots(visitor);
     // if (isMark) {
-    //     VisitStaticRoots(visitor);
+    //    if (g_visitStaticRootsHook != nullptr) {
+    //        g_visitStaticRootsHook(visitor);
+    //     }
     // } else {
-    //     UpdateStaticRoots(visitor);
+    //    if (g_updateStaticRootsHook != nullptr) {
+    //        g_updateStaticRootsHook(visitor);
+    //    }
     // }
 }
 
@@ -36,19 +59,38 @@ void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
     VisitDynamicWeakLocalRoots(visitor);
-    // UpdateStaticRoots(visitor);
-    // SweepStaticRoots(visitor);
+    // if (g_updateStaticRootsHook != nullptr) {
+    //     g_updateStaticRootsHook(visitor);
+    // }
+    // if (g_sweepStaticRootsHook != nullptr) {
+    //     g_sweepStaticRootsHook(visitor);
+    // }
 }
 
 void VisitGlobalRoots(const RefFieldVisitor &visitor)
 {
     VisitDynamicGlobalRoots(visitor);
     VisitBaseRoots(visitor);
+    // if (isMark) {
+    //    if (g_visitStaticRootsHook != nullptr) {
+    //        g_visitStaticRootsHook(visitor);
+    //     }
+    // } else {
+    //    if (g_updateStaticRootsHook != nullptr) {
+    //        g_updateStaticRootsHook(visitor);
+    //    }
+    // }
 }
 
 void VisitWeakGlobalRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
+    // if (g_updateStaticRootsHook != nullptr) {
+    //     g_updateStaticRootsHook(visitor);
+    // }
+    // if (g_sweepStaticRootsHook != nullptr) {
+    //     g_sweepStaticRootsHook(visitor);
+    // }
 }
 
 // Visit specific mutator's root.
