@@ -29,6 +29,10 @@ namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
+    static constexpr size_t MIN_DISK_SPACE = 300_MB;
+    static constexpr size_t MAX_AP_FILE_SIZE = 100_MB;
+    static constexpr size_t CONVERT_FACTOR = 1024 * 1024; // 1MB = 1024 * 1024 bytes
+
     enum ApGenMode { OVERWRITE, MERGE };
 
     PGOProfilerEncoder(const std::string& path, ApGenMode mode): path_(path), mode_(mode) {}
@@ -47,6 +51,11 @@ private:
     void StartSaveTask(const std::shared_ptr<PGOInfo> info, const SaveTask* task);
     bool InternalSave(const std::shared_ptr<PGOInfo> info, const SaveTask* task = nullptr);
     bool SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task = nullptr);
+    std::string GetDirectoryPath(const std::string& path) const;
+    bool WriteProfilerFile(const std::shared_ptr<PGOInfo> info,
+                           const SaveTask* task,
+                           const std::string& tmpOutPath);
+    bool ValidateAndRename(const std::string& tmpOutPath);
     void AddChecksum(std::fstream& fileStream);
 
     std::string path_;

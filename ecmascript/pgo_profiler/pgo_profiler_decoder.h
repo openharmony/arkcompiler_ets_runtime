@@ -220,6 +220,8 @@ private:
 
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
+    bool VerifyAPFile(void* buffer, size_t bufferSize);
+    bool ValidateSectionBounds(void* buffer, size_t bufferSize, SectionInfo* section, const char* sectionName);
     CString PUBLIC_API GetNormalizedFileDesc(const JSPandaFile *jsPandaFile) const;
     void LoadAbcIdPool(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool, PGOContext &context,
                        void *addr);

@@ -48,16 +48,23 @@ void PGOMethodTypeSet::SkipFromBinary(void **buffer)
     }
 }
 
-bool PGOMethodTypeSet::ParseFromBinary(PGOContext &context, void **buffer)
+bool PGOMethodTypeSet::ParseFromBinary(PGOContext& context, void** addr, size_t bufferSize)
 {
     PGOProfilerHeader *const header = context.GetHeader();
     ASSERT(header != nullptr);
-    uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+    void* buffer = *addr;
+    uint32_t size = base::ReadBuffer<uint32_t>(addr, sizeof(uint32_t));
+    if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOMethodTypeSet::size")) {
+        return false;
+    }
     if (size > MAX_METHOD_TYPE_SIZE) {
         return false;
     }
     for (uint32_t i = 0; i < size; i++) {
-        auto typeInfo = base::ReadBufferInSize<TypeInfoHeader>(buffer);
+        auto typeInfo = base::ReadBufferInSize<TypeInfoHeader>(addr);
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOMethodTypeSet::typeInfo")) {
+            return false;
+        }
         if (typeInfo->GetInfoType() == InfoType::OP_TYPE) {
             auto *scalerInfo = reinterpret_cast<ScalarOpTypeInfoRef *>(typeInfo);
             scalarOpTypeInfos_.emplace(scalerInfo->GetOffset(),
@@ -72,14 +79,26 @@ bool PGOMethodTypeSet::ParseFromBinary(PGOContext &context, void **buffer)
             auto *opTypeInfo = reinterpret_cast<RWScalarOpTypeInfoRef *>(typeInfo);
             RWScalarOpTypeInfo info(opTypeInfo->GetOffset());
             info.ConvertFrom(context, *opTypeInfo);
-            for (int j = 0; j < info.GetCount(); j++) {
-                if (info.GetTypeRef().GetObjectInfo(j).GetProtoChainMarker() == ProtoChainMarker::EXSIT) {
-                    auto protoChainRef = base::ReadBufferInSize<PGOProtoChainRef>(buffer);
-                    auto protoChain = PGOProtoChain::ConvertFrom(context, protoChainRef);
-                    const_cast<PGOObjectInfo &>(info.GetTypeRef().GetObjectInfo(j)).SetProtoChain(protoChain);
-                }
+            if (!ParseProtoChainsFromBinary(context, info, addr, buffer, bufferSize)) {
+                return false;
             }
             rwScalarOpTypeInfos_.emplace(info);
+        }
+    }
+    return true;
+}
+
+bool PGOMethodTypeSet::ParseProtoChainsFromBinary(
+    PGOContext& context, RWScalarOpTypeInfo& info, void** addr, void* buffer, size_t bufferSize)
+{
+    for (int j = 0; j < info.GetCount(); j++) {
+        if (info.GetTypeRef().GetObjectInfo(j).GetProtoChainMarker() == ProtoChainMarker::EXSIT) {
+            auto protoChainRef = base::ReadBufferInSize<PGOProtoChainRef>(addr);
+            if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOMethodTypeSet::protoChainRef")) {
+                return false;
+            }
+            auto protoChain = PGOProtoChain::ConvertFrom(context, protoChainRef);
+            const_cast<PGOObjectInfo&>(info.GetTypeRef().GetObjectInfo(j)).SetProtoChain(protoChain);
         }
     }
     return true;

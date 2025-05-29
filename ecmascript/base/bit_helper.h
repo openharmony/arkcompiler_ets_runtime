@@ -29,6 +29,8 @@ union Data {
     R dst;
 };
 
+bool CheckBufferBounds(void* addr, void* buffer, size_t bufferSize, const char* name);
+
 template <typename T>
 inline T ReadBuffer(void **buffer, size_t offset)
 {

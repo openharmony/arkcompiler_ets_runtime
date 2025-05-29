@@ -306,37 +306,82 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos)
     }
 }
 
-bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, PGOContext &context, void **buffer)
+bool PGOMethodInfoMap::SkipMethodFromBinary(PGOProfilerHeader* header,
+                                            void** addr,
+                                            void* buffer,
+                                            size_t bufferSize) const
 {
-    PGOProfilerHeader *const header = context.GetHeader();
+    if (header->SupportMethodChecksum()) {
+        base::ReadBuffer<uint32_t>(addr, sizeof(uint32_t));
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "SkipMethodChecksum")) {
+            return false;
+        }
+    }
+    if (header->SupportType()) {
+        PGOMethodTypeSet::SkipFromBinary(addr);
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "SkipPGOMethodTypeSet")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool PGOMethodInfoMap::ParseMethodFromBinary(
+    Chunk* chunk, PGOContext& context, PGOMethodInfo* info, void** addr, void* buffer, size_t bufferSize)
+{
+    PGOProfilerHeader* const header = context.GetHeader();
+    methodInfos_.emplace(info->GetMethodId(), info);
+    LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << DumpUtils::ELEMENT_SEPARATOR << info->GetCount()
+                    << DumpUtils::ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
+                    << DumpUtils::ELEMENT_SEPARATOR << info->GetMethodName();
+
+    if (header->SupportMethodChecksum()) {
+        auto checksum = base::ReadBuffer<uint32_t>(addr, sizeof(uint32_t));
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "MethodChecksum")) {
+            return false;
+        }
+        methodsChecksum_.emplace(info->GetMethodId(), checksum);
+    }
+
+    if (header->SupportType()) {
+        auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
+        size_t newSize = bufferSize - (reinterpret_cast<uintptr_t>(*addr) - reinterpret_cast<uintptr_t>(buffer));
+        if (!typeInfoSet->ParseFromBinary(context, addr, newSize)) {
+            return false;
+        }
+        methodTypeInfos_.emplace(info->GetMethodId(), typeInfoSet);
+    }
+    return true;
+}
+
+bool PGOMethodInfoMap::ParseFromBinary(Chunk* chunk, PGOContext& context, void** addr, size_t bufferSize)
+{
+    PGOProfilerHeader* const header = context.GetHeader();
     ASSERT(header != nullptr);
-    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
+    void* buffer = *addr;
+    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(addr);
+    if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOMethodInfoMap")) {
+        return false;
+    }
+
     for (uint32_t j = 0; j < secInfo.number_; j++) {
-        PGOMethodInfo *info = base::ReadBufferInSize<PGOMethodInfo>(buffer);
+        PGOMethodInfo* info = base::ReadBufferInSize<PGOMethodInfo>(addr);
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOMethodInfo")) {
+            return false;
+        }
+
         if (info->IsFilter(context.GetHotnessThreshold())) {
-            if (header->SupportMethodChecksum()) {
-                base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
-            }
-            if (header->SupportType()) {
-                PGOMethodTypeSet::SkipFromBinary(buffer);
+            if (!SkipMethodFromBinary(header, addr, buffer, bufferSize)) {
+                return false;
             }
             continue;
         }
-        methodInfos_.emplace(info->GetMethodId(), info);
-        LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << DumpUtils::ELEMENT_SEPARATOR << info->GetCount()
-                        << DumpUtils::ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
-                        << DumpUtils::ELEMENT_SEPARATOR << info->GetMethodName();
-        if (header->SupportMethodChecksum()) {
-            auto checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
-            methodsChecksum_.emplace(info->GetMethodId(), checksum);
-        }
-        if (header->SupportType()) {
-            auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            typeInfoSet->ParseFromBinary(context, buffer);
-            methodTypeInfos_.emplace(info->GetMethodId(), typeInfoSet);
+
+        if (!ParseMethodFromBinary(chunk, context, info, addr, buffer, bufferSize)) {
+            return false;
         }
     }
-    return !methodInfos_.empty();
+    return true;
 }
 
 bool PGOMethodInfoMap::ProcessToBinary(PGOContext &context, ProfileTypeRef recordProfileRef, const SaveTask *task,
@@ -534,7 +579,7 @@ bool PGOMethodIdSet::ParseFromBinary(PGOContext &context, void **buffer)
                         << DumpUtils::ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << DumpUtils::ELEMENT_SEPARATOR << info->GetMethodName();
         if (header->SupportType()) {
-            methodInfo.GetPGOMethodTypeSet().ParseFromBinary(context, buffer);
+            methodInfo.GetPGOMethodTypeSet().ParseFromBinary(context, buffer, PGOProfilerEncoder::MAX_AP_FILE_SIZE);
         }
     }
 
@@ -763,9 +808,8 @@ void PGORecordDetailInfos::MergeSafe(const PGORecordDetailInfos& recordInfos)
     Merge(recordInfos);
 }
 
-bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
+bool PGORecordDetailInfos::ParseSectionsFromBinary(void* buffer, PGOProfilerHeader* const header)
 {
-    header_ = header;
     // ProfileTypePool must be parsed at first
     PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *profileTypePool_->GetPool());
     if (!abcIdRemap_.empty()) {
@@ -775,52 +819,103 @@ bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     }
     PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *protoTransitionPool_);
     PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *recordPool_);
-    SectionInfo *info = header->GetRecordInfoSection();
-    void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
+    return true;
+}
+
+bool PGORecordDetailInfos::ParseRecordTypeFromBinary(PGOProfilerHeader* header,
+                                                     void** addr,
+                                                     void* buffer,
+                                                     size_t bufferSize,
+                                                     ApEntityId& recordId,
+                                                     ProfileType& recordType)
+{
+    if (header->SupportProfileTypeWithAbcId()) {
+        auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(addr, sizeof(ApEntityId)));
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "ProfileTypeRef")) {
+            return false;
+        }
+        auto res = ProfileType::CreateFromProfileTypeRef(*this, recordTypeRef);
+        if (!res.has_value()) {
+            LOG_ECMA(ERROR) << "ParseFromBinary failed, current addr: " << *addr << std::endl;
+            return false;
+        }
+        recordType = res.value();
+        recordId = recordType.GetId();
+    } else if (header->SupportRecordPool()) {
+        recordId = base::ReadBuffer<ApEntityId>(addr, sizeof(ApEntityId));
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "recordId")) {
+            return false;
+        }
+    } else {
+        auto* recordName = base::ReadBuffer(addr);
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "recordName")) {
+            return false;
+        }
+        recordPool_->Add(ProfileType(recordId), recordName);
+    }
+    recordType.UpdateId(recordId);
+    recordType.UpdateKind(ProfileType::Kind::RecordClassId);
+    return true;
+}
+
+bool PGORecordDetailInfos::ParseRecordInfosFromBinary(void* buffer, PGOProfilerHeader* header, size_t bufferSize)
+{
+    SectionInfo* info = header->GetRecordInfoSection();
+    void* addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
         ApEntityId recordId(0);
         ProfileType recordType;
-        if (header->SupportProfileTypeWithAbcId()) {
-            auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId)));
-            auto res = ProfileType::CreateFromProfileTypeRef(*this, recordTypeRef);
-            if (!res.has_value()) {
-                LOG_ECMA(ERROR) << "ParseFromBinary failed, current addr: " << addr << std::endl;
-                return false;
-            }
-            recordType = res.value();
-            recordId = recordType.GetId();
-        } else if (header->SupportRecordPool()) {
-            recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
-        } else {
-            auto *recordName = base::ReadBuffer(&addr);
-            recordPool_->Add(ProfileType(recordId), recordName);
+        if (!ParseRecordTypeFromBinary(header, &addr, buffer, bufferSize, recordId, recordType)) {
+            return false;
         }
-        recordType.UpdateId(recordId);
-        recordType.UpdateKind(ProfileType::Kind::RecordClassId);
         PGOMethodInfoMap *methodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
         ASSERT(methodInfos != nullptr);
-        if (methodInfos->ParseFromBinary(chunk_.get(), *this, &addr)) {
+        size_t newSize = bufferSize - (reinterpret_cast<uintptr_t>(addr) - reinterpret_cast<uintptr_t>(buffer));
+        if (!methodInfos->ParseFromBinary(chunk_.get(), *this, &addr, newSize)) {
+            return false;
+        }
+        if (!methodInfos->GetMethodInfos().empty()) {
             recordInfos_.emplace(recordType, methodInfos);
         } else {
             nativeAreaAllocator_.Delete(methodInfos);
         }
     }
+    return true;
+}
 
-    info = header->GetLayoutDescSection();
+bool PGORecordDetailInfos::ParseFromBinary(void* buffer, PGOProfilerHeader* const header, size_t bufferSize)
+{
+    header_ = header;
+    if (!ParseSectionsFromBinary(buffer, header)) {
+        return false;
+    }
+    if (!ParseRecordInfosFromBinary(buffer, header, bufferSize)) {
+        return false;
+    }
+    SectionInfo* info = header->GetLayoutDescSection();
     if (info == nullptr) {
         return false;
     }
     if (header->SupportTrackField()) {
-        ParseFromBinaryForLayout(&addr);
+        void* addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
+        if (!ParseFromBinaryForLayout(&addr, buffer, bufferSize)) {
+            return false;
+        }
     }
     return true;
 }
 
-bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
+bool PGORecordDetailInfos::ParseFromBinaryForLayout(void** addr, void* buffer, size_t bufferSize)
 {
-    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
+    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(addr);
+    if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "ParseFromBinaryForLayout")) {
+        return false;
+    }
     for (uint32_t i = 0; i < secInfo.number_; i++) {
-        auto *info = base::ReadBufferInSize<PGOHClassTreeDescInnerRef>(buffer);
+        auto* info = base::ReadBufferInSize<PGOHClassTreeDescInnerRef>(addr);
+        if (!base::CheckBufferBounds(*addr, buffer, bufferSize, "PGOHClassTreeDescInnerRef")) {
+            return false;
+        }
         if (info == nullptr) {
             LOG_ECMA(INFO) << "Binary format error!";
             continue;

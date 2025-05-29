@@ -106,7 +106,7 @@ public:
     void Merge(const PGOMethodTypeSet *info);
     static void SkipFromBinary(void **buffer);
 
-    bool ParseFromBinary(PGOContext &context, void **buffer);
+    bool ParseFromBinary(PGOContext& context, void** addr, size_t bufferSize);
     bool ProcessToBinary(PGOContext &context, std::stringstream &stream) const;
 
     bool ParseFromText(const std::string &typeString);
@@ -314,6 +314,10 @@ private:
     private:
         PGODefineOpType type_;
     };
+
+    bool ParseProtoChainsFromBinary(
+        PGOContext& context, RWScalarOpTypeInfo& info, void** addr, void* buffer, size_t bufferSize);
+
     using ObjDefOpTypeInfo = ObjDefOpTemplate<PGODefineOpType>;
     using ObjDefOpTypeInfoRef = ObjDefOpTemplate<PGODefineOpTypeRef>;
 
