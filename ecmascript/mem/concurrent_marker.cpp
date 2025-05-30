@@ -120,8 +120,6 @@ void ConcurrentMarker::ReMark()
 
 void ConcurrentMarker::HandleMarkingFinished(GCReason gcReason)  // js-thread wait for sweep
 {
-    LockHolder lock(waitMarkingFinishedMutex_);
-    ASSERT(markingFinished_);
     TriggerGCType gcType;
     if (heap_->IsConcurrentFullMark()) {
         gcType = TriggerGCType::OLD_GC;
