@@ -142,10 +142,10 @@ private:
                 return true;
             }
         private:
-            const char *data_;
+            const char *data_ {nullptr};
             int index_ {0};
-            int length_;
-            char value_;
+            int length_ {0};
+            char value_ {'\0'};
     };
 
     enum DateValueType : int8_t {
@@ -252,7 +252,7 @@ private:
                 return type_ == DATE_SPACE;
             }
 
-            bool IsValidFinallyTime()
+            bool IsValidFinallyTime() const
             {
                 return IsStringEnd() || IsSign() || IsWordZ() || IsSpaceOrTab();
             }
@@ -314,8 +314,8 @@ private:
         private:
             explicit DateUnit(DateValueType type, int value, int len) : type_(type), value_(value), len_(len) {}
             DateValueType type_;
-            int value_;
-            uint32_t len_;
+            int value_ {0};
+            uint32_t len_ {0};
     };
 
     class DateProxy {
@@ -345,7 +345,7 @@ private:
             DateUnit Read();
             DateValueType MatchKeyWord(const CString &str, int *value);
 
-            StringReader *str_;
+            StringReader *str_ {nullptr};
             DateUnit date_;
     };
 
@@ -373,7 +373,7 @@ private:
                 min_ = 0;
             }
 
-            bool IsUTC()
+            bool IsUTC() const
             {
                 return (hour_ == 0 && min_ == 0);
             }
@@ -470,7 +470,7 @@ private:
             bool SetTimeValue(int *time);
         private:
             static constexpr int TIME_LEN = 4;
-            int data_[TIME_LEN];
+            int data_[TIME_LEN] {0};
             int index_ {0};
     };
 
@@ -523,7 +523,7 @@ private:
             bool SetDayValue(int *time);
         private:
             static constexpr int DAY_LEN = 3;
-            int data_[DAY_LEN];
+            int data_[DAY_LEN] {0};
             int index_ {0};
             int month_ {INT_MAX};
             bool isIsoFlag_ {false};
