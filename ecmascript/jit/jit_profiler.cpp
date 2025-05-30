@@ -429,6 +429,12 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
         ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
+        if (compilationEnv_->SupportHeapConstant()) {
+            auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+            JSHandle<JSTaggedValue> calleeHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(callee));
+            auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
+            jitCompilationEnv->RecordCtorMethodId2HeapConstantIndex(ctorMethodId, heapConstantIndex);
+        }
         JSTaggedValue protoOrHClass = callee->GetProtoOrHClass();
         if (protoOrHClass.IsJSHClass()) {
             hclass = JSHClass::Cast(protoOrHClass.GetTaggedObject());

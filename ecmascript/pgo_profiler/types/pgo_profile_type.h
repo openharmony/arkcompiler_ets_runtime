@@ -484,7 +484,7 @@ public:
 
     uint32_t GetClassConstructorMethodId() const
     {
-        ASSERT(IsClassType());
+        ASSERT(IsClassType() || IsJITClassType());
         return GetId();
     }
 
