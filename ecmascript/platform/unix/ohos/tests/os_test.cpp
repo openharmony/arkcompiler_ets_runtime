@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -31,19 +32,28 @@ public:
         GTEST_LOG_(INFO) << "TearDownCase";
     }
 
-    void SetUp() override {}
+    void SetUp() override
+    {
+        tempDir_ = filesystem::TempDirectoryPath() + "/os_test_temp";
+        filesystem::CreateDirectory(tempDir_);
+    }
 
-    void TearDown() override {}
+    void TearDown() override
+    {
+        filesystem::RemoveAll(tempDir_);
+    }
+
+protected:
+    std::string tempDir_;
 };
 
 HWTEST_F_L0(OSTest, CheckDiskSpaceTest)
 {
-    std::string validPath = "/tmp";
-    ASSERT_TRUE(CheckDiskSpace(validPath, 1024));
+    ASSERT_TRUE(CheckDiskSpace(tempDir_, 1024));
     std::string invalidPath = "/invalid/path/that/does/not/exist";
     ASSERT_FALSE(CheckDiskSpace(invalidPath, 1024));
     size_t largeSize = SIZE_MAX;
-    ASSERT_FALSE(CheckDiskSpace(validPath, largeSize));
-    ASSERT_TRUE(CheckDiskSpace(validPath, 0));
+    ASSERT_FALSE(CheckDiskSpace(tempDir_, largeSize));
+    ASSERT_TRUE(CheckDiskSpace(tempDir_, 0));
 }
 }
