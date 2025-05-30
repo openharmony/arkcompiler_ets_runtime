@@ -967,7 +967,7 @@ private:
         BIT_OFFSET_ENQUEUED_REGION = 6,
         BIT_OFFSET_RESURRECTED_REGION = 7,
         BIT_OFFSET_FIXED_REGION = 8,
-        BIT_OFFSET_REGION_CELLCOUNT = 9
+        BIT_OFFSET_REGION_CELLCOUNT = 9,
     };
 
     struct ObjectSlot {

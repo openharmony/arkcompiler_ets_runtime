@@ -93,7 +93,7 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     } else {
         LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
     }
-#ifdef ARK_ASAN_ON
+#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
     ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
     return false;
 #else
@@ -198,7 +198,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
                                                            std::vector<GateRef> &endBBGates,
                                                            [[maybe_unused]] int64_t flag)
 {
-#ifdef ARK_ASAN_ON
+#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
     LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #else
     Environment env(gate, circuit_, &builder_);

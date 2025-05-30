@@ -2888,6 +2888,11 @@ MachineCode *Heap::GetMachineCodeObject(uintptr_t pc) const
     return reinterpret_cast<MachineCode*>(hugeMachineCodeSpace->GetMachineCodeObject(pc));
 }
 
+void Heap::SetMachineCodeObject(uintptr_t start, uintptr_t end, uintptr_t address) const
+{
+    machineCodeSpace_->StoreMachineCodeObjectLocation(start, end, address);
+}
+
 std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCallSiteInfo(uintptr_t retAddr) const
 {
     MachineCodeSpace *machineCodeSpace = GetMachineCodeSpace();

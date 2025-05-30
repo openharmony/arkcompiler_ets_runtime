@@ -81,9 +81,9 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
     objectSize = machineCode->GetClass()->SizeFromJSHClass(machineCode);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
-    EXPECT_EQ(objectSize, 336U);
+    EXPECT_EQ(objectSize, 344U);
 #else
-    EXPECT_EQ(objectSize, 200U);
+    EXPECT_EQ(objectSize, 208U);
 #endif
 
     // size is an integral multiple of eight

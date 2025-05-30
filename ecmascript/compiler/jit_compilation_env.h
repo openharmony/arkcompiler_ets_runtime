@@ -56,6 +56,10 @@ public:
     }
     bool SupportHeapConstant() const override
     {
+#ifdef USE_CMC_GC
+        // Disable heapConstant until we enable barrier for heap constant table
+        return false;
+#endif
         return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
 

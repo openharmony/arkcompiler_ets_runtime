@@ -88,6 +88,18 @@ group("ark_jit_ts_test") {
     "jnez",
   ]
 
+  # Until we support barriers for HeapConstant table
+  if (defined(enable_cmc_gc)) {
+    test_list -= [ "boolean_new_boolean_poly" ]
+    test_list -= [ "boolean_change_proto_ic" ]
+    test_list -= [ "ldobjbyvalue_deopt_string_check" ]
+    test_list -= [ "ldobjbyvalue_mono_proto" ]
+    test_list -= [ "ldobjbyvalue_deopt_key_check" ]
+    test_list -= [ "ldobjbyvalue_mono_opt" ]
+    test_list -= [ "ldobjbyvalue_mono_proto_getter" ]
+    test_list -= [ "newobj_check" ]
+  }
+
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
   foreach(test, test_list) {
     deps += [ "${test}:${test}JitAction" ]

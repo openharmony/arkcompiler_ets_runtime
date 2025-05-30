@@ -107,7 +107,7 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest006)
     desc.stackMapOrOffsetTableAddr = reinterpret_cast<uintptr_t>(src);
     desc.funcEntryDesAddr = reinterpret_cast<uintptr_t>(src2);
     desc.funcEntryDesSize = 100;
-    ASSERT_EQ(code->SetData(desc, method, 100, relocInfo), true);
+    ASSERT_EQ(code->SetData(desc, method, 100, relocInfo, thread), true);
 }
 
 HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest007)
@@ -136,7 +136,7 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest007)
     desc.stackMapOrOffsetTableAddr = reinterpret_cast<uintptr_t>(src);
     desc.funcEntryDesAddr = reinterpret_cast<uintptr_t>(src2);
     desc.funcEntryDesSize = 100;
-    ASSERT_EQ(code->SetData(desc, method, -100, relocInfo), true);
+    ASSERT_EQ(code->SetData(desc, method, -100, relocInfo, thread), true);
 }
 
 HWTEST_F_L0(MachineCodeTest, SetText001)

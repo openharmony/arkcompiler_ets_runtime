@@ -525,7 +525,7 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
 TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *desc)
 {
 #ifdef USE_CMC_GC
-    ASSERT(false);
+    ASSERT(desc != nullptr && "in CMCGC, this path is always jitfort.");
 #endif
     TaggedObject *object;
     if (desc) {
@@ -540,17 +540,19 @@ TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *
 
 TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc *desc)
 {
-#ifdef USE_CMC_GC
-    ASSERT(false);
-#endif
     TaggedObject *object;
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     if (!desc) {
         // Jit Fort disabled
         ASSERT(!GetEcmaVM()->GetJSOptions().GetEnableJitFort());
         object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
+#ifdef USE_CMC_GC
+            reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC)) :
+            reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+#else
             reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
             reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
+#endif
         CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_,
             "Heap::AllocateMachineCodeObject");
         object->SetClass(thread_, hclass);
@@ -574,8 +576,13 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         }
     }
     object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
+#ifdef USE_CMC_GC
+        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
+        reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+#else
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
+#endif
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, machineCodeSpace_, desc,
         "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
@@ -970,8 +977,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     }
 
 #ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-                           reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
     object->SetClass(thread, hclass);
 #else
     TaggedObject *object = thread->IsJitThread() ? nullptr :

@@ -225,7 +225,13 @@ void Jit::SetDisableCodeSign(bool isDisableCodeSign)
 
 bool Jit::IsEnableAsyncCopyToFort() const
 {
+#ifdef USE_CMC_GC
+    // async alloc needs adaption work from CMCGC
+    // Need to also modify js_runtime_options.h
+    return false;
+#else
     return isEnableAsyncCopyToFort_;
+#endif
 }
 
 void Jit::SetEnableAsyncCopyToFort(bool isEnableAsyncCopyToFort)

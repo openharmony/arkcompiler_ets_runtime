@@ -263,6 +263,9 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
     for (uint64_t i = 0; i < constTableSlotNum; ++i) {
         JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
         heapConstantTableAddr[i] = heapObj->GetRawData();
+#ifdef USE_CMC_GC
+        BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
+#else
         Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
         Region *curMachineCodeObjRegion =
             Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
@@ -271,9 +274,11 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
         } else if (heapObjRegion->InSharedHeap()) {
             curMachineCodeObjRegion->InsertLocalToShareRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
         }
+#endif
     }
 }
 
+// This should only be entered from hostVM, i.e., execution jsthread
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {
