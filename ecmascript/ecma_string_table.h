@@ -96,6 +96,10 @@ public:
         {
             return value_;
         }
+        EcmaString *const *ValueAddress() const
+        {
+            return &value_;
+        }
         void SetValue(EcmaString *v)
         {
             value_ = v;

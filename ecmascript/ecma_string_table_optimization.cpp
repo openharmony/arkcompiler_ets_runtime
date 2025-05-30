@@ -755,13 +755,11 @@ bool HashTrieMap::ClearNodeFromGC(Indirect *parent, int index, const WeakRootVis
 
 bool HashTrieMap::CheckWeakRef(WeakVisitor &visitor, HashTrieMap::Entry *entry)
 {
-    EcmaString *object = entry->Value();
-    ObjectSlot slot(reinterpret_cast<uintptr_t>(&(object)));
+    ObjectSlot slot(reinterpret_cast<uintptr_t>(entry->ValueAddress()));
     bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
     if (!isAlive) {
         return true;
     }
-    entry->SetValue(object);
     return false;
 }
 
