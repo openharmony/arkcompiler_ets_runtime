@@ -16,287 +16,296 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
 
 namespace rawheap_translate {
-bool Meta::Parse(const cJSON *object)
+bool MetaParser::Parse(const cJSON *object)
 {
-    return ParseVersion(object) &&
-           ParseTypeEnums(object) &&
-           ParseTypeList(object) &&
-           ParseTypeLayout(object) &&
-           SetObjTypeBitFieldOffset() &&
-           SetNativatePointerBindingSizeOffset();
+    if (!ParseVersion(object) || !ParseTypeEnums(object) || !ParseTypeList(object) ||
+        !ParseTypeLayoutAndDesc(object)) {
+        return false;
+    }
+
+    GenerateMetaData();
+    SetBitField("HCLASS", "BitField", bitField_.objectTypeField);
+    SetBitField("JS_NATIVE_POINTER", "BindingSize", bitField_.nativePointerBindingSizeField);
+    SetBitField("TAGGED_ARRAY", "Length", bitField_.taggedArrayLengthField);
+    SetBitField("TAGGED_ARRAY", "Data", bitField_.taggedArrayDataField);
+    return true;
 }
 
-uint32_t Meta::GetNativateSize(char *obj, char *hclass)
+JSType MetaParser::GetJSTypeFromHClass(Node *hclass)
 {
-    JSType typeId = GetObjTypeFromHClass(hclass);
-    if (typeId != GetObjTypeFromTypeName("JS_NATIVE_POINTER")) {
+    JSType type = static_cast<JSType>(ByteToU32(hclass->data + bitField_.objectTypeField.offset));
+    if (type < orderedMeta_.size()) {
+        // lower 8-bits of 32-bit value means JSType
+        return type;
+    }
+    LOG_ERROR_ << "js type error, " << (int)type;
+    return 0;
+}
+
+JSType MetaParser::GetJSTypeFromTypeName(const std::string &name)
+{
+    MetaData *meta = GetMetaData(name);
+    if (meta == nullptr) {
+        return 0;  // 0: INVALID type
+    }
+    return meta->type;
+}
+
+NodeType MetaParser::GetNodeType(JSType type)
+{
+    MetaData *meta = GetMetaData(type);
+    if (meta == nullptr) {
+        return DEFAULT_NODETYPE;
+    }
+    return meta->nodeType;
+}
+
+uint32_t MetaParser::GetNativateSize(Node *node, JSType type)
+{
+    if (!IsNativePointer(type)) {
         return 0;
     }
-    return ByteToU32(obj + nativatePointerBindingSizeOffset_);
+    return ByteToU32(node->data + bitField_.nativePointerBindingSizeField.offset);
 }
 
-std::string Meta::GetTypeNameFromHClass(char *hclass)
+std::string MetaParser::GetTypeName(JSType type)
 {
-    JSType typeId = GetObjTypeFromHClass(hclass);
-    if (typeId < enumsVec_.size()) {
-        return enumsVec_[typeId];
+    MetaData *meta = GetMetaData(type);
+    if (meta != nullptr) {
+        return meta->name;
     }
-    LOG_ERROR("Meta::GetTypeNameFromTypeId: typeId out of range, typeId=" + std::to_string(typeId));
     return "UNKNOWN_TYPE";
 }
 
-std::shared_ptr<Layout> Meta::GetObjectLayout(const std::string &name)
+MetaData* MetaParser::GetMetaData(const std::string &name)
 {
-    auto layout = layout_.find(name);
-    if (layout != layout_.end()) {
-        return layout->second;
+    auto meta = meta_.find(name);
+    if (meta != meta_.end()) {
+        return meta->second;
     }
     return nullptr;
 }
 
-bool Meta::IsString(char *hclass)
+MetaData *MetaParser::GetMetaData(const JSType type)
 {
-    JSType typeId = GetObjTypeFromHClass(hclass);
-    JSType stringFirst = GetObjTypeFromTypeName(GetTypeDesc("string_first"));
-    JSType stringLast = GetObjTypeFromTypeName(GetTypeDesc("string_last"));
-    if (stringFirst <= typeId && typeId <= stringLast) {
+    if (type < orderedMeta_.size()) {
+        return orderedMeta_[type];
+    }
+    return nullptr;
+}
+
+bool MetaParser::IsNativePointer(JSType type)
+{
+    return type == GetJSTypeFromTypeName("JS_NATIVE_POINTER");
+}
+
+bool MetaParser::IsString(JSType type)
+{
+    return typeRange_.stringFirst <= type && type <= typeRange_.stringLast;
+}
+
+bool MetaParser::IsDictionaryMode(JSType type)
+{
+    return type == GetJSTypeFromTypeName("TAGGED_DICTIONARY");
+}
+
+bool MetaParser::IsJSObject(JSType type)
+{
+    return typeRange_.objectFirst <= type && type <= typeRange_.objectLast;
+}
+
+bool MetaParser::IsGlobalEnv(JSType type)
+{
+    return type == GetJSTypeFromTypeName("GLOBAL_ENV");
+}
+
+bool MetaParser::IsArray(JSType type)
+{
+    MetaData *meta = GetMetaData(type);
+    if (meta != nullptr && meta->IsArray()) {
         return true;
     }
     return false;
 }
 
-bool Meta::IsDictionaryMode(char *hclass)
-{
-    return GetObjTypeFromHClass(hclass) == GetObjTypeFromTypeName("TAGGED_DICTIONARY");
-}
-
-bool Meta::IsJSObject(char *hclass)
-{
-    JSType typeId = GetObjTypeFromHClass(hclass);
-    JSType stringFirst = GetObjTypeFromTypeName(GetTypeDesc("js_object_first"));
-    JSType stringLast = GetObjTypeFromTypeName(GetTypeDesc("js_object_last"));
-    if (stringFirst <= typeId && typeId <= stringLast) {
-        return true;
-    }
-    return false;
-}
-
-bool Meta::IsGlobalEnv(char *hclass)
-{
-    return GetObjTypeFromHClass(hclass) == GetObjTypeFromTypeName("GLOBAL_ENV");
-}
-
-NodeType Meta::GetNodeTypeFromHClass(char *hclass)
-{
-    std::string name = GetTypeNameFromHClass(hclass);
-    auto type = enumsMapNodeType_.find(name);
-    if (type != enumsMapNodeType_.end()) {
-        return type->second;
-    }
-    return DEFAULT_NODETYPE;  // 8: means DEFAULT node type
-}
-
-void Meta::VisitObjectBody(const std::string &name, const ObjRangeVisitor &visitor, uint32_t &baseOffset)
-{
-    auto metadata = GetMetaData(name);
-    if (!metadata) {
-        return;
-    }
-
-    for (const auto &parent : metadata->parents) {
-        VisitObjectBody(parent, visitor, baseOffset);
-    }
-
-    visitor(metadata, baseOffset);
-    baseOffset += metadata->endOffset;
-}
-
-bool Meta::SetObjTypeBitFieldOffset()
-{
-    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
-        for (const auto &field : metadata->fields) {
-            if (field->name == "BitField") {
-                objTypeBitFieldOffset_ = offset + field->offset;
-                objTypeBitFieldSize_ = field->size;
-            }
-        }
-    };
-    uint32_t baseOffset = 0;
-    VisitObjectBody("HCLASS", visitor, baseOffset);
-    LOG_INFO("Meta::SetObjTypeBitFieldOffset: offset=" + std::to_string(objTypeBitFieldOffset_));
-    return true;
-}
-
-bool Meta::SetNativatePointerBindingSizeOffset()
-{
-    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
-        for (const auto &field : metadata->fields) {
-            if (field->name == "BindingSize") {
-                nativatePointerBindingSizeOffset_ = offset + field->offset;
-                nativatePointerBindingSize_ = field->size;
-            }
-        }
-    };
-    uint32_t baseOffset = 0;
-    VisitObjectBody("JS_NATIVE_POINTER", visitor, baseOffset);
-    LOG_INFO("Meta::SetNativatePointerBindingSizeOffset: offset=" + std::to_string(nativatePointerBindingSizeOffset_));
-    return true;
-}
-
-JSType Meta::GetObjTypeFromHClass(char *hclass)
-{
-    return ByteToU32(hclass + objTypeBitFieldOffset_) & 0xFF;  // lower 8-bits of 32-bit value means JSType
-}
-
-JSType Meta::GetObjTypeFromTypeName(const std::string &name)
-{
-    auto typeEnum = enumsMapJSType_.find(name);
-    if (typeEnum == enumsMapJSType_.end()) {
-        return 0;
-    }
-    return typeEnum->second;
-}
-
-std::string Meta::GetTypeDesc(const std::string &name)
-{
-    auto result = typeDesc_.find(name);
-    if (result != typeDesc_.end()) {
-        return result->second;
-    }
-    return "UNKNOWN_TYPE";
-}
-
-bool Meta::ParseTypeEnums(const cJSON *json)
+bool MetaParser::ParseTypeEnums(const cJSON *json)
 {
     cJSON *typeEnums = cJSON_GetObjectItem(json, "type_enum");
-    auto visit = [&typeEnums, this] (const cJSON *item, int index) {
-        std::string name = item->string;
-        uint32_t edgeType = 0;
-        if (GetUInt32(typeEnums, name.c_str(), edgeType)) {
-            enumsVec_.push_back(name);
-            enumsMapJSType_.emplace(name, static_cast<JSType>(index));
-            enumsMapNodeType_.emplace(name, static_cast<uint8_t>(edgeType));
+    JSType type = 0;
+    auto visitor = [&type, this] (const cJSON *item) {
+        if (item->type == cJSON_Number) {
+            MetaData *meta = FindOrCreateMetaData(item->string);
+            // valuedouble: The item's number, if type==cJSON_Number
+            meta->nodeType = static_cast<NodeType>(item->valuedouble);
+            meta->type = type++;
+            orderedMeta_.push_back(meta);
         }
     };
-    IterateJSONArray(typeEnums, visit);
-    LOG_INFO("Meta::ParseTypeEnums: parse type enums, size=" + std::to_string(enumsVec_.size()));
+    IterateJSONArray(typeEnums, visitor);
+    LOG_INFO_ << "total JSType count " << orderedMeta_.size();
     return true;
 }
 
-bool Meta::ParseTypeList(const cJSON *json)
+bool MetaParser::ParseTypeList(const cJSON *json)
 {
     cJSON *metadatas {nullptr};
-    std::vector<std::string> *curParents {nullptr};
-    std::vector<std::shared_ptr<Field>> *curField {nullptr};
     if (!GetArray(json, "type_list", &metadatas)) {
-        LOG_ERROR("Meta::ParseTypeList: type list parse failed!");
+        LOG_ERROR_ << "get type list item failed!";
         return false;
     }
 
-    auto parentVisitor = [&curParents] (const cJSON *item, [[maybe_unused]] int index) {
-        std::string value {};
-        if (GetString(item, value)) {
-            curParents->push_back(value);
-        }
-    };
+    auto metaVisitor = [this](const cJSON *item) {
+        std::string name;
+        GetString(item, "name", name);
+        MetaData *meta = FindOrCreateMetaData(name);
+        GetString(item, "visit_type", meta->visitType);
+        GetUInt32(item, "end_offset", meta->endOffset);
 
-    auto offsetVisitor = [&curField] (const cJSON *item, [[maybe_unused]] int index) {
-        auto field = std::make_shared<Field>();
-        if (GetUInt32(item, "offset", field->offset) &&
-            GetString(item, "name", field->name) &&
-            GetUInt32(item, "size", field->size)) {
-            curField->push_back(field);
-        }
-    };
-
-    auto metaVisitor =
-        [&curParents, &curField, &parentVisitor, &offsetVisitor, this] (const cJSON *item, [[maybe_unused]] int index) {
-        cJSON *fields {nullptr};
         cJSON *parents {nullptr};
-        if (!GetArray(item, "offsets", &fields) || !GetArray(item, "parents", &parents)) {
-            return;
+        cJSON *offsets {nullptr};
+        if (GetArray(item, "parents", &parents) && GetArray(item, "offsets", &offsets)) {
+            ParseParents(parents, meta);
+            ParseOffsets(offsets, meta);
         }
-
-        auto metadata = std::make_shared<MetaData>();
-        curParents = &metadata->parents;
-        curField = &metadata->fields;
-        IterateJSONArray(fields, offsetVisitor);
-        IterateJSONArray(parents, parentVisitor);
-
-        if (GetString(item, "name", metadata->name) && GetUInt32(item, "end_offset", metadata->endOffset)) {
-            metadata_.emplace(metadata->name, metadata);
-        }
-
-        GetString(item, "visit_type", metadata->visitType);
     };
 
     IterateJSONArray(metadatas, metaVisitor);
-    LOG_INFO("Meta::ParseTypeList: parse type list, obj size = " + std::to_string(metadata_.size()));
+    LOG_INFO_ << "total metadata count " << meta_.size();
     return true;
 }
 
-bool Meta::ParseTypeLayout(const cJSON *json)
+bool MetaParser::ParseTypeLayoutAndDesc(const cJSON *json)
 {
     cJSON *object = cJSON_GetObjectItem(json, "type_layout");
-
     cJSON *dictLayout = cJSON_GetObjectItem(object, "Dictionary_layout");
-    auto layout = std::make_shared<Layout>();
-    GetString(dictLayout, "name", layout->name);
-    GetUInt32(dictLayout, "key_index", layout->keyIndex);
-    GetUInt32(dictLayout, "value_index", layout->valueIndex);
-    GetUInt32(dictLayout, "detail_index", layout->detailIndex);
-    GetUInt32(dictLayout, "entry_size", layout->entrySize);
-    GetUInt32(dictLayout, "header_size", layout->headerSize);
-    layout_.emplace(layout->name, layout);
-    LOG_INFO("Meta::ParseTypeLayout: parse type layout, size=" + std::to_string(layout_.size()));
+    GetUInt32(dictLayout, "key_index", dictionaryLayout_.keyIndex);
+    GetUInt32(dictLayout, "value_index", dictionaryLayout_.valueIndex);
+    GetUInt32(dictLayout, "detail_index", dictionaryLayout_.detailIndex);
+    GetUInt32(dictLayout, "entry_size", dictionaryLayout_.entrySize);
+    GetUInt32(dictLayout, "header_size", dictionaryLayout_.headerSize);
 
     cJSON *typeRange = cJSON_GetObjectItem(object, "Type_range");
-    auto visit = [&typeRange, this] (const cJSON *item, [[maybe_unused]] int index) {
-        std::string key = item->string;
-        std::string value {};
-        if (GetString(typeRange, key.c_str(), value)) {
-            typeDesc_.emplace(key, value);
-        }
-    };
-    IterateJSONArray(typeRange, visit);
-    LOG_INFO("Meta::ParseTypeLayout: parse type desc, size=" + std::to_string(typeDesc_.size()));
+    std::string name;
+    GetString(typeRange, "string_first", name);
+    typeRange_.stringFirst = GetJSTypeFromTypeName(name);
+    GetString(typeRange, "string_last", name);
+    typeRange_.stringLast = GetJSTypeFromTypeName(name);
+    GetString(typeRange, "js_object_first", name);
+    typeRange_.objectFirst = GetJSTypeFromTypeName(name);
+    GetString(typeRange, "js_object_last", name);
+    typeRange_.objectLast = GetJSTypeFromTypeName(name);
     return true;
 }
 
-bool Meta::ParseVersion(const cJSON *json)
+bool MetaParser::ParseVersion(const cJSON *json)
 {
-    std::string version {};
-    if (!GetString(json, "version", version)) {
-        LOG_ERROR("Meta::ParseVersion: version not found!");
+    if (!GetString(json, "version", version_)) {
+        LOG_ERROR_ << "version not found!";
         return false;
     }
 
-    if (!CheckVersion(version)) {
-        return false;
+    LOG_INFO_ << "current meta version is " << version_;
+    return true;
+}
+
+void MetaParser::ParseParents(const cJSON *array, MetaData *meta)
+{
+    if (cJSON_GetArraySize(array) <= 0) {
+        return;
+    }
+    cJSON *item = cJSON_GetArrayItem(array, 0);
+    if (item->type == cJSON_String) {
+        meta->parent = FindOrCreateMetaData(item->valuestring);
+    }
+}
+
+void MetaParser::ParseOffsets(const cJSON *array, MetaData *meta)
+{
+    auto visitor = [&meta](const cJSON *item) {
+        Field field;
+        GetString(item, "name", field.name);
+        GetUInt32(item, "offset", field.offset);
+        GetUInt32(item, "size", field.size);
+        meta->fields.push_back(field);
+    };
+    IterateJSONArray(array, visitor);
+}
+
+void MetaParser::SetBitField(const std::string &metaName, const std::string &fieldName, Field &field)
+{
+    MetaData *meta = GetMetaData(metaName);
+    if (meta == nullptr) {
+        return;
+    }
+
+    for (const auto &field_ : meta->fields) {
+        if (field_.name == fieldName) {
+            field = field_;
+            break;
+        }
+    }
+
+    LOG_INFO_ << "set " << fieldName << " offset " << field.offset;
+}
+
+void MetaParser::FillMetaData(MetaData *parent, MetaData *meta)
+{
+    if (parent->parent != nullptr) {
+        FillMetaData(parent->parent, meta);
     }
     
-    LOG_INFO("Meta::ParseVersion: current metadata version is " + version);
-    return true;
-}
-std::shared_ptr<MetaData> Meta::GetMetaData(const std::string &name)
-{
-    auto metadata = metadata_.find(name);
-    if (metadata != metadata_.end()) {
-        return metadata->second;
+    for (const auto &field : parent->fields) {
+        meta->fields.push_back({field.name, field.offset + meta->endOffset, field.size});
     }
-    return nullptr;
+
+    meta->endOffset += parent->endOffset;
+
+    if (parent->IsArray()) {
+        meta->visitType = parent->visitType;
+    }
 }
 
-void Meta::IterateJSONArray(const cJSON *array, const std::function<void(const cJSON *, int)> &visitor)
+void MetaParser::GenerateMetaData()
+{
+    std::unordered_map<std::string, MetaData *> newMeta {};
+    for (auto &it : meta_) {
+        MetaData *meta = new MetaData();
+        newMeta.emplace(it.first, meta);
+        FillMetaData(it.second, meta);
+    }
+
+    for (auto &it : meta_) {
+        MetaData *meta = newMeta[it.first];
+        it.second->fields.swap(meta->fields);
+        it.second->visitType = meta->visitType;
+        it.second->endOffset = meta->endOffset;
+        delete meta;
+    }
+
+    newMeta.clear();
+}
+
+MetaData *MetaParser::FindOrCreateMetaData(const std::string &name)
+{
+    MetaData *meta = GetMetaData(name);
+    if (meta == nullptr) {
+        meta = new MetaData();
+        meta->name = name;
+        meta_[name] = meta;
+    }
+    return meta;
+}
+
+void MetaParser::IterateJSONArray(const cJSON *array, const std::function<void(const cJSON *)> &visitor)
 {
     int size = cJSON_GetArraySize(array);
     for (int i = 0; i < size; i++) {
         cJSON *item = cJSON_GetArrayItem(array, i);
-        visitor(item, i);
+        visitor(item);
     }
 }
 
-bool Meta::GetArray(const cJSON *json, const char *key, cJSON **value)
+bool MetaParser::GetArray(const cJSON *json, const char *key, cJSON **value)
 {
     cJSON *array = cJSON_GetObjectItem(json, key);
     if (array == nullptr || cJSON_IsArray(array) == 0) {
@@ -306,7 +315,7 @@ bool Meta::GetArray(const cJSON *json, const char *key, cJSON **value)
     return true;
 }
 
-bool Meta::GetString(const cJSON *json, const char *key, std::string &value)
+bool MetaParser::GetString(const cJSON *json, const char *key, std::string &value)
 {
     cJSON *item = cJSON_GetObjectItem(json, key);
     if (item == nullptr) {
@@ -315,7 +324,7 @@ bool Meta::GetString(const cJSON *json, const char *key, std::string &value)
     return GetString(item, value);
 }
 
-bool Meta::GetString(const cJSON *json, std::string &value)
+bool MetaParser::GetString(const cJSON *json, std::string &value)
 {
     if (cJSON_IsString(json) == 0) {
         return false;
@@ -324,7 +333,7 @@ bool Meta::GetString(const cJSON *json, std::string &value)
     return true;
 }
 
-bool Meta::GetUInt32(const cJSON *json, const char *key, uint32_t &value)
+bool MetaParser::GetUInt32(const cJSON *json, const char *key, uint32_t &value)
 {
     cJSON *item = cJSON_GetObjectItem(json, key);
     if (item == nullptr) {
@@ -333,7 +342,7 @@ bool Meta::GetUInt32(const cJSON *json, const char *key, uint32_t &value)
     return GetUInt32(item, value);
 }
 
-bool Meta::GetUInt32(const cJSON *json, uint32_t &value)
+bool MetaParser::GetUInt32(const cJSON *json, uint32_t &value)
 {
     if (cJSON_IsNumber(json) == 0) {
         return false;

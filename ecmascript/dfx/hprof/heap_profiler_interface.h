@@ -62,7 +62,6 @@ public:
     // If `fromSharedGC` is set, means that OOM happened during SharedGC, and should do Dump then Fatal at once
     // SharedGC complete, caller Must call this during `SuspendAll`.
     virtual void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) = 0;
-    virtual bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
                                    bool traceAllocation = false, bool newThread = true) = 0;

@@ -121,32 +121,20 @@ public:
         return ret;
     }
 
-    bool DecodeRawHeapSnashot(std::string &inputPath, std::string &outputPath)
-    {
-        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
-        fstream outputString(outputPath, std::ios::out);
-        outputString.close();
-        outputString.clear();
-        auto ret = heapProfile->GenerateHeapSnapshot(inputPath, outputPath);
-        return ret;
-    }
-
     bool DecodeRawHeapObjectTable(std::string &filePath, CSet<JSTaggedType> &result)
     {
-        uint64_t fileSize = rawheap_translate::GetFileSize(filePath);
-        std::ifstream file(filePath, std::ios::binary);
-        rawheap_translate::RawHeapTranslate translator;
+        uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
+        rawheap_translate::FileReader file;
+        rawheap_translate::RawHeapTranslateV1 translate(nullptr);
 
-        std::vector<uint32_t> sections;
-        if (!translator.ReadSectionInfo(file, fileSize, sections) ||
-            !translator.ReadObjTableBySection(file, sections)) {
+        if (!file.Initialize(filePath) || !translate.Parse(file, fileSize)) {
             return false;
         }
 
-        for (auto &it : translator.nodesMap_) {
+        for (auto &it : translate.nodesMap_) {
             result.insert(it.first);
         }
-        GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translator.nodesMap_.size();
+        GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translate.nodesMap_.size();
         return true;
     }
 
@@ -768,11 +756,6 @@ public:
     void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override
     {
         profiler_->DumpHeapSnapshotForOOM(dumpOption, fromSharedGC);
-    }
-
-    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override
-    {
-        return profiler_->GenerateHeapSnapshot(inputFilePath, outputPath);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -1525,44 +1508,53 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
     // PROMISE_ITERATOR_RECORD
-    tester.NewPromiseIteratorRecord();
+    auto obj1 = tester.NewPromiseIteratorRecord();
     // PROMISE_RECORD
-    factory->NewPromiseRecord();
+    auto obj2 = factory->NewPromiseRecord();
     // JS_ARRAY_BUFFER
-    factory->NewJSArrayBuffer(10);
+    auto obj3 = factory->NewJSArrayBuffer(10);
     // JS_SHARED_ARRAY_BUFFER
-    factory->NewJSSharedArrayBuffer(10);
+    auto obj4 = factory->NewJSSharedArrayBuffer(10);
     // PROMISE_REACTIONS
-    factory->NewPromiseReaction();
+    auto obj5 = factory->NewPromiseReaction();
     // PROMISE_CAPABILITY
-    factory->NewPromiseCapability();
+    auto obj6 = factory->NewPromiseCapability();
     // RESOLVING_FUNCTIONS_RECORD
-    factory->NewResolvingFunctionsRecord();
+    auto obj7 = factory->NewResolvingFunctionsRecord();
     // JS_PROMISE
     JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
-    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
+    auto obj8 = tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
     // ASYNC_GENERATOR_REQUEST
-    factory->NewAsyncGeneratorRequest();
+    auto obj9 = factory->NewAsyncGeneratorRequest();
     // JS_WEAK_SET
-    tester.NewJSWeakSet();
+    auto obj10 = tester.NewJSWeakSet();
     // JS_WEAK_MAP
-    tester.NewJSWeakMap();
+    auto obj11 = tester.NewJSWeakMap();
+
+    bool status = true;
     std::string rawHeapPath("test_binary_dump_by_fork_with_callback.raw");
-    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr,
-        [] (uint8_t retCode) {
-            ASSERT_TRUE(retCode == static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS));
-    });
-    ASSERT_TRUE(ret);
-    std::ifstream file(rawHeapPath, std::ios::binary);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    ASSERT_TRUE(content.size() > 0);
-    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
-    ASSERT_TRUE(u64Ptr[1] > 0);
-    std::string snapshotPath("test_binary_dump_by_fork_with_callback.heapsnapshot");
-    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
+    auto cb = [&status](uint8_t retCode) {
+        if (retCode != static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS)) {
+            status = false;
+        }
+    };
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr, cb));
+    ASSERT_TRUE(status);
+    
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTable(rawHeapPath, dumpObjects));
+
+    ASSERT_TRUE(dumpObjects.find(obj1.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj2.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj3.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj4.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj5.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj6.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj7.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj8.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj9.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj10.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj11.GetTaggedType()) != dumpObjects.end());
 }
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)

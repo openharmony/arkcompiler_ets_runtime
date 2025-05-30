@@ -81,42 +81,6 @@ private:
     CUnorderedMap<JSTaggedType, NodeId> idMap_ {};
 };
 
-struct AddrTableItem {
-    uint64_t addr;
-    uint64_t id;
-    uint32_t objSize;
-    uint32_t offset; // offset to the file
-};
-
-#define PER_GROUP_MEM_SIZE (128 * 1024 * 1024) // 128 MB
-#define HEAD_NUM_PER_GROUP (PER_GROUP_MEM_SIZE / sizeof(AddrTableItem))
-#define VERSION_ID_SIZE 8
-#define MAX_FILE_SIZE (4 * 1024 * 1024 * 1024ULL) // 4 * 1024 * 1024 * 1024 : file size bigger than 4GB
-#define MAX_OBJ_SIZE (MAX_FILE_SIZE >> 1)
-
-struct NewAddr {
-    char *data;
-    uint32_t objSize;
-
-    NewAddr(uint32_t actSize, uint32_t objSize) : objSize(objSize)
-    {
-        if (actSize == 0 || actSize > MAX_OBJ_SIZE) {
-            LOG_ECMA(ERROR) << "ark raw heap decode abnormal obj size=" << actSize;
-            data = nullptr;
-            return;
-        }
-        data = new char[actSize];
-    }
-    ~NewAddr()
-    {
-        delete[] data;
-    }
-    char *Data()
-    {
-        return data;
-    }
-};
-
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 struct ScopeWrapper {
     LocalScope *localScope_ {nullptr};
@@ -177,7 +141,6 @@ public:
     {
         return const_cast<StringHashMap *>(&stringTable_);
     }
-    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override;
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     bool IsStartLocalHandleLeakDetect() const;
     void SwitchStartLocalHandleLeakDetect();
@@ -214,13 +177,6 @@ private:
     void ClearSnapshot();
     void FillIdMap();
     bool BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption);
-    uint32_t WriteToBinFile(Stream *stream, char *objTab, uint32_t objNum,
-                            CVector<std::pair<char *, uint32_t>> &memBuf);
-    uint32_t CopyObjectMem2Buf(char *objTable, uint32_t objNum, CVector<std::pair<char *, uint32_t>> &memBufVec);
-    uint32_t GenObjTable(CUnorderedMap<char *, uint32_t> &headerMap, HeapSnapshot *snapshot,
-                         CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
-    uint32_t GenRootTable(Stream *stream);
-    bool DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uint32_t> &secIndexVec);
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     uint32_t GetScopeCount() const;
     std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
@@ -247,88 +203,6 @@ private:
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     friend class HeapProfilerFriendTest;
-};
-
-class RawHeapDump final : public RootVisitor, public BaseObjectVisitor<RawHeapDump> {
-public:
-    RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot, EntryIdMap* entryIdMap)
-        : vm_(vm), stream_(stream), snapshot_(snapshot), entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()),
-          startTime_(std::chrono::steady_clock::now())
-    {
-        buffer_ = chunk_.NewArray<char>(PER_GROUP_MEM_SIZE);
-    }
-
-    ~RawHeapDump()
-    {
-        auto endTime = std::chrono::steady_clock::now();
-        double duration = std::chrono::duration<double>(endTime - startTime_).count();
-        LOG_ECMA(INFO) << "rawheap dump sucess, cost " << duration << 's';
-        chunk_.Delete<char>(buffer_);
-        strIdMapObjVec_.clear();
-        secIndexVec_.clear();
-        roots_.clear();
-        readOnlyObjects_.clear();
-    }
-
-    void BinaryDump(const DumpSnapShotOption &dumpOption);
-
-    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
-    {
-        HandleRootValue(slot.GetTaggedValue());
-    }
-
-    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-    {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            HandleRootValue(slot.GetTaggedValue());
-        }
-    }
-
-    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override
-    {
-        // do nothing
-    }
-
-    void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end, VisitObjectArea area) override;
-
-private:
-    void DumpVersion();
-    void DumpRootTable();
-    void DumpObjectTable(const DumpSnapShotOption &dumpOption);
-    void DumpObjectMemory();
-    void DumpStringTable();
-    void DumpSectionIndex();
-
-    void WriteU64(uint64_t number);
-    void WriteChunk(char *data, size_t size);
-    void MaybeWriteBuffer();
-    void WriteBinBlock();
-    void UpdateStringTable(TaggedObject *object);
-    void HandleRootValue(JSTaggedValue value);
-    void IterateMarkedObjects(const std::function<void(void *)> &visitor);
-    void ProcessMarkObjectsFromRoot(TaggedObject *root);
-    bool MarkObject(TaggedObject *object);
-    void ClearVisitMark();
-    void EndVisitMark();
-
-    const char versionID[VERSION_ID_SIZE] = {0};  // 0: current version id
-
-    const EcmaVM *vm_ {nullptr};
-    Stream *stream_ {nullptr};
-    HeapSnapshot *snapshot_ {nullptr};
-    EntryIdMap *entryIdMap_ {nullptr};
-    char *buffer_ {nullptr};
-    Chunk chunk_;
-    CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
-    CUnorderedSet<TaggedObject*> roots_ {};
-    CUnorderedSet<TaggedObject*> readOnlyObjects_ {};
-    CVector<uint32_t> secIndexVec_ {};
-    CQueue<TaggedObject *> bfsQueue_ {};
-    size_t objCnt_ = 0;
-    size_t bufIndex_ = 0;
-    uint32_t fileOffset_ = 0;
-    std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

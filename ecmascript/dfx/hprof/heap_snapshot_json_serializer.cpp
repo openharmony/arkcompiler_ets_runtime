@@ -45,63 +45,6 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
     return true;
 }
 
-/*
-4 byte: str_num
-4 byte: unuse
-{
-4 byte: string size
-4 byte: obj_num
-[8 byte: obj adrr] * obj_num
-string contents
-} * str_num
-*/
-uint32_t HeapSnapshotJSONSerializer::DumpStringTable(const StringHashMap *stringTable, Stream *stream,
-                                                     CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec)
-{
-    ASSERT(stringTable != nullptr);
-    size_t bufSize = 8 * 1024 * 1024; // 8MB buf use for string dump
-    char *buf = new char[bufSize];
-    uint32_t secHead[] = {stringTable->GetCapcity(), 0};
-    *reinterpret_cast<uint64_t *>(buf) = *reinterpret_cast<uint64_t *>(secHead);
-    uint32_t secTotalSize = sizeof(secHead);
-    size_t offset = sizeof(secHead);
-    for (auto key : stringTable->GetOrderedKeyStorage()) {
-        auto [strId, str] = stringTable->GetStringAndIdPair(key);
-        auto objVec = strIdMapObjVec[strId];
-        uint32_t objVecSize = objVec.size() * sizeof(uint64_t);
-        uint32_t strHead[] = {str->size(), objVec.size()};
-        auto currLen = sizeof(strHead) + objVecSize + str->size() + 1;
-        if (offset + currLen > bufSize) {
-            stream->WriteBinBlock(buf, offset);
-            offset = 0;
-            if (currLen > bufSize) {
-                delete[] buf;
-                bufSize = currLen;
-                buf = new char[bufSize];
-            }
-        }
-        *reinterpret_cast<uint64_t *>(buf + offset) = *reinterpret_cast<uint64_t *>(strHead);
-        offset += sizeof(strHead);
-        if (memcpy_s(buf + offset, bufSize - offset, reinterpret_cast<void *>(objVec.data()), objVecSize) != EOK) {
-            LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed";
-            break;
-        }
-        offset += objVecSize;
-        if (memcpy_s(buf + offset, bufSize - offset, str->data(), str->size() + 1) != EOK) {
-            LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed";
-            break;
-        }
-        offset += str->size() + 1;
-        secTotalSize += currLen;
-    }
-    auto padding = (8 - secTotalSize % 8) % 8;
-    if (offset + padding > 0) {
-        stream->WriteBinBlock(buf, offset + padding);
-    }
-    delete[] buf;
-    return secTotalSize + padding;
-}
-
 void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer)
 {
     writer->WriteString("{\"snapshot\":\n");  // 1.

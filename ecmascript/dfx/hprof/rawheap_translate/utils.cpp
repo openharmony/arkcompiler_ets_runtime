@@ -37,7 +37,7 @@ bool CheckVersion(const std::string &version)
     
     // 3: means the version format is x.x.x
     if (result.size() != 3) {
-        LOG_ERROR("current version " + version + " is illegal!");
+        LOG_ERROR_ << "current version " << version << " is illegal!";
         return false;
     }
 
@@ -51,7 +51,7 @@ bool CheckVersion(const std::string &version)
         std::ostringstream oss;
         oss << "The rawheap file's version " << version;
         oss << " is not matched the current rawheap translator, please use the newest version of the translator!";
-        LOG_ERROR(oss.str());
+        LOG_ERROR_ << oss.str();
         return false;
     };
     return true;
@@ -60,7 +60,7 @@ bool CheckVersion(const std::string &version)
 bool RealPath(const std::string &filename, std::string &realpath)
 {
     if (filename.empty() || filename.size() > PATH_MAX) {
-        LOG_ERROR("filename is illegal!");
+        LOG_ERROR_ << "filename is illegal!";
         return false;
     }
 
@@ -69,7 +69,7 @@ bool RealPath(const std::string &filename, std::string &realpath)
 #else
     if (access(filename.c_str(), 0) < 0) {
 #endif
-        LOG_ERROR("file can not access! filePath=" + filename);
+        LOG_ERROR_ << "file can not access! filePath=" << filename;
         return false;
     }
 
@@ -82,29 +82,17 @@ bool RealPath(const std::string &filename, std::string &realpath)
     return true;
 }
 
-uint64_t GetFileSize(std::string &inputFilePath)
-{
-    if (inputFilePath.empty()) {
-        return 0;
-    }
-    struct stat fileInfo;
-    if (stat(inputFilePath.c_str(), &fileInfo) == 0) {
-        return fileInfo.st_size;
-    }
-    return 0;
-}
-
 bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, uint32_t &fileSize)
 {
     std::string realpath {};
     if (!RealPath(rawheapPath, realpath)) {
-        LOG_ERROR("file path is illegal! filePath: " + rawheapPath);
+        LOG_ERROR_ << "file path is illegal! filePath: " << rawheapPath;
         return false;
     }
 
-    uint64_t size = GetFileSize(realpath);
+    uint64_t size = FileReader::GetFileSize(realpath);
     if (size == 0 || size >= MAX_FILE_SIZE) {
-        LOG_ERROR("file size >= 4GB or size = 0, unsupported!");
+        LOG_ERROR_ << "file size >= 4GB or size = 0, unsupported!";
         return false;
     }
 
@@ -118,7 +106,7 @@ bool GenerateDumpFileName(std::string &filename)
     std::time_t t = std::time(nullptr);
     struct tm *now = localtime(&t);
     if (now == nullptr) {
-        LOG_ERROR("Failed to converting time to local time!");
+        LOG_ERROR_ << "failed to converting time to local time!";
         return false;
     }
 
@@ -193,5 +181,96 @@ void ByteToU64Array(char *data, uint64_t *array, uint32_t size)
         array[i] = ByteToU64(num);
         num += sizeof(uint64_t);
     }
+}
+
+bool FileReader::Initialize(const std::string &path)
+{
+    std::string realPath;
+    if (!RealPath(path, realPath)) {
+        return false;
+    }
+
+    file_.open(realPath, std::ios::binary);
+    return true;
+}
+
+bool FileReader::Read(char *buf, uint32_t size)
+{
+    if (buf == nullptr) {
+        LOG_ERROR_ << "file buf is nullptr!";
+        return false;
+    }
+    if (file_.read(buf, size).fail()) {
+        LOG_ERROR_ << "read failed!";
+        return false;
+    }
+    return true;
+}
+
+bool FileReader::Seek(uint32_t offset)
+{
+    if (!file_.is_open()) {
+        LOG_ERROR_ << "file not open!";
+        return false;
+    }
+    file_.clear();
+    if (!file_.seekg(offset)) {
+        LOG_ERROR_ << "set file offset failed, offset=" << offset;
+        return false;
+    }
+    return true;
+}
+
+bool FileReader::ReadArray(std::vector<uint32_t> &array, uint32_t size)
+{
+    uint32_t dataSize = size * sizeof(uint32_t);
+    std::vector<char> data(dataSize);
+    if (!Read(data.data(), dataSize)) {
+        return false;
+    }
+    ByteToU32Array(data.data(), array.data(), size);
+    return true;
+}
+
+bool FileReader::ReadArray(std::vector<uint64_t> &array, uint32_t size)
+{
+    uint32_t dataSize = size * sizeof(uint64_t);
+    std::vector<char> data(dataSize);
+    if (!Read(data.data(), dataSize)) {
+        return false;
+    }
+    ByteToU64Array(data.data(), array.data(), size);
+    return true;
+}
+
+bool FileReader::CheckAndGetHeaderAt(uint32_t offset, uint32_t assertNum)
+{
+    constexpr int HEADER_SIZE = sizeof(uint64_t) / sizeof(uint32_t);
+    std::vector<uint32_t> header(HEADER_SIZE);
+    if (!Seek(offset) || !ReadArray(header, HEADER_SIZE)) {
+        return false;
+    }
+
+    uint32_t first = header[0];
+    uint32_t second = header[1];
+    if (assertNum != 0 && second != assertNum) {
+        return false;
+    }
+
+    left_ = first;
+    right_ = second;
+    return true;
+}
+
+uint32_t FileReader::GetFileSize(const std::string &path)
+{
+    if (path.empty()) {
+        return 0;
+    }
+    struct stat fileInfo;
+    if (stat(path.c_str(), &fileInfo) == 0) {
+        return static_cast<uint32_t>(fileInfo.st_size);
+    }
+    return 0;
 }
 } // namespace rawheap_translate

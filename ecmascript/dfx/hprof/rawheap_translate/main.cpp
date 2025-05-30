@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <chrono>
+#include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
+#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
 
 namespace rawheap_translate {
@@ -21,12 +24,61 @@ std::string RAWHEAP_TRANSLATE_HELPER =
     "at least 1 argv provide, you can also extend to include <filename.heapsnapshot>, "
     "if output file not available, an automatic one will be generated after all.";
 
+void Translate(const std::string &inputPath, const std::string &outputPath)
+{
+    FileReader file;
+    if (!file.Initialize(inputPath)) {
+        return;
+    }
+
+    uint64_t fileSize = FileReader::GetFileSize(inputPath);
+    if (!file.CheckAndGetHeaderAt(fileSize - sizeof(uint64_t), 0)) {
+        LOG_ERROR_ << "Read rawheap file header failed!";
+        return;
+    }
+
+    std::vector<char> metadata(file.GetHeaderRight());
+    if (!file.Seek(file.GetHeaderLeft()) || !file.Read(metadata.data(), file.GetHeaderRight())) {
+        LOG_ERROR_ << "Read rawheap file metadata failed!";
+        return;
+    }
+
+    cJSON *json = cJSON_ParseWithOpts(metadata.data(), nullptr, true);
+    if (json == nullptr) {
+        LOG_ERROR_ << "Metadata cjson parse failed!";
+        return;
+    }
+
+    MetaParser metaParser;
+    bool ret = metaParser.Parse(json);
+    cJSON_Delete(json);
+    if (!ret || !CheckVersion(metaParser.GetMetaVersion())) {
+        return;
+    }
+
+    RawHeapTranslateV1 translate(&metaParser);
+    if (!translate.Parse(file, file.GetHeaderLeft())) {
+        return;
+    }
+
+    LOG_INFO_ << "Start to translate rawheap!";
+    translate.Translate();
+
+    LOG_INFO_ << "Start to serialize!";
+    StreamWriter writer;
+    if (!writer.Initialize(outputPath)) {
+        return;
+    }
+
+    HeapSnapshotJSONSerializer::Serialize(&translate, &writer);
+}
+
 int Main(const int argc, const char **argv)
 {
     // 2: at least 1 argv provide, including <filename.rawheap>
     // 3: also extend to include output file <filename.heapsnapshot>
     if (argc < 2 || argc > 3) {
-        LOG_ERROR("Main: input error!\n" + RAWHEAP_TRANSLATE_HELPER);
+        LOG_ERROR_ << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER;
         return -1;
     }
 
@@ -40,7 +92,7 @@ int Main(const int argc, const char **argv)
     }
 
     if (!EndsWith(rawheapPathOrVersionCheck, ".rawheap")) {
-        LOG_ERROR("The second argument must be rawheap file!\n" + RAWHEAP_TRANSLATE_HELPER);
+        LOG_ERROR_ << "The second argument must be rawheap file!\n" << RAWHEAP_TRANSLATE_HELPER;
         return -1;
     }
 
@@ -49,30 +101,21 @@ int Main(const int argc, const char **argv)
     if (newArgc < argc) {
         outputPath = argv[newArgc];
         if (!EndsWith(outputPath, ".heapsnapshot")) {
-            LOG_ERROR("The last argument must be heapsnapshot file!\n" + RAWHEAP_TRANSLATE_HELPER);
+            LOG_ERROR_ << "The last argument must be heapsnapshot file!\n" << RAWHEAP_TRANSLATE_HELPER;
             return -1;
         }
     } else {
         if (!GenerateDumpFileName(outputPath)) {
-            LOG_ERROR("Generate dump file name failed!\n");
+            LOG_ERROR_ << "Generate dump file name failed!\n";
             return -1;
         }
     }
 
-    LOG_INFO("Main: start to translate rawheap!");
-    RawHeapTranslate translate;
-    if (!translate.Translate(rawheapPathOrVersionCheck)) {
-        return -1;
-    }
-
-    LOG_INFO("Main: start to serialize!");
-    StreamWriter writer;
-    if (!writer.Initialize(outputPath)) {
-        return -1;
-    }
-
-    HeapSnapshotJSONSerializer::Serialize(&translate, &writer);
-    LOG_INFO("Main: translate success! file save to " + outputPath);
+    auto start = std::chrono::steady_clock::now();
+    Translate(rawheapPathOrVersionCheck, outputPath);
+    auto end = std::chrono::steady_clock::now();
+    int duration = (int)std::chrono::duration<double>(end - start).count();
+    LOG_INFO_ << "Translate success! file save to " << outputPath << ", cost " << std::to_string(duration) << 's';
     return 0;
 }
 

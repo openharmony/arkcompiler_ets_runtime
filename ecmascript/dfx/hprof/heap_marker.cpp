@@ -23,6 +23,7 @@ bool HeapMarker::Mark(JSTaggedType addr)
     auto [it, inserted] = regionBitsetMap_.emplace(region, std::bitset<BITSET_SIZE>());
     if (inserted || !it->second.test(index)) {
         it->second.set(index);
+        ++count_;
         return true;
     }
     return false;
