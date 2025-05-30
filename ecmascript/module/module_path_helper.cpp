@@ -186,22 +186,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
             outEntryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
             outBaseFileName = ParseUrl(vm, outEntryPoint);
         } else {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_LINUX_PREVIEWER)
-            // inputFileName: moduleName/ets/xxx/xxx.abc
-            outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName;
-#else
-            // if the inputFileName starts with '.test', the preview test page is started.
-            // in this case, the path ets does not need to be combined.
-            // inputFileName: .test/xxx/xxx.abc
-            if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
-                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                                PathHelper::SLASH_TAG + inputFileName;
-            } else {
-                // inputFileName: xxx/xxx.abc
-                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                                MODULE_DEFAULE_ETS.data() + inputFileName;
-            }
-#endif
+            outEntryPoint = GetOutEntryPoint(vm, inputFileName);
         }
     }
     if (StringHelper::StringEndWith(outEntryPoint, EXT_NAME_ABC)) {
