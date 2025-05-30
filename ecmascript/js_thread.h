@@ -195,6 +195,7 @@ public:
     static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr int BCSTUBSTATUS_BITFIELD_NUM = 2;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
+    static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
@@ -1878,10 +1879,6 @@ private:
     }
 
     void DumpStack() DUMP_API_ATTR;
-
-    static size_t GetAsmStackLimit();
-
-    static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 
     GlueData glueData_;
     std::atomic<ThreadId> id_ {0};
