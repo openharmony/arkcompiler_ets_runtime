@@ -263,11 +263,6 @@ config("ark_jsruntime_public_config") {
   defines = []
   ldflags = []
 
-  if (ark_js_hybrid) {
-    defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
-    configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
-  }
-
   if (ark_hybrid) {
     defines += [ "ARK_HYBRID" ]
 
@@ -275,6 +270,11 @@ config("ark_jsruntime_public_config") {
         current_cpu == "x86_64") {
       ldflags += [ "-latomic" ]
     }
+  }
+
+  if (ark_js_hybrid) {
+    defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
+    configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
   }
 }
 
@@ -448,6 +448,9 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_LINUX",
       "PANDA_USE_FUTEX",
     ]
+    if (!ark_standalone_build && current_cpu == "x64") {
+      defines += [ "PANDA_TARGET_LINUX_PREVIEWER" ]
+    }
   } else if (is_mingw) {
     cflags_cc += [
       "-std=c++17",
@@ -531,12 +534,14 @@ config("ark_jsruntime_common_config") {
     cflags_cc += [
       "-O3",
       "-ggdb3",
+      "-gdwarf-4",
       "-fno-omit-frame-pointer",
       "-D_GLIBCXX_ASSERTIONS",
     ]
     cflags_c += [
       "-O3",
       "-ggdb3",
+      "-gdwarf-4",
       "-fno-omit-frame-pointer",
       "-D_GLIBCXX_ASSERTIONS",
     ]
@@ -544,6 +549,7 @@ config("ark_jsruntime_common_config") {
     cflags_cc += [
       "-O0",
       "-ggdb3",
+      "-gdwarf-4",
     ]
   } else {
     defines += [ "NDEBUG" ]
@@ -947,6 +953,8 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
+  "ecmascript/mem/unified_gc/unified_gc.cpp",
+  "ecmascript/mem/unified_gc/unified_gc_marker.cpp",
   "ecmascript/mem/space.cpp",
   "ecmascript/mem/sparse_space.cpp",
   "ecmascript/mem/tagged_object.cpp",
@@ -1496,6 +1504,14 @@ ohos_source_set("libark_jsruntime_static") {
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
     all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+  }
+
+  if (ark_js_hybrid) {
+    if (is_arkui_x) {
+      deps += [ "$arkplatform_root:libarkplatform" ]
+    } else {
+      external_deps += [ "runtime_core:libarkplatform" ]
+    }
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]

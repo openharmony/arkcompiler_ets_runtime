@@ -88,6 +88,7 @@ struct Reference;
         TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_OBJECT,        /* JS_OBJECT_FIRST ////////////////////////////////////////////////////////////////////// */ \
+        JS_XREF_OBJECT,   /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SHARED_OBJECT, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_REALM,         /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_BASE, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -1633,6 +1634,11 @@ public:
     inline bool IsJSPromise() const
     {
         return GetObjectType() == JSType::JS_PROMISE;
+    }
+
+    inline bool IsJSXRefObject() const
+    {
+        return GetObjectType() == JSType::JS_XREF_OBJECT;
     }
 
     inline bool IsResolvingFunctionsRecord() const

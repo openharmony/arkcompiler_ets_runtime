@@ -35,6 +35,7 @@ compiler_service_include_dirs = [
 aot_compiler_service_sources = [
   "${compiler_service_root}/interface/aot_compiler_interface_proxy.cpp",
   "${compiler_service_root}/interface/aot_compiler_interface_stub.cpp",
+  "${compiler_service_root}/src/aot_args_handler.cpp",
   "${compiler_service_root}/src/aot_compiler_client.cpp",
   "${compiler_service_root}/src/aot_compiler_error_utils.cpp",
   "${compiler_service_root}/src/aot_compiler_impl.cpp",

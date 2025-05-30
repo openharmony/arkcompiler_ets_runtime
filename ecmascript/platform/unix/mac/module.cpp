@@ -30,7 +30,7 @@ CString GetOutEntryPoint(EcmaVM *vm, const CString &inputFileName)
     } else {
         // inputFileName: xxx/xxx.abc
         outEntryPoint = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG, vm->GetModuleName(),
-            ModulePathHelper::MODULE_DEFAULE_ETS, inputFileName);
+            ModulePathHelper::MODULE_DEFAULE_ETS.data(), inputFileName);
     }
     return outEntryPoint;
 }

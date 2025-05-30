@@ -664,6 +664,9 @@ public:
     // used for creating Function
     JSHandle<JSObject> PUBLIC_API NewJSObject(const JSHandle<JSHClass> &jshclass);
 
+    // used for creating JSXRefObject
+    JSHandle<JSObject> PUBLIC_API NewJSXRefObject();
+
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
