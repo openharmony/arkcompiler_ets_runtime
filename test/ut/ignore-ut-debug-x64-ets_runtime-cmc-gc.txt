@@ -1,0 +1,7 @@
+# Known failure list for ut - debug - x64 - ets_runtime -cmc -gc
+
+#25886
+obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
+
+#26061
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
