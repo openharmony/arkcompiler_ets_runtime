@@ -388,7 +388,7 @@ public:
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"ResolveFunction", "RejectFunction", "RESOLVING_FUNCTIONS_RECORD"}},
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
             {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
-            {JSType::JS_XREF_OBJECT, {"JS_OBJECT"}},
+            {JSType::JS_XREF_OBJECT, {"JS_XREF_OBJECT"}},
             {JSType::SLICED_STRING, {"Parent", "SLICED_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"Environment", "Namespace", "ModuleRequests", "RequestedModules",
                                                  "ImportEntries", "LocalExportEntries",
