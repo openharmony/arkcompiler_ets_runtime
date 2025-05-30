@@ -145,7 +145,7 @@ public:
     uintptr_t AllocPinned(size_t size, bool allowGC = true)
     {
         uintptr_t addr = 0;
-        if (size > FIXED_PINNED_THRESHOLD) {
+        if (!allowGC || size > FIXED_PINNED_THRESHOLD) {
             DLOG(ALLOC, "alloc pinned obj 0x%zx(%zu)", addr, size);
             return AllocNextFitPinned(size);
         }
