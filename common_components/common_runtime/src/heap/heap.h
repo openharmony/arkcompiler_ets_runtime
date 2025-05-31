@@ -46,7 +46,7 @@ public:
     static bool UseBarrier() { return *currentBarrierPtr != stwBarrierPtr; }
 
     // should be removed after HeapParam is supported
-    virtual void Init(const HeapParam& vmHeapParam) = 0;
+    virtual void Init(const RuntimeParam& param) = 0;
     virtual void Fini() = 0;
 
     virtual void StartRuntimeThreads() = 0;

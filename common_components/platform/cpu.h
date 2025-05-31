@@ -13,13 +13,16 @@
  * limitations under the License.
  */
 
- #ifndef COMMON_COMPONENTS_PLATFORM_OS_H
- #define COMMON_COMPONENTS_PLATFORM_OS_H
- 
- #include <cstdint>
- 
- namespace panda {
- uint32_t NumberOfCpuCore();
- }  // namespace panda
- #endif  // COMMON_COMPONENTS_PLATFORM_OS_H
+#ifndef COMMON_COMPONENTS_PLATFORM_OS_H
+#define COMMON_COMPONENTS_PLATFORM_OS_H
+
+#include <cstddef>
+#include <cstdint>
+
+namespace panda {
+uint32_t NumberOfCpuCore();
+size_t PhysicalSize();
+}  // namespace panda
+
+#endif  // COMMON_COMPONENTS_PLATFORM_OS_H
  

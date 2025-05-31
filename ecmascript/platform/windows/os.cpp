@@ -27,15 +27,6 @@ size_t MallocUsableSize(void *ptr)
     return _msize(ptr);
 }
 
-size_t PhysicalSize()
-{
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(MEMORYSTATUSEX);
-    GlobalMemoryStatusEx(&status);
-    DWORDLONG physSize = status.ullTotalPhys;
-    return physSize;
-}
-
 int PrctlSetVMA([[maybe_unused]] const void *ptr, [[maybe_unused]] const size_t size, [[maybe_unused]] const char *tag)
 {
     return -1;

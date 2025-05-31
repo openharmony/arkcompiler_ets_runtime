@@ -122,7 +122,7 @@ public:
     using WorkStackBuf = MarkStackBuffer<BaseObject*>;
     using WeakStack = MarkStack<RefField<>*>;
 
-    void Init() override;
+    void Init(const RuntimeParam& param) override;
     void Fini() override;
 
 #ifndef NDEBUG

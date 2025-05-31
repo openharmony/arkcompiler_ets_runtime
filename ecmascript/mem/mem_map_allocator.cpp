@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
+
+#include "common_components/platform/cpu.h"
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/platform/parameters.h"

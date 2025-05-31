@@ -13,14 +13,21 @@
  * limitations under the License.
  */
 
- #include "common_components/platform/cpu.h"
+#include "common_components/platform/cpu.h"
 
- #include <unistd.h>
- 
- namespace panda {
- uint32_t NumberOfCpuCore()
- {
-     return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
- }
- }  // namespace panda
+#include <unistd.h>
+
+namespace panda {
+uint32_t NumberOfCpuCore()
+{
+    return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
+}
+
+size_t PhysicalSize()
+{
+    auto pages = sysconf(_SC_PHYS_PAGES);
+    auto pageSize = sysconf(_SC_PAGE_SIZE);
+    return pages * pageSize;
+}
+}  // namespace panda
  

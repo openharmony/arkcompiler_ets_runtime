@@ -13,14 +13,29 @@
  * limitations under the License.
  */
 
- #include "common_components/platform/cpu.h"
+#include "common_components/platform/cpu.h"
 
- #include <unistd.h>
- 
- namespace panda {
- uint32_t NumberOfCpuCore()
- {
-     return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
- }
- }  // namespace panda
- 
+#include <unistd.h>
+
+#include "common_components/log/log.h"
+
+namespace panda {
+uint32_t NumberOfCpuCore()
+{
+    return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
+}
+
+size_t PhysicalSize()
+{
+    static constexpr int mibLength = 2;
+    int mib[2];
+    mib[0] = CTL_HW;
+    mib[1] = HW_MEMSIZE;
+    int64_t size = 0;
+    size_t bufferLength = sizeof(size);
+    if (sysctl(mib, mibLength, &size, &bufferLength, nullptr, 0) != 0) {
+        LOG_ECMA(FATAL) << "sysctl error";
+    }
+    return static_cast<size_t>(size);
+}
+}  // namespace panda

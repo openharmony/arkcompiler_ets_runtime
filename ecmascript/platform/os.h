@@ -26,7 +26,6 @@ const char XATTR_KEY[] = {"user.security"};
 constexpr std::string_view DEFAULT_DATA_LEVEL = "s1";
 const int DEFAULT_DATA_LENGTH = 2;
 size_t MallocUsableSize(void *p);
-size_t PhysicalSize();
 int PrctlSetVMA(const void *p, const size_t size, const char *tag);
 long PtracePeektext(int pid, uintptr_t addr);
 PUBLIC_API void BindSmallCpuCore();

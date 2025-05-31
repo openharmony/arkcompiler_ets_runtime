@@ -69,7 +69,6 @@ std::unordered_set<std::string> aotArgsList {
     "force-full-gc",
     "force-shared-gc-frequency",
     "gc-thread-num",
-    "heap-size-limit",
     "icu-data-path",
     "enable-worker",
     "log-components",

@@ -15,9 +15,9 @@
 #include "common_components/common_runtime/src/heap/collector/collector_proxy.h"
 
 namespace panda {
-void CollectorProxy::Init()
+void CollectorProxy::Init(const RuntimeParam& param)
 {
-    wCollector_.Init();
+    wCollector_.Init(param);
 
     if (currentCollector_ == nullptr) {
         currentCollector_ = &wCollector_;
