@@ -315,7 +315,11 @@ public:
     uintptr_t Allocate(size_t objectSize, JSThread *thread, void *desc,
         AllocateEventType allocType = AllocateEventType::NORMAL);
     uintptr_t Allocate(size_t objectSize, JSThread *thread);
+#ifdef USE_CMC_GC
+    void *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
+#else
     Region *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
+#endif
 };
 
 }  // namespace panda::ecmascript

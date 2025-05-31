@@ -40,6 +40,7 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/base/gc_helper.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -234,6 +235,9 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+#ifdef USE_READ_BARRIER
+    base::GCHelper::CopyCallTarget(reinterpret_cast<void*>(args[0]));
+#endif
     // entry of aot
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,

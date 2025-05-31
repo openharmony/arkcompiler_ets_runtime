@@ -50,6 +50,7 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include "ecmascript/base/gc_helper.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -330,6 +331,11 @@ bool EcmaVM::Initialize()
 
 EcmaVM::~EcmaVM()
 {
+#ifdef USE_CMC_GC
+    thread_->GetThreadHolder()->TransferToNative();
+    BaseRuntime::WaitForGCFinish();
+    thread_->GetThreadHolder()->TransferToRunning();
+#endif
     if (isJitCompileVM_) {
         if (factory_ != nullptr) {
             chunk_.Delete(factory_);
@@ -604,7 +610,9 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
-    // entry of aot
+#ifdef USE_READ_BARRIER
+    base::GCHelper::CopyCallTarget((void*)args[0]);
+#endif
     auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),
                                                              actualNumArgs,
                                                              args,

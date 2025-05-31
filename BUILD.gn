@@ -231,7 +231,6 @@ ohos_static_library("ark_runtime_host_unittest") {
 
     # TODO: CMC-GC UT FIX LATER
     if (ets_runtime_enable_cmc_gc) {
-      deps -= [ "$js_root/test/jittest:ark_jit_test" ]
       if (!run_with_asan) {
         deps -= [
           "$js_root/test/aottest:ark_aot_test",

@@ -294,6 +294,7 @@ public:
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
     uintptr_t PUBLIC_API JitFortAllocate(MachineCodeDesc *desc);
+    void StoreMachineCodeObjectLocation(uintptr_t start, uintptr_t end, uintptr_t address);
 
     inline void MarkJitFortMemAlive(MachineCode *obj)
     {
@@ -327,7 +328,62 @@ public:
         return false;
     }
 
+    // interval map is used to cache the location of machinecode object on heap.
+    // This support GetMachineCodeObject
+    struct IntervalMap {
+        using TextStart = uintptr_t ;
+        using TextEnd = uintptr_t;
+        using MachineCodeAddress = uintptr_t;
+        // For <MachineCode> text at [<start, end>), store <start> as key, and <end, MachineCode> as value.
+        // Invariant is that intervals never overlap.
+        std::map<TextStart, std::pair<TextEnd, MachineCodeAddress>> intervals;
+
+        // Getter should only happen in enumroot
+        MachineCodeAddress GetMachineCodeObject(uintptr_t pc)
+        {
+            // first interval whose start > pc
+            auto it = intervals.upper_bound(pc);
+            if (it == intervals.begin()) {
+                UNREACHABLE();
+            }
+            -- it;
+            auto start = it->first;
+            auto end = it->second.first;
+            if (pc >= start && pc < end) {
+                return it->second.second;
+            }
+            UNREACHABLE();
+        }
+
+        void InsertMachineCodeObject(TextStart start, TextEnd end, MachineCodeAddress obj)
+        {
+            LOG_JIT(INFO) << "Insert MachineCodeObject " << obj << " , code range " << start << " to " << end;
+            // first interval whose start > our start
+            auto it = intervals.upper_bound(start);
+            // find first overlapping interval, if any
+            if (it != intervals.begin()) {
+                auto prev = std::prev(it);
+                auto prevEnd = prev->second.first;
+                if (prevEnd > start) {
+                    it = prev;
+                }
+            }
+            // Remove all overlapping intervals, if any
+            while (it != intervals.end()) {
+                if (it->first < end) {
+                    LOG_JIT(INFO) << "MachoneCodeObject at " << it->second.second << " was freed: " << it->first
+                                  << " - " << it->second.first;
+                    it = intervals.erase(it);
+                } else {
+                    break;
+                }
+            }
+            intervals[start] = {end, obj};
+        }
+    };
+
 private:
+    IntervalMap machineCodeObjectLocations;
     JitFort *jitFort_ {nullptr};
     Mutex asyncSweepMutex_;
     friend class Heap;

@@ -245,6 +245,7 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
     close(fd);
 }
 
+// This should only be entered from hostVM, i.e., execution jsthread
 void JitTask::InstallCode()
 {
     if (!IsCompileSuccess()) {

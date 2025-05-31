@@ -1481,7 +1481,7 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
     Label success(env);
     Label next(env);
 
-#ifdef ARK_ASAN_ON
+#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
     Jump(callRuntime);
 #else
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING

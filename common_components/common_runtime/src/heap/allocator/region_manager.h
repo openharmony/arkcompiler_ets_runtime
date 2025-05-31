@@ -29,6 +29,8 @@
 #include "common_components/common_runtime/src/heap/allocator/slot_list.h"
 
 namespace panda {
+using JitFortUnProtHookType = void (*)(size_t size, void* base);
+
 class TraceCollector;
 class CompactCollector;
 class RegionManager;
@@ -138,7 +140,8 @@ public:
     // adapt for concurrent gc
     uintptr_t AllocRegion();
     uintptr_t AllocPinnedRegion();
-    uintptr_t AllocLargeReion(size_t size);
+    uintptr_t AllocLargeRegion(size_t size);
+    uintptr_t AllocJitFortRegion(size_t size);
 
     uintptr_t AllocPinnedFromFreeList(size_t size);
 

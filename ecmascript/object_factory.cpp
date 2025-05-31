@@ -4291,10 +4291,20 @@ JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj,
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (code->SetData(desc, method, length, relocInfo)) {
+    if (code->SetData(desc, method, length, relocInfo, thread_)) {
         JSHandle<MachineCode> codeObj(thread_, code);
+#ifdef USE_CMC_GC
+        uintptr_t start = code->GetText();
+        uintptr_t end = start + code->GetTextSize();
+        heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
+#endif
         return codeObj;
     } else {
+#ifdef USE_CMC_GC
+        uintptr_t start = code->GetText();
+        uintptr_t end = start + code->GetTextSize();
+        heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
+#endif
         JSHandle<MachineCode> codeObj;
         return codeObj;
     }

@@ -177,6 +177,8 @@ void Runtime::DestroyIfLastVm()
 #ifdef USE_CMC_GC
         // Destroy BaseRuntime after daemon thread because it will unregister mutator
         BaseRuntime::DestroyInstance();
+        // reset Base address offset
+        TaggedStateWord::BASE_ADDRESS = 0;
 #endif
         ASSERT(instance_ != nullptr);
         delete instance_;

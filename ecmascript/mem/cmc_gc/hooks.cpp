@@ -23,6 +23,7 @@
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime.h"
+#include "objects/base_type.h"
 
 namespace panda {
 using ecmascript::ObjectXRay;
@@ -143,6 +144,18 @@ void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
     reinterpret_cast<JSThread *>(jsThread)->Visit(visitor);
 }
 
+void SweepThreadLocalJitFort()
+{
+    ecmascript::Runtime* runtime = ecmascript::Runtime::GetInstance();
+
+    runtime->GCIterateThreadList([&](JSThread* thread) {
+        if (thread->IsJSThread()) {
+            auto vm = thread->GetEcmaVM();
+            const_cast<ecmascript::Heap*>(vm->GetHeap())->GetMachineCodeSpace()->Sweep();
+        }
+    });
+}
+
 void FillFreeObject(void *object, size_t size)
 {
     ecmascript::FreeObject::FillFreeObject(ecmascript::SharedHeap::GetInstance(),
@@ -162,6 +175,20 @@ void JSGCCallback(void *ecmaVM)
 
 void SetBaseAddress(uintptr_t base)
 {
+    // Please be careful about reentrant
+    ASSERT(ecmascript::TaggedStateWord::BASE_ADDRESS == 0);
     ecmascript::TaggedStateWord::BASE_ADDRESS = base;
 }
+
+void JitFortUnProt(size_t size, void* base)
+{
+    ecmascript::PageMap(size, PAGE_PROT_READWRITE, 0, base, PAGE_FLAG_MAP_FIXED);
+}
+
+bool IsMachineCodeObject(uintptr_t objPtr)
+{
+    JSTaggedValue value(objPtr);
+    return value.IsMachineCodeObject();
+}
+
 } // namespace panda

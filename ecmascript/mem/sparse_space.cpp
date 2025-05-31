@@ -737,6 +737,9 @@ MachineCodeSpace::~MachineCodeSpace()
 
 void MachineCodeSpace::PrepareSweeping()
 {
+#ifdef USE_CMC_GC
+    ASSERT(false);
+#endif
     // fill free obj before sparse space prepare sweeping rebuild freelist, as may fail set free obj
     // when iterate machine code space in GetMachineCodeObject
     allocator_->FillBumpPointer();
@@ -748,7 +751,9 @@ void MachineCodeSpace::PrepareSweeping()
 
 void MachineCodeSpace::Sweep()
 {
+#ifndef USE_CMC_GC
     SparseSpace::Sweep();
+#endif
     if (jitFort_) {
         jitFort_->Sweep();
     }
@@ -756,6 +761,9 @@ void MachineCodeSpace::Sweep()
 
 void MachineCodeSpace::AsyncSweep(bool isMain)
 {
+#ifdef USE_CMC_GC
+    ASSERT(false);
+#endif
     LockHolder holder(asyncSweepMutex_);
     SparseSpace::AsyncSweep(isMain);
     if (jitFort_) {
@@ -768,17 +776,25 @@ uintptr_t MachineCodeSpace::JitFortAllocate(MachineCodeDesc *desc)
     if (!jitFort_) {
         jitFort_ = new JitFort();
     }
+#ifndef USE_CMC_GC
     localHeap_->GetSweeper()->EnsureTaskFinishedNoCheck(spaceType_);
+#endif
     return jitFort_->Allocate(desc);
 }
 
 uintptr_t MachineCodeSpace::Allocate(size_t size, bool allowGC)
 {
+#ifdef USE_CMC_GC
+    ASSERT(false);
+#endif
     return SparseSpace::Allocate(size, allowGC);
 }
 
 uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc *desc, bool allowGC)
 {
+#ifdef USE_CMC_GC
+    ASSERT(false);
+#endif
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
     if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
@@ -818,6 +834,9 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc *desc, bool al
 
 size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc)
 {
+#ifdef USE_CMC_GC
+    ASSERT(false);
+#endif
     auto freeObject = FreeObject::Cast(curPtr);
     size_t objSize = 0;
     if (!freeObject->IsFreeObject()) {
@@ -832,8 +851,16 @@ size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &mac
     return objSize;
 }
 
+void MachineCodeSpace::StoreMachineCodeObjectLocation(uintptr_t start, uintptr_t end, uintptr_t address)
+{
+    machineCodeObjectLocations.InsertMachineCodeObject(start, end, address);
+}
+
 uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
 {
+#ifdef USE_CMC_GC
+    return machineCodeObjectLocations.GetMachineCodeObject(pc);
+#else
     uintptr_t machineCode = 0;
     LockHolder holder(asyncSweepMutex_);
     allocator_->FillBumpPointer();
@@ -858,5 +885,6 @@ uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
         CHECK_REGION_END(curPtr, endPtr);
     });
     return machineCode;
+#endif
 }
 }  // namespace panda::ecmascript

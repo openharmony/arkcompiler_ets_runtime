@@ -758,7 +758,13 @@ public:
 
     bool GetEnableAsyncCopyToFort() const
     {
+#ifdef USE_CMC_GC
+        // async alloc needs adaption work from CMCGC
+        // Need to also modify jit.cpp
+        return false;
+#else
         return enableAsyncCopyToFort_;
+#endif
     }
 
     void ParseAsmInterOption();
