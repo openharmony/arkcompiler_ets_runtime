@@ -457,7 +457,7 @@ void TraceCollector::DoResurrection(WorkStack& workStack)
     VLOG(REPORT, "resurrected objects %zu", resurrectdObjects);
 }
 
-void TraceCollector::Init() {}
+void TraceCollector::Init(const RuntimeParam& param) {}
 
 void TraceCollector::Fini() { Collector::Fini(); }
 

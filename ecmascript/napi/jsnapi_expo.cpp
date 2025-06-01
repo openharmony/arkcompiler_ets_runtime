@@ -4607,8 +4607,6 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetGcThreadNum(option.GetGcThreadNum());
     runtimeOptions.SetIsWorker(option.GetIsWorker());
     runtimeOptions.SetIsRestrictedWorker(option.GetIsRestrictedWorker());
-    // Mem
-    runtimeOptions.SetHeapSizeLimit(option.GetGcPoolSize());
 // Disable the asm-interpreter of ark-engine for ios-platform temporarily.
 #if !defined(PANDA_TARGET_IOS)
     // asmInterpreter

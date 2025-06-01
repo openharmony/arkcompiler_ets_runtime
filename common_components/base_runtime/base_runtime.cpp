@@ -85,18 +85,23 @@ inline void CheckAndFini(T*& module)
 
 void BaseRuntime::Init()
 {
+    Init(BaseRuntimeParam::DefaultRuntimeParam());
+}
+
+void BaseRuntime::Init(const RuntimeParam &param)
+{
     std::unique_lock<std::mutex> lock(vmCreationLock_);
     if (initialized_) {
         LOG_COMMON(FATAL) << "BaseRuntime has been initialized and don't need init again.";
         return;
     }
 
-    param_ = BaseRuntimeParam::InitRuntimeParam();
+    param_ = param;
 
     PagePool::Instance().Init(param_.heapParam.heapSize * KB / ARK_COMMON_PAGE_SIZE);
     logManager_ = NewAndInit<LogManager>();
     mutatorManager_ = NewAndInit<MutatorManager>();
-    heapManager_ = NewAndInit<HeapManager>(param_.heapParam);
+    heapManager_ = NewAndInit<HeapManager>(param_);
 
     LOG_COMMON(INFO) << "Arkcommon runtime started.";
     // Record runtime parameter to report. heap growth value needs to plus 1.

@@ -30,20 +30,6 @@ size_t MallocUsableSize(void *p)
     return malloc_size(p);
 }
 
-size_t PhysicalSize()
-{
-    static constexpr int MIB_LENGTH = 2;
-    int mib[2];
-    mib[0] = CTL_HW;
-    mib[1] = HW_MEMSIZE;
-    int64_t size = 0;
-    size_t bufferLength = sizeof(size);
-    if (sysctl(mib, MIB_LENGTH, &size, &bufferLength, nullptr, 0) != 0) {
-        LOG_ECMA(FATAL) << "sysctl error";
-    }
-    return static_cast<size_t>(size);
-}
-
 int PrctlSetVMA([[maybe_unused]] const void *p, [[maybe_unused]] const size_t size, [[maybe_unused]] const char *tag)
 {
     return -1;

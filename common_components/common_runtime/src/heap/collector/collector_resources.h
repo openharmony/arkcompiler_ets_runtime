@@ -54,7 +54,7 @@ public:
 
     void SetGcStarted(bool val) { isGcStarted_.store(val, std::memory_order_relaxed); }
 
-    bool IsGCActive() const { return Heap::GetHeap().IsGCEnabled() && isGCActive_.load(std::memory_order_relaxed); }
+    bool IsGCActive() const { return Heap::GetHeap().IsGCEnabled(); }
 
     FinalizerProcessor& GetFinalizerProcessor() { return finalizerProcessor_; }
 
@@ -96,9 +96,6 @@ private:
     // Indicate whether GC is already started.
     // NOTE: When GC finishes, it clears isGcStarted, must be over-written only by gc thread.
     std::atomic<bool> isGcStarted_ = { false };
-
-    // a switch to disable gc for hotupdate.
-    std::atomic<bool> isGCActive_ = { true };
 
     // only gc thread can access it, so we don't use atomic type
     bool isHeapMarked_ = false;

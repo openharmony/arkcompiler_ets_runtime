@@ -16,7 +16,9 @@
 #include "ecmascript/js_runtime_options.h"
 
 #include <getopt.h>
+#include <type_traits>
 
+#include "common_components/base_runtime/base_runtime_param.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -40,6 +42,7 @@ const std::string PUBLIC_API STUB_HELP_HEAD_MSG =
     "Options:\n";
 
 const std::string PUBLIC_API HELP_OPTION_MSG =
+    "--help:                               Print this message and exit\n"
     "--aot-file:                           Path (file suffix not needed) to AOT output file. Default: 'aot_file'\n"
     "--ark-properties:                     Set ark properties\n"
     "--ark-bundle-name:                    Set ark bundle name\n"
@@ -97,8 +100,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--framework-abc-file:                 Snapshot file. Default: 'strip.native.min.abc'\n"
     "--gc-long-paused-time:                Set gc's longPauseTime in millisecond. Default: '40'\n"
     "--gc-thread-num:                      Set gc thread number. Default: '7'\n"
-    "--heap-size-limit:                    Max heap size (MB). Default: '512'\n"
-    "--help:                               Print this message and exit\n"
     "--icu-data-path:                      Path to generated icu data file. Default: 'default'\n"
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
@@ -220,6 +221,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
     const struct option longOptions[] = {
+        {"help", no_argument, nullptr, OPTION_HELP},
         {"aot-file", required_argument, nullptr, OPTION_AOT_FILE},
         {"ark-properties", required_argument, nullptr, OPTION_ARK_PROPERTIES},
         {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
@@ -269,8 +271,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"force-shared-gc-frequency", required_argument, nullptr, OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY},
         {"enable-heap-verify", required_argument, nullptr, OPTION_ENABLE_HEAP_VERIFY},
         {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
-        {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
-        {"help", no_argument, nullptr, OPTION_HELP},
         {"icu-data-path", required_argument, nullptr, OPTION_ICU_DATA_PATH},
         {"enable-worker", required_argument, nullptr, OPTION_ENABLE_WORKER},
         {"log-components", required_argument, nullptr, OPTION_LOG_COMPONENTS},
@@ -372,6 +372,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
         {"compiler-jit-method-dichotomy", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_DICHOTOMY},
         {"compiler-jit-method-path", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_PATH},
+        {"mem-config", required_argument, nullptr, OPTION_MEM_CONFIG},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -408,6 +409,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             return true;
         }
 
+        SetOption(option);
         // unknown option or required_argument option has no argument
         if (option == OPTION_DEFAULT) {
             ret = SetDefaultValue(const_cast<char *>(argv[optind - 1]));
@@ -418,7 +420,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             }
         }
 
-        WasSet(option);
         switch (option) {
             case OPTION_AOT_FILE:
                 SetAOTOutputFile(optarg);
@@ -656,14 +657,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("gc-thread-num", &argUint32);
                 if (ret) {
                     SetGcThreadNum(argUint32);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_HEAP_SIZE_LIMIT:
-                ret = ParseUint32Param("heap-size-limit", &argUint32);
-                if (ret) {
-                    SetHeapSizeLimit(argUint32);
                 } else {
                     return false;
                 }
@@ -1475,6 +1468,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_JIT_METHOD_PATH:
                 SetJitMethodPath(optarg);
                 break;
+            case OPTION_MEM_CONFIG:
+                SetMemConfigProperty(optarg);
+                break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
@@ -1489,8 +1485,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 
 bool JSRuntimeOptions::SetDefaultValue(char* argv)
 {
-    WasSet(optopt);
-
     if (optopt == OPTION_DEFAULT) { // unknown option
         LOG_ECMA(ERROR) << " Invalid option \"" << argv << "\"";
         return false;
@@ -1503,9 +1497,9 @@ bool JSRuntimeOptions::SetDefaultValue(char* argv)
     return true;
 }
 
-bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
+bool JSRuntimeOptions::ParseBool(const std::string &arg, bool* argBool)
 {
-    if ((strcmp(optarg, "false") == 0) || (strcmp(optarg, "0") == 0)) {
+    if ((strcmp(arg.c_str(), "false") == 0) || (strcmp(arg.c_str(), "0") == 0)) {
         *argBool = false;
     } else {
         *argBool = true;
@@ -1513,67 +1507,104 @@ bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
     return true;
 }
 
-bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDouble)
+bool JSRuntimeOptions::ParseDouble(const std::string &arg, double* argDouble)
 {
-    *argDouble = std::strtod(optarg, nullptr);
+    *argDouble = std::strtod(arg.c_str(), nullptr);
     if (errno == ERANGE) {
-        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
 }
 
-bool JSRuntimeOptions::ParseIntParam(const std::string &option, int *argInt)
+bool JSRuntimeOptions::ParseInt(const std::string &arg, int* argInt)
 {
     int64_t val;
-    if (StartsWith(optarg, "0x")) {
+    if (StartsWith(arg, "0x")) {
         const int HEX = 16;
-        val = std::strtoll(optarg, nullptr, HEX);
+        val = std::strtoll(arg.c_str(), nullptr, HEX);
     } else {
         const int DEC = 10;
-        val = std::strtoll(optarg, nullptr, DEC);
+        val = std::strtoll(arg.c_str(), nullptr, DEC);
     }
 
     if (errno == ERANGE || val < INT_MIN || val > INT_MAX) {
-        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     *argInt = static_cast<int>(val);
     return true;
 }
 
-bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *argUInt32)
+bool JSRuntimeOptions::ParseUint32(const std::string &arg, uint32_t* argUInt32)
 {
-    if (StartsWith(optarg, "0x")) {
+    if (StartsWith(arg, "0x")) {
         const int HEX = 16;
-        *argUInt32 = std::strtoull(optarg, nullptr, HEX);
+        *argUInt32 = std::strtoull(arg.c_str(), nullptr, HEX);
     } else {
         const int DEC = 10;
-        *argUInt32 = std::strtoull(optarg, nullptr, DEC);
+        *argUInt32 = std::strtoull(arg.c_str(), nullptr, DEC);
     }
 
     if (errno == ERANGE) {
-        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
 }
 
-bool JSRuntimeOptions::ParseUint64Param(const std::string &option, uint64_t *argUInt64)
+bool JSRuntimeOptions::ParseUint64(const std::string &arg, uint64_t* argUInt64)
 {
-    if (StartsWith(optarg, "0x")) {
+    if (StartsWith(arg, "0x")) {
         const int HEX = 16;
-        *argUInt64 = std::strtoull(optarg, nullptr, HEX);
+        *argUInt64 = std::strtoull(arg.c_str(), nullptr, HEX);
     } else {
         const int DEC = 10;
-        *argUInt64 = std::strtoull(optarg, nullptr, DEC);
+        *argUInt64 = std::strtoull(arg.c_str(), nullptr, DEC);
     }
 
     if (errno == ERANGE) {
-        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
+}
+
+bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
+{
+    return ParseBool(optarg, argBool);
+}
+
+bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDouble)
+{
+    bool ret = ParseDouble(optarg, argDouble);
+    if (!ret) {
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
+    }
+    return ret;
+}
+
+bool JSRuntimeOptions::ParseIntParam(const std::string &option, int *argInt)
+{
+    bool ret = ParseInt(optarg, argInt);
+    if (!ret) {
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
+    }
+    return ret;
+}
+
+bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *argUInt32)
+{
+    bool ret = ParseUint32(optarg, argUInt32);
+    if (!ret) {
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
+    }
+    return ret;
+}
+
+bool JSRuntimeOptions::ParseUint64Param(const std::string &option, uint64_t *argUInt64)
+{
+    bool ret = ParseUint64(optarg, argUInt64);
+    if (!ret) {
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
+    }
+    return ret;
 }
 
 void JSRuntimeOptions::ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter)
@@ -1664,4 +1695,107 @@ void JSRuntimeOptions::ParseAsmInterOption()
         }
     }
 }
+
+JSRuntimeOptions::JSRuntimeOptions()
+{
+#ifdef USE_CMC_GC
+    param_ = BaseRuntimeParam::DefaultRuntimeParam();
+#else
+    param_ = RuntimeParam();
+#endif
+}
+
+void JSRuntimeOptions::SetMemConfigProperty(const std::string &configProperty)
+{
+    if (configProperty == "openArkTools") {
+        openArkTools_ = true;
+        return;
+    }
+
+    ParseRuntimeParam(configProperty);
+}
+
+#ifdef ENABLE_CMC_GC
+#define PARAM_PAESER_DEFINE(key, subKey, type, minValue, maxValue, defaultValue) \
+bool Parse##_##key##_##subKey(const std::string &arg, type *result)              \
+{                                                                                \
+    if constexpr (std::is_floating_point<type>::value) {                         \
+        double floatVal = 0.0;                                                   \
+        bool ret = JSRuntimeOptions::ParseDouble(arg, &floatVal);                \
+        *result = static_cast<type>(floatVal);                                   \
+        return ret;                                                              \
+    }                                                                            \
+    if constexpr (std::is_integral<type>::value) {                               \
+        uint64_t uint64Val = 0;                                                  \
+        bool ret = JSRuntimeOptions::ParseUint64(arg, &uint64Val);               \
+        *result = static_cast<type>(uint64Val);                                  \
+        return ret;                                                              \
+    }                                                                            \
+    return false;                                                                \
+}
+
+RUNTIME_PARAM_LIST(PARAM_PAESER_DEFINE)
+#endif
+
+/*
+ * key value;key value;...
+ */
+void JSRuntimeOptions::ParseRuntimeParam(const std::string &str)
+{
+    if (str.empty()) {
+        return;
+    }
+
+    size_t length = str.length();
+    for (size_t i = 0; i < length;) {
+        std::string keyStr;
+        std::string valueStr;
+        while (i < length && isalpha(str[i])) {
+            keyStr += str[i++];
+        }
+        if (i < length && str[i] == ' ') {
+            i++;
+        }
+        while (i < length && (isdigit(str[i]) || str[i] == '.')) {
+            valueStr += str[i++];
+        }
+        if (i < length && str[i] == ';') {
+            i++;
+        }
+        if (keyStr == "jsHeap") {
+            uint32_t input = 0;
+            if (!ParseUint32(valueStr, &input)) {
+                return;
+            }
+            heapSize_ = input * 1_MB;
+            return;
+        }
+
+#ifdef ENABLE_CMC_GC
+#define PARSE_RUNTIME_PARAM(key, subKey, type, minValue, maxValue, defaultValue)                            \
+        if (keyStr == #subKey) {                                                                            \
+            type res = static_cast<type>(defaultValue);                                                     \
+            bool ret = Parse##_##key##_##subKey(valueStr, &res);                                            \
+            if (!ret) {                                                                                     \
+                LOG_ECMA(FATAL) << "Fail parse " << #key << "." << #subKey << " of value: " << valueStr;    \
+                UNREACHABLE();                                                                              \
+            }                                                                                               \
+            if (res < static_cast<type>(minValue) || res > static_cast<type>(maxValue)) {                   \
+                LOG_ECMA(FATAL) << "Set " << keyStr << " to " << res << " is out of range: [" <<            \
+                    (minValue) << ", " << (maxValue) << "]";                                                \
+                UNREACHABLE();                                                                              \
+            }                                                                                               \
+            param_.key.subKey = res;                                                                        \
+            continue;                                                                                       \
+        }
+        RUNTIME_PARAM_LIST(PARSE_RUNTIME_PARAM)
+#undef PARSE_RUNTIME_PARAM
+
+        LOG_ECMA(FATAL) << "Unknow key: " << keyStr << " of value: " << valueStr;
+        UNREACHABLE();
+#endif
+    }
+}
+#undef PAESER_DEFINE
+#undef PARAM_MAP
 }

@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <limits>
 
+#include "common_interfaces/base/common.h"
 #include "ecmascript/common_enum.h"
 
 namespace panda {
@@ -132,12 +133,6 @@ constexpr uint32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
 constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 
 using Address = uintptr_t;
-
-#ifndef PANDA_TARGET_WINDOWS
-#define PUBLIC_API __attribute__((visibility ("default")))
-#else
-#define PUBLIC_API __declspec(dllexport)
-#endif
 
 #ifdef NDEBUG
 #define DUMP_API_ATTR __attribute__((unused))

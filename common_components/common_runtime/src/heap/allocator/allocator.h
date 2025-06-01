@@ -51,7 +51,7 @@ public:
     virtual ~Allocator() {}
     Allocator();
 
-    virtual void Init(const HeapParam&) = 0;
+    virtual void Init(const RuntimeParam& param) = 0;
     virtual size_t GetMaxCapacity() const = 0;
     virtual size_t GetCurrentCapacity() const = 0;
     virtual size_t GetUsedPageSize() const = 0;

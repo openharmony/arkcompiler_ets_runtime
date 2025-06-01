@@ -24,6 +24,7 @@
 #include "common_components/common_runtime/src/heap/w_collector/preforward_barrier.h"
 #include "common_components/common_runtime/src/heap/w_collector/copy_barrier.h"
 #include "common_components/common_runtime/src/mutator/mutator_manager.h"
+#include "common_interfaces/base_runtime.h"
 #if defined(_WIN64)
 #include <windows.h>
 #include <psapi.h>
@@ -36,28 +37,6 @@ Barrier** Heap::currentBarrierPtr = nullptr;
 Barrier* Heap::stwBarrierPtr = nullptr;
 HeapAddress Heap::heapStartAddr = 0;
 HeapAddress Heap::heapCurrentEnd = 0;
-
-static bool InitEnabledGCParam()
-{
-    auto enableGC = std::getenv("arkEnableGC");
-    if (enableGC == nullptr) {
-        return true;
-    }
-    if (strlen(enableGC) != 1) {
-        LOG_COMMON(ERROR) << "Unsupported arkEnableGC, arkEnableGC should be 0 or 1.\n";
-        return true;
-    }
-
-    switch (enableGC[0]) {
-        case '0':
-            return false;
-        case '1':
-            return true;
-        default:
-            LOG_COMMON(ERROR) << "Unsupported arkEnableGC, arkEnableGC should be 0 or 1.\n";
-    }
-    return true;
-}
 
 class HeapImpl : public Heap {
 public:
@@ -74,7 +53,7 @@ public:
     }
 
     ~HeapImpl() override = default;
-    void Init(const HeapParam& vmHeapParam) override;
+    void Init(const RuntimeParam& param) override;
     void Fini() override;
     void StartRuntimeThreads() override;
     void StopRuntimeThreads() override;
@@ -177,15 +156,15 @@ bool HeapImpl::ForEachObject(const std::function<void(BaseObject*)>& visitor, bo
     return theSpace->ForEachObject(visitor, safe);
 }
 
-void HeapImpl::Init(const HeapParam& param)
+void HeapImpl::Init(const RuntimeParam& param)
 {
     if (theSpace == nullptr) {
         // Hack impl, since HeapImpl is Immortal, this may happen in multi UT case
         new (this) HeapImpl();
     }
     theSpace->Init(param);
-    Heap::GetHeap().EnableGC(InitEnabledGCParam());
-    collectorProxy.Init();
+    Heap::GetHeap().EnableGC(param.gcParam.enableGC);
+    collectorProxy.Init(param);
     collectorResources.Init();
 }
 
