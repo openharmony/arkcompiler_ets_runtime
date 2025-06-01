@@ -2263,17 +2263,13 @@ JSHandle<GlobalEnv> JSObject::GetFunctionRealm(JSThread *thread, const JSHandle<
         return GetFunctionRealm(thread, proxyTarget);
     }
 
-    if (object->IsJSShared()) {
-        // LexicalEnv in sharedConstructor is constructor itself. And Shared Constructors shares the same GlobalEnv.
-        return thread->GetGlobalEnv();
-    }
-
     JSTaggedValue functionEnv = JSHandle<JSFunction>(object)->GetLexicalEnv();
-    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
-    if (functionEnv.IsHeapObject()) {
-        return JSHandle<GlobalEnv>(thread, BaseEnv::Cast(functionEnv.GetTaggedObject())->GetGlobalEnv());
+    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv for SharedFunction.
+    JSTaggedValue globalEnv = BaseEnv::Cast(functionEnv.GetTaggedObject())->GetGlobalEnv();
+    if (!globalEnv.IsHole()) {
+        return JSHandle<GlobalEnv>(thread, globalEnv);
     }
-    return thread->GetGlobalEnv();
+    return JSHandle<GlobalEnv>(thread, thread->GetGlueGlobalEnv());
 }
 
 bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &object,

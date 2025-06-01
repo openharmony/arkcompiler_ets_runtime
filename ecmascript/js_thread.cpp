@@ -1400,8 +1400,14 @@ void JSThread::SetMutatorLockState(MutatorLock::MutatorLockState newState)
 
 JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
 {
+    JSHandle<GlobalEnv> env = GetGlobalEnv();
+    return GetArrayInstanceHClass(env, kind, isPrototype);
+}
+
+JSHClass *JSThread::GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind, bool isPrototype) const
+{
     GlobalEnvField index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
-    auto exceptArrayHClass = GetGlobalEnv()->GetGlobalEnvObjectByIndex(static_cast<size_t>(index)).GetTaggedValue();
+    auto exceptArrayHClass = env->GetGlobalEnvObjectByIndex(static_cast<size_t>(index)).GetTaggedValue();
     auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
     ASSERT(exceptRecvHClass->IsJSArray());
     return exceptRecvHClass;

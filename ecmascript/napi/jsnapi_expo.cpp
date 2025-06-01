@@ -5755,7 +5755,7 @@ void JSNApi::SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context)
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSTaggedValue> contextValue = JSNApiHelper::ToJSHandle(context);
     JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(contextValue);
-    thread->SetCurrentEnv(globalEnv.GetTaggedValue());
+    thread->SetGlueGlobalEnv(globalEnv.GetTaggedValue());
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)

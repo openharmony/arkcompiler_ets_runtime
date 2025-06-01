@@ -276,9 +276,12 @@ JSTaggedValue FastRuntimeStub::NewLexicalEnv(JSThread *thread, ObjectFactory *fa
         return JSTaggedValue::Hole();
     }
     JSTaggedValue currentEnv = thread->GetCurrentLexenv();
-    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv/Undefined for SharedFunction.
-    if LIKELY(currentEnv.IsHeapObject()) {
-        newEnv->SetGlobalEnv(thread, BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv());
+    // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv for SharedFunction.
+    JSTaggedValue globalEnv = BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv();
+    if LIKELY(!globalEnv.IsHole()) {
+        newEnv->SetGlobalEnv(thread, globalEnv);
+    } else {
+        newEnv->SetGlobalEnv(thread, thread->GetGlueGlobalEnv());
     }
     newEnv->SetParentEnv(thread, currentEnv);
     return JSTaggedValue(newEnv);

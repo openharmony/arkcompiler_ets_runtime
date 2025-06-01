@@ -28,6 +28,9 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm,
     if (hostThread_ != nullptr && jsVm->GetPTManager() != nullptr) {
         ptManager_ = jsVm->GetPTManager();
     }
+    JSTaggedValue funcEnv = jsFunction_->GetLexicalEnv();
+    globalEnv_ = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv();
+    ASSERT(globalEnv_.IsJSGlobalEnv());
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
     methodLiteral_ = method->GetMethodLiteral();
@@ -162,8 +165,8 @@ panda_file::File::EntityId JitCompilationEnv::GetIdFromCache(JSTaggedValue const
 
 JSHandle<GlobalEnv> JitCompilationEnv::GetGlobalEnv() const
 {
-    ASSERT(thread_->IsInRunningState());
-    return hostThread_->GetEcmaVM()->GetGlobalEnv();
+    ASSERT(globalEnv_.IsJSGlobalEnv());
+    return JSHandle<GlobalEnv>(ToUintPtr(&globalEnv_));
 }
 
 const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
