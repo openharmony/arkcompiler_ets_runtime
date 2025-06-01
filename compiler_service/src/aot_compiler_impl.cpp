@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,9 +26,6 @@
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
 #endif
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
-#endif
 
 namespace OHOS::ArkCompiler {
 AotCompilerImpl& AotCompilerImpl::GetInstance()
@@ -37,101 +34,12 @@ AotCompilerImpl& AotCompilerImpl::GetInstance()
     return aotCompiler;
 }
 
-int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
-                                              const std::string &keyName, int32_t &bundleID)
-{
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    if (argsMap.at(keyName).empty() || !isdigit(argsMap.at(keyName).at(0))) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    const char* beginPtr = argsMap.at(keyName).data();
-    const char* endPtr = argsMap.at(keyName).data() + argsMap.at(keyName).size();
-    auto res = std::from_chars(beginPtr, endPtr, bundleID);
-    if ((res.ec != std::errc()) || (res.ptr != endPtr)) {
-        LOG_SA(ERROR) << "trigger exception as converting string to integer";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    return ERR_OK;
-}
-
-int32_t AotCompilerImpl::FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
-                                             const std::string &keyName, std::string &bundleArg)
-{
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    bundleArg = argsMap.at(keyName);
-    return ERR_OK;
-}
-
-int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    for (const auto &arg : argsMap) {
-        LOG_SA(DEBUG) << arg.first << ": " << arg.second;
-    }
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    std::string abcPath;
-    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs_.bundleUid) != ERR_OK)   ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs_.bundleGid) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs_.fileName) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs_.signature) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler Args parsing error";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    hapArgs_.argVector.clear();
-    hapArgs_.argVector.emplace_back(Cmds::ARK_AOT_COMPILER);
-    // service process add aot compile args here
-    AddExpandArgs(hapArgs_.argVector);
-    for (auto &argPair : argsMap) {
-        if (AotArgsSet.find(argPair.first) != AotArgsSet.end()) {
-            hapArgs_.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
-        }
-    }
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    SetEnableCodeCommentBySysParam();
-    SetAnFileMaxSizeBySysParam();
-#endif
-    hapArgs_.argVector.emplace_back(abcPath);
-    return ERR_OK;
-}
-
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-void AotCompilerImpl::SetAnFileMaxSizeBySysParam()
-{
-    int anFileMaxSize = OHOS::system::GetIntParameter<int>("ark.aot.compiler_an_file_max_size", -1);
-    if (anFileMaxSize >= 0) {
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
-                                        std::to_string(anFileMaxSize));
-    }
-}
-
-void AotCompilerImpl::SetEnableCodeCommentBySysParam()
-{
-    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
-    if (enableAotCodeComment) {
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
-                                        "true");
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
-    }
-}
-#endif
-
-void AotCompilerImpl::GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const
-{
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    bundleUid = hapArgs_.bundleUid;
-    bundleGid = hapArgs_.bundleGid;
-}
-
 void AotCompilerImpl::DropCapabilities() const
 {
     LOG_SA(INFO) << "begin to drop capabilities";
     int32_t bundleUid = 0;
     int32_t bundleGid = 0;
-    GetBundleId(bundleUid, bundleGid);
+    argsHandler_->GetBundleId(bundleUid, bundleGid);
     if (setgid(bundleGid)) {
         LOG_SA(ERROR) << "dropCapabilities setgid failed : " << strerror(errno);
         exit(-1);
@@ -158,21 +66,9 @@ void AotCompilerImpl::DropCapabilities() const
     }
     LOG_SA(INFO) << "drop capabilities success";
 }
-
-void AotCompilerImpl::GetAotArgsVector(std::vector<const char*> &argv) const
-{
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    const std::vector<std::string> &aotVector = hapArgs_.argVector;
-    argv.reserve(aotVector.size() + 1);
-    for (auto &arg : aotVector) {
-        argv.emplace_back(arg.c_str());
-    }
-}
-
 void AotCompilerImpl::ExecuteInChildProcess() const
 {
-    std::vector<const char*> argv;
-    GetAotArgsVector(argv);
+    std::vector<const char*> argv = argsHandler_->GetAotArgs();
     LOG_SA(INFO) << "ark_aot_compiler argv size : " << argv.size();
     for (const auto &arg : argv) {
         LOG_SA(INFO) << arg;
@@ -182,12 +78,6 @@ void AotCompilerImpl::ExecuteInChildProcess() const
     execv(argv[0], const_cast<char* const*>(argv.data()));
     LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
-}
-
-void AotCompilerImpl::AddExpandArgs(std::vector<std::string> &argVector)
-{
-    std::string thermalLevelArg = "--compiler-thermal-level=" + std::to_string(thermalLevel_);
-    argVector.emplace_back(thermalLevelArg);
 }
 
 int32_t AotCompilerImpl::PrintAOTCompilerResult(const int compilerStatus) const
@@ -265,10 +155,12 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
         LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler arguments error";
+
+    argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
+    if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
+
     int32_t ret = ERR_OK;
     LOG_SA(INFO) << "begin to fork";
     pid_t pid = fork();
@@ -306,26 +198,18 @@ int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
     return ERR_OK;
 }
 
-void AotCompilerImpl::GetCodeSignArgs(std::string &appSignature, std::string &fileName) const
-{
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    appSignature = hapArgs_.signature;
-    fileName = hapArgs_.fileName;
-}
-
 int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
 {
 #ifdef CODE_SIGN_ENABLE
-    std::string appSignature;
-    std::string fileName;
-    GetCodeSignArgs(appSignature, fileName);
+    std::string appSignature = argsHandler_->GetCodeSignArgs();
+    std::string fileName = argsHandler_->GetFileName();
     Security::CodeSign::ByteBuffer sig;
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {
         LOG_SA(ERROR) << "failed to sign the aot file";
         return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }
-    LOG_SA(DEBUG) << "aot file local sign success";
+    LOG_SA(INFO) << "aot file local sign success";
     uint8_t *dataPtr = sig.GetBuffer();
     for (uint32_t i = 0; i < sig.GetSize(); ++i) {
         sigData.emplace_back(static_cast<int16_t>(dataPtr[i]));
@@ -364,9 +248,9 @@ int32_t AotCompilerImpl::StopAotCompiler()
 
 int32_t AotCompilerImpl::RemoveAotFiles() const
 {
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    if (access(hapArgs_.fileName.c_str(), ERR_OK) != ERR_FAIL) {
-        auto delRes = std::remove(hapArgs_.fileName.c_str());
+    std::string fileName = argsHandler_->GetFileName();
+    if (access(fileName.c_str(), ERR_OK) != ERR_FAIL) {
+        auto delRes = std::remove(fileName.c_str());
         if (delRes != ERR_OK) {
             LOG_SA(INFO) << "delete invalid aot file failed: " << delRes;
             return ERR_AOT_COMPILER_STOP_FAILED;

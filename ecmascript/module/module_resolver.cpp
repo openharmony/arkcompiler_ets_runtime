@@ -43,7 +43,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModule(JSThread* thre
 {
     if (jsPandaFile == nullptr) {
         std::shared_ptr<JSPandaFile> file =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false, executeType);
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false, false, executeType);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (file == nullptr) {
             CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
@@ -103,7 +103,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
     }
     CString recordName = module->GetEcmaModuleRecordNameString();
     std::shared_ptr<JSPandaFile> pandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName, false, executeType);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName, false, false, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (pandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << baseFilename;
@@ -181,9 +181,8 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleForHotReload(JS
                                                                               const CString &recordName,
                                                                               const ExecuteTypes &executeType)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false, executeType);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, moduleFileName, recordName, false, false, executeType);
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
@@ -209,8 +208,8 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
                                                                            const ExecuteTypes &executeType)
 {
     if (jsPandaFile == nullptr) {
-        std::shared_ptr<JSPandaFile> file =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false, executeType);
+        std::shared_ptr<JSPandaFile> file = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, moduleFileName, recordName, false, false, executeType);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (file == nullptr) {
             CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
@@ -258,7 +257,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     // Can not use jsPandaFile from js_pandafile_executor, need to construct with JSPandaFile::ENTRY_MAIN_FUNCTION
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, referencingModule, JSPandaFile::ENTRY_MAIN_FUNCTION, false, executeType);
+            thread, referencingModule, JSPandaFile::ENTRY_MAIN_FUNCTION, false, false, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << referencingModule;
@@ -279,7 +278,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
         return module;
     }
     std::shared_ptr<JSPandaFile> pandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-        thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION, false, executeType);
+        thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION, false, false, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (pandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << referencingModule;

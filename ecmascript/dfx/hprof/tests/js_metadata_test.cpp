@@ -388,6 +388,7 @@ public:
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"ResolveFunction", "RejectFunction", "RESOLVING_FUNCTIONS_RECORD"}},
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
             {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
+            {JSType::JS_XREF_OBJECT, {"JS_XREF_OBJECT"}},
             {JSType::SLICED_STRING, {"Parent", "SLICED_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"Environment", "Namespace", "ModuleRequests", "RequestedModules",
                                                  "ImportEntries", "LocalExportEntries",
@@ -981,6 +982,7 @@ public:
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::SFUNCTION_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
+            {JSType::JS_XREF_OBJECT, {JSObject::SIZE - JSObject::SIZE}},
             {JSType::SLICED_STRING, {SlicedString::PARENT_OFFSET, SlicedString::SIZE - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -1222,6 +1224,7 @@ public:
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"RECORD"}},
             {JSType::SENDABLE_ENV, {"TAGGED_ARRAY"}},
             {JSType::SFUNCTION_ENV, {"TAGGED_ARRAY"}},
+            {JSType::JS_XREF_OBJECT, {"JS_OBJECT"}},
             {JSType::SLICED_STRING, {"ECMA_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"MODULE_RECORD"}},
             {JSType::STAR_EXPORTENTRY_RECORD, {"RECORD"}},
@@ -1715,6 +1718,7 @@ public:
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::REJECT_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {}},
             {JSType::SFUNCTION_ENV, {}},
+            {JSType::JS_XREF_OBJECT, {}},
             {JSType::SLICED_STRING, {SlicedString::STARTINDEX_AND_FLAGS_OFFSET - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::NAMESPACE_OFFSET - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -4332,6 +4336,17 @@ HWTEST_F_L0(JSMetadataTest, TestSFunctionEnvMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::SFUNCTION_ENV, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestJsXrefObjectMetadata) {
+    JSMetadataTestHelper tester{};
+    std::string metadataFilePath =
+        METADATA_SOURCE_FILE_DIR "js_xref_object.json";
+    JSMetadataTestHelper::Metadata metadata{};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_XREF_OBJECT, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestSlicedStringMetadata)

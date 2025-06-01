@@ -206,8 +206,8 @@ CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const C
         return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PathHelper::SLASH_TAG,
                                      entryPath, path, PathHelper::NORMALIZED_OHMURL_TAG, version);
     }
-    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH, path,
-        PathHelper::NORMALIZED_OHMURL_TAG, version);
+    return base::ConcatToCString(bundleName, PathHelper::NORMALIZED_OHMURL_TAG, pkgname, PHYCICAL_FILE_PATH.data(),
+        path, PathHelper::NORMALIZED_OHMURL_TAG, version);
 }
 
 CString ModulePathHelper::ConcatUnifiedOhmUrl(const CString &bundleName, const CString &normalizedpath,
@@ -789,7 +789,7 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
         // get rid of Index, get pure perfix(@bundle.bundleName/moduleName).
         size_t index = outEntryPoint.rfind(PathHelper::SLASH_TAG);
         // get rid of src/main. Concat perfix and input relative path.
-        if (relativePath.find(PHYCICAL_FILE_PATH, 0) == 0) {
+        if (relativePath.find(PHYCICAL_FILE_PATH.data(), 0) == 0) {
             requestPath = base::ConcatToCString(outEntryPoint.substr(0, index), PathHelper::SLASH_TAG,
                 requestPath.substr(pos + PHYCICAL_FILE_PATH_LEN));
             return;
@@ -1009,7 +1009,7 @@ CString ModulePathHelper::TranslateNapiFileRequestPath(JSThread *thread, const C
     if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack()) {
         CString moduleName = GetModuleNameWithPath(modulePath);
         CString res(1, PathHelper::NORMALIZED_OHMURL_TAG);
-        base::AppendToBaseString(res, moduleName, PHYCICAL_FILE_PATH,
+        base::AppendToBaseString(res, moduleName, PHYCICAL_FILE_PATH.data(),
             PathHelper::SLASH_TAG, requestName, PathHelper::NORMALIZED_OHMURL_TAG);
         return res;
     } else {
@@ -1129,5 +1129,46 @@ bool ModulePathHelper::ValidateAbcPath(const CString &baseFileName, ValidateFile
         }
     }
     return false;
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrl(std::string ohmUrl)
+{
+    CString url(ohmUrl);
+    if (StringHelper::StringStartWith(url, PREFIX_BUNDLE)) {
+        return ResolveOhmUrlStartWithBundle(ohmUrl);
+    }
+    if (StringHelper::StringStartWith(url, PREFIX_NORMALIZED_NOT_SO)) {
+        return ResolveOhmUrlStartWithNormalized(ohmUrl);
+    }
+    LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    return {"", ""};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBundle(const std::string &ohmUrl)
+{
+    std::string moduleRequestName(ohmUrl.substr(PREFIX_BUNDLE_LEN));
+    size_t index = moduleRequestName.find('/');
+    index = moduleRequestName.find('/', index + 1);
+    if (index == std::string::npos) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string bundleAndModuleName = moduleRequestName.substr(0, index);
+    std::string filePath = moduleRequestName.substr(index + 1);
+    return {filePath, bundleAndModuleName};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl)
+{
+    CVector<CString> res = SplitNormalizedOhmurl(CString(ohmUrl));
+    if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string moduleName(res[NORMALIZED_MODULE_NAME_INDEX]);
+    std::string bundleName(res[NORMALIZED_BUNDLE_NAME_INDEX]);
+    std::string path(res[NORMALIZED_IMPORT_PATH_INDEX]);
+    if (bundleName.empty() || moduleName.empty() || path.empty()) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    return {path, bundleName + PathHelper::SLASH_TAG + moduleName};
 }
 }  // namespace panda::ecmascript

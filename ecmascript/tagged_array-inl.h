@@ -52,17 +52,6 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const T &valu
     #define MAYBE_INLINE
 #endif // ECMASCRIPT_TAGGED_ARRAY_CPP
 
-MAYBE_INLINE JSTaggedValue TaggedArray::Get(uint32_t idx) const
-{
-    ASSERT(idx < GetLength());
-    // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
-    //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    return JSTaggedValue(Barriers::GetTaggedValue(reinterpret_cast<JSTaggedType *>(ToUintPtr(this)),
-        DATA_OFFSET + offset));
-}
-
 #undef MAYBE_INLINE
 
 template <bool needBarrier, bool maybeOverlap>

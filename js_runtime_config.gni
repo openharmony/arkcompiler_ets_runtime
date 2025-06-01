@@ -66,7 +66,9 @@ declare_args() {
   # Default false.
   ets_runtime_feature_enable_list = false
   enable_gc_dfx_options = false
-  ark_js_hybrid = false
+
+  # NOTE(ipetrov): Need to enable for mac previewer
+  ark_js_hybrid = !ark_standalone_build && !is_mac
 
   ets_runtime_enable_cmc_gc = false
 }
@@ -97,6 +99,7 @@ if (!defined(build_variant)) {
 }
 import("$build_root/config/sanitizers/sanitizers.gni")
 ark_root = "//arkcompiler/runtime_core"
+arkplatform_root = "//arkcompiler/runtime_core/arkplatform"
 js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"
 hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
