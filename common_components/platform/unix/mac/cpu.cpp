@@ -15,6 +15,9 @@
 
 #include "common_components/platform/cpu.h"
 
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include "common_components/log/log.h"
@@ -34,7 +37,7 @@ size_t PhysicalSize()
     int64_t size = 0;
     size_t bufferLength = sizeof(size);
     if (sysctl(mib, mibLength, &size, &bufferLength, nullptr, 0) != 0) {
-        LOG_ECMA(FATAL) << "sysctl error";
+        LOG_COMMON(FATAL) << "sysctl error";
     }
     return static_cast<size_t>(size);
 }
