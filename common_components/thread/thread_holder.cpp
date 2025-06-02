@@ -61,6 +61,8 @@ void ThreadHolder::RegisterJSThread(JSThread *jsThread)
     TransferToRunning();
     DCHECK_CC(jsThread_ == nullptr);
     jsThread_ = jsThread;
+    mutatorBase_->RegisterJSThread(jsThread);
+    SynchronizeGCPhaseToJSThread(jsThread, mutatorBase_->GetMutatorPhase());
     TransferToNative();
 }
 
@@ -70,6 +72,7 @@ void ThreadHolder::UnregisterJSThread(JSThread *jsThread)
     TransferToRunning();
     DCHECK_CC(jsThread_ == jsThread);
     jsThread_ = nullptr;
+    mutatorBase_->UnregisterJSThread();
     if (coroutines_.empty()) {
         ThreadHolder::DestroyThreadHolder(this);
     }
