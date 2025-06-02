@@ -89,11 +89,20 @@ inline void EcmaString::TrimLineString(const JSThread *thread, uint32_t newLengt
     ASSERT(IsLineString());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t oldLength = GetLength();
-    ASSERT(oldLength > newLength);
-    size_t trimBytes = (oldLength - newLength) * (IsUtf8() ? sizeof(uint8_t) : sizeof(uint16_t));
-    size_t size = IsUtf8() ? LineEcmaString::ComputeSizeUtf8(newLength) : LineEcmaString::ComputeSizeUtf16(newLength);
-    factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
-    InitLengthAndFlags(newLength, CanBeCompressed(this));
+    ASSERT(oldLength >= newLength);
+    if (newLength == oldLength) return;
+    bool isUtf8 = IsUtf8();
+    size_t size_new = isUtf8 ? LineEcmaString::ComputeSizeUtf8(newLength): LineEcmaString::ComputeSizeUtf16(newLength);
+    size_t size_old = isUtf8 ? LineEcmaString::ComputeSizeUtf8(oldLength): LineEcmaString::ComputeSizeUtf16(oldLength);
+    size_new = AlignUp(size_new, ALIGNMENT_8_BYTES);
+    size_old = AlignUp(size_old, ALIGNMENT_8_BYTES);
+    size_t trimBytes = size_old - size_new;
+    if (trimBytes > 0) {
+        uintptr_t newEndAddr = ToUintPtr(this) + size_new;
+        ASSERT_PRINT((newEndAddr % ALIGNMENT_8_BYTES) == 0, "Alignment failed");
+        factory->FillFreeObject(newEndAddr, trimBytes, RemoveSlots::YES, ToUintPtr(this));
+    }
+    InitLengthAndFlags(newLength, isUtf8);
 }
 
 inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,

@@ -628,6 +628,50 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue ObjectFastOperator::SetJsonPropertyByName(JSThread *thread, JSTaggedValue receiver,
+                                                        JSTaggedValue key, JSTaggedValue value)
+{
+    ASSERT(!receiver.IsJSShared());
+    JSHandle<JSObject> objHandle(thread, receiver);
+    JSHClass *hclass = objHandle->GetClass();
+    JSHandle<JSTaggedValue> keyHandle(thread, key);
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    if (UNLIKELY(hclass->IsDictionaryMode())) {
+        NameDictionary *dict = NameDictionary::Cast(objHandle->GetProperties().GetTaggedObject());
+        int entry = dict->FindEntry(key);
+        if (entry != -1) {
+            dict->UpdateValue(thread, entry, value);
+        } else {
+            PropertyAttributes attr = PropertyAttributes::Default();
+            JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread,
+                JSHandle<NameDictionary>(thread, dict), keyHandle, valueHandle, attr);
+            objHandle->SetProperties(thread, newDict);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        return JSTaggedValue::Undefined();
+    } else {
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        if (entry != -1) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            ElementsKind oldKind = hclass->GetElementsKind();
+            auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
+                keyHandle, valueHandle, attr);
+            JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+            if (actualValue.isTagged) {
+                JSObject::Cast(receiver)->SetProperty<true>(thread, hclass, attr, actualValue.value);
+            } else {
+                JSObject::Cast(receiver)->SetProperty<false>(thread, hclass, attr, actualValue.value);
+            }
+            return JSTaggedValue::Undefined();
+        }
+        PropertyAttributes attr = PropertyAttributes::Default();
+        AddPropertyByName(thread, objHandle, keyHandle, valueHandle, attr);
+        return JSTaggedValue::Undefined();
+    }
+}
+
+
 template <ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index)
 {

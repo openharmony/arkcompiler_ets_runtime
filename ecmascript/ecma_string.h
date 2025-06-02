@@ -101,12 +101,13 @@ private:
     friend class panda::test::EcmaStringEqualsTest;
     friend class panda::test::EcmaStringHashTest;
 
+    static constexpr size_t ALIGNMENT_8_BYTES = 8;
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
-    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
@@ -761,10 +762,10 @@ public:
         return EcmaString::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len, type);
     }
 
-    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+    static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
-        return EcmaString::CreateUtf16StringFromUtf8(vm, utf8Data, utf8Len, type);
+        return EcmaString::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     }
 
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
