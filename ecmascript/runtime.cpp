@@ -89,7 +89,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 #ifdef USE_CMC_GC
         // Init BaseRuntime before daemon thread because creating mutator may access gcphase in heap
         LOG_ECMA(INFO) << "start run with cmc gc";
-        BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+        BaseRuntime::GetInstance()->InitFromDynamic(options.GetRuntimeParam());
 #endif
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
@@ -167,7 +167,7 @@ void Runtime::DestroyIfLastVm()
         DaemonThread::DestroyInstance();
 #ifdef USE_CMC_GC
         // Finish BaseRuntime after daemon thread because it will unregister mutator
-        BaseRuntime::GetInstance()->Fini();
+        BaseRuntime::GetInstance()->FiniFromDynamic();
 #endif
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();

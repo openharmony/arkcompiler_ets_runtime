@@ -1479,6 +1479,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         reason == GCReason::ALLOCATION_FAILED) {
         type = GcType::FULL;
     }
+    ThreadNativeScope scope(thread_);
     BaseRuntime::RequestGC(type);
     return;
 #endif
