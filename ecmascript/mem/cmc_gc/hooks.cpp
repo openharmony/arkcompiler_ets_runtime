@@ -16,9 +16,11 @@
 #include "common_components/base_runtime/hooks.h"
 
 #include <cstdint>
+#include <mutex>
 
 #include "common_components/heap/heap.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -34,6 +36,10 @@ using panda::ecmascript::FreeObject;
 using panda::ecmascript::ObjectSlot;
 using panda::ecmascript::JSThread;
 using panda::ecmascript::TaggedType;
+
+// A fake EcmaVM which will never used, only for unify the BaseRuntime::Init&Fini
+static ecmascript::EcmaVM *g_fakeEcmaVM = nullptr;
+static std::mutex g_rtMutexForStatic;
 
 class CMCRootVisitor final : public panda::ecmascript::RootVisitor {
 public:
@@ -278,6 +284,29 @@ void JSGCCallback(void *ecmaVM)
         panda::ecmascript::Heap *heap = const_cast<panda::ecmascript::Heap*>(vm->GetHeap());
         heap->ProcessGCCallback();
     }
+}
+
+void CheckAndInitBaseRuntime(const RuntimeParam &param)
+{
+    std::lock_guard<std::mutex> guard(g_rtMutexForStatic);
+    if (BaseRuntime::GetInstance()->HasBeenInitialized()) {
+        // BaseRuntime is inited from Dynamic
+        return;
+    }
+    ecmascript::JSRuntimeOptions options(param);
+    g_fakeEcmaVM = ecmascript::EcmaVM::Create(options);
+}
+
+void CheckAndFiniBaseRuntime()
+{
+    std::lock_guard<std::mutex> guard(g_rtMutexForStatic);
+    if (g_fakeEcmaVM == nullptr) {
+        // BaseRuntime is inited from Dynamic
+        return;
+    }
+    g_fakeEcmaVM->GetJSThread()->ManagedCodeBegin();
+    ecmascript::EcmaVM::Destroy(g_fakeEcmaVM);
+    g_fakeEcmaVM = nullptr;
 }
 
 void SetBaseAddress(uintptr_t base)
