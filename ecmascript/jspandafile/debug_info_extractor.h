@@ -21,6 +21,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/debugger/js_pt_location.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 
@@ -93,13 +94,18 @@ public:
 
     template<class Callback>
     bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column,
-        const std::string &url, const std::unordered_set<std::string> &debugRecordName)
+        const std::string &url, const std::unordered_set<std::string> &debugRecordName,
+        bool isSmartBreakpoint = false, const std::string methodName = "")
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
         }
         auto &pandaFile = *jsPandaFile_->GetPandaFile();
         auto classes = jsPandaFile_->GetClasses();
+        // For SmartBreakpoint, record the nearest valid line number
+        int32_t nearestLine = INT32_MAX;
+        EntityId recordMethodId;
+        uint32_t nearestOffset = UINT32_MAX;
         for (size_t i = 0; i < classes.Size(); i++) {
             panda_file::File::EntityId id(classes[i]);
             if (jsPandaFile_->IsExternal(id)) {
@@ -137,6 +143,11 @@ public:
                 const LineNumberTable &lineTable = GetLineNumberTable(methodId);
                 const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
                 for (uint32_t j = 0; j < lineTable.size(); j++) {
+                    if (lineTable[j].line > line && lineTable[j].line < nearestLine) {
+                        nearestLine = lineTable[j].line;
+                        recordMethodId = methodId;
+                        nearestOffset = lineTable[j].offset;
+                    }
                     if (lineTable[j].line != line) {
                         continue;
                     }
@@ -162,6 +173,14 @@ public:
             if (currentOffset != UINT32_MAX) { // find corresponding row, but not find corresponding column
                 return cb(JSPtLocation(jsPandaFile_, currentMethodId, currentOffset, url));
             }
+        }
+        if (isSmartBreakpoint && nearestOffset != UINT32_MAX) {
+            LOG_DEBUGGER(INFO) << "SetSmartBreakpoint: the valid lineNumber is " << nearestLine;
+            if (!methodName.empty() && methodName != MethodLiteral::ParseFunctionName(jsPandaFile_, recordMethodId)) {
+                LOG_DEBUGGER(ERROR) << "SetSmartBreakpoint: The lineNumber is not within the specified method";
+                return false;
+            }
+            return cb(JSPtLocation(jsPandaFile_, recordMethodId, nearestOffset, url));
         }
         return false;
     }
