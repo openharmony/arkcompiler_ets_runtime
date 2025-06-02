@@ -93,7 +93,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             LOG_ECMA(INFO) << "start run with cmc gc";
             // SetConfigHeapSize for cmc gc, pc and persist config may change heap size.
             const_cast<JSRuntimeOptions &>(options).SetConfigHeapSize(MemMapAllocator::GetInstance()->GetCapacity());
-            common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+            common::BaseRuntime::GetInstance()->InitFromDynamic(options.GetRuntimeParam());
             common::g_enableGCTimeoutCheck = options.IsEnableGCTimeoutCheck();
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
             common::HeapProfilerListener::GetInstance().RegisterOutOfMemoryEventCb(
@@ -199,7 +199,7 @@ void Runtime::DestroyIfLastVm()
         DaemonThread::DestroyInstance();
         if (g_isEnableCMCGC) {
             // Finish common::BaseRuntime after daemon thread because it will unregister mutator
-            common::BaseRuntime::GetInstance()->Fini();
+            common::BaseRuntime::GetInstance()->FiniFromDynamic();
         }
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
