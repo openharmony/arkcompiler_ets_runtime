@@ -46,7 +46,7 @@ HashTrieMap::Node *HashTrieMap::Expand(Entry *oldEntry, Entry *newEntry, uint32_
 #ifndef NDEBUG
         if (hashShift == TOTAL_HASH_BITS) {
             if constexpr (IsLock) {
-                RuntimeUnLock(parent->GetMutex());
+                RuntimeUnLock(GetMutex());
             }
             LOG_ECMA(FATAL) << "StringTable: ran out of hash bits while inserting";
             UNREACHABLE();
@@ -165,7 +165,7 @@ EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallb
         }
         // lock and double-check
         if constexpr (IsLock) {
-            RuntimeLock(vm->GetJSThread(), current->GetMutex());
+            RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
             if (vm->IsCollectingScopeLockStats()) {
                 vm->IncreaseStringTableLockCount();
@@ -179,7 +179,7 @@ EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallb
             break;
         }
         if constexpr (IsLock) {
-            RuntimeUnLock(current->GetMutex());
+            RuntimeUnLock(GetMutex());
         }
         current = node->AsIndirect();
         hashShift += N_CHILDREN_LOG2;
@@ -193,7 +193,7 @@ EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallb
             if (currentEntry->Key() == key &&
                 std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
                 if constexpr (IsLock) {
-                    RuntimeUnLock(current->GetMutex());
+                    RuntimeUnLock(GetMutex());
                 }
                 return currentEntry->Value();
             }
@@ -213,7 +213,7 @@ EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallb
         slot->store(expandedNode, std::memory_order_release);
     }
     if constexpr (IsLock) {
-        RuntimeUnLock(current->GetMutex());
+        RuntimeUnLock(GetMutex());
     }
     return value;
 }
@@ -267,7 +267,7 @@ EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, Loade
         }
 #endif
         // Jit need to lock the object before creating the object
-        RuntimeLock(vm->GetJSThread(), current->GetMutex());
+        RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
         if (vm->IsCollectingScopeLockStats()) {
             vm->IncreaseStringTableLockCount();
@@ -281,7 +281,7 @@ EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, Loade
             break;
         }
 
-        RuntimeUnLock(current->GetMutex());
+        RuntimeUnLock(GetMutex());
         current = node->AsIndirect();
         hashShift += N_CHILDREN_LOG2;
     }
@@ -293,7 +293,7 @@ EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, Loade
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
             if (currentEntry->Key() == key &&
                 std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
-                RuntimeUnLock(current->GetMutex());
+                RuntimeUnLock(GetMutex());
                 return currentEntry->Value();
             }
         }
@@ -310,7 +310,7 @@ EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, Loade
         auto expandedNode = Expand<true>(oldEntry, newEntry, hash, hashShift, current);
         slot->store(expandedNode, std::memory_order_release);
     }
-    RuntimeUnLock(current->GetMutex());
+    RuntimeUnLock(GetMutex());
     return value;
 }
 
@@ -329,7 +329,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
     Indirect *current = loadResult.current;
     JSHandle<EcmaString> str = std::invoke(std::forward<LoaderCallback>(loaderCallback));
     // lock and double-check
-    RuntimeLock(vm->GetJSThread(), current->GetMutex());
+    RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
@@ -337,7 +337,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
 #endif
     node = slot->load(std::memory_order_acquire);
     if (node != nullptr && !node->IsEntry()) {
-        RuntimeUnLock(current->GetMutex());
+        RuntimeUnLock(GetMutex());
         current = node->AsIndirect();
         hashShift += N_CHILDREN_LOG2;
         while (true) {
@@ -373,7 +373,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
             }
 #endif
             // lock and double-check
-            RuntimeLock(vm->GetJSThread(), current->GetMutex());
+            RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
             if (vm->IsCollectingScopeLockStats()) {
                 vm->IncreaseStringTableLockCount();
@@ -386,7 +386,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
                 break;
             }
 
-            RuntimeUnLock(current->GetMutex());
+            RuntimeUnLock(GetMutex());
             current = node->AsIndirect();
             hashShift += N_CHILDREN_LOG2;
         }
@@ -398,7 +398,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
             if (currentEntry->Key() == key &&
                 std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
-                RuntimeUnLock(current->GetMutex());
+                RuntimeUnLock(GetMutex());
                 return currentEntry->Value();
             }
         }
@@ -417,7 +417,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
         slot->store(expandedNode, std::memory_order_release);
     }
 
-    RuntimeUnLock(current->GetMutex());
+    RuntimeUnLock(GetMutex());
     return value;
 }
 
