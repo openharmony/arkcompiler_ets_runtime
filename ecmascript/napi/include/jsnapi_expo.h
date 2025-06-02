@@ -1019,6 +1019,7 @@ public:
     std::string ToString(const EcmaVM *vm);
     std::string DebuggerToString(const EcmaVM *vm);
     uint32_t Length(const EcmaVM *vm);
+    bool IsCompressed(const EcmaVM *vm);
     size_t Utf8Length(const EcmaVM *vm, bool isGetBufferSize = false);
     uint32_t WriteUtf8(const EcmaVM *vm, char *buffer, uint32_t length, bool isWriteBuffer = false);
     uint32_t WriteUtf16(const EcmaVM *vm, char16_t *buffer, uint32_t length);
