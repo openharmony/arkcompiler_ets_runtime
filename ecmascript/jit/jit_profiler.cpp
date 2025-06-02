@@ -216,6 +216,17 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 ConvertOpType(slotId, bcOffset);
                 break;
             }
+            case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+            case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8: {
+                Jit::JitLockHolder lock(thread);
+                if (!useRawProfileTypeInfo) {
+                    profileTypeInfo_ = *profileTypeInfo;
+                }
+                uint8_t slotId = READ_INST_8_1();
+                CHECK_SLOTID_BREAK(slotId);
+                ConvertOpType(slotId, bcOffset);
+                break;
+            }
             // Call
             case EcmaOpcode::CALLARG0_IMM8:
             case EcmaOpcode::CALLARG1_IMM8_V8:

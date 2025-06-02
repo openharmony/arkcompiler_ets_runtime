@@ -213,7 +213,7 @@ public:
     {
         bitField_ = NeedPushArgvBit::Encode(needPushArgv);
     }
-    
+
     static const NewConstructMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::CALL_NEW);
@@ -252,6 +252,32 @@ public:
         return TypedUnOpBits::Get(bitField_);
     }
 
+    bool IsTrustedBooleanType() const
+    {
+        TypedUnOp unOp = GetTypedUnOp();
+        switch (unOp) {
+            case TypedUnOp::TYPED_ISTRUE:
+            case TypedUnOp::TYPED_ISFALSE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool IsTrustedNumberType() const
+    {
+        TypedUnOp unOp = GetTypedUnOp();
+        switch (unOp) {
+            case TypedUnOp::TYPED_DEC:
+            case TypedUnOp::TYPED_INC:
+            case TypedUnOp::TYPED_NEG:
+            case TypedUnOp::TYPED_NOT:
+                return GetParamType().HasNumberType();
+            default:
+                return false;
+        }
+    }
+
     static uint64_t ToValue(ParamType paramType, TypedUnOp unaryOp)
     {
         return TypedValueBits::Encode(paramType.Value()) | TypedUnOpBits::Encode(unaryOp);
@@ -278,6 +304,54 @@ public:
     TypedBinOp GetTypedBinOp() const
     {
         return TypedBinOpBits::Get(bitField_);
+    }
+
+    bool IsTrustedBooleanType() const
+    {
+        TypedBinOp binOp = GetTypedBinOp();
+        switch (binOp) {
+            case TypedBinOp::TYPED_EQ:
+            case TypedBinOp::TYPED_LESS:
+            case TypedBinOp::TYPED_NOTEQ:
+            case TypedBinOp::TYPED_LESSEQ:
+            case TypedBinOp::TYPED_GREATER:
+            case TypedBinOp::TYPED_STRICTEQ:
+            case TypedBinOp::TYPED_GREATEREQ:
+            case TypedBinOp::TYPED_STRICTNOTEQ:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    bool IsTrustedNumberType() const
+    {
+        TypedBinOp binOp = GetTypedBinOp();
+        switch (binOp) {
+            case TypedBinOp::TYPED_ADD:
+            case TypedBinOp::TYPED_SUB:
+            case TypedBinOp::TYPED_MUL:
+            case TypedBinOp::TYPED_DIV:
+            case TypedBinOp::TYPED_MOD:
+            case TypedBinOp::TYPED_SHL:
+            case TypedBinOp::TYPED_SHR:
+            case TypedBinOp::TYPED_ASHR:
+            case TypedBinOp::TYPED_AND:
+            case TypedBinOp::TYPED_OR:
+            case TypedBinOp::TYPED_XOR:
+                return GetParamType().HasNumberType();
+            default:
+                return false;
+        }
+    }
+
+    bool IsTrustedStringType() const
+    {
+        TypedBinOp binOp = GetTypedBinOp();
+        if (binOp == TypedBinOp::TYPED_ADD) {
+            return GetParamType().IsStringType();
+        }
+        return false;
     }
 
     static uint64_t ToValue(ParamType operandType, TypedBinOp binOp)

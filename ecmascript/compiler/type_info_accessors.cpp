@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/type_info_accessors.h"
 
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::kungfu {
@@ -62,31 +63,10 @@ bool TypeInfoAccessor::IsTrustedBooleanType(GateAccessor acc, GateRef gate)
     }
     auto op = acc.GetOpCode(gate);
     if (op == OpCode::TYPED_BINARY_OP) {
-        TypedBinaryAccessor accessor(acc.TryGetValue(gate));
-        TypedBinOp binOp = accessor.GetTypedBinOp();
-        switch (binOp) {
-            case TypedBinOp::TYPED_EQ:
-            case TypedBinOp::TYPED_LESS:
-            case TypedBinOp::TYPED_NOTEQ:
-            case TypedBinOp::TYPED_LESSEQ:
-            case TypedBinOp::TYPED_GREATER:
-            case TypedBinOp::TYPED_STRICTEQ:
-            case TypedBinOp::TYPED_GREATEREQ:
-            case TypedBinOp::TYPED_STRICTNOTEQ:
-                return true;
-            default:
-                return false;
-        }
-    } else if (op == OpCode::TYPED_UNARY_OP) {
-        TypedUnaryAccessor accessor(acc.TryGetValue(gate));
-        TypedUnOp unOp = accessor.GetTypedUnOp();
-        switch (unOp) {
-            case TypedUnOp::TYPED_ISTRUE:
-            case TypedUnOp::TYPED_ISFALSE:
-                return true;
-            default:
-                return false;
-        }
+        return TypedBinaryAccessor(acc.TryGetValue(gate)).IsTrustedBooleanType();
+    }
+    if (op == OpCode::TYPED_UNARY_OP) {
+        return TypedUnaryAccessor(acc.TryGetValue(gate)).IsTrustedBooleanType();
     }
     if (op == OpCode::JS_BYTECODE) {
         EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
@@ -101,6 +81,8 @@ bool TypeInfoAccessor::IsTrustedBooleanType(GateAccessor acc, GateRef gate)
             case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
             case EcmaOpcode::ISTRUE:
             case EcmaOpcode::ISFALSE:
+            case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
+            case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
                 return true;
             default:
                 break;
@@ -116,40 +98,16 @@ bool TypeInfoAccessor::IsTrustedNumberType(GateAccessor acc, GateRef gate)
     }
     auto op = acc.GetOpCode(gate);
     if (op == OpCode::TYPED_BINARY_OP) {
-        TypedBinaryAccessor accessor(acc.TryGetValue(gate));
-        TypedBinOp binOp = accessor.GetTypedBinOp();
-        switch (binOp) {
-            case TypedBinOp::TYPED_ADD:
-            case TypedBinOp::TYPED_SUB:
-            case TypedBinOp::TYPED_MUL:
-            case TypedBinOp::TYPED_DIV:
-            case TypedBinOp::TYPED_MOD:
-            case TypedBinOp::TYPED_SHL:
-            case TypedBinOp::TYPED_SHR:
-            case TypedBinOp::TYPED_ASHR:
-            case TypedBinOp::TYPED_AND:
-            case TypedBinOp::TYPED_OR:
-            case TypedBinOp::TYPED_XOR:
-                return accessor.GetParamType().HasNumberType();
-            default:
-                return false;
-        }
-    } else if (op == OpCode::TYPED_UNARY_OP) {
-        TypedUnaryAccessor accessor(acc.TryGetValue(gate));
-        TypedUnOp unOp = accessor.GetTypedUnOp();
-        switch (unOp) {
-            case TypedUnOp::TYPED_DEC:
-            case TypedUnOp::TYPED_INC:
-            case TypedUnOp::TYPED_NEG:
-            case TypedUnOp::TYPED_NOT:
-                return accessor.GetParamType().HasNumberType();
-            default:
-                return false;
-        }
-    } else if (op == OpCode::TYPE_CONVERT) {
+        return TypedBinaryAccessor(acc.TryGetValue(gate)).IsTrustedNumberType();
+    }
+    if (op == OpCode::TYPED_UNARY_OP) {
+        return TypedUnaryAccessor(acc.TryGetValue(gate)).IsTrustedNumberType();
+    }
+    if (op == OpCode::TYPE_CONVERT) {
         // typeconvert only use in tomumeric
         return true;
-    } else if (op == OpCode::LOAD_ELEMENT) {
+    }
+    if (op == OpCode::LOAD_ELEMENT) {
         auto loadOp = acc.GetTypedLoadOp(gate);
         switch (loadOp) {
             case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
@@ -204,11 +162,7 @@ bool TypeInfoAccessor::IsTrustedStringType(
         return true;
     }
     if (op == OpCode::TYPED_BINARY_OP) {
-        auto binaryOp = acc.GetTypedBinaryOp(gate);
-        if (binaryOp == TypedBinOp::TYPED_ADD) {
-            auto value = acc.GetTypedBinaryAccessor(gate);
-            return value.GetParamType().IsStringType();
-        }
+        return TypedBinaryAccessor(acc.TryGetValue(gate)).IsTrustedStringType();
     }
 
     if (op == OpCode::JS_BYTECODE) {

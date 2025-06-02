@@ -85,6 +85,7 @@ group("ark_jit_ts_test") {
     "boolean_change_proto_ic",
     "hole_in_array",
     "definefunc",
+    "jnez",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
