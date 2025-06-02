@@ -19,7 +19,7 @@ action("ark_regress_test") {
   ark_js_runtime_dir = rebase_path("${_root_out_dir_}/arkcompiler/ets_runtime")
   icu_dir = rebase_path("${_root_out_dir_}/thirdparty/icu")
   llvm_lib_dir = rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/")
-  zlib_dir = rebase_path("${_root_out_dir_}/thirdparty/zlib")
+  zlib_dir = rebase_path("${_root_out_dir_}/hmosbundlemanager/zlib_override")
   ld_library_path =
       "${ark_js_runtime_dir}:${icu_dir}:${llvm_lib_dir}:${zlib_dir}"
   script = "$js_root/test/regresstest/run_regress_test.py"
