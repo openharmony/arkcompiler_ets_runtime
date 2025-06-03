@@ -371,6 +371,7 @@ group("ark_aot_ts_test") {
     "sharedmap",
     "sharedJSON",
     "sharedset",
+    "sharedset_extern",
     "definesendableclass",
     "sendableenv",
     "sendablefunc",

@@ -82,32 +82,10 @@ Clear Scenario[forEach]: BusinessError: Concurrent modification exception, errCo
 sharedSet add[shared] element success
 sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 sharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
-===Type check end===
-===Class inheritance test begin ===
-true
-1
-true
-true
-true
-3
-SubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
-SubSendableSet key[for-of]: one
-SubSendableSet key[for-of]: two
-SubSendableSet key[for-of]: three
-4
-SubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
-true
-true
-true
-3
-add extension(.): TypeError: Cannot add property in prevent extensions
-add extension([]): TypeError: Cannot add property in prevent extensions
-SubSubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
-SubSubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 === An iterable object to convert to an ArkTS Set  begin===
 set key[forEach]: 0
 set key[forEach]: 1
 set key[forEach]: 2
 set key[forEach]: 3
 set key[forEach]: 4
-===Class inheritance test end ===
+===Type check end===
