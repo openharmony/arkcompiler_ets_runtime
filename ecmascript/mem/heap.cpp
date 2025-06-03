@@ -862,9 +862,7 @@ void Heap::Initialize()
         nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
-#ifndef USE_CMC_GC
     nonMovableSpace_->Initialize();
-#endif
     size_t snapshotSpaceCapacity = config_.GetDefaultSnapshotSpaceSize();
     snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
     size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();

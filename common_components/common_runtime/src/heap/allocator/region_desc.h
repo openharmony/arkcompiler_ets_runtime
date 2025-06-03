@@ -497,7 +497,7 @@ public:
 #if defined(_WIN64)
         LOGE_IF(UNLIKELY_CC(!VirtualFree(unitAddress, size, MEM_DECOMMIT))) <<
             "VirtualFree failed in ReturnPage, errno: " << GetLastError();
-
+        
 #elif defined(__APPLE__)
         MemorySet(reinterpret_cast<uintptr_t>(unitAddress), size, 0, size);
         (void)madvise(unitAddress, size, MADV_DONTNEED);
@@ -612,26 +612,16 @@ public:
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_RESURRECTED_REGION, 1, flag);
     }
 
-    void SetFixedRegionFlag(uint8_t flag)
-    {
-        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_FIXED_REGION, 1, flag);
-    }
-
-    bool IsFixedRegionFlag()
-    {
-        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_FIXED_REGION, 1);
-    }
-
     void SetRegionCellCount(uint8_t cellCount)
     {
-        // 7: region cell count is 7 bits.
-        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 7, cellCount);
+        // 8: region cell count is 8 bits.
+        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8, cellCount);
     }
 
     uint16_t GetRegionCellCount()
     {
-        // 7: region cell count is 7 bits.
-        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 7);
+        // 8: region cell count is 8 bits.
+        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 8);
     }
 
     RegionType GetRegionType() const
@@ -645,7 +635,7 @@ public:
     size_t GetUnitIdx() const { return RegionDesc::UnitInfo::GetUnitIdx(reinterpret_cast<const UnitInfo*>(this)); }
 
     HeapAddress GetRegionStart() const { return RegionDesc::GetUnitAddress(GetUnitIdx()); }
-
+   
     HeapAddress GetRegionEnd() const { return metadata.regionEnd; }
 
     void SetRegionAllocPtr(HeapAddress addr) { metadata.allocPtr = addr; }
@@ -937,8 +927,7 @@ private:
         BIT_OFFSET_MARKED_REGION = BITS_5,
         BIT_OFFSET_ENQUEUED_REGION = 6,
         BIT_OFFSET_RESURRECTED_REGION = 7,
-        BIT_OFFSET_FIXED_REGION = 8,
-        BIT_OFFSET_REGION_CELLCOUNT = 9
+        BIT_OFFSET_REGION_CELLCOUNT = 8
     };
 
     struct ObjectSlot {
@@ -1004,8 +993,7 @@ private:
                 uint8_t isMarked : 1;
                 uint8_t isEnqueued : 1;
                 uint8_t isResurrected : 1;
-                uint8_t isFixed : 1;
-                uint8_t cellCount : 7;
+                uint8_t cellCount : 8;
             };
             BitFields<uint16_t> regionBits;
         };
@@ -1122,7 +1110,6 @@ private:
         SetMarkedRegionFlag(0);
         SetEnqueuedRegionFlag(0);
         SetResurrectedRegionFlag(0);
-        SetFixedRegionFlag(0);
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
     }
 
