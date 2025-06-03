@@ -69,12 +69,15 @@ void CollectorResources::Init()
 
 void CollectorResources::Fini()
 {
-    StopGCWork();
-    ASSERT_LOGF(!finalizerProcessor_.IsRunning(), "Invalid finalizerProcessor status");
-    ASSERT_LOGF(!gcThreadRunning_.load(std::memory_order_relaxed), "Invalid GC thread status");
-    taskQueue_->Finish();
-    delete taskQueue_;
-    taskQueue_ = nullptr;
+    if (hasRelease == false) {
+        StopGCWork();
+        ASSERT_LOGF(!finalizerProcessor_.IsRunning(), "Invalid finalizerProcessor status");
+        ASSERT_LOGF(!gcThreadRunning_.load(std::memory_order_relaxed), "Invalid GC thread status");
+        taskQueue_->Finish();
+        delete taskQueue_;
+        taskQueue_ = nullptr;
+        hasRelease = true;
+    }
 }
 
 void CollectorResources::StopGCWork()

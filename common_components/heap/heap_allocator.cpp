@@ -51,7 +51,7 @@ Address HeapAllocator::AllocateInHuge(size_t size, LanguageType language)
 
 Address HeapAllocator::AllocateInReadOnly(size_t size, LanguageType language)
 {
-    auto address = HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    auto address = HeapManager::Allocate(size, AllocType::READ_ONLY_OBJECT);
     BaseObject::Cast(address)->SetLanguageType(language);
     return address;
 }

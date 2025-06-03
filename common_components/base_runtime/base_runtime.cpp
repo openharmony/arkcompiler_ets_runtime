@@ -143,7 +143,8 @@ void BaseRuntime::Fini()
 void BaseRuntime::PreFork(ThreadHolder *holder)
 {
     // Need appspawn space and compress gc.
-    RequestGC(GcType::FULL);
+    RequestGC(GcType::APPSPAWN);
+    heapManager_->SetReadOnlyToROSpace();
     {
         ThreadNativeScope scope(holder);
         HeapManager::StopRuntimeThreads();
@@ -191,6 +192,10 @@ void BaseRuntime::RequestGC(GcType type)
         }
         case GcType::FULL: {
             HeapManager::RequestGC(GC_REASON_BACKUP, false);
+            break;
+        }
+        case GcType::APPSPAWN: {
+            HeapManager::RequestGC(GC_REASON_APPSPAWN, false);
             break;
         }
     }

@@ -65,6 +65,7 @@ GCRequest g_gcRequests[] = {
     { GC_REASON_NATIVE, "native_alloc", false, true, MIN_ASYNC_GC_INTERVAL_NS, g_initNativeTriggerTimestamp },
     { GC_REASON_HEU_SYNC, "heuristic_sync", true, true, 0, 0 },
     { GC_REASON_NATIVE_SYNC, "native_alloc_sync", true, true, 0, 0 },
-    { GC_REASON_FORCE, "force", true, false, 0, 0 }
+    { GC_REASON_FORCE, "force", true, false, 0, 0 },
+    { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 }
 };
 } // namespace panda

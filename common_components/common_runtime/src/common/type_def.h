@@ -50,6 +50,7 @@ enum class AllocType {
     MOVEABLE_OBJECT = 0,
     PINNED_OBJECT,
     RAW_POINTER_OBJECT,
+    READ_ONLY_OBJECT,
 };
 } // namespace panda
 

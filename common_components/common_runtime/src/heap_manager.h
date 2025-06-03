@@ -17,10 +17,10 @@
 
 #include "common_components/common_runtime/src/common/type_def.h"
 #include "common_components/common_runtime/src/heap/collector/gc_request.h"
-#include "common_components/common_runtime/src/heap/collector/collector.h"
-#include "common_components/common_runtime/src/heap/heap.h"
+#include "common_interfaces/base/runtime_param.h"
 
 namespace panda {
+class BaseObject;
 // replace this for Heap.
 class HeapManager {
 public:
@@ -31,14 +31,7 @@ public:
     void Init(const RuntimeParam& param);
     void Fini();
 
-    static inline void RequestGC(GCReason reason, bool async)
-    {
-        if (!Heap::GetHeap().IsGCEnabled()) {
-            return;
-        }
-        Collector& collector = Heap::GetHeap().GetCollector();
-        collector.RequestGC(reason, async);
-    }
+    static void RequestGC(GCReason reason, bool async);
 
     // alloc return memory address, not "object" pointers, since they're not
     // initialized yet
@@ -48,6 +41,10 @@ public:
     // For PostFork and Prefork.
     static void StartRuntimeThreads();
     static void StopRuntimeThreads();
+
+    void SetReadOnlyToROSpace();
+    void ClearReadOnlyFromROSpace();
+    bool IsInROSpace(BaseObject *obj);
 };
 } // namespace panda
 #endif // ARK_COMMON_HEAP_MANAGER_H
