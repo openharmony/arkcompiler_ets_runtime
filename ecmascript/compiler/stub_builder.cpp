@@ -2759,12 +2759,9 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     Label setElementsLength(env);
     Label indexGreaterLength(env);
     Label indexGreaterCapacity(env);
-    Label callRuntime(env);
     Label storeElement(env);
     Label handlerIsInt(env);
     Label handlerNotInt(env);
-    Label cellHasChanged(env);
-    Label cellHasNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
     Label greaterThanInt32Max(env);
@@ -2882,16 +2879,62 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
         }
         Bind(&handlerNotInt);
         {
-            GateRef cellValue = GetPrototypeHandlerProtoCell(glue, *varHandler);
-            BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
-            Bind(&cellHasChanged);
+            Label handlerIsPrototypeHandler(env);
+            Label handlerNotPrototypeHandler(env);
+            Label handlerIsTransWithProtoHandler(env);
+            Label handlerIsTransitionHandler(env);
+
+            BRANCH(TaggedIsPrototypeHandler(glue, *varHandler), &handlerIsPrototypeHandler,
+                   &handlerNotPrototypeHandler);
+            Bind(&handlerIsPrototypeHandler);
             {
-                Jump(&exit);
+                // If the handler is a prototypehandler, we need to check protochangemarker.
+                Label cellNotNullOrUndefined(env);
+                Label getPrototypeHandlerHandlerInfo(env);
+                GateRef cellValue = GetPrototypeHandlerProtoCell(glue, *varHandler);
+                BRANCH(TaggedIsUndefinedOrNull(cellValue), &exit, &cellNotNullOrUndefined);
+
+                Bind(&cellNotNullOrUndefined);
+                BRANCH(GetHasChanged(cellValue), &exit, &getPrototypeHandlerHandlerInfo);
+                Bind(&getPrototypeHandlerHandlerInfo);
+                {
+                    isOnPrototype = True();
+                    varHandler = GetPrototypeHandlerHandlerInfo(glue, *varHandler);
+                    Jump(&loopEnd);
+                }
             }
+
+            Bind(&handlerNotPrototypeHandler);
+            {
+                BRANCH(TaggedIsTransWithProtoHandler(glue, *varHandler), &handlerIsTransWithProtoHandler,
+                       &handlerIsTransitionHandler);
+                Bind(&handlerIsTransWithProtoHandler);
+                {
+                    // If the handler is a transwithprotohandler, we need to check protochangemarker.
+                    Label cellNotNullOrUndefined(env);
+                    Label getTransWithProtoHandlerInfo(env);
+                    GateRef cellValue = GetTransWithProtoHandlerProtoCell(glue, *varHandler);
+                    BRANCH(TaggedIsUndefinedOrNull(cellValue), &exit, &cellNotNullOrUndefined);
+
+                    Bind(&cellNotNullOrUndefined);
+                    BRANCH(GetHasChanged(cellValue), &exit, &getTransWithProtoHandlerInfo);
+                    Bind(&getTransWithProtoHandlerInfo);
+                    {
+                        isOnPrototype = True();
+                        varHandler = GetTransWithProtoHandlerInfo(glue, *varHandler);
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&handlerIsTransitionHandler);
+                {
+                    // If the handler is a transitionhandler, we just get handlerinfo.
+                    varHandler = GetTransitionHandlerInfo(glue, *varHandler);
+                    Jump(&loopEnd);
+                }
+            }
+
             Bind(&loopEnd);
             {
-                isOnPrototype = True();
-                varHandler = GetPrototypeHandlerHandlerInfo(glue, *varHandler);
                 LoopEndWithCheckSafePoint(&loopHead, env, glue);
             }
         }

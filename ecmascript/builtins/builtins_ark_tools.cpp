@@ -552,6 +552,28 @@ JSTaggedValue BuiltinsArkTools::IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info
     return JSTaggedValue(func->GetProfileTypeInfo().IsTaggedArray());
 }
 
+// It is used to print the IC state of a function with a specific slotId and icKind.
+JSTaggedValue BuiltinsArkTools::GetICState(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
+    int slotId = JSHandle<JSTaggedValue>(GetCallArg(info, 1))->GetInt();
+    int icKind = JSHandle<JSTaggedValue>(GetCallArg(info, 2))->GetInt();
+    JSHandle<ProfileTypeInfo> profileTypeInfo = JSHandle<ProfileTypeInfo>(thread, func->GetProfileTypeInfo());
+    if (profileTypeInfo.GetTaggedValue().IsUndefined()) {
+        JSHandle<EcmaString> noProfileTypeInfo = factory->NewFromUtf8ReadOnly("No ProfileTypeInfo");
+        return noProfileTypeInfo.GetTaggedValue();
+    }
+    ProfileTypeAccessor profileTypeAccessor(thread, profileTypeInfo, slotId, static_cast<ICKind>(icKind));
+    auto state = profileTypeAccessor.ICStateToString(profileTypeAccessor.GetICState());
+    JSHandle<EcmaString> stateString = factory->NewFromUtf8ReadOnly(state);
+    return stateString.GetTaggedValue();
+}
+
 JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

@@ -587,6 +587,31 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadTypedArrayElement(JSThread *thread, 
     return JSTypedArray::FastGetPropertyByIndex(thread, receiver, index, type);
 }
 
+template <typename T>
+ARK_INLINE JSTaggedValue ICRuntimeStub::StoreElementWithProtoHandler(JSThread *thread,
+                                                                     JSObject *receiver,
+                                                                     JSTaggedValue key,
+                                                                     JSTaggedValue value,
+                                                                     JSTaggedValue handler)
+{
+    if (receiver->GetClass()->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread,
+            GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), JSTaggedValue::Exception());
+    }
+    T *protoHandler = T::Cast(handler.GetTaggedObject());
+    auto cellValue = protoHandler->GetProtoCell();
+    if (cellValue == JSTaggedValue::Undefined() || cellValue == JSTaggedValue::Null()) {
+        return JSTaggedValue::Hole();
+    }
+    ASSERT(cellValue.IsProtoChangeMarker());
+    ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
+    if (cell->GetHasChanged()) {
+        return JSTaggedValue::Hole();
+    }
+    JSTaggedValue handlerInfo = protoHandler->GetHandlerInfo();
+    return StoreElement(thread, receiver, key, value, handlerInfo);
+}
+
 JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, JSTaggedValue key,
                                           JSTaggedValue value, JSTaggedValue handler)
 {
@@ -629,23 +654,20 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         }
         elements->Set(thread, elementIndex, valueHandle);
     } else {
-        ASSERT(handler.IsPrototypeHandler());
-        if (receiver->GetClass()->IsJSShared()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread,
-                GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), JSTaggedValue::Exception());
+        if (handler.IsPrototypeHandler()) {
+            return StoreElementWithProtoHandler<PrototypeHandler>(thread, receiver, key, value, handler);
+        } else if (handler.IsTransWithProtoHandler()) {
+            return StoreElementWithProtoHandler<TransWithProtoHandler>(thread, receiver, key, value, handler);
+        } else {
+            ASSERT(handler.IsTransitionHandler());
+            if (receiver->GetClass()->IsJSShared()) {
+                THROW_TYPE_ERROR_AND_RETURN(thread,
+                    GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), JSTaggedValue::Exception());
+            }
+            TransitionHandler *transitionHandler = TransitionHandler::Cast(handler.GetTaggedObject());
+            JSTaggedValue handlerInfo = transitionHandler->GetHandlerInfo();
+            return StoreElement(thread, receiver, key, value, handlerInfo);
         }
-        PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());
-        auto cellValue = prototypeHandler->GetProtoCell();
-        if (cellValue == JSTaggedValue::Undefined()) {
-            return JSTaggedValue::Hole();
-        }
-        ASSERT(cellValue.IsProtoChangeMarker());
-        ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
-        if (cell->GetHasChanged()) {
-            return JSTaggedValue::Hole();
-        }
-        JSTaggedValue handlerInfo = prototypeHandler->GetHandlerInfo();
-        return StoreElement(thread, receiver, key, value, handlerInfo);
     }
     return JSTaggedValue::Undefined();
 }

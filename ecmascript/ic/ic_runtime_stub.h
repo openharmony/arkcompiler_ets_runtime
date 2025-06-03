@@ -76,6 +76,9 @@ public:
     static inline JSTaggedValue LoadElement(JSThread *thread, JSObject *receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadStringElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadTypedArrayElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
+    template <typename T>
+    static inline JSTaggedValue StoreElementWithProtoHandler(JSThread *thread, JSObject *receiver, JSTaggedValue key,
+                                                             JSTaggedValue value, JSTaggedValue handlerInfo);
     static inline JSTaggedValue StoreElement(JSThread *thread, JSObject *receiver, JSTaggedValue key,
                                              JSTaggedValue value, JSTaggedValue handlerInfo);
     static inline JSTaggedValue StoreTypedArrayElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
