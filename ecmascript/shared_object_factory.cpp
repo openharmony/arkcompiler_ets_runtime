@@ -671,11 +671,8 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
         size_t nativeSizeAfterLastGC = sHeap_->GetNativeSizeAfterLastGC();
-        if (nativeSizeAfterLastGC > sHeap_->GetNativeSizeTriggerSharedGC()) {
+        if (nativeSizeAfterLastGC > sHeap_->GetNativeSizeTriggerSharedCM()) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::NATIVE_LIMIT>(thread_);
-        } else if (sHeap_->CheckCanTriggerConcurrentMarking(thread_) &&
-            nativeSizeAfterLastGC > sHeap_->GetNativeSizeTriggerSharedCM()) {
-            sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::NATIVE_LIMIT>(thread_);
         }
     }
 #ifdef USE_CMC_GC
