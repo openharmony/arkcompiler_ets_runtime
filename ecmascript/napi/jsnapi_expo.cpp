@@ -3494,6 +3494,40 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, InternalFunctionCallba
     return NewConcurrent(vm, context, nativeFunc, deleter, data, callNapi, nativeBindingsize);
 }
 
+Local<FunctionRef> FunctionRef::NewConcurrentWithName(EcmaVM *vm, const Local<JSValueRef> &context,
+                                                      InternalFunctionCallback nativeFunc,
+                                                      NativePointerCallback deleter, const char *name, void *data,
+                                                      bool callNapi, size_t nativeBindingsize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8WithoutStringTable(name));
+    PropertyDescriptor nameDesc(thread, functionName, false, false, true);
+    ecmascript::PropertyAttributes attr(nameDesc);
+    attr.SetIsInlinedProps(true);
+    attr.SetOffset(0);
+    attr.SetRepresentation(ecmascript::Representation::TAGGED);
+
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    ecmascript::Representation rep =
+        ecmascript::PropertyAttributes::TranslateToRep(nameDesc.GetValue().GetTaggedValue());
+    hclass = JSHClass::SetPropertyOfObjHClass<true>(thread, hclass, globalConst->GetHandledNameString(), attr, rep,
+                                                    true, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSHandle<JSFunction> func = factory->NewNativeFunctionByHClass(hclass, reinterpret_cast<void *>(nativeFunc),
+                                                                   ecmascript::FunctionKind::NORMAL_FUNCTION);
+    func->SetPropertyInlinedProps<true>(thread, 0, nameDesc.GetValue().GetTaggedValue());
+    JSFunction::SetFunctionExtraInfo(thread, func, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+    ASSERT_PRINT(func->IsExtensible(), "Function must be extensible");
+
+    func->SetCallNapi(callNapi);
+    func->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(func));
+}
+
 static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
 {
     CROSS_THREAD_CHECK(vm);
@@ -3559,6 +3593,29 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunction(EcmaVM *vm, const Loc
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
     InitClassFunction(vm, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+    Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    return scope.Escape(result);
+}
+
+Local<FunctionRef> FunctionRef::NewConcurrentClassFunctionWithName(EcmaVM *vm, const Local<JSValueRef> &context,
+                                                                   InternalFunctionCallback nativeFunc,
+                                                                   NativePointerCallback deleter, const char *name,
+                                                                   void *data, bool callNapi, size_t nativeBindingsize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    EscapeLocalScope scope(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
+    JSHandle<JSFunction> current = factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc), hclass,
+                                                                  ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+    InitClassFunction(vm, current, callNapi);
+    JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+
+    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8WithoutStringTable(name));
+    JSFunction::SetFunctionNameNoPrefix(thread, *current, functionName.GetTaggedValue());
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
     return scope.Escape(result);
