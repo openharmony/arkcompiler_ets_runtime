@@ -255,6 +255,16 @@ public:
         appfreezeFilterCallback_ = cb;
     }
 
+    RawHeapDumpCropLevel GetRawHeapDumpCropLevel() const
+    {
+        return rawHeapDumpCropLevel_;
+    }
+
+    void SetRawHeapDumpCropLevel(RawHeapDumpCropLevel level)
+    {
+        rawHeapDumpCropLevel_ = level;
+    }
+
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
         return nativeAreaAllocator_.get();
@@ -345,6 +355,9 @@ private:
 
     // for appfreeze filter function
     AppFreezeFilterCallback appfreezeFilterCallback_ {nullptr};
+
+    // for rawheap dump crop level
+    RawHeapDumpCropLevel rawHeapDumpCropLevel_ {RawHeapDumpCropLevel::DEFAULT};
     
     friend class EcmaVM;
     friend class JSThread;

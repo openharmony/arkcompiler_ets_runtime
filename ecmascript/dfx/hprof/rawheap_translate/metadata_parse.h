@@ -53,7 +53,7 @@ public:
         return &bitField_;
     }
 
-    std::string GetMetaVersion()
+    const Version& GetMetaVersion() const
     {
         return version_;
     }
@@ -77,7 +77,7 @@ private:
     static bool GetUInt32(const cJSON *json, const char *key, uint32_t &value);
     static bool GetUInt32(const cJSON *json, uint32_t &value);
 
-    std::string version_;
+    Version version_;
     std::unordered_map<std::string, MetaData *> meta_ {};
     std::vector<MetaData *> orderedMeta_ {};
     DictionaryLayout dictionaryLayout_;

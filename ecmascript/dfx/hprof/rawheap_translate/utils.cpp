@@ -24,39 +24,6 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
-bool CheckVersion(const std::string &version)
-{
-    std::vector<int> result {};
-    std::stringstream ss(version);
-    std::string token;
-    while (getline(ss, token, '.')) {
-        int number;
-        std::istringstream(token) >> number;
-        result.push_back(number);
-    }
-    
-    // 3: means the version format is x.x.x
-    if (result.size() != 3) {
-        LOG_ERROR_ << "current version " << version << " is illegal!";
-        return false;
-    }
-
-    bool majorVersionCheckFalse = result[MAJOR_VERSION_INDEX] > VERSION[MAJOR_VERSION_INDEX];
-    bool minorVersionCheckFalse = result[MAJOR_VERSION_INDEX] == VERSION[MAJOR_VERSION_INDEX] &&
-                                  result[MINOR_VERSION_INDEX] > VERSION[MINOR_VERSION_INDEX];
-    bool buildVersionCheckFalse = result[MAJOR_VERSION_INDEX] == VERSION[MAJOR_VERSION_INDEX] &&
-                                  result[MINOR_VERSION_INDEX] == VERSION[MINOR_VERSION_INDEX] &&
-                                  result[BUILD_VERSION_INDEX] > VERSION[BUILD_VERSION_INDEX];
-    if (majorVersionCheckFalse || minorVersionCheckFalse || buildVersionCheckFalse) {
-        std::ostringstream oss;
-        oss << "The rawheap file's version " << version;
-        oss << " is not matched the current rawheap translator, please use the newest version of the translator!";
-        LOG_ERROR_ << oss.str();
-        return false;
-    };
-    return true;
-}
-
 bool RealPath(const std::string &filename, std::string &realpath)
 {
     if (filename.empty() || filename.size() > PATH_MAX) {
@@ -137,6 +104,16 @@ bool IsLittleEndian()
     return *reinterpret_cast<char *>(&i) == 1;
 }
 
+uint16_t ByteToU16(char *data)
+{
+    uint32_t value = *reinterpret_cast<uint16_t *>(data);
+    if (!IsLittleEndian()) {
+        value = (value & 0x00FF) << 8 |
+                (value & 0xFF00) >> 8;
+    }
+    return value;
+}
+
 uint32_t ByteToU32(char *data)
 {
     uint32_t value = *reinterpret_cast<uint32_t *>(data);
@@ -191,6 +168,7 @@ bool FileReader::Initialize(const std::string &path)
     }
 
     file_.open(realPath, std::ios::binary);
+    fileSize_= GetFileSize(realPath);
     return true;
 }
 
@@ -272,5 +250,27 @@ uint32_t FileReader::GetFileSize(const std::string &path)
         return static_cast<uint32_t>(fileInfo.st_size);
     }
     return 0;
+}
+
+bool Version::Parse(const std::string &version)
+{
+    std::vector<int> result {};
+    std::stringstream ss(version);
+    std::string token;
+    while (getline(ss, token, '.')) {
+        int number;
+        std::istringstream(token) >> number;
+        result.push_back(number);
+    }
+
+    if (result.size() != 3) {
+        LOG_ERROR_ << "parse version failed! version=" << version;
+        return false;
+    }
+
+    major_ = result[0];
+    minor_ = result[1];
+    build_ = result[2];
+    return true;
 }
 } // namespace rawheap_translate

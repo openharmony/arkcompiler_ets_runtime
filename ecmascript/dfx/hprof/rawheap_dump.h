@@ -80,6 +80,8 @@ protected:
     NodeId GenerateNodeId(JSTaggedType addr);
     void WriteChunk(char *data, size_t size);
     void WriteU64(uint64_t value);
+    void WriteU32(uint32_t value);
+    void WriteU16(uint16_t value);
     void WriteHeader(uint32_t offset, uint32_t size);
     void WritePadding();
     void AddSectionRecord(uint32_t value);
@@ -124,6 +126,39 @@ private:
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
     const EcmaVM *vm_ {nullptr};
     CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
+};
+
+class RawHeapDumpV2 : public RawHeapDump {
+public:
+    RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
+                  EntryIdMap* entryIdMap, const DumpSnapShotOption &dumpOption);
+    ~RawHeapDumpV2();
+
+    void BinaryDump() override;
+
+private:
+    struct AddrTableItem {
+        uint32_t syntheticAddr;
+        uint32_t size;
+        uint64_t nodeId;
+        uint32_t nativeSize;
+        uint32_t type;
+    };
+
+    void DumpRootTable(HeapMarker &marker);
+    void DumpStringTable(HeapMarker &marker);
+    void DumpObjectTable(HeapMarker &marker);
+    void DumpObjectMemory(HeapMarker &marker);
+    void UpdateStringTable(HeapMarker &marker);
+
+    uint32_t GenerateRegionId(JSTaggedType addr);
+    uint32_t GenerateSyntheticAddr(JSTaggedType addr);
+
+    constexpr static const char *const RAWHEAP_VERSION_V2 = "2.0.0";
+    const EcmaVM *vm_ {nullptr};
+    CUnorderedMap<uint64_t, CVector<uint32_t>> strIdMapObjVec_ {};
+    CUnorderedMap<Region *, uint32_t> regionIdMap_ {};
+    uint32_t regionId_ {0x11U};  // region id start from 0x10
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_DUMP_H

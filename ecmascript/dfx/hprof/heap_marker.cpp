@@ -20,13 +20,21 @@ bool HeapMarker::Mark(JSTaggedType addr)
 {
     auto index = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
     Region *region = Region::ObjectAddressToRange(addr);
-    auto [it, inserted] = regionBitsetMap_.emplace(region, std::bitset<BITSET_SIZE>());
-    if (inserted || !it->second.test(index)) {
+    auto it = regionBitsetMap_.find(region);
+    if (it != regionBitsetMap_.end()) {
+        if (it->second.test(index)) {
+            return false;
+        }
         it->second.set(index);
         ++count_;
         return true;
     }
-    return false;
+
+    std::bitset<BITSET_SIZE> bitset;
+    bitset.set(index);
+    ++count_;
+    regionBitsetMap_.emplace(region, bitset);
+    return true;
 }
 
 bool HeapMarker::IsMarked(JSTaggedType addr)

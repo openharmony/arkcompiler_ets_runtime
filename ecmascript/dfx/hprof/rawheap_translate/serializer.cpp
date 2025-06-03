@@ -71,6 +71,7 @@ void StreamWriter::EndOfStream()
 
 bool HeapSnapshotJSONSerializer::Serialize(RawHeap *rawheap, StreamWriter *writer)
 {
+    LOG_INFO_ << "start to serialize!";
     // Serialize Node/Edge/String-Table
     SerializeSnapshotHeader(rawheap, writer);     // 1.
     SerializeNodes(rawheap, writer);              // 2.

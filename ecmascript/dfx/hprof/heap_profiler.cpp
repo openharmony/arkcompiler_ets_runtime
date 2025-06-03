@@ -280,10 +280,30 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
     DumpSnapShotOption option;
     auto stringTable = chunk_.New<StringHashMap>(vm_);
     auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
-    RawHeapDumpV1 rawHeapDump(vm_, stream, snapshot, entryIdMap_, dumpOption);
-    rawHeapDump.BinaryDump();
+
+    if (const_cast<EcmaVM *>(vm_)->GetJSOptions().EnableRawHeapCrop()) {
+        Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    }
+
+    RawHeapDump *rawHeapDump = nullptr;
+    RawHeapDumpCropLevel cropLevel = Runtime::GetInstance()->GetRawHeapDumpCropLevel();
+    switch (cropLevel) {
+        case RawHeapDumpCropLevel::LEVEL_V1:
+            rawHeapDump = new RawHeapDumpV1(vm_, stream, snapshot, entryIdMap_, dumpOption);
+            break;
+        case RawHeapDumpCropLevel::LEVEL_V2:
+            rawHeapDump = new RawHeapDumpV2(vm_, stream, snapshot, entryIdMap_, dumpOption);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "rawheap dump, do not supported crop level " << static_cast<int>(cropLevel);
+            UNREACHABLE();
+            break;
+    }
+
+    rawHeapDump->BinaryDump();
     chunk_.Delete<StringHashMap>(stringTable);
     chunk_.Delete<HeapSnapshot>(snapshot);
+    delete rawHeapDump;
     return true;
 }
 

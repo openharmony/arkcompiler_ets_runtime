@@ -199,12 +199,17 @@ bool MetaParser::ParseTypeLayoutAndDesc(const cJSON *json)
 
 bool MetaParser::ParseVersion(const cJSON *json)
 {
-    if (!GetString(json, "version", version_)) {
+    std::string versionId;
+    if (!GetString(json, "version", versionId)) {
         LOG_ERROR_ << "version not found!";
         return false;
     }
 
-    LOG_INFO_ << "current meta version is " << version_;
+    if (!version_.Parse(versionId)) {
+        return false;
+    }
+
+    LOG_INFO_ << "current meta version is " << version_.ToString();
     return true;
 }
 

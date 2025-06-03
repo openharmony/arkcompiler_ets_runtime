@@ -23,6 +23,17 @@ RawHeap::~RawHeap()
     edges_.clear();
 }
 
+std::string RawHeap::ReadVersion(FileReader &file)
+{
+    uint32_t size = 8;  // 8: version size
+    std::vector<char> version(size);
+    if (!file.Seek(0) || !file.Read(version.data(), size)) {
+        return "";
+    }
+    LOG_INFO_ << "current rawheap version is " << version.data();
+    return std::string(version.data());
+}
+
 std::vector<Node *>* RawHeap::GetNodes()
 {
     return &nodes_;
@@ -105,13 +116,12 @@ RawHeapTranslateV1::~RawHeapTranslateV1()
 
 bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
 {
-    if (!ReadVersion(file) || !ReadSectionInfo(file, rawheapFileSize, sections_) ||
-        !ReadRootTable(file) || !ReadStringTable(file)) {
+    if (!ReadSectionInfo(file, rawheapFileSize, sections_) || !ReadRootTable(file) || !ReadStringTable(file)) {
         return false;
     }
 
     // 4: object table section start from 4, step is 2
-    for (int i = 4; i < sections_.size(); i += 2) {
+    for (size_t i = 4; i < sections_.size(); i += 2) {
         if (!ReadObjectTable(file, sections_[i], sections_[i + 1])) {
             return false;
         }
@@ -144,18 +154,6 @@ void RawHeapTranslateV1::Translate()
     } else {
         LOG_INFO_ << "success!";
     }
-}
-
-bool RawHeapTranslateV1::ReadVersion(FileReader &file)
-{
-    uint32_t size = 8;  // 8: version size
-    std::vector<char> version(size);
-    if (!file.Seek(0) || !file.Read(version.data(), size)) {
-        return false;
-    }
-    SetVersion(std::string(version.data()));
-    LOG_INFO_ << "current rawheap version is " << GetVersion();
-    return true;
 }
 
 bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
@@ -416,6 +414,9 @@ void RawHeapTranslateV1::CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIn
 
 void RawHeapTranslateV1::CreateHClassEdge(Node *node, Node *hclass)
 {
+    if (node->nodeId == hclass->nodeId) {
+        return;
+    }
     static StringId hclassStrId = InsertAndGetStringId("hclass");
     InsertEdge(hclass, hclassStrId, EdgeType::DEFAULT);
     node->edgeCount++;
@@ -447,6 +448,304 @@ bool RawHeapTranslateV1::IsWeak(uint64_t addr)
 void RawHeapTranslateV1::RemoveWeak(uint64_t &addr)
 {
     addr &= (~TAG_WEAK);
+}
+
+RawHeapTranslateV2::~RawHeapTranslateV2()
+{
+    delete[] mem_;
+    sections_.clear();
+    nodesMap_.clear();
+}
+
+bool RawHeapTranslateV2::Parse(FileReader &file, uint32_t rawheapFileSize)
+{
+    return ReadSectionInfo(file, rawheapFileSize, sections_) &&
+           ReadObjectTable(file) && ReadRootTable(file) && ReadStringTable(file);
+}
+
+void RawHeapTranslateV2::Translate()
+{
+    FillNodes();
+    auto nodes = GetNodes();
+    size_t size = nodes->size();
+    for (size_t i = 1; i < size; ++i) {
+        Node *node = (*nodes)[i];
+        Node *hclass = GetNextEdgeTo();
+        if (hclass == nullptr) {
+            LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
+        } else if (hclass->nodeId != node->nodeId) {
+            CreateEdge(node, hclass, InsertAndGetStringId("hclass"), EdgeType::DEFAULT);
+        }
+
+        if (metaParser_->IsString(node->jsType)) {
+            continue;
+        }
+        BuildEdges(node);
+    }
+    LOG_INFO_ << "success!";
+}
+
+bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
+{
+    if (!file.CheckAndGetHeaderAt(sections_[0], sizeof(uint32_t))) {
+        LOG_ERROR_ << "root table header error!";
+        return false;
+    }
+
+    std::vector<uint32_t> roots(file.GetHeaderLeft());
+    if (!file.ReadArray(roots, file.GetHeaderLeft())) {
+        LOG_ERROR_ << "read root addr error!";
+        return false;
+    }
+
+    AddSyntheticRootNode(roots);
+    LOG_INFO_ << "root node count " << file.GetHeaderLeft();
+    return true;
+}
+
+bool RawHeapTranslateV2::ReadStringTable(FileReader &file)
+{
+    // 2: index in sections means the offset of string table
+    if (!file.CheckAndGetHeaderAt(sections_[2], 0)) {
+        LOG_ERROR_ << "string table header error!";
+        return false;
+    }
+
+    uint32_t strCnt = file.GetHeaderLeft();
+    for (uint32_t i = 0; i < strCnt; ++i) {
+        ParseStringTable(file);
+    }
+
+    LOG_INFO_ << "string table count " << strCnt;
+    return true;
+}
+
+bool RawHeapTranslateV2::ReadObjectTable(FileReader &file)
+{
+    // 4: index in sections means the offset of object table
+    if (!file.CheckAndGetHeaderAt(sections_[4], sizeof(AddrTableItemV2))) {
+        LOG_ERROR_ << "object table header error!";
+        return false;
+    }
+
+    syntheticRoot_ = CreateNode();
+    uint32_t tableSize = file.GetHeaderLeft() * sizeof(AddrTableItemV2);
+    // 5: index in sections means the total size of object table
+    memSize_ = sections_[5] - tableSize - sizeof(uint64_t);
+    std::vector<char> objTableData(tableSize);
+    mem_ = new char[memSize_];
+    if (!file.Read(objTableData.data(), tableSize) || !file.Read(mem_, memSize_)) {
+        LOG_ERROR_ << "read object table failed!";
+        return false;
+    }
+
+    char *tableData = objTableData.data();
+    for (uint32_t i = 0; i < file.GetHeaderLeft(); ++i) {
+        AddrTableItemV2 table = {
+            ByteToU32(tableData),
+            ByteToU32(tableData + sizeof(uint32_t)),
+            ByteToU64(tableData + sizeof(uint64_t)),
+            ByteToU32(tableData + sizeof(uint64_t) * 2),
+            ByteToU32(tableData + sizeof(uint64_t) * 2 + sizeof(uint32_t))
+        };
+
+        Node *node = CreateNode();
+        nodesMap_.emplace(table.syntheticAddr, node);
+        node->size = table.size;
+        node->nodeId = table.nodeId;
+        node->nativeSize = table.nativeSize;
+        node->jsType = static_cast<uint8_t>(table.type);
+        tableData += sizeof(AddrTableItemV2);
+    }
+
+    LOG_INFO_ << "objects table count " << file.GetHeaderLeft();
+    return true;
+}
+
+bool RawHeapTranslateV2::ParseStringTable(FileReader &file)
+{
+    constexpr int HEADER_SIZE = sizeof(uint64_t) / sizeof(uint32_t);
+    std::vector<uint32_t> header(HEADER_SIZE);
+    if (!file.ReadArray(header, HEADER_SIZE)) {
+        return false;
+    }
+
+    std::vector<uint32_t> objects(header[1]);
+    if (!file.ReadArray(objects, header[1])) {
+        LOG_ERROR_ << "read objects addr error!";
+        return false;
+    }
+
+    std::vector<char> str(header[0] + 1);
+    if (!file.Read(str.data(), header[0] + 1)) {
+        LOG_ERROR_ << "read string error!";
+        return false;
+    }
+
+    std::string name(str.data());
+    StringId strId = InsertAndGetStringId(name);
+    for (auto addr : objects) {
+        Node *node = FindNode(addr);
+        if (node == nullptr) {
+            continue;
+        }
+        node->strId = strId;
+        if (name.find("_GLOBAL") != std::string::npos) {
+            node->type = FRAMEWORK_NODETYPE;
+        }
+    }
+    return true;
+}
+
+void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
+{
+    syntheticRoot_->nodeId = 1;      // 1: means root node
+    syntheticRoot_->type = 9;        // 9: means SYNTHETIC node type
+    syntheticRoot_->strId = InsertAndGetStringId("SyntheticRoot");
+    syntheticRoot_->edgeCount = roots.size();
+
+    StringId strId = InsertAndGetStringId("-subroot-");
+    EdgeType type = EdgeType::SHORTCUT;
+    for (auto addr : roots) {
+        Node *root = FindNode(addr);
+        if (root == nullptr) {
+            continue;
+        }
+        InsertEdge(root, strId, type);
+    }
+}
+
+Node *RawHeapTranslateV2::FindNode(uint32_t addr)
+{
+    auto it = nodesMap_.find(addr);
+    if (it != nodesMap_.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void RawHeapTranslateV2::FillNodes()
+{
+    auto nodes = GetNodes();
+    for (auto it = nodes->begin() + 1; it != nodes->end(); it++) {
+        if ((*it)->type == DEFAULT_NODETYPE) {
+            (*it)->type = metaParser_->GetNodeType((*it)->jsType);
+        }
+
+        if ((*it)->strId >= StringHashMap::CUSTOM_STRID_START || metaParser_->IsString((*it)->jsType)) {
+            continue;
+        }
+        std::string name = metaParser_->GetTypeName((*it)->jsType);
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        (*it)->strId = InsertAndGetStringId(name);
+    }
+}
+
+void RawHeapTranslateV2::BuildEdges(Node *node)
+{
+    if (metaParser_->IsArray(node->jsType)) {
+        BuildArrayEdges(node);
+    } else {
+        std::vector<Node *> refs;
+        for (uint32_t offset = sizeof(uint64_t); offset < node->size; offset += sizeof(uint64_t)) {
+            refs.push_back(GetNextEdgeTo());
+        }
+        BuildFieldEdges(node, refs);
+    }
+}
+
+void RawHeapTranslateV2::BuildArrayEdges(Node *node)
+{
+    uint32_t index = 0;
+    for (uint32_t offset = sizeof(uint64_t); offset < node->size; offset += sizeof(uint64_t)) {
+        Node *ref = GetNextEdgeTo();
+        if (ref == nullptr) {
+            continue;
+        }
+        CreateEdge(node, ref, index++, EdgeType::ELEMENT);
+    }
+}
+
+void RawHeapTranslateV2::BuildFieldEdges(Node *node, std::vector<Node *> &refs)
+{
+    MetaData *meta = metaParser_->GetMetaData(node->jsType);
+    if (meta == nullptr) {
+        LOG_ERROR_ << "js type error, type=" << static_cast<int>(node->jsType);
+        return;
+    }
+
+    for (auto &field : meta->fields) {
+        size_t index = field.offset / sizeof(uint64_t) - 1;
+        if (index >= refs.size() || index < 0) {
+            continue;
+        }
+
+        Node *to = refs[index];
+        if (to == nullptr) {
+            continue;
+        }
+
+        StringId strId = InsertAndGetStringId(field.name);
+        CreateEdge(node, to, strId, EdgeType::DEFAULT);
+    }
+
+    if (metaParser_->IsJSObject(node->jsType)) {
+        BuildJSObjectEdges(node, refs, meta->endOffset);
+    }
+}
+
+void RawHeapTranslateV2::BuildJSObjectEdges(Node *node, std::vector<Node *> &refs, uint32_t endOffset)
+{
+    size_t index = endOffset / sizeof(uint64_t) - 1;
+    for (size_t i = index; i < refs.size(); ++i) {
+        Node *ref = refs[i];
+        if (ref == nullptr) {
+            continue;
+        }
+        CreateEdge(node, ref, InsertAndGetStringId("InlineProperty"), EdgeType::DEFAULT);
+    }
+}
+
+void RawHeapTranslateV2::CreateEdge(Node *node, Node *to, uint32_t nameOrIndex, EdgeType type)
+{
+    InsertEdge(to, nameOrIndex, type);
+    node->edgeCount++;
+}
+
+Node *RawHeapTranslateV2::GetNextEdgeTo()
+{
+    if (memPos_  + sizeof(uint16_t) > memSize_) {
+        return nullptr;
+    }
+
+    uint16_t regionId = ByteToU16(mem_ + memPos_);
+    if (regionId == 0 || regionId <= EXCEPTION_VALUE) {
+        memPos_ += sizeof(uint16_t);
+        return nullptr;
+    }
+
+    if (regionId == INT_VALUE) {
+        memPos_ += sizeof(uint16_t) + sizeof(uint32_t);
+        return nullptr;
+    }
+
+    if (regionId == DOUBLE_VALUE) {
+        memPos_ += sizeof(uint16_t) + sizeof(uint64_t);
+        return nullptr;
+    }
+
+    Node *node = FindNode(ByteToU32(mem_ + memPos_));
+    memPos_ += sizeof(uint32_t);
+    return node;
+}
+
+EdgeType RawHeapTranslateV2::GenerateEdgeType(Node *node)
+{
+    EdgeType edgeType = EdgeType::DEFAULT;
+    if (metaParser_->IsArray(node->type)) {
+        edgeType = EdgeType::ELEMENT;
+    }
+    return edgeType;
 }
 }
 // namespace rawheap_translate
