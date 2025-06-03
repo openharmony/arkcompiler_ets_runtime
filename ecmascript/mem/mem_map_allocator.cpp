@@ -129,6 +129,7 @@ MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
         remainderAddr = alignAddr - targetSize;
     }
 
+#ifndef PANDA_TARGET_WINDOWS
     uintptr_t leftUnmapAddr = startAddr;
     size_t leftUnmapSize = remainderAddr - leftUnmapAddr;
     PageUnmap(MemMap(ToVoidPtr(leftUnmapAddr), leftUnmapSize));
@@ -136,6 +137,7 @@ MemMap MemMapAllocator::AlignMemMapTo4G(const MemMap &memMap, size_t targetSize)
     uintptr_t rightUnmapAddr = remainderAddr + targetSize;
     size_t rightUnmapSize = (startAddr + memMap.GetSize()) - rightUnmapAddr;
     PageUnmap(MemMap(ToVoidPtr(rightUnmapAddr), rightUnmapSize));
+#endif
 
     static constexpr uint64_t mask = 0xFFFFFFFF00000000;
     TaggedStateWord::BASE_ADDRESS = remainderAddr & mask;
