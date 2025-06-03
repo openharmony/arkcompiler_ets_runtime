@@ -1248,7 +1248,7 @@ void GetSingleCharCodeByIndexStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef str = TaggedArgument(1);
     GateRef index = Int32Argument(2);
-    BuiltinsStringStubBuilder builder(this, Gate::InvalidGateRef);
+    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.GetSingleCharCodeByIndex(glue, str, index);
     Return(result);
 }
@@ -1257,7 +1257,7 @@ void CreateStringBySingleCharCodeStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef charCode = Int32Argument(1);
-    BuiltinsStringStubBuilder builder(this, Gate::InvalidGateRef);
+    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     Return(result);
 }

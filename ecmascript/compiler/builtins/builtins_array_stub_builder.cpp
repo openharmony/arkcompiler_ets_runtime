@@ -462,7 +462,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                     BRANCH(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
                     Bind(&isEmptyArray);
                     {
-                        NewObjectStubBuilder newBuilder(this);
+                        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
                         Jump(exit);
                     }
@@ -1381,7 +1381,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
         BRANCH(Int32Equal(numArgsAsInt32, Int32(0)), &noArgs, slowPath);
         // Creates a new empty array on fast path
         Bind(&noArgs);
-        NewObjectStubBuilder newBuilder(this);
+        NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
         result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
@@ -3657,7 +3657,7 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                 BRANCH(Int32Equal(*newLen, Int32(0)), &newLenEmpty, &newLenNotEmpty);
                 Bind(&newLenEmpty);
                 {
-                    NewObjectStubBuilder newBuilder(this);
+                    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                     result->WriteVariable(newBuilder.CreateEmptyArray(glue));
                     Jump(exit);
                 }
