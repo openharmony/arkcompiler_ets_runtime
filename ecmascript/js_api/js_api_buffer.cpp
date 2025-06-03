@@ -108,20 +108,30 @@ JSTypedArray *GetUInt8ArrayFromBufferObject(JSHandle<JSTaggedValue> buffer)
     return GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue());
 }
 
-uint8_t *GetBufferData(JSHandle<JSAPIFastBuffer> &buffer, uint32_t offset)
+uint8_t *GetUnderlyingData(JSTypedArray *array, uint32_t offset)
 {
-    if (!RangeChecker(0, buffer->GetLength(), offset, offset)) {
+    if (array->GetByteLength() <= offset) {
         return nullptr;
     }
-    JSTypedArray *array = GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue());
     JSTaggedValue arrayBuffer = array->GetViewedArrayBufferOrByteArray();
-    // If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(arrayBuffer)) {
         return nullptr;
     }
-    auto res = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer, buffer->GetOffset() + offset));
+    auto res = reinterpret_cast<uint8_t *>(builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer, offset));
     return res;
+}
+
+uint8_t *GetUnderlyingData(JSTaggedValue obj, uint32_t offset = 0)
+{
+    if (obj.IsJSAPIBuffer()) {
+        JSAPIFastBuffer *buffer = JSAPIFastBuffer::Cast(obj.GetTaggedObject());
+        if (buffer->GetLength() <= offset) {
+            return nullptr;
+        }
+        offset += buffer->GetOffset();
+    }
+    JSTypedArray *array = GetUInt8ArrayFromBufferObject(obj);
+    return GetUnderlyingData(array, offset);
 }
 
 int32_t GetValueInt32(JSHandle<JSTaggedValue> valueHandle)
@@ -180,7 +190,7 @@ std::string ConvertEcmaStringToStdString(const JSHandle<JSTaggedValue> &str)
     return strAccessor.ToStdString();
 }
 
-JSHandle<JSTypedArray> JSAPIFastBuffer::NewUint8Array(JSThread *thread, uint32_t length, uint32_t byteOffset)
+JSHandle<JSTypedArray> JSAPIFastBuffer::NewUint8Array(JSThread *thread, uint32_t length)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> handleTagValFunc = env->GetUint8ArrayFunction();
@@ -190,11 +200,7 @@ JSHandle<JSTypedArray> JSAPIFastBuffer::NewUint8Array(JSThread *thread, uint32_t
     DataViewType arrayType = DataViewType::UINT8;
     JSTypedArray::Cast(*obj)->SetTypedArrayName(thread, thread->GlobalConstants()->GetUint8ArrayString());
     TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, length, arrayType);
-    auto res = JSHandle<JSTypedArray>(obj);
-    if (byteOffset < length) {
-        res->SetByteOffset(byteOffset);
-    }
-    return res;
+    return JSHandle<JSTypedArray>(obj);
 }
 
 JSTaggedValue JSAPIFastBuffer::Copy(JSThread *thread, const JSHandle<JSTaggedValue> &dst,
@@ -202,28 +208,20 @@ JSTaggedValue JSAPIFastBuffer::Copy(JSThread *thread, const JSHandle<JSTaggedVal
 {
     ASSERT(tStart >= 0 && sStart >= 0 && sStart <= sEnd);
     uint32_t copyLength = sEnd - sStart;
-    JSHandle<JSTypedArray> srcArray = JSHandle<JSTypedArray>(thread, GetUInt8ArrayFromBufferObject(src));
-    JSHandle<JSTypedArray> dstArray = JSHandle<JSTypedArray>(thread, GetUInt8ArrayFromBufferObject(dst));
-    uint32_t dstLength = dstArray->GetByteLength();
+    JSTypedArray *dstArray = GetUInt8ArrayFromBufferObject(dst);
+    uint32_t dstLength = dst->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>(dst)->GetLength() : dstArray->GetByteLength();
     if (dstLength <= tStart) {
         return JSTaggedValue(0);
     }
     copyLength = std::min(copyLength, dstLength - tStart);
-    if (src->IsJSAPIBuffer()) {
-        sStart += JSHandle<JSAPIFastBuffer>(src)->GetOffset();
+    uint8_t *srcData = GetUnderlyingData(src.GetTaggedValue(), sStart);
+    uint8_t *dstData = GetUnderlyingData(dst.GetTaggedValue(), tStart);
+    if (srcData == nullptr || dstData == nullptr) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (dst->IsJSAPIBuffer()) {
-        tStart += JSHandle<JSAPIFastBuffer>(dst)->GetOffset();
-    }
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(srcArray->GetViewedArrayBufferOrByteArray())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "srcBuffer is Detached Buffer", JSTaggedValue::Exception());
-    }
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(dstArray->GetViewedArrayBufferOrByteArray())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "dstBuffer is Detached Buffer", JSTaggedValue::Exception());
-    }
-    WriteBytes(thread, JSHandle<JSTaggedValue>(thread, srcArray->GetViewedArrayBufferOrByteArray()),
-               JSHandle<JSTaggedValue>(thread, dstArray->GetViewedArrayBufferOrByteArray()), sStart, tStart,
-               copyLength);
+    WriteBytes(thread, srcData, copyLength, dstData);
     return JSTaggedValue(copyLength);
 }
 
@@ -248,8 +246,7 @@ JSTaggedValue JSAPIFastBuffer::CreateBufferFromArrayLike(JSThread *thread, const
         if (!next.IsInt()) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "value in arraylike must be a integer", JSTaggedValue::Exception());
         }
-        buffer->SetValueByIndex(thread, i, JSTaggedValue(next.GetInt() & StringConverter::LOWER_EIGHT_BITS_MASK),
-                                JSType::JS_UINT8_ARRAY);
+        buffer->SetValueByIndex(thread, i, JSTaggedValue(static_cast<uint8_t>(next.GetInt())), JSType::JS_UINT8_ARRAY);
     }
     return buffer.GetTaggedValue();
 }
@@ -258,7 +255,9 @@ JSTaggedValue JSAPIFastBuffer::FromArrayBuffer(JSThread *thread, const JSHandle<
                                                const JSHandle<JSTaggedValue> &src, uint32_t byteOffset, uint32_t length)
 {
     if (BuiltinsArrayBuffer::IsDetachedBuffer(src.GetTaggedValue())) {
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     auto srcBuffer = JSHandle<JSArrayBuffer>(src);
     uint32_t srcLength = srcBuffer->GetArrayBufferByteLength();
@@ -478,9 +477,15 @@ JSTaggedValue JSAPIFastBuffer::FromString(JSThread *thread, const JSHandle<JSAPI
     JSHandle<JSTypedArray> array = NewUint8Array(thread, length);
     buffer->SetFastBufferData(thread, array);
     buffer->SetLength(length);
-    auto *dst = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(array->GetViewedArrayBufferOrByteArray(),
-                                                                      buffer->GetOffset());
-    WriteBytes(thread, reinterpret_cast<const uint8_t *>(data.data()), length, reinterpret_cast<uint8_t *>(dst));
+    if (length != 0) {
+        auto *dst = GetUnderlyingData(buffer.GetTaggedValue());
+        if (dst == nullptr) {
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                                "The underlying ArrayBuffer is null or detached.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
+        WriteBytes(thread, reinterpret_cast<const uint8_t *>(data.data()), length, reinterpret_cast<uint8_t *>(dst));
+    }
     return buffer.GetTaggedValue();
 }
 
@@ -496,9 +501,8 @@ JSTaggedValue JSAPIFastBuffer::ToString(JSThread *thread, JSHandle<JSAPIFastBuff
     }
     auto arrayBuffer = GetArrayBuffer(thread, buffer);
     if (BuiltinsArrayBuffer::IsDetachedBuffer(arrayBuffer)) {
-        std::ostringstream oss;
-        oss << "The arraybuffer is detached";
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::REFERENCE_ERROR, oss.str().c_str());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     uint8_t *data = reinterpret_cast<uint8_t *>(
@@ -569,11 +573,16 @@ JSTaggedValue JSAPIFastBuffer::WriteString(JSThread *thread, JSHandle<JSAPIFastB
             THROW_RANGE_ERROR_AND_RETURN(thread, "Not supported encodingType", JSTaggedValue::Exception());
     }
     uint32_t strLength = data.length();
+    if (strLength == 0) {
+        return JSTaggedValue(0);
+    }
     maxLen = std::min(maxLen, strLength);
-    JSHandle<JSTypedArray> typedArray =
-        JSHandle<JSTypedArray>(thread, GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue()));
-    auto *dst = static_cast<uint8_t *>(builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(
-        typedArray->GetViewedArrayBufferOrByteArray(), buffer->GetOffset() + offset));
+    auto *dst = GetUnderlyingData(buffer.GetTaggedValue(), offset);
+    if (dst == nullptr) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     WriteBytes(thread, reinterpret_cast<const uint8_t *>(data.data()), maxLen, reinterpret_cast<uint8_t *>(dst));
     return JSTaggedValue(maxLen);
 }
@@ -581,9 +590,10 @@ JSTaggedValue JSAPIFastBuffer::WriteString(JSThread *thread, JSHandle<JSAPIFastB
 JSTaggedValue JSAPIFastBuffer::AllocateFastBuffer(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
                                                   uint32_t byteLength, uint32_t byteOffset)
 {
-    JSHandle<JSTypedArray> handleUint8Array = JSAPIFastBuffer::NewUint8Array(thread, byteLength, byteOffset);
+    JSHandle<JSTypedArray> handleUint8Array = JSAPIFastBuffer::NewUint8Array(thread, byteLength);
     buffer->SetFastBufferData(thread, handleUint8Array);
     buffer->SetLength(byteLength);
+    buffer->SetOffset(byteOffset);
     return buffer.GetTaggedValue();
 }
 
@@ -676,6 +686,9 @@ JSTaggedValue JSAPIFastBuffer::Fill(JSThread *thread, JSHandle<JSAPIFastBuffer> 
                                     JSHandle<JSTaggedValue> &valueHandle, EncodingType encoding, uint32_t start,
                                     uint32_t end)
 {
+    if (valueHandle->IsUndefined() || valueHandle->IsNull()) {
+        valueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(0));
+    }
     if (valueHandle->IsNumber()) {
         if (!valueHandle->IsInt()) {
             std::ostringstream oss;
@@ -684,21 +697,23 @@ JSTaggedValue JSAPIFastBuffer::Fill(JSThread *thread, JSHandle<JSAPIFastBuffer> 
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Undefined());
         }
         // only use low 8 bits of value
-        uint8_t value = static_cast<uint8_t>(valueHandle->GetInt() & 255);
+        uint8_t value = static_cast<uint8_t>(valueHandle->GetInt());
         uint32_t length = end - start;
-        JSHandle<JSTypedArray> typedArray =
-            JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData().GetTaggedObject()));
-        uint8_t *data = GetBufferData(buffer, start);
+        uint8_t *data = GetUnderlyingData(buffer.GetTaggedValue(), start);
+        if (data == nullptr) {
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                                "The underlying ArrayBuffer is null or detached.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
         if (memset_s(data, length, value, length) != EOK) {
-            std::ostringstream oss;
-            oss << "Buffer fill number memset failed";
-            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::REFERENCE_ERROR, oss.str().c_str());
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Undefined());
+            JSTaggedValue error =
+                ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "Fill value memset failed.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     } else if (valueHandle->IsString()) {
         FillString(thread, buffer, valueHandle, encoding, start, end);
     } else if (valueHandle->IsJSAPIBuffer() || valueHandle->IsTypedArray()) {
-        WriteBufferObjectLoop(buffer, valueHandle, start, end);
+        WriteBufferObjectLoop(thread, buffer, valueHandle, start, end);
     }
     return buffer.GetTaggedValue();
 }
@@ -706,9 +721,8 @@ JSTaggedValue JSAPIFastBuffer::Fill(JSThread *thread, JSHandle<JSAPIFastBuffer> 
 JSTaggedValue JSAPIFastBuffer::Compare(JSThread *thread, JSHandle<JSAPIFastBuffer> &a, JSHandle<JSTaggedValue> &bObj,
                                        uint32_t sStart, uint32_t sEnd, uint32_t tStart, uint32_t tEnd)
 {
-    JSHandle<JSTypedArray> typedArrayA =
-        JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(a->GetFastBufferData().GetTaggedObject()));
-    JSHandle<JSTypedArray> typedArrayB = JSHandle<JSTypedArray>(thread, GetUInt8ArrayFromBufferObject(bObj));
+    JSTypedArray *typedArrayA = GetUInt8ArrayFromBufferObject(a.GetTaggedValue());
+    JSTypedArray *typedArrayB = GetUInt8ArrayFromBufferObject(bObj);
     uint32_t aCmpLength = sEnd - sStart;
     uint32_t bCmpLength = tEnd - tStart;
     if (typedArrayA->GetByteLength() < aCmpLength || typedArrayB->GetByteLength() < bCmpLength) {
@@ -717,21 +731,12 @@ JSTaggedValue JSAPIFastBuffer::Compare(JSThread *thread, JSHandle<JSAPIFastBuffe
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSTaggedValue> bufferA =
-        JSHandle<JSTaggedValue>(thread, JSTypedArray::GetOffHeapBuffer(thread, typedArrayA));
-    JSHandle<JSTaggedValue> bufferB =
-        JSHandle<JSTaggedValue>(thread, JSTypedArray::GetOffHeapBuffer(thread, typedArrayB));
-    // If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(bufferA.GetTaggedValue()) ||
-        BuiltinsArrayBuffer::IsDetachedBuffer(bufferA.GetTaggedValue())) {
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, "buffer is Detached Buffer", JSTaggedValue::Exception());
-    }
-    auto aPointer = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(bufferA.GetTaggedValue(), sStart));
-    auto bPointer = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(bufferB.GetTaggedValue(), tStart));
+    uint8_t *aPointer = GetUnderlyingData(a.GetTaggedValue(), sStart);
+    uint8_t *bPointer = GetUnderlyingData(bObj.GetTaggedValue(), tStart);
     if (aPointer == nullptr || bPointer == nullptr) {
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, "Buffer Compare memory ptr is nullptr.", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "Buffer Compare memory ptr is nullptr.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     uint32_t length = std::min(aCmpLength, bCmpLength);
     int32_t ret = memcmp(aPointer, bPointer, length);
@@ -747,9 +752,9 @@ JSTaggedValue JSAPIFastBuffer::Compare(JSThread *thread, JSHandle<JSAPIFastBuffe
 JSTaggedValue JSAPIFastBuffer::Includes(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer,
                                         JSHandle<JSTaggedValue> valueHandle, uint32_t start, EncodingType encoding)
 {
-    auto res = IndexOf(thread, buffer, valueHandle, start, encoding, false);
-    auto resIndex = res.GetInt();
-    return resIndex == -1 ? JSTaggedValue::False() : JSTaggedValue::True();
+    JSTaggedValue res = IndexOf(thread, buffer, valueHandle, start, encoding, false);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return res.GetInt() == -1 ? JSTaggedValue::False() : JSTaggedValue::True();
 }
 
 int32_t JSAPIFastBuffer::StringMatch(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer, const uint8_t *str,
@@ -758,15 +763,10 @@ int32_t JSAPIFastBuffer::StringMatch(JSThread *thread, JSHandle<JSAPIFastBuffer>
     if (buffer->GetLength() < strLength) {
         return -1;
     }
-    auto array = JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData().GetTaggedObject()));
-    JSHandle<JSTaggedValue> srcBuffer = JSHandle<JSTaggedValue>(thread, array->GetViewedArrayBufferOrByteArray());
-    // If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer.GetTaggedValue())) {
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, "buffer is Detached Buffer", false);
+    auto src = GetUnderlyingData(buffer.GetTaggedValue());
+    if (src == nullptr) {
+        return -1;
     }
-    int32_t offset = static_cast<int32_t>(buffer->GetOffset());
-    auto src = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer.GetTaggedValue(), offset));
     uint32_t end = buffer->GetLength() - strLength;
     // reverse is mean enumeration order
     if (isReverse) {
@@ -790,23 +790,27 @@ JSTaggedValue JSAPIFastBuffer::IndexOf(JSThread *thread, JSHandle<JSAPIFastBuffe
                                        bool isReverse)
 {
     if (!valueHandle->IsNumber()) {
-        uint32_t len;
-        const uint8_t *data;
         if (valueHandle->IsString()) {
-            auto str = GetString(valueHandle, encoding);
-            data = reinterpret_cast<const uint8_t *>(str.data());
-            len = str.length();
+            string str = GetString(valueHandle, encoding);
+            const uint8_t *data = reinterpret_cast<const uint8_t *>(str.data());
+            uint32_t len = str.length();
+            return len == 0 ? JSTaggedValue(0)
+                            : JSTaggedValue(StringMatch(thread, buffer, data, start, len, isReverse));
         } else if (valueHandle->IsJSAPIBuffer() || valueHandle->IsJSUint8Array()) {
-            auto srcData = JSHandle<JSTaggedValue>(
-                thread, GetUInt8ArrayFromBufferObject(valueHandle)->GetViewedArrayBufferOrByteArray());
-            data = reinterpret_cast<uint8_t *>(
-                builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcData.GetTaggedValue()));
-            len = GetUInt8ArrayFromBufferObject(valueHandle)->GetByteLength();
-        } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "IndexOf value invalid.", JSTaggedValue::Exception());
+            const uint8_t *data = GetUnderlyingData(valueHandle.GetTaggedValue());
+            uint32_t len = valueHandle->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>(valueHandle)->GetLength()
+                                                        : JSHandle<JSTypedArray>(valueHandle)->GetByteLength();
+            if (len == 0) {
+                return JSTaggedValue(0);
+            }
+            if (data == nullptr) {
+                JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                                    "The underlying ArrayBuffer is null or detached.");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+            }
+            return JSTaggedValue(StringMatch(thread, buffer, data, start, len, isReverse));
         }
-        auto res = StringMatch(thread, buffer, data, start, len, isReverse);
-        return JSTaggedValue(res);
+        THROW_TYPE_ERROR_AND_RETURN(thread, "IndexOf value invalid.", JSTaggedValue::Exception());
     }
     if (!valueHandle->IsInt()) {
         std::ostringstream oss;
@@ -814,7 +818,7 @@ JSTaggedValue JSAPIFastBuffer::IndexOf(JSThread *thread, JSHandle<JSAPIFastBuffe
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    uint8_t value = static_cast<uint8_t>(valueHandle->GetInt() & 255);
+    uint8_t value = static_cast<uint8_t>(valueHandle->GetInt());
     uint32_t length = buffer->GetLength();
     if (isReverse) {
         for (int32_t i = std::min(length - 1, start); i >= 0; --i) {
@@ -877,30 +881,36 @@ JSTaggedValue JSAPIFastBuffer::WriteStringLoop(JSThread *thread, JSHandle<JSAPIF
                                                uint32_t start, uint32_t end)
 {
     uint32_t length = data.length();
-    auto dstData = JSHandle<JSTaggedValue>(
-        thread, GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue())->GetViewedArrayBufferOrByteArray());
-    uint8_t *dst = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(dstData.GetTaggedValue(), buffer->GetOffset()));
+    uint8_t *dst = GetUnderlyingData(buffer.GetTaggedValue());
     uint8_t *str = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data.data()));
+    if (str == nullptr || dst == nullptr) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (!WriteDataLoop(str, dst, length, start, end)) {
-        std::ostringstream oss;
-        oss << "Buffer WriteStringLoop failed.";
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::REFERENCE_ERROR, oss.str().c_str());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "Write data Failed.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return JSTaggedValue(length);
 }
 
-JSTaggedValue JSAPIFastBuffer::WriteBufferObjectLoop(JSHandle<JSAPIFastBuffer> &buffer, JSHandle<JSTaggedValue> &srcObj,
-                                                     uint32_t start, uint32_t end)
+JSTaggedValue JSAPIFastBuffer::WriteBufferObjectLoop(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer,
+                                                     JSHandle<JSTaggedValue> &srcObj, uint32_t start, uint32_t end)
 {
-    ASSERT(end - start <= buffer->GetLength());
+    if (end - start > buffer->GetLength()) {
+        return JSTaggedValue(0);
+    }
     auto srcArray = GetUInt8ArrayFromBufferObject(srcObj);
     uint32_t length = srcArray->GetByteLength();
     auto srcData = srcArray->GetViewedArrayBufferOrByteArray();
-    uint8_t *src = reinterpret_cast<uint8_t *>(
-        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcData, buffer->GetOffset()));
-    uint8_t *dst = GetBufferData(buffer, 0);
+    uint8_t *src = GetUnderlyingData(srcObj.GetTaggedValue());
+    uint8_t *dst = GetUnderlyingData(buffer.GetTaggedValue());
+    if (src == nullptr || dst == nullptr) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                                                            "The underlying ArrayBuffer is null or detached.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     WriteDataLoop(src, dst, length, start, end);
     return JSTaggedValue(length);
 }
@@ -920,7 +930,6 @@ bool JSAPIFastBuffer::WriteBytes(JSThread *thread, JSHandle<JSTaggedValue> srcDa
 JSTaggedValue JSAPIFastBuffer::SetValueByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
                                                JSTaggedValue value, JSType valueType, bool littleEndian)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(typedarray.IsJSUint8Array());
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
     if (UNLIKELY(value.IsECMAObject())) {
@@ -949,9 +958,9 @@ JSTaggedValue JSAPIFastBuffer::GetValueByIndex(JSThread *thread, const JSTaggedV
 OperationResult JSAPIFastBuffer::GetProperty(JSThread *thread, const JSHandle<JSAPIFastBuffer> &obj,
                                              const JSHandle<JSTaggedValue> &key)
 {
-    int length = obj->GetLength();
-    int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    uint32_t length = obj->GetLength();
+    int32_t index = key->GetInt();
+    if (index < 0 || static_cast<uint32_t>(index) >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 and <= " << (length - 1)
             << ". Received value is: " << index;
@@ -965,9 +974,9 @@ OperationResult JSAPIFastBuffer::GetProperty(JSThread *thread, const JSHandle<JS
 bool JSAPIFastBuffer::SetProperty(JSThread *thread, const JSHandle<JSAPIFastBuffer> &obj,
                                   const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    int length = obj->GetLength();
-    int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    uint32_t length = obj->GetLength();
+    int32_t index = key->GetInt();
+    if (index < 0 || static_cast<uint32_t>(index) >= length) {
         return false;
     }
     WriteUInt8(thread, obj, value, index, true);
@@ -1194,13 +1203,9 @@ std::pair<JSTaggedValue, JSTaggedValue> SplitUInt(JSHandle<JSTaggedValue> &value
     ASSERT(value->IsNumber());
     uint64_t temp;
     if (value->IsDouble()) {
-        temp = value->GetDouble();
-        if (UNLIKELY(static_cast<uint64_t>(temp) != temp)) {
-            return {JSTaggedValue::Undefined(), JSTaggedValue::Exception()};
-        }
-        temp = static_cast<uint64_t>(temp);
+        temp = static_cast<uint64_t>(value->GetDouble());
     } else {
-        temp = value->GetInt();
+        temp = static_cast<uint64_t>(value->GetInt());
     }
     byteLength *= JSAPIFastBuffer::ONE_BYTE_BIT_LENGTH;
     uint64_t bitMask = static_cast<uint64_t>(static_cast<uint64_t>(1) << byteLength) - 1;

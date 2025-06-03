@@ -4883,12 +4883,12 @@ JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBuffer(JSHandle<JSTypedArray> t
 JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBuffer(uint32_t length, uint32_t byteOffset)
 {
     NewObjectHook();
-    JSHandle<JSTypedArray> handleUint8Array = JSAPIFastBuffer::NewUint8Array(thread_, length, byteOffset);
+    JSHandle<JSTypedArray> handleUint8Array = JSAPIFastBuffer::NewUint8Array(thread_, length);
     JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBufferFunction());
     JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>(NewJSObjectByConstructor(builtinObj));
     buffer->SetFastBufferData(thread_, handleUint8Array);
     buffer->SetLength(length);
-    buffer->SetOffset(0);
+    buffer->SetOffset(byteOffset);
     return buffer;
 }
 

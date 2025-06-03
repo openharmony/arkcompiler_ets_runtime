@@ -102,17 +102,21 @@ namespace OHOS {
             int32_t value = fdp.ConsumeIntegral<int32_t>();
             int32_t offset = fdp.ConsumeIntegral<int32_t>();
             int32_t end = fdp.ConsumeIntegral<int32_t>();
+            ObjectFactory *factory = vm->GetFactory();
             std::string encoding = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+            JSHandle<EcmaString> str = factory->NewFromStdString(encoding);
 
             JSHandle<JSAPIFastBuffer> buffer = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
             EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 12);
             callInfo->SetFunction(JSTaggedValue::Undefined());
             callInfo->SetThis(buffer.GetTaggedValue());
+            // 0 : means the first parameter
             callInfo->SetCallArg(0, JSTaggedValue(value));
+            // 1 : means the second parameter
             callInfo->SetCallArg(1, JSTaggedValue(offset));
+            // 2 : means the third parameter
             callInfo->SetCallArg(2, JSTaggedValue(end));
-            ObjectFactory *factory = vm->GetFactory();
-            JSHandle<EcmaString> str = factory->NewFromASCII(encoding);
+            // 3 : means the fourth parameter
             callInfo->SetCallArg(3, JSTaggedValue(*str));
             [[maybe_unused]] JSTaggedValue resultAdd = ContainersBuffer::Fill(callInfo);
         }

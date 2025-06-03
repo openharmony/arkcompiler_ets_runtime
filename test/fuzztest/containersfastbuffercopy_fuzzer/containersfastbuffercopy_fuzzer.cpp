@@ -101,24 +101,28 @@ namespace OHOS {
             int32_t targetStart = fdp.ConsumeIntegral<int32_t>();
             int32_t sourceStart = fdp.ConsumeIntegral<int32_t>();
             int32_t sourceEnd = fdp.ConsumeIntegral<int32_t>();
-            
+            std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+            JSHandle<EcmaString> str = factory->NewFromStdString(rdStr);
 
             JSHandle<JSAPIFastBuffer> buf1 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
             JSHandle<JSAPIFastBuffer> buf2 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
             EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6);
             callInfo1->SetFunction(JSTaggedValue::Undefined());
             callInfo1->SetThis(buf1.GetTaggedValue());
-            std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-            JSHandle<EcmaString> str = factory->NewFromASCII(rdStr);
+            // 0 : means the first parameter
             callInfo1->SetCallArg(0, JSTaggedValue(*str));
             [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Write(callInfo1);
             EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 14);
             callInfo2->SetFunction(JSTaggedValue::Undefined());
             callInfo2->SetThis(buf1.GetTaggedValue());
+            // 0 : means the first parameter
             callInfo2->SetCallArg(0, buf2.GetTaggedValue());
+            // 1 : means the second parameter
             callInfo2->SetCallArg(1, JSTaggedValue(targetStart));
+            // 2 : means the third parameter
             callInfo2->SetCallArg(2, JSTaggedValue(sourceStart));
-            callInfo2->SetCallArg(1, JSTaggedValue(sourceEnd));
+            // 3 : means the fourth parameter
+            callInfo2->SetCallArg(3, JSTaggedValue(sourceEnd));
             ret = ContainersBuffer::Copy(callInfo2);
         }
         JSNApi::DestroyJSVM(vm);

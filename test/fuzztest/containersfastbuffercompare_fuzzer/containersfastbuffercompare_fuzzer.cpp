@@ -102,24 +102,37 @@ namespace OHOS {
             int32_t sourceStart = fdp.ConsumeIntegral<int32_t>();
             int32_t sourceEnd = fdp.ConsumeIntegral<int32_t>();
             std::string rdStr = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-            JSHandle<EcmaString> str = factory->NewFromASCII(rdStr);
+            JSHandle<EcmaString> str = factory->NewFromStdString(rdStr);
             
             JSHandle<JSAPIFastBuffer> buf1 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
             JSHandle<JSAPIFastBuffer> buf2 = CreateJSAPIFastBuffer(thread, STRING_MAX_LENGTH);
+
             EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6);
             callInfo1->SetFunction(JSTaggedValue::Undefined());
             callInfo1->SetThis(buf1.GetTaggedValue());
+            // 0 : means the first parameter
             callInfo1->SetCallArg(0, JSTaggedValue(*str));
             [[maybe_unused]] JSTaggedValue ret = ContainersBuffer::Write(callInfo1);
-            EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 14);
+            EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 6);
             callInfo2->SetFunction(JSTaggedValue::Undefined());
             callInfo2->SetThis(buf2.GetTaggedValue());
-            callInfo2->SetCallArg(0, buf1.GetTaggedValue());
-            callInfo2->SetCallArg(1, JSTaggedValue(targetStart));
-            callInfo2->SetCallArg(2, JSTaggedValue(targetEnd));
-            callInfo2->SetCallArg(3, JSTaggedValue(sourceStart));
-            callInfo2->SetCallArg(4, JSTaggedValue(sourceEnd));
-            ret = ContainersBuffer::Compare(callInfo2);
+            // 0 : means the first parameter
+            callInfo2->SetCallArg(0, JSTaggedValue(*str));
+            ret = ContainersBuffer::Write(callInfo2);
+            EcmaRuntimeCallInfo *callInfo3 = CreateEcmaRuntimeCallInfo(thread, 14);
+            callInfo3->SetFunction(JSTaggedValue::Undefined());
+            callInfo3->SetThis(buf2.GetTaggedValue());
+            // 0 : means the first parameter
+            callInfo3->SetCallArg(0, buf1.GetTaggedValue());
+            // 1 : means the second parameter
+            callInfo3->SetCallArg(1, JSTaggedValue(targetStart));
+            // 2 : means the third parameter
+            callInfo3->SetCallArg(2, JSTaggedValue(targetEnd));
+            // 3 : means the fourth parameter
+            callInfo3->SetCallArg(3, JSTaggedValue(sourceStart));
+            // 4 : means the fifth parameter
+            callInfo3->SetCallArg(4, JSTaggedValue(sourceEnd));
+            ret = ContainersBuffer::Compare(callInfo3);
         }
         JSNApi::DestroyJSVM(vm);
     }

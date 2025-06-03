@@ -35,136 +35,132 @@ namespace panda::ecmascript::containers {
         }                                                                                                  \
     }
 
-#define CONTAINER_BUFFER_ACCESSORS(name)                                                                             \
-    JSTaggedValue ContainersBuffer::Write##name##BE(EcmaRuntimeCallInfo *argv)                                       \
-    {                                                                                                                \
-        ASSERT(argv != nullptr);                                                                                     \
-        JSThread *thread = argv->GetThread();                                                                        \
-        BUILTINS_API_TRACE(thread, Buffer, Write##name##BE);                                                         \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                        \
-        CONTAINER_BUFFER_CHECK(Write##name##BE)                                                                      \
-        JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);                                                         \
-        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);                                                        \
-        CHECK_NULL_OR_UNDEFINED(value); \
-        uint32_t offsetIndex = 0;                                                                                    \
-        if (offset->IsNumber()) {                                                                                    \
-            if (IsNegetiveNumber(offset)) {                                                                          \
-                std::ostringstream oss;                                                                              \
-                oss << "The value of \"offset\" is out of range. It must be >= 0 and <= "                            \
-                       "4294967296. Received value is: "                                                             \
-                    << offset->GetNumber();                                                                          \
-                JSTaggedValue error =                                                                                \
-                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());                \
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                         \
-            }                                                                                                        \
-            if (UNLIKELY(offset->IsDouble())) {                                                                      \
-                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                                            \
-            } else {                                                                                                 \
-                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                               \
-            }                                                                                                        \
-        }                                                                                                            \
-        if (value->IsUndefined() || value->IsNull()) {                                                               \
-            return JSTaggedValue(offsetIndex);                                                                       \
-        }                                                                                                            \
-        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                                    \
-        auto ret = JSAPIFastBuffer::Write##name(thread, buffer, value, offsetIndex, false);                          \
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                               \
-        return ret;                                                                                                  \
-    }                                                                                                                \
-    JSTaggedValue ContainersBuffer::Write##name##LE(EcmaRuntimeCallInfo *argv)                                       \
-    {                                                                                                                \
-        ASSERT(argv != nullptr);                                                                                     \
-        JSThread *thread = argv->GetThread();                                                                        \
-        BUILTINS_API_TRACE(thread, Buffer, Write##name##LE);                                                         \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                        \
-        CONTAINER_BUFFER_CHECK(Write##name##LE)                                                                      \
-        JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);                                                         \
-        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);                                                        \
-        CHECK_NULL_OR_UNDEFINED(value); \
-        uint32_t offsetIndex = 0;                                                                                    \
-        if (offset->IsNumber()) {                                                                                    \
-            if (IsNegetiveNumber(offset)) {                                                                          \
-                std::ostringstream oss;                                                                              \
-                oss << "The value of \"offset\" is out of range. It must be >= 0 and <= "                            \
-                       "4294967296. Received value is: "                                                             \
-                    << offset->GetNumber();                                                                          \
-                JSTaggedValue error =                                                                                \
-                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());                \
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                         \
-            }                                                                                                        \
-            if (UNLIKELY(offset->IsDouble())) {                                                                      \
-                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                                            \
-            } else {                                                                                                 \
-                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                               \
-            }                                                                                                        \
-        }                                                                                                            \
-        if (value->IsUndefined() || value->IsNull()) {                                                               \
-            return JSTaggedValue(offsetIndex);                                                                       \
-        }                                                                                                            \
-        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                                    \
-        auto ret = JSAPIFastBuffer::Write##name(thread, buffer, value, offsetIndex, true);                           \
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                               \
-        return ret;                                                                                                  \
-    }                                                                                                                \
-    JSTaggedValue ContainersBuffer::Read##name##BE(EcmaRuntimeCallInfo *argv)                                        \
-    {                                                                                                                \
-        ASSERT(argv != nullptr);                                                                                     \
-        JSThread *thread = argv->GetThread();                                                                        \
-        BUILTINS_API_TRACE(thread, Buffer, Read##name##BE);                                                          \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                        \
-        CONTAINER_BUFFER_CHECK(Read##name##BE)                                                                       \
-        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);                                                        \
-        uint32_t offsetIndex = 0;                                                                                    \
-        if (offset->IsNumber()) {                                                                                    \
-            if (IsNegetiveNumber(offset)) {                                                                          \
-                std::ostringstream oss;                                                                              \
-                oss << "The value of \"offset\" is out of range. It must be >= 0 and <= "                            \
-                       "4294967296. Received value is: "                                                             \
-                    << offset->GetNumber();                                                                          \
-                JSTaggedValue error =                                                                                \
-                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());                \
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                         \
-            }                                                                                                        \
-            if (UNLIKELY(offset->IsDouble())) {                                                                      \
-                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                                            \
-            } else {                                                                                                 \
-                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                               \
-            }                                                                                                        \
-        }                                                                                                            \
-        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                                    \
-        auto ret = JSAPIFastBuffer::Read##name(thread, buffer, offsetIndex, false);                                  \
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                               \
-        return ret;                                                                                                  \
-    }                                                                                                                \
-    JSTaggedValue ContainersBuffer::Read##name##LE(EcmaRuntimeCallInfo *argv)                                        \
-    {                                                                                                                \
-        ASSERT(argv != nullptr);                                                                                     \
-        JSThread *thread = argv->GetThread();                                                                        \
-        BUILTINS_API_TRACE(thread, Buffer, Read##name##LE);                                                          \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                        \
-        CONTAINER_BUFFER_CHECK(Read##name##LE)                                                                       \
-        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);                                                        \
-        uint32_t offsetIndex = 0;                                                                                    \
-        if (offset->IsNumber()) {                                                                                    \
-            if (IsNegetiveNumber(offset)) {                                                                          \
-                std::ostringstream oss;                                                                              \
-                oss << "The value of \"offset\" is out of range. It must be >= 0 and <= "                            \
-                       "4294967296. Received value is: "                                                             \
-                    << offset->GetNumber();                                                                          \
-                JSTaggedValue error =                                                                                \
-                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());                \
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                         \
-            }                                                                                                        \
-            if (UNLIKELY(offset->IsDouble())) {                                                                      \
-                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                                            \
-            } else {                                                                                                 \
-                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                               \
-            }                                                                                                        \
-        }                                                                                                            \
-        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                                    \
-        auto ret = JSAPIFastBuffer::Read##name(thread, buffer, offsetIndex, true);                                   \
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                               \
-        return ret;                                                                                                  \
+#define CONTAINER_BUFFER_ACCESSORS(name)                                                               \
+    JSTaggedValue ContainersBuffer::Write##name##BE(EcmaRuntimeCallInfo *argv)                         \
+    {                                                                                                  \
+        ASSERT(argv != nullptr);                                                                       \
+        JSThread *thread = argv->GetThread();                                                          \
+        BUILTINS_API_TRACE(thread, Buffer, Write##name##BE);                                           \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                          \
+        CONTAINER_BUFFER_CHECK(Write##name##BE)                                                        \
+        JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);                                           \
+        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);                                          \
+        CHECK_NULL_OR_UNDEFINED(value);                                                                \
+        uint32_t offsetIndex = 0;                                                                      \
+        if (offset->IsNumber()) {                                                                      \
+            if (IsNegetiveNumber(offset)) {                                                            \
+                std::ostringstream oss;                                                                \
+                oss << "The value of \"offset\" is out of range. It must be >= 0. Received value is: " \
+                    << offset->GetNumber();                                                            \
+                JSTaggedValue error =                                                                  \
+                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());  \
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());           \
+            }                                                                                          \
+            if (UNLIKELY(offset->IsDouble())) {                                                        \
+                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                              \
+            } else {                                                                                   \
+                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                 \
+            }                                                                                          \
+        }                                                                                              \
+        if (value->IsUndefined() || value->IsNull()) {                                                 \
+            return JSTaggedValue(offsetIndex);                                                         \
+        }                                                                                              \
+        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                      \
+        auto ret = JSAPIFastBuffer::Write##name(thread, buffer, value, offsetIndex, false);            \
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                 \
+        return ret;                                                                                    \
+    }                                                                                                  \
+    JSTaggedValue ContainersBuffer::Write##name##LE(EcmaRuntimeCallInfo *argv)                         \
+    {                                                                                                  \
+        ASSERT(argv != nullptr);                                                                       \
+        JSThread *thread = argv->GetThread();                                                          \
+        BUILTINS_API_TRACE(thread, Buffer, Write##name##LE);                                           \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                          \
+        CONTAINER_BUFFER_CHECK(Write##name##LE)                                                        \
+        JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);                                           \
+        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);                                          \
+        CHECK_NULL_OR_UNDEFINED(value);                                                                \
+        uint32_t offsetIndex = 0;                                                                      \
+        if (offset->IsNumber()) {                                                                      \
+            if (IsNegetiveNumber(offset)) {                                                            \
+                std::ostringstream oss;                                                                \
+                oss << "The value of \"offset\" is out of range. It must be >= 0. Received value is: " \
+                    << offset->GetNumber();                                                            \
+                JSTaggedValue error =                                                                  \
+                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());  \
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());           \
+            }                                                                                          \
+            if (UNLIKELY(offset->IsDouble())) {                                                        \
+                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                              \
+            } else {                                                                                   \
+                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                 \
+            }                                                                                          \
+        }                                                                                              \
+        if (value->IsUndefined() || value->IsNull()) {                                                 \
+            return JSTaggedValue(offsetIndex);                                                         \
+        }                                                                                              \
+        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                      \
+        auto ret = JSAPIFastBuffer::Write##name(thread, buffer, value, offsetIndex, true);             \
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                 \
+        return ret;                                                                                    \
+    }                                                                                                  \
+    JSTaggedValue ContainersBuffer::Read##name##BE(EcmaRuntimeCallInfo *argv)                          \
+    {                                                                                                  \
+        ASSERT(argv != nullptr);                                                                       \
+        JSThread *thread = argv->GetThread();                                                          \
+        BUILTINS_API_TRACE(thread, Buffer, Read##name##BE);                                            \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                          \
+        CONTAINER_BUFFER_CHECK(Read##name##BE)                                                         \
+        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);                                          \
+        uint32_t offsetIndex = 0;                                                                      \
+        if (offset->IsNumber()) {                                                                      \
+            if (IsNegetiveNumber(offset)) {                                                            \
+                std::ostringstream oss;                                                                \
+                oss << "The value of \"offset\" is out of range. It must be >= 0. Received value is: " \
+                    << offset->GetNumber();                                                            \
+                JSTaggedValue error =                                                                  \
+                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());  \
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());           \
+            }                                                                                          \
+            if (UNLIKELY(offset->IsDouble())) {                                                        \
+                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                              \
+            } else {                                                                                   \
+                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                 \
+            }                                                                                          \
+        }                                                                                              \
+        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                      \
+        auto ret = JSAPIFastBuffer::Read##name(thread, buffer, offsetIndex, false);                    \
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                 \
+        return ret;                                                                                    \
+    }                                                                                                  \
+    JSTaggedValue ContainersBuffer::Read##name##LE(EcmaRuntimeCallInfo *argv)                          \
+    {                                                                                                  \
+        ASSERT(argv != nullptr);                                                                       \
+        JSThread *thread = argv->GetThread();                                                          \
+        BUILTINS_API_TRACE(thread, Buffer, Read##name##LE);                                            \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                          \
+        CONTAINER_BUFFER_CHECK(Read##name##LE)                                                         \
+        JSHandle<JSTaggedValue> offset = GetCallArg(argv, 0);                                          \
+        uint32_t offsetIndex = 0;                                                                      \
+        if (offset->IsNumber()) {                                                                      \
+            if (IsNegetiveNumber(offset)) {                                                            \
+                std::ostringstream oss;                                                                \
+                oss << "The value of \"offset\" is out of range. It must be >= 0. Received value is: " \
+                    << offset->GetNumber();                                                            \
+                JSTaggedValue error =                                                                  \
+                    ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());  \
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());           \
+            }                                                                                          \
+            if (UNLIKELY(offset->IsDouble())) {                                                        \
+                offsetIndex = static_cast<uint32_t>(offset->GetDouble());                              \
+            } else {                                                                                   \
+                offsetIndex = static_cast<uint32_t>(offset->GetInt());                                 \
+            }                                                                                          \
+        }                                                                                              \
+        JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);                      \
+        auto ret = JSAPIFastBuffer::Read##name(thread, buffer, offsetIndex, true);                     \
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                                 \
+        return ret;                                                                                    \
     }
 
 #define CONTAINER_FASTBUFFER_PROTOTYPE_FUNCTIONS(V)     \
