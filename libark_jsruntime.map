@@ -18,6 +18,9 @@
       panda::ecmascript::HELP_OPTION_MSG*;
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
       panda::ecmascript::g_isEnableCMCGC*;
+
+      panda::MutatorBase::*;
+
       panda::ArkCrashHolder*;
 
       panda::ArrayBufferRef::*;
