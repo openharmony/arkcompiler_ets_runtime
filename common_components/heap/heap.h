@@ -136,6 +136,10 @@ public:
 
     virtual void StopGCWork() = 0;
 
+    virtual GCReason GetGCReason() = 0;
+
+    virtual void SetGCReason(GCReason reason) = 0;
+
     static void OnHeapCreated(HeapAddress startAddr)
     {
         heapStartAddr = startAddr;

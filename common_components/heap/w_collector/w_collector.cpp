@@ -148,11 +148,16 @@ bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject
 void WCollector::EnumRefFieldRoot(RefField<>& field, RootSet& rootSet) const
 {
     auto value = field.GetFieldValue();
-    auto obj = field.GetTargetObject();
     ASSERT_LOGF(Heap::IsTaggedObject(value), "EnumRefFieldRoot failed: Invalid root");
 
     // need fix or clean
-    rootSet.push_back(field.GetTargetObject());
+    BaseObject* obj = field.GetTargetObject();
+    RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && objRegion->IsInMatureSpace()) {
+        DLOG(ENUM, "enum: skip mature object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
+        return;
+    }
+    rootSet.push_back(obj);
     return;
 
     // consider remove below
@@ -226,23 +231,37 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
     if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
         return;
     }
-    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
-    DLOG(TRACE, "trace obj %p ref@%p: %p<%p>(%zu)",
-        obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
-    if (region->IsNewObjectSinceTrace(targetObj)) {
-        DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
-        return;
-    }
-    if (oldField.IsWeak()) {
+    auto gcReason = Heap::GetHeap().GetGCReason();
+    auto targetRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
+    auto objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
+
+    if (gcReason != GC_REASON_YOUNG && oldField.IsWeak()) {
+        DLOG(TRACE, "trace: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
         weakStack.push_back(&field);
         return;
     }
-    if (region->MarkObject(targetObj)) {
+
+    if (gcReason == GC_REASON_YOUNG && objRegion->IsInMatureSpace()) {
+        DLOG(TRACE, "trace: skip mature object %p@%p, target object: %p<%p>(%zu)",
+            obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
+
+    if (targetRegion->IsNewObjectSinceTrace(targetObj)) {
+        DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+        return;
+    }
+
+    if (targetRegion->MarkObject(targetObj)) {
+        DLOG(TRACE, "trace: obj has been marked %p", targetObj);
+        return;
+    }
+
+    DLOG(TRACE, "trace obj %p ref@%p: %p<%p>(%zu)",
+        obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
     workStack.push_back(targetObj);
 }
 
@@ -268,6 +287,17 @@ void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
     }
 
     BaseObject* latest = FindToVersion(targetObj);
+
+    // update remember set
+    BaseObject* toObj = latest == nullptr ? targetObj : latest;
+    RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
+    RegionDesc* refRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)toObj));
+    if (!objRegion->IsInRecentSpace() && refRegion->IsInRecentSpace()) {
+        if (objRegion->MarkRSetCardTable(obj)) {
+            DLOG(TRACE, "fix phase update point-out remember set of region %p, obj %p, ref: %p<%p>",
+                objRegion, obj, toObj, toObj->GetTypeInfo());
+        }
+    }
     if (latest == nullptr) { return; }
 
     CHECK_CC(latest->IsValidObject());
@@ -326,9 +356,18 @@ void WCollector::PreforwardStaticRoots()
     WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
-        if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
-            return false;
+        auto gcReason = Heap::GetHeap().GetGCReason();
+        if (gcReason == GC_REASON_YOUNG) {
+            if (RegionSpace::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
+                !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+                return false;
+            }
+        } else {
+            if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+                return false;
+            }
         }
+        
         DLOG(FIX, "visit weak raw-ref @%p: %p", &refField, oldObj);
         if (IsFromObject(oldObj)) {
             BaseObject *toVersion = TryForwardObject(oldObj);
@@ -456,7 +495,9 @@ void WCollector::DoGarbageCollection()
         Preforward();
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
-        CollectLargeGarbage();
+        if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+            CollectLargeGarbage();
+        }
         SweepThreadLocalJitFort();
 
         CopyFromSpace();
@@ -464,7 +505,9 @@ void WCollector::DoGarbageCollection()
 
         PrepareFix();
         FixHeap();
-        CollectPinnedGarbage();
+        if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+            CollectPinnedGarbage();
+        }
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
 
@@ -489,7 +532,9 @@ void WCollector::DoGarbageCollection()
         Preforward();
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
-        CollectLargeGarbage();
+        if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+            CollectLargeGarbage();
+        }
         SweepThreadLocalJitFort();
 
         CopyFromSpace();
@@ -497,7 +542,9 @@ void WCollector::DoGarbageCollection()
 
         PrepareFix();
         FixHeap();
-        CollectPinnedGarbage();
+        if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+            CollectPinnedGarbage();
+        }
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
         ClearAllGCInfo();
@@ -520,7 +567,9 @@ void WCollector::DoGarbageCollection()
     }
     // reclaim large objects should after preforward(may process weak ref)
     // and before fix heap(may clear live bit)
-    CollectLargeGarbage();
+    if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+        CollectLargeGarbage();
+    }
     SweepThreadLocalJitFort();
 
     CopyFromSpace();
@@ -531,7 +580,9 @@ void WCollector::DoGarbageCollection()
         PrepareFix();
     }
     FixHeap();
-    CollectPinnedGarbage();
+    if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+        CollectPinnedGarbage();
+    }
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
@@ -557,14 +608,17 @@ void WCollector::ProcessWeakReferences()
             globalWeakStack_.pop_back();
             RefField<> oldField(field);
             BaseObject* targetObj = oldField.GetTargetObject();
-            if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
-                RegionSpace::IsNewObjectSinceTrace(targetObj)) {
-                continue;
-            }
-            if (field.ClearRef(oldField.GetFieldValue())) {
-                // fix log
-                // DLOG(FIX, "fix weak obj %p+%zu ref@%p: %#zx => %p<%p>(%zu)", obj, obj->GetSize(), &field,
-                //     oldField.GetFieldValue(), latest, latest->GetTypeInfo(), latest->GetSize())
+            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+                if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
+                    RegionSpace::IsNewObjectSinceTrace(targetObj) || !RegionSpace::IsYoungSpaceObject(targetObj)) {
+                    continue;
+                }
+            } else {
+                if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
+                    RegionSpace::IsNewObjectSinceTrace(targetObj)) {
+                    continue;
+                }
+                field.ClearRef(oldField.GetFieldValue());
             }
         }
     }
@@ -574,8 +628,15 @@ void WCollector::ProcessWeakReferences()
         WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
             RefField<> oldField(refField);
             BaseObject *oldObj = oldField.GetTargetObject();
-            if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
-                return false;
+            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+                if (RegionSpace::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
+                    !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+                    return false;
+                }
+            } else {
+                if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+                    return false;
+                }
             }
             return true;
         };
@@ -697,6 +758,7 @@ void WCollector::CollectSmallSpace()
             space.CollectAppSpawnSpaceGarbage();
         } else {
             space.CollectFromSpaceGarbage();
+            space.HandlePromotion();
         }
     }
 

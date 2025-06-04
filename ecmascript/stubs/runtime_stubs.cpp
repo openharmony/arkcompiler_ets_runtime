@@ -4979,14 +4979,15 @@ DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
     return publishValue.GetTaggedValue().GetRawData();
 }
 
-void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dst, JSTaggedType *src, uint32_t count)
+void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
+                                JSTaggedType *dst, JSTaggedType *src, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
 #ifdef USE_READ_BARRIER
     auto thread = JSThread::GlueToJSThread(argGlue);
     // check CMC-GC phase inside
-    Barriers::CopyObject<true, true>(
-        thread, nullptr, reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
+    Barriers::CopyObject<true, true>(thread, reinterpret_cast<TaggedObject *>(dstObj),
+                            reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
 #else
     (void)argGlue;
     std::copy_n(src, count, dst);

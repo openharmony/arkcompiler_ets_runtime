@@ -3686,13 +3686,14 @@ DEF_CALL_SIGNATURE(ReverseBarrier)
 
 DEF_CALL_SIGNATURE(ObjectCopy)
 {
-    constexpr size_t paramCount = 4;
+    constexpr size_t paramCount = 5;
     // 3 : 3 input parameters
     CallSignature ArrayCopy("ObjectCopy", 0, paramCount,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = ArrayCopy;
     // 3 : 3 input parameters
     std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),

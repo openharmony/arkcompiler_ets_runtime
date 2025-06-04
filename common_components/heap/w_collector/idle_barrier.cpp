@@ -87,14 +87,32 @@ bool IdleBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field,
     return false;
 }
 
+void IdleBarrier::UpdateRememberSet(BaseObject* object, BaseObject* ref) const
+{
+    if (!Heap::IsHeapAddress(ref) || object == nullptr) {
+        return;
+    }
+    RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)object));
+    RegionDesc* refRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)ref));
+    if ((!objRegion->IsInYoungSpace() && refRegion->IsInYoungSpace()) ||
+        (objRegion->IsInFromSpace() && refRegion->IsInRecentSpace())) {
+        if (objRegion->MarkRSetCardTable(object)) {
+            DLOG(BARRIER, "update point-out remember set of region %p, obj %p, ref: %p<%p>",
+                objRegion, object, ref, ref->GetTypeInfo());
+        }
+    }
+}
+
 void IdleBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     DLOG(BARRIER, "write obj %p ref@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
+    UpdateRememberSet(obj, ref);
     field.SetTargetObject(ref);
 }
 
 void IdleBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
+    UpdateRememberSet(obj, ref);
     DLOG(BARRIER, "write obj %p ref@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
 }
 

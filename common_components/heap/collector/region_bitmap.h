@@ -25,9 +25,9 @@
 #endif
 
 namespace common {
-constexpr size_t kBitsPerByte = 8;
-constexpr size_t kMarkedBytesPerBit = 8;
-constexpr size_t kBitsPerWord = sizeof(uint64_t) * kBitsPerByte;
+static constexpr size_t kBitsPerByte = 8;
+static constexpr size_t kMarkedBytesPerBit = 8;
+static constexpr size_t kBitsPerWord = sizeof(uint64_t) * kBitsPerByte;
 class RegionDesc;
 struct RegionBitmap {
     static constexpr uint8_t factor = 16;

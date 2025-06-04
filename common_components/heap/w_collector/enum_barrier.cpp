@@ -37,6 +37,7 @@ void EnumBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, 
 
 void EnumBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
+    UpdateRememberSet(obj, ref);
     RefField<> tmpField(field);
     BaseObject* remeberedObject = nullptr;
     remeberedObject = tmpField.GetTargetObject();
@@ -62,6 +63,7 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
     if (!Heap::IsTaggedObject(field.GetFieldValue())) {
         return;
     }
+    UpdateRememberSet(obj, ref);
     remeberedObject = tmpField.GetTargetObject();
     Mutator* mutator = Mutator::GetMutator();
     if (remeberedObject != nullptr) {
@@ -80,6 +82,7 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
     }
+    UpdateRememberSet(obj, ref);
     ref = (BaseObject*)((uintptr_t)ref & ~(TAG_WEAK));
     Mutator* mutator = Mutator::GetMutator();
     mutator->RememberObjectInSatbBuffer(ref);
@@ -119,7 +122,7 @@ BaseObject* EnumBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& fie
 {
     BaseObject* target = nullptr;
     RefField<false> oldField(field.GetFieldValue(order));
-    target = ReadRefField(nullptr, oldField);
+    target = ReadRefField(obj, oldField);
     DLOG(EBARRIER, "atomic read obj %p ref@%p: %#zx -> %p", obj, &field, oldField.GetFieldValue(), target);
     return target;
 }

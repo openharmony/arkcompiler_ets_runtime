@@ -37,6 +37,7 @@ void TraceBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src,
 
 void TraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
+    UpdateRememberSet(obj, ref);
     RefField<> tmpField(field);
     BaseObject* rememberedObject = nullptr;
     rememberedObject = tmpField.GetTargetObject();
@@ -58,6 +59,7 @@ void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObj
     if (!Heap::IsTaggedObject(field.GetFieldValue())) {
         return;
     }
+    UpdateRememberSet(obj, ref);
     Mutator* mutator = Mutator::GetMutator();
     if (rememberedObject != nullptr) {
         mutator->RememberObjectInSatbBuffer(rememberedObject);
@@ -78,6 +80,7 @@ void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObj
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
     }
+    UpdateRememberSet(obj, ref);
     ref = (BaseObject*)((uintptr_t)ref & ~(TAG_WEAK));
     Mutator* mutator = Mutator::GetMutator();
     mutator->RememberObjectInSatbBuffer(ref);

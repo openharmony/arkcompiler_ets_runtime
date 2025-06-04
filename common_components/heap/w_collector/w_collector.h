@@ -62,6 +62,8 @@ public:
     void Init(const RuntimeParam& param) override
     {
         HeapBitmapManager::GetHeapBitmapManager().InitializeHeapBitmap();
+        ASSERT(GetGCPhase() == GC_PHASE_IDLE);
+        Heap::GetHeap().InstallBarrier(GC_PHASE_IDLE);
         if (param.gcParam.enableStwGC) {
             gcMode_ = GCMode::STW;
         } else {

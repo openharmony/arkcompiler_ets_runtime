@@ -211,7 +211,7 @@ public:
         // check retraced objects, so they must be in one of the states below
         auto refObj = ref.GetTargetObject();
         CHECKF(RegionSpace::IsResurrectedObject(refObj) || RegionSpace::IsMarkedObject(refObj) ||
-               RegionSpace::IsNewObjectSinceTrace(refObj))
+               RegionSpace::IsNewObjectSinceTrace(refObj) || !RegionSpace::IsYoungSpaceObject(refObj))
             << CONTEXT
             << "Object: " << GetObjectInfo(obj) << std::endl
             << "Ref: " << GetRefInfo(ref) << std::endl;
@@ -302,7 +302,7 @@ public:
 
     void IterateFromSpace(VerifyVisitor& visitor)
     {
-        IterateRegionList(space_.GetRegionManager().fromRegionList_, visitor);
+        IterateRegionList(space_.GetFromSpace().GetFromRegionList(), visitor);
     }
 
     void IterateRoot(VerifyVisitor& visitor)

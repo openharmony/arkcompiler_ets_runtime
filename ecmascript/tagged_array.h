@@ -81,6 +81,11 @@ public:
         return reinterpret_cast<JSTaggedType *>(ToUintPtr(this) + DATA_OFFSET);
     }
 
+    JSTaggedType *GetThis() const
+    {
+        return reinterpret_cast<JSTaggedType *>(ToUintPtr(this));
+    }
+
     bool IsDictionaryMode() const;
 
     bool HasDuplicateEntry() const;

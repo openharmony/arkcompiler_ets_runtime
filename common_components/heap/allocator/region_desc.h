@@ -37,6 +37,7 @@
 #include "common_components/heap/collector/copy_data_manager.h"
 #include "common_components/heap/collector/gc_infos.h"
 #include "common_components/heap/collector/region_bitmap.h"
+#include "common_components/heap/collector/region_rset.h"
 #include "common_components/log/log.h"
 #include "securec.h"
 #ifdef COMMON_ASAN_SUPPORT
@@ -107,6 +108,7 @@ public:
         metadata.regionStart = reinterpret_cast<uintptr_t>(nullptr);
         metadata.regionEnd = reinterpret_cast<uintptr_t>(nullptr);
         metadata.toSpaceRegion = false;
+        metadata.regionRSet = nullptr;
     }
     static inline RegionDesc* NullRegion()
     {
@@ -401,6 +403,28 @@ public:
         }
     }
 
+    RegionRSet* GetRSet()
+    {
+        return metadata.regionRSet;
+    }
+
+    void ClearRSet()
+    {
+        metadata.regionRSet->ClearCardTable();
+    }
+
+    bool MarkRSetCardTable(BaseObject* obj)
+    {
+        size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
+        return metadata.regionRSet->MarkCardTable(offset);
+    }
+
+    bool IsInRSet(BaseObject* obj)
+    {
+        size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
+        return metadata.regionRSet->IsMarkedCard(offset);
+    }
+
     ALWAYS_INLINE_CC size_t GetAddressOffset(HeapAddress address)
     {
         DCHECK_CC(GetRegionStart() <= address);
@@ -428,6 +452,7 @@ public:
         LONE_FROM_REGION,
         EXEMPTED_FROM_REGION,
         TO_REGION,
+        MATURE_REGION,
 
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
@@ -571,10 +596,15 @@ public:
     void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
+    void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
     // reset so that this region can be reused for allocation
     void InitFreeUnits()
     {
+        if (metadata.regionRSet != nullptr) {
+            delete metadata.regionRSet;
+            metadata.regionRSet = nullptr;
+        }
         size_t nUnit = GetUnitCount();
         UnitInfo* unit = reinterpret_cast<UnitInfo*>(this) - (nUnit - 1);
         for (size_t i = 0; i < nUnit; ++i) {
@@ -620,7 +650,7 @@ public:
     // These interfaces are used to make sure the writing operations of value in C++ Bit Field will be atomic.
     void SetUnitRole(UnitRole role)
     {
-        metadata.unitBits.AtomicSetValue(0, BITS_4, static_cast<uint8_t>(role));
+        metadata.unitBits.AtomicSetValue(0, BITS_5, static_cast<uint8_t>(role));
     }
     void SetRegionType(RegionType type)
     {
@@ -750,6 +780,37 @@ public:
     bool IsNewRegionSinceFix() const
     {
         return GetFixLine() == GetRegionStart();
+    }
+
+    bool IsInRecentSpace() const
+    {
+        RegionType type = GetRegionType();
+        return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION;
+    }
+
+    bool IsInYoungSpace() const
+    {
+        RegionType type = GetRegionType();
+        return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION ||
+            type == RegionType::FROM_REGION || type == RegionType::EXEMPTED_FROM_REGION;
+    }
+
+    bool IsInFromSpace() const
+    {
+        RegionType type = GetRegionType();
+        return type == RegionType::FROM_REGION || type == RegionType::EXEMPTED_FROM_REGION;
+    }
+
+    bool IsInToSpace() const
+    {
+        RegionType type = GetRegionType();
+        return type == RegionType::TO_REGION;
+    }
+
+    bool IsInMatureSpace() const
+    {
+        RegionType type = GetRegionType();
+        return type == RegionType::MATURE_REGION;
     }
 
     int32_t IncRawPointerObjectCount()
@@ -977,7 +1038,7 @@ private:
         BIT_OFFSET_ENQUEUED_REGION = 6,
         BIT_OFFSET_RESURRECTED_REGION = 7,
         BIT_OFFSET_FIXED_REGION = 8,
-        BIT_OFFSET_REGION_CELLCOUNT = 9,
+        BIT_OFFSET_REGION_CELLCOUNT = 9
     };
 
     struct ObjectSlot {
@@ -1022,11 +1083,13 @@ private:
             RegionDesc* ownerRegion; // if unit is SUBORDINATE_UNIT
         };
 
+        RegionRSet* regionRSet = nullptr;;
+
         // the writing operation in C++ Bit-Field feature is not atomic, the we wants to
         // change the value, we must use specific interface implenmented by BitFields.
         union {
             struct {
-                uint8_t unitRole : BITS_4;
+                uint8_t unitRole : BITS_5;
             };
             BitFields<uint8_t> unitBits;
         };
@@ -1103,7 +1166,7 @@ private:
         ~UnitInfo() = delete;
 
         // These interfaces are used to make sure the writing operations of value in C++ Bit Field will be atomic.
-        void SetUnitRole(UnitRole role) { metadata_.unitBits.AtomicSetValue(0, BITS_4, static_cast<uint8_t>(role)); }
+        void SetUnitRole(UnitRole role) { metadata_.unitBits.AtomicSetValue(0, BITS_5, static_cast<uint8_t>(role)); }
         void SetRegionType(RegionType type)
         {
             metadata_.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_REGION_TYPE, BITS_5,
@@ -1156,6 +1219,7 @@ private:
         metadata.liveByteCount = 0;
         metadata.liveInfo = nullptr;
         metadata.freeSlot = nullptr;
+        metadata.regionRSet = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
         ClearTraceCopyFixLine();
@@ -1176,6 +1240,7 @@ private:
     void InitRegion(size_t nUnit, UnitRole uClass)
     {
         InitRegionDesc(nUnit, uClass);
+        metadata.regionRSet = new RegionRSet(GetRegionSize());
 
         // initialize region's subordinate units.
         UnitInfo* unit = reinterpret_cast<UnitInfo*>(this) - (nUnit - 1);
