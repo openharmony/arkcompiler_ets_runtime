@@ -32,7 +32,8 @@ template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
 static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
 #ifdef USE_CMC_GC
-    common::BaseRuntime::WriteBarrier(obj, (void *)((long)obj + offset), (void*)value);
+    common::BaseRuntime::WriteBarrier(obj, reinterpret_cast<void*>(ToUintPtr(obj) + offset),
+                                      reinterpret_cast<void*>(value));
     // Ignore barrier for cmc gc allocation
     return;
 #endif

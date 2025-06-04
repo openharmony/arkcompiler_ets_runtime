@@ -31,7 +31,7 @@ class BaseObject;
 //    of type safety.
 namespace common {
 // Those are mostly managed pointer types for GC
-using HeapAddress = uintptr_t; // Managed address
+using HeapAddress = uint64_t; // Managed address
 constexpr uintptr_t NULL_ADDRESS = 0;
 
 // object model related types

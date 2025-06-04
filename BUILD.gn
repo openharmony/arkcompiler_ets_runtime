@@ -353,7 +353,9 @@ config("ark_jsruntime_common_config") {
 
   if (ets_runtime_enable_cmc_gc) {
     defines += [ "USE_CMC_GC" ]
-    defines += [ "USE_READ_BARRIER" ]
+    if (current_cpu != "arm") {
+      defines += [ "USE_READ_BARRIER" ]
+    }
     if (is_ohos && current_cpu == "arm64") {
       defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
     }
@@ -1219,6 +1221,7 @@ config("include_llvm") {
 if (is_mingw) {
   ecma_platform_source += [
     "common_components/platform/windows/cpu.cpp",
+    "common_components/platform/windows/map.cpp",
     "common_components/platform/windows/os.cpp",
     "ecmascript/platform/common/dfx_crash_obj.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
@@ -1238,6 +1241,7 @@ if (is_mingw) {
   ]
 } else {
   ecma_platform_source += [
+    "common_components/platform/unix/map.cpp",
     "ecmascript/platform/unix/file.cpp",
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",

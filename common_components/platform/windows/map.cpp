@@ -13,16 +13,25 @@
  * limitations under the License.
  */
 
-#include "common_components/mutator/thread_local.h"
+#include <windows.h>
+#include "common_components/log/log.h"
+#include "common_components/platform/map.h"
 
-#include "common_components/heap/allocator/alloc_buffer.h"
-#include "common_components/base/globals.h"
+#ifdef ERROR
+#undef ERROR
+#endif
 
 namespace common {
 
-thread_local ThreadLocalData threadLocalData;
-ThreadLocalData* ThreadLocal::GetThreadLocalData()
+bool PageProtect(void *mem, size_t size, int prot)
 {
-    return &threadLocalData;
+    [[maybe_unused]] DWORD oldProtect;
+    if (!VirtualProtect(mem, size, prot, &oldProtect)) {
+        int errCode = GetLastError();
+        LOG_COMMON(ERROR) << "PageProtect mem = " << mem << ", size = " << size << ", change to " << prot
+                          << " failed, error code is " << errCode;
+        return false;
+    }
+    return true;
 }
-} // namespace common
+}  // namespace common

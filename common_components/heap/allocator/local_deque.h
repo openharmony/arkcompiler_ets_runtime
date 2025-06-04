@@ -47,7 +47,7 @@ public:
         opt.reqBase = nullptr;
         memMap_ = MemoryMap::MapMemory(mapSize, mapSize, opt);
 #ifdef _WIN64
-        MemoryMap::CommitMemory(memMap->GetBaseAddr(), mapSize);
+        MemoryMap::CommitMemory(memMap_->GetBaseAddr(), mapSize);
 #endif
         beginAddr_ = reinterpret_cast<HeapAddress>(memMap_->GetBaseAddr());
         endAddr_ = reinterpret_cast<HeapAddress>(memMap_->GetCurrEnd());
@@ -202,7 +202,7 @@ public:
         opt.reqBase = nullptr;
         memMap_ = MemoryMap::MapMemory(mapSize, mapSize, opt);
 #ifdef _WIN64
-        MemoryMap::CommitMemory(memMap->GetBaseAddr(), mapSize);
+        MemoryMap::CommitMemory(memMap_->GetBaseAddr(), mapSize);
 #endif
         currAddr_ = reinterpret_cast<HeapAddress>(memMap_->GetBaseAddr());
         endAddr_ = reinterpret_cast<HeapAddress>(memMap_->GetCurrEnd());

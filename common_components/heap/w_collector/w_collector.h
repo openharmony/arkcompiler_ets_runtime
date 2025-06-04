@@ -64,11 +64,16 @@ public:
         HeapBitmapManager::GetHeapBitmapManager().InitializeHeapBitmap();
         ASSERT(GetGCPhase() == GC_PHASE_IDLE);
         Heap::GetHeap().InstallBarrier(GC_PHASE_IDLE);
+#ifdef PANDA_TARGET_32
+        // cmc is not adapted for 32-bit systems
+        gcMode_ = GCMode::STW;
+#else
         if (param.gcParam.enableStwGC) {
             gcMode_ = GCMode::STW;
         } else {
             gcMode_ = GCMode::CMC;
         }
+#endif
 
         // force STW for RB DFX
 #ifdef ENABLE_CMC_RB_DFX

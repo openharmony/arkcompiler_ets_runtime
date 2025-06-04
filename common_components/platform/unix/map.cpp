@@ -13,16 +13,20 @@
  * limitations under the License.
  */
 
-#include "common_components/mutator/thread_local.h"
-
-#include "common_components/heap/allocator/alloc_buffer.h"
-#include "common_components/base/globals.h"
+#include <sys/mman.h>
+#include "common_components/log/log.h"
+#include "common_components/platform/map.h"
 
 namespace common {
 
-thread_local ThreadLocalData threadLocalData;
-ThreadLocalData* ThreadLocal::GetThreadLocalData()
+bool PageProtect(void *mem, size_t size, int prot)
 {
-    return &threadLocalData;
+    int ret = mprotect(mem, size, prot);
+    if (ret != 0) {
+        LOG_COMMON(ERROR) << "PageProtect mem = " << mem << ", size = " << size << ", change to " << prot
+                          << " failed, ret = " << ret << ", error code is " << errno;
+        return false;
+    }
+    return true;
 }
-} // namespace common
+}  // namespace common

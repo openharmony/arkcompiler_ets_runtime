@@ -57,7 +57,7 @@ public:
     // the only way to get a MemoryMap
     static MemoryMap* MapMemory(size_t reqSize, size_t initSize, const Option& opt = DEFAULT_OPTIONS);
 
-    static MemoryMap* MapMemoryAlignInner4G(size_t reqSize, size_t initSize, const Option& opt = DEFAULT_OPTIONS);
+    static MemoryMap* MapMemoryAlignInner4G(uint64_t reqSize, uint64_t initSize, const Option& opt = DEFAULT_OPTIONS);
 
 #ifdef _WIN64
     static void CommitMemory(void* addr, size_t size);

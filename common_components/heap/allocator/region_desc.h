@@ -39,6 +39,7 @@
 #include "common_components/heap/collector/region_bitmap.h"
 #include "common_components/heap/collector/region_rset.h"
 #include "common_components/log/log.h"
+#include "common_components/platform/map.h"
 #include "securec.h"
 #ifdef COMMON_ASAN_SUPPORT
 #include "common_components/sanitizer/sanitizer_interface.h"
@@ -120,7 +121,7 @@ public:
     {
         constexpr int pageProtRead = 1;
         DLOG(REPORT, "try to set readonly to %p, size is %ld", GetRegionStart(), GetRegionEnd() - GetRegionStart());
-        if (mprotect(reinterpret_cast<void *>(GetRegionStart()),
+        if (PageProtect(reinterpret_cast<void *>(GetRegionStart()),
             GetRegionEnd() - GetRegionStart(), pageProtRead) != 0) {
             DLOG(REPORT, "set read only fail");
         }
@@ -130,7 +131,7 @@ public:
     {
         constexpr int pageProtReadWrite = 3;
         DLOG(REPORT, "try to set read & write to %p, size is %ld", GetRegionStart(), GetRegionEnd() - GetRegionStart());
-        if (mprotect(reinterpret_cast<void *>(GetRegionStart()),
+        if (PageProtect(reinterpret_cast<void *>(GetRegionStart()),
             GetRegionEnd() - GetRegionStart(), pageProtReadWrite) != 0) {
             DLOG(REPORT, "clear read only fail");
         }
