@@ -80,7 +80,7 @@ void ThreadHolderManager::UnregisterThreadHolder(ThreadHolder *holder)
             list.erase(it);
         }
     }
-
+    mutator->ResetMutator();
     mutator_manager.MutatorManagementRUnlock();
 }
 
