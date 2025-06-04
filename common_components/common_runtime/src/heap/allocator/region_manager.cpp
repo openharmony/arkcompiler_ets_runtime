@@ -693,6 +693,18 @@ uintptr_t RegionManager::AllocLargeRegion(size_t size)
     return AllocLarge(size, false);
 }
 
+uintptr_t RegionManager::GetLastRegionForTest()
+{
+    std::lock_guard<std::mutex> guard(recentFullRegionList_.GetListMutex());
+    return reinterpret_cast<uintptr_t>(recentFullRegionList_.GetHeadRegion()->GetFirstObject());
+}
+
+uintptr_t RegionManager::GetLastLargeRegionForTest()
+{
+    std::lock_guard<std::mutex> guard(recentLargeRegionList_.GetListMutex());
+    return reinterpret_cast<uintptr_t>(recentLargeRegionList_.GetHeadRegion()->GetFirstObject());
+}
+
 void RegionManager::ParallelCopyFromRegions(RegionDesc &startRegion, size_t regionCnt)
 {
     RegionDesc *currentRegion = &startRegion;

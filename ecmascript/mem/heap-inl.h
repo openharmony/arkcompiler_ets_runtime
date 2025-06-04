@@ -1017,6 +1017,17 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
     return object;
 }
 
+TaggedObject *SharedHeap::AllocateOldOrHugeObjectNoGC(JSThread *thread, size_t size)
+{
+#ifdef USE_CMC_GC
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateNoGC(size));
+    return object;
+#else
+    std::abort();
+#endif
+}
+
 TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
 {
 #ifdef USE_CMC_GC

@@ -144,6 +144,10 @@ public:
     uintptr_t AllocLargeRegion(size_t size);
     uintptr_t AllocJitFortRegion(size_t size);
 
+    // ONLY used for UT
+    uintptr_t GetLastRegionForTest();
+    uintptr_t GetLastLargeRegionForTest();
+
     uintptr_t AllocPinnedFromFreeList(size_t size);
 
     uintptr_t AllocReadOnly(size_t size, bool allowGC = true);
