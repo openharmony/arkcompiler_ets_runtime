@@ -4,4 +4,4 @@
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 
 #26061
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest 
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
