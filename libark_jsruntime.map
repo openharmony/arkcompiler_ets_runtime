@@ -97,6 +97,7 @@
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
       common::BaseRuntime::*;
+      common::HeapAllocator::*;
       common::VisitDynamicGlobalRoots*;
       common::VisitDynamicWeakGlobalRoots*;
       common::VisitDynamicLocalRoots*;
@@ -114,6 +115,9 @@
       common::FillFreeObject*;
       common::SetBaseAddress*;
       common::JSGCCallback*;
+      common::RegisterVisitStaticRootsHook*;
+      common::RegisterUpdateStaticRootsHook*;
+      common::RegisterSweepStaticRootsHook*;
       common::MutatorBase::*;
       common::Log::*;
       common::AndroidLog*;

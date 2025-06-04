@@ -33,7 +33,7 @@ void RegisterUpdateStaticRootsHook(UpdateStaticRootsHookFunc func)
     g_updateStaticRootsHook = func;
 }
 
-void RegisterweepStaticRootsHook(SweepStaticRootsHookFunc func)
+void RegisterSweepStaticRootsHook(SweepStaticRootsHookFunc func)
 {
     g_sweepStaticRootsHook = func;
 }
