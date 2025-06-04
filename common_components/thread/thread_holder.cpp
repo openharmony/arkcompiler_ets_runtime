@@ -97,7 +97,7 @@ void ThreadHolder::UnregisterCoroutine(Coroutine *coroutine)
 
 bool ThreadHolder::TryBindMutator()
 {
-    if (ThreadLocal::IsArkProcessor() || ThreadLocal::GetMutator() != nullptr) {
+    if (ThreadLocal::IsArkProcessor()) {
         return false;
     }
 
