@@ -316,7 +316,7 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool i
     }
 }
 
-void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, [[maybe_unused]]bool isCompress)
+void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompress)
 {
     DecreaseMemMapTotalSize(size);
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
@@ -324,7 +324,11 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, [[maybe_unuse
     }
     PageRelease(mem, size);
     if (isRegular) {
-        memMapPool_.AddMemToCache(mem, size);
+        if (isCompress) {
+            compressMemMapPool_.AddMemToCache(mem, size);
+        } else {
+            memMapPool_.AddMemToCache(mem, size);
+        }
     } else {
         memMapFreeList_.AddMemToList(MemMap(mem, size));
     }
