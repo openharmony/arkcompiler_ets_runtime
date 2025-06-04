@@ -428,7 +428,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName, false, false, ExecuteTypes::STATIC);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, filename, recordName, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST

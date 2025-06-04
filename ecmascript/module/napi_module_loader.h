@@ -30,15 +30,18 @@ public:
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
                                                                const CString &abcFilePath, bool isHybrid = false);
 private:
-static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath, CString &modulePath,
-                                                                 CString &abcFilePath, bool isHybrid = false);
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread * thread, CString & abcFilePath,
-                                                               const CString &requestPath, const CString &modulePath,
-                                                               const JSPandaFile *pandaFile);
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(
+        EcmaVM *vm, CString &requestPath, CString &modulePath,
+        CString &abcFilePath, bool isHybrid = false);
+    
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(
+        JSThread *thread, CString &abcFilePath, const CString &requestPath,
+        const CString &modulePath, const JSPandaFile *pandaFile);
 
-    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, const CString &abcFilePath,
-                                                            const CString &srcPrefix, const CString &requestPath,
-                                                            const CString &modulePath, bool isHybrid = false);
+    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(
+        JSThread *thread, const CString &abcFilePath, const CString &srcPrefix,
+        const CString &requestPath, const CString &modulePath,
+        bool isHybrid = false);
 };
 }
 
