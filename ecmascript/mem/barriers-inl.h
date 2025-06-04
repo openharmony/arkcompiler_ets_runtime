@@ -171,7 +171,7 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
 
     // step 1. copy from src to dst directly.
 #ifdef USE_READ_BARRIER
-    if (thread->IsCMCGCConcurrentCopying()) {
+    if (thread->NeedReadBarrier()) {
         CopyObjectPrimitive<true, maybeOverlap>(dstAddr, srcAddr, count);
         return;
     } else {

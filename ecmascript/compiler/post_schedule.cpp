@@ -713,6 +713,7 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     return false;
 }
 
+#ifdef USE_READ_BARRIER
 #ifdef USE_CMC_GC
 void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
                                                                  std::vector<GateRef> &currentBBGates,
@@ -733,32 +734,44 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
     Label callRuntime(&builder_);
     Label noBarrier(&builder_);
     GateRef bitOffset = circuit_->GetConstantGateWithoutCache(
-        MachineType::I64, JSThread::GlueData::GetThreadHolderOffset(false), GateType::NJSValue());
+        MachineType::I64, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false), GateType::NJSValue());
     GateRef bitAddr = builder_.PtrAdd(glue, bitOffset);
-    GateRef threadHolder = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), bitAddr);
-    GateRef mutatorBase = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(),
-                                                      threadHolder); // currently offset is zero
-    GateRef gcPhase = builder_.LoadWithoutBarrier(VariableType::INT8(), mutatorBase); // currently offset is zero
-    GateRef conditionValue = circuit_->GetConstantGateWithoutCache(
-        MachineType::I8, GCPhase::GC_PHASE_PRECOPY, GateType::NJSValue());
-    GateRef condition = builder_.Int8GreaterThanOrEqual(gcPhase, conditionValue);
+    GateRef gcStateBitField = builder_.LoadWithoutBarrier(VariableType::INT64(), bitAddr);
+    GateRef readBarrierStateMask = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSThread::READ_BARRIER_STATE_BITFIELD_MASK, GateType::NJSValue());
+    GateRef readBarrierStateBit = builder_.Int64And(gcStateBitField, readBarrierStateMask);
+    GateRef conditionValue = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef condition = builder_.Equal(readBarrierStateBit, conditionValue);
     Label *currentLabel = env.GetCurrentLabel();
-    BRANCH_CIR_UNLIKELY(condition, &callRuntime, &noBarrier);
+    BRANCH_CIR_LIKELY(condition, &noBarrier, &callRuntime);
     {
         GateRef ifBranch = currentLabel->GetControl();
         PrepareToScheduleNewGate(ifBranch, currentBBGates);
         PrepareToScheduleNewGate(condition, currentBBGates);
         PrepareToScheduleNewGate(conditionValue, currentBBGates);
-        PrepareToScheduleNewGate(gcPhase, currentBBGates);
-        PrepareToScheduleNewGate(mutatorBase, currentBBGates);
-        PrepareToScheduleNewGate(threadHolder, currentBBGates);
+        PrepareToScheduleNewGate(readBarrierStateBit, currentBBGates);
+        PrepareToScheduleNewGate(readBarrierStateMask, currentBBGates);
+        PrepareToScheduleNewGate(gcStateBitField, currentBBGates);
         PrepareToScheduleNewGate(bitAddr, currentBBGates);
         PrepareToScheduleNewGate(bitOffset, currentBBGates);
         PrepareToScheduleNewGate(hole, currentBBGates);
     }
-    builder_.Bind(&callRuntime);
+    builder_.Bind(&noBarrier);
     {
         GateRef ifTrue = builder_.GetState();
+        GateRef loadWithoutBarrier = builder_.LoadWithoutBarrier(type, addr, acc_.GetMemoryAttribute(gate));
+        result = loadWithoutBarrier;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = noBarrier.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
+            PrepareToScheduleNewGate(loadWithoutBarrier, successBBGates);
+            PrepareToScheduleNewGate(ifTrue, successBBGates);
+        }
+    }
+    builder_.Bind(&callRuntime);
+    {
+        GateRef ifFalse = builder_.GetState();
         int index = CommonStubCSigns::GetValueWithBarrier;
         const CallSignature *cs = CommonStubCSigns::Get(index);
         ASSERT(cs->IsCommonStub());
@@ -772,24 +785,11 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
         builder_.Jump(&exit);
         {
             GateRef ordinaryBlock = callRuntime.GetControl();
-            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
-            PrepareToScheduleNewGate(loadBarrier, successBBGates);
-            PrepareToScheduleNewGate(reservedPc, successBBGates);
-            PrepareToScheduleNewGate(reservedFrameArgs, successBBGates);
-            PrepareToScheduleNewGate(target, successBBGates);
-            PrepareToScheduleNewGate(ifTrue, successBBGates);
-        }
-    }
-    builder_.Bind(&noBarrier);
-    {
-        GateRef ifFalse = builder_.GetState();
-        GateRef loadWithoutBarrier = builder_.LoadWithoutBarrier(type, addr, acc_.GetMemoryAttribute(gate));
-        result = loadWithoutBarrier;
-        builder_.Jump(&exit);
-        {
-            GateRef ordinaryBlock = noBarrier.GetControl();
             PrepareToScheduleNewGate(ordinaryBlock, failBBGates);
-            PrepareToScheduleNewGate(loadWithoutBarrier, failBBGates);
+            PrepareToScheduleNewGate(loadBarrier, failBBGates);
+            PrepareToScheduleNewGate(reservedPc, failBBGates);
+            PrepareToScheduleNewGate(reservedFrameArgs, failBBGates);
+            PrepareToScheduleNewGate(target, failBBGates);
             PrepareToScheduleNewGate(ifFalse, failBBGates);
         }
     }
@@ -829,6 +829,7 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, s
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithBarrier);
 }
+#endif
 #endif
 
 void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)

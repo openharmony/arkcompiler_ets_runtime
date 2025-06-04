@@ -144,6 +144,18 @@ void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
     reinterpret_cast<JSThread *>(jsThread)->Visit(visitor);
 }
 
+void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase)
+{
+    reinterpret_cast<JSThread *>(jsThread)->SetCMCGCPhase(gcPhase);
+#ifdef USE_READ_BARRIER
+    if (gcPhase >= GCPhase::GC_PHASE_PRECOPY) {
+        reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
+    } else {
+        reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(false);
+    }
+#endif
+}
+
 void SweepThreadLocalJitFort()
 {
     ecmascript::Runtime* runtime = ecmascript::Runtime::GetInstance();
