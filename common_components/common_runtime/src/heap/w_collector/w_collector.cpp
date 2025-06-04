@@ -214,7 +214,12 @@ void WCollector::EnumAndTagRawRoot(ObjectRef& ref, RootSet& rootSet) const
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
 void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& workStack, WeakStack& weakStack) const
 {
-    BaseObject* targetObj = field.GetTargetObject();
+    RefField<> oldField(field);
+    BaseObject* targetObj = oldField.GetTargetObject();
+
+    if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
+        return;
+    }
     auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
@@ -224,7 +229,7 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
         DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
-    if (field.IsWeak()) {
+    if (oldField.IsWeak()) {
         weakStack.push_back(&field);
         return;
     }
@@ -281,7 +286,9 @@ void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
     RefField<> oldField(field);
     BaseObject* targetObj = oldField.GetTargetObject();
-
+    if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
+        return;
+    }
     // target object could be null or non-heap for some static variable.
     if (!Heap::IsHeapAddress(targetObj)) {
         return;
