@@ -202,6 +202,7 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
     if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
         return;
     }
+    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
