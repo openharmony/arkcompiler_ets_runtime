@@ -348,6 +348,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
     ICStubBuilder builder(this);
+    StartTraceLoadValueDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId), key);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
     builder.LoadICByValue(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
@@ -362,10 +363,13 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     }
     Bind(&slowPath);
     {
+        EndTraceLoadValue(glue);
+        StartTraceLoadValueSlowPath(glue);
         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue), {profileTypeInfo, receiver, key, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);
+    EndTraceLoadValue(glue);
     auto ret = *result;
     env->SubCfgExit();
     return ret;

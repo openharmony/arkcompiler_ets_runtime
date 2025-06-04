@@ -177,7 +177,9 @@ public:
 
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
-
+    static inline void DumpInfoForMoreLdInfo(JSThread *thread, JSHandle<JSTaggedValue> &receiver, CString &msg);
+    static inline void DumpInfoForLdObjByValue(JSHandle<JSTaggedValue> &receiver, JSHandle<JSTaggedValue> &profile,
+                                        JSTaggedValue slotId, JSTaggedValue key, CString &msg);
     static inline JSTaggedValue RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeDec(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeExp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);

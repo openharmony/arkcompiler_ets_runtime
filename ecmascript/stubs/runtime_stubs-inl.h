@@ -2262,6 +2262,91 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
     return tagged;
 }
 
+void RuntimeStubs::DumpInfoForMoreLdInfo(JSThread *thread, JSHandle<JSTaggedValue> &receiver,
+                                         CString &msg)
+{
+    auto AddType = [&msg] (std::string_view s, JSHandle<JSTaggedValue> value) {
+        msg += s;
+        msg += " type: ";
+        if (value->IsHeapObject()) {
+            JSHandle<JSObject> obj(value);
+            msg += JSHClass::DumpJSType(obj->GetClass()->GetObjectType());
+        } else {
+            if (value->IsNumber()) {
+                msg += "prim number";
+            } else if (value->IsBoolean()) {
+                msg += "prim boolean";
+            } else {
+                msg += "other prim";
+            }
+        }
+        msg += ", ";
+    };
+    auto AddDepth = [&thread, &msg] (JSHandle<JSTaggedValue> value) {
+        int depth = 0;
+        while (value->IsECMAObject()) {
+            depth++;
+            auto currHC = value->GetTaggedObject()->GetClass();
+            auto proto = currHC->GetProto();
+            value = JSHandle<JSTaggedValue>(thread, proto);
+        }
+        msg += "Depth: " + std::to_string(depth);
+        msg += ", ";
+    };
+    bool isNeedDepth = true;
+    bool isNeedTypeInformation = true;
+    if (isNeedTypeInformation) {
+        AddType("Receiver", receiver);
+    }
+    if (isNeedDepth) {
+        AddDepth(receiver);
+    }
+}
+
+void RuntimeStubs::DumpInfoForLdObjByValue(JSHandle<JSTaggedValue> &receiver, JSHandle<JSTaggedValue> &profile,
+                                           JSTaggedValue slotId, JSTaggedValue key, CString &msg)
+{
+    msg += "[DFX]Trace Load Value Detail: ";
+    const int MONO_NUM = 2;
+    if (profile->IsUndefined()) {
+        msg += "ProfileTypeInfo Undefine";
+    } else {
+        auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
+        auto slot = slotId.GetInt();
+        auto first = prof->GetIcSlot(slot);
+        if (first.IsHole()) {
+            msg += "state: mega";
+        } else if (first.IsUndefined()) {
+            msg += "state: not known";
+        } else if (first.IsWeak()) {
+            msg += "state: mono";
+        } else {
+            auto second = prof->GetIcSlot(slot + 1);
+            if (second.IsTaggedArray()) {
+                TaggedArray *elements = TaggedArray::Cast(second.GetTaggedObject());
+                if (elements->GetLength() == MONO_NUM) {
+                    msg += "state: mono";
+                } else {
+                    msg += "state: non-index poly";
+                }
+            } else if (second.IsHole()) {
+                msg += "state: index poly";
+            } else {
+                msg += "state: not known";
+            }
+        }
+    }
+    msg += " | ";
+    if (key.IsString()) {
+        msg += "key: string";
+    } else if (key.IsNumber()) {
+        msg += "key: number";
+    } else if (key.IsSymbol()) {
+        msg += "key: symbol";
+    } else {
+        msg += "key: other type";
+    }
+}
 void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread* thread,
                                              const JSHandle<JSFunction>& func,
                                              const JSHandle<JSTaggedValue>& ihc,

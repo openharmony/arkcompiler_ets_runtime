@@ -129,11 +129,18 @@ namespace panda::ecmascript {
     V(TraceLoadSlowPath)                        \
     V(TraceLoadDetail)                          \
     V(TraceLoadEnd)                             \
+    V(TraceLoadValueSlowPath)                   \
+    V(TraceLoadValueDetail)                     \
+    V(TraceLoadValueEnd)                        \
     V(TraceStoreFastPath)                       \
     V(TraceStoreSlowPath)                       \
     V(TraceStoreDetail)                         \
     V(TraceStoreEnd)                            \
     V(TraceNum)                                 \
+    V(TraceCallDetail)                          \
+    V(TraceCallEnd)                             \
+    V(TraceDefineFunc)                          \
+    V(TraceDefineFuncEnd)                       \
     V(TraceLazyDeoptNum)                        \
     V(TraceLazyDeoptFailNum)
 

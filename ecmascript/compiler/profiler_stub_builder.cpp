@@ -229,6 +229,7 @@ void ProfilerStubBuilder::ProfileCall(
     Label fastPath(env);
     Label targetIsFunction(env);
 
+    StartTraceCallDetail(glue, profileTypeInfo, IntToTaggedInt(GetSlotID(slotInfo)));
     BRANCH(IsJSFunction(glue, target), &targetIsFunction, &exit);
     Bind(&targetIsFunction);
     {
@@ -291,6 +292,7 @@ void ProfilerStubBuilder::ProfileCall(
         }
     }
     Bind(&exit);
+    EndTraceCall(glue);
     env->SubCfgExit();
 }
 

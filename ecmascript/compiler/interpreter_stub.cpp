@@ -4889,6 +4889,10 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
+#if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
+    GateRef index = ZExtInt8ToInt32(ReadInst8_0(pc));
+    StartTraceDefineFunc(glue, Int16ToTaggedInt(methodId), profileTypeInfo, index);
+#endif
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
@@ -4933,6 +4937,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
             Jump(&afterSendableFunc);
         }
         Bind(&afterSendableFunc);
+        EndTraceDefineFunc(glue);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
