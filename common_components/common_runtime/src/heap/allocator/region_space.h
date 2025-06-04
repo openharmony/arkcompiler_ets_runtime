@@ -169,6 +169,12 @@ public:
         regionManager_.ReassembleFromSpace();
     }
 
+    void CollectAppSpawnSpaceGarbage()
+    {
+        regionManager_.CollectFromSpaceGarbage();
+        regionManager_.ReassembleAppspawnSpace();
+    }
+
     void ClearAllGCInfo()
     {
         regionManager_.ClearAllGCInfo();
@@ -232,6 +238,13 @@ public:
         RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(object));
         ASSERT_LOGF(region != nullptr, "region is nullptr");
         return region->IsNewObjectSinceTrace(object);
+    }
+
+    static bool IsReadOnlyObject(const BaseObject* object)
+    {
+        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(object));
+        ASSERT_LOGF(region != nullptr, "region is nullptr");
+        return region->IsReadOnlyRegion();
     }
 
     void AddRawPointerObject(BaseObject* obj) { regionManager_.AddRawPointerObject(obj); }

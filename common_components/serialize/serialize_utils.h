@@ -25,6 +25,7 @@ enum class SerializedObjectSpace : uint8_t {
     REGULAR_SPACE,
     PIN_SPACE,
     LARGE_SPACE,
+    READ_ONLY_SPACE,
     OTHER,
 };
 

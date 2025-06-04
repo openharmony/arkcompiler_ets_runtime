@@ -15,9 +15,20 @@
 #include "common_components/common_runtime/src/heap_manager.h"
 
 #include "common_components/common_runtime/src/heap/heap.h"
+#include "common_components/common_runtime/src/heap/collector/collector.h"
+#include "common_components/common_runtime/src/heap/allocator/region_manager.h"
+#include "common_components/common_runtime/src/heap/allocator/region_space.h"
 
 namespace panda {
 HeapManager::HeapManager() {}
+void HeapManager::RequestGC(GCReason reason, bool async)
+{
+    if (!Heap::GetHeap().IsGCEnabled()) {
+        return;
+    }
+    Collector& collector = Heap::GetHeap().GetCollector();
+    collector.RequestGC(reason, async);
+}
 
 HeapAddress HeapManager::Allocate(size_t allocSize, AllocType allocType, bool allowGC)
 {
@@ -31,4 +42,21 @@ void HeapManager::Fini() { Heap::GetHeap().Fini(); }
 void HeapManager::StartRuntimeThreads() { Heap::GetHeap().StartRuntimeThreads(); }
 
 void HeapManager::StopRuntimeThreads() { Heap::GetHeap().StopRuntimeThreads(); }
+
+void HeapManager::SetReadOnlyToROSpace()
+{
+    RegionManager& manager = reinterpret_cast<RegionSpace&>(panda::Heap::GetHeap().GetAllocator()).GetRegionManager();
+    manager.SetReadOnlyToRORegionList();
+}
+
+void HeapManager::ClearReadOnlyFromROSpace()
+{
+    RegionManager& manager = reinterpret_cast<RegionSpace&>(panda::Heap::GetHeap().GetAllocator()).GetRegionManager();
+    manager.ClearReadOnlyFromRORegionList();
+}
+
+bool HeapManager::IsInROSpace(BaseObject *obj)
+{
+    return RegionSpace::IsReadOnlyObject(obj);
+}
 } // namespace panda
