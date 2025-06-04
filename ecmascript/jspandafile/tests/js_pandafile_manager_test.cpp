@@ -166,7 +166,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
         JSThread *thread1;
         TestHelper::CreateEcmaVMWithScope(instance1, thread1, scope1);
         std::shared_ptr<JSPandaFile> loadedPf1 = pfManager->LoadJSPandaFile(
-            thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION, false, ExecuteTypes::STATIC);
+            thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION, false, false, ExecuteTypes::STATIC);
         EXPECT_TRUE(pf1 == loadedPf1);
         EXPECT_TRUE(instance1->GetJSThread()->GetEcmaVM()->HasCachedConstpool(pf1.get()));
         TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.

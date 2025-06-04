@@ -44,6 +44,7 @@ ohos_shared_library("libcompiler_service") {
     "${js_root}/common_components/log/log.cpp",
     "interface/aot_compiler_interface_proxy.cpp",
     "interface/aot_compiler_interface_stub.cpp",
+    "src/aot_args_handler.cpp",
     "src/aot_compiler_client.cpp",
     "src/aot_compiler_error_utils.cpp",
     "src/aot_compiler_impl.cpp",

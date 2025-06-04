@@ -515,6 +515,14 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
+  if (ark_js_hybrid) {
+    if (!is_arkui_x) {
+      external_deps += [ "runtime_core:libarkplatform" ]
+    } else {
+      deps += [ "$arkplatform_root:libarkplatform" ]
+    }
+  }
+
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps

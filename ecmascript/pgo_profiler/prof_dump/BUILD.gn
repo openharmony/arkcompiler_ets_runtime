@@ -32,6 +32,9 @@ ohos_executable("profdump") {
     "runtime_core:libarkfile_static",
     "zlib:libz",
   ]
+  if (ark_js_hybrid) {
+    external_deps += [ "runtime_core:libarkplatform" ]
+  }
 
   configs = [
     "$js_root:ark_jsruntime_common_config",

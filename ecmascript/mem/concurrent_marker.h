@@ -32,7 +32,7 @@ namespace panda::ecmascript {
 class EcmaVM;
 class Heap;
 // CONFIG_DISABLE means concurrent marker is disabled by options or macros and cannot be changed.
-// REQUEST_DISABLE means we want to disable concurrent sweeper while it is marking.
+// REQUEST_DISABLE means we want to disable concurrent marker while it is marking.
 // REQUEST_DISABLE can be ragarded as enable and will be changed into disable after this GC.
 enum class EnableConcurrentMarkType : uint8_t {
     ENABLE,

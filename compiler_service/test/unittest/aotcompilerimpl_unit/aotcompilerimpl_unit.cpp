@@ -79,31 +79,9 @@ public:
     AotCompilerImplMock& operator=(const AotCompilerImplMock&) = delete;
     AotCompilerImplMock& operator=(AotCompilerImplMock&&) = delete;
 
-    int32_t FindArgsIdxToIntegerMock(const std::unordered_map<std::string, std::string> &argsMap,
-        const std::string &keyName, int32_t &bundleID)
-    {
-        return FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    }
-
-    int32_t FindArgsIdxToStringMock(const std::unordered_map<std::string, std::string> &argsMap,
-        const std::string &keyName, std::string &bundleArg)
-    {
-        return FindArgsIdxToString(argsMap, keyName, bundleArg);
-    }
-
-    int32_t PrepareArgsMock(const std::unordered_map<std::string, std::string> &argsMap)
-    {
-        return PrepareArgs(argsMap);
-    }
-
     int32_t PrintAOTCompilerResultMock(const int compilerStatus) const
     {
         return PrintAOTCompilerResult(compilerStatus);
-    }
-
-    void AddExpandArgsMock(std::vector<std::string> &argVector)
-    {
-        AddExpandArgs(argVector);
     }
 
     int32_t EcmascriptAotCompilerMock(const std::unordered_map<std::string, std::string> &argsMap,
@@ -113,9 +91,12 @@ public:
         if (!allowAotCompiler_) {
             return ERR_AOT_COMPILER_CALL_CANCELLED;
         }
-        if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
+
+        std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+        if (argsHandler->Handle(0) != ERR_OK) {
             return ERR_AOT_COMPILER_PARAM_FAILED;
         }
+
         int32_t ret = ERR_OK;
         pid_t pid = fork();
         if (pid == -1) {
@@ -167,6 +148,11 @@ public:
         return mockChildPid_;
     }
 
+    void SetAOTArgsHandler(std::unique_ptr<AOTArgsHandler> argsHandler)
+    {
+        argsHandler_ = std::move(argsHandler);
+    }
+
 private:
     pid_t mockChildPid_ = -1;
 };
@@ -195,9 +181,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_002
- * @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when compiler-check-pgo-version
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_002
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when compiler-check-pgo-version
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_002, TestSize.Level0)
 {
@@ -217,9 +203,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_002, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_003
- * @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when compile not any method
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_003
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when compile not any method
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_003, TestSize.Level0)
 {
@@ -239,9 +225,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_004
- * @tc.desc: AotCompilerImpl::StopAotCompiler()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_004
+* @tc.desc: AotCompilerImpl::StopAotCompiler()
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_004, TestSize.Level0)
 {
@@ -251,9 +237,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_005
- * @tc.desc: AotCompilerImpl::GetAOTVersion(std::string& sigData)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_005
+* @tc.desc: AotCompilerImpl::GetAOTVersion(std::string& sigData)
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_005, TestSize.Level0)
 {
@@ -265,9 +251,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_005, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_006
- * @tc.desc: AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_006
+* @tc.desc: AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
 {
@@ -280,9 +266,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_007
- * @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_007
+* @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_007, TestSize.Level0)
 {
@@ -297,9 +283,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_007, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_008
- * @tc.desc: AotCompilerImpl::HandleScreenOn()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_008
+* @tc.desc: AotCompilerImpl::HandleScreenOn()
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
 {
@@ -314,9 +300,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_009
- * @tc.desc: AotCompilerImpl::HandleThermalLevelChanged()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_009
+* @tc.desc: AotCompilerImpl::HandleThermalLevelChanged()
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_009, TestSize.Level0)
 {
@@ -331,9 +317,9 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_009, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_010
- * @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when multi thread run
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_010
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when multi thread run
+* @tc.type: Func
 */
 AotCompilerImpl &gtAotImpl = AotCompilerImplMock::GetInstance();
 std::mutex aotCompilerMutex_;
@@ -377,10 +363,10 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_010, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_011
- * @tc.desc: AotCompilerImpl::StopAotCompiler() while EcmascriptAotCompiler() is
- *           running regarding multi threads.
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_011
+* @tc.desc: AotCompilerImpl::StopAotCompiler() while EcmascriptAotCompiler() is
+*           running regarding multi threads.
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_011, TestSize.Level0)
 {
@@ -403,136 +389,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_012, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_013
- * @tc.desc: AotCompilerImpl::FindArgsIdxToInteger(argsMap, keyName, bundleID)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_013
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult(TEST_ERR_AN_EMPTY)
+* @tc.type: Func
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_013, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    std::string keyName = "compiler-pkg-info";
-    int32_t bundleID = 0;
-    int32_t ret = aotImplMock.FindArgsIdxToIntegerMock(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_014
- * @tc.desc: AotCompilerImpl::FindArgsIdxToInteger(argsMap, keyName, bundleID)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_014, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "argValueNotInteger");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = aotImplMock.FindArgsIdxToIntegerMock(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_015
- * @tc.desc: AotCompilerImpl::FindArgsIdxToInteger(argsMap, keyName, bundleID)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_015, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "123456_argValueNotInteger");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = aotImplMock.FindArgsIdxToIntegerMock(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_016
- * @tc.desc: AotCompilerImpl::FindArgsIdxToInteger(argsMap, keyName, bundleID)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_016, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "20020079");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = aotImplMock.FindArgsIdxToIntegerMock(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(bundleID, 20020079);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_017
- * @tc.desc: AotCompilerImpl::FindArgsIdxToString(argsMap, keyName, bundleArg)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_017, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    std::string keyName = "argKey";
-    std::string bundleArg = "";
-    int32_t ret = aotImplMock.FindArgsIdxToStringMock(argsMap, keyName, bundleArg);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_018
- * @tc.desc: AotCompilerImpl::FindArgsIdxToString(argsMap, keyName, bundleArg)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_018, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "com.ohos.contacts");
-    std::string keyName = "argKey";
-    std::string bundleArg = "";
-    int32_t ret = aotImplMock.FindArgsIdxToStringMock(argsMap, keyName, bundleArg);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_STREQ(bundleArg.c_str(), "com.ohos.contacts");
-}
-
-/**
- * @tc.name: AotCompilerImplTest_019
- * @tc.desc: AotCompilerImpl::PrepareArgs(argsMapForTest)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_019, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unordered_map<std::string, std::string> argsMap;
-    int32_t ret = aotImplMock.PrepareArgsMock(argsMap);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-    ret = aotImplMock.PrepareArgsMock(argsMapForTest);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_020
- * @tc.desc: AotCompilerImpl::AddExpandArgs(aotVector)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_020, TestSize.Level0)
-{
-    bool viewData = true;
-    AotCompilerImplMock aotImplMock;
-    std::vector<std::string> aotVector;
-    aotImplMock.AddExpandArgsMock(aotVector);
-    EXPECT_TRUE(viewData);
-}
-
-/**
- * @tc.name: AotCompilerImplTest_021
- * @tc.desc: AotCompilerImpl::PrintAOTCompilerResult(TEST_ERR_AN_EMPTY)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_021, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
     int32_t ret = aotImplMock.PrintAOTCompilerResultMock(TEST_ERR_OTHERS);
@@ -544,11 +405,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_021, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_022
- * @tc.desc: AotCompilerImpl::EcmascriptAotCompiler(argsMap, sigData)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_014
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler(argsMap, sigData)
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_022, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_014, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
     std::unordered_map<std::string, std::string> argsMap;
@@ -574,18 +435,20 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_022, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_023
- * @tc.desc: AotCompilerImpl::AOTLocalCodeSign(sigData)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_015
+* @tc.desc: AotCompilerImpl::AOTLocalCodeSign(sigData)
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_023, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_015, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
-    std::string fileName = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
+    std::string fileName = "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an";
     std::string appSignature = "5765880207853624761";
     std::vector<int16_t> sigData;
-    int32_t ret = aotImplMock.PrepareArgsMock(argsMapForTest);
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
+    int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
+    aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
     ret = aotImplMock.AOTLocalCodeSignMock(sigData);
 #ifdef CODE_SIGN_ENABLE
     EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
@@ -595,13 +458,17 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_023, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_024
- * @tc.desc: AotCompilerImpl::StopAotCompiler()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_016
+* @tc.desc: AotCompilerImpl::StopAotCompiler()
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_024, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_016, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
+    int32_t retHandle = argsHandler->Handle(0);
+    EXPECT_EQ(retHandle, ERR_OK);
+    aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
     aotImplMock.ResetStateMock();
     int32_t ret = aotImplMock.StopAotCompiler();
     EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
@@ -616,11 +483,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_024, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_025
- * @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_017
+* @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_025, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_017, TestSize.Level0)
 {
     bool viewData = true;
     AotCompilerImplMock aotImplMock;
@@ -629,11 +496,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_025, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_026
- * @tc.desc: AotCompilerImpl::HandleScreenOn()
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_018
+* @tc.desc: AotCompilerImpl::HandleScreenOn()
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_026, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_018, TestSize.Level0)
 {
     bool viewData = true;
     AotCompilerImplMock aotImplMock;
@@ -642,11 +509,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_026, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_027
- * @tc.desc: AotCompilerImpl::HandleThermalLevelChanged(aotImpl.AOT_COMPILE_STOP_LEVEL)
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_019
+* @tc.desc: AotCompilerImpl::HandleThermalLevelChanged(aotImpl.AOT_COMPILE_STOP_LEVEL)
+* @tc.type: Func
 */
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_027, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_019, TestSize.Level0)
 {
     bool viewData = true;
     AotCompilerImplMock aotImplMock;
@@ -656,11 +523,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_027, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerImplTest_028
- * @tc.desc: AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
- *              child process terminate with signal SIGKILL;
- *                  parent process receive SIGKILL signal;
- * @tc.type: Func
+* @tc.name: AotCompilerImplTest_020
+* @tc.desc: AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
+*              child process terminate with signal SIGKILL;
+*                  parent process receive SIGKILL signal;
+* @tc.type: Func
 */
 AotCompilerImplMock g_aotImplMock;
 int32_t g_aotRet = INVALID_ERR_CODE;
@@ -671,6 +538,10 @@ void RunAotCompilerTask(void)
     std::vector<int16_t> sigData;
     {
         std::lock_guard<std::mutex> lock(aotCompilerMutex_);
+        std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
+        int32_t retHandle = argsHandler->Handle(0);
+        EXPECT_EQ(retHandle, ERR_OK);
+        g_aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
         int32_t aotRet = g_aotImplMock.EcmascriptAotCompilerMock(argsMap, sigData);
         if (aotRet == ERR_AOT_COMPILER_CALL_CRASH     ||
             aotRet == ERR_AOT_COMPILER_CALL_CANCELLED ||
@@ -701,7 +572,7 @@ void TestCancelAotCompilerTask()
     sleep(3); // 3: delay 3s
 }
 
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_028, TestSize.Level0)
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_020, TestSize.Level0)
 {
     g_aotRet = INVALID_ERR_CODE;
     TestCancelAotCompilerTask();

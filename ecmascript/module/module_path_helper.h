@@ -213,6 +213,21 @@ public:
     static bool IsOhmUrl(const CString &str);
     static bool CheckAndGetRecordName(JSThread *thread, const CString &ohmUrl, CString &recordName);
     static bool ValidateAbcPath(const CString &baseFileName, ValidateFilePath checkMode);
+    static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
+    static std::pair<std::string, std::string> ResolveOhmUrlStartWithBundle(const std::string &ohmUrl);
+    static std::pair<std::string, std::string> ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl);
+
+    inline static std::pair<CString, CString> ResolvePath(const char *path)
+    {
+        CString filePath(path);
+        size_t index = filePath.find_last_of('/');
+        if (index == std::string::npos) {
+            LOG_FULL(FATAL) << "The OhmUrl is invalid";
+        }
+        CString entry = filePath.substr(index + 1);
+        return {filePath + ABC.data(), entry};
+    }
+
     /*
      * Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName

@@ -20,23 +20,28 @@
 namespace panda::ecmascript {
 class NapiModuleLoader {
 public:
+    static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath, const CString &moduleName,
+                                                       CString &abcFilePath, bool isHybrid = false);
     static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
-                                                       const CString& moduleName, CString &abcFilePath);
-    static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath, CString modulePath);
+                                                       CString modulePath, bool isHybrid = false);
 
     static JSHandle<JSTaggedValue> GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
-        const CString &abcFilePath);
-private:
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-                                                                     CString &modulePath, CString &abcFilePath);
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
-        const CString &requestPath, const CString &modulePath, const JSPandaFile *pandaFile);
-
+                                                      const CString &abcFilePath);
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
-        const CString &abcFilePath);
+                                                               const CString &abcFilePath, bool isHybrid = false);
+private:
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(
+        EcmaVM *vm, CString &requestPath, CString &modulePath,
+        CString &abcFilePath, bool isHybrid = false);
+    
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(
+        JSThread *thread, CString &abcFilePath, const CString &requestPath,
+        const CString &modulePath, const JSPandaFile *pandaFile);
 
-    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, const CString& abcFilePath,
-        const CString& srcPrefix, const CString& requestPath, const CString& modulePath);
+    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(
+        JSThread *thread, const CString &abcFilePath, const CString &srcPrefix,
+        const CString &requestPath, const CString &modulePath,
+        bool isHybrid = false);
 };
 }
 
