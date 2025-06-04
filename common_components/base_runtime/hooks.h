@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "common_interfaces/base/runtime_param.h"
 #include "common_interfaces/heap/heap_visitor.h"
 #include "common_interfaces/thread/mutator_base.h"
 
@@ -41,5 +42,8 @@ PUBLIC_API void SweepThreadLocalJitFort();
 PUBLIC_API bool IsMachineCodeObject(uintptr_t obj);
 PUBLIC_API void JitFortUnProt(size_t size, void* base);
 
+// Used for init/fini BaseRuntime from static
+PUBLIC_API void CheckAndInitBaseRuntime(const RuntimeParam &param);
+PUBLIC_API void CheckAndFiniBaseRuntime();
 } // namespace panda
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H
