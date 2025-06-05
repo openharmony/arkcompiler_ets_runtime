@@ -3313,6 +3313,9 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
     {
         if (!needPushArgv) {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+#endif
             GateRef code = builder_.GetCodeAddr(func);
             auto depend = builder_.GetDepend();
             const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
@@ -3339,6 +3342,9 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
     {
         if (!needPushArgv) {
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+#endif
             GateRef code = builder_.GetCodeAddr(func);
             auto depend = builder_.GetDepend();
             const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
@@ -3377,6 +3383,9 @@ void SlowPathLowering::LowerTypedCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+#endif
     GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
@@ -3394,6 +3403,9 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FastCallArgIdx::FUNC));
+#ifdef USE_READ_BARRIER
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+#endif
     GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
     std::vector<GateRef> args(num);
