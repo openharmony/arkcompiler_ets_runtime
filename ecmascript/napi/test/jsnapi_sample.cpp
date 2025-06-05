@@ -264,6 +264,54 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char16)
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_pchar16tObject_IsString : " << pchar16tObject->IsString(vm_);
 }
 
+/**
+ * trap for isCompress, notify cj if modify
+ */
+HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_IsCompress)
+{
+    {
+        LocalScope scope(vm_);
+        const char16_t * cases[] {
+            u"a plain text, 和",
+            u"你好，世界！",
+            u"🦐😀",
+        };
+        constexpr auto bufferSize = 128;
+        char16_t buffer[bufferSize] {0};
+        for (auto one : cases) {
+            std::u16string src = one;
+            auto string = StringRef::NewFromUtf16WithoutStringTable(vm_, one, src.size());
+            EXPECT_FALSE(string->IsCompressed(vm_));
+            EXPECT_EQ(string->Length(vm_), src.size());
+            auto writeSize = string->WriteUtf16(vm_, buffer, bufferSize);
+            EXPECT_EQ(writeSize, src.size());
+            std::u16string res(buffer, writeSize);
+            EXPECT_EQ(src, res);
+        }
+    }
+    {
+        LocalScope scope(vm_);
+        std::string utf16Cases[] {
+            "a plain text, 和",
+            "你好，世界！",
+            "🦐😀",
+        };
+        std::string latin1Cases[] {
+            "this is a plain text",
+            "123,./;'",
+            ""
+        };
+        for (const auto& one: utf16Cases) {
+            auto string = StringRef::NewFromUtf8(vm_, one.c_str(), one.size());
+            EXPECT_FALSE(string->IsCompressed(vm_));
+        }
+        for (const auto& one : latin1Cases) {
+            auto string = StringRef::NewFromUtf8(vm_, one.c_str(), one.size());
+            EXPECT_TRUE(string->IsCompressed(vm_));
+        }
+    }
+}
+
 HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_SymbolRef)
 {
     LocalScope scope(vm_);

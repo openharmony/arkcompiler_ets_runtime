@@ -2256,6 +2256,13 @@ uint32_t StringRef::Length(const EcmaVM *vm)
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
+bool StringRef::IsCompressed(const panda::EcmaVM *vm)
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return !EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).IsUtf16();
+}
+
 size_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
