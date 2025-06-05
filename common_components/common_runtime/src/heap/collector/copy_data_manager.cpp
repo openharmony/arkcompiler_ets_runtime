@@ -18,6 +18,7 @@
 #include <memoryapi.h>
 #endif
 
+#include "common_components/platform/os.h"
 #include "common_components/common_runtime/src/base/immortal_wrapper.h"
 #include "common_components/common_runtime/src/heap/allocator/region_desc.h"
 #include "common_components/common_runtime/src/heap/collector/region_bitmap.h"
@@ -55,5 +56,7 @@ void HeapBitmapManager::InitializeHeapBitmap()
 
     heapBitmapStart_ = reinterpret_cast<uintptr_t>(startAddress);
     heapBitmap_[0].InitializeMemory(heapBitmapStart_, heapBitmapSize, regionUnitCount_);
+
+    os::PrctlSetVMA(startAddress, allHeapBitmapSize_, "ARKTS_CMC_GC_HEAP_BIT_MAP");
 }
 } // namespace panda
