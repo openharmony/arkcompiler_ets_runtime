@@ -408,7 +408,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
 {
     BlockNode *newBlk = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
     BlockNode *tmpBlockNode = nullptr;
-    std::vector<StmtNode *> abortNode;
     if (block.GetFirst() == nullptr) {
         return newBlk;
     }
@@ -503,9 +502,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
         }
         CHECK_FATAL(beCommon.GetSizeOfTypeSizeTable() == GlobalTables::GetTypeTable().GetTypeTableSize(), "Error!");
     } while (nextStmt != nullptr);
-    for (auto node : abortNode) {
-        newBlk->AddStatement(node);
-    }
     return newBlk;
 }
 
@@ -712,17 +708,9 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
         case OP_dread:
             return LowerDread(static_cast<DreadNode &>(expr), blkNode);
 
-        case OP_addrof:
-            return LowerAddrof(static_cast<AddrofNode &>(expr));
-
         case OP_iread:
             return LowerIread(static_cast<IreadNode &>(expr));
 
-        case OP_cvt:
-        case OP_retype:
-        case OP_zext:
-        case OP_sext:
-            return LowerCastExpr(expr);
         default:
             return &expr;
     }
@@ -894,6 +882,11 @@ bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) con
         case INTRN_JS_PURE_CALL:
         case INTRN_HEAP_CONSTANT:
         case INTRN_GET_HEAP_CONSTANT_TABLE:
+        case INTRN_TAGGED_IS_HEAPOBJECT:
+        case INTRN_IS_STABLE_ELEMENTS:
+        case INTRN_HAS_PENDING_EXCEPTION:
+        case INTRN_TAGGED_OBJECT_IS_STRING:
+        case INTRN_IS_COW_ARRAY:
             return true;
         default: {
             return false;

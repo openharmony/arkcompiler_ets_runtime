@@ -226,6 +226,35 @@ static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &c
                                                      *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
                                                      *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
                                                      *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)));
+        case INTRN_TAGGED_IS_HEAPOBJECT:
+            return cgFunc.SelectTaggedIsHeapObject(intrinsicopNode,
+                                                   *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                   *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)));
+        case INTRN_IS_STABLE_ELEMENTS:
+            return cgFunc.SelectIsStableElements(intrinsicopNode,
+                                                 *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                 *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                 *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)));
+        case INTRN_HAS_PENDING_EXCEPTION:
+            return cgFunc.SelectHasPendingException(intrinsicopNode,
+                                                    *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                    *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                    *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)));
+        case INTRN_TAGGED_OBJECT_IS_STRING:
+            return cgFunc.SelectTaggedObjectIsString(intrinsicopNode,
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFourthOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFifthOpnd)));
+        case INTRN_IS_COW_ARRAY:
+            return cgFunc.SelectIsCOWArray(intrinsicopNode,
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)),
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFourthOpnd)),
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFifthOpnd)),
+                                           *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSixthOpnd)));
         default:
             DEBUG_ASSERT(false, "Should not reach here.");
             return nullptr;

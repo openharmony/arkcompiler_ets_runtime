@@ -56,6 +56,13 @@ namespace panda::ecmascript::kungfu {
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                                   \
     V(GetEnv, GET_ENV, GateFlags::NO_WRITE, 0, 1, 1)
 
+#define SHARE_INTRINSIC_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
+    V(TaggedIsHeapObjectIntrinsic, TAGGED_IS_HEAPOBJECT_INTRINSIC, GateFlags::NONE_FLAG, 0, 0, 2)               \
+    V(IsStableElementsIntrinsic, IS_STABLE_ELEMENTS_INTRINSIC, GateFlags::NONE_FLAG, 0, 1, 3)                   \
+    V(HasPendingExceptionIntrinsic, HAS_PENDING_EXCEPTION_INTRINSIC, GateFlags::NONE_FLAG, 0, 1, 3)             \
+    V(CheckTaggedObjectIsString, CHECK_OBJECT_IS_STRING, GateFlags::NONE_FLAG, 0, 1, 5)                         \
+    V(IsJsCOWArrayIntrinsic, IS_JS_COW_ARRAY_INTRINSIC, GateFlags::NONE_FLAG, 0, 1, 6)                          \
+
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                       \
     V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)
@@ -89,7 +96,8 @@ namespace panda::ecmascript::kungfu {
     SHARE_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                     \
     LCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
     MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
-    HCR_IMMUTABLE_META_DATA_CACHE_LIST(V)
+    HCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
+    SHARE_INTRINSIC_IMMUTABLE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                           \

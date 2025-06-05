@@ -165,6 +165,27 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef glue, GateRef obj)
     return IsCOWArray(objectType);
 }
 
+GateRef CircuitBuilder::IsJsCOWArray(GateRef glue, GateRef obj, [[maybe_unused]] const CompilationEnv *compilationEnv)
+{
+#ifndef USE_CMC_GC
+    if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
+        std::string comment = "is_js_cow_array";
+        auto currentLabel = env_->GetCurrentLabel();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef elementsOffset = Int32(JSObject::ELEMENTS_OFFSET);
+        GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+        GateRef cowTaggedArray = Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY));
+        GateRef cowArrayLast = Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY));
+        GateRef isJsCowArray = GetCircuit()->NewGate(circuit_->IsJsCOWArrayIntrinsic(),
+            MachineType::I1, { currentDepend, glue, obj, elementsOffset, bitfieldOffset, cowTaggedArray, cowArrayLast},
+            GateType::NJSValue(), comment.c_str());
+        currentLabel->SetDepend(isJsCowArray);
+        return isJsCowArray;
+    }
+#endif
+    return IsJsCOWArray(glue, obj);
+}
+
 GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
 {
     return BitOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY))),
@@ -535,6 +556,24 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
     GateRef exception = LoadWithoutBarrier(VariableType::JS_ANY(), glue, exceptionOffset);
     return TaggedIsNotHole(exception);
+}
+
+GateRef CircuitBuilder::HasPendingException(GateRef glue, [[maybe_unused]] const CompilationEnv *compilationEnv)
+{
+#ifndef USE_CMC_GC
+    if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
+        std::string comment = "HasPendingExceptionIntrinsic";
+        auto currentLabel = env_->GetCurrentLabel();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
+        GateRef hasPendingException = GetCircuit()->NewGate(circuit_->HasPendingExceptionIntrinsic(),
+            MachineType::I1, { currentDepend, glue, exceptionOffset, Int64(JSTaggedValue::VALUE_HOLE) },
+            GateType::NJSValue(), comment.c_str());
+        currentLabel->SetDepend(hasPendingException);
+        return hasPendingException;
+    }
+#endif
+    return HasPendingException(glue);
 }
 
 GateRef CircuitBuilder::IsUtf8String(GateRef string)

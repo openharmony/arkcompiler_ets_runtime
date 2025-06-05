@@ -156,6 +156,7 @@ private:
     void OptimizeAddrBOrXShiftExtend(Insn &insn, MemOperand &memOpnd, Insn &shiftExtendInsn);
     void OptimizeWithAddrrrs(Insn &insn, MemOperand &memOpnd, Insn &addInsn);
     bool CheckOperandIsDeadFromInsn(const RegOperand &regOpnd, Insn &insn);
+    void OptimizeAddrBOrXShift(MemOperand &memOpnd, Insn &insn);
 };
 
 /* Eliminate the sxt[b|h|w] w0, w0;, when w0 is satisify following:
@@ -284,6 +285,7 @@ public:
     ~CsetCbzToBeqOptAArch64() override = default;
     void Run(BB &bb, Insn &insn) override;
     MOperator SelectMOperator(ConditionCode condCode, bool inverse) const;
+    void IntrinsicOptimize(BB &bb, Insn *preInsn, Insn &insn);
 };
 
 /* When exist load after load or load after store, and [MEM] is

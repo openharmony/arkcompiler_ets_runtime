@@ -1637,47 +1637,234 @@ uint32 AArch64ObjEmitter::EncodeLogicaImm(uint64 imm, uint32 size) const
     return (n << kShiftTwelve) | (immr << kShiftSix) | (imms & 0x3f);
 }
 
+void AArch64ObjEmitter::EmitAdrpLabel(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                      ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    uint32 opnd = GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd));
+    uint32 binInsn = AArch64CG::kMd[MOP_xadrp].GetMopEncode();
+    binInsn |= opnd;
+    objFuncEmitInfo.AppendTextData(binInsn, k4ByteSize);
+    binInsn = AArch64CG::kMd[MOP_xaddrri12].GetMopEncode();
+    binInsn |= opnd | (opnd << kShiftFive);
+    objFuncEmitInfo.AppendTextData(binInsn, k4ByteSize);
+    return;
+}
+
+void AArch64ObjEmitter::EmitGetHeapConstTable(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                              ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &jsFuncReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    ImmOperand &machineCodeOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    ImmOperand &constTableOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd));
+    Operand &machineCodeMemOpnd = cgFunc.CreateMemOpnd(jsFuncReg, machineCodeOffset.GetValue(), k64BitSize);
+    Insn &ldrMachineCodeInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, machineCodeMemOpnd);
+    EncodeInstruction(ldrMachineCodeInsn, label2Offset, objFuncEmitInfo);
+    Operand &constTableMemOpnd = cgFunc.CreateMemOpnd(destReg, constTableOffset.GetValue(), k64BitSize);
+    Insn &ldrConstantTableInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constTableMemOpnd);
+    EncodeInstruction(ldrConstantTableInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitHeapConst(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                      ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &constTableStart = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    ImmOperand &constSlotIndex = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    Operand &constSlotMem = cgFunc.CreateMemOpnd(
+        constTableStart, constSlotIndex.GetValue() * k8ByteSize, k64BitSize);
+    Insn &ldrConstantInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constSlotMem);
+    EncodeInstruction(ldrConstantInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitTaggedIsHeapObject(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                               ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    ImmOperand &heapObjectTagMask = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    CHECK_FATAL(static_cast<uint64_t>(heapObjectTagMask.GetValue()) == 0xFFFF000000000006,
+                "unexpected heap object tag mask");
+    //0xffff000000000006
+    ImmOperand &immValue6 = cgFunc.CreateImmOperand(6, k16BitSize, false);
+    Insn &movInsn1 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, immValue6);
+    EncodeInstruction(movInsn1, label2Offset, objFuncEmitInfo);
+
+    ImmOperand &immValue = cgFunc.CreateImmOperand(65535, k16BitSize, false); // 65535: 0xFFFF, top 16 bits
+    BitShiftOperand *lslOpnd = cgFunc.GetLogicalShiftLeftOperand(48, true); // 48: left shift 48 bits
+    Insn &movInsn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovkri16, destReg, immValue, *lslOpnd);
+    EncodeInstruction(movInsn2, label2Offset, objFuncEmitInfo);
+
+    Insn &insn3 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, destReg);
+    EncodeInstruction(insn3, label2Offset, objFuncEmitInfo);
+    Operand &rflag = cgFunc.GetOrCreateRflag();
+    ImmOperand &immValueZero = cgFunc.CreateImmOperand(0, k16BitSize, false);
+    Insn &insn4 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, immValueZero);
+    EncodeInstruction(insn4, label2Offset, objFuncEmitInfo);
+
+    CondOperand &condOpnd = cgFunc.GetCondOperand(CC_EQ);
+    Insn &insn5 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcsetrc, destReg, condOpnd, rflag);
+    EncodeInstruction(insn5, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitIsStableElements(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                             ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    int64 bitFieldOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd)).GetValue();
+    CHECK_FATAL(bitFieldOffset % k8ByteSize == 0, "unsupported encoding offset");
+    // ldr dest, [src, #8], get JSHClass BitField
+    Operand &bitFieldMem = cgFunc.CreateMemOpnd(srcReg, bitFieldOffset, k32BitSize);
+    Insn &ldrBitField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_wldr, destReg, bitFieldMem);
+    EncodeInstruction(ldrBitField, label2Offset, objFuncEmitInfo);
+
+    // ubfx dest, dest, 19, 1, get bit JSHClass::IsStableElementsBit::START_BIT
+    ImmOperand &stableElementsBit = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd));
+    ImmOperand &bitsLength = cgFunc.CreateImmOperand(1, k64BitSize, false);
+    Insn &getBitInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_wubfxrri5i5, destReg, destReg,
+                                                          stableElementsBit, bitsLength);
+    EncodeInstruction(getBitInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitHasPendingException(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                                ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    DEBUG_ASSERT(insn.GetOperand(kInsnThirdOpnd).IsImmediate(), "wrong operand type");
+    ImmOperand &offsetOpnd = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    ImmOperand &holeValue = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd));
+    CHECK_FATAL(holeValue.GetValue() == 5, "unexpected tagged hole value"); // 5: VALUE_HOLE
+    // ExceptionOffset: 0xf70(3952)
+    int64 offset = offsetOpnd.GetValue();
+    Operand &exceptionMem = cgFunc.CreateMemOpnd(srcReg, offset, k64BitSize);
+    Insn &ldrExceptionInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, exceptionMem);
+    EncodeInstruction(ldrExceptionInsn, label2Offset, objFuncEmitInfo);
+
+    // HOLE : 5
+    ImmOperand &taggedHole = cgFunc.CreateImmOperand(holeValue.GetValue(), k16BitSize, false);
+    Operand &rflag = cgFunc.GetOrCreateRflag();
+    Insn &cmpInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, taggedHole);
+    EncodeInstruction(cmpInsn, label2Offset, objFuncEmitInfo);
+
+    CondOperand &condOpnd = cgFunc.GetCondOperand(CC_NE);
+    Insn &csetInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcsetrc, destReg, condOpnd, rflag);
+    EncodeInstruction(csetInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitTaggedObjectIsString(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                                 ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    // glue is not used.
+    RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    Operand &hclass = cgFunc.CreateMemOpnd(srcReg, 0, k64BitSize);
+    Insn &ldrObj = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, hclass);
+    EncodeInstruction(ldrObj, label2Offset, objFuncEmitInfo);
+    int64 bitFieldOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd)).GetValue();
+    CHECK_FATAL(bitFieldOffset % k8ByteSize == 0, "unsupported encoding offset");
+    Operand &bitField = cgFunc.CreateMemOpnd(destReg, bitFieldOffset, k8BitSize);
+    Insn &ldrBitField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_wldrb, destReg, bitField);
+    EncodeInstruction(ldrBitField, label2Offset, objFuncEmitInfo);
+    int64 stringFirstValue = static_cast<ImmOperand&>(insn.GetOperand(kInsnFifthOpnd)).GetValue();
+    ImmOperand &stringFirst = cgFunc.CreateImmOperand(stringFirstValue, k16BitSize, false);
+    Insn &subInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xsubrri12, destReg, destReg, stringFirst);
+    EncodeInstruction(subInsn, label2Offset, objFuncEmitInfo);
+
+    Operand &rflag = cgFunc.GetOrCreateRflag();
+    int64 stringLastValue = static_cast<ImmOperand&>(insn.GetOperand(kInsnSixthOpnd)).GetValue();
+    ImmOperand &toStringLastDis = cgFunc.CreateImmOperand(stringLastValue - stringFirstValue,
+                                                          k16BitSize, false);
+    Insn &cmpInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, toStringLastDis);
+    EncodeInstruction(cmpInsn, label2Offset, objFuncEmitInfo);
+
+    CondOperand &condOpnd = cgFunc.GetCondOperand(CC_LS);
+    Insn &csetInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcsetrc, destReg, condOpnd, rflag);
+    EncodeInstruction(csetInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitIsCowArray(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                       ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    // glue is not used.
+    RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    int64 elementsOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd)).GetValue();
+    Operand &elements = cgFunc.CreateMemOpnd(srcReg, elementsOffset, k64BitSize);
+    Insn &ldrElements = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, elements);
+    EncodeInstruction(ldrElements, label2Offset, objFuncEmitInfo);
+
+    Operand &hclass = cgFunc.CreateMemOpnd(destReg, 0, k64BitSize);
+    Insn &ldrObj = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, hclass);
+    EncodeInstruction(ldrObj, label2Offset, objFuncEmitInfo);
+
+    int64 bitFieldOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFifthOpnd)).GetValue();
+    CHECK_FATAL(bitFieldOffset % k8ByteSize == 0, "unsupported encoding offset");
+    Operand &bitField = cgFunc.CreateMemOpnd(destReg, bitFieldOffset, k8BitSize);
+    Insn &ldrBitField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_wldrb, destReg, bitField);
+    EncodeInstruction(ldrBitField, label2Offset, objFuncEmitInfo);
+
+    int64 cowFirstValue = static_cast<ImmOperand&>(insn.GetOperand(kInsnSixthOpnd)).GetValue();
+    ImmOperand &cowFirst = cgFunc.CreateImmOperand(cowFirstValue, k16BitSize, false);
+    Insn &subInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xsubrri12, destReg, destReg, cowFirst);
+    EncodeInstruction(subInsn, label2Offset, objFuncEmitInfo);
+
+    Operand &rflag = cgFunc.GetOrCreateRflag();
+    int64 cowLastValue = static_cast<ImmOperand&>(insn.GetOperand(kInsnSeventhOpnd)).GetValue();
+    ImmOperand &toCowLastDis = cgFunc.CreateImmOperand(cowLastValue - cowFirstValue, k16BitSize, false);
+    Insn &cmpInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, toCowLastDis);
+    EncodeInstruction(cmpInsn, label2Offset, objFuncEmitInfo);
+
+    CondOperand &condOpnd = cgFunc.GetCondOperand(CC_LS);
+    Insn &csetInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcsetrc, destReg, condOpnd, rflag);
+    EncodeInstruction(csetInsn, label2Offset, objFuncEmitInfo);
+    return;
+}
+
 void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
                                           ObjFuncEmitInfo &objFuncEmitInfo)
 {
     switch (insn.GetMachineOpcode()) {
         // adrp    xd, label
         // add     xd, xd, #:lo12:label
-        case MOP_adrp_label: {
-            uint32 opnd = GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd));
-            uint32 binInsn = AArch64CG::kMd[MOP_xadrp].GetMopEncode();
-            binInsn |= opnd;
-            objFuncEmitInfo.AppendTextData(binInsn, k4ByteSize);
-            binInsn = AArch64CG::kMd[MOP_xaddrri12].GetMopEncode();
-            binInsn |= opnd | (opnd << kShiftFive);
-            objFuncEmitInfo.AppendTextData(binInsn, k4ByteSize);
+        case MOP_adrp_label:
+            EmitAdrpLabel(insn, label2Offset, objFuncEmitInfo);
             break;
-        }
-        case MOP_get_heap_const_table: {
-            AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
-            RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
-            RegOperand &jsFuncReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
-            ImmOperand &machineCodeOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
-            ImmOperand &constTableOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd));
-            Operand &machineCodeMemOpnd = cgFunc.CreateMemOpnd(jsFuncReg, machineCodeOffset.GetValue(), k64BitSize);
-            Insn &ldrMachineCodeInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, machineCodeMemOpnd);
-            EncodeInstruction(ldrMachineCodeInsn, label2Offset, objFuncEmitInfo);
-            Operand &constTableMemOpnd = cgFunc.CreateMemOpnd(destReg, constTableOffset.GetValue(), k64BitSize);
-            Insn &ldrConstantTableInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constTableMemOpnd);
-            EncodeInstruction(ldrConstantTableInsn, label2Offset, objFuncEmitInfo);
+        case MOP_get_heap_const_table:
+            EmitGetHeapConstTable(insn, label2Offset, objFuncEmitInfo);
             break;
-        }
-        case MOP_heap_const: {
-            AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
-            RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
-            RegOperand &constTableStart = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
-            ImmOperand &constSlotIndex = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
-            Operand &constSlotMem = cgFunc.CreateMemOpnd(
-                constTableStart, constSlotIndex.GetValue() * k8ByteSize, k64BitSize);
-            Insn &ldrConstantInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constSlotMem);
-            EncodeInstruction(ldrConstantInsn, label2Offset, objFuncEmitInfo);
+        case MOP_heap_const:
+            EmitHeapConst(insn, label2Offset, objFuncEmitInfo);
             break;
-        }
+        case MOP_tagged_is_heapobject:
+            EmitTaggedIsHeapObject(insn, label2Offset, objFuncEmitInfo);
+            break;
+        case MOP_is_stable_elements:
+            EmitIsStableElements(insn, label2Offset, objFuncEmitInfo);
+            break;
+        case MOP_has_pending_exception:
+            EmitHasPendingException(insn, label2Offset, objFuncEmitInfo);
+            break;
+        case MOP_tagged_object_is_string:
+            EmitTaggedObjectIsString(insn, label2Offset, objFuncEmitInfo);
+            break;
+        case MOP_is_cow_array:
+            EmitIsCowArray(insn, label2Offset, objFuncEmitInfo);
+            break;
         default:
             CHECK_FATAL(false, "unsupport mop in EmitIntrinsicInsn!\n");
     }

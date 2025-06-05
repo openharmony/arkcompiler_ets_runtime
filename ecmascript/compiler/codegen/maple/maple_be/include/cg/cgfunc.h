@@ -186,8 +186,17 @@ public:
     virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
     virtual Operand *SelectCclz(IntrinsicopNode &intrinsicopNode) = 0;
     virtual RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) = 0;
+    virtual RegOperand *SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) = 0;
+    virtual RegOperand *SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0,
+                                               Operand &opnd1, Operand &opnd2) = 0;
+    virtual RegOperand *SelectHasPendingException(IntrinsicopNode &node, Operand &opnd0,
+                                                  Operand &opnd1, Operand &opnd2) = 0;
     virtual RegOperand *SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,
                                                    Operand &opnd1, Operand &opnd2) = 0;
+    virtual RegOperand *SelectTaggedObjectIsString(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                                   Operand &opnd2, Operand &opnd3, Operand &opnd4) = 0;
+    virtual RegOperand *SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                         Operand &opnd2, Operand &opnd3, Operand &opnd4, Operand &opnd5) = 0;
     virtual void SelectComment(CommentNode &comment) = 0;
 
     /* select expr */

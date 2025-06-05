@@ -53,8 +53,16 @@ public:
     void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
     Operand *SelectCclz(IntrinsicopNode &intrinopNode) override;
     RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) override;
+    RegOperand *SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) override;
+    RegOperand *SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2) override;
+    RegOperand *SelectHasPendingException(IntrinsicopNode &node, Operand &opnd0,
+                                          Operand &opnd1, Operand &opnd2) override;
     RegOperand *SelectGetHeapConstantTable(
         IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2) override;
+    RegOperand *SelectTaggedObjectIsString(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                          Operand &opnd2, Operand &opnd3, Operand &opnd4) override;
+    RegOperand *SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                 Operand &opnd2, Operand &opnd3, Operand &opnd4, Operand &opnd5) override;
     void SelectComment(CommentNode &comment) override;
     Operand *SelectDread(const BaseNode &parent, AddrofNode &expr) override;
     RegOperand *SelectRegread(RegreadNode &expr) override;

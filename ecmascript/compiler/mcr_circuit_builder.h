@@ -68,6 +68,27 @@ GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj)
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
 }
 
+GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj,
+                                             [[maybe_unused]] const CompilationEnv *compilationEnv)
+{
+#ifndef USE_CMC_GC
+    if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
+        std::string comment = "tagged_obj_is_string_intrinsic";
+        auto currentLabel = env_->GetCurrentLabel();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+        GateRef stringFirst = Int32(static_cast<int32_t>(JSType::STRING_FIRST));
+        GateRef stringLast = Int32(static_cast<int32_t>(JSType::STRING_LAST));
+        GateRef checkTaggedObjectIsString = GetCircuit()->NewGate(circuit_->CheckTaggedObjectIsString(),
+            MachineType::I1, { currentDepend, glue, obj, bitfieldOffset,  stringFirst, stringLast},
+            GateType::NJSValue(), comment.c_str());
+        currentLabel->SetDepend(checkTaggedObjectIsString);
+        return checkTaggedObjectIsString;
+    }
+#endif
+    return TaggedObjectIsString(glue, obj);
+}
+
 GateRef CircuitBuilder::TaggedObjectIsShared(GateRef glue, GateRef obj)
 {
     GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), LoadHClass(glue, obj),
@@ -469,6 +490,16 @@ GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
     x = ChangeTaggedPointerToInt64(x);
     auto t = Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK), GateType::Empty(), "checkHeapObject");
     return Equal(t, Int64(0), "checkHeapObject");
+}
+
+GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x, const CompilationEnv *compilationEnv)
+{
+    if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic() && !acc_.IsConstant(x)) {
+        return GetCircuit()->NewGate(circuit_->TaggedIsHeapObjectIntrinsic(),
+            MachineType::I1, { x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK) },
+            GateType::NJSValue(), "checkHeapObjectIntrinsic");
+    }
+    return TaggedIsHeapObject(x);
 }
 
 GateRef CircuitBuilder::TaggedIsJSFunction(GateRef glue, GateRef x)

@@ -491,7 +491,7 @@ private:
 
     uint8 GetRex(const Mem &mem, Reg reg = ERR) const
     {
-        uint8 rexW = (reg != ERR && GetRegSize(reg) == k64Bits) ? 8 : 0;
+        uint8 rexW = ((mem.size == k64Bits) || (reg != ERR && GetRegSize(reg) == k64Bits)) ? 8 : 0;
         uint8 rexR = reg != ERR && IsRegExt(reg) ? 4 : 0;
         uint8 rexX = mem.index != ERR && IsRegExt(mem.index) ? 2 : 0;
         uint8 rexB = mem.base != ERR && IsRegExt(mem.base) ? 1 : 0;

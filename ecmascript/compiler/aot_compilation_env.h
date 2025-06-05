@@ -33,6 +33,11 @@ public:
         return false;
     }
 
+    bool SupportIntrinsic() const override
+    {
+        return false;
+    }
+   
     kungfu::LazyDeoptAllDependencies *GetDependencies() const override
     {
         LOG_FULL(FATAL) << "Aot should not get dependencies";

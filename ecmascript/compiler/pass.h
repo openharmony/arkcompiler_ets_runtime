@@ -752,14 +752,18 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
+        CompilationEnv *env = nullptr;
+        if (data->GetPassContext() != nullptr) {
+            env = data->GetPassContext()->GetCompilationEnv();
+        }
 #ifndef USE_CMC_GC
 #if ENABLE_NEXT_OPTIMIZATION
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, true).Run(data->GetCfg());
 #else
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, false).Run(data->GetCfg());
 #endif
 #else
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, false).Run(data->GetCfg());
 #endif
         return true;
     }
@@ -796,8 +800,9 @@ public:
         bool enableStoreBarrier = data->GetPassContext()->GetCompilationEnv()->GetJSOptions().IsStoreBarrierOpt();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, enableStoreBarrier)
-            .Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk,
+                     data->GetPassContext()->GetCompilationEnv(), enableStoreBarrier)
+                     .Run(data->GetCfg());
         return true;
     }
 };

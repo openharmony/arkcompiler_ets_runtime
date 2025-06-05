@@ -202,7 +202,7 @@ void MCRLowering::LowerHeapObjectCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
 
-    GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver);
+    GateRef heapObjectCheck = builder_.TaggedIsHeapObject(receiver, env_);
     builder_.DeoptCheck(heapObjectCheck, frameState, DeoptType::NOTHEAPOBJECT1);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -212,7 +212,7 @@ void MCRLowering::LowerTaggedIsHeapObject(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef result = builder_.TaggedIsHeapObject(receiver);
+    GateRef result = builder_.TaggedIsHeapObject(receiver, env_);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -248,7 +248,7 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
             break;
         }
         case JSType::STRING_FIRST: {
-            result = builder_.TaggedObjectIsString(glue_, obj);
+            result = builder_.TaggedObjectIsString(glue_, obj, env_);
             break;
         }
         case JSType::JS_TYPED_ARRAY_FIRST: {
@@ -288,7 +288,7 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef hclass = acc_.GetValueIn(gate, 0);
 
-    GateRef check = builder_.IsStableElements(hclass);
+    GateRef check = builder_.IsStableElements(hclass, env_);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY2);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

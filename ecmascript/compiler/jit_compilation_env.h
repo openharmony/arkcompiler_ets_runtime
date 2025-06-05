@@ -64,6 +64,11 @@ public:
         return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
 
+    bool SupportIntrinsic() const override
+    {
+        return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
+    }
+
     kungfu::LazyDeoptAllDependencies *GetDependencies() const override
     {
         return dependencies_;
@@ -202,7 +207,7 @@ public:
         heapConstantInfo_.gate2HeapConstantIndex[gate] = heapConstantIndex;
     }
 
-    const std::map<int32_t, uint32_t> &GetGate2HeapConstantIndex() const
+    const std::unordered_map<int32_t, uint32_t> &GetGate2HeapConstantIndex() const
     {
         return heapConstantInfo_.gate2HeapConstantIndex;
     }
@@ -275,12 +280,12 @@ private:
     pgo::ApEntityId abcId_ {0};
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, bool>> ldExtModuleVarResolved_;
-    std::map<uint32_t, uint32_t> functionSlotIdMap_;
-    std::map<uint32_t, uint32_t> callee2CallerMap_;
+    std::unordered_map<uint32_t, uint32_t> functionSlotIdMap_;
+    std::unordered_map<uint32_t, uint32_t> callee2CallerMap_;
     struct HeapConstantInfo {
         std::vector<JSHandle<JSTaggedValue>> heapConstantTable;
         std::map<ConstantPoolHeapConstant, uint32_t> constPoolHeapConstant2Index;
-        std::map<int32_t, uint32_t> gate2HeapConstantIndex;
+        std::unordered_map<int32_t, uint32_t> gate2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> callMethodId2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> ctorMethodId2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> onlyInlineMethodId2HeapConstantIndex;

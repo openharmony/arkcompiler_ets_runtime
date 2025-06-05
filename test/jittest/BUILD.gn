@@ -88,6 +88,8 @@ group("ark_jit_ts_test") {
     "definefunc",
     "jnez",
     "constructor",
+    "intrinsic_test",
+    "intrinsic_test2",
   ]
 
   # Until we support barriers for HeapConstant table

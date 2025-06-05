@@ -247,7 +247,6 @@ bool CgFixShortBranch::PhaseRun(maplebe::CGFunc &f)
     fixShortBranch->FixShortBranches();
 
     // fix ldr would cause insn num increasing, do ldr fix first.
-    fixShortBranch->FixLdr();
     fixShortBranch->PatchLongBranch();
     return false;
 }

@@ -352,7 +352,7 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate, GateRef glue)
 
 void NTypeHCRLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
-    auto condition = builder_.HasPendingException(glue_);
+    auto condition = builder_.HasPendingException(glue_, compilationEnv_);
     GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);

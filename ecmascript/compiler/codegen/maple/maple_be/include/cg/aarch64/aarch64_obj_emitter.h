@@ -182,7 +182,20 @@ private:
     void EmitInstanceOfNoSubIsAssignable(const Insn &insn, std::vector<uint32> &label2Offset,
                                          ObjFuncEmitInfo &objFuncEmitInfo);
     void EmitMovMovkri16(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
-    void EmitMovMovk64ri16(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitAdrpLabel(const Insn &insn, const std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitGetHeapConstTable(const Insn &insn, const std::vector<uint32> &label2Offset,
+                               ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitHeapConst(const Insn &insn, const std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitTaggedIsHeapObject(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitIsStableElements(const Insn &insn, const std::vector<uint32> &label2Offset,
+                              ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitHasPendingException(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                 ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitTaggedObjectIsString(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                  ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitIsCowArray(const Insn &insn, const std::vector<uint32> &label2Offset,
+                        ObjFuncEmitInfo &objFuncEmitInfo);
 
     void EmitInsn(MOperator mOp, Operand &opnd1, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo)
     {

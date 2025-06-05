@@ -54,6 +54,7 @@ LiteCGIRBuilder::LiteCGIRBuilder(const std::vector<std::vector<GateRef>> *schedu
       jsPandaFile_(jsPandaFile),
       funcName_(funcName),
       acc_(circuit),
+      bbID2BB_(scheduledGates_->size(), nullptr),
       cf_(*module->GetModule())
 {
     lmirBuilder_ = new LMIRBuilder(*module->GetModule());
@@ -88,9 +89,8 @@ void LiteCGIRBuilder::BuildInstID2BBIDMap()
 
 BB &LiteCGIRBuilder::GetOrCreateBB(int bbID)
 {
-    auto itr = bbID2BB_.find(bbID);
-    if (itr != bbID2BB_.end()) {
-        return *(itr->second);
+    if (bbID2BB_[bbID] != nullptr) {
+        return *(bbID2BB_[bbID]);
     }
     BB &bb = lmirBuilder_->CreateBB();
     bbID2BB_[bbID] = &bb;
@@ -438,6 +438,10 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 HandleChangeTaggedPointerToInt64(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TAGGED_TO_INT64);
                 break;
+            case OpCode::TAGGED_IS_HEAPOBJECT_INTRINSIC:
+                HandleTaggedIsHeapObjectIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TAGGED_IS_HEAPOBJECT_INTRINSIC);
+                break;
             case OpCode::INT64_TO_TAGGED:
                 HandleChangeInt64ToTagged(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::INT64_TO_TAGGED);
@@ -469,6 +473,22 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
             case OpCode::TRUNC_FLOAT_TO_INT32:
                 HandleTruncFloatToInt(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TRUNC_FLOAT_TO_INT32);
+                break;
+            case OpCode::IS_STABLE_ELEMENTS_INTRINSIC:
+                HandleIsStableElementsIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::IS_STABLE_ELEMENTS_INTRINSIC);
+                break;
+            case OpCode::HAS_PENDING_EXCEPTION_INTRINSIC:
+                HandleHasPendingExceptionIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::HAS_PENDING_EXCEPTION_INTRINSIC);
+                break;
+            case OpCode::CHECK_OBJECT_IS_STRING:
+                HandleCheckObjectIsStringIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CHECK_OBJECT_IS_STRING);
+                break;
+            case OpCode::IS_JS_COW_ARRAY_INTRINSIC:
+                HandleIsJsCOWArrayIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::IS_JS_COW_ARRAY_INTRINSIC);
                 break;
             case OpCode::ADD_WITH_OVERFLOW:
                 HandleAddWithOverflow(gate);
@@ -539,7 +559,7 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ASM_CALL_BARRIER);
                 break;
             default:
-                if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
+                if (IsLogEnabled() && illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                     LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
                 }
         }
@@ -747,6 +767,54 @@ void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Function &functi
         auto &stmt = lmirBuilder_->Iassign(jsFuncValue, jsFuncAddr, jsFuncAddr.GetType());
         lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
     }
+}
+
+void LiteCGIRBuilder::HandleIsStableElementsIntrinsic(GateRef gate)
+{
+    Expr hclass = GetExprFromGate(acc_.GetIn(gate, 1)); // 1: the first value gate, hclass
+    Expr bitfieldOffset = GetExprFromGate(acc_.GetIn(gate, 2)); // 2: the second value gate, bitfield offset in hclass
+    Expr stableElementsBit = GetExprFromGate(acc_.GetIn(gate, 3)); // 3: the third value gate, stable element bit
+    std::vector<Expr> args = { hclass, bitfieldOffset, stableElementsBit };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_IS_STABLE_ELEMENTS, lmirBuilder_->i32Type, args);
+    SaveGate2Expr(gate, intrinsicOp);
+}
+
+void LiteCGIRBuilder::HandleHasPendingExceptionIntrinsic(GateRef gate)
+{
+    Expr glue = GetExprFromGate(acc_.GetIn(gate, 1)); // 1: the first value gate, glue
+    Expr offset = GetExprFromGate(acc_.GetIn(gate, 2)); // 2: the second value gate, exception offset in glue
+    Expr holeVal = GetExprFromGate(acc_.GetIn(gate, 3)); // 3: hole constant
+    ASSERT(acc_.GetOpCode(acc_.GetIn(gate, 2)) == OpCode::CONSTANT); // 2: the second value gate
+    ASSERT(acc_.GetOpCode(acc_.GetIn(gate, 3)) == OpCode::CONSTANT); // 3: the third value gate
+    std::vector<Expr> args = { glue, offset, holeVal };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_HAS_PENDING_EXCEPTION, lmirBuilder_->u1Type, args);
+    SaveGate2Expr(gate, intrinsicOp);
+}
+
+void LiteCGIRBuilder::HandleCheckObjectIsStringIntrinsic(GateRef gate)
+{
+    Expr glue = GetExprFromGate(acc_.GetIn(gate, 1));
+    Expr in = GetExprFromGate(acc_.GetIn(gate, 2));              // 2: third parameter  -> input
+    Expr bitfieldOffset = GetExprFromGate(acc_.GetIn(gate, 3));  // 3: fourth parameter -> bitfieldoffset imm
+    Expr stringFirst = GetExprFromGate(acc_.GetIn(gate, 4));     // 4: fifth parameter  -> stringFirst imm
+    Expr stringLast = GetExprFromGate(acc_.GetIn(gate, 5));      // 5: sixth paramter   -> stringLast imm
+    std::vector<Expr> args = { glue, in, bitfieldOffset, stringFirst, stringLast };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_TAGGED_OBJECT_IS_STRING,
+                                                 lmirBuilder_->u1Type, args);
+    SaveGate2Expr(gate, intrinsicOp);
+}
+
+void LiteCGIRBuilder::HandleIsJsCOWArrayIntrinsic(GateRef gate)
+{
+    Expr glue = GetExprFromGate(acc_.GetIn(gate, 1));
+    Expr in = GetExprFromGate(acc_.GetIn(gate, 2));             // 2: third parameter  -> input
+    Expr elementsOffset = GetExprFromGate(acc_.GetIn(gate, 3)); // 3: fourth parameter -> elementoffset imm
+    Expr bitfieldOffset = GetExprFromGate(acc_.GetIn(gate, 4)); // 4: fifth parameter  -> bitfieldoffset imm
+    Expr cowArrayFirst = GetExprFromGate(acc_.GetIn(gate, 5));  // 5: sixth paramter   -> cowArray first imm
+    Expr cowArrayLast = GetExprFromGate(acc_.GetIn(gate, 6));   // 6: seventh parameter-> cowArray last  imm
+    std::vector<Expr> args = { glue, in, elementsOffset, bitfieldOffset, cowArrayFirst, cowArrayLast};
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_IS_COW_ARRAY, lmirBuilder_->u1Type, args);
+    SaveGate2Expr(gate, intrinsicOp);
 }
 
 void LiteCGIRBuilder::SaveFrameTypeOnFrame(maple::litecg::Function &function, FrameType frameType)
@@ -992,6 +1060,15 @@ void LiteCGIRBuilder::HandleAdd(GateRef gate)
     VisitAdd(gate, g0, g1);
 }
 
+void LiteCGIRBuilder::HandleTaggedIsHeapObjectIntrinsic(GateRef gate)
+{
+    Expr input = GetExprFromGate(acc_.GetIn(gate, 0));
+    Expr tagHeapObjectMask = GetExprFromGate(acc_.GetIn(gate, 1)); // 1: the second value gate is TAG_HEAPOBJECT_MASK
+    std::vector<Expr> args = { input, tagHeapObjectMask };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_TAGGED_IS_HEAPOBJECT, lmirBuilder_->u1Type, args);
+    SaveGate2Expr(gate, intrinsicOp);
+}
+
 Expr LiteCGIRBuilder::CanonicalizeToPtr(Expr expr, LiteCGType *type)
 {
     if (lmirBuilder_->LiteCGGetTypeKind(expr.GetType()) == maple::litecg::kLiteCGTypePointer) {
@@ -1059,11 +1136,9 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
         auto e1TypeKind = lmirBuilder_->LiteCGGetTypeKind(e1Type);
         auto e2Type = ConvertLiteCGTypeFromGate(e2);
         if (e1TypeKind == maple::litecg::kLiteCGTypePointer) {
-            Expr tmp1 = lmirBuilder_->Cvt(e1Type, lmirBuilder_->i64Type, e1Value);
-            Expr tmp2 =
-                (e2Type == lmirBuilder_->i64Type) ? e2Value : lmirBuilder_->Cvt(e2Type, lmirBuilder_->i64Type, e2Value);
-            Expr tmp3 = lmirBuilder_->Add(lmirBuilder_->i64Type, tmp1, tmp2);
-            result = lmirBuilder_->Cvt(lmirBuilder_->i64Type, returnType, tmp3);
+            Expr tmp1Expr = (e1Type == returnType) ? e1Value : lmirBuilder_->Cvt(e1Type, returnType, e1Value);
+            Expr tmp2Expr = (e2Type == returnType) ? e2Value : lmirBuilder_->Cvt(e2Type, returnType, e2Value);
+            result = lmirBuilder_->Add(returnType, tmp1Expr, tmp2Expr);
             if (e1Type == lmirBuilder_->i64RefType) {
                 AddDerivedrefGate(gate, result);
             } else {
@@ -2567,7 +2642,7 @@ void LiteCGIRBuilder::HandlePhi(GateRef gate)
     VisitPhi(gate, ins);
 }
 
-void LiteCGIRBuilder::AddPhiDesc(int bbID, PhiDesc &desc, std::map<int, std::vector<PhiDesc>> &bbID2Phis)
+void LiteCGIRBuilder::AddPhiDesc(int bbID, PhiDesc &desc, std::unordered_map<int, std::vector<PhiDesc>> &bbID2Phis)
 {
     auto it = bbID2Phis.find(bbID);
     if (it == bbID2Phis.end()) {
@@ -2639,13 +2714,6 @@ void LiteCGIRBuilder::FindBaseRefForPhi(GateRef gate, const std::vector<GateRef>
     ASSERT(phiStates.size() + 1 == phiIns.size());
     for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
         int preBBId = LookupPredBB(phiStates[i - 1], curBBId);
-        if (bbID2BB_.count(preBBId) != 0) {
-            BB *preBB = bbID2BB_[preBBId];
-            if (preBB == nullptr) {
-                OPTIONAL_LOG_COMPILER(ERROR) << "FindBaseRef failed BasicBlock nullptr";
-                return;
-            }
-        }
         auto op = acc_.GetOpCode(phiIns[i]);
         if (op == OpCode::ADD) {
             auto g0 = acc_.GetIn(phiIns[i], 0);
@@ -2711,19 +2779,8 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
     int curBBId = instID2bbID_[acc_.GetId(gate)];
     for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
         int preBBId = LookupPredBB(phiStates[i - 1], curBBId);
-        // if bbID2BB_.count(preBBId) = 0 means bb with current bbIdx hasn't been created
-        if (bbID2BB_.count(preBBId) != 0) {
-            BB *preBB = bbID2BB_[preBBId];
-            if (preBB == nullptr) {
-                OPTIONAL_LOG_COMPILER(ERROR) << "VisitPhi failed BasicBlock nullptr";
-                return;
-            }
-            PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
-            AddPhiDesc(curBBId, desc, bbID2unmergedPhis_);
-        } else {
-            PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
-            AddPhiDesc(curBBId, desc, bbID2unmergedPhis_);
-        }
+        PhiDesc desc = {preBBId, phiIns[i], phiPregIdx};
+        AddPhiDesc(curBBId, desc, bbID2unmergedPhis_);
     }
 
     if (type == lmirBuilder_->i64RefType) {
@@ -2914,7 +2971,9 @@ void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGVal
 {
     int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(index, curDepth, shift);
     Expr expr = GetExprFromGate(gate);
-    Expr value = ConvertInt32ToTaggedInt(lmirBuilder_->Cvt(expr.GetType(), lmirBuilder_->i32Type, expr));
+    Expr tagMask = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->i64Type, JSTaggedValue::TAG_INT));
+    Expr result = lmirBuilder_->Or(lmirBuilder_->i64Type, expr, tagMask);
+    Expr value = lmirBuilder_->Cvt(lmirBuilder_->i64Type, lmirBuilder_->i64RefType, result);
     auto deoptInfo = ConstantFoldExpr(value, bb);
     deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptInfo));
 }
@@ -2939,7 +2998,6 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         deoptBBInfo.deoptType2BB.emplace(deoptType, &falseBB);
         return falseBB;
     };
-
     int block = instID2bbID_[acc_.GetId(gate)];
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);

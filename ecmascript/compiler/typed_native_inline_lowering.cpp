@@ -438,7 +438,7 @@ void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStub
     BRANCH_CIR(selfExists, &selfExistsLabel, &selfInvalidLabel);
     builder_.Bind(&selfExistsLabel);
 
-    GateRef isHeapObject = builder_.TaggedIsHeapObject(self);
+    GateRef isHeapObject = builder_.TaggedIsHeapObject(self, compilationEnv_);
     BRANCH_CIR(isHeapObject, &isHeapObjectLabel, &selfInvalidLabel);
     builder_.Bind(&isHeapObjectLabel);
 
@@ -1284,7 +1284,7 @@ void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
         result = builder_.CallRuntime(glue, RTSTUB_ID(CallBigIntAsIntN), Gate::InvalidGateRef,
                                       {bits, bigint}, gate);
     }
-    BRANCH_CIR(builder_.HasPendingException(glue), &hasException, &exit);
+    BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &hasException, &exit);
     builder_.Bind(&hasException);
     {
         result = builder_.ExceptionConstant();
@@ -2564,7 +2564,7 @@ void TypedNativeInlineLowering::LowerObjectIsPrototypeOf(GateRef gate)
         // 2. Let O be ? ToObject(this value).
         GateRef obj = builder_.ToObject(glue, thisValue);
         Label noPendingException(&builder_);
-        BRANCH_CIR(builder_.HasPendingException(glue), &returnException, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &returnException, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             // 3. Repeat,
@@ -2584,7 +2584,8 @@ void TypedNativeInlineLowering::LowerObjectIsPrototypeOf(GateRef gate)
                 {
                     proto = builder_.GetPrototype(glue, *proto);
                     Label noPendingException1(&builder_);
-                    BRANCH_CIR(builder_.HasPendingException(glue), &returnException, &noPendingException1);
+                    BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_),
+                               &returnException, &noPendingException1);
                     builder_.Bind(&noPendingException1);
                     {
                         Label sameValue(&builder_);
@@ -2888,7 +2889,7 @@ IterationKind TypedNativeInlineLowering::GetArrayIterKindFromBuilin(BuiltinsStub
 void TypedNativeInlineLowering::ReplaceGateWithPendingException(
     GateRef gate, GateRef glue, GateRef state, GateRef depend, GateRef value)
 {
-    GateRef condition = builder_.HasPendingException(glue);
+    GateRef condition = builder_.HasPendingException(glue, compilationEnv_);
     auto ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
@@ -2932,7 +2933,7 @@ void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
                                                     thisValue},
                                                    acc_.TryGetPcOffset(gate));
         builder_.SetDepend(nativeCall);
-        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &exit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             i = builder_.Int32Add(*i, builder_.Int32(1));
@@ -2988,7 +2989,7 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
                                                     thisValue},
                                                    acc_.TryGetPcOffset(gate));
         builder_.SetDepend(nativeCall);
-        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &exit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(glue, nativeCall)), &findElement, &noFindElement);
@@ -3074,7 +3075,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
-        BRANCH_CIR(builder_.HasPendingException(glue), &quit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &quit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(glue, callJs)), &returnTrue, &afterLoop);
@@ -3172,7 +3173,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
-        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &exit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             builtinsArrayStubBuilder.SetValueWithElementsKind(
@@ -3247,7 +3248,7 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
-        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &exit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(glue, callJs)), &findElement, &afterLoop);
@@ -3317,7 +3318,7 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
-        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &exit, &noPendingException);
         builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsFalse(builder_.FastToBoolean(glue, callJs)), &callResultNotTrue, &afterLoop);
@@ -3365,7 +3366,8 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
     BRANCH_CIR(builder_.Int32Equal(arrayLength, builder_.Int32(0)), &exit, &arraylengthNotZero);
     builder_.Bind(&arraylengthNotZero);
     {
-        BRANCH_CIR(builder_.IsJsCOWArray(glue, thisValue), &isCOWArray, &getElements);
+        GateRef needCOW = builder_.IsJsCOWArray(glue, thisValue, compilationEnv_);
+        BRANCH_CIR(needCOW, &isCOWArray, &getElements);
         builder_.Bind(&isCOWArray);
         {
             builder_.CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), builder_.GetDepend(), {thisValue}, glue);
@@ -3395,7 +3397,7 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
                 Label notHasException(&builder_);
                 GateRef element = builder_.CallStub(glue, gate, CommonStubCSigns::GetPropertyByIndex,
                                                     { glue, thisValue, index });
-                BRANCH_CIR(builder_.HasPendingException(glue), &hasException, &notHasException);
+                BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &hasException, &notHasException);
                 builder_.Bind(&hasException);
                 {
                     ret = builder_.ExceptionConstant();

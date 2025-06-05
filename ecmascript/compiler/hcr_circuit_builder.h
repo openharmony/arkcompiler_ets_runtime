@@ -389,6 +389,21 @@ GateRef CircuitBuilder::IsStableElements(GateRef hClass)
         Int32(0));
 }
 
+GateRef CircuitBuilder::IsStableElements(GateRef hClass, CompilationEnv *compilationEnv)
+{
+    if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic() && !acc_.IsConstant(hClass)) {
+        auto currentLabel = env_->GetCurrentLabel();
+        auto currentDepend = currentLabel->GetDepend();
+        GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+        GateRef stableElementsBit = Int32(JSHClass::IsStableElementsBit::START_BIT);
+        GateRef isStableElements = GetCircuit()->NewGate(circuit_->IsStableElementsIntrinsic(),
+            MachineType::I1, { currentDepend, hClass, bitfieldOffset, stableElementsBit }, GateType::NJSValue());
+        currentLabel->SetDepend(isStableElements);
+        return isStableElements;
+    }
+    return IsStableElements(hClass);
+}
+
 GateRef CircuitBuilder::IsJSArrayPrototypeModified(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);

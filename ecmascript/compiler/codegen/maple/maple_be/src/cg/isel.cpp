@@ -442,8 +442,36 @@ static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &i
             return &iSel.SelectGetHeapConstantTable(intrinsicopNode,
                                                     *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
                                                     *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)), parent);
+        case INTRN_TAGGED_IS_HEAPOBJECT:
+            return &iSel.SelectTaggedIsHeapObject(intrinsicopNode,
+                                                  *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                  *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)), parent);
+        case INTRN_IS_STABLE_ELEMENTS:
+            return &iSel.SelectIsStableElements(intrinsicopNode,
+                                                *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)), parent);
+        case INTRN_HAS_PENDING_EXCEPTION:
+            return &iSel.SelectHasPendingException(intrinsicopNode,
+                                                   *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                   *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                   *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)), parent);
+        case INTRN_TAGGED_OBJECT_IS_STRING:
+            return &iSel.SelectTaggedObjectIsString(intrinsicopNode,
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
                                                     *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)),
-                                                    parent);
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnFourthOpnd)),
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnFifthOpnd)), parent);
+        case INTRN_IS_COW_ARRAY:
+            return &iSel.SelectIsCOWArray(intrinsicopNode,
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)),
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnFourthOpnd)),
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnFifthOpnd)),
+                                          *iSel.HandleExpr(expr, *expr.Opnd(kInsnSixthOpnd)), parent);
         default:
             DEBUG_ASSERT(false, "NIY, unsupported intrinsicop.");
             return nullptr;

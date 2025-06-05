@@ -99,6 +99,8 @@ public:
 
     virtual bool SupportHeapConstant() const = 0;
 
+    virtual bool SupportIntrinsic() const = 0;
+
     virtual JSThread *GetHostThread() const
     {
         ASSERT(0);

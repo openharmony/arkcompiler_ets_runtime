@@ -928,6 +928,51 @@ RegOperand &X64MPIsel::SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0,
     return destReg;
 }
 
+RegOperand &X64MPIsel::SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0,
+                                                Operand &opnd1, const BaseNode &parent)
+{
+    RegOperand &destReg = cgFunc->GetOpndBuilder()->CreateVReg(k8BitSize, kRegTyInt);
+    if (opnd0.IsImmediate()) {
+        uint64 value = static_cast<uint64>(static_cast<ImmOperand &>(opnd0).GetValue());
+        uint64 heapObjectMask = static_cast<uint64_t>(static_cast<ImmOperand&>(opnd1).GetValue());
+        MOperator mOp = x64::MOP_movb_i_r;
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+        int8 retValue = static_cast<int64>(value & heapObjectMask) == 0;
+        ImmOperand &imm0 = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeActualBitSize(PTY_i8), retValue);
+        insn.AddOpndChain(imm0).AddOpndChain(destReg);
+        cgFunc->GetCurBB()->AppendInsn(insn);
+    } else {
+        RegOperand &tmpReg = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+        MOperator mOp = x64::MOP_tagged_is_heapobject;
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+        insn.AddOpndChain(destReg).AddOpndChain(tmpReg).AddOpndChain(opnd0).AddOpndChain(opnd1);
+        cgFunc->GetCurBB()->AppendInsn(insn);
+    }
+    return destReg;
+}
+
+RegOperand &X64MPIsel::SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                              Operand &opnd2, const BaseNode &parent)
+{
+    RegOperand &destReg = cgFunc->GetOpndBuilder()->CreateVReg(k32BitSize, kRegTyInt);
+    MOperator mOp = x64::MOP_is_stable_elements;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(destReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return destReg;
+}
+
+RegOperand &X64MPIsel::SelectHasPendingException(
+    IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent)
+{
+    RegOperand &destReg = cgFunc->GetOpndBuilder()->CreateVReg(k8BitSize, kRegTyInt);
+    MOperator mOp = x64::MOP_has_pending_exception;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(destReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return destReg;
+}
+
 RegOperand &X64MPIsel::SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,
     Operand &opnd1, Operand &opnd2, const BaseNode &parent)
 {
@@ -939,6 +984,34 @@ RegOperand &X64MPIsel::SelectGetHeapConstantTable(IntrinsicopNode &node, Operand
     insn.AddOpndChain(destReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2);
     cgFunc->GetCurBB()->AppendInsn(insn);
     return destReg;
+}
+
+RegOperand &X64MPIsel::SelectTaggedObjectIsString(IntrinsicopNode &node, Operand &opnd0,
+    Operand &opnd1, Operand &opnd2, Operand &opnd3, Operand &opnd4, const BaseNode &parent)
+{
+    RegOperand &dstReg = cgFunc->GetOpndBuilder()->CreateVReg(k8BitSize, kRegTyInt);
+    RegOperand &tmpReg1 = cgFunc->GetOpndBuilder()->CreateVReg(k32BitSize, kRegTyInt);
+    RegOperand &tmpReg2 = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+    MOperator mOp = x64::MOP_tagged_object_is_string;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(dstReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2).AddOpndChain(opnd3).
+        AddOpndChain(opnd4).AddOpndChain(tmpReg1).AddOpndChain(tmpReg2);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return dstReg;
+}
+
+RegOperand &X64MPIsel::SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0,
+    Operand &opnd1, Operand &opnd2, Operand &opnd3, Operand &opnd4, Operand &opnd5, const BaseNode &parent)
+{
+    RegOperand &dstReg = cgFunc->GetOpndBuilder()->CreateVReg(k8BitSize, kRegTyInt);
+    RegOperand &tmpReg1 = cgFunc->GetOpndBuilder()->CreateVReg(k32BitSize, kRegTyInt);
+    RegOperand &tmpReg2 = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+    MOperator mOp = x64::MOP_is_cow_array;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(dstReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2).AddOpndChain(opnd3).
+        AddOpndChain(opnd4).AddOpndChain(opnd5).AddOpndChain(tmpReg1).AddOpndChain(tmpReg2);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return dstReg;
 }
 
 RegOperand &X64MPIsel::GetTargetBasicPointer(PrimType primType)

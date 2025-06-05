@@ -271,11 +271,15 @@ void LSRALinearScanRegAllocator::InitFreeRegPool()
             }
             if (regInfo->IsCalleeSavedReg(regNO)) {
                 /* callee-saved registers */
+#ifdef ARK_LITECG_DEBUG
                 (void)intCalleeRegSet.insert(regNO - firstIntReg);
+#endif
                 intCalleeMask |= 1u << (regNO - firstIntReg);
             } else {
                 /* caller-saved registers */
+#ifdef ARK_LITECG_DEBUG
                 (void)intCallerRegSet.insert(regNO - firstIntReg);
+#endif
                 intCallerMask |= 1u << (regNO - firstIntReg);
             }
         } else {
@@ -286,11 +290,15 @@ void LSRALinearScanRegAllocator::InitFreeRegPool()
             }
             if (regInfo->IsCalleeSavedReg(regNO)) {
                 /* fp callee-saved registers */
+#ifdef ARK_LITECG_DEBUG
                 (void)fpCalleeRegSet.insert(regNO - firstFpReg);
+#endif
                 fpCalleeMask |= 1u << (regNO - firstFpReg);
             } else {
                 /* fp caller-saved registers */
+#ifdef ARK_LITECG_DEBUG
                 (void)fpCallerRegSet.insert(regNO - firstFpReg);
+#endif
                 fpCallerMask |= 1u << (regNO - firstFpReg);
             }
         }
@@ -564,8 +572,11 @@ void LSRALinearScanRegAllocator::UpdateLiveIntervalByLiveIn(const BB &bb, uint32
 void LSRALinearScanRegAllocator::UpdateParamLiveIntervalByLiveIn(const BB &bb, uint32 insnNum)
 {
     for (const auto regNO : bb.GetLiveInRegNO()) {
-        if (regInfo->IsUnconcernedReg(regNO) || regInfo->IsVirtualRegister(regNO)) {
+        if (regInfo->IsUnconcernedReg(regNO)) {
             continue;
+        }
+        if (regInfo->IsVirtualRegister(regNO)) {
+            break;
         }
         auto *li = memPool->New<LiveInterval>(*memPool);
         li->SetRegNO(regNO);
@@ -635,10 +646,10 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
      *  update this lastUse of li to the end of BB
      */
     for (const auto regNO : bb.GetLiveOutRegNO()) {
-        if (regInfo->IsUnconcernedReg(regNO)) {
-            continue;
-        }
         if (!regInfo->IsVirtualRegister(regNO)) {
+            if (regInfo->IsUnconcernedReg(regNO)) {
+                continue;
+            }
             LiveInterval *liOut = nullptr;
             if (regInfo->IsGPRegister(regNO)) {
                 if (intParamQueue[regInfo->GetIntParamRegIdx(regNO)].empty()) {
@@ -1374,7 +1385,7 @@ RegOperand *LSRALinearScanRegAllocator::GetSpillPhyRegOperand(Insn &insn, regno_
 /* find the lowest li that meets the constraints related to li0 form current active */
 void LSRALinearScanRegAllocator::FindLowestPrioInActive(LiveInterval *&targetLi, LiveInterval *li0, RegType regType)
 {
-    std::map<regno_t, uint32> activeLiAssignedRegCnt;
+    std::unordered_map<regno_t, uint32> activeLiAssignedRegCnt;
     for (auto *li : active) {
         if (li->GetAssignedReg() != 0) {
             ++activeLiAssignedRegCnt[li->GetAssignedReg()];

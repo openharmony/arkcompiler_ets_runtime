@@ -326,7 +326,7 @@ private:
     size_t gateCount_ {0};
     TimeStamp time_;
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
-    std::map<std::uint32_t, GateRef> heapConstantCache_;
+    std::unordered_map<std::uint32_t, GateRef> heapConstantCache_;
     std::map<std::pair<BitField, GateRef>, GateRef> constantDataCache_ {};
     std::map<GateRef, GateRef> initialEnvCache_ {};
     panda::ecmascript::FrameType frameType_ {FrameType::OPTIMIZED_FRAME};
