@@ -38,10 +38,9 @@ JSTaggedValue JSAPIHashMap::HasValue(JSThread *thread, JSHandle<JSAPIHashMap> ha
 {
     JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
     uint32_t tabLength = hashArray->GetLength();
-    JSTaggedType *array = hashArray->GetData();
     JSTaggedValue taggedValue = value.GetTaggedValue();
     for (uint32_t index = 0; index < tabLength; index++) {
-        JSTaggedValue node(array[index]);
+        JSTaggedValue node = hashArray->Get(index);
         if (node.IsHole()) {
             continue;
         }
