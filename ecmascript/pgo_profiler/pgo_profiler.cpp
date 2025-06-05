@@ -680,7 +680,9 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         if (!isForceDump) {
 #ifdef USE_CMC_GC
-            holder_->CheckSafepointIfSuspended();
+            if (holder_->CheckSafepointIfSuspended()) {
+                break;
+            }
 #endif
             if (state_->GCIsWaiting()) {
                 break;
