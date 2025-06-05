@@ -80,6 +80,8 @@ struct OffsetInfo {
 class ProfilerStubBuilder : public StubBuilder {
 public:
     explicit ProfilerStubBuilder(StubBuilder *parent) : StubBuilder(parent) {}
+    ProfilerStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent, globalEnv) {}
     explicit ProfilerStubBuilder(Environment *env) : StubBuilder(env) {}
     ~ProfilerStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ProfilerStubBuilder);

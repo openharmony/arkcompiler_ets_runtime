@@ -667,7 +667,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     Label notStringProtoIter(env);
     Label isTypedArrayProtoValues(env);
 
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                   GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isArrayProtoValues, &notArrayProtoValues);

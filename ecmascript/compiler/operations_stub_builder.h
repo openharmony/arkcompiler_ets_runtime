@@ -23,6 +23,8 @@ class OperationsStubBuilder : public StubBuilder {
 public:
     explicit OperationsStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
+    OperationsStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent, globalEnv) {}
     ~OperationsStubBuilder() = default;
     NO_MOVE_SEMANTIC(OperationsStubBuilder);
     NO_COPY_SEMANTIC(OperationsStubBuilder);

@@ -140,7 +140,7 @@ void ICStubBuilder::TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHand
         BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
         Bind(&isHeapObject);
         {
-            GateRef glueGlobalEnv = GetGlobalEnv(glue_);
+            GateRef glueGlobalEnv = GetCurrentGlobalEnv();
 
             Label isNumber(env);
             Label notNumber(env);
@@ -378,7 +378,7 @@ void ICStubBuilder::LoadICByValue(
                 {
                     GateRef hclass = LoadHClass(glue_, receiver_);
                     GateRef jsType = GetObjectType(hclass);
-                    BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetGlobalEnv(glue_));
+                    BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
                     ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
                     Jump(&exit);
                 }

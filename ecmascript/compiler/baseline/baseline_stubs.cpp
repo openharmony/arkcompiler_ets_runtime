@@ -154,7 +154,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     ProfileOperation callback(                                                                    \
         [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
                                                     OperationType type) {                         \
-            ProfilerStubBuilder profiler(this);                                                   \
+            ProfilerStubBuilder profiler(this, GetGlobalEnv(glue));                               \
             profiler.PGOProfiler(glue, func, profileTypeInfo, slotId, values, type);              \
         }, nullptr)
 
@@ -171,7 +171,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     ProfileOperation callback(                                                                    \
         [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
                                                     OperationType type) {                         \
-            ProfilerStubBuilder profiler(this);                                                   \
+            ProfilerStubBuilder profiler(this, GetGlobalEnv(glue));                               \
             profiler.PGOProfiler(glue, func, profileTypeInfo, slotId, values, type);              \
         }, nullptr)
 
@@ -183,7 +183,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     ProfileOperation callback(                                                                       \
         [this, glue, curFunc, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
                                                        OperationType type) {                         \
-            ProfilerStubBuilder profiler(this);                                                      \
+            ProfilerStubBuilder profiler(this, GetGlobalEnv(glue));                                  \
             profiler.PGOProfiler(glue, curFunc, profileTypeInfo, slotId, values, type);              \
         }, nullptr)
 
@@ -253,13 +253,14 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     Bind(&icPath);                                                                                                   \
     {                                                                                                                \
         /* IC do the same thing as stobjbyname */                                                                    \
-        AccessObjectStubBuilder builder(this);                                                                       \
+        AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));                                                   \
         StringIdInfo stringIdInfo(constpool, stringId);                                                              \
         result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);    \
         Jump(&exit);                                                                                                 \
     }                                                                                                                \
     Bind(&slowPath);                                                                                                 \
     {                                                                                                                \
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));                                                                     \
         result = DefineField(glue, receiver, propKey, acc);                                                          \
         Jump(&exit);                                                                                                 \
     }                                                                                                                \
@@ -300,10 +301,9 @@ void BaselineTryLdGLobalByNameImm8ID16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -496,6 +496,7 @@ void BaselineGetiteratorImm8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef res = GetIterator(glue, acc, callback);
 
     CHECK_PENDING_EXCEPTION(res);
@@ -509,6 +510,7 @@ void BaselineGetiteratorImm16StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef res = GetIterator(glue, acc, callback);
 
     CHECK_PENDING_EXCEPTION(res);
@@ -1003,7 +1005,7 @@ void BaselineNewlexenvwithnameImm8Id16StubBuilder::GenerateCircuit()
 void BaselineAdd2Imm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineAdd2Imm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.Add(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -1011,7 +1013,7 @@ void BaselineAdd2Imm8V8StubBuilder::GenerateCircuit()
 void BaselineSub2Imm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineSub2Imm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.Sub(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -1019,7 +1021,7 @@ void BaselineSub2Imm8V8StubBuilder::GenerateCircuit()
 void BaselineMul2Imm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineMul2Imm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.Mul(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -1043,7 +1045,7 @@ void BaselineMod2Imm8V8StubBuilder::GenerateCircuit()
 void BaselineEqImm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineEqImm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.Equal(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -1051,7 +1053,7 @@ void BaselineEqImm8V8StubBuilder::GenerateCircuit()
 void BaselineNoteqImm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineNoteqImm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.NotEqual(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -1245,7 +1247,7 @@ void BaselineIsinImm8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineIsinImm8V8, SP));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineIsinImm8V8, ACC));
     GateRef prop = TaggedArgument(PARAM_INDEX(BaselineIsinImm8V8, PROP));
-    ProfileOperation callback;
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
 
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef result = IsIn(glue, prop, acc); // acc is obj
@@ -1265,7 +1267,7 @@ void BaselineInstanceofImm8V8StubBuilder::GenerateCircuit()
 
     GateRef obj = GetVregValue(glue, sp, ZExtInt32ToPtr(objId));
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef result = InstanceOf(glue, obj, acc, profileTypeInfo, slotId, callback);
     CHECK_PENDING_EXCEPTION(result);
 }
@@ -1273,7 +1275,7 @@ void BaselineInstanceofImm8V8StubBuilder::GenerateCircuit()
 void BaselineStrictnoteqImm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineStrictnoteqImm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StrictNotEqual(glue, left, acc, callback);
     Return(result);
 }
@@ -1281,7 +1283,7 @@ void BaselineStrictnoteqImm8V8StubBuilder::GenerateCircuit()
 void BaselineStricteqImm8V8StubBuilder::GenerateCircuit()
 {
     DEFINE_BINARYOP_PARAM_AND_PROFILE_CALLBACK(BaselineStricteqImm8V8);
-    OperationsStubBuilder builder(this);
+    OperationsStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StrictEqual(glue, left, acc, callback);
     Return(result);
 }
@@ -1516,6 +1518,7 @@ void BaselineDefinefuncImm8Id16Imm8StubBuilder::GenerateCircuit()
 
     auto env = GetEnvironment();
     GateRef acc = GetAccFromFrame(glue, frame);
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(result, &notException);
@@ -1549,6 +1552,7 @@ void BaselineDefinefuncImm16Id16Imm8StubBuilder::GenerateCircuit()
     auto env = GetEnvironment();
     GateRef acc = GetAccFromFrame(glue, frame);
 
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(result, &notException);
@@ -1704,6 +1708,7 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
         Bind(&ctorNotBase);
         {
             GateRef argvLen = LoadPrimitive(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
+            SetCurrentGlobalEnv(GetGlobalEnv(glue));
             GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(superCtor);
@@ -1864,7 +1869,7 @@ void BaselineLdthisbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef receiver = GetThisFromFrame(glue, frame);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, stringIdInfo, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -1909,7 +1914,7 @@ void BaselineLdthisbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef receiver = GetThisFromFrame(glue, frame);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, stringIdInfo, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -1926,7 +1931,7 @@ void BaselineStthisbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result =
@@ -1945,7 +1950,7 @@ void BaselineStthisbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);
@@ -1961,7 +1966,7 @@ void BaselineLdthisbyvalueImm8StubBuilder::GenerateCircuit()
 
     GateRef acc = GetAccFromFrame(glue, frame);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -1976,7 +1981,7 @@ void BaselineLdthisbyvalueImm16StubBuilder::GenerateCircuit()
 
     GateRef acc = GetAccFromFrame(glue, frame);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -1991,7 +1996,7 @@ void BaselineStthisbyvalueImm8V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2006,7 +2011,7 @@ void BaselineStthisbyvalueImm16V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2228,6 +2233,7 @@ void BaselineDelobjpropV8StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDelobjpropV8, ACC));
     GateRef obj = TaggedArgument(PARAM_INDEX(BaselineDelobjpropV8, OBJ));
 
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef result = DeletePropertyOrThrow(glue, obj, acc);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -2291,7 +2297,7 @@ void BaselineLdobjbyvalueImm8V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -2305,7 +2311,7 @@ void BaselineLdobjbyvalueImm16V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -2320,7 +2326,7 @@ void BaselineStobjbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
@@ -2335,7 +2341,7 @@ void BaselineStobjbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
@@ -2366,6 +2372,7 @@ void BaselineStownbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     Bind(&notClassPrototype);
     {
         // fast path
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2402,6 +2409,7 @@ void BaselineStownbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     Bind(&notClassPrototype);
     {
         // fast path
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2480,6 +2488,7 @@ void BaselineLdobjbyindexImm8Imm16StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = GetPropertyByIndex(glue, acc, index, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2509,6 +2518,7 @@ void BaselineLdobjbyindexImm16Imm16StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = GetPropertyByIndex(glue, acc, index, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2537,6 +2547,7 @@ void BaselineStobjbyindexImm8V8Imm16StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2566,6 +2577,7 @@ void BaselineStobjbyindexImm16V8Imm16StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -2590,7 +2602,7 @@ void BaselineStownbyindexImm8V8Imm16StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
     GateRef acc = GetAccFromFrame(glue, frame);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StoreOwnByIndex(
         glue, receiver, index, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2606,7 +2618,7 @@ void BaselineStownbyindexImm16V8Imm16StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.StoreOwnByIndex(glue, receiver, index, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
@@ -2774,10 +2786,9 @@ void BaselineTryldglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.TryLoadGlobalByName(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -2792,11 +2803,9 @@ void BaselineTrystglobalbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result =
-        builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
 
@@ -2811,11 +2820,9 @@ void BaselineTrystglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result =
-        builder.TryStoreGlobalByName(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId, callback);
+    GateRef result = builder.TryStoreGlobalByName(glue, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
 
@@ -2831,10 +2838,9 @@ void BaselineLdglobalvarImm16Id16StubBuilder::GenerateCircuit()
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.LoadGlobalVar(glue, globalEnv, 0, info, profileTypeInfo, slotId, callback);
+    GateRef result = builder.LoadGlobalVar(glue, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
@@ -2852,10 +2858,9 @@ void BaselineStglobalvarImm16Id16StubBuilder::GenerateCircuit()
     GateRef func = GetFunctionFromFrame(glue, frame);
     GateRef method = GetMethodFromFunction(glue, func);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
-    GateRef globalEnv = GetGlobalEnv(glue);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo info(constpool, stringId);
-    GateRef result = builder.StoreGlobalVar(glue, globalEnv, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreGlobalVar(glue, 0, info, acc, profileTypeInfo, slotId);
     CHECK_EXCEPTION(result);
 }
 
@@ -2870,7 +2875,7 @@ void BaselineLdobjbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef receiver = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, stringIdInfo, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -2887,7 +2892,7 @@ void BaselineLdobjbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, acc, 0, stringIdInfo, profileTypeInfo,
                                            slotId, callback);
@@ -2910,7 +2915,7 @@ void BaselineStobjbynameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef acc = GetAccFromFrame(glue, frame);
     GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result =
         builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);
@@ -2929,7 +2934,7 @@ void BaselineStobjbynameImm16Id16V8StubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef acc = GetAccFromFrame(glue, frame);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo,
                                             slotId, callback);
@@ -3152,6 +3157,7 @@ void BaselineStownbyvaluewithnamesetImm8V8V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
@@ -3200,6 +3206,7 @@ void BaselineStownbyvaluewithnamesetImm16V8V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
@@ -4315,6 +4322,7 @@ void BaselineWideLdobjbyindexPrefImm32StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = GetPropertyByIndex(glue, acc, index, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -4372,6 +4380,7 @@ void BaselineWideStobjbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -4424,6 +4433,7 @@ void BaselineWideStownbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     Bind(&notClassPrototype);
     {
         // fast path
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -5069,7 +5079,7 @@ void BaselineDeprecatedLdobjbyvaluePrefV8V8StubBuilder::GenerateCircuit()
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.DeprecatedLoadObjByValue(glue, receiver, propKey);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -5107,6 +5117,7 @@ void BaselineDeprecatedLdobjbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     Bind(&fastPath);
     {
         ProfileOperation callback;
+        SetCurrentGlobalEnv(GetGlobalEnv(glue));
         GateRef result = GetPropertyByIndex(glue, receiver, index, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
@@ -5286,7 +5297,7 @@ void BaselineDeprecatedLdobjbynamePrefId32V8StubBuilder::GenerateCircuit()
     GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
     GateRef result = builder.DeprecatedLoadObjByName(glue, receiver, propKey);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -5481,6 +5492,7 @@ void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircu
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -5495,6 +5507,7 @@ void BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8StubBuilder::GenerateCi
 
     GateRef propKey = IntToTaggedPtr(index);
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    SetCurrentGlobalEnv(GetGlobalEnv(glue));
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }

@@ -23,10 +23,8 @@ namespace panda::ecmascript::kungfu {
 
 class ObjectOperatorStubBuilder : public StubBuilder {
 public:
-    explicit ObjectOperatorStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
-    explicit ObjectOperatorStubBuilder(Environment *env)
-        : StubBuilder(env) {}
+    ObjectOperatorStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent, globalEnv) {}
     ~ObjectOperatorStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ObjectOperatorStubBuilder);
     NO_COPY_SEMANTIC(ObjectOperatorStubBuilder);

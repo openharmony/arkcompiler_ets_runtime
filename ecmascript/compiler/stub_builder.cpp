@@ -1046,7 +1046,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     DEFVARIABLE(propKey, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(elemKey, VariableType::INT32(), Int32(-1));
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
-    ObjectOperatorStubBuilder opStubBuilder(this);
+    ObjectOperatorStubBuilder opStubBuilder(this, GetCurrentGlobalEnv());
 
     IsNotPropertyKey(TaggedIsPropertyKey(glue, key));
 
@@ -2288,7 +2288,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
         BRANCH(TaggedIsString(glue, key), &isString, &notString);
         Bind(&isString);
         {
-            BuiltinsStringStubBuilder stringStub(this, GetGlobalEnv(glue));
+            BuiltinsStringStubBuilder stringStub(this, GetCurrentGlobalEnv());
             resultKey = stringStub.StringToUint(glue, key, JSObject::MAX_ELEMENT_INDEX - 1);
             Jump(&exit);
         }
@@ -2316,7 +2316,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
     return ret;
 }
 
-GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef globalEnv, GateRef key)
+GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2324,6 +2324,7 @@ GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef globalEnv, GateRef key
     Label exit(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::GLOBAL_RECORD);
     GateRef recordEntry = FindEntryFromHashTable<NameDictionary>(glue, globalRecord, key);
     Label foundInGlobalRecord(env);
@@ -2695,7 +2696,7 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
         Bind(&lengthLessIndex);
         Jump(&exit);
         Bind(&lengthNotLessIndex);
-        BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
         StringInfoGateRef stringInfoGate(&thisFlat);
         result = stringBuilder.CreateFromEcmaString(glue, index, stringInfoGate);
         Jump(&exit);
@@ -2798,7 +2799,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef hclass = LoadHClass(glue, receiver);
                 GateRef jsType = GetObjectType(hclass);
-                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetGlobalEnv(glue));
+                BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
             }
@@ -3366,7 +3367,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
             BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetGlobalEnv(glue));
+                BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
@@ -3393,7 +3394,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
                 BRANCH(Int32LessThan(index, length), &getSubString, &notString);
                 Bind(&getSubString);
                 Label flattenFastPath(env);
-                BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
+                BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
                 FlatStringStubBuilder thisFlat(this);
                 thisFlat.FlattenString(glue, *holder, &flattenFastPath);
                 Bind(&flattenFastPath);
@@ -3647,7 +3648,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 }
                 Bind(&getStringPrototype);
                 {
-                    GateRef globalEnv = GetGlobalEnv(glue);
+                    GateRef globalEnv = GetCurrentGlobalEnv();
                     GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                                                 GlobalEnv::STRING_PROTOTYPE_INDEX);
                     holder = stringPrototype;
@@ -4191,7 +4192,7 @@ void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef rec
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef guardians = GetArrayElementsGuardians(globalEnv);
 
     Label isGuardians(env);
@@ -5886,7 +5887,7 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetIsEcmaObject);
     {
         // 2.Let instOfHandler be GetMethod(target, @@hasInstance).
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                                       GlobalEnv::HASINSTANCE_SYMBOL_INDEX);
         GateRef instof = GetMethod(glue, target, hasInstanceSymbol, profileTypeInfo, slotId);
@@ -5942,7 +5943,7 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
 {
     auto env = GetEnvironment();
 
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                          GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
 
@@ -5983,7 +5984,7 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
     Label exit(env);
 
     StringIdInfo info;
-    AccessObjectStubBuilder builder(this);
+    AccessObjectStubBuilder builder(this, GetCurrentGlobalEnv());
     GateRef value = builder.LoadObjByName(glue, obj, key, info, profileTypeInfo, slotId, ProfileOperation());
 
     Label isPendingException(env);
@@ -6702,7 +6703,7 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
             rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
             Bind(&rightFlattenFastPath);
             {
-                BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
+                BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
                 StringInfoGateRef leftStrInfoGate(&leftFlat);
                 StringInfoGateRef rightStrInfoGate(&rightFlat);
                 GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, Int32(0));
@@ -6773,7 +6774,7 @@ GateRef StubBuilder::StringCompareContents(GateRef glue, GateRef left, GateRef r
         BRANCH(Int32UnsignedLessThan(*i, minLength), &loopBody, &exit);
         Bind(&loopBody);
         {
-            BuiltinsStringStubBuilder stringBuilder(this, GetGlobalEnv(glue));
+            BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
             GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, *i);
             GateRef rightStrToInt = stringBuilder.StringAt(glue, rightStrInfoGate, *i);
             Label notEqual(env);
@@ -7967,7 +7968,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, left, NumberToString(glue, right));
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -7979,7 +7980,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         Label hasPendingException(env);
         // NOTICE-PGO: support string and number
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -7990,7 +7991,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     {
         Label hasPendingException(env);
         callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, left, right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
@@ -8512,7 +8513,7 @@ GateRef StubBuilder::GetFunctionPrototype(GateRef glue, size_t index)
     Label isHeapObject(env);
     Label isJSHclass(env);
 
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), glue, func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     result = protoOrHclass;
@@ -9377,7 +9378,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 
 GateRef StubBuilder::CalIteratorKey(GateRef glue)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
     return iteratorKey;
 }
@@ -9385,14 +9386,14 @@ GateRef StubBuilder::CalIteratorKey(GateRef glue)
 void StubBuilder::FuncOrHClassCompare(GateRef glue, GateRef funcOrHClass,
                                       Label *match, Label *slowPath, size_t index)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     BRANCH(Equal(globalRecord, funcOrHClass), match, slowPath);
 }
 
 GateRef StubBuilder::IsDetectorInvalid(GateRef glue, size_t indexDetector)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef value = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, indexDetector);
     GateRef bitFieldOffset = IntPtr(MarkerCell::BIT_FIELD_OFFSET);
     GateRef bitField = LoadPrimitive(VariableType::INT32(), value, bitFieldOffset);
@@ -9408,7 +9409,7 @@ void StubBuilder::HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
     Label matchHClass(env);
     FuncOrHClassCompare(glue, hclass, &matchHClass, slowPath, indexHClass);
     Bind(&matchHClass);
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     if (isMap) {
         BRANCH(GetMapIteratorDetector(globalEnv), slowPath, match);
     } else {
@@ -9437,7 +9438,7 @@ void StubBuilder::TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef 
     BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &tryArray, slowPath2);
     Bind(&tryArray);
     {
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         BRANCH(GetArrayIteratorDetector(globalEnv), slowPath2, &arrayDetectorValid);
         Bind(&arrayDetectorValid);
         {
@@ -9505,17 +9506,17 @@ void StubBuilder::TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
 
     Bind(&matchMap);
     {
-        BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0), GetGlobalEnv(glue));
+        BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0), GetCurrentGlobalEnv());
         collectionStubBuilder.Entries(&result, exit, slowPath);
     }
     Bind(&matchSet);
     {
-        BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0), GetGlobalEnv(glue));
+        BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0), GetCurrentGlobalEnv());
         collectionStubBuilder.Values(&result, exit, slowPath);
     }
     Bind(&matchArray);
     {
-        BuiltinsArrayStubBuilder arrayStubBuilder(this, GetGlobalEnv(glue));
+        BuiltinsArrayStubBuilder arrayStubBuilder(this, GetCurrentGlobalEnv());
         arrayStubBuilder.Values(glue, obj, Int32(0), &result, exit, slowPath);
     }
 }
@@ -9793,7 +9794,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetGlobalEnv(glue));
+            BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
             result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }
@@ -10151,7 +10152,7 @@ GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
         BRANCH(IsStableArguments(jsHclass), &targetIsStableArguments, &exit);
         Bind(&targetIsStableArguments);
         {
-            GateRef globalEnv = GetGlobalEnv(glue);
+            GateRef globalEnv = GetCurrentGlobalEnv();
             result = GetArrayElementsGuardians(globalEnv);
             Jump(&exit);
         }
@@ -10182,7 +10183,7 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
             BRANCH_UNLIKELY(IsJSArrayPrototypeModified(jsHclass), &exit, &isPrototypeNotModified);
             Bind(&isPrototypeNotModified);
             {
-                GateRef globalEnv = GetGlobalEnv(glue);
+                GateRef globalEnv = GetCurrentGlobalEnv();
                 GateRef guardians = GetArrayElementsGuardians(globalEnv);
                 result.WriteVariable(guardians);
                 Jump(&exit);
@@ -11271,14 +11272,14 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     BRANCH(IsSendableFunction(method), &isSendableFunc, &isNotSendableFunc);
     Bind(&isSendableFunc);
     {
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         NewObjectStubBuilder newBuilder(this, globalEnv);
         result = newBuilder.NewJSSendableFunction(glue, method, targetKind);
         Jump(&afterDealWithCompiledStatus);
     }
     Bind(&isNotSendableFunc);
     {
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         NewObjectStubBuilder newBuilder(this, globalEnv);
         result = newBuilder.NewJSFunction(glue, method, targetKind);
         Jump(&afterDealWithCompiledStatus);
@@ -12278,7 +12279,7 @@ GateRef StubBuilder::GetElementsKindHClass(GateRef glue, GateRef elementKind)
     GateRef arrayHClassIndexesOff = IntPtr(JSThread::GlueData::GetArrayHClassIndexesIndexOffset(env->Is32Bit()));
     GateRef arrayIndexes = PtrAdd(glue, arrayHClassIndexesOff);
     GateRef elementIdx = LoadPrimitive(VariableType::INT16(), arrayIndexes, offset);
-    GateRef currentEnv = GetGlobalEnv(glue);
+    GateRef currentEnv = GetCurrentGlobalEnv();
     GateRef elementOffset = PtrAdd(IntPtr(GlobalEnv::HEADER_SIZE),
                                    PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), ZExtInt16ToPtr(elementIdx)));
     return Load(VariableType::JS_ANY(), glue, currentEnv, elementOffset);
@@ -12535,7 +12536,7 @@ GateRef StubBuilder::ToPrimitive(GateRef glue, GateRef value, PreferredPrimitive
     {
         Label isUndefined(env);
         Label notUndefined(env);
-        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef primitiveKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                                  GlobalEnv::TOPRIMITIVE_SYMBOL_INDEX);
         GateRef name = FastGetPropertyByName(glue, value, primitiveKey, ProfileOperation(), hir);

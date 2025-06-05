@@ -999,7 +999,7 @@ GateRef BuiltinsObjectStubBuilder::IsNotSlowObjectKey(GateRef obj)
 void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     GateRef msg = GetCallArg0(numArgs_);
     // 1. Let obj be ToObject(O).
     GateRef obj = ToObject(glue_, msg);
@@ -1289,7 +1289,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
                 GateRef numOfKeys = GetNumberOfPropsFromHClass(hclass);
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
                 GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
-                NewObjectStubBuilder newBuilder(this);
+                NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                 GateRef keyArray = newBuilder.NewTaggedArray(glue_, keyLen);
                 BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &getAllElementKeys, &checkNumOfKeys);
                 Bind(&getAllElementKeys);
@@ -1399,7 +1399,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
                 // need to caclulate elementKind
                 GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
-                NewObjectStubBuilder newBuilder(this);
+                NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                 GateRef keyArray = newBuilder.NewTaggedArray(glue_, keyLen);
                 BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &getAllElementKeys, &checkNumOfKeys);
                 Bind(&getAllElementKeys);
@@ -1638,7 +1638,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
     GateRef obj = ToObject(glue_, msg);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
     {
@@ -1718,7 +1718,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementEntries(GateRef glue, GateRef o
     GateRef elements = GetElementsArray(glue, obj);
     GateRef len = GetLengthOfTaggedArray(elements);
     GateRef realLen = GetLengthOfTaggedArray(elementKeys);
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     GateRef numElementArray = newBuilder.NewTaggedArray(glue, realLen);
     // need to caclulate elementKind
     GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
@@ -1786,7 +1786,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     GateRef len = GetNumberOfPropsFromHClass(cls);
     GateRef layout = GetLayoutFromHClass(glue, cls);
 
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     GateRef allEnumArray = newBuilder.NewTaggedArray(glue, len);
     // need to caclulate elementKind
     GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));

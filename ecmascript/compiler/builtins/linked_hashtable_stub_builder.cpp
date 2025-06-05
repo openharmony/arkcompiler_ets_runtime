@@ -667,10 +667,10 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Label intialHClassIsHClass(env);
     GateRef mapOrSetFunc;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv_,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, GetCurrentGlobalEnv(),
                                          GlobalEnv::BUILTINS_MAP_FUNCTION_INDEX);
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv_,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, GetCurrentGlobalEnv(),
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
     GateRef newTargetHClass =

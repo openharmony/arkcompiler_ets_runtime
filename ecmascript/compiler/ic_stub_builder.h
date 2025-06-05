@@ -21,8 +21,8 @@ namespace panda::ecmascript::kungfu {
 enum class ICStubType { LOAD, STORE };
 class ICStubBuilder : public StubBuilder {
 public:
-    explicit ICStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+    ICStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent, globalEnv) {}
     ~ICStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ICStubBuilder);
     NO_COPY_SEMANTIC(ICStubBuilder);

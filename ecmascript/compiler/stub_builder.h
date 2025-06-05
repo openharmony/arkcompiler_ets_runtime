@@ -98,10 +98,16 @@ class StubBuilder {
 public:
     explicit StubBuilder(StubBuilder *parent)
         : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
+    StubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()), globalEnv_(globalEnv) {}
     StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
+    StubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)
+        : callSignature_(callSignature), env_(env), globalEnv_(globalEnv) {}
     explicit StubBuilder(Environment *env)
         : env_(env) {}
+    StubBuilder(Environment *env, GateRef globalEnv)
+        : env_(env), globalEnv_(globalEnv) {}
     virtual ~StubBuilder() = default;
     NO_MOVE_SEMANTIC(StubBuilder);
     NO_COPY_SEMANTIC(StubBuilder);
@@ -113,6 +119,18 @@ public:
     CallSignature *GetCallSignature() const
     {
         return callSignature_;
+    }
+    inline GateRef GetCurrentGlobalEnv()
+    {
+        if (globalEnv_ == Gate::InvalidGateRef) {
+            LOG_FULL(FATAL) << "globalEnv_ is InvalidGateRef";
+            UNREACHABLE();
+        }
+        return globalEnv_;
+    }
+    inline void SetCurrentGlobalEnv(GateRef globalEnv)
+    {
+        globalEnv_ = globalEnv;
     }
     int NextVariableId();
     // constant
@@ -690,7 +708,7 @@ public:
     void TryMigrateToGenericKindForJSObject(GateRef glue, GateRef receiver, GateRef oldKind);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef TaggedToElementKind(GateRef glue, GateRef value);
-    GateRef LdGlobalRecord(GateRef glue, GateRef globalEnv, GateRef key);
+    GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef glue, GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef glue, GateRef cell);
     GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key);
@@ -1281,6 +1299,7 @@ private:
 
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
+    GateRef globalEnv_ {Gate::InvalidGateRef};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

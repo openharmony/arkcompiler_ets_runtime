@@ -24,11 +24,12 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsStubBuilder : public StubBuilder {
 public:
-    explicit BuiltinsStubBuilder(StubBuilder *parent, GateRef globalEnv)
-        :StubBuilder(parent), globalEnv_(globalEnv) {}
+    BuiltinsStubBuilder(StubBuilder *parent, GateRef globalEnv)
+        : StubBuilder(parent, globalEnv) {}
     BuiltinsStubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)
-        : StubBuilder(callSignature, env), globalEnv_(globalEnv) {}
-    BuiltinsStubBuilder(Environment* env, GateRef globalEnv): StubBuilder(env), globalEnv_(globalEnv) {}
+        : StubBuilder(callSignature, env, globalEnv) {}
+    BuiltinsStubBuilder(Environment* env, GateRef globalEnv)
+        : StubBuilder(env, globalEnv) {}
     ~BuiltinsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStubBuilder);
@@ -84,16 +85,6 @@ public:
         GateRef condition = BitAnd(TaggedIsNumber(year), TaggedIsNumber(month));
         return BitAnd(condition, TaggedIsNumber(day));
     }
-    inline GateRef GetCurrentGlobalEnv()
-    {
-        if (globalEnv_ == Gate::InvalidGateRef) {
-            LOG_FULL(FATAL) << "globalEnv_ is InvalidGateRef";
-            UNREACHABLE();
-        }
-        return globalEnv_;
-    }
-private:
-    const GateRef globalEnv_{Gate::InvalidGateRef};
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \

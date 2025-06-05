@@ -23,12 +23,12 @@
 namespace panda::ecmascript::kungfu {
 class AccessObjectStubBuilder : public StubBuilder {
 public:
-    explicit AccessObjectStubBuilder(StubBuilder *parent) : StubBuilder(parent)
+    AccessObjectStubBuilder(StubBuilder *parent, GateRef globalEnv) : StubBuilder(parent, globalEnv)
     {
         jsFunc_ = Circuit::NullGate();
     }
-    explicit AccessObjectStubBuilder(StubBuilder *parent, GateRef jsFunc)
-        : StubBuilder(parent), jsFunc_(jsFunc) {}
+    AccessObjectStubBuilder(StubBuilder *parent, GateRef globalEnv, GateRef jsFunc)
+        : StubBuilder(parent, globalEnv), jsFunc_(jsFunc) {}
     ~AccessObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(AccessObjectStubBuilder);
     NO_COPY_SEMANTIC(AccessObjectStubBuilder);
@@ -62,13 +62,13 @@ public:
     GateRef StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef profileTypeInfo,
                             GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByValue(GateRef glue, GateRef receiver, GateRef key);
-    GateRef TryLoadGlobalByName(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
+    GateRef TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef TryStoreGlobalByName(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
+    GateRef TryStoreGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                  GateRef value, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef LoadGlobalVar(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
+    GateRef LoadGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
                           GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
-    GateRef StoreGlobalVar(GateRef glue, GateRef globalEnv, GateRef prop, const StringIdInfo &info,
+    GateRef StoreGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
                            GateRef value, GateRef profileTypeInfo, GateRef slotId);
     GateRef StOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
     GateRef StOwnByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value);

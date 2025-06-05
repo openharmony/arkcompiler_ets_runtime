@@ -33,11 +33,11 @@ public:
     explicit NewObjectStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
     NewObjectStubBuilder(StubBuilder *parent, GateRef globalEnv)
-        : StubBuilder(parent), globalEnv_(globalEnv) {}
+        : StubBuilder(parent, globalEnv) {}
     explicit NewObjectStubBuilder(Environment *env)
         : StubBuilder(env) {}
     NewObjectStubBuilder(Environment *env, GateRef globalEnv)
-        : StubBuilder(env), globalEnv_(globalEnv) {}
+        : StubBuilder(env, globalEnv) {}
     ~NewObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(NewObjectStubBuilder);
     NO_COPY_SEMANTIC(NewObjectStubBuilder);
@@ -52,15 +52,6 @@ public:
     void SetGlue(GateRef glue)
     {
         glue_ = glue;
-    }
-
-    inline GateRef GetCurrentGlobalEnv()
-    {
-        if (globalEnv_ == Gate::InvalidGateRef) {
-            LOG_FULL(FATAL) << "globalEnv_ is InvalidGateRef";
-            UNREACHABLE();
-        }
-        return globalEnv_;
     }
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
@@ -185,7 +176,6 @@ private:
     void InitializeObject(Variable *result);
     GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
-    const GateRef globalEnv_ {Gate::InvalidGateRef};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
