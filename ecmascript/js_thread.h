@@ -91,6 +91,7 @@ enum class BCStubStatus: uint8_t {
     NORMAL_BC_STUB,
     PROFILE_BC_STUB,
     JIT_PROFILE_BC_STUB,
+    STW_COPY_BC_STUB,
 };
 
 enum ThreadType : uint8_t {
@@ -477,6 +478,7 @@ public:
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
     void SwitchJitProfileStubs(bool isEnablePgo);
+    void SwitchStwCopyStubs(bool isStwCopy);
 
     ThreadId GetThreadId() const
     {

@@ -136,13 +136,13 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     // deserialize
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-
-#ifdef USE_CMC_GC
-    ConstantPool *constpool1 = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
-#else
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
-    auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-#endif
+    ConstantPool *constpool1;
+    if (g_isEnableCMCGC) {
+        constpool1 = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
+    } else {
+        auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
+        constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+    }
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsJSFunction());
@@ -189,25 +189,25 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     // deserialize
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-
-#ifdef USE_CMC_GC
-    ConstantPool *constpool1 = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
-#else
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
-    auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-#endif
+    ConstantPool *constpool1;
+    if (g_isEnableCMCGC) {
+        constpool1 = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
+    } else {
+        auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
+        constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+    }
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());
 
-#ifndef USE_CMC_GC
-    auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
-    EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-    auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
-    EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-#endif
+    if (!g_isEnableCMCGC) {
+        auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
+        EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
+        auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
+        EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
+    }
     std::remove(fileName.c_str());
 }
 
@@ -242,21 +242,21 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName1);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName2);
-
-#ifdef USE_CMC_GC
-    ConstantPool *constpool = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
-#else
-    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
-    auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-#endif
+    ConstantPool *constpool;
+    if (g_isEnableCMCGC) {
+        constpool = ConstantPool::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
+    } else{
+        auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
+        constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
+    }
     EXPECT_TRUE(constpool->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool->GetObjectFromCache(100).IsTaggedArray());
-#ifndef USE_CMC_GC
-    auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
-    EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-    auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
-    EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-#endif
+    if (!g_isEnableCMCGC) {
+        auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
+        EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
+        auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
+        EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
+    }
     std::remove(fileName1.c_str());
     std::remove(fileName2.c_str());
 }
@@ -350,13 +350,13 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
     // deserialize
     Snapshot snapshotDeserialize(ecmaVm);
     snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-
-#ifdef USE_CMC_GC
-    TaggedArray *array4 = TaggedArray::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
-#else
-    auto lastRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetHugeObjectSpace()->GetCurrentRegion();
-    auto array4 = reinterpret_cast<TaggedArray *>(lastRegion->GetBegin());
-#endif
+    TaggedArray *array4;
+    if (g_isEnableCMCGC) {
+        array4 = TaggedArray::Cast(snapshotDeserialize.GetDeserializeResultForUT().GetTaggedObject());
+    } else {
+        auto lastRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetHugeObjectSpace()->GetCurrentRegion();
+        array4 = reinterpret_cast<TaggedArray *>(lastRegion->GetBegin());
+    }
     EXPECT_TRUE(array4->Get(0).IsTaggedArray());
     EXPECT_TRUE(array4->Get(1).IsJSFunction());
     EXPECT_TRUE(array4->Get(2).IsJSFunction());

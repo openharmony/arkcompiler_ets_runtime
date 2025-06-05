@@ -594,6 +594,9 @@ namespace panda::ecmascript::kungfu {
     ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V)   \
     ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(V, V, V)
 
+#define ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(V) \
+    INTERPRETER_BC_STUB_LIST(V)
+
 class BytecodeStubCSigns {
 public:
     // is uint8 max
@@ -609,6 +612,9 @@ public:
 #undef DEF_VALID_BC_STUB_ID
 #define DEF_VALID_BC_STUB_ID(name, ...) name,
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
+#undef DEF_VALID_BC_STUB_ID
+#define DEF_VALID_BC_STUB_ID(name) name##StwCopy,
+        ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
         NUM_OF_VALID_STUBS
     };
@@ -645,6 +651,9 @@ public:
 #undef DEF_BC_STUB_ID
 #define DEF_BC_STUB_ID(name, ...) ID_##name,
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
+#undef DEF_BC_STUB_ID
+#define DEF_BC_STUB_ID(name) ID_##name##StwCopy,
+        ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DEF_BC_STUB_ID)
         NUM_OF_STUBS,
         ID_Wide_Start = lastOpcode + 1,
         ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,

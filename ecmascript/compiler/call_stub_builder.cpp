@@ -32,13 +32,11 @@ void CallStubBuilder::JSCallDispatchForBaseline(Label *exit, Label *noNeedCheckE
     auto env = GetEnvironment();
     baselineBuiltinFp_ = CallNGCRuntime(glue_, RTSTUB_ID(GetBaselineBuiltinFp), {glue_});
 
-#ifdef USE_READ_BARRIER
     CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
     if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
         CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
             { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
     }
-#endif
 
     // 1. call initialize
     Label funcIsHeapObject(env);
@@ -416,7 +414,6 @@ GateRef CallStubBuilder::JSCallDispatch()
 
     this->result_ = &result;
 
-#ifdef USE_READ_BARRIER
     Label prepareForAsmBridgeEntry(env);
     Label finishPrepare(env);
     GateRef gcStateBitField = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
@@ -442,8 +439,6 @@ GateRef CallStubBuilder::JSCallDispatch()
         Jump(&finishPrepare);
     }
     Bind(&finishPrepare);
-#endif
-
     // 1. call initialize
     Label funcIsHeapObject(env);
     Label funcIsCallable(env);

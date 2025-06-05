@@ -1322,9 +1322,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
            SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE && IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
     __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
 
-#ifdef USE_CMC_GC
-    __ Ret();
-#else
     Label needCall;
     Label checkMark;
     Label needCallNotShare;
@@ -1415,7 +1412,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         ASMFastSharedWriteBarrier(assembler, needCall);
     }
-#endif // USE_CMC_GC
 }
 
 // %x0 - glue
@@ -1424,11 +1420,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
 // %x3 - value
 void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler, Label& needCall)
 {
-#ifdef USE_CMC_GC
-    (void)assembler;
-    (void)needCall;
-    __ Ret();
-#else
     Label checkBarrierForSharedValue;
     Label restoreScratchRegister;
     Label callSharedBarrier;
@@ -1543,7 +1534,6 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         __ Mov(X15, SValueBarrierOffset);
         __ B(&needCall);
     }
-#endif // USE_CMC_GC
 }
 
 // Generate code for generator re-entering asm interpreter

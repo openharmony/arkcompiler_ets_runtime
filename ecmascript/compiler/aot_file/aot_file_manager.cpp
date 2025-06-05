@@ -552,6 +552,9 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         }
     }
     thread->CheckOrSwitchPGOStubs();
+    if (!g_isEnableCMCGC) {
+        thread->SwitchStwCopyStubs(true);
+    }
     AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
     AdjustBCStubAndDebuggerStubEntries(thread, stubs, asmInterOpt);
 }

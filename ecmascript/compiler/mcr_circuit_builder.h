@@ -71,7 +71,7 @@ GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj)
 GateRef CircuitBuilder::TaggedObjectIsString(GateRef glue, GateRef obj,
                                              [[maybe_unused]] const CompilationEnv *compilationEnv)
 {
-#ifndef USE_CMC_GC
+#ifdef IMPOSSIBLE
     if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
         std::string comment = "tagged_obj_is_string_intrinsic";
         auto currentLabel = env_->GetCurrentLabel();

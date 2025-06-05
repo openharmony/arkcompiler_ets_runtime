@@ -49,6 +49,7 @@ public:
         BYTECODE_HELPER_HANDLER,
         BYTECODE_PROFILE_HANDLER,
         BYTECODE_JIT_PROFILE_HANDLER,
+        BYTECODE_STW_COPY_HANDLER,
         JSFUNCTION,
         BUILTINS_STUB,
         BUILTINS_WITH_ARGV_STUB,
@@ -349,6 +350,16 @@ public:
         id_ = id;
     }
 
+    bool IsStwCopyStub() const
+    {
+        return isStwCopyStub_;
+    }
+
+    void SetStwCopyStub(bool flag)
+    {
+        isStwCopyStub_ = flag;
+    }
+
 private:
     std::string name_;
     size_t paramCounter_ {0};
@@ -359,6 +370,7 @@ private:
     std::unique_ptr<std::vector<ParamAttr>> paramsAttr_ {nullptr};
     TargetConstructor constructor_ {nullptr};
     uint64_t kind_ {0};
+    bool isStwCopyStub_ {false};
 };
 
 #define EXPLICIT_CALL_SIGNATURE_LIST(V)         \

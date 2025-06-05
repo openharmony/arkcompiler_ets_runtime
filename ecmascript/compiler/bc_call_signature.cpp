@@ -46,6 +46,13 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_JIT_PROFILE_HANDLER);
     ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(INIT_SIGNATURES_DYN)
 #undef INIT_SIGNATURES_DYN
+
+#define INIT_SIGNATURES_DYN(name, ...)              \
+    INIT_SIGNATURES(name##StwCopy)                  \
+    callSigns_[name##StwCopy].SetStwCopyStub(true); \
+    callSigns_[name##StwCopy].SetTargetKind(CallSignature::TargetKind::BYTECODE_STW_COPY_HANDLER);
+    ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(INIT_SIGNATURES_DYN)
+#undef INIT_SIGNATURES_DYN
 #undef INIT_SIGNATURES
 
 #define INIT_HELPER_SIGNATURES(name)                                                        \

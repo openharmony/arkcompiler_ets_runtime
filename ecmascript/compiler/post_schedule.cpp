@@ -52,7 +52,12 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
             bool needRetraverse = false;
             switch (opcode) {
                 case OpCode::HEAP_ALLOC: {
-                    needRetraverse = VisitHeapAlloc(current, cfg, bbIdx, instIdx);
+                    if (isStwCopyStub_) {
+                        needRetraverse = VisitHeapAlloc(current, cfg, bbIdx, instIdx);
+                    } else {
+                        needRetraverse = VisitHeapAllocForCMCGC(current, cfg, bbIdx, instIdx);
+                    }
+
                     break;
                 }
                 case OpCode::STORE: {
@@ -87,18 +92,46 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-#ifdef USE_CMC_GC
-    if (flag == RegionSpaceFlag::IN_OLD_SPACE ||
-        flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
-        flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
-#else
     if (flag == RegionSpaceFlag::IN_OLD_SPACE) {
-#endif
         LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
         return false;
     } else {
         LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+    }
+#if defined(ARK_ASAN_ON)
+    ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+    return false;
+#else
+    ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
+    ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
+    ScheduleNewBB(successBBGates, cfg, bbIdx);
+    ScheduleNewBB(failBBGates, cfg, bbIdx);
+    ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
+    return true;
+#endif
+}
+
+bool PostSchedule::VisitHeapAllocForCMCGC(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
+{
+    int64_t flag = static_cast<int64_t>(acc_.TryGetValue(gate));
+    ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE ||
+           flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+           flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
+           flag == RegionSpaceFlag::IN_OLD_SPACE);
+    std::vector<GateRef> currentBBGates;
+    std::vector<GateRef> successBBGates;
+    std::vector<GateRef> failBBGates;
+    std::vector<GateRef> endBBGates;
+    if (flag == RegionSpaceFlag::IN_OLD_SPACE ||
+        flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+        flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+        LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
+    } else {
+        LoweringHeapAllocAndPrepareScheduleGateForCMCGC(
+            gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
     }
 #if defined(ARK_ASAN_ON)
     ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
@@ -218,63 +251,6 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     Label success(&builder_);
     Label callRuntime(&builder_);
 
-#ifdef USE_CMC_GC
-    ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
-    size_t allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(false);
-    GateRef allocBufferAddrOffset =circuit_->GetConstantGateWithoutCache(
-        MachineType::I64, allocBufferOffset, GateType::NJSValue());
-    GateRef allocBufferAddr = builder_.PtrAdd(glue, allocBufferAddrOffset);
-    GateRef allocBufferAddress = builder_.LoadFromAddressWithoutBarrier(
-                                            VariableType::NATIVE_POINTER(), allocBufferAddr);
-
-    GateRef addrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef tlRegionAddr = builder_.PtrAdd(allocBufferAddress, addrOffset);
-    GateRef tlRegionAddress = builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), tlRegionAddr);
-    GateRef allocPtrAddr = builder_.PtrAdd(tlRegionAddress, addrOffset);
-    GateRef allocPtr = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), allocPtrAddr);
-    GateRef regionEndOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 8, GateType::NJSValue());
-    GateRef regionEndAddr = builder_.PtrAdd(tlRegionAddress, regionEndOffset);
-    GateRef regionEnd = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), regionEndAddr);
-
-    GateRef newAllocPtr = builder_.PtrAdd(allocPtr, size);
-    GateRef condition = builder_.Int64GreaterThan(newAllocPtr, regionEnd);
-    Label *currentLabel = env.GetCurrentLabel();
-    BRANCH_CIR(condition, &callRuntime, &success);
-    {
-        GateRef ifBranch = currentLabel->GetControl();
-        PrepareToScheduleNewGate(ifBranch, currentBBGates);
-        PrepareToScheduleNewGate(condition, currentBBGates);
-        PrepareToScheduleNewGate(newAllocPtr, currentBBGates);
-        PrepareToScheduleNewGate(regionEnd, currentBBGates);
-        PrepareToScheduleNewGate(allocPtr, currentBBGates);
-        PrepareToScheduleNewGate(regionEndAddr, currentBBGates);
-        PrepareToScheduleNewGate(regionEndOffset, currentBBGates);
-        PrepareToScheduleNewGate(allocPtrAddr, currentBBGates);
-        PrepareToScheduleNewGate(tlRegionAddress, currentBBGates);
-        PrepareToScheduleNewGate(tlRegionAddr, currentBBGates);
-        PrepareToScheduleNewGate(addrOffset, currentBBGates);
-        PrepareToScheduleNewGate(allocBufferAddress, currentBBGates);
-        PrepareToScheduleNewGate(allocBufferAddr, currentBBGates);
-        PrepareToScheduleNewGate(allocBufferAddrOffset, currentBBGates);
-        PrepareToScheduleNewGate(hole, currentBBGates);
-    }
-    builder_.Bind(&success);
-    {
-        GateRef ifFalse = builder_.GetState();
-        GateRef addr = builder_.PtrAdd(allocPtrAddr, addrOffset);
-        builder_.StoreWithoutBarrier(VariableType::NATIVE_POINTER(), addr, newAllocPtr);
-        GateRef store = builder_.GetDepend();
-        result = allocPtr;
-        builder_.Jump(&exit);
-        {
-            GateRef ordinaryBlock = success.GetControl();
-            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
-            PrepareToScheduleNewGate(store, successBBGates);
-            PrepareToScheduleNewGate(addr, successBBGates);
-            PrepareToScheduleNewGate(ifFalse, successBBGates);
-        }
-    }
-#else
     size_t topOffset;
     size_t endOffset;
     if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
@@ -338,7 +314,139 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
             PrepareToScheduleNewGate(ifFalse, successBBGates);
         }
     }
+    builder_.Bind(&callRuntime);
+    {
+        GateRef ifTrue = builder_.GetState();
+        GateRef taggedIntMask = circuit_->GetConstantGateWithoutCache(
+            MachineType::I64, JSTaggedValue::TAG_INT, GateType::NJSValue());
+        GateRef taggedSize = builder_.Int64Or(size, taggedIntMask);
+        GateRef target = Circuit::NullGate();
+        if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInSOld),
+                                                           GateType::NJSValue());
+        } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInSNonMovable),
+                                                           GateType::NJSValue());
+        } else {
+            ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
+            target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, RTSTUB_ID(AllocateInYoung),
+                                                           GateType::NJSValue());
+        }
+        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
+        ASSERT(cs->IsRuntimeStub());
+        GateRef reseverdFrameState = Circuit::NullGate();
+        std::vector<GateRef> args { taggedSize };
+        // keep same with CircuitBuilder::Call: only when condition is true, we pass FrameState.
+        if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+            reseverdFrameState = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+            args.push_back(reseverdFrameState);
+        }
+        // here in order to schedule all the intermediate value,
+        // framestate is solved out from CircuitBuilder::Call,
+        // so hirGate must be NullGate to prevent duplicated operation.
+        GateRef slowResult = builder_.Call(cs, glue, target, builder_.GetDepend(),
+                                           args, Circuit::NullGate(), "Heap alloc");
+        result = slowResult;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = callRuntime.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, failBBGates);
+            PrepareToScheduleNewGate(slowResult, failBBGates);
+            PrepareToScheduleNewGate(target, failBBGates);
+            PrepareToScheduleNewGate(taggedSize, failBBGates);
+            if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+                PrepareToScheduleNewGate(reseverdFrameState, failBBGates);
+            }
+            PrepareToScheduleNewGate(taggedIntMask, failBBGates);
+            PrepareToScheduleNewGate(ifTrue, failBBGates);
+        }
+    }
+    builder_.Bind(&exit);
+    {
+        GateRef merge = builder_.GetState();
+        GateRef phi = *result;
+        PrepareToScheduleNewGate(merge, endBBGates);
+        PrepareToScheduleNewGate(phi, endBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 #endif
+}
+
+void PostSchedule::LoweringHeapAllocAndPrepareScheduleGateForCMCGC(GateRef gate,
+                                                                   std::vector<GateRef> &currentBBGates,
+                                                                   std::vector<GateRef> &successBBGates,
+                                                                   std::vector<GateRef> &failBBGates,
+                                                                   std::vector<GateRef> &endBBGates,
+                                                                   [[maybe_unused]] int64_t flag)
+{
+#if defined(ARK_ASAN_ON)
+    LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+#else
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    GateRef glue = acc_.GetValueIn(gate, 0);
+    GateRef size = acc_.GetValueIn(gate, 1);
+    GateRef hole = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, JSTaggedValue::VALUE_HOLE, GateType::TaggedValue());
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), hole);
+    Label success(&builder_);
+    Label callRuntime(&builder_);
+
+    ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
+    size_t allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(false);
+    GateRef allocBufferAddrOffset = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, allocBufferOffset, GateType::NJSValue());
+    GateRef allocBufferAddr = builder_.PtrAdd(glue, allocBufferAddrOffset);
+    GateRef allocBufferAddress = builder_.LoadFromAddressWithoutBarrier(
+                                            VariableType::NATIVE_POINTER(), allocBufferAddr);
+
+    GateRef addrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef tlRegionAddr = builder_.PtrAdd(allocBufferAddress, addrOffset);
+    GateRef tlRegionAddress = builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), tlRegionAddr);
+    GateRef allocPtrAddr = builder_.PtrAdd(tlRegionAddress, addrOffset);
+    GateRef allocPtr = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), allocPtrAddr);
+    GateRef regionEndOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 8, GateType::NJSValue());
+    GateRef regionEndAddr = builder_.PtrAdd(tlRegionAddress, regionEndOffset);
+    GateRef regionEnd = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), regionEndAddr);
+
+    GateRef newAllocPtr = builder_.PtrAdd(allocPtr, size);
+    GateRef condition = builder_.Int64GreaterThan(newAllocPtr, regionEnd);
+    Label *currentLabel = env.GetCurrentLabel();
+    BRANCH_CIR(condition, &callRuntime, &success);
+    {
+        GateRef ifBranch = currentLabel->GetControl();
+        PrepareToScheduleNewGate(ifBranch, currentBBGates);
+        PrepareToScheduleNewGate(condition, currentBBGates);
+        PrepareToScheduleNewGate(newAllocPtr, currentBBGates);
+        PrepareToScheduleNewGate(regionEnd, currentBBGates);
+        PrepareToScheduleNewGate(allocPtr, currentBBGates);
+        PrepareToScheduleNewGate(regionEndAddr, currentBBGates);
+        PrepareToScheduleNewGate(regionEndOffset, currentBBGates);
+        PrepareToScheduleNewGate(allocPtrAddr, currentBBGates);
+        PrepareToScheduleNewGate(tlRegionAddress, currentBBGates);
+        PrepareToScheduleNewGate(tlRegionAddr, currentBBGates);
+        PrepareToScheduleNewGate(addrOffset, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddress, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddr, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddrOffset, currentBBGates);
+        PrepareToScheduleNewGate(hole, currentBBGates);
+    }
+    builder_.Bind(&success);
+    {
+        GateRef ifFalse = builder_.GetState();
+        GateRef addr = builder_.PtrAdd(allocPtrAddr, addrOffset);
+        builder_.StoreWithoutBarrier(VariableType::NATIVE_POINTER(), addr, newAllocPtr);
+        GateRef store = builder_.GetDepend();
+        result = allocPtr;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = success.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
+            PrepareToScheduleNewGate(store, successBBGates);
+            PrepareToScheduleNewGate(addr, successBBGates);
+            PrepareToScheduleNewGate(ifFalse, successBBGates);
+        }
+    }
     builder_.Bind(&callRuntime);
     {
         GateRef ifTrue = builder_.GetState();
@@ -505,6 +613,12 @@ MemoryAttribute::Barrier PostSchedule::GetBarrierKind(GateRef gate)
 int PostSchedule::SelectBarrier(MemoryAttribute::ShareFlag share, const CallSignature*& cs, std::string_view& comment)
 {
     int index = 0;
+    if (!isStwCopyStub_) {
+        index = CommonStubCSigns::SetValueWithBarrier;
+        cs = CommonStubCSigns::Get(index);
+        comment = "cmcgc store barrier\0";
+        return index;
+    }
     switch (share) {
         case MemoryAttribute::UNKNOWN:
             if (fastBarrier_) {
@@ -745,11 +859,12 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
+    if (isStwCopyStub_) {
+        kind = MemoryAttribute::Barrier::NO_BARRIER;
+    }
     switch (kind) {
-#ifdef USE_READ_BARRIER
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
         case MemoryAttribute::Barrier::NEED_BARRIER: {
-#ifdef USE_CMC_GC
             LoweringLoadWithBarrierAndPrepareScheduleGate(gate, currentBBGates, successBBGates,
                                                           failBBGates, endBBGates);
             ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
@@ -758,16 +873,7 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
             ScheduleNewBB(failBBGates, cfg, bbIdx);
             ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
             return true;
-#else
-            LoweringLoadWithBarrierAndPrepareScheduleGate(gate, currentBBGates);
-            ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-            return false;
-#endif
         }
-#else
-        case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
-        case MemoryAttribute::Barrier::NEED_BARRIER:
-#endif
         case MemoryAttribute::Barrier::NO_BARRIER: {
             LoweringLoadNoBarrierAndPrepareScheduleGate(gate, currentBBGates);
             ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
@@ -780,8 +886,6 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     return false;
 }
 
-#ifdef USE_READ_BARRIER
-#ifdef USE_CMC_GC
 void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
                                                                  std::vector<GateRef> &currentBBGates,
                                                                  std::vector<GateRef> &successBBGates,
@@ -793,11 +897,11 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
     GateRef glue = acc_.GetValueIn(gate, 0);
     GateRef addr = acc_.GetValueIn(gate, 1);
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
- 
+
     GateRef hole = circuit_->GetConstantGateWithoutCache(
         MachineType::I64, JSTaggedValue::VALUE_HOLE, GateType::TaggedValue());
     DEFVALUE(result, (&builder_), type, hole);
- 
+
     Label callRuntime(&builder_);
     Label noBarrier(&builder_);
     GateRef bitOffset = circuit_->GetConstantGateWithoutCache(
@@ -869,35 +973,6 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
-#else
-void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
-{
-    Environment env(gate, circuit_, &builder_);
-
-    GateRef glue = acc_.GetValueIn(gate, 0);
-    GateRef addr = acc_.GetValueIn(gate, 1);
-    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-
-    // Directly call ReadBarrier, to be optimized
-    int index = CommonStubCSigns::GetValueWithBarrier;
-    const CallSignature *cs = CommonStubCSigns::Get(index);
-    ASSERT(cs->IsCommonStub());
-    GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
-    GateRef reservedFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef reservedPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef loadWithBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                            { glue, addr, reservedFrameArgs, reservedPc },
-                                            Circuit::NullGate(), "load barrier");
-    {
-        PrepareToScheduleNewGate(loadWithBarrier, currentBBGates);
-        PrepareToScheduleNewGate(reservedPc, currentBBGates);
-        PrepareToScheduleNewGate(reservedFrameArgs, currentBBGates);
-        PrepareToScheduleNewGate(target, currentBBGates);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithBarrier);
-}
-#endif
-#endif
 
 void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
 {

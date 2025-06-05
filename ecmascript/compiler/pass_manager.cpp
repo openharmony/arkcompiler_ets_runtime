@@ -190,7 +190,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             && compilationEnv_->GetJSOptions().IsEnableJitVerifyPass()) {
             pipeline.RunPass<VerifierPass>();
         }
-        pipeline.RunPass<GraphLinearizerPass>();
+        pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
         return true;
     });
 }
@@ -354,7 +354,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         if (passOptions_->EnableVerifierPass()) {
             pipeline.RunPass<VerifierPass>();
         }
-        pipeline.RunPass<GraphLinearizerPass>();
+        pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
         pipeline.RunPass<CGIRGenPass>();
     });
 

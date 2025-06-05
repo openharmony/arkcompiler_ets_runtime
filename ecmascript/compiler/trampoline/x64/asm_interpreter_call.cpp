@@ -1598,9 +1598,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
            SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE && IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
     __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
 
-#ifdef USE_CMC_GC
-    __ Ret();
-#else
     Label needCall;
     Label checkMark;
     Label needCallNotShare;
@@ -1687,7 +1684,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         ASMFastSharedWriteBarrier(assembler, needCall);
     }
-#endif // USE_CMC_GC
 }
 
 // %rd1 - glue

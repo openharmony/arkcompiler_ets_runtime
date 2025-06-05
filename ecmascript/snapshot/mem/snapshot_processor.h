@@ -20,9 +20,7 @@
 #include <fstream>
 #include <sstream>
 
-#ifdef USE_CMC_GC
 #include "common_components/serialize/serialize_utils.h"
-#endif
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
@@ -74,31 +72,23 @@ public:
                          std::unordered_map<uint64_t, ObjectEncode> *data);
     void Relocate(SnapshotType type, const JSPandaFile *jsPandaFile,
                   uint64_t rootObjSize);
-#ifdef USE_CMC_GC
     void RelocateSpaceObject(std::vector<std::pair<uintptr_t, size_t>> &regions, SnapshotType type,
         MethodLiteral* methods, size_t methodNums, size_t rootObjSize);
-#else
     void RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
-#endif
     void SerializePandaFileMethod();
     AllocResult GetNewObj(size_t objectSize, TaggedObject *objectHeader);
-#ifndef USE_CMC_GC
     uintptr_t GetNewObjAddress(size_t objectSize, TaggedObject *objectHeader);
-#endif
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
     EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
                               std::unordered_map<uint64_t, ObjectEncode> *data);
     void EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
-#ifdef USE_CMC_GC
     void DeserializeObjectExcludeString(uintptr_t regularObjBegin, size_t regularObjSize, size_t pinnedObjSize,
                                         size_t largeObjSize);
-#else
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
                                         size_t machineCodeObjSize, size_t snapshotObjSize, size_t hugeSpaceObjSize);
-#endif
     void DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd);
 
     // ONLY used in UT to get the deserialize value result
@@ -176,12 +166,9 @@ private:
     void DeserializeClassWord(TaggedObject *object);
     void DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
                                 size_t &methodNums, size_t &others);
-#ifdef USE_CMC_GC
     void DeserializeSpaceObject(uintptr_t beginAddr, size_t objSize, common::SerializedObjectSpace spaceType);
-#else
     void DeserializeSpaceObject(uintptr_t beginAddr, Space* space, size_t spaceObjSize);
     void DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObjectSpace* space, size_t hugeSpaceObjSize);
-#endif
     void HandleRootObject(SnapshotType type, uintptr_t rootObjectAddr, size_t objType, size_t &constSpecialIndex);
 
     EncodeBit NativePointerToEncodeBit(void *nativePointer);
@@ -197,7 +184,6 @@ private:
 
     EcmaVM *vm_ {nullptr};
     SharedHeap* sHeap_ {nullptr};
-#ifdef USE_CMC_GC
     class RegionProxy {
     public:
         RegionProxy() = default;
@@ -288,13 +274,11 @@ private:
     AllocateProxy pinnedObjAllocator_ {common::SerializedObjectSpace::PIN_SPACE};
     AllocateProxy largeObjAllocator_ {common::SerializedObjectSpace::LARGE_SPACE};
     size_t commonRegionSize_ {0};
-#else
     LocalSpace *oldLocalSpace_ {nullptr};
     LocalSpace *nonMovableLocalSpace_ {nullptr};
     LocalSpace *machineCodeLocalSpace_ {nullptr};
     SnapshotSpace *snapshotLocalSpace_ {nullptr};
     HugeObjectSpace *hugeObjectLocalSpace_ {nullptr};
-#endif
     bool programSerialize_ {false};
     bool builtinsSerialize_ {false};
     bool builtinsDeserialize_ {false};
@@ -309,11 +293,9 @@ private:
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};
     JSTaggedValue root_ {JSTaggedValue::Hole()};
-#ifdef USE_CMC_GC
     std::vector<std::pair<uintptr_t, size_t>> regularRegions_ {};
     std::vector<std::pair<uintptr_t, size_t>> pinnedRegions_ {};
     std::vector<std::pair<uintptr_t, size_t>> largeRegions_ {};
-#endif
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);

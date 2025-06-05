@@ -412,11 +412,11 @@ void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory
                 factory->CreateDefaultClassConstructorHClass(hClass));
     SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
-#ifndef USE_CMC_GC
-    // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
-    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
-#endif
+    if (!g_isEnableCMCGC) {
+        // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
+        SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+            factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+    }
 }
 
 void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)

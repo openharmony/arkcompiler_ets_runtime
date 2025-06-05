@@ -158,25 +158,23 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
         LOG_ECMA(ERROR) << "file verify failed.";
         return false;
     }
-#ifdef USE_CMC_GC
-    uintptr_t regularObjBegin = readFile + sizeof(SnapShotHeader);
-    uintptr_t stringBegin = regularObjBegin + hdr.regularObjSize + hdr.pinnedObjSize + hdr.largeObjSize;
-#else
-    uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
-    uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
-        hdr.machineCodeObjSize + hdr.snapshotObjSize + hdr.hugeObjSize;
-#endif
-    uintptr_t stringEnd = stringBegin + hdr.stringSize;
     [[maybe_unused]] EcmaHandleScope stringHandleScope(vm_->GetJSThread());
-    processor.DeserializeString(stringBegin, stringEnd);
-
-#ifdef USE_CMC_GC
-    processor.DeserializeObjectExcludeString(regularObjBegin, hdr.regularObjSize, hdr.pinnedObjSize,
+    if (g_isEnableCMCGC) {
+        uintptr_t regularObjBegin = readFile + sizeof(SnapShotHeader);
+        uintptr_t stringBegin = regularObjBegin + hdr.regularObjSize + hdr.pinnedObjSize + hdr.largeObjSize;
+        uintptr_t stringEnd = stringBegin + hdr.stringSize;
+        processor.DeserializeString(stringBegin, stringEnd);
+        processor.DeserializeObjectExcludeString(regularObjBegin, hdr.regularObjSize, hdr.pinnedObjSize,
                                              hdr.largeObjSize);
-#else
-    processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
+    } else {
+        uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
+        uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
+            hdr.machineCodeObjSize + hdr.snapshotObjSize + hdr.hugeObjSize;
+        uintptr_t stringEnd = stringBegin + hdr.stringSize;
+        processor.DeserializeString(stringBegin, stringEnd);
+        processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
                                              hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
-#endif
+    }
 
 #if !defined(CROSS_PLATFORM)
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
@@ -274,17 +272,17 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
     }
     size_t pandaFileBegin = RoundUp(totalObjSize + sizeof(SnapShotHeader), Constants::PAGE_SIZE_ALIGN_UP);
     SnapShotHeader hdr(GetLastVersion());
-#ifdef USE_CMC_GC
-    hdr.regularObjSize = objSizeVector[0];  // 0: regularObj
-    hdr.pinnedObjSize = objSizeVector[1];   // 1: pinnedObj
-    hdr.largeObjSize = objSizeVector[2];     // 2: largeObj
-#else
-    hdr.oldSpaceObjSize = objSizeVector[0]; // 0: oldSpaceObj
-    hdr.nonMovableObjSize = objSizeVector[1]; // 1: nonMovableObj
-    hdr.machineCodeObjSize = objSizeVector[2]; // 2: machineCodeObj
-    hdr.snapshotObjSize = objSizeVector[3]; // 3: snapshotObj
-    hdr.hugeObjSize = objSizeVector[4]; // 4: hugeObj
-#endif
+    if (g_isEnableCMCGC) {
+        hdr.regularObjSize = objSizeVector[0];  // 0: regularObj
+        hdr.pinnedObjSize = objSizeVector[1];   // 1: pinnedObj
+        hdr.largeObjSize = objSizeVector[2];     // 2: largeObj
+    } else {
+        hdr.oldSpaceObjSize = objSizeVector[0]; // 0: oldSpaceObj
+        hdr.nonMovableObjSize = objSizeVector[1]; // 1: nonMovableObj
+        hdr.machineCodeObjSize = objSizeVector[2]; // 2: machineCodeObj
+        hdr.snapshotObjSize = objSizeVector[3]; // 3: snapshotObj
+        hdr.hugeObjSize = objSizeVector[4]; // 4: hugeObj
+    }
     hdr.stringSize = totalStringSize;
     hdr.pandaFileBegin = pandaFileBegin;
     hdr.rootObjectSize = size;

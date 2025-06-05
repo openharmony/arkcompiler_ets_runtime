@@ -833,8 +833,14 @@ void JSThread::CheckSwitchDebuggerBCStub()
 void JSThread::CheckOrSwitchPGOStubs()
 {
     bool isSwitch = false;
+    bool isSwitchToNormal = false;
     if (IsPGOProfilerEnable()) {
         if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+            SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
+            isSwitch = true;
+        } else if (GetBCStubStatus() == BCStubStatus::STW_COPY_BC_STUB) {
+            SwitchStwCopyStubs(false);
+            ASSERT(GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB);
             SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
             isSwitch = true;
         }
@@ -842,6 +848,7 @@ void JSThread::CheckOrSwitchPGOStubs()
         if (GetBCStubStatus() == BCStubStatus::PROFILE_BC_STUB) {
             SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
             isSwitch = true;
+            isSwitchToNormal = true;
         }
     }
     if (isSwitch) {
@@ -852,6 +859,9 @@ void JSThread::CheckOrSwitchPGOStubs()
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
 #undef SWITCH_PGO_STUB_ENTRY
+    }
+    if (isSwitchToNormal && !g_isEnableCMCGC) {
+        SwitchStwCopyStubs(true);
     }
 }
 
@@ -866,6 +876,11 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
     if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
         isSwitch = true;
+    } else if (GetBCStubStatus() == BCStubStatus::STW_COPY_BC_STUB) {
+        SwitchStwCopyStubs(false);
+        ASSERT(GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB);
+        SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
+        isSwitch = true;
     }
     if (isSwitch) {
         Address curAddress;
@@ -875,6 +890,28 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
 #undef SWITCH_PGO_STUB_ENTRY
+    }
+}
+
+void JSThread::SwitchStwCopyStubs(bool isStwCopy)
+{
+    bool isSwitch = false;
+    if (isStwCopy && GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+        SetBCStubStatus(BCStubStatus::STW_COPY_BC_STUB);
+        isSwitch = true;
+    } else if (!isStwCopy && GetBCStubStatus() == BCStubStatus::STW_COPY_BC_STUB) {
+        SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
+        isSwitch = true;
+    }
+    if (isSwitch) {
+        Address curAddress;
+#define SWITCH_STW_COPY_STUB_ENTRY(base)                                                                    \
+        curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##base##StwCopy);                                \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##base,                                                       \
+                       GetBCStubEntry(BytecodeStubCSigns::ID_##base##StwCopy));                             \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##base, curAddress);
+        ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(SWITCH_STW_COPY_STUB_ENTRY)
+#undef SWITCH_STW_COPY_STUB_ENTRY
     }
 }
 
