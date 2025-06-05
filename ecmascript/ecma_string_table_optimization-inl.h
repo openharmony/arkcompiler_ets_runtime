@@ -172,7 +172,7 @@ EcmaString *HashTrieMap::LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallb
             }
 #endif
         }
-
+        ASSERT(slot != nullptr);
         node = slot->load(std::memory_order_acquire);
         if (node == nullptr || node->IsEntry()) {
             // see is still real, so can continue to insert.
@@ -275,6 +275,7 @@ EcmaString *HashTrieMap::LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, Loade
 #endif
         // invoke the callback to create str
         value = std::invoke(std::forward<LoaderCallback>(loaderCallback));
+        ASSERT(slot != nullptr);
         node = slot->load(std::memory_order_acquire);
         if (node == nullptr || node->IsEntry()) {
             // see is still real, so can continue to insert.
