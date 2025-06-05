@@ -527,6 +527,29 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("buffer test chinese$#@! failed", len === 22);
     }
 
+    {
+        let buf = new FastBuffer([0x12, 0x34, 0x56, 0x78, 0x90, 0xab]);
+        let res = buf.readIntBE(0, 6).toString(16);
+        map.set("buffer.readIntBE() failed, expect: 1234567890ab, output: " + res, res === '1234567890ab');
+    }
+
+    {
+        let buf = new FastBuffer([0x12, 0x34, 0x56, 0x78, 0x90, 0xab]);
+        let res = buf.readIntLE(0, 6).toString(16);
+        map.set("buffer.readIntLE() failed, expect: -546f87a9cbee, output: " + res, res === '-546f87a9cbee');
+    }
+
+    {
+        let buf = new FastBuffer([0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x70,
+            0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78]);
+        let res = buf.readBigUInt64BE(0).toString();
+        map.set("buffer.readBigUInt64BE() failed, expect: 7161960797921896816, output: " + res, res === '7161960797921896816');
+
+        let buf1 = new FastBuffer(8);
+        let result = buf1.writeBigUInt64BE(BigInt(0xdecafafecacefade), 0);
+        map.set("buffer.readBigUInt64BE() failed, expect: 8, output: " + result, result === 8);
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
