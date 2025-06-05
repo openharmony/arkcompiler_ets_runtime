@@ -109,6 +109,8 @@ public:
     */
     virtual void HitSymbolicBreakpoint() = 0;
 
+    virtual const std::unordered_set<std::string> &GetAllRecordNames() const = 0;
+
     virtual ~PtHooks() = default;
 
     NO_COPY_SEMANTIC(PtHooks);
