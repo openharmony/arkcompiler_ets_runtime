@@ -4997,7 +4997,7 @@ void RuntimeStubs::ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t l
     DISALLOW_GARBAGE_COLLECTION;
 #ifdef USE_READ_BARRIER
     auto thread = JSThread::GlueToJSThread(argGlue);
-    if (thread->IsCMCGCConcurrentCopying()) {
+    if (thread->NeedReadBarrier()) {
         for (uint32_t i = 0; i < length; i++) {
             Barriers::UpdateSlot(dst, i * sizeof(JSTaggedType));
         }

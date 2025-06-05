@@ -191,6 +191,15 @@ public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x1;
+#ifdef USE_READ_BARRIER
+    static constexpr int READ_BARRIER_STATE_BITFIELD_MASK = 0x2;
+#endif
+#ifdef USE_CMC_GC
+    static constexpr int CMC_GC_PHASE_BITFIELD_START = 8;
+    static constexpr int CMC_GC_PHASE_BITFIELD_NUM = 8;
+    static constexpr int CMC_GC_PHASE_BITFIELD_MASK =
+        (((1 << CMC_GC_PHASE_BITFIELD_NUM) - 1) << CMC_GC_PHASE_BITFIELD_START);
+#endif
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
@@ -199,6 +208,12 @@ public:
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
+#ifdef USE_READ_BARRIER
+    using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag;
+#endif
+#ifdef USE_CMC_GC
+    using CMCGCPhaseBits = BitField<GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>;
+#endif
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
@@ -590,13 +605,26 @@ public:
     }
 
 #ifdef USE_READ_BARRIER
-    bool IsCMCGCConcurrentCopying() const
+    bool NeedReadBarrier() const
     {
-#ifdef USE_CMC_GC
-        return GetThreadHolder()->GetMutatorPhase() >= GCPhase::GC_PHASE_PRECOPY;
-#else
-        return false;
+        return ReadBarrierStateBit::Decode(glueData_.sharedGCStateBitField_);
+    }
+
+    void SetReadBarrierState(bool flag)
+    {
+        ReadBarrierStateBit::Set(flag, &glueData_.sharedGCStateBitField_);
+    }
 #endif
+
+#ifdef USE_CMC_GC
+    GCPhase GetCMCGCPhase() const
+    {
+        return CMCGCPhaseBits::Decode(glueData_.sharedGCStateBitField_);
+    }
+
+    void SetCMCGCPhase(GCPhase gcPhase)
+    {
+        CMCGCPhaseBits::Set(gcPhase, &glueData_.sharedGCStateBitField_);
     }
 #endif
 

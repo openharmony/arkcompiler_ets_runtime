@@ -266,12 +266,10 @@ GateRef CallStubBuilder::JSCallDispatch()
 #ifdef USE_READ_BARRIER
     Label prepareForAsmBridgeEntry(env);
     Label finishPrepare(env);
-    GateRef threadHolder = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
-        IntPtr(JSThread::GlueData::GetThreadHolderOffset(false)));
-    GateRef mutatorBase = LoadPrimitive(VariableType::NATIVE_POINTER(), threadHolder,
-                                        IntPtr(0)); // currently offset is zero
-    GateRef gcPhase = LoadPrimitive(VariableType::INT8(), mutatorBase, IntPtr(0)); // currently offset is zero
-    BRANCH(Int8GreaterThanOrEqual(gcPhase, Int8(GCPhase::GC_PHASE_PRECOPY)), &prepareForAsmBridgeEntry, &finishPrepare);
+    GateRef gcStateBitField = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
+        IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+    GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
+    BRANCH_LIKELY(Int64Equal(readBarrierStateBit, Int64(0)), &finishPrepare, &prepareForAsmBridgeEntry);
     Bind(&prepareForAsmBridgeEntry);
     {
         // func_ should be ToSpace Reference

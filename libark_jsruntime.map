@@ -103,6 +103,7 @@
       panda::VisitDynamicWeakRoots*;
       panda::BaseObject::*;
       panda::VisitJSThread*;
+      panda::SynchronizeGCPhaseToJSThread*;
       panda::FillFreeObject*;
       panda::SetBaseAddress*;
       panda::JSGCCallback*;

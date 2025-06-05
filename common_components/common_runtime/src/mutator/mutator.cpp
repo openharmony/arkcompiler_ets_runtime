@@ -252,9 +252,15 @@ inline void MutatorBase::HandleGCPhase(GCPhase newPhase)
 void MutatorBase::TransitionToGCPhaseExclusive(GCPhase newPhase)
 {
     HandleGCPhase(newPhase);
+    mutatorPhase_.store(newPhase, std::memory_order_relaxed); // handshake between mutator & mainGC thread
+    if (jsThread_ != nullptr) {
+        // non-atomic, should update JSThread local gc state before SuspensionFlag store,
+        // and SuspensionFlag load when transfer to running will guarantee the visibility of
+        // the JSThread local gc state
+        SynchronizeGCPhaseToJSThread(jsThread_, newPhase);
+    }
     // Clear mutator's suspend request after phase transition
-    ClearSuspensionFlag(SUSPENSION_FOR_GC_PHASE);
-    mutatorPhase_.store(newPhase, std::memory_order_release); // handshake between muator & mainGC thread
+    ClearSuspensionFlag(SUSPENSION_FOR_GC_PHASE); // atomic seq-cst
 }
 
 inline void MutatorBase::HandleCpuProfile()
