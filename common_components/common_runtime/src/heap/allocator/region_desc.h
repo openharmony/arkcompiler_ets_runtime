@@ -41,6 +41,7 @@
 #ifdef ARKCOMMON_ASAN_SUPPORT
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
 #endif
+#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 template<typename T>
@@ -529,6 +530,9 @@ public:
 #ifdef ARKCOMMON_ASAN_SUPPORT
         Sanitizer::OnHeapMadvise(unitAddress, size);
 #endif
+        ASAN_POISON_MEMORY_REGION(unitAddress, size);
+        DLOG(REGION, "set [%lX, %lX) unaddressable\n", (uintptr_t)unitAddress, (uintptr_t)unitAddress + (uintptr_t)size);
+        printf("set [%lX, %lX) unaddressable\n", (uintptr_t)unitAddress, (uintptr_t)unitAddress + (uintptr_t)size);
     }
 
     BaseObject* GetFirstObject() const { return reinterpret_cast<BaseObject*>(GetRegionStart()); }
@@ -1153,6 +1157,10 @@ private:
         SetResurrectedRegionFlag(0);
         SetFixedRegionFlag(0);
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
+
+        ASAN_UNPOISON_MEMORY_REGION(metadata.allocPtr, nUnit * RegionDesc::UNIT_SIZE);
+        DLOG(REGION, "set [%lX, %lX) addressable\n", (uintptr_t)(metadata.allocPtr), (uintptr_t)(metadata.allocPtr) + (uintptr_t)(nUnit * RegionDesc::UNIT_SIZE));
+        printf("set [%lX, %lX) addressable\n", (uintptr_t)(metadata.allocPtr), (uintptr_t)(metadata.allocPtr) + (uintptr_t)(nUnit * RegionDesc::UNIT_SIZE));
     }
 
     void InitRegion(size_t nUnit, UnitRole uClass)
