@@ -38,6 +38,7 @@
 #include "common_components/log/log.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_interfaces/base_runtime.h"
+#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 uintptr_t RegionDesc::UnitInfo::totalUnitCount = 0;
@@ -417,6 +418,11 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
 
     DLOG(REPORT, "region info @0x%zx+%zu, heap [0x%zx, 0x%zx), unit count %zu", regionInfoAddr, metadataSize,
          regionHeapStart_, regionHeapEnd_, nRegion);
+
+    ASAN_POISON_MEMORY_REGION(regionInfoAddr, metadataSize + nRegion * RegionDesc::UNIT_SIZE);
+    DLOG(REGION, "set address[%lX, %lX) unaddressable\n", (uintptr_t)regionInfoAddr, (uintptr_t)regionInfoAddr + (uintptr_t)(metadataSize + nRegion * RegionDesc::UNIT_SIZE));
+    printf("set address[%lX, %lX) unaddressable\n", (uintptr_t)regionInfoAddr, (uintptr_t)regionInfoAddr + (uintptr_t)(metadataSize + nRegion * RegionDesc::UNIT_SIZE));
+    // LOG_ECMA(ERROR) << "******************Init ************************";
 }
 
 void RegionManager::ReclaimRegion(RegionDesc* region)

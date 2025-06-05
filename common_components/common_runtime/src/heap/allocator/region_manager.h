@@ -27,6 +27,7 @@
 #include "common_components/common_runtime/src/heap/allocator/free_region_manager.h"
 #include "common_components/common_runtime/src/heap/allocator/region_list.h"
 #include "common_components/common_runtime/src/heap/allocator/slot_list.h"
+#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 using JitFortUnProtHookType = void (*)(size_t size, void* base);
@@ -318,6 +319,9 @@ public:
              region->GetLiveByteCount(), region->GetRegionType());
 
         garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
+        ASAN_POISON_MEMORY_REGION(region->GetRegionStart(), region->GetRegionSize());
+        DLOG(REGION, "set [%lX, %lX) unaddressable\n", (uintptr_t)(region->GetRegionStart()), (uintptr_t)(region->GetRegionStart()) + (uintptr_t)(region->GetRegionSize()));
+        printf("set [%lX, %lX) unaddressable\n", (uintptr_t)(region->GetRegionStart()), (uintptr_t)(region->GetRegionStart()) + (uintptr_t)(region->GetRegionSize()));
 
         if (region->IsLargeRegion()) {
             return region->GetRegionSize();
