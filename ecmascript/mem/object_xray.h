@@ -768,12 +768,6 @@ public:
             case JSType::NATIVE_MODULE_FAILURE_INFO:
                 NativeModuleFailureInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
-#ifdef USE_CMC_GC
-            case JSType::FREE_OBJECT_WITH_NONE_FIELD:
-            case JSType::FREE_OBJECT_WITH_ONE_FIELD:
-            case JSType::FREE_OBJECT_WITH_TWO_FIELD:
-                break;
-#endif
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
                 UNREACHABLE();

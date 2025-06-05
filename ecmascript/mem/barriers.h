@@ -20,9 +20,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
-#ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#endif
 
 namespace panda::ecmascript {
 class Region;
@@ -95,72 +93,59 @@ public:
 
     static inline JSTaggedType GetTaggedValue(const void *obj, size_t offset)
     {
-#ifdef USE_READ_BARRIER
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
-        if (value.IsHeapObject()) {
-#ifdef USE_CMC_GC
+        if (UNLIKELY(g_isEnableCMCGC)) {
+            if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
-            JSTaggedValue value(reinterpret_cast<JSTaggedType>(
-                common::BaseRuntime::ReadBarrier(const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset))));
-            value.RemoveReadBarrierDFXTag();
-            return value.GetRawData();
+                JSTaggedValue value(reinterpret_cast<JSTaggedType>(
+                    common::BaseRuntime::ReadBarrier(const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset))));
+                value.RemoveReadBarrierDFXTag();
+                return value.GetRawData();
 #else
-            return reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier(const_cast<void*>(obj),
-                                                                                   (void*)(ToUintPtr(obj) + offset)));
+                return reinterpret_cast<JSTaggedType>(
+                    common::BaseRuntime::ReadBarrier(const_cast<void *>(obj), (void *)(ToUintPtr(obj) + offset)));
 #endif
-#endif
+            }
         }
         return value.GetRawData();
-#else
-        return *reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset);
-#endif
     }
 
     static inline JSTaggedType GetTaggedValue(uintptr_t slotAddress)
     {
-#ifdef USE_READ_BARRIER
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
-        if (value.IsHeapObject()) {
-#ifdef USE_CMC_GC
+        if (UNLIKELY(g_isEnableCMCGC)) {
+            if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
-            JSTaggedValue value(reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void*)slotAddress)));
-            value.RemoveReadBarrierDFXTag();
-            return value.GetRawData();
+                JSTaggedValue value(
+                    reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void *)slotAddress)));
+                value.RemoveReadBarrierDFXTag();
+                return value.GetRawData();
 #else
-            return reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void*)slotAddress));
+                return reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void*)slotAddress));
 #endif
-#endif
+            }
         }
         return value.GetRawData();
-#else
-        return *reinterpret_cast<JSTaggedType *>(slotAddress);
-#endif
     }
 
     static inline JSTaggedType GetTaggedValueAtomic(const void *obj, size_t offset)
     {
-#ifdef USE_READ_BARRIER
         JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
             offset)->load(std::memory_order_acquire);
-        if (value.IsHeapObject()) {
-#ifdef USE_CMC_GC
+        if (UNLIKELY(g_isEnableCMCGC)) {
+            if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
-            JSTaggedValue value(reinterpret_cast<JSTaggedType>(BaseRuntime::AtomicReadBarrier(
-                const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset), std::memory_order_acquire)));
-            value.RemoveReadBarrierDFXTag();
-            return value.GetRawData();
+                JSTaggedValue value(reinterpret_cast<JSTaggedType>(BaseRuntime::AtomicReadBarrier(
+                    const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset), std::memory_order_acquire)));
+                value.RemoveReadBarrierDFXTag();
+                return value.GetRawData();
 #else
-            return reinterpret_cast<JSTaggedType>(
-                common::BaseRuntime::AtomicReadBarrier(const_cast<void*>(obj), (void*)(ToUintPtr(obj) + offset),
-                                                       std::memory_order_acquire));
+                return reinterpret_cast<JSTaggedType>(common::BaseRuntime::AtomicReadBarrier(
+                    const_cast<void *>(obj), (void *)(ToUintPtr(obj) + offset), std::memory_order_acquire));
 #endif
-#endif
+            }
         }
         return value.GetRawData();
-#else
-        return reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + \
-            offset)->load(std::memory_order_acquire);
-#endif
     }
 
     static inline JSTaggedType UpdateSlot(void *obj, size_t offset)
@@ -176,11 +161,9 @@ public:
 
     static void PUBLIC_API UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                         TaggedObject *value, Region *valueRegion);
-#ifdef USE_CMC_GC
     static void PUBLIC_API CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
     static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj,
                                                         void* src, void* dst, size_t count);
-#endif
 };
 }  // namespace panda::ecmascript
 

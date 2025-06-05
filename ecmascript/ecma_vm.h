@@ -146,9 +146,7 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
 
-#ifdef USE_CMC_GC
 using namespace panda;
-#endif
 
 enum class IcuFormatterType: uint8_t {
     SIMPLE_DATE_FORMAT_DEFAULT,
@@ -343,7 +341,7 @@ public:
     JSThread *GetAndFastCheckJSThread() const;
     bool CheckSingleThread() const;
 
-    ARK_INLINE bool GetThreadCheckStatus() const
+    ARK_INLINE uint32_t GetThreadCheckStatus() const
     {
         return options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck();
     }
@@ -369,6 +367,11 @@ public:
     bool ICEnabled() const
     {
         return icEnabled_;
+    }
+
+    uint32_t IsEnableCMCGC() const
+    {
+        return isEnableCMCGC_;
     }
 
     void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
@@ -1094,7 +1097,7 @@ public:
     {
         return apiVersion_;
     }
-    
+
     JSTaggedValue GetRegisterSymbols() const
     {
         return registerSymbols_;
@@ -1362,6 +1365,7 @@ private:
     // VM startup states.
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
+    uint32_t isEnableCMCGC_ {0};
     bool initialized_ {false};
     bool preForked_ {false};
     bool postForked_ {false};
@@ -1513,7 +1517,7 @@ private:
     JSTaggedValue registerSymbols_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     std::atomic<bool> isProcessingPendingJob_{false};
-    
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     CrossVMOperator* crossVMOperator_ {nullptr};
 #endif // PANDA_JS_ETS_HYBRID_MODE

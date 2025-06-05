@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
@@ -576,9 +577,8 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     }
 
     if (type == MemSpaceType::NON_MOVABLE && !object->GetElements().IsCOWArray()) {
-#ifndef USE_CMC_GC
-        ASSERT(!Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
-#endif
+        ASSERT(g_isEnableCMCGC ||
+            !Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
         // Set the first shared elements into the old object.
         object->SetElements(thread_, cloneObject->GetElements());
     }
@@ -601,9 +601,8 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     }
 
     if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties().IsCOWArray()) {
-#ifndef USE_CMC_GC
-        ASSERT(!Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
-#endif
+        ASSERT(g_isEnableCMCGC ||
+            !Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
         // Set the first shared properties into the old object.
         object->SetProperties(thread_, cloneObject->GetProperties());
     }
@@ -870,7 +869,7 @@ JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTag
     it->SetKeys(thread_, keys);
     it->SetObject(thread_, obj);
     it->SetLength(enumLength);
-    
+
     return it;
 }
 
@@ -3644,13 +3643,13 @@ void ObjectFactory::NewObjectHook() const
         !thread_->InGlobalEnvInitialize() && Runtime::GetInstance()->SharedConstInited() &&
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
-#ifdef USE_CMC_GC
-           common::BaseRuntime::RequestGC(common::GcType::ASYNC);
-#else
-            vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
-            vm_->CollectGarbage(TriggerGCType::OLD_GC);
-            vm_->CollectGarbage(TriggerGCType::FULL_GC);
-#endif
+            if (g_isEnableCMCGC) {
+                common::BaseRuntime::RequestGC(common::GcType::ASYNC);
+            } else {
+                vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
+                vm_->CollectGarbage(TriggerGCType::OLD_GC);
+                vm_->CollectGarbage(TriggerGCType::FULL_GC);
+            }
         } else {
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);
@@ -4346,18 +4345,18 @@ JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj,
     }
     if (code->SetData(desc, method, length, relocInfo, thread_)) {
         JSHandle<MachineCode> codeObj(thread_, code);
-#ifdef USE_CMC_GC
-        uintptr_t start = code->GetText();
-        uintptr_t end = start + code->GetTextSize();
-        heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
-#endif
+        if (g_isEnableCMCGC) {
+            uintptr_t start = code->GetText();
+            uintptr_t end = start + code->GetTextSize();
+            heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
+        }
         return codeObj;
     } else {
-#ifdef USE_CMC_GC
-        uintptr_t start = code->GetText();
-        uintptr_t end = start + code->GetTextSize();
-        heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
-#endif
+        if (g_isEnableCMCGC) {
+            uintptr_t start = code->GetText();
+            uintptr_t end = start + code->GetTextSize();
+            heap_->SetMachineCodeObject(start, end, reinterpret_cast<uintptr_t>(code));
+        }
         JSHandle<MachineCode> codeObj;
         return codeObj;
     }

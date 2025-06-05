@@ -15,6 +15,7 @@
 
 #include "ecmascript/module/module_snapshot.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/serializer/module_deserializer.h"
@@ -206,81 +207,80 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     readPtr = static_cast<uint8_t*>(fileMapMem.GetOriginAddr()) +
                AlignUp(readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(size_t));
     remaining = fileMapMem.GetSize() - (readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
-#ifdef USE_CMC_GC
-#else
-    // read group size
-    constexpr size_t SIZE_T_GROUP_SIZE = GROUP_SIZE * sizeof(size_t);
-    if (remaining < SIZE_T_GROUP_SIZE) {
-        LOG_ECMA(ERROR) << "read SIZE_T_GROUP_SIZE failed";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-
-    const size_t* sizeGroup = reinterpret_cast<size_t*>(readPtr);
-    data->bufferSize_ = sizeGroup[BUFFER_SIZE_INDEX];
-    data->bufferCapacity_ = sizeGroup[BUFFER_CAPACITY_INDEX];
-    data->oldSpaceSize_ = sizeGroup[OLD_SPACE_SIZE_INDEX];
-    data->nonMovableSpaceSize_ = sizeGroup[NONMOVABLE_SPACE_SIZE_INDEX];
-    data->machineCodeSpaceSize_ = sizeGroup[MACHINECODE_SPACE_SIZE_INDEX];
-    data->sharedOldSpaceSize_ = sizeGroup[SHARED_OLD_SPACE_SIZE_INDEX];
-    data->sharedNonMovableSpaceSize_ = sizeGroup[SHARED_NONMOVABLE_SPACE_SIZE_INDEX];
-
-    // read and check imcompleteData
-    const size_t incompleteData = sizeGroup[INCOMPLETE_DATA_INDEX];
-    if (incompleteData > 1) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read incompleteData failed";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-    data->incompleteData_ = (incompleteData != 0);
-
-    readPtr += SIZE_T_GROUP_SIZE;
-    remaining -= SIZE_T_GROUP_SIZE;
-
-    // read vector size
-    std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
-    if (remaining < SERIALIZE_SPACE_NUM * sizeof(size_t)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read vecSizes failed";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-    if (memcpy_s(vecSizes.data(), SERIALIZE_SPACE_NUM * sizeof(size_t),
-                 readPtr, SERIALIZE_SPACE_NUM * sizeof(size_t)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
-        return false;
-    }
-    readPtr += SERIALIZE_SPACE_NUM * sizeof(size_t);
-    remaining -= SERIALIZE_SPACE_NUM * sizeof(size_t);
-
-    // check vector data size
-    const size_t totalVecBytes = std::accumulate(
-        vecSizes.begin(), vecSizes.end(), 0UL,
-        [](size_t sum, size_t sz) { return sum + sz * sizeof(size_t); }
-    );
-    if (remaining < totalVecBytes) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read totalVecBytes failed";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-
-    // check each vector data
-    for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
-        auto& vec = data->regionRemainSizeVectors_[i];
-        const size_t vec_size = vecSizes[i];
-
-        if (vec_size > 0) {
-            vec.resize(vec_size);
-            if (memcpy_s(vec.data(), vec_size * sizeof(size_t), readPtr, vec_size * sizeof(size_t)) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
-                return false;
-            }
-            readPtr += vec_size * sizeof(size_t);
-        } else {
-            vec.clear();
+    if (!g_isEnableCMCGC) {
+        // read group size
+        constexpr size_t SIZE_T_GROUP_SIZE = GROUP_SIZE * sizeof(size_t);
+        if (remaining < SIZE_T_GROUP_SIZE) {
+            LOG_ECMA(ERROR) << "read SIZE_T_GROUP_SIZE failed";
+            RemoveSnapshotFiles(path);
+            return false;
         }
+
+        const size_t* sizeGroup = reinterpret_cast<size_t*>(readPtr);
+        data->bufferSize_ = sizeGroup[BUFFER_SIZE_INDEX];
+        data->bufferCapacity_ = sizeGroup[BUFFER_CAPACITY_INDEX];
+        data->oldSpaceSize_ = sizeGroup[OLD_SPACE_SIZE_INDEX];
+        data->nonMovableSpaceSize_ = sizeGroup[NONMOVABLE_SPACE_SIZE_INDEX];
+        data->machineCodeSpaceSize_ = sizeGroup[MACHINECODE_SPACE_SIZE_INDEX];
+        data->sharedOldSpaceSize_ = sizeGroup[SHARED_OLD_SPACE_SIZE_INDEX];
+        data->sharedNonMovableSpaceSize_ = sizeGroup[SHARED_NONMOVABLE_SPACE_SIZE_INDEX];
+
+        // read and check imcompleteData
+        const size_t incompleteData = sizeGroup[INCOMPLETE_DATA_INDEX];
+        if (incompleteData > 1) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read incompleteData failed";
+            RemoveSnapshotFiles(path);
+            return false;
+        }
+        data->incompleteData_ = (incompleteData != 0);
+
+        readPtr += SIZE_T_GROUP_SIZE;
+        remaining -= SIZE_T_GROUP_SIZE;
+
+        // read vector size
+        std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
+        if (remaining < SERIALIZE_SPACE_NUM * sizeof(size_t)) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read vecSizes failed";
+            RemoveSnapshotFiles(path);
+            return false;
+        }
+        if (memcpy_s(vecSizes.data(), SERIALIZE_SPACE_NUM * sizeof(size_t),
+                     readPtr, SERIALIZE_SPACE_NUM * sizeof(size_t)) != EOK) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
+            return false;
+        }
+        readPtr += SERIALIZE_SPACE_NUM * sizeof(size_t);
+        remaining -= SERIALIZE_SPACE_NUM * sizeof(size_t);
+
+        // check vector data size
+        const size_t totalVecBytes = std::accumulate(
+            vecSizes.begin(), vecSizes.end(), 0UL,
+            [](size_t sum, size_t sz) { return sum + sz * sizeof(size_t); }
+        );
+        if (remaining < totalVecBytes) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read totalVecBytes failed";
+            RemoveSnapshotFiles(path);
+            return false;
+        }
+
+        // check each vector data
+        for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
+            auto& vec = data->regionRemainSizeVectors_[i];
+            const size_t vec_size = vecSizes[i];
+
+            if (vec_size > 0) {
+                vec.resize(vec_size);
+                if (memcpy_s(vec.data(), vec_size * sizeof(size_t), readPtr, vec_size * sizeof(size_t)) != EOK) {
+                    LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
+                    return false;
+                }
+                readPtr += vec_size * sizeof(size_t);
+            } else {
+                vec.clear();
+            }
+        }
+        remaining -= totalVecBytes;
     }
-    remaining -= totalVecBytes;
-#endif
 
     // read buffer data
     if (data->bufferSize_ > 0) {
@@ -323,21 +323,20 @@ bool ModuleSnapshot::WriteDataToFile(
 
     // alignment to size_t
     totalSize = AlignUp(totalSize, sizeof(size_t));
-#ifdef USE_CMC_GC
-#else
-    // GROUP_SIZE
-    totalSize += GROUP_SIZE * sizeof(size_t);
+    if (!g_isEnableCMCGC) {
+        // GROUP_SIZE
+        totalSize += GROUP_SIZE * sizeof(size_t);
 
-    // vector each element in vector's length
-    totalSize += SERIALIZE_SPACE_NUM * sizeof(size_t);
+        // vector each element in vector's length
+        totalSize += SERIALIZE_SPACE_NUM * sizeof(size_t);
 
-    // vector data
-    size_t totalVecBytes = 0;
-    for (const auto& vec : data->regionRemainSizeVectors_) {
-        totalVecBytes += vec.size() * sizeof(size_t);
+        // vector data
+        size_t totalVecBytes = 0;
+        for (const auto& vec : data->regionRemainSizeVectors_) {
+            totalVecBytes += vec.size() * sizeof(size_t);
+        }
+        totalSize += totalVecBytes;
     }
-    totalSize += totalVecBytes;
-#endif
     // buffer data
     totalSize += data->bufferSize_;
     uint32_t checksumSize = sizeof(uint32_t);
@@ -400,49 +399,48 @@ bool ModuleSnapshot::WriteDataToFile(
         }
         writePtr += pad2;
     }
-#ifdef USE_CMC_GC
-#else
-    // constructor and write GROUP data(size_t)
-    size_t sizeGroup[GROUP_SIZE] = {
-        data->bufferSize_,
-        data->bufferCapacity_,
-        data->oldSpaceSize_,
-        data->nonMovableSpaceSize_,
-        data->machineCodeSpaceSize_,
-        data->sharedOldSpaceSize_,
-        data->sharedNonMovableSpaceSize_,
-        static_cast<size_t>(data->incompleteData_)
-    };
-    if (memcpy_s(writePtr, sizeof(sizeGroup), sizeGroup, sizeof(sizeGroup)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write sizeGroup failed";
-        return false;
-    }
-    writePtr += sizeof(sizeGroup);
+    if (!g_isEnableCMCGC) {
+        // constructor and write GROUP data(size_t)
+        size_t sizeGroup[GROUP_SIZE] = {
+            data->bufferSize_,
+            data->bufferCapacity_,
+            data->oldSpaceSize_,
+            data->nonMovableSpaceSize_,
+            data->machineCodeSpaceSize_,
+            data->sharedOldSpaceSize_,
+            data->sharedNonMovableSpaceSize_,
+            static_cast<size_t>(data->incompleteData_)
+        };
+        if (memcpy_s(writePtr, sizeof(sizeGroup), sizeGroup, sizeof(sizeGroup)) != EOK) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write sizeGroup failed";
+            return false;
+        }
+        writePtr += sizeof(sizeGroup);
 
-    // write 7 vector's size
-    std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
-    for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
-        vecSizes[i] = data->regionRemainSizeVectors_[i].size();
-    }
-    uint32_t vecSizeLength = vecSizes.size() * sizeof(size_t);
-    if (memcpy_s(writePtr, vecSizeLength, vecSizes.data(), vecSizeLength) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vecSizes failed";
-        return false;
-    }
-    writePtr += vecSizes.size() * sizeof(size_t);
+        // write 7 vector's size
+        std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
+        for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
+            vecSizes[i] = data->regionRemainSizeVectors_[i].size();
+        }
+        uint32_t vecSizeLength = vecSizes.size() * sizeof(size_t);
+        if (memcpy_s(writePtr, vecSizeLength, vecSizes.data(), vecSizeLength) != EOK) {
+            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vecSizes failed";
+            return false;
+        }
+        writePtr += vecSizes.size() * sizeof(size_t);
 
-    // write 7 vector's data
-    for (const auto& vec : data->regionRemainSizeVectors_) {
-        if (!vec.empty()) {
-            uint32_t vecLength = vec.size() * sizeof(size_t);
-            if (memcpy_s(writePtr, vecLength, vec.data(), vecLength) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vec.data failed";
-                return false;
+        // write 7 vector's data
+        for (const auto& vec : data->regionRemainSizeVectors_) {
+            if (!vec.empty()) {
+                uint32_t vecLength = vec.size() * sizeof(size_t);
+                if (memcpy_s(writePtr, vecLength, vec.data(), vecLength) != EOK) {
+                    LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vec.data failed";
+                    return false;
+                }
+                writePtr += vec.size() * sizeof(size_t);
             }
-            writePtr += vec.size() * sizeof(size_t);
         }
     }
-#endif
     // write buffer data
     if (data->bufferSize_ > 0) {
         if (!data->buffer_) {

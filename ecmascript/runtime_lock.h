@@ -29,11 +29,11 @@ static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
         return;
     }
 #ifndef NDEBUG
-#ifdef USE_CMC_GC
-    common::BaseRuntime::RequestGC(common::GcType::ASYNC);  // Trigger CMC FULL GC
-#else
-    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
-#endif
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::RequestGC(common::GcType::ASYNC);  // Trigger CMC FULL GC
+    } else {
+        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    }
 #endif
     ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread);
     mtx.Lock();

@@ -1241,7 +1241,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
                 EcmaInterpreter::NewRuntimeCallInfo(thread,
                     inputReplaceValue, undefined, undefined, emptyArrLength + ncaptures);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            
+
             // i. Let replacerArgs be «matched».
             info->SetCallArg(0, getMatchString.GetTaggedValue());
             // ii. Append in list order the elements of captures to the end of the List replacerArgs.
@@ -1849,10 +1849,10 @@ bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> reg
     }
     bool ret = false;
     if (UNLIKELY(source == StringSource::OFFHEAP_STRING)) {
-#ifndef USE_CMC_GC
 #ifndef NDEBUG
-        SharedHeap::GetInstance()->PostGCTaskForTest<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
-#endif
+        if (!g_isEnableCMCGC) {
+            SharedHeap::GetInstance()->PostGCTaskForTest<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+        }
 #endif
         ThreadNativeScope scope(thread);
         ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
@@ -2079,7 +2079,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     indices.emplace_back(globalTable->GetStartOfCaptureIndex(0), JSTaggedValue(endIndex));
     std::vector<JSHandle<JSTaggedValue>> groupNames;
     groupNames.reserve(capturesSize);
-    
+
     // Create a new RegExp on global
     uint32_t captureIndex = 1;
     JSMutableHandle<JSTaggedValue> iValue(thread, JSTaggedValue::Undefined());

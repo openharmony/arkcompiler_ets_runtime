@@ -17,6 +17,7 @@
 
 #include <cstdint>
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -158,20 +159,19 @@ void VisitJSThread(void *jsThread, CommonRootVisitor visitor)
 void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase)
 {
     reinterpret_cast<JSThread *>(jsThread)->SetCMCGCPhase(gcPhase);
-#ifdef USE_READ_BARRIER
+    if (panda::ecmascript::g_isEnableCMCGC) {
 
 // forcely enable read barrier for read barrier DFX
 #ifdef ENABLE_CMC_RB_DFX
-    reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
-    return;
-#endif
-
-    if (gcPhase >= GCPhase::GC_PHASE_PRECOPY) {
         reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
-    } else {
-        reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(false);
-    }
+        return;
 #endif
+        if (gcPhase >= GCPhase::GC_PHASE_PRECOPY) {
+            reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
+        } else {
+            reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(false);
+        }
+    }
 }
 
 void SweepThreadLocalJitFort()

@@ -917,9 +917,9 @@ void Heap::Initialize()
         nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
-#ifndef USE_CMC_GC
-    nonMovableSpace_->Initialize();
-#endif
+    if (!g_isEnableCMCGC) {
+        nonMovableSpace_->Initialize();
+    }
     size_t snapshotSpaceCapacity = config_.GetDefaultSnapshotSpaceSize();
     snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
     size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
@@ -1308,9 +1308,7 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
-#ifdef USE_CMC_GC
-    ASSERT("CollectGarbageImpl should not be called" && false);
-#endif
+    ASSERT("CollectGarbageImpl should not be called" && !g_isEnableCMCGC);
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -1519,16 +1517,16 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
-#ifdef USE_CMC_GC
-    common::GcType type = common::GcType::ASYNC;
-    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
-        gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
-        reason == GCReason::ALLOCATION_FAILED) {
-        type = common::GcType::FULL;
+    if (g_isEnableCMCGC) {
+        common::GcType type = common::GcType::ASYNC;
+        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
+            gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+            reason == GCReason::ALLOCATION_FAILED) {
+            type = common::GcType::FULL;
+        }
+        common::BaseRuntime::RequestGC(type);
+        return;
     }
-    common::BaseRuntime::RequestGC(type);
-    return;
-#endif
     CollectGarbageImpl(gcType, reason);
     ProcessGCCallback();
 }
@@ -1537,10 +1535,11 @@ void Heap::ProcessGCCallback()
 {
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
-#ifdef USE_CMC_GC
-    thread_->InvokeWeakNodeFreeGlobalCallBack();
-#endif
-    thread_->InvokeWeakNodeNativeFinalizeCallback();
+    if (g_isEnableCMCGC) {
+        thread_->InvokeWeakNodeFreeGlobalCallBack();
+    } else {
+        thread_->InvokeWeakNodeNativeFinalizeCallback();
+    }
     // PostTask for ProcessNativeDelete
     CleanCallback();
     JSFinalizationRegistry::CheckAndCall(thread_);
@@ -2080,9 +2079,9 @@ bool Heap::CheckCanTriggerConcurrentMarking()
 
 void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
 {
-#ifdef USE_CMC_GC
-    return;
-#endif
+    if (g_isEnableCMCGC) {
+        return;
+    }
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
     // When the size of old space or global space reaches the limit, isFullMarkNeeded will be set to true.
     // If the predicted duration of current full mark may not result in the new and old spaces reaching their limit,

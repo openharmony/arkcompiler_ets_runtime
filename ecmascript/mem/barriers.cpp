@@ -20,12 +20,7 @@ namespace panda::ecmascript {
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                       Region *valueRegion, WriteBarrierType writeType)
 {
-#ifdef USE_CMC_GC
-    // Ignore barrier for cmc gc allocation
-    (void)thread;
-    return;
-#endif
-
+    ASSERT(!g_isEnableCMCGC);
     if (valueRegion->InSharedHeap()) {
         return;
     }
@@ -53,11 +48,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
 void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                             Region *valueRegion)
 {
-#ifdef USE_CMC_GC
-    // Ignore barrier for cmc gc allocation
-    (void)thread;
-    return;
-#endif
+    ASSERT(!g_isEnableCMCGC);
 
     ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
     ASSERT(valueRegion->InSharedSweepableSpace());
@@ -112,10 +103,9 @@ ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* o
     return allValueNotHeap;
 }
 
-#ifdef USE_CMC_GC
 void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
-    (void)thread;
+    ASSERT(g_isEnableCMCGC);
     common::BaseRuntime::WriteBarrier(obj, (void *)((uintptr_t)obj + offset), (void*)value);
     return;
 }
@@ -124,7 +114,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
                                         size_t count)
 {
     // need opt
-    (void)thread;
+    ASSERT(g_isEnableCMCGC);
     uintptr_t *dstPtr = reinterpret_cast<uintptr_t *>(dst);
     uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
     for (size_t i = 0; i < count; i++) {
@@ -136,8 +126,6 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     }
     return;
 }
-
-#endif
 
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);

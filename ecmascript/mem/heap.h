@@ -77,10 +77,7 @@ class IdleGCTrigger;
 
 enum ThreadType : uint8_t;
 
-#ifdef USE_CMC_GC
 using namespace panda;
-#endif
-
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
@@ -901,9 +898,7 @@ public:
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
-#ifdef USE_CMC_GC
     inline void IteratorNativePointerList(WeakVisitor &visitor);
-#endif
 
     void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
 
@@ -1697,9 +1692,7 @@ public:
     inline void PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent);
     inline void RemoveFromNativePointerList(const JSNativePointer* pointer);
     inline void ClearNativePointerList();
-#ifdef USE_CMC_GC
     inline void IteratorNativePointerList(WeakVisitor &vistor);
-#endif
 
     size_t GetNativePointerListSize() const
     {

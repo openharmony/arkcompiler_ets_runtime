@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/platform/file.h"
@@ -166,7 +167,7 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
             codeDesc.instructionsSize = codeDesc.codeSizeAlign;
             LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
                 << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
-            if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+            if (allocSize > g_maxRegularHeapObjectSize) {
                 return payLoadSize;
             } else {
                 // regular sized machine code object instructions are installed in separate jit fort space
@@ -191,7 +192,7 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
             << allocSize << " (instruction size): " << instructionsSize;
 
         codeDesc.instructionsSize = instructionsSize;
-        if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        if (allocSize > g_maxRegularHeapObjectSize) {
             //
             // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
             // With JitFort, a huge machine code object starts with a page aligned mutable area
@@ -263,18 +264,19 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
     for (uint64_t i = 0; i < constTableSlotNum; ++i) {
         JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
         heapConstantTableAddr[i] = heapObj->GetRawData();
-#ifdef USE_CMC_GC
-        common::BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
-#else
-        Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
-        Region *curMachineCodeObjRegion =
-            Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
-        if (heapObjRegion->InYoungSpace()) {
-            curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
-        } else if (heapObjRegion->InSharedHeap()) {
-            curMachineCodeObjRegion->InsertLocalToShareRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
+        } else {
+            Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
+            Region *curMachineCodeObjRegion =
+                Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
+            if (heapObjRegion->InYoungSpace()) {
+                curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+            } else if (heapObjRegion->InSharedHeap()) {
+                curMachineCodeObjRegion->InsertLocalToShareRSet(
+                    reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+            }
         }
-#endif
     }
 }
 
@@ -288,7 +290,7 @@ void JitTask::InstallCode()
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
     size_t size = ComputePayLoadSize(codeDesc_);
     codeDesc_.isAsyncCompileMode = IsAsyncTask();
-    
+
     if (!kungfu::LazyDeoptAllDependencies::Commit(
         GetDependencies(), hostThread_, jsFunction_.GetTaggedValue())) {
         return;

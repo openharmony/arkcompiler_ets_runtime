@@ -17,8 +17,11 @@
 #define ECMASCRIPT_BASE_CONFIG_H
 
 #include "common_components/base/config.h"
+#include <cstdint>
 
 namespace panda::ecmascript {
+extern uint32_t g_isEnableCMCGC;
+
 #define ARK_INLINE __attribute__((always_inline))
 #define ARK_NOINLINE __attribute__((noinline))
 

@@ -257,12 +257,10 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         JSTaggedValue env = func->GetLexicalEnv();
         MethodEntry(thread, method, env);
     }
-#ifdef USE_READ_BARRIER
     if (thread->NeedReadBarrier()) {
         base::GCHelper::CopyCallTarget(callTarget); // callTarget should be ToSpace Reference
         method = callTarget->GetCallTarget();
     }
-#endif
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread);
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
@@ -326,14 +324,12 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
         MethodEntry(thread, method, env);
     }
-#ifdef USE_READ_BARRIER
     if (thread->NeedReadBarrier()) {
         // func should be ToSpace Reference
         base::GCHelper::CopyCallTarget(func.GetTaggedObject());
         // context should be ToSpace Reference
         base::GCHelper::CopyGeneratorContext(context.GetObject<GeneratorContext>());
     }
-#endif
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);
 }

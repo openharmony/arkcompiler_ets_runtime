@@ -51,7 +51,6 @@ public:
     void TransitionClassWithoutBarrier(JSHClass *hclass);
 
     JSHClass *SynchronizedGetClass() const;
-#ifdef USE_CMC_GC
     void SetForwardingPointerAfterExclusive(BaseObject *fwdPtr)
     {
         reinterpret_cast<TaggedStateWord *>(this)->SetForwardingAddress(reinterpret_cast<uintptr_t>(fwdPtr));
@@ -67,22 +66,9 @@ public:
         return reinterpret_cast<JSHClass *>(reinterpret_cast<const TaggedStateWord *>(this)->GetClass());
     }
 
-    bool IsInSharedHeap() const;
-#else
-    JSHClass *GetClass() const
-    {
-        return reinterpret_cast<JSHClass *>(GetBaseClass());
-    }
-
     size_t GetSize();
 
-    void SetForwardingPointerAfterExclusive([[maybe_unused]]BaseObject *fwdPtr) {}
-
-    BaseObject *GetForwardingPointer() const
-    {
-        return nullptr;
-    }
-#endif
+    bool IsInSharedHeap() const;
 
     // Size of object header
     static constexpr size_t TaggedObjectSize()

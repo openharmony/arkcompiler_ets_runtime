@@ -82,6 +82,11 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
     "--enable-loading-stubs-log:           Enable Loading Stubs Log. Default: 'false'\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
+#ifdef DEFAULT_USE_CMC_GC
+    "--enable-cmc-gc:                      Enable cmc gc. Default: 'true'\n"
+#else
+    "--enable-cmc-gc:                      Enable cmc gc. Default: 'false'\n"
+#endif
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
@@ -251,6 +256,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-bc-range-help", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE_HELP},
         {"enable-loading-stubs-log", required_argument, nullptr, OPTION_ENABLE_LOADING_STUBS_LOG},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
+        {"enable-cmc-gc", required_argument, nullptr, OPTION_ENABLE_CMC_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
@@ -602,6 +608,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableForceGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_CMC_GC:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableCMCGC(argBool);
                 } else {
                     return false;
                 }
@@ -1707,11 +1721,7 @@ void JSRuntimeOptions::ParseAsmInterOption()
 
 JSRuntimeOptions::JSRuntimeOptions()
 {
-#ifdef USE_CMC_GC
     param_ = common::BaseRuntimeParam::DefaultRuntimeParam();
-#else
-    param_ = common::RuntimeParam();
-#endif
 }
 
 void JSRuntimeOptions::SetMemConfigProperty(const std::string &configProperty)

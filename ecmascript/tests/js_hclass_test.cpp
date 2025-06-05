@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/global_env.h"
@@ -49,9 +50,11 @@ HWTEST_F_L0(JSHClassTest, InitializeClass)
     EXPECT_EQ(objectClass->GetEnumCache(), JSTaggedValue::Null());
 }
 
-#ifndef USE_CMC_GC
 HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 {
+    if (g_isEnableCMCGC) {
+        return;
+    }
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
@@ -102,7 +105,6 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectSize = objectClass->SizeFromJSHClass(header5);
     EXPECT_EQ(objectSize, 64U);
 }
-#endif
 
 HWTEST_F_L0(JSHClassTest, HasReferenceField)
 {

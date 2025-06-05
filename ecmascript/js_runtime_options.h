@@ -22,6 +22,7 @@
 #include <vector>
 #include <set>
 
+#include "common_components/base_runtime/base_runtime_param.h"
 #include "common_components/log/log_base.h"
 #include "common_interfaces/base/common.h"
 #include "common_interfaces/base/runtime_param.h"
@@ -94,6 +95,7 @@ enum CommandValues {
     OPTION_ENABLE_ARK_TOOLS,
     OPTION_STUB_FILE,
     OPTION_ENABLE_FORCE_GC,
+    OPTION_ENABLE_CMC_GC,
     OPTION_FORCE_FULL_GC,
     OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY,
     OPTION_ARK_PROPERTIES,
@@ -583,7 +585,7 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_SWEEP) != 0;
     }
 
-    bool EnableThreadCheck() const
+    uint32_t EnableThreadCheck() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::THREAD_CHECK) != 0;
     }
@@ -778,13 +780,13 @@ public:
 
     bool GetEnableAsyncCopyToFort() const
     {
-#ifdef USE_CMC_GC
-        // async alloc needs adaption work from CMCGC
-        // Need to also modify jit.cpp
-        return false;
-#else
-        return enableAsyncCopyToFort_;
-#endif
+        if (g_isEnableCMCGC) {
+            // async alloc needs adaption work from CMCGC
+            // Need to also modify jit.cpp
+            return false;
+        } else {
+            return enableAsyncCopyToFort_;
+        }
     }
 
     void SetLargeHeap(bool largeHeap)
@@ -2009,7 +2011,7 @@ public:
     {
         return enableJitFastCompile_;
     }
-    
+
     void SetEnableMegaIC(bool value)
     {
         enableMegaIC_ = value;
@@ -2094,6 +2096,16 @@ public:
     bool IsLdObjValueOpt() const
     {
         return enableLdObjValueOpt_;
+    }
+
+    void SetEnableCMCGC(bool value)
+    {
+        enableCMCGC_ = value;
+    }
+
+    bool IsEnableCMCGC() const
+    {
+        return enableCMCGC_;
     }
 
     void SetAOTHasException(bool value)
@@ -2514,11 +2526,12 @@ private:
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool enableLdObjValueOpt_ {true};
-#ifndef USE_CMC_GC
-    bool storeBarrierOpt_ {true};
+#ifdef DEFAULT_USE_CMC_GC
+    bool enableCMCGC_ {true};
 #else
-    bool storeBarrierOpt_ {false};
+    bool enableCMCGC_ {false};
 #endif
+    bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};

@@ -22,6 +22,14 @@
 namespace common {
 
 enum class SerializedObjectSpace : uint8_t {
+    OLD_SPACE,
+    NON_MOVABLE_SPACE,
+    MACHINE_CODE_SPACE,
+    HUGE_SPACE,
+    SHARED_OLD_SPACE,
+    SHARED_NON_MOVABLE_SPACE,
+    SHARED_HUGE_SPACE,
+
     REGULAR_SPACE,
     PIN_SPACE,
     LARGE_SPACE,

@@ -103,7 +103,6 @@ class ObjectFactory;
     V(JSTaggedValue, ResolvedRecordBindingClass, RESOLVED_RECORD_BINDING_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, SendableEnvClass, SENDABLE_ENV_CLASS_INDEX, ecma_roots_class)
 
-#ifdef USE_CMC_GC
 #define SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(V)                                                                    \
     V(JSTaggedValue, SharedTaggedArrayClass, SHARED_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, SharedConstantPoolClass, SHARED_CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                     \
@@ -115,7 +114,6 @@ class ObjectFactory;
     V(JSTaggedValue, SharedAOTLiteralInfoClass, SHARED_AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                \
     /* VTable only in local now */                                                                                    \
     V(JSTaggedValue, CompositeBaseClassClass, COMPOSITE_BASE_CLASS_CLASS_INDEX, ecma_roots_class)
-#endif
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
     V(JSTaggedValue, JSProxyCallableClass, JS_PROXY_CALLABLE_CLASS_INDEX, ecma_roots_class)                           \
@@ -555,9 +553,7 @@ enum class ConstantIndex : size_t {
 #define INDEX_FILTER_STRING(Name, Index, Token) INDEX_FILTER_COMMON(Index)
     // Caveats: make sure shareds starts from 0 and placed before non-shareds.
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
-#ifdef USE_CMC_GC
     SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(INDEX_FILTER_WITH_TYPE)
-#endif
     SHARED_GLOBAL_ENV_CONSTANT_STRING(INDEX_FILTER_STRING)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(INDEX_FILTER_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
@@ -625,9 +621,7 @@ public:
 #define DECL_GET_WITH_TYPE(Type, Name, Index, Desc) DECL_GET_COMMON(Type, Name)
 #define DECL_GET_STRING(Name, Index, Token) DECL_GET_COMMON(JSTaggedValue, Name)
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
-#ifdef USE_CMC_GC
     SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(DECL_GET_WITH_TYPE)
-#endif
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_STRING)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
@@ -684,9 +678,7 @@ public:
 
 private:
     void InitSharedStrings(ObjectFactory *factory);
-#ifdef USE_CMC_GC
     void InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass);
-#endif
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);

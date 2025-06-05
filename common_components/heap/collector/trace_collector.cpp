@@ -193,18 +193,10 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
         workStack.pop_back();
         auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
         region->AddLiveByteCount(obj->GetSize());
-#ifndef USE_CMC_GC
-        if (!obj->HasRefField()) {
-            continue;
-        }
-        TraceObjectRefFields(obj, workStack, weakStack);
-
-#else
         [[maybe_unused]] auto beforeSize = workStack.count();
         TraceObjectRefFields(obj, workStack, weakStack);
         DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
              beforeSize, workStack.count(), workStack.count() - beforeSize);
-#endif
         // try to fork new task if needed.
         if (threadPool != nullptr) {
             TryForkTask(threadPool, workStack, globalQueue);

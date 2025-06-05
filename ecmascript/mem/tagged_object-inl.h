@@ -26,7 +26,6 @@
 #include "ecmascript/js_hclass.h"
 
 namespace panda::ecmascript {
-#ifdef USE_CMC_GC
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
 {
     state_ = 0;
@@ -76,41 +75,6 @@ inline bool TaggedObject::IsInSharedHeap() const
 {
     return GetClass()->IsJSShared();
 }
-#else
-inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
-{
-    SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass));
-}
-
-inline void TaggedObject::TransitionClassWithoutBarrier(JSHClass *hclass)
-{
-    SetClassWithoutBarrier(hclass);
-}
-
-inline void TaggedObject::SetFreeObjectClass(JSHClass *hclass)
-{
-    ASSERT(hclass->IsFreeObject());
-    SetClassWithoutBarrier(hclass);
-}
-
-inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
-{
-    Barriers::SetObject<true>(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
-}
-
-inline void TaggedObject::SynchronizedTransitionClass(const JSThread *thread, JSHClass *hclass)
-{
-    reinterpret_cast<volatile std::atomic<MarkWordType> *>(this)->
-        store(reinterpret_cast<MarkWordType>(hclass), std::memory_order_release);
-    WriteBarrier(thread, this, HCLASS_OFFSET, reinterpret_cast<MarkWordType>(hclass));
-}
-
-inline JSHClass *TaggedObject::SynchronizedGetClass() const
-{
-    return reinterpret_cast<JSHClass *>(
-        reinterpret_cast<volatile std::atomic<MarkWordType> *>(ToUintPtr(this))->load(std::memory_order_acquire));
-}
-#endif
 }  //  namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_TAGGED_OBJECT_HEADER_INL_H

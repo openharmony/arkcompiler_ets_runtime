@@ -25,4 +25,9 @@ namespace panda::ecmascript {
     {
         return defaultSize;
     }
+
+    bool IsEnableCMCGC(bool defaultValue)
+    {
+        return defaultValue;
+    }
 }  // namespace panda::ecmascript

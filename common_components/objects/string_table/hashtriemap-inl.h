@@ -648,7 +648,6 @@ void HashTrieMap<Mutex, ThreadHolder>::Iter(ReadBarrier&& readBarrier, Indirect*
     }
 }
 
-#ifdef USE_CMC_GC
 template <typename Mutex, typename ThreadHolder>
 bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRefFieldVisitor& visitor, HashTrieMap::Entry* entry)
 {
@@ -723,7 +722,6 @@ bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int ind
         return false;
     }
 }
-#endif
 
 template <typename Mutex, typename ThreadHolder>
 bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor)

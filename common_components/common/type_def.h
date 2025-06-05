@@ -20,11 +20,9 @@
 #include <cstdint>
 #include <limits>
 
-#ifdef USE_CMC_GC
 namespace common {
 class BaseObject;
 }
-#endif
 
 // commonly agreed type interfaces for a managed runtime:
 //    they're opaque across modules, but we still want it provides a degree
@@ -35,11 +33,7 @@ using HeapAddress = uint64_t; // Managed address
 constexpr uintptr_t NULL_ADDRESS = 0;
 
 // object model related types
-#ifdef USE_CMC_GC
 using common::BaseObject;
-#else
-class BaseObject;
-#endif
 
 // basic types for managed world: modify them together
 using MIndex = uint64_t;  // index of array

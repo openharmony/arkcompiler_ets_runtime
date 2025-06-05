@@ -97,11 +97,7 @@ EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *st
     ASSERT(!EcmaStringAccessor(string).IsInternString());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-    ASSERT(string->IsInSharedHeap());
-#else
-    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
-#endif
+    ASSERT(JSTaggedValue(string).IsInSharedHeap());
     auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
         return Barriers::GetTaggedObject(obj, offset);
     };
@@ -128,11 +124,7 @@ EcmaString *EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM *vm, EcmaString
     ASSERT(!EcmaStringAccessor(string).IsInternString());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-    ASSERT(string->IsInSharedHeap());
-#else
-    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
-#endif
+    ASSERT(JSTaggedValue(string).IsInSharedHeap());
     auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
         return Barriers::GetTaggedObject(obj, offset);
     };
@@ -180,11 +172,7 @@ EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm
             ASSERT(!EcmaStringAccessor(str).IsInternString());
             ASSERT(EcmaStringAccessor(str).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(str->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(str))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(str).IsInSharedHeap());
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> strHandle(thread, str);
             return strHandle;
@@ -259,11 +247,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaSt
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(value->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(value).IsInSharedHeap());
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;
         },
@@ -299,11 +283,7 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Da
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(value->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(value).IsInSharedHeap());
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;
@@ -363,11 +343,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(value->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(value).IsInSharedHeap());
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;
@@ -418,11 +394,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(value->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(value).IsInSharedHeap());
             return value->ToBaseString();
         },
         [utf8Data, utf8Len, canBeCompress](BaseString* foundString) {
@@ -457,11 +429,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(value->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(value).IsInSharedHeap());
             return value->ToBaseString();
         },
         [utf16Data, utf16Len](BaseString* foundString) {
@@ -540,11 +508,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const JSH
             ASSERT(!EcmaStringAccessor(concatString).IsInternString());
             ASSERT(EcmaStringAccessor(concatString).NotTreeString());
         // Strings in string table should not be in the young space.
-#ifdef USE_CMC_GC
-            ASSERT(concatString->IsInSharedHeap());
-#else
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(concatString))->InSharedHeap());
-#endif
+            ASSERT(JSTaggedValue(concatString).IsInSharedHeap());
             JSHandle<EcmaString> stringHandle(thread, concatString);
             return stringHandle;
         },
@@ -586,7 +550,6 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
-#ifdef USE_CMC_GC
 void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor& visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
@@ -601,6 +564,5 @@ void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor &visitor, u
     auto *rootNode = stringTable_.root_.load(std::memory_order_relaxed);
     stringTable_.ClearNodeFromGC(rootNode, index, visitor);
 }
-#endif
 #endif
 }  // namespace panda::ecmascript

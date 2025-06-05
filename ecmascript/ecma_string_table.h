@@ -160,12 +160,11 @@ public:
                                                        bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
 
-#ifdef USE_CMC_GC
     void IterWeakRoot(const common::WeakRefFieldVisitor &visitor);
     void IterWeakRoot(const common::WeakRefFieldVisitor &visitor, uint32_t index);
-#endif
     void SweepWeakRef(const WeakRootVisitor &visitor);
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
+
     bool CheckStringTableValidity();
 
     EcmaStringTableCleaner *GetCleaner()
@@ -264,7 +263,7 @@ private:
         SweepWeakRefTask(IteratorPtr iter, EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor)
             : common::Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor) {}
         ~SweepWeakRefTask() = default;
-        
+
         bool Run(uint32_t threadIndex) override;
 
         NO_COPY_SEMANTIC(SweepWeakRefTask);
@@ -330,9 +329,7 @@ public:
 
     bool CheckStringTableValidity(JSThread *thread);
     void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-#ifdef USE_CMC_GC
     void IterWeakRoot(WeakVisitor &visitor);
-#endif
 
     EcmaStringTableCleaner* GetCleaner()
     {

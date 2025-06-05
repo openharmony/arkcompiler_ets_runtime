@@ -81,11 +81,9 @@ static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 // They will never be moved to huge object space. So we take half of a regular
 // region as the border of regular objects.
 static constexpr size_t MAX_32BIT_OBJECT_SPACE_SIZE = 1_GB;
-#ifdef USE_CMC_GC
-static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32_KB; // initialize from CMC-GC
-#else
+static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE_FOR_CMC = 32_KB; // initialize from CMC-GC
 static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 / 3;
-#endif
+static size_t g_maxRegularHeapObjectSize = MAX_REGULAR_HEAP_OBJECT_SIZE;
 // internal allocator
 static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;

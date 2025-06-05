@@ -14,43 +14,37 @@
  */
 
 #include "ecmascript/runtime.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
 #include "ecmascript/dynamic_object_accessor.h"
 #include "ecmascript/dynamic_object_descriptor.h"
 #include "ecmascript/dynamic_type_converter.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
-#endif
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/dynamic_object_operator.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/slots.h"
+#include "ecmascript/platform/parameters.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
-#ifdef USE_CMC_GC
 using namespace panda;
-#endif
-
+uint32_t PUBLIC_API g_isEnableCMCGC = 0;
 int32_t Runtime::vmCount_ = 0;
 int32_t Runtime::destroyCount_ = 0;
 bool Runtime::firstVmCreated_ = false;
 Mutex *Runtime::vmCreationLock_ = new Mutex();
 Runtime *Runtime::instance_ = nullptr;
-#ifdef USE_CMC_GC
 common::BaseRuntime *Runtime::baseInstance_ = nullptr;
-#endif
 
 Runtime::Runtime()
 {
-#ifdef USE_CMC_GC
     if (baseInstance_ == nullptr) {
         baseInstance_ = common::BaseRuntime::GetInstance();
     }
-#endif
 }
 
 Runtime *Runtime::GetInstance()
@@ -78,6 +72,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 {
     LockHolder lock(*vmCreationLock_);
     if (!firstVmCreated_) {
+        InitGCConfig(options);
         common::Log::Initialize(options.GetLogOptions());
         EcmaVM::InitializeIcuData(options);
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE, options.GetLargeHeap());
@@ -87,25 +82,25 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         instance_ = new Runtime();
         instance_->SetEnableLargeHeap(options.GetLargeHeap());
         SharedHeap::CreateNewInstance();
-#ifdef USE_CMC_GC
-        // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap
-        LOG_ECMA(INFO) << "start run with cmc gc";
-        common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
-#endif
+        if (g_isEnableCMCGC) {
+            // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap
+            LOG_ECMA(INFO) << "start run with cmc gc";
+            common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+        }
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
     } else {
-#ifdef USE_CMC_GC
-        JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
-        ASSERT(mainThread != nullptr);
-        EcmaVM *mainVM = mainThread->GetEcmaVM();
-        ASSERT(mainVM != nullptr);
-        if (mainVM->IsPreForked() && !mainVM->IsPostForked()) {
-            LOG_ECMA(ERROR) << "create ecmavm after pre fork, but not post pork";
-            ASSERT(!DaemonThread::GetInstance()->IsRunning());
-            mainVM->PostFork();
+        if (g_isEnableCMCGC) {
+            JSThread *mainThread = Runtime::GetInstance()->GetMainThread();
+            ASSERT(mainThread != nullptr);
+            EcmaVM *mainVM = mainThread->GetEcmaVM();
+            ASSERT(mainVM != nullptr);
+            if (mainVM->IsPreForked() && !mainVM->IsPostForked()) {
+                LOG_ECMA(ERROR) << "create ecmavm after pre fork, but not post pork";
+                ASSERT(!DaemonThread::GetInstance()->IsRunning());
+                mainVM->PostFork();
+            }
         }
-#endif
     }
 }
 
@@ -133,11 +128,11 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
 void Runtime::PreInitialization(const EcmaVM *vm)
 {
     DynamicObjectOperator::Initialize();
-#ifdef USE_CMC_GC
-    DynamicObjectAccessor::Initialize();
-    DynamicObjectDescriptor::Initialize();
-    DynamicTypeConverter::Initialize();
-#endif
+    if (g_isEnableCMCGC) {
+        DynamicObjectAccessor::Initialize();
+        DynamicObjectDescriptor::Initialize();
+        DynamicTypeConverter::Initialize();
+    }
     mainThread_ = vm->GetAssociatedJSThread();
     mainThread_->SetMainThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
@@ -165,6 +160,15 @@ void Runtime::PostInitialization(const EcmaVM *vm)
     SharedModuleManager::GetInstance()->Initialize();
 }
 
+void Runtime::InitGCConfig(const JSRuntimeOptions &options)
+{
+    bool defaultValue = options.IsEnableCMCGC();
+    g_isEnableCMCGC = IsEnableCMCGC(defaultValue);
+    if (g_isEnableCMCGC) {
+        g_maxRegularHeapObjectSize = 32_KB;
+    }
+}
+
 void Runtime::DestroyIfLastVm()
 {
     LockHolder lock(*vmCreationLock_);
@@ -173,21 +177,21 @@ void Runtime::DestroyIfLastVm()
         SharedModuleManager::GetInstance()->SharedNativeObjDestory();
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
-#ifdef USE_CMC_GC
-        // Finish common::BaseRuntime after daemon thread because it will unregister mutator
-        common::BaseRuntime::GetInstance()->Fini();
-#endif
+        if (g_isEnableCMCGC) {
+            // Finish common::BaseRuntime after daemon thread because it will unregister mutator
+            common::BaseRuntime::GetInstance()->Fini();
+        }
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
-#ifdef USE_CMC_GC
-        // Destroy common::BaseRuntime after daemon thread because it will unregister mutator
-        common::BaseRuntime::DestroyInstance();
-        // reset Base address offset
-        TaggedStateWord::BASE_ADDRESS = 0;
-#endif
+        if (g_isEnableCMCGC) {
+            // Destroy common::BaseRuntime after daemon thread because it will unregister mutator
+            common::BaseRuntime::DestroyInstance();
+            // reset Base address offset
+            TaggedStateWord::BASE_ADDRESS = 0;
+        }
         ASSERT(instance_ != nullptr);
         delete instance_;
         instance_ = nullptr;
@@ -202,17 +206,17 @@ void Runtime::RegisterThread(JSThread* newThread)
         ASSERT(std::find(threads_.begin(), threads_.end(), newThread) == threads_.end());
         threads_.emplace_back(newThread);
     }
-#ifdef USE_CMC_GC
-    ThreadHolder* threadHolder = newThread->GetThreadHolder();
-    threadHolder->BindMutator();
-    newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
-    threadHolder->RegisterJSThread(newThread);
-#else
-    // send all current suspended requests to the new thread
-    for (uint32_t i = 0; i < suspendNewCount_; i++) {
-        newThread->SuspendThread(true);
+    if (g_isEnableCMCGC) {
+        ThreadHolder* threadHolder = newThread->GetThreadHolder();
+        threadHolder->BindMutator();
+        newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
+        threadHolder->RegisterJSThread(newThread);
+    } else {
+        // send all current suspended requests to the new thread
+        for (uint32_t i = 0; i < suspendNewCount_; i++) {
+            newThread->SuspendThread(true);
+        }
     }
-#endif
 }
 
 // Note: currently only called when thread is to be destroyed.
@@ -224,13 +228,13 @@ void Runtime::UnregisterThread(JSThread* thread)
         ASSERT(!thread->IsInRunningState());
         threads_.remove(thread);
     }
-#ifdef USE_CMC_GC
-    ThreadHolder *holder = thread->GetThreadHolder();
-    void *mutator = holder->GetMutator();
-    ASSERT(mutator != nullptr);
-    holder->UnregisterJSThread(thread);
-    holder->UnbindMutator();
-#endif
+    if (g_isEnableCMCGC) {
+        ThreadHolder *holder = thread->GetThreadHolder();
+        void *mutator = holder->GetMutator();
+        ASSERT(mutator != nullptr);
+        holder->UnregisterJSThread(thread);
+        holder->UnbindMutator();
+    }
 }
 
 void Runtime::SuspendAll(JSThread *current)
@@ -257,9 +261,10 @@ void Runtime::ResumeAll(JSThread *current)
 
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
-#ifdef USE_CMC_GC
-    common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
-#else
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
+        return;
+    }
     SuspendBarrier barrier;
     for (uint32_t iterCount = 1U;; ++iterCount) {
         {
@@ -314,28 +319,27 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
         }
     }
     barrier.Wait();
-#endif
 }
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
 {
-#ifdef USE_CMC_GC
-    common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
-#else
-    LockHolder lock(threadsLock_);
-    if (suspendNewCount_ > 0) {
-        suspendNewCount_--;
-    }
-    if (suspendNewCount_ == 0) {
-        // Signal to waiting to suspend threads
-        threadSuspendCondVar_.Signal();
-    }
-    for (const auto& thread : threads_) {
-        if (thread != current) {
-            thread->ResumeThread(true);
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
+    } else {
+        LockHolder lock(threadsLock_);
+        if (suspendNewCount_ > 0) {
+            suspendNewCount_--;
+        }
+        if (suspendNewCount_ == 0) {
+            // Signal to waiting to suspend threads
+            threadSuspendCondVar_.Signal();
+        }
+        for (const auto& thread : threads_) {
+            if (thread != current) {
+                thread->ResumeThread(true);
+            }
         }
     }
-#endif
 }
 
 void Runtime::IterateSharedRoot(RootVisitor &visitor)
@@ -408,7 +412,6 @@ std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> Runtime::Fin
     return iter->second;
 }
 
-#ifdef USE_CMC_GC
 void Runtime::IteratorNativeDeleteInSharedGC(WeakVisitor &visitor)
 {
     auto iterator = globalSharedConstpools_.begin();
@@ -442,7 +445,6 @@ void Runtime::IteratorNativeDeleteInSharedGC(WeakVisitor &visitor)
         }
     }
 }
-#endif
 
 void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
 {
@@ -487,10 +489,8 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
 void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex)
 {
     GCIterateThreadList([jsPandaFile, index, constpoolIndex](JSThread* thread) {
-#ifndef USE_CMC_GC
         // adapt state to saferegion
-        ASSERT(!thread->IsInRunningState());
-#endif
+        ASSERT(g_isEnableCMCGC || !thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
         // GC maybe happen before vm initialized.
         if (vm->GetUnsharedConstpoolsPointer() != nullptr) {
@@ -524,15 +524,15 @@ void Runtime::InvokeSharedNativePointerCallbacks()
 
 void Runtime::PreFork(JSThread *thread)
 {
-#ifdef USE_CMC_GC
-    baseInstance_->PreFork(thread->GetThreadHolder());
-#endif
+    if (g_isEnableCMCGC) {
+        baseInstance_->PreFork(thread->GetThreadHolder());
+    }
 }
 
 void Runtime::PostFork()
 {
-#ifdef USE_CMC_GC
-    baseInstance_->PostFork();
-#endif
+    if (g_isEnableCMCGC) {
+        baseInstance_->PostFork();
+    }
 }
 }  // namespace panda::ecmascript

@@ -984,10 +984,8 @@ public:
 
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                MemoryAttribute mAttr = MemoryAttribute::Default());
-#ifdef USE_CMC_GC
     void StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, GateRef compValue,
                      MemoryAttribute mAttr = MemoryAttribute::Default());
-#endif
     void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
                              MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);

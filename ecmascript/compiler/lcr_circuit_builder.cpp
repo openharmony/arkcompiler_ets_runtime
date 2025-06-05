@@ -118,7 +118,6 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     label->SetDepend(result);
 }
 
-#ifdef USE_CMC_GC
 void CircuitBuilder::StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                                  GateRef compValue, MemoryAttribute mAttr)
 {
@@ -132,7 +131,6 @@ void CircuitBuilder::StoreHClass(VariableType type, GateRef glue, GateRef base, 
         MachineType::NOVALUE, { depend, glue, base, offset, value, compValue }, type.GetGateType());
     label->SetDepend(result);
 }
-#endif
 
 void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value, MemoryAttribute mAttr)
 {

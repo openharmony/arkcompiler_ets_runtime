@@ -14,6 +14,7 @@
  */
 
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -177,7 +178,7 @@ DEF_RUNTIME_STUBS(AllocateInOld)
         JSTaggedValue allocateSize = GetArg(argv, argc, 0);                                \
         auto size = static_cast<size_t>(allocateSize.GetInt());                            \
         auto sharedHeap = const_cast<SharedHeap*>(SharedHeap::GetInstance());              \
-        ASSERT(size <= MAX_REGULAR_HEAP_OBJECT_SIZE);                                      \
+        ASSERT(size <= g_maxRegularHeapObjectSize);                                      \
         auto result = sharedHeap->Allocate##SPACE##OrHugeObject(thread, size);             \
         ASSERT(result != nullptr);                                                         \
         if (argc > 1) {                                                                    \
@@ -659,11 +660,11 @@ DEF_RUNTIME_STUBS(ForceGC)
     if (!thread->GetEcmaVM()->GetJSOptions().EnableForceGC()) {
         return JSTaggedValue::Hole().GetRawData();
     }
-#ifdef USE_CMC_GC
-    common::BaseRuntime::RequestGC(common::GcType::SYNC);
-#else
-    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-#endif
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::RequestGC(common::GcType::SYNC);
+    } else {
+        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    }
     return JSTaggedValue::Hole().GetRawData();
 }
 
@@ -3184,7 +3185,7 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
     return JSTaggedValue::True().GetRawData();
 }
 
-         
+
 DEF_RUNTIME_STUBS(GetOrInternStringFromHashTrieTable)
 {
     RUNTIME_STUBS_HEADER(GetOrInternStringFromHashTrieTable);
@@ -3500,7 +3501,9 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     }
 #endif
     ASSERT(thread->IsConcurrentMarkingOrFinished());
-    Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+    if (!g_isEnableCMCGC) {
+        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
+    }
 }
 
 void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value)
@@ -3516,7 +3519,9 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
     }
 #endif
     ASSERT(thread->IsSharedConcurrentMarkingOrFinished());
-    Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
+    if (!g_isEnableCMCGC) {
+        Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
+    }
 }
 
 void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
@@ -3524,10 +3529,9 @@ void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
                                        [[maybe_unused]] size_t offset,
                                        [[maybe_unused]] TaggedObject *value)
 {
-#ifdef USE_CMC_GC
     auto thread = JSThread::GlueToJSThread(argGlue);
+    ASSERT(g_isEnableCMCGC);
     Barriers::CMCWriteBarrier(thread, (TaggedObject*)object, offset, JSTaggedType(value));
-#endif
 }
 
 JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
@@ -4933,30 +4937,28 @@ void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
                                 JSTaggedType *dst, JSTaggedType *src, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
-#ifdef USE_READ_BARRIER
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    // check CMC-GC phase inside
-    Barriers::CopyObject<true, true>(thread, reinterpret_cast<TaggedObject *>(dstObj),
-                            reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
-#else
-    (void)argGlue;
-    std::copy_n(src, count, dst);
-#endif
+    if (g_isEnableCMCGC) {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        // check CMC-GC phase inside
+        Barriers::CopyObject<true, true>(thread, reinterpret_cast<TaggedObject *>(dstObj),
+            reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
+    } else {
+        (void)argGlue;
+        std::copy_n(src, count, dst);
+    }
 }
 
 void RuntimeStubs::ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length)
 {
     DISALLOW_GARBAGE_COLLECTION;
-#ifdef USE_READ_BARRIER
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    if (thread->NeedReadBarrier()) {
-        for (uint32_t i = 0; i < length; i++) {
-            Barriers::UpdateSlot(dst, i * sizeof(JSTaggedType));
+    if (g_isEnableCMCGC) {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        if (thread->NeedReadBarrier()) {
+            for (uint32_t i = 0; i < length; i++) {
+                Barriers::UpdateSlot(dst, i * sizeof(JSTaggedType));
+            }
         }
     }
-#else
-    (void)argGlue;
-#endif
     std::reverse(dst, dst + length);
 }
 

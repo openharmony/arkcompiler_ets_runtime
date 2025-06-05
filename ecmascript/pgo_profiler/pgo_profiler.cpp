@@ -512,11 +512,14 @@ void PGOProfiler::DumpBeforeDestroy(JSThread *thread)
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
     state_->StartDumpBeforeDestroy(thread);
     {
-#ifdef USE_CMC_GC
-        ThreadNativeScope scope(thread);
-#endif
-        HandlePGODump();
-        HandlePGOPreDump();
+        if (g_isEnableCMCGC) {
+            ThreadNativeScope scope(thread);
+            HandlePGODump();
+            HandlePGOPreDump();
+        } else {
+            HandlePGODump();
+            HandlePGOPreDump();
+        }
     }
     state_->SetStopAndNotify();
 }
@@ -528,10 +531,7 @@ void PGOProfiler::HandlePGOPreDump()
         return;
     }
     LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
-#ifdef USE_CMC_GC
-    ThreadHolder::TryBindMutatorScope scope(holder_);
-    holder_->TransferToRunning();
-#endif
+    ToRunningScope scope(holder_, g_isEnableCMCGC);
     DISALLOW_GARBAGE_COLLECTION;
     preDumpWorkList_.Iterate([this](WorkNode* current) {
         JSTaggedValue funcValue = JSTaggedValue(current->GetValue());
@@ -560,9 +560,6 @@ void PGOProfiler::HandlePGOPreDump()
             PGOTrace::GetInstance()->TryGetMethodData(methodValue, false);
         }
     });
-#ifdef USE_CMC_GC
-    holder_->TransferToNative();
-#endif
 }
 
 void PGOProfiler::HandlePGODump()
@@ -572,10 +569,7 @@ void PGOProfiler::HandlePGODump()
         return;
     }
     LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
-#ifdef USE_CMC_GC
-    ThreadHolder::TryBindMutatorScope scope(holder_);
-    holder_->TransferToRunning();
-#endif
+    ToRunningScope scope(holder_, g_isEnableCMCGC);
     DISALLOW_GARBAGE_COLLECTION;
     auto current = PopFromProfileQueue();
     while (current != nullptr) {
@@ -617,9 +611,6 @@ void PGOProfiler::HandlePGODump()
             PGOTrace::GetInstance()->TryGetMethodData(methodValue, true);
         }
     }
-#ifdef USE_CMC_GC
-    holder_->TransferToNative();
-#endif
 }
 
 void PGOProfiler::TrySave()
@@ -644,9 +635,9 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
 {
     WorkNode* node = nullptr;
     while (node == nullptr) {
-#ifdef USE_CMC_GC
-        holder_->CheckSafepointIfSuspended();
-#endif
+        if (g_isEnableCMCGC) {
+            holder_->CheckSafepointIfSuspended();
+        }
         if (state_->GCIsWaiting()) {
             break;
         }
@@ -681,11 +672,11 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         if (!isForceDump) {
-#ifdef USE_CMC_GC
-            if (holder_->CheckSafepointIfSuspended()) {
-                break;
+            if (g_isEnableCMCGC) {
+                if (holder_->CheckSafepointIfSuspended()) {
+                    break;
+                }
             }
-#endif
             if (state_->GCIsWaiting()) {
                 break;
             }
@@ -1898,9 +1889,9 @@ PGOProfiler::PGOProfiler(EcmaVM* vm, bool isEnable)
         state_ = std::make_unique<PGOState>();
         recordInfos_ = manager_->GetPGOInfo()->GetRecordDetailInfosPtr();
         SetSaveTimestamp(std::chrono::system_clock::now());
-#ifdef USE_CMC_GC
-        holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
-#endif
+        if (g_isEnableCMCGC) {
+            holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+        }
         LOG_PGO(INFO) << "constructing pgo profiler, pgo is enabled";
     } else {
         LOG_PGO(INFO) << "skipping pgo profiler construction, pgo is disabled";
@@ -1922,21 +1913,21 @@ void PGOProfiler::Reset(bool isEnable)
         manager_ = PGOProfilerManager::GetInstance();
         recordInfos_ = manager_->GetPGOInfo()->GetRecordDetailInfosPtr();
         state_ = std::make_unique<PGOState>();
-#ifdef USE_CMC_GC
-        if (holder_ == nullptr) {
-            holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+        if (g_isEnableCMCGC) {
+            if (holder_ == nullptr) {
+                holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+            }
         }
-#endif
     } else {
         state_.reset();
         recordInfos_.reset();
         manager_ = nullptr;
-#ifdef USE_CMC_GC
-        if (holder_ != nullptr) {
-            ThreadHolder::DestroyThreadHolder(holder_);
-            holder_ = nullptr;
+        if (g_isEnableCMCGC) {
+            if (holder_ != nullptr) {
+                ThreadHolder::DestroyThreadHolder(holder_);
+                holder_ = nullptr;
+            }
         }
-#endif
     }
     LOG_PGO(INFO) << "reset pgo profiler, pgo profiler is " << (isEnable_ ? "enabled" : "disabled");
 }

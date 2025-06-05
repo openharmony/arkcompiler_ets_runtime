@@ -571,9 +571,8 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<Glo
     const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
-#ifndef USE_CMC_GC
-    ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
-#endif
+    ASSERT(
+        g_isEnableCMCGC || !Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
         // Situations for clone proto hclass:
         // 1: unshared non-ts hclass

@@ -29,75 +29,83 @@ public:
         : self_(self)
         {
             ASSERT(self_ != nullptr);
-#if USE_CMC_GC
-            if constexpr (newState == ThreadState::RUNNING) {
-                hasSwitchState_ = self_->GetThreadHolder()->TransferToRunningIfInNative();
-            } else {
-                hasSwitchState_ = self_->GetThreadHolder()->TransferToNativeIfInRunning();
-            }
-#else
-            oldState_ = self_->GetState();
-            if constexpr (std::is_same_v<DaemonThread, T>) {
-                if (oldState_ != newState) {
-                    ASSERT(hasSwitchState_ == false);
-                    hasSwitchState_ = true;
-                    if constexpr (newState == ThreadState::RUNNING) {
-                        self_->TransferDaemonThreadToRunning();
-                    } else {
-                        self_->UpdateState(newState);
+            if (LIKELY(!self_->IsEnableCMCGC())) {
+                if constexpr (std::is_same_v<DaemonThread, T>) {
+                    oldState_ = self_->GetState();
+                    if (oldState_ != newState) {
+                        ASSERT(hasSwitchState_ == false);
+                        hasSwitchState_ = true;
+                        if constexpr (newState == ThreadState::RUNNING) {
+                            self_->TransferDaemonThreadToRunning();
+                        } else {
+                            self_->UpdateState(newState);
+                        }
                     }
-                }
-            } else {
+                } else {
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-                auto vm = self_->GetEcmaVM();
-                bool isCollectingStats = vm->IsCollectingScopeLockStats();
-                if (isCollectingStats) {
-                    vm->IncreaseEnterThreadManagedScopeCount();
-                }
-#endif
-                if (oldState_ != newState) {
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+                    auto vm = self_->GetEcmaVM();
+                    bool isCollectingStats = vm->IsCollectingScopeLockStats();
                     if (isCollectingStats) {
-                        vm->IncreaseUpdateThreadStateTransCount();
+                        vm->IncreaseEnterThreadManagedScopeCount();
                     }
 #endif
+                    if constexpr (newState == ThreadState::RUNNING) {
+                        oldState_ = self_->TransferToRunningIfNonRunning();
+                    } else {
+                        oldState_ = self_->TransferToNonRunning(newState);
+                    }
                     ASSERT(hasSwitchState_ == false);
-                    hasSwitchState_ = true;
-                    self_->UpdateState(newState);
+                    hasSwitchState_ = oldState_ != newState;
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+                    if (hasSwitchState_) {
+                        if (isCollectingStats) {
+                            vm->IncreaseUpdateThreadStateTransCount();
+                        }
+                    }
+#endif
+                }
+            } else {
+                isEnbaleCMCGC_ = true;
+                if constexpr (newState == ThreadState::RUNNING) {
+                    hasSwitchState_ = self_->GetThreadHolder()->TransferToRunningIfInNative();
+                } else {
+                    hasSwitchState_ = self_->GetThreadHolder()->TransferToNativeIfInRunning();
                 }
             }
-#endif
         }
 
     ~ThreadStateTransitionScope()
     {
-#if USE_CMC_GC
-        if (hasSwitchState_) {
-            if constexpr (newState == ThreadState::RUNNING) {
-                self_->GetThreadHolder()->TransferToNative();
-            } else {
-                self_->GetThreadHolder()->TransferToRunning();
-            }
-        }
-#else
-        if (hasSwitchState_) {
-            if constexpr (std::is_same_v<DaemonThread, T>) {
-                if (oldState_ == ThreadState::RUNNING) {
-                    self_->TransferDaemonThreadToRunning();
+        if (LIKELY(hasSwitchState_)) {
+            if (LIKELY(!isEnbaleCMCGC_)) {
+                if constexpr (std::is_same_v<DaemonThread, T>) {
+                    if (oldState_ == ThreadState::RUNNING) {
+                        self_->TransferDaemonThreadToRunning();
+                    } else {
+                        self_->UpdateState(oldState_);
+                    }
                 } else {
-                    self_->UpdateState(oldState_);
+                    if constexpr (newState == ThreadState::RUNNING) {
+                        self_->TransferToNonRunningInRunning(oldState_);
+                    } else {
+                        self_->TransferInNonRunning(oldState_);
+                    }
                 }
             } else {
-                self_->UpdateState(oldState_);
+                if constexpr (newState == ThreadState::RUNNING) {
+                    self_->GetThreadHolder()->TransferToNative();
+                } else {
+                    self_->GetThreadHolder()->TransferToRunning();
+                }
             }
         }
-#endif
     }
 
 private:
     T* self_;
     ThreadState oldState_;
-    bool hasSwitchState_ {false};
+    uint32_t isEnbaleCMCGC_ {0};
+    uint32_t hasSwitchState_ {0};
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
 };
 
@@ -105,11 +113,8 @@ class ThreadSuspensionScope final {
 public:
     explicit ThreadSuspensionScope(JSThread* self) : scope_(self)
     {
-#if USE_CMC_GC
-        ASSERT(!self->IsInRunningState());
-#else
-        ASSERT(self->GetState() == ThreadState::IS_SUSPENDED);
-#endif
+        ASSERT(!g_isEnableCMCGC || !self->IsInRunningState());
+        ASSERT(g_isEnableCMCGC || self->GetState() == ThreadState::IS_SUSPENDED);
     }
 
     ~ThreadSuspensionScope() = default;

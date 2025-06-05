@@ -15,6 +15,7 @@
 
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
@@ -1354,7 +1355,7 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         size_t hugeRegionHeadSize = AlignUp(alignedRegionObjSize + GCBitset::BYTE_PER_WORD,
                                             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
 
-        ASSERT(objSize > MAX_REGULAR_HEAP_OBJECT_SIZE);
+        ASSERT(objSize > g_maxRegularHeapObjectSize);
         size_t alignedHugeRegionSize = AlignUp(objSize + hugeRegionHeadSize, PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, alignedHugeRegionSize, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
@@ -1403,15 +1404,15 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 vm_, hashcode,
                 [strSize, hugeSpace, thread, str, this]() {
                     uintptr_t newObj = 0;
-#ifdef USE_CMC_GC
-                    newObj = ToUintPtr(sHeap_->AllocateOldOrHugeObjectNoGC(thread, strSize));
-#else
-                    if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                        newObj = hugeSpace->Allocate(thread, strSize);
+                    if (thread->IsEnableCMCGC()) {
+                        newObj = ToUintPtr(sHeap_->AllocateOldOrHugeObjectNoGC(thread, strSize));
                     } else {
-                        newObj = this->sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
+                        if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                            newObj = hugeSpace->Allocate(thread, strSize);
+                        } else {
+                            newObj = this->sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
+                        }
                     }
-#endif
                     if (newObj == 0) {
                         LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";
                         UNREACHABLE();
@@ -1422,11 +1423,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                     }
 
                     EcmaString *value = reinterpret_cast<EcmaString *>(newObj);
-#ifdef USE_CMC_GC
-                    ASSERT(value->IsInSharedHeap());
-#else
-                    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
-#endif
+                    ASSERT(JSTaggedValue(value).IsInSharedHeap());
                     ASSERT(EcmaStringAccessor(value).NotTreeString());
                     JSHandle<EcmaString> stringHandle(thread, value);
                     return stringHandle;
@@ -1445,15 +1442,15 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
                 uintptr_t newObj = 0;
-#ifdef USE_CMC_GC
-                newObj = ToUintPtr(sHeap_->AllocateOldOrHugeObjectNoGC(thread, strSize));
-#else
-                if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
-                    newObj = hugeSpace->Allocate(thread, strSize);
+                if (thread->IsEnableCMCGC()) {
+                    newObj = ToUintPtr(sHeap_->AllocateOldOrHugeObjectNoGC(thread, strSize));
                 } else {
-                    newObj = sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
+                    if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
+                        newObj = hugeSpace->Allocate(thread, strSize);
+                    } else {
+                        newObj = sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
+                    }
                 }
-#endif
                 if (newObj == 0) {
                     LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";
                     UNREACHABLE();

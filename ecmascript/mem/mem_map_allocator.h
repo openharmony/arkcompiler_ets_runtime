@@ -22,6 +22,7 @@
 #include <random>
 #include <set>
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
@@ -258,11 +259,11 @@ public:
     {
         AdapterSuitablePoolCapacity(isLargeHeap);
         memMapTotalSize_ = 0;
-#ifndef USE_CMC_GC
-        InitializeHugeRegionMap(alignment);
-        InitializeRegularRegionMap(alignment);
-        InitializeCompressRegionMap(alignment);
-#endif
+        if (!g_isEnableCMCGC) {
+            InitializeHugeRegionMap(alignment);
+            InitializeRegularRegionMap(alignment);
+            InitializeCompressRegionMap(alignment);
+        }
     }
 
     void Finalize()

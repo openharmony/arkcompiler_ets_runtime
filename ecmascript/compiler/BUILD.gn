@@ -329,8 +329,8 @@ ohos_source_set("libark_stub_set") {
       ubsan = true
     }
   }
-  deps = [ ":build_stub_to_cpp" ]
 
+  deps = [ ":build_stub_to_cpp" ]
   sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
 
   public_configs = [
@@ -412,10 +412,11 @@ ohos_executable("ark_stub_compiler") {
     ":libark_mock_stub_set",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
+    "$js_root:libcommon_components_set",
   ]
 
+  deps += [ "$js_root:libcommon_components_set" ]
   if (ets_runtime_enable_cmc_gc) {
-    deps += [ "$js_root:libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
     }
@@ -481,10 +482,8 @@ ohos_executable("ark_aot_compiler") {
       "$js_root:libark_js_intl_set",
       "$js_root:libark_jsruntime_set",
       "${MAPLEALL_ROOT}/maple_be:libcg",
+      "$js_root:libcommon_components_set",
     ]
-    if (ets_runtime_enable_cmc_gc) {
-      deps += [ "$js_root:libcommon_components_set" ]
-    }
   }
 
   if (ets_runtime_enable_cmc_gc) {

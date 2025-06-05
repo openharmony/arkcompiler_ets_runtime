@@ -31,12 +31,12 @@ namespace panda::ecmascript {
 template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
 static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
-#ifdef USE_CMC_GC
-    common::BaseRuntime::WriteBarrier(obj, reinterpret_cast<void*>(ToUintPtr(obj) + offset),
-                                      reinterpret_cast<void*>(value));
-    // Ignore barrier for cmc gc allocation
-    return;
-#endif
+    if (UNLIKELY(thread->IsEnableCMCGC())) {
+        common::BaseRuntime::WriteBarrier(obj, reinterpret_cast<void*>(ToUintPtr(obj) + offset),
+                                        reinterpret_cast<void*>(value));
+        // Ignore barrier for cmc gc allocation
+        return;
+    }
 
     // NOTE: The logic in WriteBarrier should be synced with CopyObject.
     // if any new feature/bugfix be added in WriteBarrier, it should also be added to CopyObject.
@@ -110,11 +110,9 @@ inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset
 #endif
 }
 
-#ifdef USE_CMC_GC
 // explicit Instantiation to avoid compile optimization
 template void Barriers::SetObject<true>(const JSThread*, void*, size_t, JSTaggedType);
 template void Barriers::SetObject<false>(const JSThread*, void*, size_t, JSTaggedType);
-#endif
 
 inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                             bool isPrimitive)
@@ -172,25 +170,21 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
 
     // step 1. copy from src to dst directly.
-#ifdef USE_READ_BARRIER
     if (thread->NeedReadBarrier()) {
         CopyObjectPrimitive<true, maybeOverlap>(dstAddr, srcAddr, count);
         return;
     } else {
         CopyObjectPrimitive<false, maybeOverlap>(dstAddr, srcAddr, count);
     }
-#else
-    CopyObjectPrimitive<false, maybeOverlap>(dstAddr, srcAddr, count);
-#endif
 
     if constexpr (!needWriteBarrier) {
         return;
     }
 
-#ifdef USE_CMC_GC
-    Barriers::CMCArrayCopyWriteBarrier(thread, dstObj, (void*)srcAddr, (void*)dstAddr, count);
-    return;
-#endif
+    if (UNLIKELY(thread->IsEnableCMCGC())) {
+        Barriers::CMCArrayCopyWriteBarrier(thread, dstObj, (void*)srcAddr, (void*)dstAddr, count);
+        return;
+    }
 
     // step 2. According to object region, update the corresponding bit set batch.
     Region* objectRegion = Region::ObjectAddressToRange(ToUintPtr(dstObj));

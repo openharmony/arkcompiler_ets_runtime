@@ -275,10 +275,10 @@ JSTaggedValue BuiltinsArkTools::CurrentEnvIsGlobal(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
-#ifdef USE_CMC_GC
-    common::BaseRuntime::RequestGC(common::GcType::FULL);
-    return JSTaggedValue::True();
-#endif
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::RequestGC(common::GcType::FULL);
+        return JSTaggedValue::True();
+    }
     ASSERT(info);
     JSThread *thread = info->GetThread();
     std::string data = JsStackInfo::BuildJsStackTrace(thread, true);

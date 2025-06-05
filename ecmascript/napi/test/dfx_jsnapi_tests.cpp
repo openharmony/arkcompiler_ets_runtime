@@ -301,9 +301,11 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
     EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
 }
 
-#ifndef USE_CMC_GC
 HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
 {
+    if (g_isEnableCMCGC) {
+        return;
+    }
     size_t oldGCCount = DFXJSNApi::GetGCCount(vm_);
     size_t expectGCCount = vm_->GetEcmaGCStats()->GetGCCount() +
         ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCCount();
@@ -313,17 +315,17 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
     size_t expectGCDuration = vm_->GetEcmaGCStats()->GetGCDuration() +
         ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCDuration();
     EXPECT_EQ(oldGCDuration, expectGCDuration);
-    
+
     size_t oldAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
     size_t expectAllocateSize = vm_->GetEcmaGCStats()->GetAccumulatedAllocateSize() +
         ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedAllocateSize();
     EXPECT_EQ(oldAllocateSize, expectAllocateSize);
-    
+
     size_t oldFreeSize = DFXJSNApi::GetAccumulatedFreeSize(vm_);
     size_t expectFreeSize = vm_->GetEcmaGCStats()->GetAccumulatedFreeSize() +
         ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedFreeSize();
     EXPECT_EQ(oldFreeSize, expectFreeSize);
-    
+
     size_t oldLongTimeCount = DFXJSNApi::GetFullGCLongTimeCount(vm_);
     size_t expectLongTimeCount = vm_->GetEcmaGCStats()->GetFullGCLongTimeCount() +
         ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetFullGCLongTimeCount();
@@ -349,7 +351,6 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
     size_t newGCDuration = DFXJSNApi::GetGCDuration(vm_);
     EXPECT_TRUE(oldGCDuration < newGCDuration);
 }
-#endif
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 {
@@ -431,15 +432,16 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyIdleStatusControl)
     EXPECT_TRUE(receivedValue);
 }
 
-#ifndef USE_CMC_GC
 HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
 {
+    if (g_isEnableCMCGC) {
+        return;
+    }
     auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
     heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     DFXJSNApi::NotifyIdleTime(vm_, 10);
     EXPECT_EQ(vm_->GetEcmaGCStats()->GetGCReason(), GCReason::IDLE);
 }
-#endif
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
 {

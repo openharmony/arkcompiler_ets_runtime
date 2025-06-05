@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/machine_code.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/rewriter/reloc_rewriter_aarch64.h"
@@ -314,25 +315,25 @@ uint8_t *MachineCode::GetHeapConstantTableAddress() const
 
 void MachineCode::ProcessMarkObject()
 {
-#ifdef USE_CMC_GC
-    Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
-    // Skip HugeMachinecode or VM that is already destoryed
-    // We should implement a proper wait for VM destructor
-    if (heap && heap->GetMachineCodeSpace()) {
-        heap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
+    if (g_isEnableCMCGC) {
+        Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
+        // Skip HugeMachinecode or VM that is already destoryed
+        // We should implement a proper wait for VM destructor
+        if (heap && heap->GetMachineCodeSpace()) {
+            heap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
+        }
+    } else {
+        Region *region = Region::ObjectAddressToRange(this);
+        Heap *localHeap = reinterpret_cast<Heap *>(region->GetLocalHeap());
+        if (!localHeap) {
+            // it is a huge machine code object. skip
+            return;
+        }
+        ASSERT(localHeap->GetMachineCodeSpace());
+        if (localHeap->GetMachineCodeSpace()) {
+            localHeap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
+        }
     }
-#else
-    Region *region = Region::ObjectAddressToRange(this);
-    Heap *localHeap = reinterpret_cast<Heap *>(region->GetLocalHeap());
-    if (!localHeap) {
-        // it is a huge machine code object. skip
-        return;
-    }
-    ASSERT(localHeap->GetMachineCodeSpace());
-    if (localHeap->GetMachineCodeSpace()) {
-        localHeap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
-    }
-#endif
 }
 
 }  // namespace panda::ecmascript

@@ -363,13 +363,13 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     pid_t pid = -1;
     {
         if (dumpOption.isFullGC) {
-#ifdef USE_CMC_GC
-            common::BaseRuntime::RequestGC(common::GcType::FULL);
-#else
-            [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
-            ForceSharedGC();
-            ASSERT(heapClean);
-#endif
+            if (g_isEnableCMCGC) {
+                common::BaseRuntime::RequestGC(common::GcType::FULL);
+            } else {
+                [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+                ForceSharedGC();
+                ASSERT(heapClean);
+            }
         }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
 #ifdef USE_CMC_GC
@@ -432,12 +432,12 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
                                      bool traceAllocation, bool newThread)
 {
-#ifdef USE_CMC_GC
-    common::BaseRuntime::RequestGC(common::GcType::FULL);
-#else
-    vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    ForceSharedGC();
-#endif
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::RequestGC(common::GcType::FULL);
+    } else {
+        vm_->CollectGarbage(TriggerGCType::OLD_GC);
+        ForceSharedGC();
+    }
     SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
     DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
@@ -469,12 +469,12 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     }
 
     {
-#ifdef USE_CMC_GC
-        common::BaseRuntime::RequestGC(common::GcType::FULL);
-#else
-        vm_->CollectGarbage(TriggerGCType::OLD_GC);
-        ForceSharedGC();
-#endif
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::RequestGC(common::GcType::FULL);
+        } else {
+            vm_->CollectGarbage(TriggerGCType::OLD_GC);
+            ForceSharedGC();
+        }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
         UpdateHeapObjects(snapshot);
         snapshot->RecordSampleTime();
@@ -508,16 +508,16 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         progress->ReportProgress(0, heapCount);
     }
     {
-#ifdef USE_CMC_GC
-        common::BaseRuntime::RequestGC(common::GcType::FULL);
-#else
-        ForceSharedGC();
-#endif
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-#ifndef USE_CMC_GC
-        SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
-#endif
-        snapshot->FinishSnapshot();
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::RequestGC(common::GcType::FULL);
+            SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+            snapshot->FinishSnapshot();
+        } else {
+            ForceSharedGC();
+            SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+            SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
+            snapshot->FinishSnapshot();
+        }
     }
 
     isProfiling_ = false;

@@ -445,7 +445,7 @@ public:
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
-    
+
     static void ProcessAotHClassTransition(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                            const JSHandle<JSHClass> newHClass, const JSTaggedValue &key);
 
@@ -490,7 +490,7 @@ public:
     static void VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr);
     static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
     static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
-    
+
     static void NotifyHClassNotPrototypeChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static void NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static JSHandle<JSTaggedValue> PUBLIC_API EnableProtoChangeMarker(
@@ -500,13 +500,13 @@ public:
 
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
-    
+
     static void NotifyHClassChangedForAot(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
                                                const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
-    
+
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
     static void NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandle<JSHClass> hclass);
-    
+
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static bool UnregisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -515,16 +515,16 @@ public:
                                                               const JSHandle<JSHClass> &jshclass);
 
     static JSHandle<ProtoChangeDetails> GetProtoChangeDetails(const JSThread *thread, const JSHandle<JSObject> &obj);
-    
+
     static JSHandle<TaggedArray> GetEnumCacheOwnWithOutCheck(const JSThread *thread,
                                                              const JSHandle<JSHClass> &jshclass);
-    
+
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
-    
+
     template<bool isForAot>
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
-    
+
     template<bool isForAot = false>
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
@@ -1092,12 +1092,10 @@ public:
         return GetObjectType() == JSType::JS_SHARED_FUNCTION;
     }
 
-#ifdef USE_CMC_GC
     bool IsInSharedHeap() const
     {
         return IsJSShared();
     }
-#endif
 
     bool IsJSShared() const
     {
@@ -1483,7 +1481,7 @@ public:
     {
         return GetObjectType() == JSType::PROPERTY_BOX;
     }
-    
+
     inline bool IsEnumCache() const
     {
         return GetObjectType() == JSType::ENUM_CACHE;

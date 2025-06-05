@@ -16,13 +16,12 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "common_components/taskpool/taskpool.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
-#endif
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -147,12 +146,12 @@ void EcmaVM::PreFork()
 {
     Runtime::GetInstance()->PreFork(thread_);
     auto sHeap = SharedHeap::GetInstance();
-#ifndef USE_CMC_GC
-    heap_->CompactHeapBeforeFork();
-    heap_->AdjustSpaceSizeForAppSpawn();
-    heap_->GetReadOnlySpace()->SetReadOnly();
-    sHeap->CompactHeapBeforeFork(thread_);
-#endif
+    if (!g_isEnableCMCGC) {
+        heap_->CompactHeapBeforeFork();
+        heap_->AdjustSpaceSizeForAppSpawn();
+        heap_->GetReadOnlySpace()->SetReadOnly();
+        sHeap->CompactHeapBeforeFork(thread_);
+    }
 
     // CMC-GC threads and GC Taskpool Thread should be merged together.
     heap_->DisableParallelGC();
@@ -217,6 +216,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     options_ = std::move(options);
     LOG_ECMA(DEBUG) << "multi-thread check enabled: " << GetThreadCheckStatus();
     icEnabled_ = options_.EnableIC();
+    isEnableCMCGC_ = g_isEnableCMCGC;
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
     SetEnableOsr(options_.IsEnableOSR() && options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
@@ -227,7 +227,10 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 EcmaVM::EcmaVM()
     : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(nullptr),
-      chunk_(nativeAreaAllocator_.get()) {}
+      chunk_(nativeAreaAllocator_.get())
+{
+    isEnableCMCGC_ = g_isEnableCMCGC;
+}
 
 void EcmaVM::InitializeForJit(JitThread *jitThread)
 {
@@ -246,10 +249,12 @@ void EcmaVM::InitializePGOProfiler()
                   << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
-#ifdef USE_CMC_GC
-        ThreadNativeScope scope(thread_);
-#endif
-        pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
+        if (g_isEnableCMCGC) {
+            ThreadNativeScope scope(thread_);
+            pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
+        } else {
+            pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
+        }
     }
     pgo::PGOTrace::GetInstance()->SetEnable(options_.GetPGOTrace() || ohos::AotTools::GetPgoTraceEnable());
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
@@ -387,11 +392,11 @@ bool EcmaVM::Initialize()
 
 EcmaVM::~EcmaVM()
 {
-#ifdef USE_CMC_GC
-    thread_->GetThreadHolder()->TransferToNative();
-    common::BaseRuntime::WaitForGCFinish();
-    thread_->GetThreadHolder()->TransferToRunning();
-#endif
+    if (g_isEnableCMCGC) {
+        thread_->GetThreadHolder()->TransferToNative();
+        common::BaseRuntime::WaitForGCFinish();
+        thread_->GetThreadHolder()->TransferToRunning();
+    }
     if (isJitCompileVM_) {
         if (factory_ != nullptr) {
             chunk_.Delete(factory_);
@@ -493,19 +498,19 @@ EcmaVM::~EcmaVM()
     }
 #endif  // PANDA_JS_ETS_HYBRID_MODE
 
-#ifndef USE_CMC_GC
-    SharedHeap *sHeap = SharedHeap::GetInstance();
-    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
-    if (IsWorkerThread() && Runtime::SharedGCRequest()) {
-        // destory workervm to release mem.
-        thread_->SetReadyForGCIterating(false);
-        if (sHeap->CheckCanTriggerConcurrentMarking(thread_)) {
-            sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::WORKER_DESTRUCTION>(thread_);
-        } else if (heap && !heap->InSensitiveStatus() && !sHeap->GetConcurrentMarker()->IsEnabled()) {
-            sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+    if (!g_isEnableCMCGC) {
+        SharedHeap *sHeap = SharedHeap::GetInstance();
+        const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
+        if (IsWorkerThread() && Runtime::SharedGCRequest()) {
+            // destory workervm to release mem.
+            thread_->SetReadyForGCIterating(false);
+            if (sHeap->CheckCanTriggerConcurrentMarking(thread_)) {
+                sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::WORKER_DESTRUCTION>(thread_);
+            } else if (heap && !heap->InSensitiveStatus() && !sHeap->GetConcurrentMarker()->IsEnabled()) {
+                sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+            }
         }
     }
-#endif
 
     intlCache_.ClearIcuCache(this);
 
@@ -720,9 +725,9 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
-#ifdef USE_READ_BARRIER
-    base::GCHelper::CopyCallTarget((void*)args[0]);
-#endif
+    if (g_isEnableCMCGC) {
+        base::GCHelper::CopyCallTarget((void*)args[0]);
+    }
     auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),
                                                              actualNumArgs,
                                                              args,
@@ -871,16 +876,16 @@ void EcmaVM::ClearBufferData()
 
 void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason reason) const
 {
-#ifdef USE_CMC_GC
-    common::GcType type = common::GcType::ASYNC;
-    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
-        gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
-        reason == GCReason::ALLOCATION_FAILED) {
-        type = common::GcType::FULL;
+    if (g_isEnableCMCGC) {
+        common::GcType type = common::GcType::ASYNC;
+        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
+            gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+            reason == GCReason::ALLOCATION_FAILED) {
+            type = common::GcType::FULL;
+        }
+        common::BaseRuntime::RequestGC(type);
+        return;
     }
-    common::BaseRuntime::RequestGC(type);
-    return;
-#endif
     heap_->CollectGarbage(gcType, reason);
 }
 
@@ -1734,11 +1739,11 @@ void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapaci
     }
     std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
     int32_t copyLen = GetUnsharedConstpoolsArrayLen();
-#ifdef USE_READ_BARRIER
-    Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
-#else
-    std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
-#endif
+    if (g_isEnableCMCGC) {
+        Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
+    } else {
+        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+    }
     ClearUnsharedConstpoolArray();
     unsharedConstpools_ = newUnsharedConstpools;
     thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
@@ -1961,7 +1966,7 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
             result = handleResult.GetTaggedValue();
         }
     }
-    
+
     if (thread_->HasPendingException()) {
         return GetPendingExceptionResult(result);
     }
@@ -1977,7 +1982,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (options.EnableModuleLog()) {
         LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
     }
-    
+
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";

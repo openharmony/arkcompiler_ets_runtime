@@ -352,7 +352,7 @@ config("ark_jsruntime_common_config") {
   defines = [ "PANDA_ENABLE_LTO" ]
 
   if (ets_runtime_enable_cmc_gc) {
-    defines += [ "USE_CMC_GC" ]
+    defines += [ "DEFAULT_USE_CMC_GC" ]
     if (current_cpu != "arm") {
       defines += [ "USE_READ_BARRIER" ]
     }
@@ -939,7 +939,6 @@ ecma_source = [
   "ecmascript/mem/c_string.cpp",
   "ecmascript/mem/chunk.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
-  "ecmascript/mem/dynamic_object_operator.cpp",
   "ecmascript/mem/full_gc.cpp",
   "ecmascript/mem/concurrent_marker.cpp",
   "ecmascript/mem/concurrent_sweeper.cpp",
@@ -1074,9 +1073,10 @@ ecma_source += [
   "common_components/taskpool/task_queue.cpp",
 ]
 
-if (ets_runtime_enable_cmc_gc) {
-  ecma_source += [ "ecmascript/mem/cmc_gc/hooks.cpp" ]
-}
+ecma_source += [
+  "ecmascript/mem/cmc_gc/hooks.cpp",
+  "ecmascript/mem/dynamic_object_operator.cpp",
+]
 
 if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
@@ -1480,8 +1480,8 @@ ohos_source_set("libark_jsruntime_test_set") {
     defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
+  deps += [ ":libcommon_components_set" ]
   if (ets_runtime_enable_cmc_gc) {
-    deps += [ ":libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
     }
@@ -1529,8 +1529,8 @@ ohos_source_set("libark_jsruntime_static") {
     ]
   }
 
+  deps += [ ":libcommon_components_set" ]
   if (ets_runtime_enable_cmc_gc) {
-    deps += [ ":libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
     }

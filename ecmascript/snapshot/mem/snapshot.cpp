@@ -237,7 +237,7 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, [[may
     if (found != std::string::npos) {
         fileName = fileName.substr(found + 1);
     }
-    
+
     LOG_ECMA(INFO) << "Call JsAotReader to load: " << fileName;
     if (ReadAOTCallBack(fileName, &buff, &buffSize)) {
         fileMap = MemMap(buff, buffSize);

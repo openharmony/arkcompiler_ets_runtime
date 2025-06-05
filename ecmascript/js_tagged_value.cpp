@@ -325,16 +325,17 @@ JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type
 bool JSTaggedValue::IsInSharedHeap() const
 {
     if (IsHeapObject()) {
-#ifdef USE_CMC_GC
-        TaggedObject *obj = GetHeapObject();
-        if (IsJSHClass()) {
-            return JSHClass::Cast(obj)->IsJSShared();
+        // SharedHeap flags could move to high 32 bits in the object header.
+        if (LIKELY(!g_isEnableCMCGC)) {
+            Region *region = Region::ObjectAddressToRange(value_);
+            return region->InSharedHeap();
+        } else {
+            TaggedObject *obj = GetHeapObject();
+            if (IsJSHClass()) {
+                return JSHClass::Cast(obj)->IsJSShared();
+            }
+            return obj->IsInSharedHeap();
         }
-        return obj->IsInSharedHeap();
-#else
-        Region *region = Region::ObjectAddressToRange(value_);
-        return region->InSharedHeap();
-#endif
     }
     return false;
 }

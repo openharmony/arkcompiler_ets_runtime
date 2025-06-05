@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef USE_CMC_GC
 #include "ecmascript/mem/tagged_object.h"
 
 #include "ecmascript/js_hclass-inl.h"
@@ -25,4 +24,3 @@ size_t TaggedObject::GetSize()
     return size;
 }
 }  // namespace panda::ecmascript
-#endif

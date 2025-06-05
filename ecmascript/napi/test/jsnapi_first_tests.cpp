@@ -1403,7 +1403,6 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
 }
 
 // CMC-GC support evacuate all region
-#ifndef USE_CMC_GC
 /**
  * @tc.number: ffi_interface_api_027
  * @tc.name: TriggerGC_OLD_GC
@@ -1413,6 +1412,9 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
  */
 HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 {
+    if (g_isEnableCMCGC) {
+        return;
+    }
     ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
     vm_->SetEnableForceGC(false);
     auto globalEnv = vm_->GetGlobalEnv();
@@ -1448,7 +1450,6 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 
     vm_->SetEnableForceGC(true);
 }
-#endif
 
 HWTEST_F_L0(JSNApiTests, DISABLED_Hint_GC)
 {
