@@ -1607,8 +1607,8 @@ private:
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
     ChunkVector<pgo::PGOObjectInfo> jitTypes_;
     JSHandle<JSTaggedValue> name_;
-    uint32_t nameIdx_;
-    bool isByValue_;
+    uint32_t nameIdx_ = 0;
+    bool isByValue_ = false;
 
     AccessorStrategy* strategy_;
     friend class AotAccessorStrategy;
