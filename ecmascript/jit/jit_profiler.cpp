@@ -36,7 +36,15 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
     jsFunction_ = jsFunction;
     env_ = env;
     if (useRawProfileTypeInfo) {
-        profileTypeInfo_ = rawProfileTypeInfo;
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        JSHandle<JSTaggedValue> newProfileTypeInfo = jitCompilationEnv->NewJSHandle(JSTaggedValue(rawProfileTypeInfo));
+        profileTypeInfo_ = JSHandle<ProfileTypeInfo>::Cast(newProfileTypeInfo);
+    } else {
+        Jit::JitLockHolder lock(thread);
+        profileTypeInfo_ = profileTypeInfo;
+        if (profileTypeInfo_.GetTaggedType() == 0) {
+            return;
+        }
     }
     abcId_ = abcId;
     methodId_ = methodId;
@@ -53,9 +61,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertICByName(bcOffset, slotId, BCType::LOAD);
@@ -64,9 +69,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
             case EcmaOpcode::LDOBJBYNAME_IMM16_ID16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertICByName(bcOffset, slotId, BCType::LOAD);
                 break;
@@ -74,9 +76,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
             case EcmaOpcode::LDTHISBYVALUE_IMM8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertICByValue(bcOffset, slotId, BCType::LOAD);
@@ -85,18 +84,12 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
             case EcmaOpcode::LDTHISBYVALUE_IMM16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertICByValue(bcOffset, slotId, BCType::LOAD);
                 break;
             }
             case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint32_t slotId = READ_INST_8_0();
                 ASSERT(bcOffset >= 0);
                 ConvertTryldGlobalByName(static_cast<uint32_t>(bcOffset), slotId);
@@ -104,9 +97,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint32_t slotId = READ_INST_16_0();
                 ASSERT(bcOffset >= 0);
                 ConvertTryldGlobalByName(static_cast<uint32_t>(bcOffset), slotId);
@@ -118,9 +108,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertICByName(bcOffset, slotId, BCType::STORE);
@@ -129,9 +116,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertICByName(bcOffset, slotId, BCType::STORE);
                 break;
@@ -140,9 +124,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
             case EcmaOpcode::STTHISBYVALUE_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertICByValue(bcOffset, slotId, BCType::STORE);
@@ -152,9 +133,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
             case EcmaOpcode::STTHISBYVALUE_IMM16_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertICByValue(bcOffset, slotId, BCType::STORE);
                 break;
@@ -194,9 +172,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::GREATER_IMM8_V8:
             case EcmaOpcode::GREATEREQ_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertOpType(slotId, bcOffset);
@@ -208,9 +183,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::STRICTEQ_IMM8_V8:
             case EcmaOpcode::TONUMERIC_IMM8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertOpType(slotId, bcOffset);
@@ -219,9 +191,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
             case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_1();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertOpType(slotId, bcOffset);
@@ -240,9 +209,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertCall(slotId, bcOffset);
@@ -251,9 +217,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_1();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertCall(slotId, bcOffset);
@@ -266,9 +229,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertNewObjRange(slotId, bcOffset);
@@ -276,9 +236,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertNewObjRange(slotId, bcOffset);
                 break;
@@ -312,9 +269,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 auto traceId =
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
                 uint8_t slotId = READ_INST_8_0();
@@ -327,9 +281,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 auto traceId =
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
                 uint16_t slotId = READ_INST_16_0();
@@ -339,9 +290,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::GETITERATOR_IMM8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertGetIterator(slotId, bcOffset);
@@ -349,9 +297,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             }
             case EcmaOpcode::GETITERATOR_IMM16: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertGetIterator(slotId, bcOffset);
                 break;
@@ -359,9 +304,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             // Others
             case EcmaOpcode::INSTANCEOF_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
-                if (!useRawProfileTypeInfo) {
-                    profileTypeInfo_ = *profileTypeInfo;
-                }
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertInstanceof(bcOffset, slotId);
@@ -1192,7 +1134,7 @@ bool JITProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClas
 
 bool JITProfiler::IsIncompleteProfileTypeInfo()
 {
-    if (profileTypeInfo_ == nullptr) {
+    if (profileTypeInfo_.GetTaggedType() == 0 || profileTypeInfo_.GetTaggedValue().IsUndefined()) {
         return true;
     }
     // We may receive an incomplete profile typeinfo. During the execution of a larger function, when the upper part of
@@ -1230,7 +1172,6 @@ void JITProfiler::Clear()
     bcOffsetPGORwTypeMap_.clear();
     bcOffsetBoolMap_.clear();
     abcId_ = 0;
-    profileTypeInfo_ = nullptr;
     methodId_ = (EntityId)0;
 }
 

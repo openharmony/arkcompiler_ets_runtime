@@ -194,7 +194,7 @@ private:
     EcmaVM *vm_ { nullptr };
     JSThread *mainThread_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ { nullptr };
-    ProfileTypeInfo* profileTypeInfo_ { nullptr };
+    JSHandle<ProfileTypeInfo> profileTypeInfo_;
     ApEntityId abcId_ { 0 };
     EntityId methodId_ {};
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
