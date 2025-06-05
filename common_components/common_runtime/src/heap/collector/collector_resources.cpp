@@ -65,6 +65,7 @@ void CollectorResources::Init()
     StartGCThreads();
     finalizerProcessor_.Start();
     gcStats_.Init();
+    hasRelease = false;
 }
 
 void CollectorResources::Fini()
