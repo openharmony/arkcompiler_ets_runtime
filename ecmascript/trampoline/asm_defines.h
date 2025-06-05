@@ -23,7 +23,7 @@
 #define RETURN_ADDRESS_OFFSET_X64 56
 #define LAZY_DEOPT_TYPE_OFFSET 1
 
-#ifdef PANDA_TARGET_MACOS
+#if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
     #define LazyDeoptEntryName _LazyDeoptEntry
     #define GetGlueFromThreadLocalName _GetGlueFromThreadLocal
     #define GetFixedReturnAddrName _GetFixedReturnAddr
