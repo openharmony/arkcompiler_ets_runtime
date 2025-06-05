@@ -917,7 +917,6 @@ bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
     constexpr size_t FP_SIZE = sizeof(uintptr_t);
     uintptr_t currentPtr = *arkStepParam->fp;
     if (currentPtr == 0) {
-        LOG_ECMA(ERROR) << "fp is nullptr in StepArk()!";
         return false;
     }
 
@@ -938,7 +937,6 @@ bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
             *arkStepParam->isJsFrame = IsJsFunctionFrame(frameType);
         }
     } else {
-        LOG_ECMA(ERROR) << std::hex << "ArkGetNextFrame failed, addr: " << currentPtr;
         return false;
     }
 
