@@ -522,7 +522,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
         JSNApi::DestroyJSVM(vm2);
     });
     {
-        ThreadSuspensionScope scope(vm_->GetJSThread());
+        ecmascript::ThreadSuspensionScope scope(vm_->GetJSThread());
         t1.join();
     }
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("sample_test"));

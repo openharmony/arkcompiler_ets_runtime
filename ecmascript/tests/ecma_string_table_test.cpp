@@ -143,7 +143,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
 {
-    auto *map = new common::HashTrieMap<StringTableMutex, JSThread>();
+    auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread>();
 
     const int thread_count = 8;
     std::atomic<int> counter {0};
@@ -167,7 +167,7 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
         threads.emplace_back(thread_proc);
     }
     for (auto &t : threads) {
-        ThreadSuspensionScope suspensionScope(thread);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread);
         t.join();
     }
 
@@ -190,7 +190,7 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_InsertNewKey)
 {
     EcmaVM* vm = thread->GetEcmaVM();
-    auto* map = new common::HashTrieMap<StringTableMutex, JSThread>();
+    auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread>();
     uint32_t key = 0x12345678;
     JSHandle<EcmaString> value(thread, *vm->GetFactory()->NewFromASCII("test_value"));
     auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
@@ -220,7 +220,7 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_InsertNewKey)
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_StoreExistingKey)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    auto *map = new common::HashTrieMap<StringTableMutex, JSThread>();
+    auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread>();
     uint32_t key = 0x12345678;
     JSHandle<EcmaString> original(thread, *vm->GetFactory()->NewFromASCII("original"));
     JSHandle<EcmaString> origina2(thread, *vm->GetFactory()->NewFromASCII("origina2"));
@@ -255,7 +255,7 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_StoreExistingKey)
 HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    auto *map = new common::HashTrieMap<StringTableMutex, JSThread>();
+    auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread>();
     uint32_t key1 = 0x11111111;
     uint32_t key2 = 0x11110000;
     uint32_t key3 = 0x11110010;
@@ -304,13 +304,13 @@ HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
             └── Entry [key=286331153, value=0x2bafc81e38]
     */
     // Verify structure after expansion
-    common::HashTrieMap<StringTableMutex, JSThread>::Indirect *root = map->GetRoot().load();
+    common::HashTrieMap<EcmaStringTableMutex, JSThread>::Indirect *root = map->GetRoot().load();
     ASSERT_TRUE(root->children_[0x0].load() != nullptr);  // Check first collision level
 
-    common::HashTrieMap<StringTableMutex, JSThread>::Indirect *level1 = root->children_[0x0].load()->AsIndirect();
+    common::HashTrieMap<EcmaStringTableMutex, JSThread>::Indirect *level1 = root->children_[0x0].load()->AsIndirect();
     ASSERT_TRUE(level1->children_[0x0].load() != nullptr);
     ASSERT_TRUE(level1->children_[0x2].load() != nullptr);
-    common::HashTrieMap<StringTableMutex, JSThread>::Entry *entry = level1->children_[0x2].load()->AsEntry();
+    common::HashTrieMap<EcmaStringTableMutex, JSThread>::Entry *entry = level1->children_[0x2].load()->AsEntry();
     // Verify overflow
     ASSERT_TRUE(entry->Overflow().load() != nullptr);
     delete map;

@@ -163,7 +163,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 
 HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
 {
-    ThreadManagedScope managedScope(thread);
+    ecmascript::ThreadManagedScope managedScope(thread);
 
     CString baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
     std::shared_ptr<JSPandaFile> baseFile =

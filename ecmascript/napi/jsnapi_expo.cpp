@@ -109,7 +109,6 @@ using ecmascript::LockHolder;
 using ecmascript::MemMapAllocator;
 using ecmascript::Method;
 using ecmascript::NativeModuleFailureInfo;
-using ecmascript::Mutex;
 using ecmascript::ObjectFactory;
 using ecmascript::OperationResult;
 using ecmascript::PromiseCapability;
@@ -161,7 +160,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 
 bool JSNApi::isForked_ = false;
-static Mutex *mutex = new panda::Mutex();
+static ecmascript::Mutex *mutex = new panda::ecmascript::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
 const static uint32_t API_VERSION_MASK = 100;
 

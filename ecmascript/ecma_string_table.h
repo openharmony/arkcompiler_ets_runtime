@@ -18,14 +18,17 @@
 
 #include <array>
 #include "common_components/objects/string_table/hashtriemap.h"
+#include "common_components/objects/string_table_internal.h"
 #include "common_components/taskpool/task.h"
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
-#include "objects/string/base_string_declare.h"
+#include "common_interfaces/objects/base_string_table.h"
+#include "common_interfaces/objects/string/base_string_declare.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION
@@ -93,9 +96,9 @@ private:
     ConditionVariable sweepWeakRefCV_;
 };
 
-class StringTableMutex {
+class EcmaStringTableMutex {
 public:
-    explicit StringTableMutex(bool is_init = true) : mtx_(is_init)
+    explicit EcmaStringTableMutex(bool is_init = true) : mtx_(is_init)
     {
     }
 
@@ -117,7 +120,15 @@ private:
 
 class EcmaStringTable final {
 public:
+#ifdef USE_CMC_GC
+    using StringTableInterface = common::BaseStringTableInterface<common::BaseStringTableImpl>;
+    using HashTrieMapImpl = common::HashTrieMap<common::BaseStringTableMutex, common::ThreadHolder>;
+
+    EcmaStringTable(StringTableInterface* StringTableItf, HashTrieMapImpl& hashTrieMap)
+        : stringTableItf_(StringTableItf), stringTable_(hashTrieMap), cleaner_(new EcmaStringTableCleaner(this)) {}
+#else
     EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this)) {}
+#endif
     ~EcmaStringTable()
     {
         if (cleaner_ != nullptr) {
@@ -166,7 +177,6 @@ private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
-    EcmaString *GetString(const JSHandle<EcmaString> string, uint32_t hashcode);
     /**
      *
      * These are some "incorrect" functions, which need to fix the call chain to be removed.
@@ -176,9 +186,18 @@ private:
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const JSHandle<EcmaString> firstString,
                                               const JSHandle<EcmaString> secondString);
     // This should only call in Debugger Signal, and need to fix and remove
-    EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+    EcmaString* GetOrInternStringThreadUnsafe(EcmaVM* vm, const uint8_t* utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
-    common::HashTrieMap<StringTableMutex, JSThread> stringTable_;
+#ifdef USE_CMC_GC
+    StringTableInterface* stringTableItf_;
+    HashTrieMapImpl& stringTable_;
+    static common::ReadOnlyHandle<BaseString> CreateHandle(common::ThreadHolder* holder, BaseString* string)
+    {
+        return JSHandle<EcmaString>(holder->GetJSThread(), EcmaString::FromBaseString(string));
+    }
+#else
+    common::HashTrieMap<EcmaStringTableMutex, JSThread> stringTable_;
+#endif
     EcmaStringTableCleaner *cleaner_;
 
     friend class SnapshotProcessor;

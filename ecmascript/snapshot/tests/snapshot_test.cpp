@@ -93,7 +93,7 @@ public:
             JSNApi::DestroyJSVM(ecmaVm2);
         });
         {
-            ThreadSuspensionScope suspensionScope(thread);
+            ecmascript::ThreadSuspensionScope suspensionScope(thread);
             t1.join();
         }
         std::remove(fileName.c_str());
@@ -258,7 +258,7 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
         JSNApi::DestroyJSVM(ecmaVm1);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
 
@@ -300,7 +300,7 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
         JSNApi::DestroyJSVM(ecmaVm2);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread);
         t2.join();
     }
     std::remove(fileName.c_str());

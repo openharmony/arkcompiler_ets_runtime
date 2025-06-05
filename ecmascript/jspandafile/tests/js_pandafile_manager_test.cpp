@@ -172,7 +172,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
         TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
     });
     {
-        ThreadSuspensionScope suspensionScope(thread);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread);
         t1.join();
     }
 

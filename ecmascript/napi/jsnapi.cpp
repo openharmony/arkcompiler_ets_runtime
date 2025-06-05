@@ -108,7 +108,6 @@ using ecmascript::job::QueueType;
 using ecmascript::JSRuntimeOptions;
 using ecmascript::BigInt;
 using ecmascript::MemMapAllocator;
-using ecmascript::Mutex;
 using ecmascript::LockHolder;
 using ecmascript::JSMapIterator;
 using ecmascript::JSSetIterator;
