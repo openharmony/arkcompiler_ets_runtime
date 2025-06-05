@@ -129,6 +129,45 @@ void JSFunction::InitializeBuiltinWithDefaultValue(JSThread *thread, const JSHan
     func->SetLexicalEnv(thread, env.GetTaggedValue());
 }
 
+void JSFunction::InitClassFunction(JSThread *thread, JSHandle<JSFunction> &func, bool callNapi)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    accessor = globalConst->GetHandledFunctionLengthAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, func);
+    clsPrototype->GetClass()->SetClassPrototype(true);
+    func->SetClassConstructor(true);
+    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(func), parent);
+    func->SetHomeObject(thread, clsPrototype);
+    func->SetCallNapi(callNapi);
+}
+
+void JSFunction::InitClassFunctionWithClsPrototype(JSThread *thread, JSHandle<JSFunction> &func, bool callNapi,
+                                                   JSHandle<JSObject> &clsPrototype)
+{
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    accessor = globalConst->GetHandledFunctionLengthAccessor();
+    func->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX,
+                                  accessor.GetTaggedValue());
+    func->SetClassConstructor(true);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
+    JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(func), parent);
+    clsPrototype->GetClass()->SetClassPrototype(true);
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, func, clsPrototype.GetTaggedValue());
+    func->SetHomeObject(thread, clsPrototype);
+    func->SetCallNapi(callNapi);
+}
+
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -274,7 +313,7 @@ void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, co
                                                       JSTaggedValue protoOrHClass)
 {
     JSHandle<JSTaggedValue> protoHandle(thread, protoOrHClass);
-    fun->SetProtoOrHClass(thread, protoHandle.GetTaggedValue());
+    fun->SetProtoOrHClass(thread, protoOrHClass);
     if (protoHandle->IsJSHClass()) {
         protoHandle = JSHandle<JSTaggedValue>(thread,
                                               JSHClass::Cast(protoHandle->GetTaggedObject())->GetPrototype());

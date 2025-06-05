@@ -62,6 +62,9 @@
 #include "ecmascript/weak_vector.h"
 #include "gtest/gtest.h"
 
+#define PROPERTY_COUNT_CASE1 10
+#define PROPERTY_COUNT_CASE2 (PropertyAttributes::MAX_FAST_PROPS_CAPACITY + 1)
+
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::kungfu;
@@ -1934,39 +1937,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_KeyIsNumber)
     EXPECT_FALSE(JSNApi::KeyIsNumber(STR_TEST));
 }
 
-
 /**
  * @tc.number: ffi_interface_api_139
- * @tc.name: NewConcurrentClassFunctionWithName
- * @tc.desc: Check if the function created through the NewConcurrentClassFunctionWithName method meets the
- * specifications of the class constructor, and obtain and verify the properties of the function.
- * @tc.type: FUNC
- * @tc.require: parameter
- */
-HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithName)
-{
-    LocalScope scope(vm_);
-    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_->GetGlobalEnv()));
-    std::string name = "MyClassFunction";
-    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(vm_, context, InternalFunctionCallback,
-                                                                             nullptr, name.c_str(), nullptr);
-
-    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
-    // Asserting that obj is a class constructor
-    ASSERT_TRUE(obj->IsClassConstructor());
-    // The GetPropertyInlinedProps method gets the method of an inline property,
-    // CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX is the inline property index of the class prototype.
-    JSTaggedValue res =
-        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
-    // The property that the assertion gets is an internal accessor
-    ASSERT_TRUE(res.IsInternalAccessor());
-    Local<StringRef> funcName = cls->GetName(vm_);
-    std::string funcNameStr = funcName->ToString(vm_);
-    ASSERT_EQ(name, funcNameStr);
-}
-
-/**
- * @tc.number: ffi_interface_api_140
  * @tc.name: NewConcurrentWithName
  * @tc.desc: Check if the function created through the NewConcurrentWithName returns the same value to native callee
  * @tc.type: FUNC
@@ -1990,5 +1962,110 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentWithName)
     Local<StringRef> funcName = func->GetName(vm_);
     std::string funcNameStr = funcName->ToString(vm_);
     ASSERT_EQ(name, funcNameStr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_140
+ * @tc.name: NewConcurrentClassFunctionWithNameCase0
+ * @tc.desc: While property count is 0, check if the class created through the NewConcurrentClassFunctionWithName
+ * method meets the specifications of the class constructor and the name property of class.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase0)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_->GetGlobalEnv()));
+    std::string name = "MyClassFunction";
+    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(vm_, context, InternalFunctionCallback,
+                                                                             nullptr, name.c_str(), nullptr);
+
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
+    // Asserting that obj is a class constructor
+    ASSERT_TRUE(obj->IsClassConstructor());
+    // The GetPropertyInlinedProps method gets the method of an inline property,
+    // CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX is the inline property index of the class prototype.
+    JSTaggedValue res =
+        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+    // The property that the assertion gets is an internal accessor
+    ASSERT_TRUE(res.IsInternalAccessor());
+    Local<StringRef> funcName = cls->GetName(vm_);
+    std::string funcNameStr = funcName->ToString(vm_);
+    ASSERT_EQ(name, funcNameStr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_141
+ * @tc.name: NewConcurrentClassFunctionWithNameCase1
+ * @tc.desc: While property count is smaller than 1024, check if the keys and attrs were successfully set in the class
+ * that created through the NewConcurrentClassFunctionWithName method.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase1)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetGlobalEnv();
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(env));
+    std::string name = "MyClassFunction";
+    size_t staticPropCount = 5;
+    size_t nonStaticPropCount = PROPERTY_COUNT_CASE1 - staticPropCount;
+    Local<panda::JSValueRef> keys[PROPERTY_COUNT_CASE1];
+    PropertyAttribute attrs[PROPERTY_COUNT_CASE1];
+    // There are 10 properties totally, and the last two keys and first two keys are duplicate, so expectedVals[8] will
+    // overwrite expectedVals[9], expectedVals[1] will overwrite expectedVals[0]
+    const std::string keyNames[10] = {"key0", "key0", "key2", "key3", "key4", "key5", "key6", "key7", "key8", "key8"};
+    const int expectedVals[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    for (size_t i = 0; i < PROPERTY_COUNT_CASE1; ++i) {
+        keys[i] = StringRef::NewFromUtf8(vm_, keyNames[i].c_str());
+        Local<JSValueRef> curValue =
+            JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, JSTaggedValue(expectedVals[i])));
+        attrs[i].SetValue(curValue);
+        attrs[i].SetConfigurable(true);
+        attrs[i].SetWritable(true);
+    }
+
+    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(
+        vm_, context, InternalFunctionCallback, nullptr, name.c_str(), nullptr, true, PROPERTY_COUNT_CASE1,
+        staticPropCount, keys, attrs);
+
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
+    JSHandle<JSFunction> clsFunc(obj);
+    JSHandle<JSObject> clsPrototype(thread_, clsFunc->GetProtoOrHClass());
+    JSHandle<JSHClass> clsFuncHClass(thread_, clsFunc->GetJSHClass());
+    JSHandle<JSHClass> clsProtoHClass(thread_, clsPrototype->GetJSHClass());
+    uint32_t clsInlPropNum = clsFuncHClass->GetInlinedProperties();
+    uint32_t clsProtoInlPropNum = clsProtoHClass->GetInlinedProperties();
+
+    JSHandle<JSHClass> defaultClsFuncHClass(env->GetFunctionClassWithoutName());
+    JSHandle<JSHClass> defaultClsProtoHClass(env->GetObjectFunctionClass());
+    uint32_t defaultClsInlPropNum = defaultClsFuncHClass->GetInlinedProperties();
+    uint32_t defaultProtoInlPropNum = defaultClsProtoHClass->GetInlinedProperties();
+    // In current NewConcurrentClassFunctionWithName method, all properties were stored as inlined properties.
+    ASSERT_EQ(clsInlPropNum, defaultClsInlPropNum + staticPropCount);
+    ASSERT_EQ(clsProtoInlPropNum, defaultProtoInlPropNum + PROPERTY_COUNT_CASE1 - staticPropCount);
+
+    for (size_t i = 0; i < staticPropCount; ++i) {
+        auto realProp = JSObject::GetProperty(thread_, obj, JSNApiHelper::ToJSHandle(keys[i])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        if (i == 0) {
+            // expectedVals[0] was overwritten by expectedVals[1].
+            ASSERT_EQ(realVal, expectedVals[1]);
+        } else {
+            ASSERT_EQ(realVal, expectedVals[i]);
+        }
+    }
+    JSHandle<JSTaggedValue> clsProtoVal(thread_, clsFunc->GetProtoOrHClass());
+    for (size_t i = 0; i < nonStaticPropCount; ++i) {
+        size_t trueIdx = PROPERTY_COUNT_CASE1 - 1 - i;
+        auto realProp = JSObject::GetProperty(thread_, clsProtoVal, JSNApiHelper::ToJSHandle(keys[trueIdx])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        if (i == 0) {
+            // expectedVals[9] was overwritten by expectedVals[8].
+            ASSERT_EQ(realVal, expectedVals[trueIdx - 1]);
+        } else {
+            ASSERT_EQ(realVal, expectedVals[trueIdx]);
+        }
+    }
 }
 } // namespace panda::test

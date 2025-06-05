@@ -1953,22 +1953,26 @@ JSHandle<DependentInfos> ObjectFactory::NewDependentInfos(uint32_t capacity)
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                                      const JSHandle<JSTaggedValue> &prototype)
+                                                      const JSHandle<JSTaggedValue> &prototype, uint32_t inlinedProps)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);
-    {
-        functionClass->SetCallable(true);
-        // FunctionKind = BASE_CONSTRUCTOR
-        if (JSFunction::IsConstructorKind(kind)) {
-            functionClass->SetConstructor(true);
-        }
-        functionClass->SetExtensible(true);
+    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, inlinedProps, type, prototype);
+    functionClass->SetCallable(true);
+    // FunctionKind = BASE_CONSTRUCTOR
+    if (JSFunction::IsConstructorKind(kind)) {
+        functionClass->SetConstructor(true);
     }
+    functionClass->SetExtensible(true);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
-    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    ASSERT(inlinedProps >= JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    JSHandle<LayoutInfo> layoutInfoHandle;
+    if (inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+        layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    } else {
+        layoutInfoHandle = CreateLayoutInfo(static_cast<int>(inlinedProps));
+    }
     {
         PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
         attributes.SetIsInlinedProps(true);
@@ -2008,10 +2012,8 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
         fieldOrder++;
     }
 
-    {
-        functionClass->SetLayout(thread_, layoutInfoHandle);
-        functionClass->SetNumberOfProps(fieldOrder);
-    }
+    functionClass->SetLayout(thread_, layoutInfoHandle);
+    functionClass->SetNumberOfProps(fieldOrder);
     return functionClass;
 }
 
@@ -5608,6 +5610,27 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
     }
     object->SetProperties(thread_, dict);
     return JSHandle<JSTaggedValue>(object);
+}
+
+JSHandle<JSHClass> ObjectFactory::CreateClassFuncProtoHClass(const JSThread *thread, size_t inlNonStaticPropCount)
+{
+    size_t inlinedProps = inlNonStaticPropCount + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFuncProto = env->GetObjectFunctionPrototype();
+    JSHandle<JSHClass> classPrototypeHClass =
+        NewEcmaHClass(JSObject::SIZE, inlinedProps, JSType::JS_OBJECT, objFuncProto);
+    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(static_cast<int>(inlinedProps));
+    // Check if need grow LayoutInfo capacity
+    classPrototypeHClass->SetLayout(thread_, layoutInfoHandle);
+    return classPrototypeHClass;
+}
+
+JSHandle<JSHClass> ObjectFactory::CreateClassFuncHClass(const JSThread *thread, size_t inlinedStaticPropCount)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    size_t inlinedProps = inlinedStaticPropCount + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    return CreateFunctionClass(ecmascript::FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE, JSType::JS_FUNCTION,
+                               env->GetFunctionPrototype(), inlinedProps);
 }
 
 void ObjectFactory::FillFreeMemoryRange(uintptr_t start, uintptr_t end)

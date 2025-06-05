@@ -445,6 +445,11 @@ public:
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
+    static void AddPropertyToNewHClassWithoutTransition(const JSThread *thread, JSHandle<JSHClass> &newJsHClass,
+                                                        const JSHandle<JSTaggedValue> &key,
+                                                        const PropertyAttributes &attr);
+    static inline void AddInlinedPropToHClass(const JSThread *thread, const PropertyDescriptor &desc, size_t attrOffset,
+                                              const JSHandle<JSTaggedValue> &key, JSHandle<JSHClass> &hClass);
 
     static void ProcessAotHClassTransition(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                            const JSHandle<JSHClass> newHClass, const JSTaggedValue &key);
