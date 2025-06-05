@@ -247,6 +247,31 @@ void RegionList::MergeRegionList(RegionList& srcList, RegionDesc::RegionType reg
     }
 }
 
+static const char *RegionDescRegionTypeToString(RegionDesc::RegionType type)
+{
+    static constexpr const char *enumStr[] = {
+        [static_cast<uint8_t>(RegionDesc::RegionType::FREE_REGION)] = "FREE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::THREAD_LOCAL_REGION)] = "THREAD_LOCAL_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_FULL_REGION)] = "RECENT_FULL_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FROM_REGION)] = "FROM_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::LONE_FROM_REGION)] = "LONE_FROM_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::EXEMPTED_FROM_REGION)] = "EXEMPTED_FROM_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::TO_REGION)] = "TO_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_PINNED_REGION)] = "FULL_PINNED_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_PINNED_REGION)] = "RECENT_PINNED_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FIXED_PINNED_REGION)] = "FIXED_PINNED_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_FIXED_PINNED_REGION)] = "FULL_FIXED_PINNED_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::RAW_POINTER_REGION)] = "RAW_POINTER_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::TL_RAW_POINTER_REGION)] = "TL_RAW_POINTER_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_LARGE_REGION)] = "RECENT_LARGE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::OLD_LARGE_REGION)] = "OLD_LARGE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::GARBAGE_REGION)] = "GARBAGE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::READ_ONLY_REGION)] = "READ_ONLY_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::APPSPAWN_REGION)] = "APPSPAWN_REGION",
+    };
+    return enumStr[static_cast<uint8_t>(type)];
+}
+
 void RegionList::PrependRegion(RegionDesc* region, RegionDesc::RegionType type)
 {
     std::lock_guard<std::mutex> lock(listMutex_);
@@ -264,6 +289,10 @@ void RegionList::PrependRegionLocked(RegionDesc* region, RegionDesc::RegionType 
         region->GetRegionAllocatedSize(), region->GetRegionType(), type);
 
     region->SetRegionType(type);
+
+    os::PrctlSetVMA(reinterpret_cast<void *>(region->GetRegionStart()), region->GetRegionAllocatedSize(),
+                    (std::string("ARKTS_CMC_GC_REGION_") + RegionDescRegionTypeToString(type)).c_str());
+
     region->SetPrevRegion(nullptr);
     IncCounts(1, region->GetUnitCount());
     region->SetNextRegion(listHead_);

@@ -16,6 +16,7 @@
 #include "common_components/common_runtime/src/heap/allocator/region_space.h"
 
 
+#include "common_components/platform/os.h"
 #include "common_components/common_runtime/src/heap/collector/collector.h"
 #include "common_components/common_runtime/src/heap/collector/collector_resources.h"
 #if defined(ARKCOMMON_SANITIZER_SUPPORT)
@@ -145,6 +146,13 @@ void RegionSpace::Init(const RuntimeParam& param)
 #endif
     // this must succeed otherwise it won't return
     map_ = MemoryMap::MapMemoryAlignInner4G(totalSize, totalSize, opt);
+
+    size_t metadataSize = RegionManager::GetMetadataSize(regionNum);
+    uintptr_t baseAddr = reinterpret_cast<uintptr_t>(map_->GetBaseAddr());
+    os::PrctlSetVMA(reinterpret_cast<void*>(baseAddr), metadataSize, "ARKTS_CMC_GC_META_DATA");
+    os::PrctlSetVMA(reinterpret_cast<void*>(baseAddr + metadataSize), totalSize - metadataSize,
+                    "ARKTS_CMC_GC_REGION_HEAP");
+
 #if defined(ARKCOMMON_SANITIZER_SUPPORT)
     Sanitizer::OnHeapAllocated(map->GetBaseAddr(), map->GetMappedSize());
 #endif
