@@ -41,7 +41,6 @@
 #ifdef ARKCOMMON_ASAN_SUPPORT
 #include "common_components/common_runtime/src/sanitizer/sanitizer_interface.h"
 #endif
-#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 template<typename T>
