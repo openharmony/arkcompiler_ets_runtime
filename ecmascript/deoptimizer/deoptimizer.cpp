@@ -552,7 +552,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         } else {
             statePtr->env = env;
         }
-        statePtr->callSize = GetCallSize(curDepth, resumePc);
+        statePtr->callSize = static_cast<int32_t>(GetCallSize(curDepth, resumePc));
         statePtr->fp = 0;  // need update
         statePtr->thisObj = thisObj;
         statePtr->pc = resumePc;
