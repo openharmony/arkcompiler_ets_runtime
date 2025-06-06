@@ -17,3 +17,6 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathC
 #20981
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
 
+#26263
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_Third_Test
+
