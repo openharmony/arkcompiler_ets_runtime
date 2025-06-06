@@ -38,6 +38,7 @@ group("ark_aot_js_test") {
     "lower_jscode_0001",
     "lower_jscode_0002",
     "fallback_type_conversion",
+    "pgo_stobjbyvalue",
     "typedarray_to_reversed",
   ]
 
