@@ -420,9 +420,10 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
          regionHeapStart_, regionHeapEnd_, nRegion);
 
     ASAN_POISON_MEMORY_REGION(regionInfoAddr, metadataSize + nRegion * RegionDesc::UNIT_SIZE);
-    DLOG(REGION, "set address[%lX, %lX) unaddressable\n", (uintptr_t)regionInfoAddr, (uintptr_t)regionInfoAddr + (uintptr_t)(metadataSize + nRegion * RegionDesc::UNIT_SIZE));
-    printf("set address[%lX, %lX) unaddressable\n", (uintptr_t)regionInfoAddr, (uintptr_t)regionInfoAddr + (uintptr_t)(metadataSize + nRegion * RegionDesc::UNIT_SIZE));
-    // LOG_ECMA(ERROR) << "******************Init ************************";
+    const uintptr_t p_addr = regionInfoAddr;
+    const uintptr_t p_size = metadataSize + nRegion * RegionDesc::UNIT_SIZE;
+    LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
+    LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
 }
 
 void RegionManager::ReclaimRegion(RegionDesc* region)
