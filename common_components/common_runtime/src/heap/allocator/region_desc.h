@@ -531,8 +531,9 @@ public:
         Sanitizer::OnHeapMadvise(unitAddress, size);
 #endif
         ASAN_POISON_MEMORY_REGION(unitAddress, size);
-        DLOG(REGION, "set [%lX, %lX) unaddressable\n", (uintptr_t)unitAddress, (uintptr_t)unitAddress + (uintptr_t)size);
-        printf("set [%lX, %lX) unaddressable\n", (uintptr_t)unitAddress, (uintptr_t)unitAddress + (uintptr_t)size);
+        const uintptr_t p_size = size;
+        LOG_COMMON(DEBUG) << std::hex << "set [" << unitAddress;
+        LOG_COMMON(DEBUG) << std::hex << ", " << (uintptr_t)unitAddress + p_size << ") unaddressable\n";
     }
 
     BaseObject* GetFirstObject() const { return reinterpret_cast<BaseObject*>(GetRegionStart()); }
@@ -1159,8 +1160,10 @@ private:
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
 
         ASAN_UNPOISON_MEMORY_REGION(metadata.allocPtr, nUnit * RegionDesc::UNIT_SIZE);
-        DLOG(REGION, "set [%lX, %lX) addressable\n", (uintptr_t)(metadata.allocPtr), (uintptr_t)(metadata.allocPtr) + (uintptr_t)(nUnit * RegionDesc::UNIT_SIZE));
-        printf("set [%lX, %lX) addressable\n", (uintptr_t)(metadata.allocPtr), (uintptr_t)(metadata.allocPtr) + (uintptr_t)(nUnit * RegionDesc::UNIT_SIZE));
+        uintptr_t p_addr = metadata.allocPtr;
+        uintptr_t p_size = nUnit * RegionDesc::UNIT_SIZE;
+        LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
+        LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
     }
 
     void InitRegion(size_t nUnit, UnitRole uClass)
