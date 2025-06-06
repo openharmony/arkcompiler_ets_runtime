@@ -69,15 +69,16 @@ std::string GetObjectInfo(const BaseObject* obj)
     constexpr size_t defaultInfoLength = 64;
 
     std::ostringstream s;
-    s << std::hex << std::endl << "[object address: 0x" << obj << "]" << std::endl;
+    s << std::hex << std::endl << ">>> address: 0x" << obj << std::endl;
 
+    s << "> Raw memory:" << std::endl;
     if (obj == nullptr) {
-        s << "Skip: nullptr" << std::endl;
+        s << "Skip: nullptr(Ref of nullptr might be a root, or Ref is iterated in region)" << std::endl;
     } else {
-        s << std::hex << HexDump((void*) obj, defaultInfoLength) << std::endl;
+        s << std::hex << HexDump((void*) obj, defaultInfoLength);
     }
 
-    s << "[Region Info]" << std::endl;
+    s << "> Region Info:" << std::endl;
     if (!Heap::IsHeapAddress(obj)) {
         s << "Skip: Object is not in heap range" << std::endl;
     } else {
@@ -88,9 +89,22 @@ std::string GetObjectInfo(const BaseObject* obj)
           << "AllocPtr: " << region->GetRegionAllocPtr() << ", "
           << "TraceLine: " << region->GetTraceLine() << ", "
           << "CopyLine: " << region->GetCopyLine() << ", "
-          << "FixLine: " << region->GetFixLine();
+          << "FixLine: " << region->GetFixLine() << std::endl;
     }
 
+    return s.str();
+}
+
+std::string GetRefInfo(const RefField<>& ref)
+{
+    std::ostringstream s;
+    s << std::hex << std::endl << ">>> Ref value: 0x" << ref.GetFieldValue() << "]";
+    if (Heap::IsTaggedObject(ref.GetFieldValue())) {
+        s << GetObjectInfo(ref.GetTargetObject()) << std::endl;
+    } else {
+        s << "> Raw memory:" << std::endl
+          << "Skip: primitive" << std::endl;
+    }
     return s.str();
 }
 
@@ -98,6 +112,11 @@ void IsValidRef(const BaseObject* obj, const RefField<>& ref)
 {
     // Maybe we need to check ref later
     // ...
+
+    CHECKF(Heap::IsTaggedObject(ref.GetFieldValue()))
+        << CONTEXT
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
 
     // check referenee
     auto refObj = ref.GetTargetObject();
@@ -110,27 +129,27 @@ void IsValidRef(const BaseObject* obj, const RefField<>& ref)
     auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(refObj));
     CHECKF(region->GetRegionType() != RegionDesc::RegionType::GARBAGE_REGION)
         << CONTEXT
-        << "From object: " << GetObjectInfo(obj) << std::endl
-        << "Current object: " << GetObjectInfo(refObj) << std::endl;
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
     CHECKF(region->GetRegionType() != RegionDesc::RegionType::FREE_REGION)
         << CONTEXT
-        << "From object: " << GetObjectInfo(obj) << std::endl
-        << "Current object: " << GetObjectInfo(refObj) << std::endl;
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
 
     CHECKF(!refObj->IsForwarding() && !refObj->IsForwarded())
         << CONTEXT
-        << "From object: " << GetObjectInfo(obj) << std::endl
-        << "Current object: " << GetObjectInfo(refObj) << std::endl;
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
 
     CHECKF(refObj->IsValidObject() != 0)
         << CONTEXT
-        << "From object: " << GetObjectInfo(obj) << std::endl
-        << "Current object: " << GetObjectInfo(refObj) << std::endl;
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
 
     CHECKF(refObj->GetSize() != 0)
         << CONTEXT
-        << "From object: " << GetObjectInfo(obj) << std::endl
-        << "Current object: " << GetObjectInfo(refObj) << std::endl;
+        << "Object: " << GetObjectInfo(obj) << std::endl
+        << "Ref: " << GetRefInfo(ref) << std::endl;
 }
 
 class VerifyVisitor {
@@ -150,14 +169,15 @@ class AfterMarkVisitor : public VerifyVisitor {
 public:
     void VerifyRef(const BaseObject* obj, const RefField<>& ref) override
     {
+        IsValidRef(obj, ref);
+
         // check retraced objects, so they must be in one of the states below
         auto refObj = ref.GetTargetObject();
         CHECKF(RegionSpace::IsResurrectedObject(refObj) || RegionSpace::IsMarkedObject(refObj) ||
                RegionSpace::IsNewObjectSinceTrace(refObj))
             << CONTEXT
-            << "More info: " << GetObjectInfo(refObj);
-
-        IsValidRef(obj, ref);
+            << "Object: " << GetObjectInfo(obj) << std::endl
+            << "Ref: " << GetRefInfo(ref) << std::endl;
     }
 };
 
@@ -170,7 +190,8 @@ public:
         if (RegionSpace::IsMarkedObject(refObj) || RegionSpace::IsResurrectedObject(refObj)) {
             CHECKF(refObj->IsForwarded())
                 << CONTEXT
-                << "More info: " << GetObjectInfo(refObj);
+                << "Object: " << GetObjectInfo(obj) << std::endl
+                << "Ref: " << GetRefInfo(ref) << std::endl;
 
             auto toObj = refObj->GetForwardingPointer();
             IsValidRef(obj, RefField<>(toObj));
@@ -182,13 +203,13 @@ class AfterFixVisitor : public VerifyVisitor {
 public:
     void VerifyRef(const BaseObject* obj, const RefField<>& ref) override
     {
+        IsValidRef(obj, ref);
+
         auto refRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(ref.GetTargetObject()));
         CHECKF(refRegion->GetRegionType() != RegionDesc::RegionType::FROM_REGION)
             << CONTEXT
-            << "From object: " << GetObjectInfo(obj) << std::endl
-            << "Current object: " << GetObjectInfo(ref.GetTargetObject()) << std::endl;
-
-        IsValidRef(obj, ref);
+            << "Object: " << GetObjectInfo(obj) << std::endl
+            << "Ref: " << GetRefInfo(ref) << std::endl;
     }
 };
 
@@ -273,6 +294,10 @@ public:
         BaseObject* obj = nullptr;
 
         auto markFunc = [this, &visitor, &markStack, &markSet, &obj, &forRBDFX](RefField<>& field) {
+            if (!Heap::IsTaggedObject(reinterpret_cast<MAddress>(field.GetFieldValue()))) {
+                return;
+            }
+
             visitor.VerifyRef(obj, field);
             count_++;
 
@@ -337,7 +362,7 @@ void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
 
 void WVerify::VerifyAfterMark(WCollector& collector)
 {
-#if !defined(ENABLE_CMC_VERIFY)
+#if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
@@ -363,7 +388,7 @@ void WVerify::VerifyAfterForwardInternal(RegionSpace& space)
 
 void WVerify::VerifyAfterForward(WCollector& collector)
 {
-#if !defined(ENABLE_CMC_VERIFY)
+#if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
@@ -389,7 +414,7 @@ void WVerify::VerifyAfterFixInternal(RegionSpace& space)
 
 void WVerify::VerifyAfterFix(WCollector& collector)
 {
-#if !defined(ENABLE_CMC_VERIFY)
+#if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
