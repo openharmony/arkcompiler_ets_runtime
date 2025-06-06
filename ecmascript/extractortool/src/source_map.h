@@ -76,7 +76,7 @@ public:
 
 private:
     void SplitSourceMap(const std::string& sourceMapData);
-    void ExtractSourceMapData(const std::string& sourceMapData, std::shared_ptr<SourceMapData>& curMapData);
+    void ExtractSourceMapData(const std::string& allmappings, std::shared_ptr<SourceMapData>& curMapData);
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
     bool VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans);
