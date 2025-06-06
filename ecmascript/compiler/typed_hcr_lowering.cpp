@@ -613,8 +613,8 @@ GateRef TypedHCRLowering::BuildCompareHClass(GateRef glue, GateRef gate, GateRef
     }
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
-    ArgumentAccessor argAcc(circuit_);
-    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
+    GateRef unsharedConstPool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
     return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
@@ -629,8 +629,8 @@ void TypedHCRLowering::LowerSimpleHClassCheck(GateRef glue, GateRef gate)
         builder_.HeapObjectCheck(receiver, frameState);
     }
     DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
-    ArgumentAccessor argAcc(circuit_);
-    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
+    GateRef unsharedConstPool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
     std::vector<Label> ifFalse;
     Label resultIsTrue(&builder_);
@@ -1646,9 +1646,9 @@ void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     Label checkAlreadyDeopt(&builder_);
     Label exit(&builder_);
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     GateRef frameState = GetFrameState(gate);
-    GateRef sharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef sharedConstPool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(func, frameState);
@@ -1666,9 +1666,9 @@ void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate, GateRef glue
     Environment env(gate, circuit_, &builder_);
     Label checkAlreadyDeopt(&builder_);
     Label exit(&builder_);
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     GateRef frameState = GetFrameState(gate);
-    GateRef sharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef sharedConstPool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(func, frameState);
@@ -1821,7 +1821,7 @@ void TypedHCRLowering::LowerInlineSuperCtorCheck(GateRef gate, GateRef glue)
 void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     GateRef ctor = acc_.GetValueIn(gate, 0); // 0: 1st argument
     GateRef ihclass = acc_.GetValueIn(gate, 1); // 1: 2nd argument
     GateRef size = acc_.GetValueIn(gate, 2); // 2: 3rd argument

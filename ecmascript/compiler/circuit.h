@@ -35,6 +35,7 @@
 
 namespace panda::ecmascript::kungfu {
 class DebugInfo;
+class ArgumentAccessor;
 enum class VisitState : uint8_t {
     UNVISITED,
     PENDING,
@@ -49,6 +50,7 @@ public:
     NO_COPY_SEMANTIC(Circuit);
     NO_MOVE_SEMANTIC(Circuit);
 
+    ArgumentAccessor *GetArgumentAccessor();
     GateRef NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList, const char* comment = nullptr);
     GateRef NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment = nullptr);
     GateRef NewGate(const GateMetaData *meta, MachineType machineType,
@@ -106,6 +108,13 @@ public:
     GateRef GetDependRoot() const;
     GateRef GetArgRoot() const;
     GateRef GetReturnRoot() const;
+    enum class ArgAccCond: uint8_t {
+        UNSTART, // argAcc_ not initialized
+        START, // argAcc_ initialized
+        CHANGED, // circuit changed after argAcc_ initialized
+    };
+    // Check circuit is not changed while using argAcc_
+    ArgAccCond checkArgAcc_ = ArgAccCond::UNSTART;
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
     const GateMetaData* NAME()                  \
@@ -340,6 +349,7 @@ private:
     GateMetaBuilder metaBuilder_;
     ChunkMap<GateRef, size_t> gateToDInfo_;
     DebugInfo* debugInfo_ {nullptr};
+    std::unique_ptr<ArgumentAccessor> argAcc_;
 #ifndef NDEBUG
     ChunkVector<GateRef> allGates_;
     std::string_view currentComment_ {};

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
@@ -55,6 +56,10 @@ void Circuit::InitRoot()
     NewGate(metaBuilder_.DependEntry(), MachineType::NOVALUE, { root_ }, GateType::Empty());
     NewGate(metaBuilder_.ReturnList(), MachineType::NOVALUE, { root_ }, GateType::Empty());
     NewGate(metaBuilder_.ArgList(), MachineType::NOVALUE, { root_ }, GateType::Empty());
+    // update flag to record circuit changed after argacc_ initialized
+    if (checkArgAcc_ == ArgAccCond::START) {
+        checkArgAcc_ = ArgAccCond::CHANGED;
+    }
 }
 
 uint8_t *Circuit::AllocateSpace(size_t gateSize)
@@ -575,5 +580,19 @@ GateRef Circuit::GetReturnRoot() const
 {
     const GateAccessor acc(const_cast<Circuit*>(this));
     return acc.GetReturnRoot();
+}
+// Use GetArgumentAccessor in pass after inline when need to use argacc,
+// instead of creating new directly by circuit
+ArgumentAccessor *Circuit::GetArgumentAccessor()
+{
+    // Assert circuit keeps unchanged after argAcc_ initialized, otherwise argacc need to be updated by changed circuit
+    if (checkArgAcc_ == ArgAccCond::CHANGED) {
+        LOG_FULL(FATAL) << "circuit changed after argacc_ initialized";
+    }
+    if (!argAcc_) {
+        checkArgAcc_ = ArgAccCond::START; // argAcc_ initialized
+        argAcc_ = std::make_unique<ArgumentAccessor>(this);
+    }
+    return argAcc_.get();
 }
 }  // namespace panda::ecmascript::kungfu

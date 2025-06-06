@@ -35,7 +35,7 @@ public:
           methodName_(name),
           recordName_(recordName),
           glue_(acc_.GetGlueFromArgList()),
-          argAcc_(circuit),
+          argAcc_(circuit->GetArgumentAccessor()),
           compilationEnv_(ctx->GetCompilationEnv()) {}
 
     ~NTypeBytecodeLowering() = default;
@@ -107,7 +107,7 @@ private:
     std::string methodName_;
     const CString recordName_;
     GateRef glue_ {Circuit::NullGate()};
-    ArgumentAccessor argAcc_;
+    ArgumentAccessor *argAcc_;
     const CompilationEnv *compilationEnv_ {nullptr};
 };
 }  // panda::ecmascript::kungfu

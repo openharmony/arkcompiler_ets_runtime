@@ -25,8 +25,9 @@ class PGOTypeInfer {
 public:
     PGOTypeInfer(Circuit *circuit, BytecodeCircuitBuilder *builder, const std::string &name,
                  Chunk *chunk, bool enableLog)
-        : circuit_(circuit), acc_(circuit), argAcc_(circuit), builder_(builder), methodName_(name),
+        : circuit_(circuit), acc_(circuit), builder_(builder), methodName_(name),
           enableLog_(enableLog), profiler_(chunk) {}
+
     ~PGOTypeInfer() = default;
 
     void Run();
@@ -78,7 +79,6 @@ private:
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
-    ArgumentAccessor argAcc_;
     BytecodeCircuitBuilder *builder_ {nullptr};
     const std::string &methodName_;
     bool enableLog_ {false};

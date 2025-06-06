@@ -117,7 +117,7 @@ public:
                      bool enableLog, const std::string& name, const CString &recordName)
         : compilationEnv_(ctx->GetCompilationEnv()), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
-          argAcc_(circuit), builder_(circuit, cmpCfg),
+          argAcc_(circuit->GetArgumentAccessor()), builder_(circuit, cmpCfg),
           enableLog_(enableLog), methodName_(name), recordName_(recordName), glue_(acc_.GetGlueFromArgList())
     {
         traceBc_ = cmpCfg->IsTraceBC();
@@ -359,7 +359,7 @@ private:
     const MethodLiteral *methodLiteral_ {nullptr};
     Circuit *circuit_;
     GateAccessor acc_;
-    ArgumentAccessor argAcc_;
+    ArgumentAccessor *argAcc_;
     CircuitBuilder builder_;
     bool enableLog_ {false};
     bool traceBc_ {false};

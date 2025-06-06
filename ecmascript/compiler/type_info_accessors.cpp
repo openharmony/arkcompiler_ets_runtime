@@ -297,7 +297,7 @@ SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const CompilationEnv *env, 
                                                      const CallMethodFlagMap *callMethodFlagMap)
     : TypeInfoAccessor(env, circuit, gate), jsPandaFile_(jsPandaFile), callMethodFlagMap_(callMethodFlagMap)
 {
-    ctor_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    ctor_ = circuit->GetArgumentAccessor()->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
 }
 
 GetIteratorTypeInfoAccessor::GetIteratorTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
@@ -954,7 +954,7 @@ StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const Compilation
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
             key_ = acc_.GetValueIn(gate, 1); // 1: key
-            receiver_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
+            receiver_ = circuit->GetArgumentAccessor()->GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
             value_ = acc_.GetValueIn(gate, 2); // 2: value
             break;
         }
@@ -1241,7 +1241,7 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const Compilation
         }
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
         case EcmaOpcode::LDTHISBYVALUE_IMM16: {
-            receiver_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
+            receiver_ = circuit->GetArgumentAccessor()->GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
             key_ = acc_.GetValueIn(gate, 1); // 1: key
             break;
         }
@@ -1254,7 +1254,7 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const Compilation
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
             key_ = acc_.GetValueIn(gate, 1); // 1: key
-            receiver_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
+            receiver_ = circuit->GetArgumentAccessor()->GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
             break;
         }
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
