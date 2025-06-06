@@ -200,6 +200,8 @@ void BaseRuntime::RequestGC(GcType type)
     }
 }
 
+void BaseRuntime::WaitForGCFinish() { Heap::GetHeap().WaitForGCFinish(); }
+
 bool BaseRuntime::ForEachObj(HeapVisitor& visitor, bool safe)
 {
     return panda::Heap::GetHeap().ForEachObject(visitor, safe);

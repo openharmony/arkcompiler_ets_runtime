@@ -1887,6 +1887,9 @@ GateRef TypedHCRLowering::GetValueFromSupers(GateRef supers, size_t index)
 GateRef TypedHCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver,
     AccessorMode mode, GateRef value)
 {
+#ifdef USE_READ_BARRIER
+    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, function}, glue);
+#endif
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
     GateRef newTarget = builder_.Undefined();

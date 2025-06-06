@@ -21,6 +21,7 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/base/gc_helper.h"
 
 namespace panda::ecmascript {
 
@@ -534,6 +535,9 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
         JSTaggedValue acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
+#ifdef USE_READ_BARRIER
+        base::GCHelper::CopyCallTarget(callTarget.GetTaggedObject());
+#endif
         statePtr->function = callTarget;
         statePtr->acc = acc;
 

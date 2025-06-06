@@ -29,22 +29,31 @@ public:
             return;
         }
         Barriers::UpdateSlot(callTargetToRef, TaggedObject::HCLASS_OFFSET);
-        if (JSTaggedValue(reinterpret_cast<TaggedObject *>(callTargetToRef)).IsJSProxy()) {
-            TaggedObject *methodToRef = reinterpret_cast<TaggedObject *>(
-                Barriers::UpdateSlot(callTargetToRef, JSProxy::METHOD_OFFSET));
+        if (JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsJSProxy()) {
+            // JSProxy
+            TaggedObject* methodToRef =
+                reinterpret_cast<TaggedObject*>(Barriers::UpdateSlot(callTargetToRef, JSProxy::METHOD_OFFSET));
             Barriers::UpdateSlot(methodToRef, Method::CONSTANT_POOL_OFFSET);
-        } else if (JSTaggedValue(reinterpret_cast<TaggedObject *>(callTargetToRef)).IsJSFunctionBase()) {
-            TaggedObject *methodToRef = reinterpret_cast<TaggedObject *>(
-                Barriers::UpdateSlot(callTargetToRef, JSFunctionBase::METHOD_OFFSET));
+        } else if (JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsJSFunctionBase()) {
+            // JSFunctionBase
+            TaggedObject* methodToRef =
+                reinterpret_cast<TaggedObject*>(Barriers::UpdateSlot(callTargetToRef, JSFunctionBase::METHOD_OFFSET));
             Barriers::UpdateSlot(methodToRef, Method::CONSTANT_POOL_OFFSET);
-            if (JSTaggedValue(reinterpret_cast<TaggedObject *>(callTargetToRef)).IsJSFunction()) {
-                TaggedObject *profileTypeInfoToRef = reinterpret_cast<TaggedObject *>(
+            // JSFunction : FunctionBase
+            if (JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsJSFunction()) {
+                TaggedObject* profileTypeInfoToRef = reinterpret_cast<TaggedObject*>(
                     Barriers::UpdateSlot(callTargetToRef, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
                 Barriers::UpdateSlot(profileTypeInfoToRef, ProfileTypeInfoCell::VALUE_OFFSET);
                 Barriers::UpdateSlot(callTargetToRef, JSFunction::LEXICAL_ENV_OFFSET);
             }
+            // BoundFunction : FunctionBase
+            if (JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsBoundFunction()) {
+                Barriers::UpdateSlot(callTargetToRef, JSBoundFunction::BOUND_ARGUMENTS_OFFSET);
+                Barriers::UpdateSlot(callTargetToRef, JSBoundFunction::BOUND_TARGET_OFFSET);
+                Barriers::UpdateSlot(callTargetToRef, JSBoundFunction::BOUND_THIS_OFFSET);
+            }
         } else {
-            ASSERT(!JSTaggedValue(reinterpret_cast<TaggedObject *>(callTargetToRef)).IsCallable());
+            ASSERT(!JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsCallable());
         }
     }
 

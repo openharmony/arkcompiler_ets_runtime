@@ -39,7 +39,29 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
 
 static int MachineCodeCopyToCache([[maybe_unused]] const MachineCodeDesc &desc, [[maybe_unused]] uint8_t *pText)
 {
-#ifndef JIT_ENABLE_CODE_SIGN
+#ifdef JIT_ENABLE_CODE_SIGN
+    if ((uintptr_t)desc.codeSigner == 0) {
+        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
+            return false;
+        }
+    } else {
+        LOG_JIT(DEBUG) << "Copy: " << std::hex << (uintptr_t)pText << " <- " << std::hex << (uintptr_t)desc.codeAddr
+                       << " size: " << desc.codeSize;
+        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
+        OHOS::Security::CodeSign::JitCodeSigner* signer =
+            reinterpret_cast<OHOS::Security::CodeSign::JitCodeSigner*>(desc.codeSigner);
+        int err = OHOS::Security::CodeSign::CopyToJitCode(signer, pText, reinterpret_cast<void*>(desc.codeAddr),
+                                                          desc.codeSize);
+        if (err != EOK) {
+            LOG_JIT(ERROR) << "     CopyToJitCode failed, err: " << err;
+            return false;
+        } else {
+            LOG_JIT(DEBUG) << "     CopyToJitCode success!!";
+        }
+        delete reinterpret_cast<OHOS::Security::CodeSign::JitCodeSigner*>(desc.codeSigner);
+    }
+#else
     if (memcpy_s(pText, desc.codeSizeAlign, // LCOV_EXCL_BR_LINE
         reinterpret_cast<uint8_t*>(desc.codeAddr),
         desc.codeSize) != EOK) {
@@ -117,11 +139,18 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
     return true;
 }
 
-bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo)
+bool MachineCode::SetData(const MachineCodeDesc& desc, JSHandle<Method>& method, size_t dataSize, RelocMap& relocInfo,
+                          JSThread* thread)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
         return SetBaselineCodeData(desc, method, dataSize, relocInfo);
+    }
+
+    if (desc.isHugeObj) {
+        SetLocalHeapAddress(0);
+    } else {
+        SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
     }
 
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
@@ -285,6 +314,14 @@ uint8_t *MachineCode::GetHeapConstantTableAddress() const
 
 void MachineCode::ProcessMarkObject()
 {
+#ifdef USE_CMC_GC
+    Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
+    // Skip HugeMachinecode or VM that is already destoryed
+    // We should implement a proper wait for VM destructor
+    if (heap && heap->GetMachineCodeSpace()) {
+        heap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
+    }
+#else
     Region *region = Region::ObjectAddressToRange(this);
     Heap *localHeap = reinterpret_cast<Heap *>(region->GetLocalHeap());
     if (!localHeap) {
@@ -295,6 +332,7 @@ void MachineCode::ProcessMarkObject()
     if (localHeap->GetMachineCodeSpace()) {
         localHeap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
     }
+#endif
 }
 
 }  // namespace panda::ecmascript

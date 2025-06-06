@@ -219,12 +219,21 @@ ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv
     const Heap *heap = hostThread->GetEcmaVM()->GetHeap();
 
     if (desc.isHugeObj) {
+#ifdef USE_CMC_GC
+        void* machineCodeObj = heap->GetHugeMachineCodeSpace()->AllocateFort(
+            size + MachineCode::SIZE, hostThread, &desc);
+        if (!machineCodeObj || !desc.instructionsAddr) {
+            return false;
+        }
+        desc.hugeObjRegion = ToUintPtr(machineCodeObj);
+#else
         Region *region = heap->GetHugeMachineCodeSpace()->AllocateFort(
             size + MachineCode::SIZE, hostThread, &desc);
         if (!region || !desc.instructionsAddr) {
             return false;
         }
         desc.hugeObjRegion = ToUintPtr(region);
+#endif
     } else {
         uintptr_t mem = heap->GetMachineCodeSpace()->JitFortAllocate(&desc);
         if (mem == ToUintPtr(nullptr)) {

@@ -201,7 +201,8 @@ public:
     static constexpr size_t INS_SIZE_OFFSET = TaggedObjectSize();
     static constexpr size_t INT32_SIZE = sizeof(int32_t);
     static constexpr int CalleeReg2OffsetArraySize = 2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM;
-    ACCESSORS_PRIMITIVE_FIELD(OSROffset, int32_t, INS_SIZE_OFFSET, OSRMASK_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(LocalHeapAddress, uint64_t, INS_SIZE_OFFSET, LOCAL_HEAP_ADDRESS_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(OSROffset, int32_t, LOCAL_HEAP_ADDRESS_OFFSET, OSRMASK_OFFSET);
     // The high 16bit is used as the flag bit, and the low 16bit is used as the count of OSR execution times.
     ACCESSORS_PRIMITIVE_FIELD(OsrMask, uint32_t, OSRMASK_OFFSET, PAYLOADSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, INSTRSIZ_OFFSET);
@@ -261,7 +262,8 @@ public:
         return GetInstructionsSize();
     }
 
-    bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo);
+    bool SetData(const MachineCodeDesc& desc, JSHandle<Method>& method, size_t dataSize, RelocMap& relocInfo,
+                 JSThread* thread);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 

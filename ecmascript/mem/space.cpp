@@ -18,6 +18,9 @@
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/platform/os.h"
+#ifdef USE_CMC_GC
+#include "common_interfaces/heap/heap_allocator.h"
+#endif
 
 namespace panda::ecmascript {
 Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
@@ -105,6 +108,9 @@ HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heap
 
 uintptr_t HugeMachineCodeSpace::GetMachineCodeObject(uintptr_t pc) const
 {
+#ifdef USE_CMC_GC
+    assert(false);
+#endif
     uintptr_t machineCode = 0;
     EnumerateRegions([&](Region *region) {
         if (machineCode != 0) {
@@ -122,6 +128,35 @@ uintptr_t HugeMachineCodeSpace::GetMachineCodeObject(uintptr_t pc) const
     return machineCode;
 }
 
+#ifdef USE_CMC_GC
+void* HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, void *pDesc)
+{
+    ASSERT(thread != nullptr);
+    ASSERT(pDesc != nullptr);
+    MachineCodeDesc *desc = reinterpret_cast<MachineCodeDesc *>(pDesc);
+
+    size_t mutableSize = AlignUp(objectSize - desc->instructionsSize, PageSize());
+    size_t fortSize = AlignUp(desc->instructionsSize, PageSize());
+    size_t allocSize = mutableSize + fortSize;
+    uintptr_t machineCodeObj =
+        reinterpret_cast<uintptr_t>(HeapAllocator::AllocateLargeJitFortRegion(allocSize, LanguageType::DYNAMIC));
+    assert(machineCodeObj != 0);
+    if (heap_->OldSpaceExceedCapacity(fortSize)) {
+        LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
+        return 0;
+    }
+
+    desc->instructionsAddr = machineCodeObj + mutableSize;
+
+    // Enable JitFort rights control
+    [[maybe_unused]] void *addr = PageMapExecFortSpace((void *)desc->instructionsAddr, fortSize,
+        PageProtectProt(reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetDisableCodeSign() ||
+            !JitFort::IsResourceAvailable()));
+
+    ASSERT(addr == (void *)desc->instructionsAddr);
+    return (void*)machineCodeObj;
+}
+#else
 Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, void *pDesc)
 {
     // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
@@ -160,8 +195,38 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
     ASSERT(addr == (void *)desc->instructionsAddr);
     return region;
 }
+#endif
 
-
+#ifdef USE_CMC_GC
+uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, void *pDesc,
+    AllocateEventType allocType)
+{
+    ASSERT(thread != nullptr);
+    ASSERT(pDesc != nullptr);
+    // JitFort path
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    if (allocType == AllocateEventType::NORMAL) {
+        thread->CheckSafepointIfSuspended();
+    }
+    void *machineCodeObj;
+    if (reinterpret_cast<Heap*>(heap_)->GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() &&
+        reinterpret_cast<MachineCodeDesc*>(pDesc)->isAsyncCompileMode) {
+        machineCodeObj = reinterpret_cast<void*>(reinterpret_cast<MachineCodeDesc*>(pDesc)->hugeObjRegion);
+    } else {
+        machineCodeObj = AllocateFort(objectSize, thread, pDesc);
+    }
+    if (UNLIKELY(machineCodeObj == nullptr)) { // LCOV_EXCL_BR_LINE
+        LOG_GC(ERROR) << "HugeMachineCodeSpace::Allocate: region is nullptr";
+        return 0;
+    }
+    return reinterpret_cast<uintptr_t>(machineCodeObj);
+}
+#else
 uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, void *pDesc,
     AllocateEventType allocType)
 {
@@ -196,9 +261,13 @@ uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, vo
 #endif
     return region->GetBegin();
 }
+#endif
 
 uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread)
 {
+#ifdef USE_CMC_GC
+    assert(false);
+#endif
     // non JitFort path
     return HugeObjectSpace::Allocate(objectSize, thread);
 }
