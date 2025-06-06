@@ -19,8 +19,8 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace panda::os {
+namespace common::os {
 int PrctlSetVMA(const void *p, const size_t size, const char *tag);
-} // namespace panda
+} // namespace common::os
 
 #endif // COMMON_COMPONENTS_PLATFORM_OS_H

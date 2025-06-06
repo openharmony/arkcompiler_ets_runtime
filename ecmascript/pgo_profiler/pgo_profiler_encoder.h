@@ -64,12 +64,12 @@ private:
     friend SaveTask;
 };
 
-class SaveTask : public Task {
+class SaveTask : public common::Task {
 public:
     explicit SaveTask(const std::shared_ptr<PGOProfilerEncoder> encoder,
                       const std::shared_ptr<PGOInfo> pgoInfo,
                       int32_t id)
-        : Task(id), encoder_(encoder), pgoInfo_(pgoInfo) {};
+        : common::Task(id), encoder_(encoder), pgoInfo_(pgoInfo) {};
     virtual ~SaveTask() override = default;
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
@@ -79,9 +79,9 @@ public:
         return true;
     }
 
-    TaskType GetTaskType() const override
+    common::TaskType GetTaskType() const override
     {
-        return TaskType::PGO_SAVE_TASK;
+        return common::TaskType::PGO_SAVE_TASK;
     }
 
     NO_COPY_SEMANTIC(SaveTask);

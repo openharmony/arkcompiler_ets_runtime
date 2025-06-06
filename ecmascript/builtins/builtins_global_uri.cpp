@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_global_uri.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -25,8 +25,8 @@ using StringHelper = base::StringHelper;
 #if ENABLE_NEXT_OPTIMIZATION
 void BuiltinsGlobal::AppendPercentEncodedByte(std::u16string &sStr, uint8_t byte, uint8_t &len)
 {
-    sStr[++len] = base::utf_helper::GetHexChar16((byte >> 4) & BIT_MASK); // 4: high 4 bits
-    sStr[++len] = base::utf_helper::GetHexChar16(byte & BIT_MASK);        // low 4 bits
+    sStr[++len] = common::utf_helper::GetHexChar16((byte >> 4) & BIT_MASK); // 4: high 4 bits
+    sStr[++len] = common::utf_helper::GetHexChar16(byte & BIT_MASK);        // low 4 bits
     ++len;
 }
 
@@ -101,7 +101,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
         } else {
             // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
             //    throw a URIError exception.
-            if (cc >= base::utf_helper::DECODE_TRAIL_LOW && cc <= base::utf_helper::DECODE_TRAIL_HIGH) {
+            if (cc >= common::utf_helper::DECODE_TRAIL_LOW && cc <= common::utf_helper::DECODE_TRAIL_HIGH) {
                 JSTaggedValue strVal = isTreeString ? string.GetTaggedValue() : str.GetTaggedValue();
                 errorMsg = "DecodeURI: invalid character: " + ConvertToString(strVal);
                 THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
@@ -116,7 +116,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             //    4. If kChar is less than 0xDC00 or greater than 0xDFFF, throw a URIError exception.
             //    5. Let V be UTF16Decode(C, kChar).
             uint32_t vv;
-            if (cc < base::utf_helper::DECODE_LEAD_LOW || cc > base::utf_helper::DECODE_LEAD_HIGH) {
+            if (cc < common::utf_helper::DECODE_LEAD_LOW || cc > common::utf_helper::DECODE_LEAD_HIGH) {
                 vv = cc;
             } else {
                 k++;
@@ -126,12 +126,12 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 uint16_t kc = stringAcc.Get(k);
-                if (kc < base::utf_helper::DECODE_TRAIL_LOW || kc > base::utf_helper::DECODE_TRAIL_HIGH) {
+                if (kc < common::utf_helper::DECODE_TRAIL_LOW || kc > common::utf_helper::DECODE_TRAIL_HIGH) {
                     JSTaggedValue strVal = isTreeString ? string.GetTaggedValue() : str.GetTaggedValue();
                     errorMsg = "DecodeURI: invalid character: " + ConvertToString(strVal);
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
-                vv = base::utf_helper::UTF16Decode(cc, kc);
+                vv = common::utf_helper::UTF16Decode(cc, kc);
             }
 
             // iv. Encode V and append it to resStr
@@ -263,11 +263,11 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
     }
     uint16_t frontChar = GetCodeUnit<T>(sp, k + 1, strLen);
     uint16_t behindChar = GetCodeUnit<T>(sp, k + 2, strLen);  // 2: means plus 2
-    if (!(base::utf_helper::IsHexDigits(frontChar) && base::utf_helper::IsHexDigits(behindChar))) {
+    if (!(common::utf_helper::IsHexDigits(frontChar) && common::utf_helper::IsHexDigits(behindChar))) {
         errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
-    uint8_t bb = base::utf_helper::GetValueFromTwoHex(frontChar, behindChar);
+    uint8_t bb = common::utf_helper::GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
     if ((bb & BIT_MASK_ONE) == 0) {
         HandleSingleByteCharacter(thread, bb, str, start, k, resStr, IsInURISet);
@@ -341,11 +341,11 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, int32_t &n
         }
         uint16_t frontChart = GetCodeUnit<T>(sp, k + 1, strLen);
         uint16_t behindChart = GetCodeUnit<T>(sp, k + 2, strLen);  // 2: means plus 2
-        if (!(base::utf_helper::IsHexDigits(frontChart) && base::utf_helper::IsHexDigits(behindChart))) {
+        if (!(common::utf_helper::IsHexDigits(frontChart) && common::utf_helper::IsHexDigits(behindChart))) {
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
-        bb = base::utf_helper::GetValueFromTwoHex(frontChart, behindChart);
+        bb = common::utf_helper::GetValueFromTwoHex(frontChart, behindChart);
         // e. If the two most significant bits in B are not 10, throw a URIError exception.
         if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
@@ -362,12 +362,12 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                                                    const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
                                                    uint32_t &start, int32_t &k, std::u16string &resStr)
 {
-    if (!base::utf_helper::IsValidUTF8(oct)) {
+    if (!common::utf_helper::IsValidUTF8(oct)) {
         CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint32_t vv = StringHelper::Utf8ToU32String(oct);
-    if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
+    if (vv < common::utf_helper::DECODE_SECOND_FACTOR) {
         if (!IsInURISet(vv)) {
             resStr.append(StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1));
         } else {
@@ -377,10 +377,10 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                 EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION)));
         }
     } else {
-        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
-            base::utf_helper::DECODE_TRAIL_LOW);
-        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
-            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
+            common::utf_helper::DECODE_TRAIL_LOW);
+        uint16_t hv = ((((vv - common::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
+            common::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
             resStr.push_back(static_cast<const char16_t>(hv));
             resStr.push_back(static_cast<const char16_t>(lv));
     }

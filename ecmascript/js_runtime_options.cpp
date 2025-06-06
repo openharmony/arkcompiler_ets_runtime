@@ -1699,9 +1699,9 @@ void JSRuntimeOptions::ParseAsmInterOption()
 JSRuntimeOptions::JSRuntimeOptions()
 {
 #ifdef USE_CMC_GC
-    param_ = BaseRuntimeParam::DefaultRuntimeParam();
+    param_ = common::BaseRuntimeParam::DefaultRuntimeParam();
 #else
-    param_ = RuntimeParam();
+    param_ = common::RuntimeParam();
 #endif
 }
 

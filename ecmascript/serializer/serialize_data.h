@@ -86,6 +86,8 @@ enum class SerializedObjectSpace : uint8_t {
     SHARED_NON_MOVABLE_SPACE,
     SHARED_HUGE_SPACE,
 };
+#else
+using common::SerializedObjectSpace;
 #endif
 
 enum class SerializeType : uint8_t {
@@ -132,7 +134,7 @@ public:
     static size_t AlignUpRegionAvailableSize(size_t size)
     {
 #ifdef USE_CMC_GC
-        size_t regionSize = SerializeUtils::GetRegionSize();
+        size_t regionSize = common::SerializeUtils::GetRegionSize();
         if (size == 0) {
             return regionSize;
         }

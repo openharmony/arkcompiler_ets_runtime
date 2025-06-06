@@ -39,7 +39,7 @@ static JSHandle<JSObject> JSObjectCreate(JSThread *thread)
 
 /**
  * @tc.name: WrapTagged_Test0
- * @tc.desc: Convert PandaType to DynamicType by converter.
+ * @tc.desc: Convert BaseType to DynamicType by converter.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -49,46 +49,46 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test0)
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // 1. Test monostate (empty variant)
     {
-        PandaType value = std::monostate{};
+        BaseType value = std::monostate{};
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsHole());
     }
     // 2. Test boolean types
     {
-        PandaType value = true;
+        BaseType value = true;
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsTrue());
     }
     {
-        PandaType value = false;
+        BaseType value = false;
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsFalse());
     }
     // 3. Test all integer types
     // int8_t
     {
-        PandaType value = static_cast<int8_t>(42);
+        BaseType value = static_cast<int8_t>(42);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsInt());
         EXPECT_EQ(result.GetInt(), 42);
     }
     // uint8_t
     {
-        PandaType value = static_cast<uint8_t>(255);
+        BaseType value = static_cast<uint8_t>(255);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsInt());
         EXPECT_EQ(result.GetInt(), 255);
     }
     // int16_t
     {
-        PandaType value = static_cast<int16_t>(32767);
+        BaseType value = static_cast<int16_t>(32767);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsInt());
         EXPECT_EQ(result.GetInt(), 32767);
     }
     // uint16_t
     {
-        PandaType value = static_cast<uint16_t>(65535);
+        BaseType value = static_cast<uint16_t>(65535);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsInt());
         EXPECT_EQ(result.GetInt(), 65535);
@@ -97,7 +97,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test0)
 
 /**
  * @tc.name: WrapTagged_Test1
- * @tc.desc: Convert PandaType to DynamicType by converter.
+ * @tc.desc: Convert BaseType to DynamicType by converter.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -107,39 +107,39 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test1)
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // int32_t
     {
-        PandaType value = static_cast<int32_t>(2147483647);
+        BaseType value = static_cast<int32_t>(2147483647);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsInt());
         EXPECT_EQ(result.GetInt(), 2147483647);
     }
     // uint32_t (special case)
     {
-        PandaType value = static_cast<uint32_t>(4294967295);
+        BaseType value = static_cast<uint32_t>(4294967295);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsDouble());
     }
     // 4. Test floating point types
     {
-        PandaType value = 3.14f;
+        BaseType value = 3.14f;
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsDouble());
         EXPECT_FLOAT_EQ(result.GetDouble(), 3.14f);
     }
     {
-        PandaType value = 2.71828;
+        BaseType value = 2.71828;
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsDouble());
         EXPECT_DOUBLE_EQ(result.GetDouble(), 2.71828);
     }
     // 5. Test 64-bit integers (converted to double)
     {
-        PandaType value = static_cast<int64_t>(9223372036854775807LL);
+        BaseType value = static_cast<int64_t>(9223372036854775807LL);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsDouble());
         EXPECT_DOUBLE_EQ(result.GetDouble(), 9223372036854775807.0);
     }
     {
-        PandaType value = static_cast<uint64_t>(18446744073709551615ULL);
+        BaseType value = static_cast<uint64_t>(18446744073709551615ULL);
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsDouble());
         EXPECT_DOUBLE_EQ(result.GetDouble(), 18446744073709551615.0);
@@ -148,7 +148,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test1)
 
 /**
  * @tc.name: WrapTagged_Test2
- * @tc.desc: Convert PandaType to DynamicType by converter.
+ * @tc.desc: Convert BaseType to DynamicType by converter.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -158,22 +158,22 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // 6. Test undefined and null
     {
-        PandaType value = BaseUndefined{};
+        BaseType value = common::BaseUndefined{};
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsUndefined());
     }
     {
-        PandaType value = BaseNull{};
+        BaseType value = common::BaseNull{};
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_TRUE(result.IsNull());
     }
     // 7. Test BigInt with new struct definition
     {
-        BaseBigInt bigIntValue;
+        common::BaseBigInt bigIntValue;
         bigIntValue.length = 3;
         bigIntValue.sign = true; // Negative value
         bigIntValue.data = {0x12345678, 0x9ABCDEF0, 0x13579BDF};
-        PandaType value = bigIntValue;
+        BaseType value = bigIntValue;
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
 
         EXPECT_TRUE(result.IsBigInt());
@@ -190,7 +190,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
     // 8. Test object type
     {
         JSHandle<JSObject> obj = JSObjectCreate(thread);
-        PandaType value = static_cast<BaseObject*>(obj.GetTaggedValue().GetTaggedObject());
+        BaseType value = static_cast<BaseObject*>(obj.GetTaggedValue().GetTaggedObject());
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
         EXPECT_EQ(result, obj.GetTaggedValue());
     }
@@ -199,7 +199,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
         uint8_t arrayU8[] = {"xyz123!@#"};
         size_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
         EcmaString *str = EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8[0], lengthEcmaStrU8, true);
-        PandaType value = str->ToBaseString();
+        BaseType value = str->ToBaseString();
         JSTaggedValue result = dynTypeConverter_.WrapTagged(threadHolder, value);
 
         EXPECT_TRUE(result.IsString());
@@ -212,7 +212,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
 
 /**
  * @tc.name: UnWrapTagged0
- * @tc.desc: Convert DynamicType to PandaType by converter.
+ * @tc.desc: Convert DynamicType to BaseType by converter.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -258,7 +258,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test0)
 
 /**
  * @tc.name: UnWrapTagged1
- * @tc.desc: Convert DynamicType to PandaType by converter.
+ * @tc.desc: Convert DynamicType to BaseType by converter.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -269,13 +269,13 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test1)
     {
         JSTaggedValue undefinedValue = JSTaggedValue::Undefined();
         auto result = dynTypeConverter_.UnWrapTagged(undefinedValue);
-        EXPECT_TRUE(std::holds_alternative<BaseUndefined>(result));
+        EXPECT_TRUE(std::holds_alternative<common::BaseUndefined>(result));
     }
     /* Null type tests */
     {
         JSTaggedValue nullValue = JSTaggedValue::Null();
         auto result = dynTypeConverter_.UnWrapTagged(nullValue);
-        EXPECT_TRUE(std::holds_alternative<BaseNull>(result));
+        EXPECT_TRUE(std::holds_alternative<common::BaseNull>(result));
     }
     /* BigInt type tests */
     {
@@ -290,8 +290,8 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test1)
         JSTaggedValue bigIntValue(bigInt);
         auto result = dynTypeConverter_.UnWrapTagged(bigIntValue);
         
-        EXPECT_TRUE(std::holds_alternative<BaseBigInt>(result));
-        const BaseBigInt& baseBigInt = std::get<BaseBigInt>(result);
+        EXPECT_TRUE(std::holds_alternative<common::BaseBigInt>(result));
+        const common::BaseBigInt& baseBigInt = std::get<common::BaseBigInt>(result);
 
         EXPECT_EQ(baseBigInt.length, length);
         EXPECT_EQ(baseBigInt.sign, sign);

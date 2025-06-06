@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
-using namespace panda::ecmascript::base::utf_helper;
+using namespace common::utf_helper;
 
 namespace panda::test {
 class UtfHelperTest : public BaseTestWithScope<false> {
@@ -73,13 +73,13 @@ HWTEST_F_L0(UtfHelperTest, UTF16Decode)
     uint16_t trail = 0xDF21;
     EXPECT_TRUE(lead >= DECODE_LEAD_LOW && lead <= DECODE_LEAD_HIGH);
     EXPECT_TRUE(trail >= DECODE_TRAIL_LOW && trail <= DECODE_TRAIL_HIGH);
-    uint32_t codePoint = utf_helper::UTF16Decode(lead, trail);
+    uint32_t codePoint = common::utf_helper::UTF16Decode(lead, trail);
     EXPECT_EQ(codePoint, 0x64321U);
     lead = 0xD85D;
     trail = 0xDFCC;
     EXPECT_TRUE(lead >= DECODE_LEAD_LOW && lead <= DECODE_LEAD_HIGH);
     EXPECT_TRUE(trail >= DECODE_TRAIL_LOW && trail <= DECODE_TRAIL_HIGH);
-    codePoint = utf_helper::UTF16Decode(lead, trail);
+    codePoint = common::utf_helper::UTF16Decode(lead, trail);
     EXPECT_EQ(codePoint, 0x277CCU);
 }
 
@@ -94,20 +94,20 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     const std::vector<uint8_t> utfDataOneBitVaild1 = {0x00};
     const std::vector<uint8_t> utfDataOneBitVaild2 = {BIT_MASK_1 - 0x01};
     const std::vector<uint8_t> utfDataOneBitInvaild = {BIT_MASK_1};
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataOneBitVaild1));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataOneBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataOneBitInvaild));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataOneBitVaild1));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataOneBitVaild2));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataOneBitInvaild));
     // 110xxxxx 10xxxxxx, min:128, max:2047
     const std::vector<uint8_t> utfDataTwoBitVaild1 = {BIT_MASK_2 + 0x02, BIT_MASK_1};
     const std::vector<uint8_t> utfDataTwoBitVaild2 = {BIT_MASK_3 - 0x01, BIT_MASK_2 - 0x01};
     const std::vector<uint8_t> utfDataTwoBitInvaild1 = {BIT_MASK_2, BIT_MASK_2};
     const std::vector<uint8_t> utfDataTwoBitInvaild2 = {BIT_MASK_3, BIT_MASK_1};
     const std::vector<uint8_t> utfDataTwoBitInvaild3 = {BIT_MASK_2, BIT_MASK_1};
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataTwoBitVaild1));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataTwoBitVaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataTwoBitInvaild3));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataTwoBitVaild1));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataTwoBitVaild2));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataTwoBitInvaild1));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataTwoBitInvaild2));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataTwoBitInvaild3));
     // 1110xxxx 10xxxxxx 10xxxxxx, min:2048, max:65535
     const std::vector<uint8_t> utfDataThreeBitVaild1 = {BIT_MASK_3, BIT_MASK_1 + 0x20, BIT_MASK_1};
     const std::vector<uint8_t> utfDataThreeBitVaild2 = {BIT_MASK_4 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
@@ -117,14 +117,14 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     const std::vector<uint8_t> utfDataThreeBitInvaild3 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataThreeBitInvaild4 = {BIT_MASK_4, BIT_MASK_2, BIT_MASK_2};
     const std::vector<uint8_t> utfDataThreeBitInvaild5 = {BIT_MASK_3, BIT_MASK_1, BIT_MASK_1};
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild1));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild2));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataThreeBitVaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild4));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild5));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataThreeBitVaild1));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataThreeBitVaild2));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataThreeBitVaild3));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataThreeBitInvaild1));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataThreeBitInvaild2));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataThreeBitInvaild3));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataThreeBitInvaild4));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataThreeBitInvaild5));
     // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx, min:65536, max:1114111(0x10FFFF)
     const std::vector<uint8_t> utfDataFourBitVaild1 = {BIT_MASK_4, BIT_MASK_1 + 0x10, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataFourBitVaild3 = {BIT_MASK_4 + 0x01, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
@@ -136,15 +136,15 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     const std::vector<uint8_t> utfDataFourBitInvaild6 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataFourBitInvaild7 =
         {BIT_MASK_5 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild1));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild1));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild2));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild3));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild4));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild5));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild6));
-    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild7));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataFourBitVaild1));
+    EXPECT_TRUE(common::utf_helper::IsValidUTF8(utfDataFourBitVaild3));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild1));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild2));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild3));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild4));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild5));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild6));
+    EXPECT_FALSE(common::utf_helper::IsValidUTF8(utfDataFourBitInvaild7));
 }
 
 /*
@@ -199,15 +199,15 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf16ToUtf8_001)
         uint16_t utf16Data1 = 0x00;
         Utf8Char utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
         Utf8Char utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0xD800 >> 12),
-                            UTF8_3B_SECOND | (static_cast<uint8_t>(0xD800 >> 6) & utf::MASK_6BIT),
-                            UTF8_3B_THIRD | (static_cast<uint8_t>(0xD800) & utf::MASK_6BIT)}};
+                            UTF8_3B_SECOND | (static_cast<uint8_t>(0xD800 >> 6) & MASK_6BIT),
+                            UTF8_3B_THIRD | (static_cast<uint8_t>(0xD800) & MASK_6BIT)}};
         EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
         EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
         utf16Data0 = 0xDFFF;
         utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
         utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0xDFFF >> 12),
-                            UTF8_3B_SECOND | (static_cast<uint8_t>(0xDFFF >> 6) & utf::MASK_6BIT),
-                            UTF8_3B_THIRD | (static_cast<uint8_t>(0xDFFF) & utf::MASK_6BIT)}};
+                            UTF8_3B_SECOND | (static_cast<uint8_t>(0xDFFF >> 6) & MASK_6BIT),
+                            UTF8_3B_THIRD | (static_cast<uint8_t>(0xDFFF) & MASK_6BIT)}};
         EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
         EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
     }
@@ -220,29 +220,29 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf16ToUtf8_002)
     uint16_t utf16Data1 = 0x00;
     Utf8Char utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
     Utf8Char utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0x800 >> 12),
-                                 UTF8_3B_SECOND | (static_cast<uint8_t>(0x800 >> 6) & utf::MASK_6BIT),
-                                 UTF8_3B_THIRD | (static_cast<uint8_t>(0x800) & utf::MASK_6BIT)}};
+                                 UTF8_3B_SECOND | (static_cast<uint8_t>(0x800 >> 6) & MASK_6BIT),
+                                 UTF8_3B_THIRD | (static_cast<uint8_t>(0x800) & MASK_6BIT)}};
     EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
     EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
     utf16Data0 = 0xD7FF;
     utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
     utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0xD7FF>>12),
-                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xD7FF >> 6) & utf::MASK_6BIT),
-                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xD7FF) & utf::MASK_6BIT)}};
+                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xD7FF >> 6) & MASK_6BIT),
+                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xD7FF) & MASK_6BIT)}};
     EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
     EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
     utf16Data0 = 0xE000;
     utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
     utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0xE000 >> 12),
-                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xE000 >> 6)& utf::MASK_6BIT),
-                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xE000) & utf::MASK_6BIT)}};
+                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xE000 >> 6)& MASK_6BIT),
+                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xE000) & MASK_6BIT)}};
     EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
     EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
     utf16Data0 = 0xFFFF;
     utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
     utf8CharTemp = {3, {UTF8_3B_FIRST | static_cast<uint8_t>(0xFFFF >> 12),
-                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xFFFF >> 6)& utf::MASK_6BIT),
-                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xFFFF) & utf::MASK_6BIT)}};
+                        UTF8_3B_SECOND | (static_cast<uint8_t>(0xFFFF >> 6)& MASK_6BIT),
+                        UTF8_3B_THIRD | (static_cast<uint8_t>(0xFFFF) & MASK_6BIT)}};
     EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
     EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
 }
@@ -256,9 +256,9 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf16ToUtf8_003)
         Utf8Char utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
         uint32_t codePoint = CombineTwoU16(utf16Data0, utf16Data1);
         Utf8Char utf8CharTemp = {4, {static_cast<uint8_t>((codePoint >> 18) | UTF8_4B_FIRST),
-                            static_cast<uint8_t>(((codePoint >> 12) & utf::MASK_6BIT) | utf::MASK1),
-                            static_cast<uint8_t>(((codePoint >> 6) & utf::MASK_6BIT) | utf::MASK1),
-                            static_cast<uint8_t>((codePoint & utf::MASK_6BIT) | utf::MASK1)}};
+                            static_cast<uint8_t>(((codePoint >> 12) & MASK_6BIT) | MASK1),
+                            static_cast<uint8_t>(((codePoint >> 6) & MASK_6BIT) | MASK1),
+                            static_cast<uint8_t>((codePoint & MASK_6BIT) | MASK1)}};
         EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
         EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
     }
@@ -270,9 +270,9 @@ HWTEST_F_L0(UtfHelperTest, ConvertUtf16ToUtf8_003)
         Utf8Char utf8Char = ConvertUtf16ToUtf8(utf16Data0, utf16Data1, false);
         uint32_t codePoint = CombineTwoU16(utf16Data0, utf16Data1);
         Utf8Char utf8CharTemp = {4, {static_cast<uint8_t>((codePoint >> 18) | UTF8_4B_FIRST),
-                            static_cast<uint8_t>(((codePoint >> 12)& utf::MASK_6BIT)| utf::MASK1),
-                            static_cast<uint8_t>(((codePoint >> 6)& utf::MASK_6BIT) | utf::MASK1),
-        static_cast<uint8_t>((codePoint & utf::MASK_6BIT) | utf::MASK1)}};
+                            static_cast<uint8_t>(((codePoint >> 12)& MASK_6BIT)| MASK1),
+                            static_cast<uint8_t>(((codePoint >> 6)& MASK_6BIT) | MASK1),
+        static_cast<uint8_t>((codePoint & MASK_6BIT) | MASK1)}};
         EXPECT_EQ(utf8Char.n, utf8CharTemp.n);
         EXPECT_EQ(utf8Char.ch, utf8CharTemp.ch);
         utf8CharTemp = {4, {0xf1, 0xa4, 0x8c, 0xa1}};

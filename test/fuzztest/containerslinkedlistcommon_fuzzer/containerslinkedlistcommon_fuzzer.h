@@ -107,7 +107,7 @@ public:
     static void ContainersLinkedListAddFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -132,7 +132,7 @@ public:
     static void ContainersLinkedListGetFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -162,7 +162,7 @@ public:
     static void ContainersLinkedListGetLastFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -192,7 +192,7 @@ public:
     static void ContainersLinkedListAddFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -222,7 +222,7 @@ public:
     static void ContainersLinkedListClearFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -252,7 +252,7 @@ public:
     static void ContainersLinkedListCloneFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -282,7 +282,7 @@ public:
     static void ContainersLinkedListGetFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -324,7 +324,7 @@ public:
     static void ContainersLinkedListGetIndexOfFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -355,7 +355,7 @@ public:
     static void ContainersLinkedListGetLastIndexOfFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -386,7 +386,7 @@ public:
     static void ContainersLinkedListHasFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -417,7 +417,7 @@ public:
     static void ContainersLinkedListInsertFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -448,7 +448,7 @@ public:
     static void ContainersLinkedListRemoveByIndexFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -489,7 +489,7 @@ public:
     static void ContainersLinkedListRemoveFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -520,7 +520,7 @@ public:
     static void ContainersLinkedListRemoveFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -550,7 +550,7 @@ public:
     static void ContainersLinkedListRemoveLastFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -580,7 +580,7 @@ public:
     static void ContainersLinkedListRemoveFirstFoundFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -611,7 +611,7 @@ public:
     static void ContainersLinkedListRemoveLastFoundFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -642,7 +642,7 @@ public:
     static void ContainersLinkedListSetFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -673,7 +673,7 @@ public:
     static void ContainersLinkedListLengthFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -703,7 +703,7 @@ public:
     static void ContainersLinkedListConvertToArrayFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -733,7 +733,7 @@ public:
     static void ContainersLinkedListForEachFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -770,7 +770,7 @@ public:
     static void ContainersLinkedListGetIteratorObjFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

@@ -57,7 +57,7 @@ void ArkHeapData::DumpHeap()
     if (dumpAfterOOM && !g_oomIsTrigged) {
         g_oomIsTrigged = true;
         specifiedPath = "";
-        auto pid = panda::GetPid();
+        auto pid = GetPid();
         CString dumpFile = CString("ark_OOM_pid") + CString(pid) + CString(".dat");
 #if defined(_WIN64)
         const char* separator = "\\";

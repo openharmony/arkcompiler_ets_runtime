@@ -18,7 +18,7 @@
 #include <malloc.h>
 #include <sysinfoapi.h>
  
-namespace panda {
+namespace common {
 uint32_t NumberOfCpuCore()
 {
     SYSTEM_INFO info;
@@ -34,5 +34,5 @@ size_t PhysicalSize()
     DWORDLONG physSize = status.ullTotalPhys;
     return physSize;
 }
-}  // namespace panda
+}  // namespace common
  

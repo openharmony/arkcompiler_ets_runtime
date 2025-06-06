@@ -26,7 +26,7 @@ namespace OHOS {
 void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     uint32_t length = 3;
     if (data == nullptr || size <= 0) {

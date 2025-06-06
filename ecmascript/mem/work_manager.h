@@ -43,14 +43,14 @@ enum ParallelGCTaskPhase {
     CONCURRENT_HANDLE_GLOBAL_POOL_TASK,
     UNIFIED_HANDLE_GLOBAL_POOL_TASK,
     UNDEFINED_TASK,
-    TASK_LAST  // Count of different Task phase
+    TASK_LAST  // Count of different common::Task phase
 };
 
 enum SharedParallelMarkPhase {
     SHARED_MARK_TASK,
     SHARED_COMPRESS_TASK,
     SHARED_UNDEFINED_TASK,
-    SHARED_TASK_LAST  // Count of different Task phase
+    SHARED_TASK_LAST  // Count of different common::Task phase
 };
 
 class WorkNode {
@@ -278,7 +278,7 @@ private:
 
     Heap *heap_;
     uint32_t threadNum_;
-    std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::array<WorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
     GlobalWorkStack workStack_ {};
     ParallelGCTaskPhase parallelGCTaskPhase_ {ParallelGCTaskPhase::UNDEFINED_TASK};
     std::atomic<bool> initialized_ {false};
@@ -345,8 +345,8 @@ private:
 
     SharedHeap *sHeap_;
     uint32_t threadNum_;
-    std::array<SharedGCWorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
-    std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
+    std::array<SharedGCWorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::array<ContinuousStack<JSTaggedType> *, common::MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
     std::atomic<bool> initialized_ {false};
     SharedParallelMarkPhase sharedTaskPhase_;

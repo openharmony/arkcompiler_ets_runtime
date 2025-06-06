@@ -18,7 +18,6 @@
 
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mem.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 enum class SlotStatus : bool {

@@ -210,7 +210,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
 TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 {
 #ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(HeapAllocator::Allocate(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
 #else
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
@@ -237,7 +237,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 TaggedObject *Heap::AllocateInYoungSpace(size_t size)
 {
 #ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(HeapAllocator::Allocate(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
 #else
     return reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
 #endif
@@ -268,7 +268,7 @@ uintptr_t Heap::AllocateYoungSync(size_t size)
 {
 #ifdef USE_CMC_GC
     // check sync
-    return HeapAllocator::Allocate(size, LanguageType::DYNAMIC);
+    return common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC);
 #else
     return activeSemiSpace_->AllocateSync(size);
 #endif
@@ -310,7 +310,7 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
         return nullptr;
     }
 #ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject*>(HeapAllocator::Allocate(size, LanguageType::DYNAMIC));
+    auto object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
 #else
     auto object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
 #endif
@@ -336,9 +336,11 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
 
 #ifdef USE_CMC_GC
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC));
+        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
+            size, common::LanguageType::DYNAMIC));
     } else {
-        object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInOld(
+            size, common::LanguageType::DYNAMIC));
     }
 #else
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
@@ -401,7 +403,8 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
 TaggedObject* Heap::AllocateReadOnlyOrHugeObject(size_t size)
 {
 #ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInReadOnly(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInReadOnly(
+        size, common::LanguageType::DYNAMIC));
 #else
     return reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
 #endif
@@ -428,7 +431,8 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
         object = AllocateHugeObject(hclass, size);
     } else {
 #ifdef USE_CMC_GC
-        object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+            size, common::LanguageType::DYNAMIC));
 #else
         object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
@@ -445,7 +449,8 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
 #ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    auto object = reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
 #else
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
 #endif
@@ -465,7 +470,8 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
 #ifdef USE_CMC_GC
     // check why shareheap allocate in readonly
-    auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    auto object = reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
 #else
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
 #endif
@@ -483,7 +489,8 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
 #ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
 #else
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
     CheckAndTriggerOldGC(size);
@@ -547,8 +554,10 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         ASSERT(!GetEcmaVM()->GetJSOptions().GetEnableJitFort());
         object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
 #ifdef USE_CMC_GC
-            reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC)) :
-            reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+            reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
+                size, common::LanguageType::DYNAMIC)) :
+            reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+                size, common::LanguageType::DYNAMIC));
 #else
             reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
             reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
@@ -578,7 +587,8 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
     object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
 #ifdef USE_CMC_GC
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
-        reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+        reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+            size, common::LanguageType::DYNAMIC));
 #else
         reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
         reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
@@ -609,7 +619,8 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
 #ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInNonmove(
+        size, common::LanguageType::DYNAMIC));
 #endif
 
     ASSERT(!thread->IsJitThread());
@@ -651,7 +662,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
 {
 #ifdef USE_CMC_GC
     // will invoked by asm interpreter stub AllocateInSOld
-    return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
 #endif
 
     ASSERT(!thread->IsJitThread());
@@ -913,9 +924,8 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     }
 
 #ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr
-                                                 : reinterpret_cast<TaggedObject *>(
-                                                       HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    TaggedObject *object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
     object->SetClass(thread, hclass);
 #else
     TaggedObject *object = thread->IsJitThread() ? nullptr :
@@ -944,9 +954,8 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
     }
 
 #ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr
-                                                 : reinterpret_cast<TaggedObject *>(
-                                                       HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    TaggedObject *object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
 #else
     TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
@@ -977,7 +986,8 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     }
 
 #ifdef USE_CMC_GC
-    TaggedObject *object = reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+    TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(
+        size, common::LanguageType::DYNAMIC));
     object->SetClass(thread, hclass);
 #else
     TaggedObject *object = thread->IsJitThread() ? nullptr :
@@ -1006,7 +1016,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 
 #ifdef USE_CMC_GC
     TaggedObject *object = thread->IsJitThread() ? nullptr :
-                           reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+        reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
 #else
     TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
@@ -1024,7 +1034,7 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
 #ifdef USE_CMC_GC
     (void)thread;
     ASSERT(!thread->IsJitThread());
-    return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
 #else
     // jit thread no heap
     bool allowGC = !thread->IsJitThread();
@@ -1064,7 +1074,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
 #ifdef USE_CMC_GC
     (void)thread;
-    return reinterpret_cast<TaggedObject*>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC));
+    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
 #else
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
     CheckHugeAndTriggerSharedGC(thread, size);
@@ -1103,7 +1113,8 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
     }
 
 #ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject *>(HeapAllocator::AllocateInNonmove(size, LanguageType::DYNAMIC));
+    auto object = reinterpret_cast<TaggedObject *>(
+        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
 #else
     auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
     CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
@@ -1164,13 +1175,13 @@ template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
 #ifdef USE_CMC_GC
-    GcType type = GcType::ASYNC;
+    common::GcType type = common::GcType::ASYNC;
     if constexpr (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
         gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
         gcReason == GCReason::ALLOCATION_FAILED) {
-        type = GcType::FULL;
+        type = common::GcType::FULL;
     }
-    BaseRuntime::RequestGC(type);
+    common::BaseRuntime::RequestGC(type);
     return;
 #endif
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||

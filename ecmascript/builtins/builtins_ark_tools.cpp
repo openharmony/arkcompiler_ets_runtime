@@ -276,7 +276,7 @@ JSTaggedValue BuiltinsArkTools::CurrentEnvIsGlobal(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
 #ifdef USE_CMC_GC
-    BaseRuntime::RequestGC(GcType::FULL);
+    common::BaseRuntime::RequestGC(common::GcType::FULL);
     return JSTaggedValue::True();
 #endif
     ASSERT(info);

@@ -21,7 +21,7 @@
 #include "ecmascript/ic/ic_handler.h"
 
 namespace panda::ecmascript {
-class DynamicObjectDescriptor : public DynamicObjectDescriptorInterface {
+class DynamicObjectDescriptor : public common::DynamicObjectDescriptorInterface {
 public:
     static void Initialize();
 

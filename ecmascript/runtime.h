@@ -344,7 +344,7 @@ private:
     static Mutex *vmCreationLock_;
     static Runtime *instance_;
 #ifdef USE_CMC_GC
-    static BaseRuntime *baseInstance_;
+    static common::BaseRuntime *baseInstance_;
 #endif
 
     // for string cache

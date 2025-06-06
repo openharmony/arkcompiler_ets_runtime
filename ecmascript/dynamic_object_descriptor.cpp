@@ -23,7 +23,7 @@ DynamicObjectDescriptor DynamicObjectDescriptor::dynObjectDescriptor_;
 
 void DynamicObjectDescriptor::Initialize()
 {
-    BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectDescriptor(&dynObjectDescriptor_);
+    common::BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectDescriptor(&dynObjectDescriptor_);
 }
 
 std::pair<JSTaggedValue, HandlerBase> DynamicObjectDescriptor::GetProperty(ThreadHolder *thread, BaseObject *obj,

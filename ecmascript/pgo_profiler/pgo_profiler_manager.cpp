@@ -327,7 +327,7 @@ void PGOProfilerManager::SetDisablePGO(bool state)
 
 void PGOProfilerManager::DispatchDumpTask()
 {
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<PGODumpTask>(GLOBAL_TASK_ID));
+    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<PGODumpTask>(common::GLOBAL_TASK_ID));
 }
 
 bool PGOProfilerManager::IsProfilerDestroyed(PGOProfiler* profiler)
@@ -528,7 +528,8 @@ void PGOProfilerManager::PostResetOutPathTask(const std::string& moduleName)
     if (!hasPostModuleName_.compare_exchange_strong(expected, desired)) {
         return;
     }
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ResetOutPathTask>(moduleName, GLOBAL_TASK_ID));
+    common::Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<ResetOutPathTask>(moduleName, common::GLOBAL_TASK_ID));
 }
 
 bool PGOProfilerManager::IsInitialized() const

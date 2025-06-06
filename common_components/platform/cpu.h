@@ -19,10 +19,10 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace panda {
+namespace common {
 uint32_t NumberOfCpuCore();
 size_t PhysicalSize();
-}  // namespace panda
+}  // namespace common
 
 #endif  // COMMON_COMPONENTS_PLATFORM_OS_H
  

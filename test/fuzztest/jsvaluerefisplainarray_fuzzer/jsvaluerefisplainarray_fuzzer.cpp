@@ -81,7 +81,7 @@ EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue n
     }
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
     *(--newSp) = numActualArgs;
-    *(--newSp) = ToUintPtr(thread);
+    *(--newSp) = common::ToUintPtr(thread);
     ecmaRuntimeCallInfo->SetNewTarget(newTgt);
     return ecmaRuntimeCallInfo;
 }
@@ -115,7 +115,7 @@ void TearDownFrame(JSThread *thread, JSTaggedType *prev)
 void JSValueRefIsPlainArrayFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

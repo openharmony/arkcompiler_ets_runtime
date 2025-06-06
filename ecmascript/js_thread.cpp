@@ -967,7 +967,7 @@ bool JSThread::CheckSafepoint()
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
 #ifdef USE_CMC_GC
-        BaseRuntime::RequestGC(GcType::SYNC);  // Trigger Full CMC here
+        common::BaseRuntime::RequestGC(common::GcType::SYNC);  // Trigger Full CMC here
 #else
         vm_->CollectGarbage(TriggerGCType::FULL_GC);
 #endif

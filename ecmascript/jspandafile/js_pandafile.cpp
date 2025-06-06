@@ -416,7 +416,7 @@ void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint3
         return;
     }
     uint32_t cnts = ASYN_TRANSLATE_CLSSS_COUNT;
-    uint32_t minCount = (Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1) * ASYN_TRANSLATE_CLSSS_COUNT;
+    uint32_t minCount = (common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1) * ASYN_TRANSLATE_CLSSS_COUNT;
     if (numClasses_ - classIndex_ < minCount) {
         cnts = ASYN_TRANSLATE_CLSSS_MIN_COUNT;
     }
@@ -465,7 +465,7 @@ void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
 void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr)
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(
+    common::Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr));
 }
 
@@ -508,7 +508,7 @@ void JSPandaFile::SetAllMethodLiteralToMap()
 void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
 {
     const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
-    for (uint32_t i = 0; i < Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
+    for (uint32_t i = 0; i < common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
         PostInitializeMethodTask(thread, methodNamePtr);
     }
     TranslateClass(thread, methodName);

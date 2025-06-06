@@ -2155,7 +2155,7 @@ GateRef CircuitBuilder::BuildTypedArrayIterator(GateRef gate, const GateMetaData
 
 GateRef CircuitBuilder::IsASCIICharacter(GateRef gate)
 {
-    return Int32UnsignedLessThan(Int32Sub(gate, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));
+    return Int32UnsignedLessThan(Int32Sub(gate, Int32(1)), Int32(common::utf_helper::UTF8_1B_MAX));
 }
 
 GateRef CircuitBuilder::MigrateFromRawValueToHeapValues(GateRef object, GateRef needCOW, GateRef isIntKind)

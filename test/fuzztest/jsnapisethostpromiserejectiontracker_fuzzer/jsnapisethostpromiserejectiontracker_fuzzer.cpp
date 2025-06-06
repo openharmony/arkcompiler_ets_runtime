@@ -24,7 +24,7 @@ namespace OHOS {
     void JSNApiSetHostPromiseRejectionTrackerFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
@@ -36,7 +36,7 @@ namespace OHOS {
     void JSNApiSetNativePtrGetterFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
@@ -48,7 +48,7 @@ namespace OHOS {
     void JSNApiSetHostResolveBufferTrackerFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
@@ -63,7 +63,7 @@ namespace OHOS {
     void JSNApiSetUnloalNativeModuleCallbackFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;

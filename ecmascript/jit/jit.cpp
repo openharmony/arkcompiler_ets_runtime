@@ -381,9 +381,9 @@ void Jit::DeleteJitCompilerTask(void *compiler)
     jitResources_->DeleteJitCompilerTask(compiler);
 }
 
-void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
+void Jit::ClearTask(const std::function<bool(common::Task *task)> &checkClear)
 {
-    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&checkClear](Task *task) {
+    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&checkClear](common::Task *task) {
         JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
         if (checkClear(asyncTask)) {
             asyncTask->Terminated();
@@ -393,7 +393,7 @@ void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
 
 void Jit::ClearTaskWithVm(EcmaVM *vm)
 {
-    ClearTask([vm](Task *task) {
+    ClearTask([vm](common::Task *task) {
         JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
         return vm == asyncTask->GetHostVM();
     });
@@ -443,9 +443,9 @@ void Jit::ChangeTaskPoolState(bool inBackground)
 {
     if (fastJitEnable_ || baselineJitEnable_) {
         if (inBackground) {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::BACKGROUND);
         } else {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
         }
     }
 }

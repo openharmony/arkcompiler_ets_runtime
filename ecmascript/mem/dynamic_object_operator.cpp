@@ -45,7 +45,7 @@ void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t sta
 
 void RefFieldObjectVisitor::VisitObjectHClassImpl(BaseObject *hclass)
 {
-    visitor_(reinterpret_cast<RefField<>&>(hclass));
+    visitor_(reinterpret_cast<common::RefField<>&>(hclass));
 }
 
 void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
@@ -56,7 +56,7 @@ void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
 
 void RefFieldObjectVisitor::visit(ObjectSlot slot)
 {
-    visitor_(reinterpret_cast<RefField<>&>(*(slot.GetRefFieldAddr())));
+    visitor_(reinterpret_cast<common::RefField<>&>(*(slot.GetRefFieldAddr())));
 }
 
 }  // namespace panda::ecmascript

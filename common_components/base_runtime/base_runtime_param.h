@@ -19,7 +19,7 @@
 #include "common_interfaces/base/common.h"
 #include "common_interfaces/base/runtime_param.h"
 
-namespace panda {
+namespace common {
 class BaseRuntimeParam {
 public:
     static RuntimeParam DefaultRuntimeParam();
@@ -88,6 +88,6 @@ private:
                                             size_t,     0,      INT64_MAX,  512 * KB        ) /*  byte */;
 
 #endif  // PANDA_TARGET_OHOS
-} // namespace panda
+} // namespace common
 
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_BASE_RUNTIME_PARAM_H

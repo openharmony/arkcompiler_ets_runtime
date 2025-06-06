@@ -15,12 +15,12 @@
 
 #include "common_interfaces/heap/heap_allocator.h"
 
-#include "common_components/common_runtime/src/common/type_def.h"
-#include "common_components/common_runtime/src/heap_manager.h"
-#include "common_components/common_runtime/src/heap/allocator/region_manager.h"
-#include "common_components/common_runtime/src/heap/allocator/region_space.h"
+#include "common_components/common/type_def.h"
+#include "common_components/heap/heap_manager.h"
+#include "common_components/heap/allocator/region_manager.h"
+#include "common_components/heap/allocator/region_space.h"
 
-namespace panda {
+namespace common {
 Address HeapAllocator::Allocate(size_t size, LanguageType language)
 {
     auto address = HeapManager::Allocate(size);
@@ -93,4 +93,4 @@ Address HeapAllocator::AllocateLargeRegion(size_t size)
     return manager.AllocLargeRegion(size);
 }
 
-}  // namespace panda
+}  // namespace common

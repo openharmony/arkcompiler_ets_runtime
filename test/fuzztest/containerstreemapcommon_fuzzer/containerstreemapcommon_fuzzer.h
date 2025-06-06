@@ -81,7 +81,7 @@ public:
     static bool InitFuzzTest(const uint8_t *data, size_t &size, int32_t &key, EcmaVM *&vm, JSThread *&thread)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         vm = JSNApi::CreateJSVM(option);
         thread = vm->GetJSThread();
         if (size <= 0) {

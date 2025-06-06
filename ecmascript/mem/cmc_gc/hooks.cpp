@@ -25,20 +25,21 @@
 #include "ecmascript/runtime.h"
 #include "objects/base_type.h"
 
-namespace panda {
-using ecmascript::ObjectXRay;
-using ecmascript::FreeObject;
-using ecmascript::ObjectSlot;
+namespace common {
+using panda::ecmascript::ObjectXRay;
+using panda::ecmascript::FreeObject;
+using panda::ecmascript::ObjectSlot;
+using panda::ecmascript::JSThread;
 
-class CMCRootVisitor final : public ecmascript::RootVisitor {
+class CMCRootVisitor final : public panda::ecmascript::RootVisitor {
 public:
     inline explicit CMCRootVisitor(const RefFieldVisitor &visitor): visitor_(visitor) {};
     ~CMCRootVisitor() override = default;
 
-    inline void VisitRoot([[maybe_unused]] ecmascript::Root type,
+    inline void VisitRoot([[maybe_unused]] panda::ecmascript::Root type,
                           ObjectSlot slot) override
     {
-        ecmascript::JSTaggedValue value(slot.GetTaggedType());
+        panda::ecmascript::JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
             ASSERT(!value.IsWeak());
 
@@ -46,11 +47,11 @@ public:
         }
     }
 
-    inline void VisitRangeRoot([[maybe_unused]] ecmascript::Root type,
+    inline void VisitRangeRoot([[maybe_unused]] panda::ecmascript::Root type,
                                ObjectSlot start, ObjectSlot end) override
     {
         for (ObjectSlot slot = start; slot < end; slot++) {
-            ecmascript::JSTaggedValue value(slot.GetTaggedType());
+            panda::ecmascript::JSTaggedValue value(slot.GetTaggedType());
             if (value.IsHeapObject()) {
                 ASSERT(!value.IsWeak());
 
@@ -59,12 +60,12 @@ public:
         }
     }
 
-    inline void VisitBaseAndDerivedRoot([[maybe_unused]] ecmascript::Root type,
+    inline void VisitBaseAndDerivedRoot([[maybe_unused]] panda::ecmascript::Root type,
                                         [[maybe_unused]] ObjectSlot base,
                                         [[maybe_unused]] ObjectSlot derived,
                                         [[maybe_unused]] uintptr_t baseOldObject) override
     {
-        ecmascript::JSTaggedValue baseVal(base.GetTaggedType());
+        panda::ecmascript::JSTaggedValue baseVal(base.GetTaggedType());
         if (baseVal.IsHeapObject()) {
             derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
         }
@@ -74,14 +75,14 @@ private:
     const RefFieldVisitor &visitor_;
 };
 
-class CMCWeakVisitor final : public ecmascript::WeakVisitor {
+class CMCWeakVisitor final : public panda::ecmascript::WeakVisitor {
 public:
-    inline explicit CMCWeakVisitor(const WeakRefFieldVisitor &visitor) : visitor_(visitor) {};
+    inline explicit CMCWeakVisitor(const common::WeakRefFieldVisitor &visitor) : visitor_(visitor) {};
     ~CMCWeakVisitor() override = default;
 
-    inline bool VisitRoot([[maybe_unused]] ecmascript::Root type, ObjectSlot slot) override
+    inline bool VisitRoot([[maybe_unused]] panda::ecmascript::Root type, ObjectSlot slot) override
     {
-        ecmascript::JSTaggedValue value(slot.GetTaggedType());
+        panda::ecmascript::JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
             ASSERT(!value.IsWeak());
             return visitor_(reinterpret_cast<RefField<> &>(*(slot.GetRefFieldAddr())));
@@ -90,19 +91,19 @@ public:
     }
 
 private:
-    const WeakRefFieldVisitor &visitor_;
+    const common::WeakRefFieldVisitor &visitor_;
 };
 
 void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 {
-    ecmascript::VMRootVisitType type = isMark ? ecmascript::VMRootVisitType::MARK :
-                                                ecmascript::VMRootVisitType::UPDATE_ROOT;
+    panda::ecmascript::VMRootVisitType type = isMark ? panda::ecmascript::VMRootVisitType::MARK :
+                                                panda::ecmascript::VMRootVisitType::UPDATE_ROOT;
     CMCRootVisitor visitor(visitorFunc);
     OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::VisitSharedRoot", "");
     // MarkSharedModule
-    ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
+    panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
 
-    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     // MarkSerializeRoots
     runtime->IterateSerializeRoot(visitor);
 
@@ -120,21 +121,21 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
     });
 }
 
-void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
+void VisitDynamicWeakRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::VisitDynamicWeakRoots", "");
     CMCWeakVisitor visitor(visitorFunc);
 
-    ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);
+    panda::ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);
 
-    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
 
     runtime->GetEcmaStringTable()->IterWeakRoot(visitorFunc);
     runtime->IteratorNativeDeleteInSharedGC(visitor);
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
+        const_cast<panda::ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
         thread->ClearVMCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
     });
@@ -166,29 +167,29 @@ void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase)
 
 void SweepThreadLocalJitFort()
 {
-    ecmascript::Runtime* runtime = ecmascript::Runtime::GetInstance();
+    panda::ecmascript::Runtime* runtime = panda::ecmascript::Runtime::GetInstance();
 
     runtime->GCIterateThreadList([&](JSThread* thread) {
         if (thread->IsJSThread()) {
             auto vm = thread->GetEcmaVM();
-            const_cast<ecmascript::Heap*>(vm->GetHeap())->GetMachineCodeSpace()->Sweep();
+            const_cast<panda::ecmascript::Heap*>(vm->GetHeap())->GetMachineCodeSpace()->Sweep();
         }
     });
 }
 
 void FillFreeObject(void *object, size_t size)
 {
-    ecmascript::FreeObject::FillFreeObject(ecmascript::SharedHeap::GetInstance(),
+    panda::ecmascript::FreeObject::FillFreeObject(panda::ecmascript::SharedHeap::GetInstance(),
         reinterpret_cast<uintptr_t>(object), size);
 }
 
 void JSGCCallback(void *ecmaVM)
 {
-    ecmascript::EcmaVM *vm = reinterpret_cast<ecmascript::EcmaVM*>(ecmaVM);
+    panda::ecmascript::EcmaVM *vm = reinterpret_cast<panda::ecmascript::EcmaVM*>(ecmaVM);
     ASSERT(vm != nullptr);
-    ecmascript::JSThread *thread = vm->GetAssociatedJSThread();
+    JSThread *thread = vm->GetAssociatedJSThread();
     if (thread != nullptr && thread->ReadyForGCIterating()) {
-        ecmascript::Heap *heap = const_cast<ecmascript::Heap*>(vm->GetHeap());
+        panda::ecmascript::Heap *heap = const_cast<panda::ecmascript::Heap*>(vm->GetHeap());
         heap->ProcessGCCallback();
     }
 }
@@ -196,13 +197,13 @@ void JSGCCallback(void *ecmaVM)
 void SetBaseAddress(uintptr_t base)
 {
     // Please be careful about reentrant
-    ASSERT(ecmascript::TaggedStateWord::BASE_ADDRESS == 0);
-    ecmascript::TaggedStateWord::BASE_ADDRESS = base;
+    ASSERT(panda::ecmascript::TaggedStateWord::BASE_ADDRESS == 0);
+    panda::ecmascript::TaggedStateWord::BASE_ADDRESS = base;
 }
 
 void JitFortUnProt(size_t size, void* base)
 {
-    ecmascript::PageMap(size, PAGE_PROT_READWRITE, 0, base, PAGE_FLAG_MAP_FIXED);
+    panda::ecmascript::PageMap(size, PAGE_PROT_READWRITE, 0, base, PAGE_FLAG_MAP_FIXED);
 }
 
 bool IsMachineCodeObject(uintptr_t objPtr)

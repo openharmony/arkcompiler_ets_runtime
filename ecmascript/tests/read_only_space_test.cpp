@@ -26,7 +26,7 @@
 #include "ecmascript/tests/test_helper.h"
 #ifdef USE_CMC_GC
 #include "../runtime_core/common_interfaces/base_runtime.h"
-#include "common_components/common_runtime/src/heap_manager.h"
+#include "common_components/heap/heap_manager.h"
 #endif
 #include <csetjmp>
 #include <csignal>
@@ -48,7 +48,7 @@ public:
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
-        Log::Initialize(runtimeOptions.GetLogOptions());
+        common::Log::Initialize(runtimeOptions.GetLogOptions());
     }
 
     ObjectFactory *factory {nullptr};
@@ -91,7 +91,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ReadOnlyTest)
 #ifndef USE_CMC_GC
     heap->GetReadOnlySpace()->SetReadOnly();
 #else
-    auto heapManager = BaseRuntime::GetInstance()->GetHeapManager();
+    auto heapManager = common::BaseRuntime::GetInstance()->GetHeapManager();
     heapManager.SetReadOnlyToROSpace();
 #endif
     if (ReadOnlyTestManager::RegisterSignal() == -1) {
@@ -123,7 +123,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, AllocateTest)
     auto *region = Region::ObjectAddressToRange(object);
     EXPECT_TRUE(region->InReadOnlySpace());
 #else
-    auto heapManager = BaseRuntime::GetInstance()->GetHeapManager();
+    auto heapManager = common::BaseRuntime::GetInstance()->GetHeapManager();
     EXPECT_TRUE(heapManager.IsInROSpace(object));
 #endif
 }
@@ -161,9 +161,9 @@ HWTEST_F_L0(ReadOnlySpaceTest, GCTest)
     auto *region = Region::ObjectAddressToRange(object);
     EXPECT_TRUE(region->InReadOnlySpace());
 #else
-    auto baseRuntime = BaseRuntime::GetInstance();
+    auto baseRuntime = common::BaseRuntime::GetInstance();
     auto heapManager = baseRuntime->GetHeapManager();
-    baseRuntime->RequestGC(GcType::FULL);
+    baseRuntime->RequestGC(common::GcType::FULL);
     EXPECT_TRUE(heapManager.IsInROSpace(object));
 #endif
 }
@@ -178,7 +178,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
 #else
     auto *object = heap->AllocateReadOnlyOrHugeObject(
             JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
-    auto baseRuntime = BaseRuntime::GetInstance();
+    auto baseRuntime = common::BaseRuntime::GetInstance();
     auto heapManager = baseRuntime->GetHeapManager();
 #endif
     JSNApi::PreFork(vm);
@@ -191,7 +191,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
         auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
         EXPECT_TRUE(region->InSharedHeap());
 #else
-        baseRuntime->RequestGC(GcType::FULL);
+        baseRuntime->RequestGC(common::GcType::FULL);
         EXPECT_TRUE(heapManager.IsInROSpace(object));
     } else {
         int status;

@@ -111,7 +111,7 @@ public:
     static void ContainersVectorAddFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -134,7 +134,7 @@ public:
     static void ContainersVectorGetFirstElementFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -163,7 +163,7 @@ public:
     static void ContainersVectorGetIndexOfFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -193,7 +193,7 @@ public:
     static void ContainersVectorGetLastElementFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -222,7 +222,7 @@ public:
     static void ContainersVectorHasFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -252,7 +252,7 @@ public:
     static void ContainersVectorInsertFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -276,7 +276,7 @@ public:
     static void ContainersVectorRemoveFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -306,7 +306,7 @@ public:
     static void ContainersVectorSetFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -337,7 +337,7 @@ public:
     static void ContainersVectorGetLastIndexOfFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -366,7 +366,7 @@ public:
     static void ContainersVectorGetLastIndexFromFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -396,7 +396,7 @@ public:
     static void ContainersVectorGetIndexFromFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -429,7 +429,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -507,7 +507,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -534,7 +534,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -563,7 +563,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -586,7 +586,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -610,7 +610,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -632,7 +632,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -654,7 +654,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -686,7 +686,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -708,7 +708,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -730,7 +730,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -752,7 +752,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -784,7 +784,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -806,7 +806,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -828,7 +828,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -857,7 +857,7 @@ public:
             return;
         }
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

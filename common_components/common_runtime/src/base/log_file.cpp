@@ -12,14 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "common_components/common_runtime/src/base/log_file.h"
 
 #include <unistd.h>
 
-#include "common_components/common_runtime/src/base/sys_call.h"
+#include "common_components/base/sys_call.h"
 #include "securec.h"
 
-namespace panda {
+namespace common {
 LogFile::LogFileItem LogFile::logFile_[LOG_TYPE_NUMBER];
 
 const char* LOG_TYPE_NAMES[LOG_TYPE_NUMBER] = {
@@ -86,13 +87,13 @@ void LogFile::SetFlags()
 #ifndef NDEBUG
 void LogFile::OpenLogFiles()
 {
-    CString pid = CString(panda::GetPid());
+    CString pid = CString(GetPid());
     CString dateDigit = "";
     CString dirName = ".";
 
     for (int i = 0; i < LOG_TYPE_NUMBER; ++i) {
         if (logFile_[i].enableLog) {
-            if (panda::GetEnv("ARK_LOG_STDOUT", 0) == 1) {
+            if (GetEnv("ARK_LOG_STDOUT", 0) == 1) {
                 logFile_[i].file = fopen("/dev/stdout", "w");
                 if (logFile_[i].file == nullptr) {
                     LOG_COMMON(ERROR) << "LogFile::OpenLogFiles(): fail to set file /dev/stdout";
@@ -142,7 +143,7 @@ static void WriteLogImpl(bool addPrefix, LogType type, const char* format, va_li
     }
     int index = 0;
     if (addPrefix) {
-        index = sprintf_s(buf, sizeof(buf), "%s %d ", TimeUtil::GetTimestamp().Str(), panda::GetTid());
+        index = sprintf_s(buf, sizeof(buf), "%s %d ", TimeUtil::GetTimestamp().Str(), GetTid());
         if (index == -1) {
             LOG_COMMON(ERROR) << "WriteLogImpl sprintf_s failed. msg: " << strerror(errno);
             return;
@@ -304,4 +305,4 @@ Level InitLogLevel()
     }
     return Level::ERROR;
 }
-} // namespace panda
+} // namespace common

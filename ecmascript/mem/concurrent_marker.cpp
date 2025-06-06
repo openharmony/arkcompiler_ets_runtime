@@ -38,7 +38,7 @@ ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)
 
 bool ConcurrentMarker::TryIncreaseTaskCounts()
 {
-    size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    size_t taskPoolSize = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     {
         LockHolder holder(taskCountMutex_);
         // total counts of running concurrent mark tasks should be less than taskPoolSize

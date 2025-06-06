@@ -20,12 +20,12 @@
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
     class TaggedObject;
     class EcmaStringTable;
 }
 
+namespace common {
 template <typename Mutex, typename ThreadHolder>
 class HashTrieMap {
     friend class panda::ecmascript::EcmaStringTable;
@@ -34,7 +34,7 @@ public:
 #ifdef USE_CMC_GC
     using WeakRefFieldVisitor = std::function<bool(RefField<>&)>;
 #endif
-    using WeakRootVisitor = std::function<ecmascript::TaggedObject *(ecmascript::TaggedObject* p)>;
+    using WeakRootVisitor = std::function<panda::ecmascript::TaggedObject *(panda::ecmascript::TaggedObject* p)>;
 
     static constexpr uint32_t N_CHILDREN_LOG2 = 3U;
     static constexpr uint32_t TOTAL_HASH_BITS = 32U;

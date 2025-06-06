@@ -25,7 +25,7 @@ namespace OHOS {
 void JSNApiUncaughtClearExceptionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     JSThread *thread_ = nullptr;
     thread_ = vm_->GetJSThread();

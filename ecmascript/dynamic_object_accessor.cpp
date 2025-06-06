@@ -26,7 +26,7 @@ DynamicObjectAccessor DynamicObjectAccessor::dynObjectAccessor_;
 
 void DynamicObjectAccessor::Initialize()
 {
-    BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectAccessor(&dynObjectAccessor_);
+    common::BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectAccessor(&dynObjectAccessor_);
 }
 
 bool DynamicObjectAccessor::HasProperty(ThreadHolder *thread, BaseObject *obj, char *name)

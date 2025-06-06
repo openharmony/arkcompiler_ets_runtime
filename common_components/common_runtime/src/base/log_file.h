@@ -12,15 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ARK_COMMON_LOG_FILE_H
 #define ARK_COMMON_LOG_FILE_H
 
 #include <mutex>
 
-#include "common_components/common_runtime/src/base/time_utils.h"
+#include "common_components/base/time_utils.h"
 
 
-namespace panda {
+namespace common {
 enum LogType {
     // for overall brief report
     REPORT = 0,
@@ -278,5 +279,5 @@ private:
     uint64_t startTime_ = 0;
     LogType logType_;
 };
-} // namespace panda
+} // namespace common
 #endif // ARK_COMMON_LOG_FILE_H

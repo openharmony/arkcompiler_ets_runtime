@@ -481,10 +481,10 @@ public:
 
     void ResetLargeCapacity();
 
-    class ParallelMarkTask : public Task {
+    class ParallelMarkTask : public common::Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
-            : Task(id), sHeap_(heap), taskPhase_(taskPhase) {};
+            : common::Task(id), sHeap_(heap), taskPhase_(taskPhase) {};
         ~ParallelMarkTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -496,10 +496,10 @@ public:
         SharedParallelMarkPhase taskPhase_;
     };
 
-    class AsyncClearTask : public Task {
+    class AsyncClearTask : public common::Task {
     public:
         AsyncClearTask(int32_t id, SharedHeap *heap, TriggerGCType type)
-            : Task(id), sHeap_(heap), gcType_(type) {}
+            : common::Task(id), sHeap_(heap), gcType_(type) {}
         ~AsyncClearTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1745,10 +1745,10 @@ private:
     }
     bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
                                            [[maybe_unused]] const char* traceName);
-    class ParallelGCTask : public Task {
+    class ParallelGCTask : public common::Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
-            : Task(id), heap_(heap), taskPhase_(taskPhase) {};
+            : common::Task(id), heap_(heap), taskPhase_(taskPhase) {};
         ~ParallelGCTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1760,10 +1760,10 @@ private:
         ParallelGCTaskPhase taskPhase_;
     };
 
-    class AsyncClearTask : public Task {
+    class AsyncClearTask : public common::Task {
     public:
         AsyncClearTask(int32_t id, Heap *heap, TriggerGCType type)
-            : Task(id), heap_(heap), gcType_(type) {}
+            : common::Task(id), heap_(heap), gcType_(type) {}
         ~AsyncClearTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1774,10 +1774,10 @@ private:
         TriggerGCType gcType_;
     };
 
-    class FinishColdStartTask : public Task {
+    class FinishColdStartTask : public common::Task {
     public:
         FinishColdStartTask(int32_t id, Heap *heap)
-            : Task(id), heap_(heap) {}
+            : common::Task(id), heap_(heap) {}
         ~FinishColdStartTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1787,10 +1787,10 @@ private:
         Heap *heap_;
     };
 
-    class FinishGCRestrainTask : public Task {
+    class FinishGCRestrainTask : public common::Task {
     public:
         FinishGCRestrainTask(int32_t id, Heap *heap)
-            : Task(id), heap_(heap) {}
+            : common::Task(id), heap_(heap) {}
         ~FinishGCRestrainTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1800,9 +1800,9 @@ private:
         Heap *heap_;
     };
 
-    class DeleteCallbackTask : public Task {
+    class DeleteCallbackTask : public common::Task {
     public:
-        DeleteCallbackTask(int32_t id, std::vector<NativePointerCallbackData> &callbacks) : Task(id)
+        DeleteCallbackTask(int32_t id, std::vector<NativePointerCallbackData> &callbacks) : common::Task(id)
         {
             std::swap(callbacks, nativePointerCallbacks_);
         }

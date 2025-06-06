@@ -350,7 +350,7 @@ HWTEST_F_L0(NumberHelperTest, IsEmptyString_004)
 {
     // 160 belong to empty string
     uint16_t c = 160;
-    utf_helper::Utf8Char d = utf_helper::ConvertUtf16ToUtf8(c, 0, true);
+    common::utf_helper::Utf8Char d = common::utf_helper::ConvertUtf16ToUtf8(c, 0, true);
     EXPECT_EQ(d.ch.at(1), 160);
     uint8_t b = d.ch.at(1);
     EXPECT_TRUE(NumberHelper::IsEmptyString(&b, &b + 1));

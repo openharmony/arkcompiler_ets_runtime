@@ -21,9 +21,8 @@
 
 #include "common_components/taskpool/runner.h"
 #include "common_interfaces/base/common.h"
-#include "libpandabase/macros.h"
 
-namespace panda {
+namespace common {
 class PUBLIC_API Taskpool {
 public:
     PUBLIC_API static Taskpool *GetCurrentTaskpool();
@@ -36,17 +35,17 @@ public:
         isInitialized_ = 0;
     }
 
-    NO_COPY_SEMANTIC(Taskpool);
-    NO_MOVE_SEMANTIC(Taskpool);
+    NO_COPY_SEMANTIC_CC(Taskpool);
+    NO_MOVE_SEMANTIC_CC(Taskpool);
 
     void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM,
-        std::function<void(os::thread::native_handle_type)> prologueHook = nullptr,
-        const std::function<void(os::thread::native_handle_type)> epilogueHook = nullptr);
+        std::function<void(native_handle_type)> prologueHook = nullptr,
+        const std::function<void(native_handle_type)> epilogueHook = nullptr);
     void Destroy(int32_t id);
 
     void PostTask(std::unique_ptr<Task> task) const
     {
-        ASSERT(isInitialized_ > 0);
+        DCHECK_CC(isInitialized_ > 0);
         if (isInitialized_ > 0) {
             runner_->PostTask(std::move(task));
         }
@@ -54,7 +53,7 @@ public:
 
     void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds) const
     {
-        ASSERT(isInitialized_ > 0);
+        DCHECK_CC(isInitialized_ > 0);
         if (isInitialized_ > 0) {
             runner_->PostDelayedTask(std::move(task), delayMilliseconds);
         }
@@ -87,5 +86,5 @@ private:
     volatile int isInitialized_ = 0;
     std::mutex mutex_;
 };
-}  // namespace panda
+}  // namespace common
 #endif  // COMMON_COMPONENTS_TASKPOOL_TASKPOOL_H

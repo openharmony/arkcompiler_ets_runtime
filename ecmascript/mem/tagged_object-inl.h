@@ -41,7 +41,7 @@ inline void TaggedObject::TransitionClassWithoutBarrier(JSHClass *hclass)
 inline void TaggedObject::SetFreeObjectClass(JSHClass *hclass)
 {
     ASSERT(hclass->IsFreeObject());
-    StateWordType state = static_cast<StateWordType>(ToUintPtr(hclass));
+    common::StateWordType state = static_cast<common::StateWordType>(ToUintPtr(hclass));
     reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetGCStateWord(state);
 }
 
@@ -79,7 +79,7 @@ inline bool TaggedObject::IsInSharedHeap() const
 #else
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
 {
-    SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass));
+    SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass));
 }
 
 inline void TaggedObject::TransitionClassWithoutBarrier(JSHClass *hclass)

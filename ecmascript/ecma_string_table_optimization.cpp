@@ -27,9 +27,9 @@ void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor
 {
     StartSweepWeakRefTask();
     iter_ = std::make_shared<std::atomic<uint32_t>>(0U);
-    const uint32_t postTaskCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    const uint32_t postTaskCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     for (uint32_t i = 0U; i < postTaskCount; ++i) {
-        Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(iter_, this, visitor));
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(iter_, this, visitor));
     }
 }
 
@@ -44,7 +44,7 @@ void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTa
                                                  const WeakRootVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < HashTrieMap<StringTableMutex, JSThread>::INDIRECT_SIZE) {
+    while ((index = GetNextIndexId(iter)) < common::HashTrieMap<StringTableMutex, JSThread>::INDIRECT_SIZE) {
         cleaner->stringTable_->SweepWeakRef(visitor, index);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTask();
@@ -56,7 +56,7 @@ void EcmaStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = false;
-    PendingTaskCount_.store(HashTrieMap<StringTableMutex, JSThread>::INDIRECT_SIZE, std::memory_order_relaxed);
+    PendingTaskCount_.store(common::HashTrieMap<StringTableMutex, JSThread>::INDIRECT_SIZE, std::memory_order_relaxed);
 }
 
 void EcmaStringTableCleaner::WaitSweepWeakRefTask()
@@ -113,7 +113,7 @@ EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *st
     }
     JSThread *thread = vm->GetJSThread();
     JSHandle<EcmaString> stringHandle(thread, string);
-    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), ReadOnlyHandle<BaseString>>(
+    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
         vm->GetJSThread(), std::move(readBarrier), hashcode, loadResult, stringHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
@@ -133,7 +133,7 @@ EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm
     }
     BaseString *result = stringTable_.StoreOrLoad(
         vm->GetJSThread(), hashcode, loadResult,
-        [vm, string, offset, utf8Len, hashcode]()->ReadOnlyHandle<BaseString> {
+        [vm, string, offset, utf8Len, hashcode]()->common::ReadOnlyHandle<BaseString> {
             EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len,
                                                                                     MemSpaceType::SHARED_OLD_SPACE);
             str->SetRawHashcode(hashcode);
@@ -179,7 +179,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, EcmaString *string)
         return EcmaString::FromBaseString(loadResult.value);
     }
     JSHandle<EcmaString> strFlatHandle(thread, strFlat);
-    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), ReadOnlyHandle<BaseString>>(
+    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
         vm->GetJSThread(), std::move(readBarrier), hashcode, loadResult, strFlatHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
@@ -276,7 +276,7 @@ EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, const uint8_t* utf8Da
         return EcmaString::FromBaseString(loadResult.value);
     }
     JSHandle<EcmaString> strHandle(thread, str);
-    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), ReadOnlyHandle<BaseString>>(
+    BaseString* result = stringTable_.StoreOrLoad<true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
         vm->GetJSThread(), std::move(readBarrier), hashcode, loadResult, strHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
@@ -390,8 +390,9 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other
     // threads are suspended.
-    HashTrieMap<StringTableMutex, JSThread>::Indirect *root_node = stringTable_.root_.load(std::memory_order_relaxed);
-    if (root_node == nullptr) {
+    common::HashTrieMap<StringTableMutex, JSThread>::Indirect *rootNode =
+        stringTable_.root_.load(std::memory_order_relaxed);
+    if (rootNode == nullptr) {
         return;
     }
     for (uint32_t index = 0; index < stringTable_.INDIRECT_SIZE; ++index) {
@@ -402,8 +403,9 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor)
 void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index)
 {
     ASSERT(index >= 0 && index < stringTable_.INDIRECT_SIZE);
-    HashTrieMap<StringTableMutex, JSThread>::Indirect *root_node = stringTable_.root_.load(std::memory_order_relaxed);
-    stringTable_.ClearNodeFromGC(root_node, index, visitor);
+    common::HashTrieMap<StringTableMutex, JSThread>::Indirect *rootNode =
+        stringTable_.root_.load(std::memory_order_relaxed);
+    stringTable_.ClearNodeFromGC(rootNode, index, visitor);
 }
 
 bool EcmaStringTable::CheckStringTableValidity()
@@ -491,7 +493,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
     return EcmaString::FromBaseString(result);
 }
 #ifdef USE_CMC_GC
-void EcmaStringTable::IterWeakRoot(const WeakRefFieldVisitor& visitor)
+void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor& visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (uint32_t index = 0; index < stringTable_.INDIRECT_SIZE; ++index) {
@@ -499,11 +501,12 @@ void EcmaStringTable::IterWeakRoot(const WeakRefFieldVisitor& visitor)
     }
 }
 
-void EcmaStringTable::IterWeakRoot(const WeakRefFieldVisitor &visitor, uint32_t index)
+void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor &visitor, uint32_t index)
 {
     ASSERT(index >= 0 && index < stringTable_.INDIRECT_SIZE);
-    HashTrieMap<StringTableMutex, JSThread>::Indirect *root_node = stringTable_.root_.load(std::memory_order_relaxed);
-    stringTable_.ClearNodeFromGC(root_node, index, visitor);
+    common::HashTrieMap<StringTableMutex, JSThread>::Indirect *rootNode =
+        stringTable_.root_.load(std::memory_order_relaxed);
+    stringTable_.ClearNodeFromGC(rootNode, index, visitor);
 }
 #endif
 #endif

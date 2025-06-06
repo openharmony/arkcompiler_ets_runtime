@@ -252,9 +252,9 @@ public:
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
 
-    LogOptions GetLogOptions() const
+    common::LogOptions GetLogOptions() const
     {
-        LogOptions option;
+        common::LogOptions option;
         // For ArkTS runtime log
         if (WasSetLogFatal()) {
             option.level = Level::FATAL;
@@ -279,7 +279,7 @@ public:
         return option;
     }
 
-    RuntimeParam GetRuntimeParam() const
+    common::RuntimeParam GetRuntimeParam() const
     {
         return param_;
     }
@@ -2503,7 +2503,7 @@ private:
     std::string jitMethodDichotomy_ {"disable"};
     std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
     size_t heapSize_ = {0};
-    RuntimeParam param_;
+    common::RuntimeParam param_;
 };
 } // namespace panda::ecmascript
 

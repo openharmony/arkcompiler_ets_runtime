@@ -15,13 +15,14 @@
 
 #include "common_components/taskpool/runner.h"
 
+#include "libpandabase/os/thread.h"
 #ifdef ENABLE_QOS
 #include "qos.h"
 #endif
 
-namespace panda {
-Runner::Runner(uint32_t threadNum, const std::function<void(os::thread::native_handle_type)> prologueHook,
-    const std::function<void(os::thread::native_handle_type)> epilogueHook)
+namespace common {
+Runner::Runner(uint32_t threadNum, const std::function<void(native_handle_type)> prologueHook,
+    const std::function<void(native_handle_type)> epilogueHook)
     : totalThreadNum_(threadNum),
     prologueHook_(prologueHook),
     epilogueHook_(epilogueHook)
@@ -110,7 +111,7 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 void Runner::RecordThreadId()
 {
     std::lock_guard<std::mutex> guard(mtx_);
-    gcThreadId_.emplace_back(os::thread::GetCurrentThreadId());
+    gcThreadId_.emplace_back(panda::os::thread::GetCurrentThreadId());
 }
 
 void Runner::SetRunTask(uint32_t threadId, Task *task)
@@ -121,8 +122,8 @@ void Runner::SetRunTask(uint32_t threadId, Task *task)
 
 void Runner::Run(uint32_t threadId)
 {
-    os::thread::native_handle_type thread = os::thread::GetNativeHandle();
-    os::thread::SetThreadName(thread, "OS_GC_Thread");
+    native_handle_type thread = panda::os::thread::GetNativeHandle();
+    panda::os::thread::SetThreadName(thread, "OS_GC_Thread");
     PrologueHook(thread);
     RecordThreadId();
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
@@ -132,4 +133,4 @@ void Runner::Run(uint32_t threadId)
     }
     EpilogueHook(thread);
 }
-}  // namespace panda
+}  // namespace common

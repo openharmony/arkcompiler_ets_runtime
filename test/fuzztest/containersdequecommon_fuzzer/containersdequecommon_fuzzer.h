@@ -84,7 +84,7 @@ public:
     static void ContainersDequeInsertFrontFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -136,7 +136,7 @@ public:
         }
 
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -168,7 +168,7 @@ public:
     static void ContainersDequeGetFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -204,7 +204,7 @@ public:
     static void ContainersDequeGetLastFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -242,7 +242,7 @@ public:
     static void ContainersDequeInsertEndFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -274,7 +274,7 @@ public:
     static void ContainersDequeHasFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -313,7 +313,7 @@ public:
     static void ContainersDequePopFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -349,7 +349,7 @@ public:
     static void ContainersDequePopLastFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
@@ -385,7 +385,7 @@ public:
     static void ContainersDequeIteratorFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

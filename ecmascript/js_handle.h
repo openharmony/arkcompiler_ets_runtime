@@ -182,15 +182,15 @@ public:
     }
 
     template <typename R>
-    operator ReadOnlyHandle<R>()
+    operator common::ReadOnlyHandle<R>()
     {
-        return ReadOnlyHandle<R>(address_);
+        return common::ReadOnlyHandle<R>(address_);
     }
 
     template <typename R>
-    operator const ReadOnlyHandle<R>() const
+    operator const common::ReadOnlyHandle<R>() const
     {
-        return ReadOnlyHandle<R>(address_);
+        return common::ReadOnlyHandle<R>(address_);
     }
 private:
     inline explicit JSHandle(const JSTaggedType *slot) : address_(reinterpret_cast<uintptr_t>(slot)) {}

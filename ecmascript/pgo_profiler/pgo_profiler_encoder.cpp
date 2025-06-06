@@ -161,7 +161,7 @@ void PGOProfilerEncoder::AddChecksum(std::fstream& fileStream)
 
 void PGOProfilerEncoder::TerminateSaveTask()
 {
-    Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
+    common::Taskpool::GetCurrentTaskpool()->TerminateTask(common::GLOBAL_TASK_ID, common::TaskType::PGO_SAVE_TASK);
 }
 
 void PGOProfilerEncoder::PostSaveTask(const std::string& path,
@@ -170,7 +170,8 @@ void PGOProfilerEncoder::PostSaveTask(const std::string& path,
 {
     LOG_PGO(INFO) << "dispatch save task, path: " << path;
     auto encoder = std::make_shared<PGOProfilerEncoder>(path, mode);
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(encoder, pgoInfo, GLOBAL_TASK_ID));
+    common::Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<SaveTask>(encoder, pgoInfo, common::GLOBAL_TASK_ID));
 }
 
 void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, const SaveTask* task)

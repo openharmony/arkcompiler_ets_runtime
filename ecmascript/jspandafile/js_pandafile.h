@@ -98,11 +98,11 @@ public:
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
-    class TranslateClassesTask : public Task {
+    class TranslateClassesTask : public common::Task {
     public:
         TranslateClassesTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile,
             const std::shared_ptr<CString> &methodNamePtr)
-            : Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr) {};
+            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr) {};
         ~TranslateClassesTask() override = default;
         bool Run(uint32_t threadIndex) override;
 

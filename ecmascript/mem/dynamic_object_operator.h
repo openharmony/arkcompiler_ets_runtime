@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisitor> {
    public:
-    inline explicit RefFieldObjectVisitor(const RefFieldVisitor &visitor): visitor_(visitor) {};
+    inline explicit RefFieldObjectVisitor(const common::RefFieldVisitor &visitor): visitor_(visitor) {};
     ~RefFieldObjectVisitor() override = default;
 
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
@@ -59,7 +59,7 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
         }
     }
 
-    const RefFieldVisitor &visitor_;
+    const common::RefFieldVisitor &visitor_;
 };
 
 static constexpr uint64_t TAG_MARK_BIT = 0x02ULL;
@@ -68,7 +68,7 @@ static uint64_t GetHeader(const BaseObject* obj)
     return (*((uint64_t*)obj));
 }
 
-class DynamicObjectOperator : public BaseObjectOperatorInterfaces {
+class DynamicObjectOperator : public common::BaseObjectOperatorInterfaces {
 public:
     static void Initialize();
 
@@ -80,7 +80,7 @@ public:
         return hclass->GetClass()->IsHClass();
     }
 
-    void ForEachRefField(const BaseObject *object, const RefFieldVisitor &visitor) const override
+    void ForEachRefField(const BaseObject *object, const common::RefFieldVisitor &visitor) const override
     {
         auto freeObject = FreeObject::Cast(reinterpret_cast<uintptr_t>(object));
         if (!freeObject->IsFreeObject()) {

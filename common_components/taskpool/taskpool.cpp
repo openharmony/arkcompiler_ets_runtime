@@ -17,7 +17,7 @@
 
 #include "common_components/platform/cpu.h"
 
-namespace panda {
+namespace common {
 Taskpool *Taskpool::GetCurrentTaskpool()
 {
     static Taskpool *taskpool = new Taskpool();
@@ -25,8 +25,8 @@ Taskpool *Taskpool::GetCurrentTaskpool()
 }
 
 void Taskpool::Initialize(int threadNum,
-    std::function<void(os::thread::native_handle_type)> prologueHook,
-    const std::function<void(os::thread::native_handle_type)> epilogueHook)
+    std::function<void(native_handle_type)> prologueHook,
+    const std::function<void(native_handle_type)> epilogueHook)
 {
     std::lock_guard<std::mutex> guard(mutex_);
     if (isInitialized_++ <= 0) {
@@ -75,4 +75,4 @@ void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
     }
     runner_->ForEachTask(f);
 }
-}  // namespace panda
+}  // namespace common

@@ -171,7 +171,7 @@ HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
     mkdir("ark-profiler-worker/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
-    option.SetLogLevel(LOG_LEVEL::INFO);
+    option.SetLogLevel(common::LOG_LEVEL::INFO);
     option.SetProfileDir("ark-profiler-worker/");
     EcmaVM* vm = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
@@ -182,7 +182,7 @@ HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
     std::thread workerThread([vm]() {
         RuntimeOption workerOption;
         workerOption.SetEnableProfile(true);
-        workerOption.SetLogLevel(LOG_LEVEL::INFO);
+        workerOption.SetLogLevel(common::LOG_LEVEL::INFO);
         workerOption.SetProfileDir("ark-profiler-worker/");
         workerOption.SetIsWorker();
         EcmaVM* workerVm = JSNApi::CreateJSVM(workerOption);
@@ -215,7 +215,7 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
     mkdir("ark-profiler-worker/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
-    option.SetLogLevel(LOG_LEVEL::INFO);
+    option.SetLogLevel(common::LOG_LEVEL::INFO);
     option.SetProfileDir("ark-profiler-worker/");
     EcmaVM* vm = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
@@ -227,7 +227,7 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
     std::thread workerThread([vm]() {
         RuntimeOption workerOption;
         workerOption.SetEnableProfile(true);
-        workerOption.SetLogLevel(LOG_LEVEL::INFO);
+        workerOption.SetLogLevel(common::LOG_LEVEL::INFO);
         workerOption.SetProfileDir("ark-profiler-worker/");
         workerOption.SetIsWorker();
         EcmaVM* workerVm = JSNApi::CreateJSVM(workerOption);
@@ -297,7 +297,7 @@ HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotifyThenResume)
     std::thread thread1([state, &mtx, &cv, &gcWaiting]() {
         RuntimeOption option;
         option.SetEnableProfile(true);
-        option.SetLogLevel(LOG_LEVEL::INFO);
+        option.SetLogLevel(common::LOG_LEVEL::INFO);
         option.SetProfileDir("ark-profiler-worker/");
         EcmaVM* vm = JSNApi::CreateJSVM(option);
         auto profiler = std::make_shared<PGOProfilerMock>(vm, true);

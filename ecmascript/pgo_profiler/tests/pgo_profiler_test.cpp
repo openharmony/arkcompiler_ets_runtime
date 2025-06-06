@@ -139,7 +139,7 @@ protected:
         RuntimeOption option;
         option.SetEnableProfile(true);
         option.SetProfileDir(profDir);
-        option.SetLogLevel(LOG_LEVEL::INFO);
+        option.SetLogLevel(common::LOG_LEVEL::INFO);
         vm_ = JSNApi::CreateJSVM(option);
         JSNApi::EnableUserUncaughtErrorHandler(vm_);
 

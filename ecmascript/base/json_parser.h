@@ -22,7 +22,6 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_array.h"

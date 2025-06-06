@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace panda {
+namespace common {
 
 enum class SerializedObjectSpace : uint8_t {
     REGULAR_SPACE,
@@ -34,5 +34,5 @@ public:
     static SerializedObjectSpace GetSerializeObjectSpace(uintptr_t obj);
     static size_t GetRegionSize();
 };
-}  // namespace panda
+}  // namespace common
 #endif  // COMMON_COMPONENTS_SERIALIZE_UTILS_H

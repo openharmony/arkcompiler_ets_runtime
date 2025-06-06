@@ -22,7 +22,6 @@
 #include <string>
 
 #include "libpandafile/file.h"
-#include "mem/mem.h"
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"

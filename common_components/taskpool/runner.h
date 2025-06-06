@@ -25,13 +25,12 @@
 
 #include "common_components/taskpool/task_queue.h"
 #include "common_interfaces/base/common.h"
-#include "libpandabase/macros.h"
-#include "libpandabase/os/thread.h"
 
-namespace panda {
+namespace common {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
 static constexpr uint32_t MAX_TASKPOOL_THREAD_NUM = 5;
 static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
+using native_handle_type = std::thread::native_handle_type;
 
 enum class PriorityMode {
     STW,
@@ -42,12 +41,12 @@ enum class PriorityMode {
 class Runner {
 public:
     explicit Runner(uint32_t threadNum,
-        const std::function<void(os::thread::native_handle_type)> prologueHook,
-        const std::function<void(os::thread::native_handle_type)> epilogueHook);
+        const std::function<void(native_handle_type)> prologueHook,
+        const std::function<void(native_handle_type)> epilogueHook);
     ~Runner() = default;
 
-    NO_COPY_SEMANTIC(Runner);
-    NO_MOVE_SEMANTIC(Runner);
+    NO_COPY_SEMANTIC_CC(Runner);
+    NO_MOVE_SEMANTIC_CC(Runner);
 
     void PostTask(std::unique_ptr<Task> task)
     {
@@ -80,13 +79,13 @@ public:
         return false;
     }
 
-    void PrologueHook(os::thread::native_handle_type thread)
+    void PrologueHook(native_handle_type thread)
     {
         if (prologueHook_ != nullptr) {
             prologueHook_(thread);
         }
     }
-    void EpilogueHook(os::thread::native_handle_type thread)
+    void EpilogueHook(native_handle_type thread)
     {
         if (epilogueHook_ != nullptr) {
             epilogueHook_(thread);
@@ -106,8 +105,8 @@ private:
     std::mutex mtx_;
     std::mutex mtxPool_;
 
-    std::function<void(os::thread::native_handle_type)> prologueHook_;
-    std::function<void(os::thread::native_handle_type)> epilogueHook_;
+    std::function<void(native_handle_type)> prologueHook_;
+    std::function<void(native_handle_type)> epilogueHook_;
 };
-}  // namespace panda
+}  // namespace common
 #endif  // COMMON_COMPONENTS_TASKPOOL_RUNNER_H
