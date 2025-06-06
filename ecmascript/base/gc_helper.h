@@ -60,7 +60,7 @@ public:
     static inline void CopyArgvArray(void *argvToRef, uint64_t argc)
     {
         for (uint64_t i = 0; i < argc; i++) {
-            size_t offset = i * sizeof(JSTaggedType) + TaggedArray::DATA_OFFSET;
+            size_t offset = i * sizeof(JSTaggedType);
             Barriers::UpdateSlot(argvToRef, offset);
         }
     }
@@ -71,8 +71,10 @@ public:
         Barriers::UpdateSlot(contextToRef, GeneratorContext::GENERATOR_THIS_OFFSET);
         Barriers::UpdateSlot(contextToRef, GeneratorContext::GENERATOR_LEXICALENV_OFFSET);
         Barriers::UpdateSlot(contextToRef, GeneratorContext::GENERATOR_ACC_OFFSET);
-        TaggedObject *argvToRef = reinterpret_cast<TaggedObject *>(
+        TaggedObject *toTaggedArray = reinterpret_cast<TaggedObject *>(
             Barriers::UpdateSlot(contextToRef, GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET));
+        uintptr_t argvAddr = ToUintPtr(toTaggedArray) + TaggedArray::DATA_OFFSET;
+        void *argvToRef = reinterpret_cast<void *>(argvAddr);
         uint64_t argc = static_cast<uint64_t>(
             Barriers::GetValue<uint32_t>(contextToRef, GeneratorContext::GENERATOR_NREGS_OFFSET));
         CopyArgvArray(argvToRef, argc);

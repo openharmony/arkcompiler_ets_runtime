@@ -132,7 +132,7 @@ const char* RegionDesc::GetTypeName() const
 void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
 {
     if (IsFixedRegion()) {
-        size_t size = static_cast<size_t>(GetRegionCellCount()) * sizeof(uint64_t);
+        size_t size = static_cast<size_t>(GetRegionCellCount() + 1) * sizeof(uint64_t);
         uintptr_t position = GetRegionStart();
         uintptr_t end = GetRegionEnd();
         if (!IsFixedRegionFlag()) {
