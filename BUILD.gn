@@ -1481,8 +1481,10 @@ ohos_source_set("libark_jsruntime_static") {
   if (ark_js_hybrid) {
     if (is_arkui_x) {
       deps += [ "$arkplatform_root:arkplatform_static" ]
-    } else {
+    } else if (ark_standalone_build) {
       external_deps += [ "runtime_core:libarkplatform" ]
+    } else {
+      public_external_deps = [ "runtime_core:libarkplatform" ]
     }
   }
 
