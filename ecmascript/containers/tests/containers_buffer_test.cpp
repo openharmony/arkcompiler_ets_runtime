@@ -442,7 +442,6 @@ HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest004)
 {
     JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(10);
     uint64_t value = 0x12345678ABCD;
-    uint64_t valueBE = 0xCDAB78563412;
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
                                                               ContainersBufferTest::GetArgvCount(5));
@@ -467,32 +466,25 @@ HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest004)
         TestHelper::TearDownFrame(thread, prev);
         ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), value);
     }
-    {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                              ContainersBufferTest::GetArgvCount(4));
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(buf.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(0));
-        callInfo->SetCallArg(1, JSTaggedValue(6));
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue res = ContainersBuffer::ReadIntLE(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
-        ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), valueBE);
-    }
 }
 
 HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest005)
 {
-    JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(10);
+    constexpr uint32_t BUFFER_SIZE = 10;
+    JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(BUFFER_SIZE);
+    // 0x12345678ABCD : test value
     uint64_t value = 0x12345678ABCD;
-    uint64_t valueBE = 0xCDAB78563412;
     {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                              ContainersBufferTest::GetArgvCount(5));
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                  ContainersBufferTest::GetArgvCount(5));  // 5 : five Args in callInfo
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
         callInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(value)));
+        // 1 : the second parameter
         callInfo->SetCallArg(1, JSTaggedValue(0));
+        // 2 : 6 : the third parameter; write 6 bytes
         callInfo->SetCallArg(2, JSTaggedValue(6));
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersBuffer::WriteIntLE(callInfo);
@@ -503,24 +495,96 @@ HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest005)
                                                               ContainersBufferTest::GetArgvCount(4));
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
         callInfo->SetCallArg(0, JSTaggedValue(0));
+        // 1 : 6 : the second parameter; read 6 bytes
         callInfo->SetCallArg(1, JSTaggedValue(6));
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue res = ContainersBuffer::ReadIntLE(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), value);
     }
+}
+
+HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest006)
+{
+    constexpr uint32_t BUFFER_SIZE = 10;
+    JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(BUFFER_SIZE);
+    // 0x12345678ABCD : test value
+    uint64_t value = 0x12345678ABCD;
+    // -55338634693614 : test result
+    int64_t ret = -55338634693614;
     {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                              ContainersBufferTest::GetArgvCount(4));
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                  ContainersBufferTest::GetArgvCount(5));  // 5 : five Args in callInfo
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
+        callInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(value)));
+        // 1 : the second parameter
+        callInfo->SetCallArg(1, JSTaggedValue(0));
+        // 2 : 6 : the third parameter; write 6 bytes
+        callInfo->SetCallArg(2, JSTaggedValue(6));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersBuffer::WriteIntBE(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+    }
+    {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                  ContainersBufferTest::GetArgvCount(4));  // 4 : four Args in callInfo
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
         callInfo->SetCallArg(0, JSTaggedValue(0));
+        // 1 : 6 : the second parameter; read 6 bytes
         callInfo->SetCallArg(1, JSTaggedValue(6));
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue res = ContainersBuffer::ReadIntBE(callInfo);
+        JSTaggedValue res = ContainersBuffer::ReadIntLE(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), valueBE);
+        ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), ret);
+    }
+}
+
+HWTEST_F_L0(ContainersBufferTest, WriteIntAndReadIntTest007)
+{
+    constexpr uint32_t BUFFER_SIZE = 10;
+    JSHandle<JSAPIFastBuffer> buf = CreateJSAPIBuffer(BUFFER_SIZE);
+    // 0x1234567890ab : test value
+    int64_t value = 0x1234567890ab;
+    // -0x546f87a9cbee : test result
+    int64_t ret = -0x546f87a9cbee;
+    {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                  ContainersBufferTest::GetArgvCount(5));  // 5 : five Args in callInfo
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
+        callInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(value)));
+        // 1 : the second parameter
+        callInfo->SetCallArg(1, JSTaggedValue(0));
+        // 2 : 6 : the third parameter; write 6 bytes
+        callInfo->SetCallArg(2, JSTaggedValue(6));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersBuffer::WriteIntBE(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+    }
+    {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                  ContainersBufferTest::GetArgvCount(4));  // 4 : four Args in callInfo
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(buf.GetTaggedValue());
+        // 0 : the first parameter
+        callInfo->SetCallArg(0, JSTaggedValue(0));
+        // 1 : 6 : the second parameter; read 6 bytes
+        callInfo->SetCallArg(1, JSTaggedValue(6));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue res = ContainersBuffer::ReadIntLE(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        ASSERT_EQ(static_cast<int64_t>(res.GetDouble()), ret);
     }
 }
 

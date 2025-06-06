@@ -1280,7 +1280,7 @@ JSTaggedValue JSAPIFastBuffer::WriteBytesValue(JSThread *thread, JSHandle<JSAPIF
 JSTaggedValue JSAPIFastBuffer::ReadBytes(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer, uint32_t offset,
                                          ByteLength byteLength, bool littleEndian)
 {
-    if (UNLIKELY(byteLength > SixBytes)) {
+    if (UNLIKELY(byteLength > SixBytes || byteLength < OneByte)) {
         std::ostringstream oss;
         oss << "ReadInt or ReadUInt only support 1 byte to 6 bytes";
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
@@ -1318,7 +1318,17 @@ JSTaggedValue JSAPIFastBuffer::ReadInt(JSThread *thread, JSHandle<JSAPIFastBuffe
                                        ByteLength byteLength, bool littleEndian)
 {
     auto ret = ReadBytes(thread, buffer, offset, byteLength, littleEndian);
-    return JSTaggedValue(static_cast<int64_t>(ret.GetNumber()));
+    int64_t value = ret.GetNumber();
+    // 1 : calculate bit mask
+    int64_t negetiveMask = (1LL << (byteLength * JSAPIFastBuffer::ONE_BYTE_BIT_LENGTH - 1));
+    
+    if (value & negetiveMask) {
+        int64_t bitMask = negetiveMask | (negetiveMask - 1);
+        bitMask &= -value;
+        // -1 : to negetive
+        return JSTaggedValue(JSTaggedNumber(JSTaggedValue(bitMask)) * JSTaggedNumber(-1));
+    }
+    return JSTaggedValue(value);
 }
 
 JSTaggedValue JSAPIFastBuffer::WriteBigUInt64(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
