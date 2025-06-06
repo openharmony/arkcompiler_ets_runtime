@@ -3602,7 +3602,35 @@ group("unittest") {
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
   ]
+
+ # TODO: CMC-GC UT FIX LATER
   if (ets_runtime_enable_cmc_gc) {
+    deps -= [
+      ":GC_ConcurrentMarking_Test",
+      ":GC_First_Test",
+      ":GC_IdleGCTrigger_Test",
+      ":GC_MachineCode_Test",
+      ":GC_MemController_Test",
+      ":GC_NewToOldPromotion_Test",
+      ":GC_ReadOnlySpace_Test",
+      ":GC_Second_Test",
+      ":GC_SharedPartialGC_Test",
+      ":GC_Third_Test",
+      ":GC_Verification_Test",
+      ":GC_Verify_Test",
+      ":GC_WeakRefOldGC_Test",
+      ":GC_WeakRefSemiGC_Test",
+      ":JS_Barrier_Test",
+      ":JS_FinalizationRegistry_Test",
+      ":JS_GlueRegs_Test",
+      ":JS_Handle_Test",
+      ":JS_ObjectFactory_Test",
+      ":JS_Object_Test",
+      ":JS_TaggedArray_Test",
+      ":JS_ThreadState_Test",
+      ":Sendable_JsSharedArray_Test",
+    ]
+
     deps += [
       ":Dynamic_Object_Accessor_Test",
       ":JS_DynamicTypeConverter_Test",

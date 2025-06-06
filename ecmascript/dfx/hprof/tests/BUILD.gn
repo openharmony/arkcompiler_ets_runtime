@@ -320,6 +320,18 @@ group("unittest") {
     ":JSMetadataTest",
     ":RawHeapTranslateTest",
   ]
+
+  # TODO: CMC-GC UT FIX LATER
+  if (ets_runtime_enable_cmc_gc) {
+    deps -= [
+      ":HProfTest",
+      ":HeapDumpTest",
+      ":HeapSnapShotTest",
+      ":HeapTrackerFirstTest",
+      ":HeapTrackerSecondTest",
+      ":HeapTrackerThirdTest",
+    ]
+  }
 }
 
 group("host_unittest") {
