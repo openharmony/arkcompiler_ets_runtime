@@ -327,6 +327,7 @@ private:
     void LowerConstruct(GateRef gate);
     void LowerCallInternal(GateRef gate);
     void LowerCallNew(GateRef gate);
+    void LowerCallNewBuiltin(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
     void LowerCheckSafePointAndStackOver(GateRef gate);

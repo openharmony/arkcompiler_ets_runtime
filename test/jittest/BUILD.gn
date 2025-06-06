@@ -18,6 +18,7 @@ group("ark_jit_ts_test") {
     "lower_jscode_0001",
     "lower_jscode_0002",
     "arguments",
+    "builtin_constructor",
     "create_arguments",
     "deopt",
     "function_reuse",

@@ -85,6 +85,7 @@ group("ark_aot_ts_test") {
     "bind",
     "binaryop_special_value",
     "builtinmath",
+    "builtin_constructor",
     "builtin_math1",
     "builtin_math2",
     "builtins_decode_uri_component",

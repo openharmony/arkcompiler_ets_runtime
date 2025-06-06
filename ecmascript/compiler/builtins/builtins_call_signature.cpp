@@ -65,14 +65,33 @@ void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
 
 size_t BuiltinsStubCSigns::GetGlobalEnvIndex(ID builtinId)
 {
-    switch (builtinId) {
-        case BuiltinsStubCSigns::ID::NumberConstructor:
-            return static_cast<size_t>(GlobalEnvField::NUMBER_FUNCTION_INDEX);
-        case BuiltinsStubCSigns::ID::BigIntConstructor:
-            return static_cast<size_t>(GlobalEnvField::BIGINT_FUNCTION_INDEX);
-        default:
-            LOG_COMPILER(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+    static const std::map<ID, GlobalEnvField> globalEnvIndex = {
+        {ID::BooleanConstructor, GlobalEnvField::BOOLEAN_FUNCTION_INDEX},
+        {ID::NumberConstructor, GlobalEnvField::NUMBER_FUNCTION_INDEX},
+        {ID::ProxyConstructor, GlobalEnvField::PROXY_FUNCTION_INDEX},
+        {ID::DateConstructor, GlobalEnvField::DATE_FUNCTION_INDEX},
+        {ID::ArrayConstructor, GlobalEnvField::ARRAY_FUNCTION_INDEX},
+        {ID::SetConstructor, GlobalEnvField::BUILTINS_SET_FUNCTION_INDEX},
+        {ID::MapConstructor, GlobalEnvField::BUILTINS_MAP_FUNCTION_INDEX},
+        {ID::BigIntConstructor, GlobalEnvField::BIGINT_FUNCTION_INDEX},
+        {ID::ObjectConstructor, GlobalEnvField::OBJECT_FUNCTION_INDEX},
+        {ID::ErrorConstructor, GlobalEnvField::ERROR_FUNCTION_INDEX},
+        {ID::Int8ArrayConstructor, GlobalEnvField::INT8_ARRAY_FUNCTION_INDEX},
+        {ID::Uint8ArrayConstructor, GlobalEnvField::UINT8_ARRAY_FUNCTION_INDEX},
+        {ID::Uint8ClampedArrayConstructor, GlobalEnvField::UINT8_CLAMPED_ARRAY_FUNCTION_INDEX},
+        {ID::Int16ArrayConstructor, GlobalEnvField::INT16_ARRAY_FUNCTION_INDEX},
+        {ID::Uint16ArrayConstructor, GlobalEnvField::UINT16_ARRAY_FUNCTION_INDEX},
+        {ID::Int32ArrayConstructor, GlobalEnvField::INT32_ARRAY_FUNCTION_INDEX},
+        {ID::Uint32ArrayConstructor, GlobalEnvField::UINT32_ARRAY_FUNCTION_INDEX},
+        {ID::Float32ArrayConstructor, GlobalEnvField::FLOAT32_ARRAY_FUNCTION_INDEX},
+        {ID::Float64ArrayConstructor, GlobalEnvField::FLOAT64_ARRAY_FUNCTION_INDEX},
+        {ID::BigInt64ArrayConstructor, GlobalEnvField::BIGINT64_ARRAY_FUNCTION_INDEX},
+        {ID::BigUint64ArrayConstructor, GlobalEnvField::BIGUINT64_ARRAY_FUNCTION_INDEX},
+    };
+    if (globalEnvIndex.find(builtinId) != globalEnvIndex.end()) {
+        return static_cast<size_t>(globalEnvIndex.at(builtinId));
     }
+    LOG_COMPILER(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
 }
 }  // namespace panda::ecmascript::kungfu

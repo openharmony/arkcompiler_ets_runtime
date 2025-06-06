@@ -637,6 +637,19 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vect
     return builtinOp;
 }
 
+inline GateRef CircuitBuilder::CallNewBuiltin(GateRef hirGate, std::vector<GateRef> &args)
+{
+    auto curLable = env_->GetCurrentLabel();
+    std::vector<GateRef> inList {curLable->GetControl(), curLable->GetDepend()};
+    inList.insert(inList.end(), args.begin(), args.end());
+    AppendFrameState(inList, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->CallNewBuiltin(args.size(), acc_.TryGetPcOffset(hirGate)),
+                                          MachineType::I64, inList.size(), inList.data(), GateType::AnyType());
+    curLable->SetControl(callGate);
+    curLable->SetDepend(callGate);
+    return callGate;
+}
+
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, ParamType paramType)
 {

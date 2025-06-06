@@ -69,6 +69,9 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::CALL_NEW:
                 LowerCallNew(gate);
                 break;
+            case OpCode::CALL_NEW_BUILTIN:
+                LowerCallNewBuiltin(gate);
+                break;
             case OpCode::TYPEDCALL:
                 LowerTypedCall(gate);
                 break;
@@ -3590,6 +3593,25 @@ void SlowPathLowering::LowerCallNew(GateRef gate)
     GateRef thisObj = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
     GateRef result = builder_.CallStub(
         glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, ctor, *res, thisObj });
+    GateRef state = builder_.GetState();
+    acc_.ReplaceGate(gate, state, result, result);
+}
+
+void SlowPathLowering::LowerCallNewBuiltin(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    size_t num = acc_.GetNumValueIn(gate);
+    std::vector<GateRef> args(num);
+    for (size_t i = 0; i < num; ++i) {
+        args[i] = acc_.GetValueIn(gate, i);
+    }
+    ASSERT(num >= 3); // 3: skip argc argv newtarget
+
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
+    GateRef target = builder_.IntPtr(RTSTUB_ID(JSCallNew));
+    auto depend = builder_.GetDepend();
+    GateRef result = builder_.Call(cs, glue_, target, depend, args, gate, "slowNewBuiltin");
+
     GateRef state = builder_.GetState();
     acc_.ReplaceGate(gate, state, result, result);
 }

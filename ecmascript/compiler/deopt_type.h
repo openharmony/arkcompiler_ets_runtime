@@ -107,6 +107,10 @@ namespace panda::ecmascript::kungfu {
     V(NewBuiltinCtorArray,             NEWBUILTINCTORARRAY)            \
     V(NewBuiltinCtorFloat32Array,      NEWBUILTINCTORFLOAT32ARRAY)     \
     V(NewBuiltinCtorBoolean,           NEWBUILTINCTORBOOLEAN)          \
+    V(NewBuiltinCtorMap,               NEWBUILTINCTORMAP)              \
+    V(NewBuiltinCtorSet,               NEWBUILTINCTORSET)              \
+    V(NewBuiltinCtorDate,              NEWBUILTINCTORDATE)             \
+    V(NewBuiltinCtorError,             NEWBUILTINCTORERROR)            \
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)              \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)           \
     V(BuiltinInliningTypeGuard,        BUILTIN_INLINING_TYPE_GUARD)    \

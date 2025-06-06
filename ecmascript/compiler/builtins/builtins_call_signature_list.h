@@ -32,6 +32,7 @@
 
 #define BUILTINS_NOSTUB_LIST(V)                     \
     V(ObjectConstructor)                            \
+    V(ErrorConstructor)                             \
     V(GlobalDecodeURIComponent)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \

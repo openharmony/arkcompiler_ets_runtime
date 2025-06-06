@@ -1519,13 +1519,13 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef glue, GateRef receiver, GateRef
     Bind(&isEnumCache);
     GateRef protoEnumCacheAll = GetEnumCacheAllFromEnumCache(glue, enumCache);
     BRANCH(TaggedIsNull(protoEnumCacheAll), &exit, &protoChainNotChanged);
-    
+
     Bind(&protoChainNotChanged);
     {
         result = True();
         Jump(&exit);
     }
-    
+
     Bind(&exit);
     auto ret = *result;
     SubCfgExit();
@@ -1568,6 +1568,19 @@ GateRef CircuitBuilder::NeedCheckProperty(GateRef glue, GateRef receiver)
     Bind(&exit);
     auto ret = *result;
     SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedConstructorCheck(GateRef gate, size_t type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedConstructorCheck(type),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 

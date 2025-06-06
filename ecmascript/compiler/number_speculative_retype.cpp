@@ -188,6 +188,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CALL_SETTER:
         case OpCode::CONSTRUCT:
         case OpCode::CALL_NEW:
+        case OpCode::CALL_NEW_BUILTIN:
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
         case OpCode::CALLINTERNAL:
@@ -824,7 +825,7 @@ GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
         } else if (paramType.IsBooleanType()) {
             valueType = GateType::BooleanType();
         }
-        
+
         auto input = CheckAndConvertToBool(value, valueType);
         ResizeAndSetTypeInfo(input, TypeInfo::INT1);
         acc_.ReplaceValueIn(gate, input, 0);

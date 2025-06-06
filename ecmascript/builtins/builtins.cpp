@@ -1119,8 +1119,8 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     JSHandle<JSHClass> errorFuncInstanceHClass =
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_ERROR, errorFuncPrototypeValue);
     // Error() = new Function()
-    JSHandle<JSFunction> errorFunction(
-        NewBuiltinConstructor(env, errorFuncPrototype, Error::ErrorConstructor, "Error", FunctionLength::ONE));
+    JSHandle<JSFunction> errorFunction(NewBuiltinConstructor(env, errorFuncPrototype, Error::ErrorConstructor, "Error",
+                                                             FunctionLength::ONE, BUILTINS_STUB_ID(ErrorConstructor)));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, errorFunction, errorFuncInstanceHClass.GetTaggedValue());
 
     // Error.prototype method

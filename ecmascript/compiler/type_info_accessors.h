@@ -395,6 +395,15 @@ public:
         }
     }
 
+    BuiltinsStubCSigns::ID GetPGOBuiltinMethodId()
+    {
+        if (pgoType_.IsPGOSampleType()) {
+            return TryGetPGOBuiltinMethodId();
+        } else {
+            return BuiltinsStubCSigns::ID::NONE;
+        }
+    }
+
 private:
     GlobalTSTypeRef GetCtorGT() const
     {
