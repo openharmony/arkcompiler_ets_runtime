@@ -39,13 +39,13 @@ class HashTrieMap {
     friend class EcmaStringTable;
 
 public:
-    static constexpr uint32_t N_CHILDREN_LOG2 = 4U;
+    static constexpr uint32_t N_CHILDREN_LOG2 = 3U;
     static constexpr uint32_t TOTAL_HASH_BITS = 32U;
 
     static constexpr uint32_t N_CHILDREN = 1 << N_CHILDREN_LOG2;
     static constexpr uint32_t N_CHILDREN_MASK = N_CHILDREN - 1U;
 
-    static constexpr uint32_t INDIRECT_SIZE = 16U;  // 16: 2^4
+    static constexpr uint32_t INDIRECT_SIZE = 8U;  // 8: 2^3
     static constexpr uint32_t INDIRECT_MASK = INDIRECT_SIZE - 1U;
 
     HashTrieMap()
@@ -62,7 +62,6 @@ public:
     class Node {
     public:
         explicit Node(bool isEntry) : isEntry_(isEntry) {}
-        virtual ~Node() = default;
 
         bool IsEntry() const
         {
@@ -86,7 +85,7 @@ public:
     class Entry final : public Node {
     public:
         Entry(uint32_t k, EcmaString *v) : Node(true), key_(k), value_(v), overflow_(nullptr) {}
-        ~Entry() override = default;
+        ~Entry() = default;
 
         uint32_t Key() const
         {
@@ -121,7 +120,7 @@ public:
         std::array<std::atomic<Node *>, INDIRECT_SIZE> children_ {};
         Indirect *parent_;
         explicit Indirect(Indirect *p = nullptr) : Node(false), parent_(p) {};
-        ~Indirect() override
+        ~Indirect()
         {
             for (std::atomic<Node *> &child : children_) {
                 Node *node = child.exchange(nullptr, std::memory_order_relaxed);
@@ -129,7 +128,7 @@ public:
                     continue;
                 }
                 if (!node->IsEntry()) {
-                    delete node;
+                    delete node->AsIndirect();
                     continue;
                 }
                 Entry *e = node->AsEntry();
@@ -145,13 +144,6 @@ public:
                 delete e;
             }
         }
-        Mutex &GetMutex()
-        {
-            return mu_;
-        }
-
-    private:
-        Mutex mu_;
     };
 
     struct HashTrieMapLoadResult {
@@ -212,6 +204,10 @@ public:
     {
         inuseCount_.fetch_sub(1);
     }
+    Mutex &GetMutex()
+    {
+        return mu_;
+    }
 private:
     std::atomic<Indirect *> root_;
     std::atomic<uint32_t> inuseCount_ {0};
@@ -223,6 +219,7 @@ private:
     bool CheckWeakRef(WeakVisitor &visitor, Entry *entry);
 #endif
     bool CheckValidity(EcmaString *value, bool &isValid);
+    Mutex mu_;
 };
 
 class HashTrieMapInUseScope {

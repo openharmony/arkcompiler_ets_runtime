@@ -534,7 +534,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
     Node *node = nullptr;
     bool haveInsertPoint = true;
     Indirect *current = loadResult.current;
-    RuntimeLock(vm->GetJSThread(), current->GetMutex());
+    RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
@@ -542,7 +542,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
 #endif
     node = slot->load(std::memory_order_acquire);
     if (node != nullptr && !node->IsEntry()) {
-        RuntimeUnLock(current->GetMutex());
+        RuntimeUnLock(GetMutex());
         current = node->AsIndirect();
         hashShift += N_CHILDREN_LOG2;
         while (true) {
@@ -577,7 +577,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
             }
 #endif
             // lock and double-check
-            RuntimeLock(vm->GetJSThread(), current->GetMutex());
+            RuntimeLock(vm->GetJSThread(), GetMutex());
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
             if (vm->IsCollectingScopeLockStats()) {
                 vm->IncreaseStringTableLockCount();
@@ -589,7 +589,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
                 break;
             }
 
-            RuntimeUnLock(current->GetMutex());
+            RuntimeUnLock(GetMutex());
             current = node->AsIndirect();
             hashShift += N_CHILDREN_LOG2;
         }
@@ -601,7 +601,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
         for (Entry *currentEntry = oldEntry; currentEntry;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
             if (currentEntry->Key() == key && EcmaStringAccessor::StringsAreEqual(currentEntry->Value(), *str)) {
-                RuntimeUnLock(current->GetMutex());
+                RuntimeUnLock(GetMutex());
                 return currentEntry->Value();
             }
         }
@@ -620,7 +620,7 @@ EcmaString *HashTrieMap::StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMap
         slot->store(expandedNode, std::memory_order_release);
     }
 
-    RuntimeUnLock(current->GetMutex());
+    RuntimeUnLock(GetMutex());
     return value;
 }
 

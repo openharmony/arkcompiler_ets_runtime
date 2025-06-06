@@ -274,7 +274,7 @@ HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
             Children: [0, 1]
             └── Child[0]:
             └── Entry [key=286326784, value=0x2bafc81e50]
-            └── Child[1]:
+            └── Child[2]:
             └── Entry [key=286326800, value=0x2bafc01dd0]
                   └── Overflow ->  └── Entry [key=286326800, value=0x2bafc01db8]
       └── Child[1]:
@@ -286,8 +286,8 @@ HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
 
     HashTrieMap::Indirect *level1 = root->children_[0x0].load()->AsIndirect();
     ASSERT_TRUE(level1->children_[0x0].load() != nullptr);
-    ASSERT_TRUE(level1->children_[0x1].load() != nullptr);
-    HashTrieMap::Entry *entry = level1->children_[0x1].load()->AsEntry();
+    ASSERT_TRUE(level1->children_[0x2].load() != nullptr);
+    HashTrieMap::Entry *entry = level1->children_[0x2].load()->AsEntry();
     // Verify overflow
     ASSERT_TRUE(entry->Overflow().load() != nullptr);
     delete map;
