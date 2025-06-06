@@ -3865,6 +3865,8 @@ DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordImm16Id16)
 
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STCONSTTOGLOBALRECORD_IMM16_ID16));
@@ -3876,6 +3878,8 @@ DECLARE_ASM_HANDLER(HandleSttoglobalrecordImm16Id16)
 
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STTOGLOBALRECORD_IMM16_ID16));
@@ -3887,6 +3891,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStconsttoglobalrecordPrefId32)
 
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32));
@@ -3898,6 +3904,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlettoglobalrecordPrefId32)
 
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32));
@@ -3909,6 +3917,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStclasstoglobalrecordPrefId32)
 
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32));

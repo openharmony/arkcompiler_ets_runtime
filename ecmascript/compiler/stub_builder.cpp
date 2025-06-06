@@ -12943,4 +12943,24 @@ GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
     env->SubCfgExit();
     return ret;
 }
+
+void StubBuilder::SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrenEnvIsUndefined), BoolNot(TaggedIsUndefined(currentEnv)));
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label setGlue(env);
+    Label exit(env);
+    GateRef globalEnv = GetValueFromTaggedArray(glue, currentEnv, Int32(BaseEnv::GLOBAL_ENV_INDEX));
+    BRANCH_UNLIKELY(TaggedIsHole(globalEnv), &exit, &setGlue);
+    Bind(&setGlue);
+    {
+        GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env->IsArch32Bit()));
+        StoreWithoutBarrier(VariableType::JS_POINTER(), glue, globalEnvOffset, globalEnv);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
 }  // namespace panda::ecmascript::kungfu
