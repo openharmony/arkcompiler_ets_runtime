@@ -38,7 +38,6 @@
 #include "common_components/log/log.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_interfaces/base_runtime.h"
-#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 uintptr_t RegionDesc::UnitInfo::totalUnitCount = 0;
