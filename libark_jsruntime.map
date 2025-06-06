@@ -99,14 +99,19 @@
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
       panda::BaseRuntime::*;
+      panda::HeapAllocator::*;
       panda::VisitDynamicRoots*;
       panda::VisitDynamicWeakRoots*;
       panda::BaseObject::*;
+      panda::ThreadHolder::*;
       panda::VisitJSThread*;
       panda::SynchronizeGCPhaseToJSThread*;
       panda::FillFreeObject*;
       panda::SetBaseAddress*;
       panda::JSGCCallback*;
+      panda::RegisterVisitStaticRootsHook*;
+      panda::RegisterUpdateStaticRootsHook*;
+      panda::RegisterSweepStaticRootsHook*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::Log::*;
