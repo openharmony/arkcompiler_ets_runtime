@@ -24,6 +24,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime.h"
 #include "objects/base_type.h"
+#include "objects/composite_base_class.h"
 
 namespace common {
 using panda::ecmascript::ObjectXRay;
@@ -93,6 +94,14 @@ public:
 private:
     const common::WeakRefFieldVisitor &visitor_;
 };
+
+void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
+{
+    BaseClassRoots &baseClassRoots = BaseRuntime::GetInstance()->GetBaseClassRoots();
+    // When visit roots, the language of the object is not used, so using the visitorFunc will work for
+    // both dynamic and static.
+    baseClassRoots.IterateCompositeBaseClass(visitorFunc);
+}
 
 void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 {

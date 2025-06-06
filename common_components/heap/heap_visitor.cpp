@@ -21,6 +21,7 @@ namespace common {
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {
     VisitDynamicRoots(visitor, isMark);
+    VisitBaseRoots(visitor);
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)

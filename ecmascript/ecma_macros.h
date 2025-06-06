@@ -70,11 +70,26 @@
 #define SET_VALUE_PRIMITIVE(addr, offset, value) \
     Barriers::SetPrimitive<JSTaggedType>(this, offset, (value).GetRawData())
 
+#if !defined(NDEBUG) && USE_CMC_GC
+#define FIELD_ACCESS_CHECK(needCheck, name, check)                                \
+    if constexpr (needCheck) {                                                    \
+        if (check()) {                                                            \
+            LOG_FULL(FATAL) << #name" field can't be used under check: "#check;   \
+            UNREACHABLE();                                                        \
+        };                                                                        \
+    }
+#else
+    #define FIELD_ACCESS_CHECK(needCheck, name, check)
+#endif
+
+#define DUMMY_FUNC() false
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS(name, offset, endOffset)                                                                    \
+#define ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, needCheck, check)                                 \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
     JSTaggedValue Get##name() const                                                                           \
     {                                                                                                         \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                           \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
         return JSTaggedValue(Barriers::GetTaggedValue(this, offset));                                         \
@@ -82,6 +97,7 @@
     template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
     {                                                                                                         \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                           \
         if constexpr (mode == WRITE_BARRIER) {                                                                \
             if (value.GetTaggedValue().IsHeapObject()) {                                                      \
                 Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());         \
@@ -96,6 +112,7 @@
     template<BarrierMode mode = WRITE_BARRIER>                                                                \
     void Set##name(const JSThread *thread, JSTaggedValue value)                                               \
     {                                                                                                         \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                           \
         if constexpr (mode == WRITE_BARRIER) {                                                                \
             if (value.IsHeapObject()) {                                                                       \
                 Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
@@ -107,6 +124,12 @@
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                           \
         }                                                                                                     \
     }
+
+#define ACCESSORS(name, offset, endOffset)                                                                    \
+    ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, false, DUMMY_FUNC)
+
+#define ACCESSORS_DCHECK(name, offset, endOffset, check)                                                      \
+    ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, true, check)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(name, type, offset, endOffset)                                \
@@ -123,10 +146,11 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                               \
+#define ACCESSORS_SYNCHRONIZED_WITH_DCHECK_BASE(name, offset, endOffset, needCheck, check)                            \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                                   \
     JSTaggedValue Get##name() const                                                                                   \
     {                                                                                                                 \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                                   \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */         \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */         \
         /*       Synchronized means it will restrain the store and load in atomic.                         */         \
@@ -135,31 +159,44 @@
     template<typename T>                                                                                              \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                         \
     {                                                                                                                 \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                                   \
         bool isPrimitive = !value.GetTaggedValue().IsHeapObject();                                                    \
         Barriers::SynchronizedSetObject(thread, this, offset, value.GetTaggedValue().GetRawData(), isPrimitive);      \
     }                                                                                                                 \
     void Set##name(const JSThread *thread, JSTaggedValue value)                                                       \
     {                                                                                                                 \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                                   \
         bool isPrimitive = !value.IsHeapObject();                                                                     \
         Barriers::SynchronizedSetObject(thread, this, offset, value.GetRawData(), isPrimitive);                       \
     }
+
+#define ACCESSORS_SYNCHRONIZED(name, offset, endOffset)                                                               \
+    ACCESSORS_SYNCHRONIZED_WITH_DCHECK_BASE(name, offset, endOffset, false, DUMMY_FUNC)
+
+#define ACCESSORS_SYNCHRONIZED_DCHECK(name, offset, endOffset, check)                                                 \
+    ACCESSORS_SYNCHRONIZED_WITH_DCHECK_BASE(name, offset, endOffset, true, check)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFINE_ALIGN_SIZE(offset) \
     static constexpr size_t SIZE = ((offset) + sizeof(JSTaggedType) - 1U) & (~(sizeof(JSTaggedType) - 1U))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_FIXED_SIZE_FIELD(name, type, sizeType, offset, endOffset) \
-    static_assert(sizeof(type) <= sizeof(sizeType));                        \
-    static constexpr size_t endOffset = (offset) + sizeof(sizeType);        \
-    inline void Set##name(type value)                                       \
-    {                                                                       \
-        Barriers::SetPrimitive<type>(this, offset, value);                  \
-    }                                                                       \
-    inline type Get##name() const                                           \
-    {                                                                       \
-        return Barriers::GetValue<type>(this, offset);                      \
+#define ACCESSORS_FIXED_SIZE_FIELD_DCHECK_BASE(name, type, sizeType, offset, endOffset, needCheck, check)              \
+    static_assert(sizeof(type) <= sizeof(sizeType));                                                                   \
+    static constexpr size_t endOffset = (offset) + sizeof(sizeType);                                                   \
+    inline void Set##name(type value)                                                                                  \
+    {                                                                                                                  \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                                    \
+        Barriers::SetPrimitive<type>(this, offset, value);                                                             \
+    }                                                                                                                  \
+    inline type Get##name() const                                                                                      \
+    {                                                                                                                  \
+        FIELD_ACCESS_CHECK(needCheck, name, check);                                                                    \
+        return Barriers::GetValue<type>(this, offset);                                                                 \
     }
+
+#define ACCESSORS_FIXED_SIZE_FIELD(name, type, sizeType, offset, endOffset)                                            \
+    ACCESSORS_FIXED_SIZE_FIELD_DCHECK_BASE(name, type, sizeType, offset, endOffset, false, DUMMY_FUNC)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_NATIVE_FIELD(name, type, offset, endOffset) \
@@ -168,6 +205,10 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_PRIMITIVE_FIELD(name, type, offset, endOffset) \
     ACCESSORS_FIXED_SIZE_FIELD(name, type, type, offset, endOffset)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_PRIMITIVE_FIELD_DCHECK(name, type, offset, endOffset, check)                                         \
+    ACCESSORS_FIXED_SIZE_FIELD_DCHECK_BASE(name, type, type, offset, endOffset, true, check)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_BIT_FIELD(name, offset, endOffset)                        \

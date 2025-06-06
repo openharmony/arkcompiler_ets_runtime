@@ -24,6 +24,8 @@
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
 // `WorkStack` Should be moved to BaseRT and panda namespace later
 namespace common {
+// Roots in BaseRuntime
+PUBLIC_API void VisitBaseRoots(const RefFieldVisitor &visitor);
 // Dynamic VM Roots scanning
 PUBLIC_API void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
 PUBLIC_API void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);

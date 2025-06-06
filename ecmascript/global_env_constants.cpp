@@ -52,6 +52,7 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/vtable.h"
+#include "common_interfaces/objects/composite_base_class.h"
 
 namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
@@ -97,11 +98,31 @@ void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
     #undef INIT_GLOBAL_ENV_CONSTANT_STRING
 }
 
+#ifdef USE_CMC_GC
+void GlobalEnvConstants::InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass)
+{
+    auto compositeBaseClassClass = factory->
+        NewSEcmaReadOnlyHClass(hClass, common::CompositeBaseClass::SIZE, JSType::COMPOSITE_BASE_CLASS);
+    SetConstant(ConstantIndex::COMPOSITE_BASE_CLASS_CLASS_INDEX, compositeBaseClassClass);
+    common::BaseClassRoots& classRoots = common::BaseRuntime::GetInstance()->GetBaseClassRoots();
+    classRoots.InitializeCompositeBaseClass(
+        [compositeBaseClassClass, factory]()-> common::CompositeBaseClass* {
+            TaggedObject* compositeBaseClass = factory->NewNonMovableObject(compositeBaseClassClass, 0);
+            compositeBaseClass->SetFullBaseClassWithoutBarrier(
+                reinterpret_cast<common::BaseClass*>(*compositeBaseClassClass));
+            factory->InitObjectFields(compositeBaseClass, JSTaggedValue(reinterpret_cast<JSTaggedType>(nullptr)));
+            return reinterpret_cast<common::CompositeBaseClass*>(compositeBaseClass);
+        });
+}
+#endif
+
 void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
 {
     // Global constants are readonly.
     JSHClass *hClass = *factory->InitSClassClass();
-
+#ifdef USE_CMC_GC
+    InitCompositeBaseClasses(factory, hClass);
+#endif
     SetConstant(ConstantIndex::HCLASS_CLASS_INDEX, JSTaggedValue(hClass));
     // To reverse the order, the hclass of string needs to load default supers
     SetConstant(ConstantIndex::TAGGED_ARRAY_CLASS_INDEX,
@@ -112,12 +133,21 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE_OFFSET, JSType::FREE_OBJECT_WITH_ONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
+#ifdef USE_CMC_GC
+    SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
+                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::LINE_STRING));
+    SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
+                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::SLICED_STRING));
+    SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
+                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::TREE_STRING));
+#else
     SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
     SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
     SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
+#endif
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
