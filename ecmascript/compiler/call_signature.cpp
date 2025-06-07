@@ -1037,14 +1037,30 @@ DEF_CALL_SIGNATURE(CopyRestArgs)
 
 DEF_CALL_SIGNATURE(NewJSObject)
 {
+    // 3 : 3 input parameters
+    CallSignature signature("NewJSObject", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // hclass
+        VariableType::INT64(),           // size
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(FastNewThisObject)
+{
     // 2 : 2 input parameters
-    CallSignature signature("NewJSObject", 0, 2,
+    CallSignature signature("FastNewThisObject", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // hclass
+        VariableType::JS_ANY(),          // newtarget
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -2977,6 +2993,82 @@ DEF_CALL_SIGNATURE(StringLoadElement)
         VariableType::NATIVE_POINTER(),     // glue
         VariableType::JS_ANY(),             // string
         VariableType::INT32()               // index
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(GetStringFromConstPool)
+{
+    // 3 : 3 input parameters
+    CallSignature temp("GetStringFromConstPool", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // constpool
+        VariableType::INT32(),              // index
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(FastCallSelector)
+{
+    // 3 : 3 input parameters
+    CallSignature temp("FastCallSelector", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = temp;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::INT64(),              // actual argC
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(GetPrototype)
+{
+    // 2 : 2 input parameters
+    CallSignature temp("GetPrototype", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CheckSuperAndNew)
+{
+    // 3 : 3 input parameters
+    CallSignature temp("CheckSuperAndNew", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // super
+        VariableType::JS_ANY(),             // new target
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(SuperCallAndConstructorCheck)
+{
+    // 6 : 6 input parameters
+    CallSignature temp("SuperCallAndConstructorCheck", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // super
+        VariableType::JS_ANY(),             // new target
+        VariableType::JS_ANY(),             // this
+        VariableType::INT64(),              // argc
+        VariableType::JS_POINTER(),         // argv
     };
     callSign->SetParameters(params.data());
 }

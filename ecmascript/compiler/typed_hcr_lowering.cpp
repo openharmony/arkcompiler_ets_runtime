@@ -637,7 +637,7 @@ void TypedHCRLowering::LowerSimpleHClassCheck(GateRef glue, GateRef gate)
     for (size_t i = 0; i < typeCount - 1; i++) {
         ifFalse.emplace_back(Label(&builder_));
     }
-    for (auto i = 0; i < typeCount; i++) {
+    for (size_t i = 0; i < typeCount; i++) {
         GateRef aotHCIndex = acc_.GetValueIn(gate, i + 1);
         auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
         GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
@@ -1825,9 +1825,14 @@ void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     DEFVALUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     BRANCH_CIR(builder_.IsBase(glue, ctor), &isBase, &exit);
     builder_.Bind(&isBase);
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
-    newBuilder.SetParameters(glue, 0);
-    newBuilder.NewJSObject(&thisObj, &exit, ihclass, size);
+    if (compilationEnv_->IsJitCompiler()) {
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, {glue, ihclass, size});
+        builder_.Jump(&exit);
+    } else {
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+        newBuilder.SetParameters(glue, 0);
+        newBuilder.NewJSObject(&thisObj, &exit, ihclass, size);
+    }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
 }
@@ -1846,7 +1851,7 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     BRANCH_CIR(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, newTarget });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::FastNewThisObject, { glue, newTarget });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
