@@ -320,10 +320,10 @@ GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
 
 #define DECLARE_GATE_META_FOR_NEW(NAME, OP, R, S, D, V)                                         \
 const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset,                    \
-                                          bool isFastCall)                                      \
+                                          bool needPushArgv, bool isFastCall)                   \
 {                                                                                               \
     auto meta = new (chunk_) NewConstructMetaData(OpCode::OP, R, S, D, value,                   \
-                                                  pcOffset, isFastCall);                        \
+                                                  pcOffset, needPushArgv, isFastCall);          \
     meta->SetKind(GateMetaData::Kind::CALL_NEW);                                                \
     return meta;                                                                                \
 }

@@ -169,7 +169,7 @@ private:
     void LowerGetIterator(GateRef gate);
     void LowerGetAsyncIterator(GateRef gate);
     void LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
-    void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushArgv,
+    void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushArgv, bool isFastCall,
         const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
         Variable *result, Label *exit);
     void LowerCallArg0Stub(GateRef gate);

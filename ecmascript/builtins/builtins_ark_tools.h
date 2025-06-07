@@ -52,6 +52,7 @@
     V("setAPIVersion",                  SetAPIVersion,                  1, INVALID)       \
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
+    V("isFastCall",                     IsFastCall,                     1, INVALID)       \
     V("isSameProfileTypeInfo",          IsSameProfileTypeInfo,          2, INVALID)       \
     V("isProfileTypeInfoValid",         IsProfileTypeInfoValid,         1, INVALID)       \
     V("getICState",                     GetICState,                     3, INVALID)       \
@@ -247,8 +248,11 @@ public:
     // ArkTools.isPrototype(object)
     static JSTaggedValue IsPrototype(EcmaRuntimeCallInfo *info);
 
-    // ArkTools.isAOTCompiledAssert(func)
+    // ArkTools.isAOTCompiled(func)
     static JSTaggedValue IsAOTCompiled(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isFastCall(func)
+    static JSTaggedValue IsFastCall(EcmaRuntimeCallInfo *info);
 
     // ArkTools.isSameProfileTypeInfo(func1, func2)
     static JSTaggedValue IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info);
@@ -448,7 +452,7 @@ public:
 
     static JSTaggedValue StartRuntimeStat(EcmaRuntimeCallInfo *info);
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
-    
+
     static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
     static JSTaggedValue TriggerSharedGC(EcmaRuntimeCallInfo *info);
 

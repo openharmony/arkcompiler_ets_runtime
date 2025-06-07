@@ -117,6 +117,11 @@ public:
         return nullptr;
     }
 
+    virtual void ProcessMethod(MethodLiteral *method, const JSPandaFile *jsPandaFile) const
+    {
+        ASSERT(0);
+    }
+
     virtual const uint8_t *GetMethodPcStart() const
     {
         ASSERT(0);

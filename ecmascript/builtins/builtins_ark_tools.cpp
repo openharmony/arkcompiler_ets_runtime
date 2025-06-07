@@ -529,6 +529,19 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(func->IsCompiledCode());
 }
 
+// It is used to check whether a function can be fastcall.
+JSTaggedValue BuiltinsArkTools::IsFastCall(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
+    return JSTaggedValue(func->IsCompiledFastCall());
+}
+
 // It is used to check whether two functions have same profileTypeInfo
 JSTaggedValue BuiltinsArkTools::IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info)
 {

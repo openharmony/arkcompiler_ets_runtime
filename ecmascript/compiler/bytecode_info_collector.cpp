@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
+#include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"
@@ -125,6 +127,49 @@ void BytecodeInfoCollector::ProcessCurrMethod()
     ProcessMethod(compilationEnv_->GetMethodLiteral());
 }
 
+// static; this is only used for callee method, to get isfastcall and istypecall.
+void BytecodeInfoCollector::ProcessMethodForJIT(MethodLiteral *method, const JSPandaFile *file)
+{
+    panda_file::File::EntityId methodIdx = method->GetMethodId();
+    const panda_file::File *pf = file->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodIdx);
+    auto codeId = mda.GetCodeId();
+    ASSERT(codeId.has_value());
+    panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
+    uint32_t insSz = codeDataAccessor.GetCodeSize();
+    const uint8_t *insArr = codeDataAccessor.GetInstructions();
+
+    auto bcIns = BytecodeInst(insArr);
+    auto bcInsLast = bcIns.JumpTo(insSz);
+    int32_t bcIndex = 0;
+    const uint8_t *curPc = bcIns.GetAddress();
+    bool canFastCall = true;
+    bool canTypedCall = true;
+    uint32_t newtargetIndex = method->GetNewTargetVregIndex();
+
+    Bytecodes bytecodes;
+    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        curPc = bcIns.GetAddress();
+        auto metaData = bytecodes.GetBytecodeMetaData(curPc);
+        BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
+        bool opcodeSupprotFastCall = OpcodeSupprotFastCall(opcode);
+        bool opcodeSupportTypeByteCall = OpcodeSupportTypeByteCall(opcode);
+        bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
+        if (!opcodeSupprotFastCall || !vregSupportFastCall) {
+            canFastCall = false;
+        }
+        if (!opcodeSupportTypeByteCall) {
+            canTypedCall = false;
+        }
+
+        auto nextInst = bcIns.GetNext();
+        bcIns = nextInst;
+        bcIndex++;
+    }
+    method->SetIsFastCall(canFastCall);
+    method->SetCanTypedCall(canTypedCall);
+}
+
 void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
 {
     if (UNLIKELY(methodLiteral == nullptr)) {
@@ -177,10 +222,10 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         curPc = bcIns.GetAddress();
         auto metaData = bytecodes_.GetBytecodeMetaData(curPc);
-        bool opcodeSupprotFastCall = true;
-        bool opcodeSupportTypeByteCall = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr,
-                                &opcodeSupprotFastCall, &opcodeSupportTypeByteCall);
+        BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
+        bool opcodeSupprotFastCall = OpcodeSupprotFastCall(opcode);
+        bool opcodeSupportTypeByteCall = OpcodeSupportTypeByteCall(opcode);
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr);
         bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
         if (!opcodeSupprotFastCall || !vregSupportFastCall) {
             canFastCall = false;
@@ -277,9 +322,44 @@ void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(panda_file::File::
     }
 }
 
+bool BytecodeInfoCollector::OpcodeSupprotFastCall(BytecodeInstruction::Opcode opcode)
+{
+    switch (opcode) {
+        case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
+        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaOpcode::GETUNMAPPEDARGS:
+        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16: {
+            return false;
+        }
+        default:
+            return true;
+    }
+}
+
+bool BytecodeInfoCollector::OpcodeSupportTypeByteCall(BytecodeInstruction::Opcode opcode)
+{
+    switch (opcode) {
+        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
+        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaOpcode::GETUNMAPPEDARGS:
+        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16: {
+            return false;
+        }
+        default:
+            return true;
+    }
+}
+
 void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                                    int32_t bcIndex, const std::shared_ptr<CString> recordNamePtr,
-                                                    bool *canFastCall, bool *canTypedCall)
+                                                    int32_t bcIndex, const std::shared_ptr<CString> recordNamePtr)
 {
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
         BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
@@ -331,24 +411,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             case BytecodeInstruction::Opcode::DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16: {
                 auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
                 CollectInnerMethodsFromLiteral(imm, recordNamePtr);
-                break;
-            }
-            case EcmaOpcode::RESUMEGENERATOR:
-            case EcmaOpcode::SUSPENDGENERATOR_V8:
-            case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8: {
-                *canFastCall = false;
-                break;
-            }
-            case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
-            case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
-            case EcmaOpcode::GETUNMAPPEDARGS:
-            case EcmaOpcode::COPYRESTARGS_IMM8:
-            case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16: {
-                *canFastCall = false;
-                *canTypedCall = false;
                 break;
             }
             default:

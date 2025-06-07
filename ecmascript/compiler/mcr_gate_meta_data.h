@@ -207,11 +207,12 @@ private:
 class NewConstructMetaData : public OneParameterMetaData {
 public:
     static constexpr int NEED_PUSH_ARGV_BIT_SIZE = 1;
+    static constexpr int IS_FAST_CALL_BIT_SIZE = 1;
     NewConstructMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
-        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool needPushArgv)
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool needPushArgv, bool isFastCall)
         : OneParameterMetaData(opcode, flags, statesIn, dependsIn, valuesIn, value)
     {
-        bitField_ = NeedPushArgvBit::Encode(needPushArgv);
+        bitField_ = NeedPushArgvBit::Encode(needPushArgv) | IsFastCallBit::Encode(isFastCall);
     }
 
     static const NewConstructMetaData* Cast(const GateMetaData* meta)
@@ -225,6 +226,11 @@ public:
         return NeedPushArgvBit::Get(bitField_);
     }
 
+    bool IsFastCall() const
+    {
+        return IsFastCallBit::Get(bitField_);
+    }
+
     uint64_t GetValue() const
     {
         return bitField_;
@@ -232,6 +238,7 @@ public:
 
 private:
     using NeedPushArgvBit = panda::BitField<bool, 0, NEED_PUSH_ARGV_BIT_SIZE>;
+    using IsFastCallBit = NeedPushArgvBit::NextField<bool, IS_FAST_CALL_BIT_SIZE>;
 
     uint64_t bitField_;
 };
