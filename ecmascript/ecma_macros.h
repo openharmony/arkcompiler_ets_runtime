@@ -603,6 +603,7 @@
         static inline CAST_TYPE *Cast(TaggedObject *object)                                     \
         {                                                                                       \
             if (!JSTaggedValue(object).CHECK_METHOD()) {                                        \
+                LOG_ECMA(ERROR) << "cast failed, dump: " << JSTaggedValue(object);              \
                 std::abort();                                                                   \
             }                                                                                   \
             return static_cast<CAST_TYPE *>(object);                                            \
@@ -610,6 +611,7 @@
         static inline const CAST_TYPE *ConstCast(const TaggedObject *object)                    \
         {                                                                                       \
             if (!JSTaggedValue(object).CHECK_METHOD()) {                                        \
+                LOG_ECMA(ERROR) << "cast failed, dump: " << JSTaggedValue(object);              \
                 std::abort();                                                                   \
             }                                                                                   \
             return static_cast<const CAST_TYPE *>(object);                                      \
@@ -617,6 +619,7 @@
         static inline CAST_TYPE *Cast(JSTaggedValue value)                                      \
         {                                                                                       \
             if (!value.CHECK_METHOD()) {                                                        \
+                LOG_ECMA(ERROR) << "cast failed, dump: " << value;                              \
                 std::abort();                                                                   \
             }                                                                                   \
             return static_cast<CAST_TYPE *>(value.GetTaggedObject());                           \
