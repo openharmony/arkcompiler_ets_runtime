@@ -79,6 +79,9 @@ public:
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value, SCheckMode sCheckMode = SCheckMode::CHECK);
 
+    static inline JSTaggedValue SetJsonPropertyByName(JSThread *thread, JSTaggedValue receiver,
+                                                      JSTaggedValue key, JSTaggedValue value);
+    
     template <Status status = Status::None>
     static inline JSTaggedValue GetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 

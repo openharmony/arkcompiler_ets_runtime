@@ -495,8 +495,8 @@ JSTaggedValue JsonParser<T>::SetPropertyByValue(const JSHandle<JSTaggedValue> &r
     if (!stringAccessor.IsInternString()) {
         newKey = JSTaggedValue(thread_->GetEcmaVM()->GetFactory()->InternString(key));
     }
-    return ObjectFastOperator::SetPropertyByName<ObjectFastOperator::Status::UseOwn>(thread_,
-        receiver.GetTaggedValue(), newKey, value.GetTaggedValue());
+    return ObjectFastOperator::SetJsonPropertyByName(thread_, receiver.GetTaggedValue(),
+                                                     newKey, value.GetTaggedValue());
 }
 
 template<typename T>
