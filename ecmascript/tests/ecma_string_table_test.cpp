@@ -143,7 +143,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
 {
-    HashTrieMap *map = new HashTrieMap();
+    auto *map = new HashTrieMap<StringTableMutex, JSThread>();
 
     const int thread_count = 8;
     std::atomic<int> counter {0};
@@ -156,7 +156,8 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
         JSHandle<EcmaString> value = ecmaVm1->GetFactory()->NewFromASCII("value");
         for (int i = 0; i < 1000; ++i) {
             map->LoadOrStore<true>(
-                ecmaVm1, counter.fetch_add(1), [value]() { return value; }, [](EcmaString *v) { return false; });
+                ecmaVm1->GetJSThread(), counter.fetch_add(1), [value]() { return value; },
+                [](BaseString* v) { return false; });
         }
         TestHelper::DestroyEcmaVMWithScope(ecmaVm1, scope);
         return nullptr;
@@ -173,7 +174,10 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<EcmaString> value1 = vm->GetFactory()->NewFromASCII("value");
     for (int i = 0; i < 8000; ++i) {  // check 8000 store operations
-        ASSERT_TRUE(map->Load<false>(i, *value1) != nullptr);
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(obj, offset);
+        };
+        ASSERT_TRUE(map->Load<false>(std::move(readBarrier), i, value1->ToBaseString()) != nullptr);
     }
     delete map;
 }
@@ -185,20 +189,25 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_InsertNewKey)
 {
-    EcmaVM *vm = thread->GetEcmaVM();
-    HashTrieMap *map = new HashTrieMap();
+    EcmaVM* vm = thread->GetEcmaVM();
+    auto* map = new HashTrieMap<StringTableMutex, JSThread>();
     uint32_t key = 0x12345678;
     JSHandle<EcmaString> value(thread, *vm->GetFactory()->NewFromASCII("test_value"));
-    EcmaString *loadResult1 = map->Load<false>(key, *value);
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    BaseString* loadResult1 = map->Load<false>(std::move(readBarrier), key, value->ToBaseString());
     EXPECT_EQ(loadResult1, nullptr);
     // Test insertion
-    EcmaString *result = map->LoadOrStore<true>(
-        vm, key, [value]() { return value; },
-        [value](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*value, foudString); });
-    EXPECT_EQ(result, *value);
-    EcmaString *loadResult2 = map->Load<false>(key, *value);
-    EXPECT_STREQ(EcmaStringAccessor(loadResult2).ToCString().c_str(), "test_value");
-    EXPECT_EQ(loadResult2, *value);
+    BaseString* result = map->LoadOrStore<true>(
+        vm->GetJSThread(), key, [value]() { return value; },
+        [value](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*value, EcmaString::FromBaseString(foudString));
+        });
+    EXPECT_EQ(result, value->ToBaseString());
+    BaseString* loadResult2 = map->Load<false>(std::move(readBarrier), key, value->ToBaseString());
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(loadResult2)).ToCString().c_str(), "test_value");
+    EXPECT_EQ(loadResult2, value->ToBaseString());
     delete map;
 }
 
@@ -211,23 +220,29 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_InsertNewKey)
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_StoreExistingKey)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    HashTrieMap *map = new HashTrieMap();
+    auto *map = new HashTrieMap<StringTableMutex, JSThread>();
     uint32_t key = 0x12345678;
     JSHandle<EcmaString> original(thread, *vm->GetFactory()->NewFromASCII("original"));
     JSHandle<EcmaString> origina2(thread, *vm->GetFactory()->NewFromASCII("origina2"));
 
     // Initial insertion
     map->LoadOrStore<true>(
-        vm, key, [original]() { return original; },
-        [original](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*original, foudString); });
+        vm->GetJSThread(), key, [original]() { return original; },
+        [original](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*original, EcmaString::FromBaseString(foudString));
+        });
 
     // store overflow
     map->LoadOrStore<true>(
-        vm, key, [origina2]() { return origina2; },
-        [origina2](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*origina2, foudString); });
-
-    EXPECT_EQ(map->Load<false>(key, *original), *original);
-    EXPECT_EQ(map->Load<false>(key, *origina2), *origina2);
+        vm->GetJSThread(), key, [origina2]() { return origina2; },
+        [origina2](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*origina2, EcmaString::FromBaseString(foudString));
+        });
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    EXPECT_EQ(map->Load<false>(std::move(readBarrier), key, original->ToBaseString()), original->ToBaseString());
+    EXPECT_EQ(map->Load<false>(std::move(readBarrier), key, origina2->ToBaseString()), origina2->ToBaseString());
     delete map;
 }
 
@@ -240,7 +255,7 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_StoreExistingKey)
 HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    HashTrieMap *map = new HashTrieMap();
+    auto *map = new HashTrieMap<StringTableMutex, JSThread>();
     uint32_t key1 = 0x11111111;
     uint32_t key2 = 0x11110000;
     uint32_t key3 = 0x11110010;
@@ -250,21 +265,29 @@ HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
     JSHandle<EcmaString> value4(thread, *vm->GetFactory()->NewFromASCII("value4"));
     // Insert first key
     map->LoadOrStore<true>(
-        vm, key1, [value1]() { return value1; },
-        [value1](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*value1, foudString); });
+        vm->GetJSThread(), key1, [value1]() { return value1; },
+        [value1](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*value1, EcmaString::FromBaseString(foudString));
+        });
 
     // Insert second key causing collision
     map->LoadOrStore<true>(
-        vm, key2, [value2]() { return value2; },
-        [value2](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*value2, foudString); });
+        vm->GetJSThread(), key2, [value2]() { return value2; },
+        [value2](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*value2, EcmaString::FromBaseString(foudString));
+        });
     // Insert overflow key3:[value3 value4]
     map->LoadOrStore<true>(
-        vm, key3, [value3]() { return value3; },
-        [value3](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*value3, foudString); });
+        vm->GetJSThread(), key3, [value3]() { return value3; },
+        [value3](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*value3, EcmaString::FromBaseString(foudString));
+        });
 
     map->LoadOrStore<true>(
-        vm, key3, [value4]() { return value4; },
-        [value4](EcmaString *foudString) { return EcmaStringAccessor::StringsAreEqual(*value4, foudString); });
+        vm->GetJSThread(), key3, [value4]() { return value4; },
+        [value4](BaseString* foudString) {
+            return EcmaStringAccessor::StringsAreEqual(*value4, EcmaString::FromBaseString(foudString));
+        });
 
     /*map:
     └── Indirect (----)
@@ -281,13 +304,13 @@ HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
             └── Entry [key=286331153, value=0x2bafc81e38]
     */
     // Verify structure after expansion
-    HashTrieMap::Indirect *root = map->GetRoot().load();
+    HashTrieMap<StringTableMutex, JSThread>::Indirect *root = map->GetRoot().load();
     ASSERT_TRUE(root->children_[0x0].load() != nullptr);  // Check first collision level
 
-    HashTrieMap::Indirect *level1 = root->children_[0x0].load()->AsIndirect();
+    HashTrieMap<StringTableMutex, JSThread>::Indirect *level1 = root->children_[0x0].load()->AsIndirect();
     ASSERT_TRUE(level1->children_[0x0].load() != nullptr);
     ASSERT_TRUE(level1->children_[0x2].load() != nullptr);
-    HashTrieMap::Entry *entry = level1->children_[0x2].load()->AsEntry();
+    HashTrieMap<StringTableMutex, JSThread>::Entry *entry = level1->children_[0x2].load()->AsEntry();
     // Verify overflow
     ASSERT_TRUE(entry->Overflow().load() != nullptr);
     delete map;
