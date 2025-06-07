@@ -19,6 +19,7 @@
 #include <cstddef>
 
 #include "common_interfaces/base/common.h"
+#include "ecmascript/base/asan_interface.h"
 
 namespace panda {
 // Time Factors

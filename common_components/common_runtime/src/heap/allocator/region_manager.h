@@ -314,6 +314,11 @@ public:
              region->GetLiveByteCount(), region->GetRegionType());
 
         garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
+        ASAN_POISON_MEMORY_REGION(region->GetRegionStart(), region->GetRegionSize());
+        const uintptr_t p_addr = region->GetRegionStart();
+        const uintptr_t p_size = region->GetRegionSize();
+        LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
+        LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
 
         if (region->IsLargeRegion()) {
             return region->GetRegionSize();

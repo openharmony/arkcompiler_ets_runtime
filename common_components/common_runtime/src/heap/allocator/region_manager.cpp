@@ -417,6 +417,12 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
 
     DLOG(REPORT, "region info @0x%zx+%zu, heap [0x%zx, 0x%zx), unit count %zu", regionInfoAddr, metadataSize,
          regionHeapStart_, regionHeapEnd_, nRegion);
+
+    ASAN_POISON_MEMORY_REGION(regionInfoAddr, metadataSize + nRegion * RegionDesc::UNIT_SIZE);
+    const uintptr_t p_addr = regionInfoAddr;
+    const uintptr_t p_size = metadataSize + nRegion * RegionDesc::UNIT_SIZE;
+    LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
+    LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
 }
 
 void RegionManager::ReclaimRegion(RegionDesc* region)

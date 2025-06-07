@@ -529,6 +529,10 @@ public:
 #ifdef ARKCOMMON_ASAN_SUPPORT
         Sanitizer::OnHeapMadvise(unitAddress, size);
 #endif
+        ASAN_POISON_MEMORY_REGION(unitAddress, size);
+        const uintptr_t p_size = size;
+        LOG_COMMON(DEBUG) << std::hex << "set [" << unitAddress;
+        LOG_COMMON(DEBUG) << std::hex << ", " << (uintptr_t)unitAddress + p_size << ") unaddressable\n";
     }
 
     BaseObject* GetFirstObject() const { return reinterpret_cast<BaseObject*>(GetRegionStart()); }
@@ -1153,6 +1157,12 @@ private:
         SetResurrectedRegionFlag(0);
         SetFixedRegionFlag(0);
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
+
+        ASAN_UNPOISON_MEMORY_REGION(metadata.allocPtr, nUnit * RegionDesc::UNIT_SIZE);
+        uintptr_t p_addr = metadata.allocPtr;
+        uintptr_t p_size = nUnit * RegionDesc::UNIT_SIZE;
+        LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
+        LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
     }
 
     void InitRegion(size_t nUnit, UnitRole uClass)
