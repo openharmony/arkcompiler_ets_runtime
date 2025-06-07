@@ -937,6 +937,10 @@ public:
                                             void *data = nullptr,
                                             bool callNapi = false,
                                             size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrentWithName(EcmaVM *vm, const Local<JSValueRef> &context,
+                                                    InternalFunctionCallback nativeFunc, NativePointerCallback deleter,
+                                                    const char *name, void *data = nullptr, bool callNapi = false,
+                                                    size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewSendable(EcmaVM *vm,
                                           InternalFunctionCallback nativeFunc,
                                           NativePointerCallback deleter,
@@ -961,6 +965,11 @@ public:
                                                          void *data,
                                                          bool callNapi = false,
                                                          size_t nativeBindingsize = 0);
+    static Local<FunctionRef> NewConcurrentClassFunctionWithName(EcmaVM *vm, const Local<JSValueRef> &context,
+                                                                 InternalFunctionCallback nativeFunc,
+                                                                 NativePointerCallback deleter, const char *name,
+                                                                 void *data, bool callNapi = false,
+                                                                 size_t nativeBindingsize = 0);
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
                                                InternalFunctionCallback nativeFunc,
                                                NativePointerCallback deleter,

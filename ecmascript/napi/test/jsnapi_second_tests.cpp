@@ -147,6 +147,13 @@ Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo *info)
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
+JSValueRef InternalFunctionCallback(JsiRuntimeCallInfo *info)
+{
+    EscapeLocalScope scope(info->GetVM());
+    Local<JSValueRef> result = scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
+    return **result;
+}
+
 void WeakRefCallback(EcmaVM *vm)
 {
     LocalScope scope(vm);
@@ -1925,5 +1932,63 @@ HWTEST_F_L0(JSNApiTests, JSNApi_KeyIsNumber)
 {
     EXPECT_TRUE(JSNApi::KeyIsNumber(STR_NUM));
     EXPECT_FALSE(JSNApi::KeyIsNumber(STR_TEST));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_139
+ * @tc.name: NewConcurrentClassFunctionWithName
+ * @tc.desc: Check if the function created through the NewConcurrentClassFunctionWithName method meets the
+ * specifications of the class constructor, and obtain and verify the properties of the function.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithName)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_->GetGlobalEnv()));
+    std::string name = "MyClassFunction";
+    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(vm_, context, InternalFunctionCallback,
+                                                                             nullptr, name.c_str(), nullptr);
+
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
+    // Asserting that obj is a class constructor
+    ASSERT_TRUE(obj->IsClassConstructor());
+    // The GetPropertyInlinedProps method gets the method of an inline property,
+    // CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX is the inline property index of the class prototype.
+    JSTaggedValue res =
+        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+    // The property that the assertion gets is an internal accessor
+    ASSERT_TRUE(res.IsInternalAccessor());
+    Local<StringRef> funcName = cls->GetName(vm_);
+    std::string funcNameStr = funcName->ToString(vm_);
+    ASSERT_EQ(name, funcNameStr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_140
+ * @tc.name: NewConcurrentWithName
+ * @tc.desc: Check if the function created through the NewConcurrentWithName returns the same value to native callee
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentWithName)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_->GetGlobalEnv()));
+    std::string name = "MyFunction";
+    Local<FunctionRef> func = FunctionRef::NewConcurrentWithName(
+        vm_, context,
+        [](JsiRuntimeCallInfo *runtimeInfo) -> JSValueRef {
+            EcmaVM *vm = runtimeInfo->GetVM();
+            LocalScope scope(vm);
+            return **StringRef::NewFromUtf8WithoutStringTable(vm, "funcResult");
+        },
+        nullptr, name.c_str());
+    Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_EQ("funcResult", res->ToString(vm_)->ToString(vm_));
+    Local<StringRef> funcName = func->GetName(vm_);
+    std::string funcNameStr = funcName->ToString(vm_);
+    ASSERT_EQ(name, funcNameStr);
 }
 } // namespace panda::test
