@@ -182,6 +182,30 @@ public:
         return callSigns_[index].GetName();
     }
 
+    static bool IsReadOnly(size_t index)
+    {
+        ASSERT(index < NUM_OF_STUBS);
+        switch (index) {
+            case GetValueWithBarrier:
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
+    static bool IsCold(size_t index)
+    {
+        ASSERT(index < NUM_OF_STUBS);
+        switch (index) {
+            case GetValueWithBarrier:
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
 private:
     static CallSignature callSigns_[NUM_OF_STUBS];
 };
