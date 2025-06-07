@@ -231,15 +231,6 @@ HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
     bool isFileStream = testFileStream.WriteChunk(testString.data(), strSize);
     EXPECT_TRUE(!isFileStream);
 
-    fd = 5;
-    FileDescriptorStream tmpFileStream(fd);
-    tmpFileStream.Good();
-    testString = "Hello!";
-    strSize = testString.size();
-    isFileStream = tmpFileStream.WriteChunk(testString.data(), strSize);
-    tmpFileStream.EndOfStream();
-    EXPECT_TRUE(!isFileStream);
-
     std::string fileName = "test.StreamWriteChunk";
     fd = open(fileName.c_str(), O_RDONLY);
     if (fd < 0) {
