@@ -128,7 +128,7 @@ void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
 
     ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
 
-    runtime->GetEcmaStringTable()->IterWeakRoot(visitorFunc);
+    runtime->GetEcmaStringTable()->IterWeakRoot(visitor);
     runtime->IteratorNativeDeleteInSharedGC(visitor);
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
