@@ -17,7 +17,6 @@
 #define ECMASCRIPT_STRING_TABLE_H
 
 #include <array>
-#include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/taskpool/task.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
@@ -25,16 +24,224 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
-#include "objects/string/base_string_declare.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION
+class HashTrieMap;
 class EcmaString;
 class EcmaVM;
 class JSPandaFile;
 class JSThread;
 
 class EcmaStringTable;
+
+class HashTrieMap {
+    friend class EcmaStringTable;
+
+public:
+    static constexpr uint32_t N_CHILDREN_LOG2 = 3U;
+    static constexpr uint32_t TOTAL_HASH_BITS = 32U;
+
+    static constexpr uint32_t N_CHILDREN = 1 << N_CHILDREN_LOG2;
+    static constexpr uint32_t N_CHILDREN_MASK = N_CHILDREN - 1U;
+
+    static constexpr uint32_t INDIRECT_SIZE = 8U;  // 8: 2^3
+    static constexpr uint32_t INDIRECT_MASK = INDIRECT_SIZE - 1U;
+
+    HashTrieMap()
+    {
+        root_.store(new Indirect(nullptr), std::memory_order_relaxed);
+    }
+    ~HashTrieMap()
+    {
+        Clear();
+    };
+    class Node;
+    class Entry;
+    class Indirect;
+    class Node {
+    public:
+        explicit Node(bool isEntry) : isEntry_(isEntry) {}
+
+        bool IsEntry() const
+        {
+            return isEntry_;
+        }
+        Entry *AsEntry()
+        {
+            ASSERT(isEntry_ && "HashTrieMap: called entry on non-entry node");
+            return static_cast<Entry *>(this);
+        }
+        Indirect *AsIndirect()
+        {
+            ASSERT(!isEntry_ && "HashTrieMap: called indirect on entry node");
+            return static_cast<Indirect *>(this);
+        }
+
+    private:
+        const bool isEntry_;
+    };
+
+    class Entry final : public Node {
+    public:
+        Entry(uint32_t k, EcmaString *v) : Node(true), key_(k), value_(v), overflow_(nullptr) {}
+        ~Entry() = default;
+
+        uint32_t Key() const
+        {
+            return key_;
+        }
+        EcmaString *Value() const
+        {
+            return value_;
+        }
+        EcmaString *const *ValueAddress() const
+        {
+            return &value_;
+        }
+        void SetValue(EcmaString *v)
+        {
+            value_ = v;
+        }
+
+        std::atomic<Entry *> &Overflow()
+        {
+            return overflow_;
+        }
+
+    private:
+        uint32_t key_;
+        EcmaString *value_;
+        std::atomic<Entry *> overflow_;
+    };
+
+    class Indirect final : public Node {
+    public:
+        std::array<std::atomic<Node *>, INDIRECT_SIZE> children_ {};
+        Indirect *parent_;
+        explicit Indirect(Indirect *p = nullptr) : Node(false), parent_(p) {};
+        ~Indirect()
+        {
+            for (std::atomic<Node *> &child : children_) {
+                Node *node = child.exchange(nullptr, std::memory_order_relaxed);
+                if (node == nullptr) {
+                    continue;
+                }
+                if (!node->IsEntry()) {
+                    delete node->AsIndirect();
+                    continue;
+                }
+                Entry *e = node->AsEntry();
+                // Clear overflow chain
+                for (Entry *current = e->Overflow().exchange(nullptr, std::memory_order_relaxed); current != nullptr;) {
+                    // atom get the next node and break the link
+                    Entry *next = current->Overflow().exchange(nullptr, std::memory_order_relaxed);
+                    // deletion of the current node
+                    delete current;
+                    // move to the next node
+                    current = next;
+                }
+                delete e;
+            }
+        }
+    };
+
+    struct HashTrieMapLoadResult {
+        EcmaString *value;
+        Indirect *current;
+        uint32_t hashShift;
+        std::atomic<Node *> *slot;
+        // Implicitly converted to EcmaString* operator, keeping backward compatible
+        operator EcmaString *() const
+        {
+            return value;
+        }
+    };
+
+    HashTrieMapLoadResult Load(const uint32_t key, EcmaString *value);
+    EcmaString *StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMapLoadResult loadResult, JSHandle<EcmaString> str);
+
+    HashTrieMapLoadResult Load(const uint32_t key, const JSHandle<EcmaString> &string, uint32_t offset,
+                               uint32_t utf8Len);
+    template <typename LoaderCallback, typename EqualsCallback>
+    EcmaString *StoreOrLoad(EcmaVM *vm, const uint32_t key, HashTrieMapLoadResult loadResult,
+                            LoaderCallback loaderCallback, EqualsCallback equalsCallback);
+
+    template <bool IsCheck>
+    EcmaString *Load(const uint32_t key, EcmaString *value);
+    template <bool IsLock, typename LoaderCallback, typename EqualsCallback>
+    EcmaString *LoadOrStore(EcmaVM *vm, const uint32_t key, LoaderCallback loaderCallback,
+                            EqualsCallback equalsCallback);
+
+    template <typename LoaderCallback, typename EqualsCallback>
+    EcmaString *LoadOrStoreForJit(EcmaVM *vm, const uint32_t key, LoaderCallback loaderCallback,
+                                  EqualsCallback equalsCallback);
+
+    // All other threads have stopped due to the gc and Clear phases.
+    // Therefore, the operations related to atoms in ClearNodeFromGc and Clear use std::memory_order_relaxed,
+    // which ensures atomicity but does not guarantee memory order
+    bool ClearNodeFromGC(Indirect *parent, int index, const WeakRootVisitor &visitor);
+#ifdef USE_CMC_GC
+    bool ClearNodeFromGC(Indirect *parent, int index, WeakVisitor &visitor);
+#endif
+
+    // Iterator
+    void Range(bool &isValid)
+    {
+        Iter(root_.load(std::memory_order_relaxed), isValid);
+    }
+    void Clear();
+    // ut used
+    const std::atomic<Indirect *> &GetRoot() const
+    {
+        return root_;
+    }
+    void IncreaseInuseCount()
+    {
+        inuseCount_.fetch_add(1);
+    }
+    void DecreaseInuseCount()
+    {
+        inuseCount_.fetch_sub(1);
+    }
+    Mutex &GetMutex()
+    {
+        return mu_;
+    }
+private:
+    std::atomic<Indirect *> root_;
+    std::atomic<uint32_t> inuseCount_ {0};
+    template <bool IsLock>
+    Node *Expand(Entry *oldEntry, Entry *newEntry, uint32_t newHash, uint32_t hashShift, Indirect *parent);
+    void Iter(Indirect *node, bool &isValid);
+    bool CheckWeakRef(const WeakRootVisitor &visitor, Entry *entry);
+#ifdef USE_CMC_GC
+    bool CheckWeakRef(WeakVisitor &visitor, Entry *entry);
+#endif
+    bool CheckValidity(EcmaString *value, bool &isValid);
+    Mutex mu_;
+};
+
+class HashTrieMapInUseScope {
+public:
+    HashTrieMapInUseScope(HashTrieMap* hashTrieMap) : hashTrieMap_(hashTrieMap)
+    {
+        hashTrieMap_->IncreaseInuseCount();
+    }
+
+    ~HashTrieMapInUseScope()
+    {
+        hashTrieMap_->DecreaseInuseCount();
+    }
+
+    NO_COPY_SEMANTIC(HashTrieMapInUseScope);
+    NO_MOVE_SEMANTIC(HashTrieMapInUseScope);
+
+private:
+    HashTrieMap* hashTrieMap_;
+};
+
+
 class EcmaStringTableCleaner {
 public:
     using IteratorPtr = std::shared_ptr<std::atomic<uint32_t>>;
@@ -93,28 +300,6 @@ private:
     ConditionVariable sweepWeakRefCV_;
 };
 
-class StringTableMutex {
-public:
-    explicit StringTableMutex(bool is_init = true) : mtx_(is_init)
-    {
-    }
-
-    void LockWithThreadState(JSThread* thread);
-
-    void Lock()
-    {
-        return mtx_.Lock();
-    }
-
-    void Unlock()
-    {
-        return mtx_.Unlock();
-    }
-
-private:
-    Mutex mtx_;
-};
-
 class EcmaStringTable {
 public:
     EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this)) {}
@@ -148,12 +333,14 @@ public:
                                                        bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
 
-#ifdef USE_CMC_GC
-    void IterWeakRoot(const WeakRefFieldVisitor &visitor);
-    void IterWeakRoot(const WeakRefFieldVisitor &visitor, uint32_t index);
-#endif
     void SweepWeakRef(const WeakRootVisitor &visitor);
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
+
+#ifdef USE_CMC_GC
+    void IterWeakRoot(WeakVisitor &visitor);
+    void IterWeakRoot(WeakVisitor &visitor, uint32_t index);
+#endif
+
     bool CheckStringTableValidity();
 
     EcmaStringTableCleaner *GetCleaner()
@@ -177,7 +364,7 @@ private:
     // This should only call in Debugger Signal, and need to fix and remove
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
-    HashTrieMap<StringTableMutex, JSThread> stringTable_;
+    HashTrieMap stringTable_;
     EcmaStringTableCleaner *cleaner_;
 
     friend class SnapshotProcessor;
