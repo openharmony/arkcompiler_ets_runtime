@@ -1162,7 +1162,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
         Bind(&kindIsEntry);
         {
             Label afterCreate(env);
-            NewObjectStubBuilder newBuilder(this);
+            NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
             GateRef elements = newBuilder.NewTaggedArray(glue, Int32(2)); // 2: length of array
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(0), IntToTaggedPtr(index)); // 0: key
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(1), *iterValue); // 1: value
@@ -2782,7 +2782,7 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
         GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef isConcatsprKey =
             GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
-        AccessObjectStubBuilder builder(this);
+        AccessObjectStubBuilder builder(this, globalEnv);
         GateRef spreadable =
             builder.LoadObjByValue(glue, obj, isConcatsprKey, Undefined(), Int32(0), ProfileOperation());
         Label isDefined(env);

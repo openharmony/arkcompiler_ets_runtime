@@ -32,7 +32,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     StartTraceLoadDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
@@ -75,7 +75,7 @@ GateRef AccessObjectStubBuilder::LoadObjByNameWithMega(GateRef glue, GateRef rec
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, 0, value, slotId, megaStubCache, propKey, ProfileOperation());
     builder.LoadICByNameWithMega(&result, nullptr, &slowPath, &exit, callback);
     Bind(&slowPath);
@@ -104,7 +104,7 @@ GateRef AccessObjectStubBuilder::StoreObjByNameWithMega(GateRef glue, GateRef re
     Label tryFastPath(env);
     Label slowPath(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, 0, value, slotId, megaStubCache, propKey, ProfileOperation());
     builder.StoreICByNameWithMega(&result, nullptr, &slowPath, &exit);
     Bind(&slowPath);
@@ -135,7 +135,7 @@ GateRef AccessObjectStubBuilder::LoadPrivatePropertyByName(
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
@@ -201,7 +201,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     StartTraceStoreDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
@@ -248,7 +248,7 @@ GateRef AccessObjectStubBuilder::StOwnICByName(GateRef glue, GateRef receiver, G
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
@@ -293,7 +293,7 @@ GateRef AccessObjectStubBuilder::StorePrivatePropertyByName(GateRef glue,
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
@@ -347,7 +347,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     StartTraceLoadValueDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId), key);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
     builder.LoadICByValue(&result, &tryFastPath, &tryPreDump, &exit, callback);
@@ -416,7 +416,7 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
     builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
@@ -463,7 +463,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
+    ICStubBuilder builder(this, GetCurrentGlobalEnv());
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
     builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
@@ -488,8 +488,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef globalEnv,
-                                                     GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                      GateRef profileTypeInfo, GateRef slotId,
                                                      ProfileOperation callback)
 {
@@ -503,13 +502,14 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef globa
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef receiver = 0;
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    ICStubBuilder builder(this, globalEnv);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.TryLoadGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef record = LdGlobalRecord(glue, globalEnv, propKey);
+        GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
         BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
@@ -539,8 +539,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef globa
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef globalEnv,
-                                                      GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                       GateRef value, GateRef profileTypeInfo, GateRef slotId,
                                                       ProfileOperation callback)
 {
@@ -553,13 +552,14 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef glob
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef receiver = 0;
-    ICStubBuilder builder(this);
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    ICStubBuilder builder(this, globalEnv);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.TryStoreGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        GateRef record = LdGlobalRecord(glue, globalEnv, propKey);
+        GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
         BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
@@ -603,8 +603,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef glob
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef globalEnv,
-                                               GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
@@ -617,7 +616,8 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef globalEnv,
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef receiver = 0;
     GateRef value = 0;
-    ICStubBuilder builder(this);
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    ICStubBuilder builder(this, globalEnv);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.TryLoadGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
@@ -642,8 +642,7 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef globalEnv,
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef globalEnv,
-                                                GateRef prop, const StringIdInfo &info,
+GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                 GateRef value, GateRef profileTypeInfo, GateRef slotId)
 {
     auto env = GetEnvironment();
@@ -655,7 +654,8 @@ GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef globalEnv,
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef receiver = 0;
-    ICStubBuilder builder(this);
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    ICStubBuilder builder(this, globalEnv);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.TryStoreGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);

@@ -3985,7 +3985,7 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef glue, GateRef jsFunc)
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef keyAddr = ChangeTaggedPointerToInt64(key);
     GateRef firstDetectorName = GetGlobalEnvValue(
         VariableType::INT64(), glue, globalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
@@ -4179,7 +4179,7 @@ inline GateRef StubBuilder::GetStageOfHotReload(GateRef glue)
 
 inline GateRef StubBuilder::GetModuleManager(GateRef glue)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef pointer = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
                                         GlobalEnv::MODULE_MANAGER_NATIVE_POINTER_INDEX);
     GateRef offset = IntPtr(JSNativePointer::POINTER_OFFSET);
@@ -4439,7 +4439,7 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
 
 inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalEnv = GetCurrentGlobalEnv();
     return GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
 }
 

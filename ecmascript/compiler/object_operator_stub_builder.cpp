@@ -69,7 +69,7 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
         Label index64To32(env);
         Label notInternString(env);
         DEFVARIABLE(index64, VariableType::INT64(), Int64(-1));
-        BuiltinsStringStubBuilder stringStub(this, GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder stringStub(this, GetCurrentGlobalEnv());
         index64 = stringStub.StringToUint(glue, key, JSObject::MAX_ELEMENT_INDEX - 1);
         BRANCH(Int64Equal(*index64, Int64(-1)), &toInternString, &index64To32);
         Bind(&toInternString);
@@ -309,7 +309,7 @@ GateRef ObjectOperatorStubBuilder::LookupElementInlinedProps(GateRef glue, GateR
 
     Bind(&isTypedArray);
     {
-        BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetGlobalEnv(glue));
+        BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
         GateRef element =
             typedArrayStubBuilder.FastGetPropertyByIndex(glue, obj, elementIdx, GetObjectType(LoadHClass(glue, obj)));
         BRANCH(TaggedIsHole(element), &exit, &elementFound);

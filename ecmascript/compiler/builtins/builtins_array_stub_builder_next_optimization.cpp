@@ -2019,7 +2019,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                             // note: kind is not be fixed, may be an invalid kind. NeedBarrier and CreateArrayFromList
                             // don't need a valid kind, so use it without fix.
                             GateRef elements = GetElementsArray(glue, thisValue);
-                            NewObjectStubBuilder newBuilder(this);
+                            NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                             newBuilder.SetGlue(glue);
                             GateRef destElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(*count));
                             GateRef sourceStart = GetDataPtrInTaggedArray(elements, *start);
@@ -2394,7 +2394,7 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
                                 // don't need a valid kind, so use it without fix.
                                 GateRef thisElements = GetElementsArray(glue, thisValue);
                                 GateRef argElements = GetElementsArray(glue, arg0);
-                                NewObjectStubBuilder newBuilder(this);
+                                NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
                                 GateRef newElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(sumArrayLen));
                                 GateRef dst1 = GetDataPtrInTaggedArray(newElements);
                                 GateRef dst2 = PtrAdd(dst1, PtrMul(thisLen, IntPtr(JSTaggedValue::TaggedTypeSize())));

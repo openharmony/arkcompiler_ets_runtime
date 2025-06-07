@@ -36,7 +36,7 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::CheckCollectionIterato
 template<typename IteratorType>
 GateRef BuiltinsCollectionIteratorStubBuilder<IteratorType>::CreateIterValueForEntry(GateRef key, GateRef value)
 {
-    NewObjectStubBuilder newBuilder(this);
+    NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     GateRef elements = newBuilder.NewTaggedArray(glue_, Int32(2));    // 2: length of array to store [key, value] is 2
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, Int32(0), key);   // 0: key
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, Int32(1), value); // 1: value
