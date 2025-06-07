@@ -1343,9 +1343,9 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                     JSHandle<EcmaString> stringHandle(thread, value);
                     return stringHandle;
                 },
-                [str](EcmaString *foundString) {
+                [str](BaseString *foundString) {
                     ASSERT(EcmaStringAccessor(str).NotTreeString());
-                    return EcmaStringAccessor::StringsAreEqual(foundString, str);
+                    return EcmaStringAccessor::StringsAreEqual(EcmaString::FromBaseString(foundString), str);
                 });
             ASSERT(strFromTable != nullptr);
             deserializeStringVector_.emplace_back(thread, strFromTable);
