@@ -334,6 +334,11 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
     if (symbolicBreakpoints_.empty()) {
         return;
     }
+    std::unordered_set<std::string> recordNames = hooks_->GetAllRecordNames();
+    std::string recordName(method->GetRecordNameStr().c_str());
+    if (recordNames.find(recordName) == recordNames.end()) {
+        return;
+    }
     auto symbolicBreakpoint = symbolicBreakpoints_.find(method->ParseFunctionName());
     if (symbolicBreakpoint != symbolicBreakpoints_.end()) {
         hooks_->HitSymbolicBreakpoint();
