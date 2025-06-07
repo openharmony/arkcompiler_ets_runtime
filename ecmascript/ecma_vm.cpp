@@ -884,6 +884,7 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
 
 void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
 {
+    OHOS_HITRACE("CMCGC::VisitRootEcmaVM");
     if (!internalNativeMethods_.empty()) {
         v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
             ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
@@ -906,6 +907,7 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         DISALLOW_HANDLE_ALLOC;
+        OHOS_HITRACE("CMCGC::VisitRootHandleStorage");
         int32_t nid = currentHandleStorageIndex_;
         for (int32_t i = 0; i <= nid; ++i) {
             auto node = handleStorageNodes_.at(i);

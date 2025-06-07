@@ -914,6 +914,7 @@ void RegionManager::FixAllRegionLists()
 
 size_t RegionManager::CollectLargeGarbage()
 {
+    OHOS_HITRACE("CMCGC::CollectLargeGarbage");
     size_t garbageSize = 0;
     TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
     RegionDesc* region = oldLargeRegionList_.GetHeadRegion();

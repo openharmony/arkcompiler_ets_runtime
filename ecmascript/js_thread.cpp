@@ -531,6 +531,7 @@ void JSThread::Iterate(RootVisitor &visitor)
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor);
     } else {
+        OHOS_HITRACE("CMCGC::VisitRootGlobalRefHandle");
         size_t globalCount = 0;
         auto callback = [&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
