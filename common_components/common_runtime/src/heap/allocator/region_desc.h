@@ -997,13 +997,14 @@ private:
         struct { // basic data for RegionDesc
             // for fast allocation, always at the start.
             uintptr_t allocPtr;
+            uintptr_t regionEnd;
+
             // watermark set when gc phase transitions to pre-trace.
             uintptr_t traceLine;
             uintptr_t forwardLine;
             uintptr_t fixLine;
             ObjectSlot* freeSlot;
             uintptr_t regionStart;
-            uintptr_t regionEnd;
 
             uint32_t nextRegionIdx;
             uint32_t prevRegionIdx; // support fast deletion for region list.

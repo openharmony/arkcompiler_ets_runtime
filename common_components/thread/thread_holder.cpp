@@ -17,6 +17,7 @@
 
 #include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/mutator/mutator.h"
+#include "common_components/common_runtime/src/mutator/thread_local.h"
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
@@ -105,6 +106,8 @@ bool ThreadHolder::TryBindMutator()
     }
 
     BaseRuntime::GetInstance()->GetThreadHolderManager().BindMutator(this);
+    allocBuffer_ = ThreadLocal::GetAllocBuffer();
+    DCHECK_CC(allocBuffer_ != nullptr);
     return true;
 }
 
@@ -118,6 +121,7 @@ void ThreadHolder::BindMutator()
 
 void ThreadHolder::UnbindMutator()
 {
+    allocBuffer_ = nullptr;
     BaseRuntime::GetInstance()->GetThreadHolderManager().UnbindMutator(this);
 }
 

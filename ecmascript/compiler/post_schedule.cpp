@@ -17,6 +17,7 @@
 
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/mem/region.h"
 
 namespace panda::ecmascript::kungfu {
 void PostSchedule::Run(ControlFlowGraph &cfg)
@@ -86,14 +87,20 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
+#ifdef USE_CMC_GC
+    if (flag == RegionSpaceFlag::IN_OLD_SPACE ||
+        flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
+        flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
+#else
     if (flag == RegionSpaceFlag::IN_OLD_SPACE) {
+#endif
         LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
         return false;
     } else {
         LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
     }
-#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
+#if defined(ARK_ASAN_ON)
     ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
     return false;
 #else
@@ -198,7 +205,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
                                                            std::vector<GateRef> &endBBGates,
                                                            [[maybe_unused]] int64_t flag)
 {
-#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
+#if defined(ARK_ASAN_ON)
     LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
 #else
     Environment env(gate, circuit_, &builder_);
@@ -210,6 +217,64 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), hole);
     Label success(&builder_);
     Label callRuntime(&builder_);
+
+#ifdef USE_CMC_GC
+    ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
+    size_t allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(false);
+    GateRef allocBufferAddrOffset =circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, allocBufferOffset, GateType::NJSValue());
+    GateRef allocBufferAddr = builder_.PtrAdd(glue, allocBufferAddrOffset);
+    GateRef allocBufferAddress = builder_.LoadFromAddressWithoutBarrier(
+                                            VariableType::NATIVE_POINTER(), allocBufferAddr);
+
+    GateRef addrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef tlRegionAddr = builder_.PtrAdd(allocBufferAddress, addrOffset);
+    GateRef tlRegionAddress = builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), tlRegionAddr);
+    GateRef allocPtrAddr = builder_.PtrAdd(tlRegionAddress, addrOffset);
+    GateRef allocPtr = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), allocPtrAddr);
+    GateRef regionEndOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 8, GateType::NJSValue());
+    GateRef regionEndAddr = builder_.PtrAdd(tlRegionAddress, regionEndOffset);
+    GateRef regionEnd = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), regionEndAddr);
+
+    GateRef newAllocPtr = builder_.PtrAdd(allocPtr, size);
+    GateRef condition = builder_.Int64GreaterThan(newAllocPtr, regionEnd);
+    Label *currentLabel = env.GetCurrentLabel();
+    BRANCH_CIR(condition, &callRuntime, &success);
+    {
+        GateRef ifBranch = currentLabel->GetControl();
+        PrepareToScheduleNewGate(ifBranch, currentBBGates);
+        PrepareToScheduleNewGate(condition, currentBBGates);
+        PrepareToScheduleNewGate(newAllocPtr, currentBBGates);
+        PrepareToScheduleNewGate(regionEnd, currentBBGates);
+        PrepareToScheduleNewGate(allocPtr, currentBBGates);
+        PrepareToScheduleNewGate(regionEndAddr, currentBBGates);
+        PrepareToScheduleNewGate(regionEndOffset, currentBBGates);
+        PrepareToScheduleNewGate(allocPtrAddr, currentBBGates);
+        PrepareToScheduleNewGate(tlRegionAddress, currentBBGates);
+        PrepareToScheduleNewGate(tlRegionAddr, currentBBGates);
+        PrepareToScheduleNewGate(addrOffset, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddress, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddr, currentBBGates);
+        PrepareToScheduleNewGate(allocBufferAddrOffset, currentBBGates);
+        PrepareToScheduleNewGate(hole, currentBBGates);
+    }
+    builder_.Bind(&success);
+    {
+        GateRef ifFalse = builder_.GetState();
+        GateRef addr = builder_.PtrAdd(allocPtrAddr, addrOffset);
+        builder_.StoreWithoutBarrier(VariableType::NATIVE_POINTER(), addr, newAllocPtr);
+        GateRef store = builder_.GetDepend();
+        result = allocPtr;
+        builder_.Jump(&exit);
+        {
+            GateRef ordinaryBlock = success.GetControl();
+            PrepareToScheduleNewGate(ordinaryBlock, successBBGates);
+            PrepareToScheduleNewGate(store, successBBGates);
+            PrepareToScheduleNewGate(addr, successBBGates);
+            PrepareToScheduleNewGate(ifFalse, successBBGates);
+        }
+    }
+#else
     size_t topOffset;
     size_t endOffset;
     if (flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
@@ -273,6 +338,7 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
             PrepareToScheduleNewGate(ifFalse, successBBGates);
         }
     }
+#endif
     builder_.Bind(&callRuntime);
     {
         GateRef ifTrue = builder_.GetState();

@@ -107,6 +107,7 @@ void JSThread::UnregisterThread(JSThread *jsThread)
     if (currentThread == jsThread) {
 #if USE_CMC_GC
         jsThread->GetThreadHolder()->TransferToNative();
+        jsThread->SetAllocBuffer(nullptr);
 #else
         jsThread->UpdateState(ThreadState::TERMINATED);
 #endif
@@ -114,6 +115,7 @@ void JSThread::UnregisterThread(JSThread *jsThread)
     } else {
 #if USE_CMC_GC
         jsThread->GetThreadHolder()->TransferToNative();
+        jsThread->SetAllocBuffer(nullptr);
 #else
         // We have created this JSThread instance but hadn't forked it.
         ASSERT(jsThread->GetState() == ThreadState::CREATED);

@@ -71,6 +71,11 @@ public:
         stackRoots_.clear();
     }
 
+    static constexpr size_t GetTLRegionOffset()
+    {
+        return offsetof(AllocationBuffer, tlRegion_);
+    }
+
 private:
     // slow path
     HeapAddress TryAllocateOnce(size_t totalSize, AllocType allocType);
@@ -91,5 +96,8 @@ private:
 
     std::list<uint64_t*> taggedObjStackRoots_;
 };
+
+static_assert(AllocationBuffer::GetTLRegionOffset() == 0);
+
 } // namespace panda
 #endif // ~ARK_COMMON_ALLOC_BUFFER_H

@@ -196,8 +196,10 @@ void Runtime::RegisterThread(JSThread* newThread)
         threads_.emplace_back(newThread);
     }
 #ifdef USE_CMC_GC
-    newThread->GetThreadHolder()->BindMutator();
-    newThread->GetThreadHolder()->RegisterJSThread(newThread);
+    ThreadHolder* threadHolder = newThread->GetThreadHolder();
+    threadHolder->BindMutator();
+    newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
+    threadHolder->RegisterJSThread(newThread);
 #else
     // send all current suspended requests to the new thread
     for (uint32_t i = 0; i < suspendNewCount_; i++) {
