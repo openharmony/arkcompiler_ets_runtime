@@ -113,6 +113,10 @@ public:
     {
         other->currentArea_ = currentArea_;
 
+        while (!areaList_.IsEmpty()) {
+            Area *node = areaList_.PopBack();
+            NativeAreaAllocator::FreeSpace(node);
+        }
         while (!unusedList_.IsEmpty()) {
             Area *node = unusedList_.PopBack();
             NativeAreaAllocator::FreeSpace(node);
