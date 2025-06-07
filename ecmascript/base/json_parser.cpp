@@ -17,6 +17,7 @@
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/platform/json_platform_helper.h"
 
 namespace panda::ecmascript::base {
 
@@ -1184,6 +1185,9 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
 bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
 {
     Advance();
+#if ENABLE_NEXT_OPTIMIZATION
+    return JsonPlatformHelper::ReadJsonStringRangeForPlatformForUtf8(isFastString, current_, range_, end_);
+#else
     // chars are within Ascii
     for (Text current = current_; current != range_; ++current) {
         uint8_t c = *current;
@@ -1199,6 +1203,7 @@ bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
         }
     }
     return false;
+#endif
 }
 
 bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)
