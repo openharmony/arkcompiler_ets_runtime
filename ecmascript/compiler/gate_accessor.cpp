@@ -580,6 +580,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
         case OpCode::CONSTRUCT:
         case OpCode::CALL_NEW:
+        case OpCode::CALL_NEW_BUILTIN:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
         case OpCode::ARRAY_FOR_EACH:

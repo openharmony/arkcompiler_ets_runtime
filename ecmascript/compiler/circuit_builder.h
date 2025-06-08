@@ -631,6 +631,7 @@ public:
     GateRef TypeOfCheck(GateRef gate, ParamType paramType);
     GateRef TypedTypeOf(ParamType paramType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList, bool isSideEffect);
+    inline GateRef CallNewBuiltin(GateRef hirGate, std::vector<GateRef> &args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
                                     BuiltinsStubCSigns::ID id, bool isSideEffect);
     GateRef TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -650,6 +651,7 @@ public:
     GateRef InsertStableArrayCheck(GateRef array, ArrayMetaDataAccessor accessor);
     GateRef InsertLoadArrayLength(GateRef array, GateRef length, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateRef array, TypedArrayMetaDataAccessor accessor);
+    GateRef TypedConstructorCheck(GateRef gate, size_t type);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef Float32ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);

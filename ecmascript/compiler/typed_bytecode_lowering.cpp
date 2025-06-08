@@ -1866,7 +1866,7 @@ bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 {
-    if (TryLowerNewBuiltinConstructor(gate) || TryLowerNewNumber(&builder_, acc_, gate)) {
+    if (TryLowerNewNumber(&builder_, acc_, gate) || TryLowerNewBuiltinConstructor(gate)) {
         return;
     }
     NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
@@ -1922,12 +1922,14 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 {
     NewBuiltinCtorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    auto id = tacc.GetPGOBuiltinMethodId();
+    if (id == BuiltinsStubCSigns::ID::NONE) {
+        return false;
+    }
 
     GateRef ctor = tacc.GetValue();
     GateRef constructGate = Circuit::NullGate();
-    if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ArrayConstructor)) {
-        return false;
-    } else if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ObjectConstructor)) {
+    if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ObjectConstructor)) {
         AddProfiling(gate);
         if (!Uncheck()) {
             builder_.ObjectConstructorCheck(ctor);
@@ -1951,10 +1953,23 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
         }
     }
     if (constructGate == Circuit::NullGate()) {
-        return false;
+        // for other builtin constructor, do necessory check and just call runtime JSCallNew.
+        AddProfiling(gate);
+        if (!Uncheck()) {
+            builder_.TypedConstructorCheck(ctor, GET_TYPED_GLOBAL_ENV_INDEX(id));
+        }
+        GateRef actualArgc = builder_.Int64(
+            BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate), EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+        GateRef actualArgv = builder_.IntPtr(0);
+        GateRef thisObj = builder_.Undefined();
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args {glue_, actualArgc, actualArgv, ctor, ctor, thisObj};
+        for (size_t i = 1; i < range; ++i) {
+            args.emplace_back(acc_.GetValueIn(gate, i));
+        }
+        constructGate = builder_.CallNewBuiltin(gate, args);
     }
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(),
-        builder_.GetDepend(), constructGate);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), constructGate);
     return true;
 }
 

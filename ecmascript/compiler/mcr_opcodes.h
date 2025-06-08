@@ -176,6 +176,7 @@ namespace panda::ecmascript::kungfu {
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
     V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)                               \
     V(TypedCallBuiltinSideEffect, TYPED_CALL_BUILTIN_SIDE_EFFECT, GateFlags::HAS_FRAME_STATE, 1, 1, value)   \
+    V(CallNewBuiltin, CALL_NEW_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)                                   \
     V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_FOR_CALL(V)                                    \
@@ -220,6 +221,7 @@ namespace panda::ecmascript::kungfu {
 #define MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                           \
     V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                    \
+    V(TypedConstructorCheck, TYPED_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
     V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                          \
     V(TypedBinaryOp, TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2)                                         \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \

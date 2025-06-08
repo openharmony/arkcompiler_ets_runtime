@@ -220,6 +220,7 @@ private:
     void LowerStringEqual(GateRef gate, GateRef glue);
     void LowerTypeOfCheck(GateRef gate);
     void LowerTypeOf(GateRef gate, GateRef glue);
+    void LowerTypedConstructorCheck(GateRef gate, GateRef glue);
     void LowerArrayConstructorCheck(GateRef gate, GateRef glue);
     void NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
     void LowerArrayConstructor(GateRef gate, GateRef glue);
