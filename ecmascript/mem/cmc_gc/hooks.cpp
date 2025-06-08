@@ -162,6 +162,13 @@ void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase)
 {
     reinterpret_cast<JSThread *>(jsThread)->SetCMCGCPhase(gcPhase);
 #ifdef USE_READ_BARRIER
+
+// forcely enable read barrier for read barrier DFX
+#ifdef ENABLE_CMC_RB_DFX
+    reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
+    return;
+#endif
+
     if (gcPhase >= GCPhase::GC_PHASE_PRECOPY) {
         reinterpret_cast<JSThread *>(jsThread)->SetReadBarrierState(true);
     } else {

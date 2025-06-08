@@ -79,6 +79,10 @@ public:
     static constexpr JSTaggedType VALUE_EXCEPTION = TAG_SPECIAL | TAG_EXCEPTION;
     static constexpr JSTaggedType VALUE_ZERO = TAG_INT | 0x00ULL;
     static constexpr JSTaggedType VALUE_OPTIMIZED_OUT = TAG_SPECIAL | TAG_OPTIMIZED_OUT;
+    // ReadBarrier DFX tag
+    static constexpr size_t TAG_READ_BARRIER_SHIFT = 47;
+    static constexpr JSTaggedType TAG_READ_BARRIER_DFX = 0x1ULL << TAG_READ_BARRIER_SHIFT;
+    static constexpr JSTaggedType TAG_READ_BARRIER_DFX_MASK = TAG_HEAPOBJECT_MASK | TAG_READ_BARRIER_DFX;
 
     static constexpr size_t INT_SIGN_BIT_OFFSET = 31;
     static constexpr size_t DOUBLE_ENCODE_OFFSET_BIT = 48;
