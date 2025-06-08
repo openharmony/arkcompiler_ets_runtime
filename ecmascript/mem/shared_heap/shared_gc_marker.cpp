@@ -23,7 +23,7 @@
 namespace panda::ecmascript {
 void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType, VMRootVisitType type)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots", "");
     MarkSerializeRoots(visitor);
     MarkSharedModule(visitor);
     MarkStringCache(visitor);
@@ -47,7 +47,7 @@ void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType
 void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType,
                                           VMRootVisitType type)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots", "");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         heap->GetSweeper()->EnsureAllTaskFinished();
@@ -58,7 +58,7 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
 
 void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet", "");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     RSetWorkListHandler *handler = new RSetWorkListHandler(heap, localVm->GetJSThreadNoCheck());
     heap->SetRSetWorkListHandler(handler);
@@ -68,19 +68,19 @@ void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
 
 void SharedGCMarkerBase::MarkSerializeRoots(RootVisitor &visitor)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSerializeRoots");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSerializeRoots", "");
     Runtime::GetInstance()->IterateSerializeRoot(visitor);
 }
 
 void SharedGCMarkerBase::MarkStringCache(RootVisitor &visitor)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkStringCache");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkStringCache", "");
     Runtime::GetInstance()->IterateCachedStringRoot(visitor);
 }
 
 void SharedGCMarkerBase::MarkSharedModule(RootVisitor &visitor)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSharedModule");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSharedModule", "");
     SharedModuleManager::GetInstance()->Iterate(visitor);
 }
 

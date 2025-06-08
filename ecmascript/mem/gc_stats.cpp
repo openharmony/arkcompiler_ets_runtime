@@ -158,17 +158,18 @@ void GCStats::PrintVerboseGCStatistic()
 
 void GCStats::GCFinishTrace()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Finish" + std::to_string(heap_->IsConcurrentFullMark())
-    + ";Reason" + std::to_string(static_cast<int>(gcReason_))
-    + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-    + ";IsInBackground" + std::to_string(heap_->IsInBackground())
-    + ";Startup" + std::to_string(heap_->OnStartupEvent())
-    + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
-    + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
-    + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
-    + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
-    + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
-    + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ("PartialGC::Finish" + std::to_string(heap_->IsConcurrentFullMark())
+        + ";Reason" + std::to_string(static_cast<int>(gcReason_))
+        + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
+        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";Startup" + std::to_string(heap_->OnStartupEvent())
+        + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
+        + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
+        + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+        + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
+        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit())).c_str(), "");
 }
 
 void GCStats::PrintGCMemoryStatistic()
@@ -706,7 +707,7 @@ void SharedGCStats::PrintGCStatistic()
 
 void SharedGCStats::SharedGCFinishTrace()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish;Reason"
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("SharedGC::Finish;Reason"
         + std::to_string(static_cast<int>(gcReason_))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
@@ -717,7 +718,7 @@ void SharedGCStats::SharedGCFinishTrace()
         + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
         + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
-        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM()));
+        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
 }
 
 void SharedGCStats::PrintSharedGCSummaryStatistic()

@@ -289,7 +289,8 @@ void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
     CString msg = "compile method:" + methodInfo + ", in work thread";
     TimeScope scope(vm, msg, tier, true, true);
 
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ConvertToStdString("JIT::Compile:" + methodInfo).c_str(), "");
     if (tier.IsFast()) {
         jsFunction->SetJitCompilingFlag(true);
     } else {
@@ -350,7 +351,8 @@ void Jit::InstallTasks(JSThread *jsThread)
         taskQueue = info.installJitTasks_;
         info.installJitTasks_.clear();
     }
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())).c_str(), "");
 
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
         std::shared_ptr<JitTask> task = *it;

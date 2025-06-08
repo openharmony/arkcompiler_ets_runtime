@@ -80,7 +80,8 @@ void ConcurrentMarker::Mark()
     RecursionScope recurScope(this);
     TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, gcStats);
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ("ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
@@ -90,7 +91,7 @@ void ConcurrentMarker::Mark()
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
         + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
         + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
-        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
+        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit())).c_str(), "");
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
     ASSERT(runningTaskCount_ == 0);
     runningTaskCount_.fetch_add(1, std::memory_order_relaxed);
@@ -189,7 +190,7 @@ void ConcurrentMarker::InitializeMarking()
     if (heap_->IsYoungMark()) {
         NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
         {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkOldToNew");
+            ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::MarkOldToNew", "");
             marker->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
         }
         marker->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);

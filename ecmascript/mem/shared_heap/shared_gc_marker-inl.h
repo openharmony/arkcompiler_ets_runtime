@@ -118,7 +118,7 @@ inline void SharedGCMarkerBase::ProcessVisitorOfDoMark(uint32_t threadId)
         rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
     };
     for (RSetWorkListHandler *handler : rSetHandlers_) {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet", "");
         handler->ProcessAll(visitor);
         // To ensure the accuracy of the state range, notify finished is executed on js thread and deamon thread.
         // Reentrant does not cause exceptions because all the values are set to false.
@@ -164,7 +164,7 @@ inline void SharedGCMarkerBase::ProcessVisitor(RSetWorkListHandler *handler)
 
 inline void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet", "");
     ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
     ProcessVisitor(handler);

@@ -34,7 +34,7 @@ void ParallelEvacuator::Initialize()
 void ParallelEvacuator::Finalize()
 {
     TRACE_GC(GCStats::Scope::ScopeId::Finalize, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::Finalize");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::Finalize", "");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuatorFinalize);
     delete allocator_;
     evacuateWorkloadSet_.Clear();
@@ -53,7 +53,7 @@ void ParallelEvacuator::Evacuate()
 void ParallelEvacuator::SweepNewToOldRegions()
 {
     TRACE_GC(GCStats::Scope::ScopeId::SweepNewToOldRegions, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::SweepNewToOldRegions");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::SweepNewToOldRegions", "");
     if (!hasNewToOldRegions_) {
         return;
     }
@@ -106,7 +106,7 @@ void ParallelEvacuator::ProcessFromSpaceEvacuation()
 void ParallelEvacuator::EvacuateSpace()
 {
     TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::EvacuateSpace");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::EvacuateSpace", "");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
     auto &workloadSet = evacuateWorkloadSet_;
     if (heap_->IsConcurrentFullMark() || heap_->IsYoungMark()) {
@@ -241,7 +241,7 @@ void ParallelEvacuator::UpdateReference()
 {
     TRACE_GC(GCStats::Scope::ScopeId::UpdateReference, heap_->GetEcmaVM()->GetEcmaGCStats());
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelUpdateReference);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateReference");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::UpdateReference", "");
     // Update reference pointers
     uint32_t youngeRegionMoveCount = 0;
     uint32_t youngeRegionCopyCount = 0;
@@ -316,7 +316,7 @@ void ParallelEvacuator::UpdateReference()
 void ParallelEvacuator::UpdateRoot()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateRoot);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateRoot");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::UpdateRoot", "");
 
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_, VMRootVisitType::UPDATE_ROOT);
 }
@@ -325,7 +325,7 @@ template<TriggerGCType gcType>
 void ParallelEvacuator::UpdateWeakReferenceOpt()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReferenceOpt);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReferenceOpt");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::UpdateWeakReferenceOpt", "");
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(objectRegion != nullptr);
@@ -506,7 +506,7 @@ void ParallelEvacuator::UpdateNewToOldEvacuationReference(Region *region, uint32
 
 void ParallelEvacuator::WaitFinished()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::WaitFinished");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::WaitFinished", "");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), WaitUpdateFinished);
     if (parallel_ > 0) {
         LockHolder holder(mutex_);
@@ -518,7 +518,7 @@ void ParallelEvacuator::WaitFinished()
 
 bool ParallelEvacuator::ProcessWorkloads(bool isMain, uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessWorkloads");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::ProcessWorkloads", "");
     DrainWorkloads(updateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
         region->Process(isMain, threadIndex);
         });

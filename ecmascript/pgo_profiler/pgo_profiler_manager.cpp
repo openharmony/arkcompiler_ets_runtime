@@ -257,7 +257,7 @@ bool PGOProfilerManager::InitializeData()
 
 void PGOProfilerManager::Destroy(JSThread *thread, std::shared_ptr<PGOProfiler>& profiler)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerManager::Destroy");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PGOProfilerManager::Destroy", "");
     LOG_PGO(INFO) << "attempting to destroy pgo profiler: " << profiler;
     if (profiler != nullptr) {
         pendingProfilers_.Remove(profiler.get());
@@ -314,7 +314,7 @@ bool PGOProfilerManager::GetPandaFileDesc(ApEntityId abcId, CString& desc) const
 
 void PGOProfilerManager::SavePGOInfo()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerManager::Save");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PGOProfilerManager::Save", "");
     PGOProfilerEncoder encoder(outPath_, apGenMode_);
     LockHolder lock(GetPGOInfoMutex());
     encoder.Save(pgoInfo_);

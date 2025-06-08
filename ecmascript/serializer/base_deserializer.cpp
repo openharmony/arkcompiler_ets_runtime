@@ -44,7 +44,8 @@ BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *
 
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(data_->Size()));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ("Deserialize dataSize: " + std::to_string(data_->Size())).c_str(), "");
     if (data_->IsIncompleteData()) {
         LOG_ECMA(ERROR) << "The serialization data is incomplete";
         return JSHandle<JSTaggedValue>();

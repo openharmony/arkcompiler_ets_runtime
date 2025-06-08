@@ -98,7 +98,7 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
     ecmascript::VMRootVisitType type = isMark ? ecmascript::VMRootVisitType::MARK :
                                                 ecmascript::VMRootVisitType::UPDATE_ROOT;
     CMCRootVisitor visitor(visitorFunc);
-    OHOS_HITRACE("CMCGC::VisitSharedRoot");
+    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::VisitSharedRoot", "");
     // MarkSharedModule
     ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
 
@@ -122,7 +122,7 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 
 void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
 {
-    OHOS_HITRACE("CMCGC::VisitDynamicWeakRoots");
+    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::VisitDynamicWeakRoots", "");
     CMCWeakVisitor visitor(visitorFunc);
 
     ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);

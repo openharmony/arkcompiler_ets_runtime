@@ -326,7 +326,7 @@ bool JitFort::IsResourceAvailable()
 void JitFort::InitJitFortResource()
 {
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JIT::InitJitFortResource", "");
     if (!Jit::GetInstance()->IsAppJit()) {
         int fd = open("/dev/xpm", O_RDWR);
         if (fd < 0) {
