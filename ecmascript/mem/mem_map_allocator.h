@@ -288,13 +288,13 @@ public:
     void IncreaseMemMapTotalSize(size_t bytes)
     {
         memMapTotalSize_.fetch_add(bytes);
-        ECMA_BYTRACE_COUNT_TRACE(HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
+        ECMA_BYTRACE_COUNT_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
     }
 
     void DecreaseMemMapTotalSize(size_t bytes)
     {
         memMapTotalSize_.fetch_sub(bytes);
-        ECMA_BYTRACE_COUNT_TRACE(HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
+        ECMA_BYTRACE_COUNT_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
     }
 
     static MemMapAllocator *GetInstance();

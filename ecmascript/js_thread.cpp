@@ -416,8 +416,8 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
     }
     runningNativeFinalizeCallbacks_ = true;
     TRACE_GC(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks, vm_->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
-        + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
+    OHOS_HITRACE(HITRACE_LEVEL_MAX, ("InvokeNativeFinalizeCallbacks num:"
+        + std::to_string(weakNodeNativeFinalizeCallbacks_.size())).c_str(), "");
     while (!weakNodeNativeFinalizeCallbacks_.empty()) {
         auto callbackPair = weakNodeNativeFinalizeCallbacks_.back();
         weakNodeNativeFinalizeCallbacks_.pop_back();
@@ -531,7 +531,7 @@ void JSThread::Iterate(RootVisitor &visitor)
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor);
     } else {
-        OHOS_HITRACE("CMCGC::VisitRootGlobalRefHandle");
+        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::VisitRootGlobalRefHandle", "");
         size_t globalCount = 0;
         auto callback = [&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
@@ -1200,7 +1200,7 @@ void JSThread::WaitSuspension()
     ThreadState oldState = GetState();
     UpdateState(ThreadState::IS_SUSPENDED);
     {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitSuspension");
+        OHOS_HITRACE(HITRACE_LEVEL_MAX, "SuspendTime::WaitSuspension", "");
         LockHolder lock(suspendLock_);
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
@@ -1361,7 +1361,7 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
             PassSuspendBarrier();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
             constexpr int TIMEOUT = 100;
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::StoreRunningState");
+            OHOS_HITRACE(HITRACE_LEVEL_MAX, "SuspendTime::StoreRunningState", "");
             LockHolder lock(suspendLock_);
             while (suspendCount_ > 0) {
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);

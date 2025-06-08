@@ -30,7 +30,7 @@ Marker::Marker(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 void Marker::MarkRoots(RootVisitor &rootVisitor, VMRootVisitType type)
 {
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkRoots");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::MarkRoots", "");
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), rootVisitor, type);
 }
 
@@ -69,7 +69,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
     // alive first. So this method must be call after all other mark work finish.
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::MarkJitCodeMap", "");
     if (!heap_->IsFullMark()) {
         return;
     }
@@ -203,7 +203,7 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
     // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
     // alive first. So this method must be call after all other mark work finish.
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::MarkJitCodeMap", "");
     FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(threadId), isAppSpawn_);
     JitCodeMapVisitor visitor = [&fullGCRunner] (std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
         auto it = jitCodeMaps.begin();

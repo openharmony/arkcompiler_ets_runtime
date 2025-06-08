@@ -55,7 +55,7 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
         SuspendAllScope scope(dThread_);
         TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap_->GetEcmaGCStats());
         LOG_GC(DEBUG) << "SharedConcurrentMarker: Concurrent Marking Begin";
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentMarker::Mark;MarkReason"
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("SharedConcurrentMarker::Mark;MarkReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
@@ -66,7 +66,7 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
         + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
         + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
-        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM()));
+        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
         CHECK_DAEMON_THREAD();
         // TODO: support shared runtime state
         if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {

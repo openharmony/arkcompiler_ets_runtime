@@ -103,7 +103,7 @@ bool ValueSerializer::WriteValue(JSThread *thread,
                                  const JSHandle<JSTaggedValue> &transfer,
                                  const JSHandle<JSTaggedValue> &cloneList)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ValueSerializer::WriteValue");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ValueSerializer::WriteValue", "");
     ASSERT(!value->IsWeak());
     if (!defaultTransfer_ && !PrepareTransfer(thread, transfer)) {
         std::string errorMessage = "Serialize PrepareTransfer fail";

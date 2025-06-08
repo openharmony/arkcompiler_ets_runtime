@@ -123,7 +123,7 @@ public:
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ResetOutPathTask::Run");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ResetOutPathTask::Run", "");
         PGOProfilerManager::GetInstance()->ResetOutPathByModuleName(moduleName_);
         return true;
     }
@@ -147,7 +147,7 @@ public:
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PGOProfilerTask::Run", "");
         PGOProfilerManager::GetInstance()->DumpPendingProfilersByDumpThread();
         return true;
     }

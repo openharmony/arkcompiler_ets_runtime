@@ -177,7 +177,7 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
 
 bool ConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentSweeper::Sweep");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ConcurrentSweeper::Sweep", "");
     uint32_t sweepTypeNum = FREE_LIST_NUM - startSpaceType_;
     for (size_t i = startSpaceType_; i < FREE_LIST_NUM; i++) {
         auto type = static_cast<MemSpaceType>(((i + type_) % sweepTypeNum) + startSpaceType_);

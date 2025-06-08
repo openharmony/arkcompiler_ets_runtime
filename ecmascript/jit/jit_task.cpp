@@ -68,7 +68,7 @@ void JitTask::PrepareCompile()
 
 void JitTask::Optimize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler frontend");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JIT::Compiler frontend", "");
     bool res = jit_->JitCompile(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -81,7 +81,7 @@ void JitTask::Finalize()
         return;
     }
 
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compiler backend");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JIT::Compiler backend", "");
     bool res = jit_->JitFinalize(compilerTask_, this);
     if (!res) {
         SetCompileFailed();
@@ -445,7 +445,8 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     DISALLOW_HEAP_ACCESS;
 
     CString info = "compile method:" + jitTask_->GetMethodName();
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + info));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ConvertToStdString("JIT::Compile:" + info).c_str(), "");
 
     AsyncTaskRunScope asyncTaskRunScope(jitTask_.get());
 

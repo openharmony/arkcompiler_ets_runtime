@@ -30,15 +30,15 @@
 #define OPTIONAL_LOG_COMPILER(level) LOG_ECMA_IF(IsLogEnabled(), level)
 
 #if !defined(ENABLE_BYTRACE)
-    #define ECMA_BYTRACE_NAME(tag, name)
-    #define ECMA_BYTRACE_START_TRACE(tag, msg)
-    #define ECMA_BYTRACE_FINISH_TRACE(tag)
-    #define ECMA_BYTRACE_COUNT_TRACE(tag, name, value)
+    #define ECMA_BYTRACE_NAME(level, tag, name, customArgs)
+    #define ECMA_BYTRACE_START_TRACE(level, tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(level, tag)
+    #define ECMA_BYTRACE_COUNT_TRACE(level, tag, name, count)
 #else
-    #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
-    #define ECMA_BYTRACE_START_TRACE(tag, msg) StartTrace(tag, msg)
-    #define ECMA_BYTRACE_FINISH_TRACE(tag) FinishTrace(tag)
-    #define ECMA_BYTRACE_COUNT_TRACE(tag, name, value) CountTrace(tag, name, value)
+    #define ECMA_BYTRACE_NAME(level, tag, name, customArgs) HITRACE_METER_NAME_EX(level, tag, name, customArgs)
+    #define ECMA_BYTRACE_START_TRACE(level, tag, msg) StartTraceEx(level, tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(level, tag) FinishTraceEx(level, tag)
+    #define ECMA_BYTRACE_COUNT_TRACE(level, tag, name, count) CountTraceEx(level, tag, name, count)
 #endif
 
 #if defined(ENABLE_HITRACE)

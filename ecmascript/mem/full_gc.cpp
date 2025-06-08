@@ -31,7 +31,7 @@ void FullGC::RunPhases()
     ASSERT("FullGC should be disabled" && false);
 #endif
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases;GCReason"
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("FullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
@@ -41,7 +41,8 @@ void FullGC::RunPhases()
         + ";huge" + std::to_string(heap_->GetHugeObjectSpace()->GetCommittedSize())
         + ";NonMov" + std::to_string(heap_->GetNonMovableSpace()->GetCommittedSize())
         + ";TotCommit" + std::to_string(heap_->GetCommittedSize())
-        + ";ObjSizeBeforeSensitive" + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive()));
+        + ";ObjSizeBeforeSensitive"
+        + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive())).c_str(), "");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), FullGC_RunPhases);
 
@@ -78,7 +79,7 @@ void FullGC::RunPhasesForAppSpawn()
 
 void FullGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Initialize");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "FullGC::Initialize", "");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Prepare();
     auto callback = [](Region *current) {
@@ -111,7 +112,7 @@ void FullGC::MarkRoots()
 
 void FullGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Mark");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "FullGC::Mark", "");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     MarkRoots();
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
@@ -122,7 +123,7 @@ void FullGC::Mark()
 
 void FullGC::Sweep()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Sweep");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "FullGC::Sweep", "");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
     // process weak reference
     uint32_t totalThreadCount = 1; // 1 : mainthread
@@ -188,7 +189,7 @@ void FullGC::Sweep()
 
 void FullGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Finish");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "FullGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     if (!forAppSpawn_) {
         heap_->SwapOldSpace();

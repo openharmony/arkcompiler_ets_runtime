@@ -34,15 +34,15 @@
 #if defined(ENABLE_HITRACE)
     #include "hitrace_meter.h"
 
-    #define OHOS_HITRACE(name)                      HITRACE_METER_NAME(HITRACE_TAG_ARK, name)
-    #define OHOS_HITRACE_START(name)                StartTrace(HITRACE_TAG_ARK, name)
-    #define OHOS_HITRACE_FINISH()                   FinishTrace(HITRACE_TAG_ARK)
-    #define OHOS_HITRACE_COUNT(name, count)         CountTrace(HITRACE_TAG_ARK, name, count)
+    #define OHOS_HITRACE(level, name, customArgs)         HITRACE_METER_NAME_EX(level, HITRACE_TAG_ARK, name, customArgs)
+    #define OHOS_HITRACE_START(level, name, customArgs)   StartTraceEx(level, HITRACE_TAG_ARK, name, customArgs)
+    #define OHOS_HITRACE_FINISH(level)                    FinishTraceEx(level, HITRACE_TAG_ARK)
+    #define OHOS_HITRACE_COUNT(level, name, count)        CountTraceEx(level, HITRACE_TAG_ARK, name, count)
 #else
-    #define OHOS_HITRACE(name)
-    #define OHOS_HITRACE_START(name)
-    #define OHOS_HITRACE_FINISH()
-    #define OHOS_HITRACE_COUNT(name, count)
+    #define OHOS_HITRACE(level, name, customArgs)
+    #define OHOS_HITRACE_START(level, name, customArgs)
+    #define OHOS_HITRACE_FINISH(level)
+    #define OHOS_HITRACE_COUNT(level, name, count)
 #endif
 
 namespace panda {

@@ -90,7 +90,7 @@ bool PGOProfilerEncoder::ValidateAndRename(const std::string& tmpOutPath)
 
 bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename", "");
     LOG_PGO(INFO) << "start save and rename ap file to " << path_;
     ClockScope start;
     std::string dirPath = GetDirectoryPath(path_);
@@ -123,7 +123,7 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
 
 bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo, const SaveTask* task)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave", "");
     LOG_PGO(INFO) << (mode_ == MERGE ? "MERGE(1)" : "OVERWRITE(0)") << " pgo info";
     if ((mode_ == MERGE) && FileExist(path_.c_str())) {
         auto info = std::make_shared<PGOInfo>(rtInfo->GetHotnessThreshold());

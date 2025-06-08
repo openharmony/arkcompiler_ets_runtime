@@ -29,8 +29,8 @@ void SharedGCEvacuator::Evacuate()
 void SharedGCEvacuator::EvacuateRegions()
 {
     TRACE_GC(GCStats::Scope::ScopeId::Evacuate,  sHeap_->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCEvacuator::EvacuateRegions;cset count: "
-        + std::to_string(sHeap_->GetOldSpace()->GetCollectSetRegionCount()));
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("SharedGCEvacuator::EvacuateRegions;cset count: "
+        + std::to_string(sHeap_->GetOldSpace()->GetCollectSetRegionCount())).c_str(), "");
     auto sTlabAllocator = new SharedTlabAllocator(sHeap_);
     auto inHeapProfiler = sHeap_->InHeapProfiler();
     sHeap_->GetOldSpace()->EnumerateCollectRegionSet([this, inHeapProfiler, sTlabAllocator](Region *region) {
@@ -60,7 +60,7 @@ void SharedGCEvacuator::EvacuateRegions()
 void SharedGCEvacuator::UpdateReference()
 {
     TRACE_GC(GCStats::Scope::ScopeId::UpdateReference,  sHeap_->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReference");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReference", "");
     Runtime *runtime = Runtime::GetInstance();
     runtime->GCIterateThreadList([this](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
@@ -109,7 +109,7 @@ void SharedGCEvacuator::UpdateSharedReferenceWorkload::Process([[maybe_unused]]b
 
 bool SharedGCEvacuator::UpdateReferenceTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReferenceTask");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReferenceTask", "");
     evacuator_->ProcessWorkloads(false);
     return true;
 }
