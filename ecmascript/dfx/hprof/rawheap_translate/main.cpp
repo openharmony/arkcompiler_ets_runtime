@@ -19,13 +19,60 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
 
 namespace rawheap_translate {
+static const Version VERSION(2, 0, 0);
 std::string RAWHEAP_TRANSLATE_HELPER =
     "Usage: rawheap_translator <filename.rawheap> <filename.heapsnapshot>\n"
     "at least 1 argv provide, you can also extend to include <filename.heapsnapshot>, "
     "if output file not available, an automatic one will be generated after all.";
 
+bool ParseMetaData(FileReader &file, MetaParser *parser)
+{
+    if (!file.CheckAndGetHeaderAt(file.GetFileSize() - sizeof(uint64_t), 0)) {
+        LOG_ERROR_ << "rawheap header error!";
+        return false;
+    }
+
+    std::vector<char> metadata(file.GetHeaderRight());
+    if (!file.Seek(file.GetHeaderLeft()) || !file.Read(metadata.data(), file.GetHeaderRight())) {
+        LOG_ERROR_ << "read metadata failed!";
+        return false;
+    }
+
+    cJSON *json = cJSON_ParseWithOpts(metadata.data(), nullptr, true);
+    if (json == nullptr) {
+        LOG_ERROR_ << "metadata cjson parse failed!";
+        return false;
+    }
+
+    bool ret = parser->Parse(json);
+    cJSON_Delete(json);
+    return ret;
+}
+
+RawHeap *ParseRawheap(FileReader &file, MetaParser *metaParser)
+{
+    Version version;
+    if (!version.Parse(RawHeap::ReadVersion(file))) {
+        return nullptr;
+    }
+
+    if (VERSION < version) {
+        LOG_ERROR_ << "The rawheap file's version " << version.ToString()
+                   << " is not matched the current rawheap translator,"
+                   << " please use the newest version of the translator!";
+        return nullptr;
+    }
+
+    if (Version(1, 0, 0) < version) {
+        return new RawHeapTranslateV2(metaParser);
+    }
+
+    return new RawHeapTranslateV1(metaParser);
+}
+
 void Translate(const std::string &inputPath, const std::string &outputPath)
 {
+    auto start = std::chrono::steady_clock::now();
     FileReader file;
     if (!file.Initialize(inputPath)) {
         return;
@@ -37,63 +84,59 @@ void Translate(const std::string &inputPath, const std::string &outputPath)
         return;
     }
 
-    std::vector<char> metadata(file.GetHeaderRight());
-    if (!file.Seek(file.GetHeaderLeft()) || !file.Read(metadata.data(), file.GetHeaderRight())) {
-        LOG_ERROR_ << "Read rawheap file metadata failed!";
-        return;
-    }
-
-    cJSON *json = cJSON_ParseWithOpts(metadata.data(), nullptr, true);
-    if (json == nullptr) {
-        LOG_ERROR_ << "Metadata cjson parse failed!";
-        return;
-    }
-
     MetaParser metaParser;
-    bool ret = metaParser.Parse(json);
-    cJSON_Delete(json);
-    if (!ret || !CheckVersion(metaParser.GetMetaVersion())) {
+    if (!ParseMetaData(file, &metaParser)) {
         return;
     }
 
-    RawHeapTranslateV1 translate(&metaParser);
-    if (!translate.Parse(file, file.GetHeaderLeft())) {
+    RawHeap *rawheap = ParseRawheap(file, &metaParser);
+    if (rawheap == nullptr) {
         return;
     }
 
-    LOG_INFO_ << "Start to translate rawheap!";
-    translate.Translate();
+    if (!rawheap->Parse(file, file.GetHeaderLeft())) {
+        delete rawheap;
+        return;
+    }
 
-    LOG_INFO_ << "Start to serialize!";
+    rawheap->Translate();
     StreamWriter writer;
     if (!writer.Initialize(outputPath)) {
         return;
     }
 
-    HeapSnapshotJSONSerializer::Serialize(&translate, &writer);
+    HeapSnapshotJSONSerializer::Serialize(rawheap, &writer);
+    delete rawheap;
+    auto end = std::chrono::steady_clock::now();
+    int duration = (int)std::chrono::duration<double>(end - start).count();
+    LOG_INFO_ << "File save to " << outputPath << ", cost " << std::to_string(duration) << 's';
 }
 
-int Main(const int argc, const char **argv)
+bool ParseArgs(const int argc, const char **argv, std::string &input, std::string &output)
 {
-    // 2: at least 1 argv provide, including <filename.rawheap>
-    // 3: also extend to include output file <filename.heapsnapshot>
-    if (argc < 2 || argc > 3) {
-        LOG_ERROR_ << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER;
-        return -1;
+    const int minArgc = 2;  // 2: at least 1 argv provide, including <filename.rawheap>
+    const int maxArgc = 3;  // 3: also extend to include output file <filename.heapsnapshot>
+    if (argc < minArgc || argc > maxArgc) {
+        std::cout << "Input error!\n" << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return false;
     }
 
     int newArgc = 1;
     std::string rawheapPathOrVersionCheck = argv[newArgc];
-    if (rawheapPathOrVersionCheck == "-V" || rawheapPathOrVersionCheck == "-v") {
-        std::cout << VERSION[MAJOR_VERSION_INDEX]
-                  << '.' << VERSION[MINOR_VERSION_INDEX]
-                  << '.' << VERSION[BUILD_VERSION_INDEX] << std::endl;
-        return 0;
+    if (rawheapPathOrVersionCheck == "--version" || rawheapPathOrVersionCheck == "-v") {
+        std::cout << VERSION.ToString() << std::endl;
+        return false;
+    }
+
+    if (rawheapPathOrVersionCheck == "--help" || rawheapPathOrVersionCheck == "-h") {
+        std::cout << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return false;
     }
 
     if (!EndsWith(rawheapPathOrVersionCheck, ".rawheap")) {
-        LOG_ERROR_ << "The second argument must be rawheap file!\n" << RAWHEAP_TRANSLATE_HELPER;
-        return -1;
+        std::cout << "The second argument must be rawheap file!" << std::endl
+                  << RAWHEAP_TRANSLATE_HELPER << std::endl;
+        return false;
     }
 
     newArgc++;
@@ -101,21 +144,31 @@ int Main(const int argc, const char **argv)
     if (newArgc < argc) {
         outputPath = argv[newArgc];
         if (!EndsWith(outputPath, ".heapsnapshot")) {
-            LOG_ERROR_ << "The last argument must be heapsnapshot file!\n" << RAWHEAP_TRANSLATE_HELPER;
-            return -1;
+            std::cout << "The last argument must be heapsnapshot file!" << std::endl
+                      << RAWHEAP_TRANSLATE_HELPER << std::endl;
+            return false;
         }
     } else {
         if (!GenerateDumpFileName(outputPath)) {
-            LOG_ERROR_ << "Generate dump file name failed!\n";
-            return -1;
+            std::cout << "Generate dump file name failed!\n";
+            return false;
         }
     }
 
-    auto start = std::chrono::steady_clock::now();
-    Translate(rawheapPathOrVersionCheck, outputPath);
-    auto end = std::chrono::steady_clock::now();
-    int duration = (int)std::chrono::duration<double>(end - start).count();
-    LOG_INFO_ << "Translate success! file save to " << outputPath << ", cost " << std::to_string(duration) << 's';
+    input = rawheapPathOrVersionCheck;
+    output = outputPath;
+    return true;
+}
+
+int Main(const int argc, const char **argv)
+{
+    std::string rawheapPath;
+    std::string snapshotPath;
+    if (!ParseArgs(argc, argv, rawheapPath, snapshotPath)) {
+        return 0;
+    }
+
+    Translate(rawheapPath, snapshotPath);
     return 0;
 }
 

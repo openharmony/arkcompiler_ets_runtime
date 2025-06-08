@@ -53,11 +53,14 @@ void ObjectMarker::ProcessMarkObjectsFromRoot(JSTaggedType root)
     while (!IsEmpty()) {
         JSTaggedValue value(PopUnchecked());
         TaggedObject *object = value.GetTaggedObject();
-        Mark(reinterpret_cast<JSTaggedType>(object->GetClass()));
-        if (object->GetClass()->IsString()) {
+        JSHClass *hclass = object->GetClass();
+        if (Mark(reinterpret_cast<JSTaggedType>(hclass))) {
+            Push(reinterpret_cast<JSTaggedType>(hclass));
+        }
+        if (hclass->IsString()) {
             continue;
         }
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, object->GetClass(), *this);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, hclass, *this);
     }
 }
 
@@ -117,6 +120,20 @@ void RawHeapDump::WriteU64(uint64_t value)
     char data[sizeof(uint64_t)];
     *reinterpret_cast<uint64_t *>(data) = value;
     WriteChunk(data, sizeof(data));
+}
+
+void RawHeapDump::WriteU32(uint32_t value)
+{
+    char data[sizeof(uint32_t)];
+    *reinterpret_cast<uint32_t *>(data) = value;
+    WriteChunk(data, sizeof(uint32_t));
+}
+
+void RawHeapDump::WriteU16(uint16_t value)
+{
+    char data[sizeof(uint16_t)];
+    *reinterpret_cast<uint16_t *>(data) = value;
+    WriteChunk(data, sizeof(uint16_t));
 }
 
 void RawHeapDump::WriteHeader(uint32_t offset, uint32_t size)
@@ -305,5 +322,162 @@ void RawHeapDumpV1::UpdateStringTable(HeapMarker &marker)
         }
     };
     marker.IterateMarked(cb);
+}
+
+RawHeapDumpV2::RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
+                             EntryIdMap *entryIdMap, const DumpSnapShotOption &dumpOption)
+    : RawHeapDump(stream, snapshot, entryIdMap, dumpOption), vm_(vm)
+{
+}
+
+RawHeapDumpV2::~RawHeapDumpV2()
+{
+    regionIdMap_.clear();
+}
+
+void RawHeapDumpV2::BinaryDump()
+{
+    DumpVersion(std::string(RAWHEAP_VERSION_V2));
+
+    RootMarker rootMarker;
+    HeapRootVisitor rootVisitor;
+    rootVisitor.VisitHeapRoots(vm_->GetJSThread(), rootMarker);
+    SharedModuleManager::GetInstance()->Iterate(rootMarker);
+    Runtime::GetInstance()->IterateCachedStringRoot(rootMarker);
+    DumpRootTable(rootMarker);
+
+    ObjectMarker objectMarker;
+    rootMarker.IterateMarked(std::bind(&ObjectMarker::ProcessMarkObjectsFromRoot,
+                                       &objectMarker, std::placeholders::_1));
+    DumpStringTable(objectMarker);
+    DumpObjectTable(objectMarker);
+    DumpObjectMemory(objectMarker);
+    DumpSectionIndex();
+}
+
+void RawHeapDumpV2::DumpRootTable(HeapMarker &marker)
+{
+    AddSectionOffset();
+    WriteHeader(marker.Count(), sizeof(uint32_t));
+    auto cb = [this](JSTaggedType addr) {
+        WriteU32(GenerateSyntheticAddr(addr));
+    };
+    marker.IterateMarked(cb);
+    AddSectionBlockSize();
+    LOG_ECMA(INFO) << "rawheap dump, root count " << marker.Count();
+}
+
+void RawHeapDumpV2::DumpStringTable(HeapMarker &marker)
+{
+    UpdateStringTable(marker);
+    auto strTable = GetEcmaStringTable();
+    AddSectionOffset();
+    WriteHeader(strTable->GetCapcity(), 0);
+    for (auto key : strTable->GetOrderedKeyStorage()) {
+        auto [strId, str] = strTable->GetStringAndIdPair(key);
+        auto objVec = strIdMapObjVec_[strId];
+        WriteHeader(str->size(), objVec.size());
+        WriteChunk(reinterpret_cast<char *>(objVec.data()), objVec.size() * sizeof(uint32_t));
+        WriteChunk(const_cast<char *>(str->c_str()), str->size() + 1);
+    }
+
+    WritePadding();
+    AddSectionBlockSize();
+    LOG_ECMA(INFO) << "rawheap dump, string table capcity " << strTable->GetCapcity();
+}
+
+void RawHeapDumpV2::DumpObjectTable(HeapMarker &marker)
+{
+    AddSectionOffset();
+    WriteHeader(marker.Count(), sizeof(AddrTableItem));
+    uint32_t memOffset = marker.Count() * sizeof(AddrTableItem);
+    auto cb = [this, &memOffset](JSTaggedType addr) {
+        TaggedObject *obj = reinterpret_cast<TaggedObject *>(addr);
+        AddrTableItem table = {
+            GenerateSyntheticAddr(addr),
+            obj->GetSize(),
+            GenerateNodeId(addr),
+            obj->GetClass()->IsJSNativePointer() ? JSNativePointer::Cast(obj)->GetBindingSize() : 0,
+            static_cast<uint32_t>(obj->GetClass()->GetObjectType())
+        };
+        WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
+    };
+    marker.IterateMarked(cb);
+    LOG_ECMA(INFO) << "rawheap dump, objects total count " << marker.Count();
+}
+
+void RawHeapDumpV2::DumpObjectMemory(HeapMarker &marker)
+{
+    uint32_t memSize = 0;
+    auto cb = [this, &memSize](JSTaggedType addr) {
+        TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
+        WriteU32(GenerateSyntheticAddr(reinterpret_cast<JSTaggedType>(object->GetClass())));
+        if (object->GetClass()->IsString()) {
+            return;
+        }
+        ObjectSlot end(static_cast<uintptr_t>(addr + object->GetSize()));
+        ObjectSlot slot(static_cast<uintptr_t>(addr + sizeof(JSTaggedType)));
+        for (; slot < end; slot++) {
+            JSTaggedValue value(slot.GetTaggedType());
+            if (value.IsHeapObject() && !value.IsWeak()) {
+                WriteU32(GenerateSyntheticAddr(value.GetRawData()));
+                memSize += sizeof(uint32_t);
+            } else {
+                WriteU16(0);
+                memSize += sizeof(uint16_t);
+            }
+        }
+    };
+    marker.IterateMarked(cb);
+    AddSectionBlockSize();
+    LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
+}
+
+void RawHeapDumpV2::UpdateStringTable(HeapMarker &marker)
+{
+    auto cb = [this](JSTaggedType addr) {
+        uint32_t syntheticAddr = GenerateSyntheticAddr(addr);
+        StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr));
+        if (strId == 1) {  // 1 : invalid str id
+            return;
+        }
+        auto vec = strIdMapObjVec_.find(strId);
+        if (vec != strIdMapObjVec_.end()) {
+            vec->second.push_back(syntheticAddr);
+        } else {
+            CVector<uint32_t> objVec;
+            objVec.push_back(syntheticAddr);
+            strIdMapObjVec_.emplace(strId, objVec);
+        }
+    };
+    marker.IterateMarked(cb);
+}
+
+uint32_t RawHeapDumpV2::GenerateRegionId(JSTaggedType addr)
+{
+    Region *region = Region::ObjectAddressToRange(addr);
+    auto [it, inserted] = regionIdMap_.try_emplace(region, regionId_);
+    if (inserted) {
+        ++regionId_;
+    }
+    return it->second;
+}
+
+/* ------------------------------
+ * |  regionId  | indexInRegion |
+ * ------------------------------  ==> uint32_t synthetic addr
+ * |  uint16_t  |   uint16_t    |
+ * ------------------------------
+ */
+uint32_t RawHeapDumpV2::GenerateSyntheticAddr(JSTaggedType addr)
+{
+#ifdef OHOS_UNIT_TEST
+    return static_cast<uint32_t>(addr);
+#else
+    uint16_t syntheticAddr[2];
+    syntheticAddr[0] = static_cast<uint16_t>(GenerateRegionId(addr));
+    syntheticAddr[1] = static_cast<uint16_t>((addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    return *reinterpret_cast<uint32_t *>(syntheticAddr);
+#endif
 }
 } // namespace panda::ecmascript

@@ -38,6 +38,7 @@ struct ProfileInfo;
 struct JsFrameInfo;
 struct SamplingInfo;
 struct TraceEvent;
+enum class RawHeapDumpCropLevel;
 }
 class DFXJSNApi;
 class JSValueRef;
@@ -54,6 +55,7 @@ using TraceEvent = ecmascript::TraceEvent;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
 using DumpFormat = ecmascript::DumpFormat;
+using CropLevel = ecmascript::RawHeapDumpCropLevel;
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
     DumpSnapShotOption dumpOption;
@@ -159,6 +161,7 @@ public:
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
     static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
+    static void SetJsRawHeapCropLevel(CropLevel level);
 };
 }
 #endif

@@ -40,6 +40,12 @@ struct DumpSnapShotOption {
     bool isDumpOOM = false; // whether dump oom heapdump.
 };
 
+enum class RawHeapDumpCropLevel {
+    LEVEL_V1,
+    LEVEL_V2,
+    DEFAULT = LEVEL_V1
+};
+
 class HeapProfilerInterface {
 public:
     static HeapProfilerInterface *GetInstance(EcmaVM *vm);

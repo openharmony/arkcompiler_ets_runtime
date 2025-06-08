@@ -81,6 +81,7 @@ struct Node {
     uint32_t nativeSize = 0;
     char *data {nullptr};
     NodeType type = DEFAULT_NODETYPE;
+    JSType jsType = 0;
 
     Node(uint32_t nodeIndex) : index(nodeIndex) {}
 };

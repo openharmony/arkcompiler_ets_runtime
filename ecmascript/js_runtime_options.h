@@ -71,6 +71,7 @@ enum ArkProperties {
     ENABLE_PAGETAG_THREAD_ID = 1 << 27,
     ENABLE_MODULE_EXCEPTION = 1 << 29,
     ENABLE_PENDING_CHEAK = 1 << 30,
+    ENABLE_RAWHEAP_CROP = 1 << 31,
 };
 
 // asm interpreter control parsed option
@@ -691,6 +692,11 @@ public:
     bool EnablePendingCheak() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PENDING_CHEAK) != 0;
+    }
+
+    bool EnableRawHeapCrop() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_RAWHEAP_CROP) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const

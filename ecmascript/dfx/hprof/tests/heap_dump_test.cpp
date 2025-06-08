@@ -111,6 +111,7 @@ public:
         dumpOption.dumpFormat = dumpFormat;
         dumpOption.isSync = isSync;
         dumpOption.isDumpOOM = true;
+        dumpOption.isFullGC = false;
         fstream outputString(filePath, std::ios::out);
         outputString.close();
         outputString.clear();
@@ -121,7 +122,7 @@ public:
         return ret;
     }
 
-    bool DecodeRawHeapObjectTable(std::string &filePath, CSet<JSTaggedType> &result)
+    bool DecodeRawHeapObjectTableV1(std::string &filePath, CSet<JSTaggedType> &result)
     {
         uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
         rawheap_translate::FileReader file;
@@ -135,6 +136,44 @@ public:
             result.insert(it.first);
         }
         GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translate.nodesMap_.size();
+        return true;
+    }
+
+    bool DecodeRawHeapObjectTableV2(std::string &filePath, CSet<uint32_t> &result)
+    {
+        uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
+        rawheap_translate::FileReader file;
+        rawheap_translate::RawHeapTranslateV2 translate(nullptr);
+
+        if (!file.Initialize(filePath) || !translate.Parse(file, fileSize)) {
+            return false;
+        }
+
+        for (auto &it : translate.nodesMap_) {
+            result.insert(it.first);
+        }
+        GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translate.nodesMap_.size();
+        return true;
+    }
+
+    bool MatchHeapObjectReferencesV1(const std::vector<Reference> &refs, const CSet<JSTaggedType> &dumpObjects)
+    {
+        for (auto &ref : refs) {
+            if (ref.value_.IsHeapObject() && dumpObjects.find(ref.value_.GetRawData()) == dumpObjects.end()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool MatchHeapObjectReferencesV2(const std::vector<Reference> &refs, const CSet<uint32_t> &dumpObjects)
+    {
+        for (auto &ref : refs) {
+            if (ref.value_.IsHeapObject() &&
+                dumpObjects.find(static_cast<uint32_t>(ref.value_.GetRawData())) == dumpObjects.end()) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -1462,74 +1501,75 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName10)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared BigUint64 Array\""));
 }
 
-#ifdef PANDA_TARGET_ARM32
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpBinaryDump)
-#else
-HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
-#endif
+#ifndef PANDA_TARGET_ARM32
+#define CREATE_OBJECT_AND_ADD_REFS(generator, typeName, refs)           \
+    {                                                                   \
+        auto obj = generator->New##typeName();                          \
+        refs.emplace_back(#typeName, obj.GetTaggedValue());             \
+        obj.GetTaggedValue().DumpForSnapshot(refs);                     \
+    }
+
+#define CREATE_ARRAY_AND_ADD_REFS(generator, typeName, length, refs)    \
+    {                                                                   \
+        auto obj = generator->New##typeName(length);                    \
+        refs.emplace_back(#typeName, obj.GetTaggedValue());             \
+        obj.GetTaggedValue().DumpForSnapshot(refs);                     \
+    }
+
+void CreateObjectsForBinaryDump(ObjectFactory *factory, HeapDumpTestHelper *tester, std::vector<Reference> &refs)
+{
+    CREATE_OBJECT_AND_ADD_REFS(factory, PromiseRecord, refs)
+    CREATE_OBJECT_AND_ADD_REFS(factory, PromiseReaction, refs)
+    CREATE_OBJECT_AND_ADD_REFS(factory, PromiseCapability, refs)
+    CREATE_OBJECT_AND_ADD_REFS(factory, ResolvingFunctionsRecord, refs)
+    CREATE_OBJECT_AND_ADD_REFS(factory, AsyncGeneratorRequest, refs)
+    CREATE_OBJECT_AND_ADD_REFS(tester, PromiseIteratorRecord, refs)
+    CREATE_OBJECT_AND_ADD_REFS(tester, JSWeakSet, refs)
+    CREATE_OBJECT_AND_ADD_REFS(tester, JSWeakMap, refs)
+    CREATE_ARRAY_AND_ADD_REFS(factory, JSArrayBuffer, 10, refs)
+    CREATE_ARRAY_AND_ADD_REFS(factory, JSSharedArrayBuffer, 10, refs)
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
-    auto obj1 = tester.NewPromiseIteratorRecord();          // PROMISE_ITERATOR_RECORD
-    auto obj2 = factory->NewPromiseRecord();                // PROMISE_RECORD
-    auto obj3 = factory->NewJSArrayBuffer(10);              // JS_ARRAY_BUFFER
-    auto obj4 = factory->NewJSSharedArrayBuffer(10);        // JS_SHARED_ARRAY_BUFFER
-    auto obj5 = factory->NewPromiseReaction();              // PROMISE_REACTIONS
-    auto obj6 = factory->NewPromiseCapability();            // PROMISE_CAPABILITY
-    auto obj7 = factory->NewResolvingFunctionsRecord();     // RESOLVING_FUNCTIONS_RECORD
-    auto obj8 = factory->NewAsyncGeneratorRequest();        // ASYNC_GENERATOR_REQUEST
-    auto obj9 = tester.NewJSWeakSet();                      // JS_WEAK_SET
-    auto obj10 = tester.NewJSWeakMap();                     // JS_WEAK_MAP
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(factory, &tester, vec);
 
     std::string rawHeapPath("test_binary_dump.raw");
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
 
     CSet<JSTaggedType> dumpObjects;
-    ASSERT_TRUE(tester.DecodeRawHeapObjectTable(rawHeapPath, dumpObjects));
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
 
-    ASSERT_TRUE(dumpObjects.find(obj1.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj2.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj3.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj4.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj5.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj6.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj7.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj8.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj9.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj10.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(tester.MatchHeapObjectReferencesV1(vec, dumpObjects));
 }
 
-#ifdef PANDA_TARGET_ARM32
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpBinaryDumpByForkWithCallback)
-#else
-HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
-#endif
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
-    // PROMISE_ITERATOR_RECORD
-    auto obj1 = tester.NewPromiseIteratorRecord();
-    // PROMISE_RECORD
-    auto obj2 = factory->NewPromiseRecord();
-    // JS_ARRAY_BUFFER
-    auto obj3 = factory->NewJSArrayBuffer(10);
-    // JS_SHARED_ARRAY_BUFFER
-    auto obj4 = factory->NewJSSharedArrayBuffer(10);
-    // PROMISE_REACTIONS
-    auto obj5 = factory->NewPromiseReaction();
-    // PROMISE_CAPABILITY
-    auto obj6 = factory->NewPromiseCapability();
-    // RESOLVING_FUNCTIONS_RECORD
-    auto obj7 = factory->NewResolvingFunctionsRecord();
-    // JS_PROMISE
-    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
-    auto obj8 = tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
-    // ASYNC_GENERATOR_REQUEST
-    auto obj9 = factory->NewAsyncGeneratorRequest();
-    // JS_WEAK_SET
-    auto obj10 = tester.NewJSWeakSet();
-    // JS_WEAK_MAP
-    auto obj11 = tester.NewJSWeakMap();
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump.raw");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
+
+    ASSERT_TRUE(tester.MatchHeapObjectReferencesV2(vec, dumpObjects));
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::DEFAULT);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(factory, &tester, vec);
 
     bool status = true;
     std::string rawHeapPath("test_binary_dump_by_fork_with_callback.raw");
@@ -1540,22 +1580,8 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     };
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr, cb));
     ASSERT_TRUE(status);
-    
-    CSet<JSTaggedType> dumpObjects;
-    ASSERT_TRUE(tester.DecodeRawHeapObjectTable(rawHeapPath, dumpObjects));
-
-    ASSERT_TRUE(dumpObjects.find(obj1.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj2.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj3.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj4.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj5.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj6.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj7.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj8.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj9.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj10.GetTaggedType()) != dumpObjects.end());
-    ASSERT_TRUE(dumpObjects.find(obj11.GetTaggedType()) != dumpObjects.end());
 }
+#endif
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
 {

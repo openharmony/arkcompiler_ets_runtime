@@ -1062,4 +1062,11 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
         stackTraceStr = sourceMapcb(stackTraceStr);
     }
 }
+
+void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)
+{
+    // SetJsRawHeapCropLevel
+    ecmascript::Runtime::GetInstance()->SetRawHeapDumpCropLevel(level);
+    LOG_ECMA(INFO) << "Set raw heap dump level " << static_cast<int>(level);
+}
 } // namespace panda

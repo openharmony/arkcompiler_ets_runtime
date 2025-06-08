@@ -27,12 +27,17 @@ class HeapDumpTestHelper;
 namespace rawheap_translate {
 class RawHeap {
 public:
-    RawHeap() : strTable_(new StringHashMap()) {}
+    RawHeap() : strTable_(new StringHashMap())
+    {
+        LOG_INFO_ << "start to translate rawheap!";
+    }
+
     virtual ~RawHeap();
 
     virtual bool Parse(FileReader &file, uint32_t rawheapFileSize) = 0;
     virtual void Translate() = 0;
 
+    static std::string ReadVersion(FileReader &file);
     std::vector<Node *>* GetNodes();
     std::vector<Edge *>* GetEdges();
     size_t GetNodeCount();
@@ -72,7 +77,6 @@ private:
         uint32_t offset = 0;
     };
 
-    bool ReadVersion(FileReader &file);
     bool ReadRootTable(FileReader &file);
     bool ReadStringTable(FileReader &file);
     bool ReadObjectTable(FileReader &file, uint32_t offset, uint32_t totalSize);
@@ -103,6 +107,58 @@ private:
     std::vector<char *> mem_ {};
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint64_t, Node *> nodesMap_ {};
+    friend class panda::test::HeapDumpTestHelper;
+};
+
+class RawHeapTranslateV2 : public RawHeap {
+public:
+    RawHeapTranslateV2(MetaParser *meta) : metaParser_(meta) {}
+    ~RawHeapTranslateV2();
+
+    bool Parse(FileReader &file, uint32_t rawheapFileSize) override;
+    void Translate() override;
+
+private:
+    struct AddrTableItemV2 {
+        uint32_t syntheticAddr;
+        uint32_t size;
+        uint64_t nodeId;
+        uint32_t nativeSize;
+        uint32_t type;
+    };
+
+    bool ReadRootTable(FileReader &file);
+    bool ReadStringTable(FileReader &file);
+    bool ReadObjectTable(FileReader &file);
+    bool ParseStringTable(FileReader &file);
+    void AddSyntheticRootNode(std::vector<uint32_t> &roots);
+    Node* FindNode(uint32_t addr);
+
+    void FillNodes();
+    void BuildEdges(Node *node);
+    void BuildArrayEdges(Node *node);
+    void BuildFieldEdges(Node *node, std::vector<Node *> &refs);
+    void BuildJSObjectEdges(Node *node, std::vector<Node *> &refs, uint32_t endOffset);
+    void CreateEdge(Node *node, Node *to, uint32_t nameOrIndex, EdgeType type);
+    Node* GetNextEdgeTo();
+    EdgeType GenerateEdgeType(Node *node);
+
+    static constexpr uint16_t HOLE_VALUE = 0x05U;
+    static constexpr uint16_t NULL_VALUE = 0x03U;
+    static constexpr uint16_t BOOLEN_TRUE_VALUE = 0x07U;
+    static constexpr uint16_t BOOLEN_FALSE_VALUE = 0x06U;
+    static constexpr uint16_t EXCEPTION_VALUE = 0x10U;
+    static constexpr uint16_t UNDEFINED_VALUE = 0x02U;
+    static constexpr uint16_t INT_VALUE = 0xFFFFU;
+    static constexpr uint16_t DOUBLE_VALUE = 0xFFFEU;
+
+    MetaParser *metaParser_ {nullptr};
+    char *mem_ {};
+    uint32_t memSize_ {0};
+    uint32_t memPos_ {0};
+    std::vector<uint32_t> sections_ {};
+    std::unordered_map<uint32_t, Node *> nodesMap_ {};
+    Node *syntheticRoot_ {nullptr};
     friend class panda::test::HeapDumpTestHelper;
 };
 }  // namespace rawheap_translate
