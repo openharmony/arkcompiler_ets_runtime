@@ -6030,6 +6030,7 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(thread);
+    EscapeLocalScope escapeScope(vm);
     std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
     ecmascript::BaseDeserializer deserializer(thread, data.release(), hint);
     bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
@@ -6043,7 +6044,7 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
         endTime = std::chrono::system_clock::now();
         GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
     }
-    return JSNApiHelper::ToLocal<ObjectRef>(result);
+    return escapeScope.Escape(JSNApiHelper::ToLocal<JSValueRef>(result));
 }
 
 void JSNApi::DeleteSerializationData(void *data)

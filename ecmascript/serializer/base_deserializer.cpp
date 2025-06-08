@@ -50,19 +50,23 @@ JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
         LOG_ECMA(ERROR) << "The serialization data is incomplete";
         return JSHandle<JSTaggedValue>();
     }
-    AllocateToDifferentSpaces();
     JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
     return res;
 }
 
 JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
 {
+    // Use a heap address to store the result object, to unify the process, so that do not need to do special
+    // check `IsRoot`.
+    JSHandle<TaggedArray> resHolderHandle = heap_->GetEcmaVM()->GetFactory()->NewTaggedArray(1);
+    AllocateToDifferentSpaces();
+
     // stop gc during deserialize
     heap_->SetOnSerializeEvent(true);
 
     uint8_t encodeFlag = data_->ReadUint8(position_);
-    JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue::Undefined());
-    while (ReadSingleEncodeData(encodeFlag, resHandle.GetAddress(), 0, true) == 0) { // 0: root object offset
+    uintptr_t resHolderAddr = static_cast<uintptr_t>(resHolderHandle.GetTaggedType());
+    while (ReadSingleEncodeData(encodeFlag, resHolderAddr, TaggedArray::DATA_OFFSET) == 0) {
         encodeFlag = data_->ReadUint8(position_);
     }
 
@@ -73,23 +77,21 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     concurrentFunctions_.clear();
 
     // new native binding object here
-    for (auto nativeBindingInfo : nativeBindingAttachInfos_) {
-        DeserializeNativeBindingObject(nativeBindingInfo);
-        delete nativeBindingInfo;
+    for (auto &nativeBindingInfo : nativeBindingAttachInfos_) {
+        DeserializeNativeBindingObject(&nativeBindingInfo);
     }
     nativeBindingAttachInfos_.clear();
 
     // new js error here
-    for (auto jsErrorInfo : jsErrorInfos_) {
-        DeserializeJSError(jsErrorInfo);
-        delete jsErrorInfo;
+    for (auto &jsErrorInfo : jsErrorInfos_) {
+        DeserializeJSError(&jsErrorInfo);
     }
     jsErrorInfos_.clear();
 
     // recovery gc after serialize
     heap_->SetOnSerializeEvent(false);
 
-    return resHandle;
+    return JSHandle<JSTaggedValue>(thread_, resHolderHandle->Get(0));
 }
 
 uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
@@ -117,7 +119,6 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingAttachInfo *i
     void *bufferPointer = info->bufferPointer_;
     void *hint = info->hint_;
     void *attachData = info->attachData_;
-    bool root = info->root_;
     Local<JSValueRef> attachVal;
     {
         ThreadNativeScope nativeScope(thread_);
@@ -130,7 +131,7 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingAttachInfo *i
     JSTaggedType res = JSNApiHelper::ToJSHandle(attachVal).GetTaggedType();
     ObjectSlot slot = info->GetSlot();
     slot.Update(res);
-    if (!root && !JSTaggedValue(res).IsInvalidValue()) {
+    if (!JSTaggedValue(res).IsInvalidValue()) {
         WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(), res);
     }
 }
@@ -140,21 +141,18 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     uint8_t type = info->errorType_;
     base::ErrorType errorType = base::ErrorType(type - static_cast<uint8_t>(JSType::JS_ERROR_FIRST));
-    JSTaggedValue errorMsg = info->errorMsg_;
-    bool root = info->root_;
+    JSHandle<JSTaggedValue> errorMsg = info->errorMsg_;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(thread_, errorMsg),
-                                                      StackCheck::NO);
+    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(errorMsg), StackCheck::NO);
     ObjectSlot slot = info->GetSlot();
     slot.Update(errorTag.GetTaggedType());
-    if (!root && !errorTag.GetTaggedValue().IsInvalidValue()) {
+    if (!errorTag.GetTaggedValue().IsInvalidValue()) {
         WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(),
                      errorTag.GetTaggedType());
     }
 }
 
-void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  uintptr_t objAddr, size_t fieldOffset,
-                                                 bool isRoot)
+void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  uintptr_t objAddr, size_t fieldOffset)
 {
     // deserialize object prologue
     bool isWeak = GetAndResetWeak();
@@ -192,10 +190,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
-    if (!isRoot) {
-        WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                    static_cast<JSTaggedType>(addr));
-    }
+    WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                                                static_cast<JSTaggedType>(addr));
 }
 
 void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
@@ -242,7 +238,7 @@ void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferP
     np->SetData(thread_->GetEcmaVM()->GetNativeAreaAllocator());
 }
 
-size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset, bool isRoot)
+size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset)
 {
     size_t handledFieldSize = sizeof(JSTaggedType);
     ObjectSlot slot(objAddr + fieldOffset);
@@ -261,7 +257,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE: {
 #endif
             SerializedObjectSpace space = SerializeData::DecodeSpace(encodeFlag);
-            HandleNewObjectEncodeFlag(space, objAddr, fieldOffset, isRoot);
+            HandleNewObjectEncodeFlag(space, objAddr, fieldOffset);
             break;
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
@@ -292,7 +288,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)EncodeFlag::ROOT_OBJECT: {
             uint32_t index = data_->ReadUint32(position_);
             uintptr_t valueAddr = thread_->GetEcmaVM()->GetSnapshotEnv()->RelocateRootObjectAddr(index);
-            if (!isRoot && valueAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
+            if (valueAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
                 WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                              static_cast<JSTaggedType>(valueAddr));
             }
@@ -302,7 +298,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)EncodeFlag::OBJECT_PROTO: {
             uint8_t type = data_->ReadUint8(position_);
             uintptr_t protoAddr = RelocateObjectProtoAddr(type);
-            if (!isRoot && protoAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
+            if (protoAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
                 WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                              static_cast<JSTaggedType>(protoAddr));
             }
@@ -337,9 +333,9 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             void *bufferPointer = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             void *hint = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             void *attachData = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
+            JSHandle<JSTaggedValue> obj(thread_, JSTaggedValue(static_cast<JSTaggedType>(objAddr)));
             // defer new native binding object until deserialize finish
-            nativeBindingAttachInfos_.push_back(new NativeBindingAttachInfo(af, bufferPointer, hint, attachData,
-                                                                            objAddr, fieldOffset, isRoot));
+            nativeBindingAttachInfos_.emplace_back(af, bufferPointer, hint, attachData, obj, fieldOffset);
             break;
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {
@@ -347,7 +343,9 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             uint8_t type = data_->ReadUint8(position_);
             ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
                 && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
-            jsErrorInfos_.push_back(new JSErrorInfo(type, JSTaggedValue::Undefined(), objAddr, fieldOffset, isRoot));
+            JSHandle<JSTaggedValue> obj(thread_, JSTaggedValue(static_cast<JSTaggedType>(objAddr)));
+            jsErrorInfos_.emplace_back(type, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()), obj,
+                                       fieldOffset);
             uint8_t flag = data_->ReadUint8(position_);
             if (flag == 1) { // error msg is string
                 isErrorMsg_ = true;
@@ -367,12 +365,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {
                 // defer new js error
-                jsErrorInfos_.back()->errorMsg_ = JSTaggedValue(value);
+                jsErrorInfos_.back().errorMsg_ = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(value));
                 break;
             }
-            if (!isRoot) {
-                WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset, value);
-            }
+            WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset, value);
             UpdateMaybeWeak(slot, value, GetAndResetWeak());
             break;
         }
