@@ -1849,6 +1849,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/resolvedrecordindexbinding_record.json",
   "ecmascript/js_type_metadata/resolving_functions_record.json",
   "ecmascript/js_type_metadata/sendable_env.json",
+  "ecmascript/js_type_metadata/sfunction_env.json",
   "ecmascript/js_type_metadata/sliced_string.json",
   "ecmascript/js_type_metadata/source_text_module_record.json",
   "ecmascript/js_type_metadata/star_exportentry_record.json",
