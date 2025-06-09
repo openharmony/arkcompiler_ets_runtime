@@ -75,7 +75,6 @@ module_test_list = [
   "datecompare",
   "dateparse",
   "datetimezone",
-  "decodeuricomponent",
   "definefield",
   "definefunc",
   "definemethod",
@@ -220,6 +219,7 @@ group("ark_js_assert_moduletest") {
   assert_test_list = [
     "addpropertybyname",
     "cowarray",
+    "decodeuricomponent",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",
@@ -356,6 +356,7 @@ group("ark_asm_assert_test") {
   assert_test_list = [
     "addpropertybyname",
     "cowarray",
+    "decodeuricomponent",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",
