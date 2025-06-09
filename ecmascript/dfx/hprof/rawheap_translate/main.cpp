@@ -102,6 +102,7 @@ void Translate(const std::string &inputPath, const std::string &outputPath)
     rawheap->Translate();
     StreamWriter writer;
     if (!writer.Initialize(outputPath)) {
+        delete rawheap;
         return;
     }
 
