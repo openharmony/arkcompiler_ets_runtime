@@ -182,10 +182,9 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
     }
     dataInfo_ = std::make_unique<DataInfo>(std::move(stackMapAddr));
     llvmStackMap_.head = dataInfo_->Read<struct Header>();
-    uint32_t numFunctions, numConstants, numRecords;
-    numFunctions = dataInfo_->Read<uint32_t>();
-    numConstants = dataInfo_->Read<uint32_t>();
-    numRecords = dataInfo_->Read<uint32_t>();
+    uint32_t numFunctions = dataInfo_->Read<uint32_t>();
+    uint32_t numConstants = dataInfo_->Read<uint32_t>();
+    uint32_t numRecords = dataInfo_->Read<uint32_t>();
     for (uint32_t i = 0; i < numFunctions; i++) {
         auto stkRecord = dataInfo_->Read<struct StkMapSizeRecordTy>();
         llvmStackMap_.stkSizeRecords.push_back(stkRecord);
