@@ -97,6 +97,11 @@ struct BasicBlockImpl {
     std::vector<NotMergedPhiDesc> unmergedPhis_;
 };
 
+struct CallSiteAttribute {
+    bool readOnly = false;
+    bool cold = false;
+};
+
 class LLVMModule : public IRModule {
 public:
     LLVMModule(NativeAreaAllocator* allocator, const std::string &name, bool logDbg, const std::string &triple);
@@ -347,6 +352,7 @@ private:
     bool IsOptimizedJSFunction() const;
     void SetGCLeafFunction(LLVMValueRef call);
     void SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMValueRef call);
+    void SetCallSiteFunctionAttr(CallSiteAttribute attr, LLVMValueRef call);
     bool IsHeapPointerType(LLVMTypeRef valueType);
 
     LLVMTypeRef GetVoidT() const
@@ -495,6 +501,7 @@ private:
     LLVMValueRef ASMBarrierCall_ {nullptr};
     LLVMTargetBuilder* targetBuilder_ {nullptr};
     static constexpr std::string_view COLD_ATTR = "cold";
+    static constexpr std::string_view READONLY_ATTR = "readonly";
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H
