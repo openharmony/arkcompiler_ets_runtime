@@ -4154,7 +4154,8 @@ static bool CompareFloat(T x, T y)
         return false;
     }
     if constexpr (!std::is_integral<T>::value) {
-        double doubleX = x, doubleY = y;
+        double doubleX = x;
+        double doubleY = y;
         if (x == 0 && x == y) {
             /* -0.0 is less than +0.0 */
             return std::signbit(doubleX) && !std::signbit(doubleY);
