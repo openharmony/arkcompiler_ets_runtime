@@ -22,6 +22,7 @@
 #include <memoryapi.h>
 #endif
 
+#include "common_components/platform/os.h"
 #include "common_components/base_runtime/hooks.h"
 #include "common_components/common_runtime/src/base/log_file.h"
 #include "common_components/common_runtime/src/base/sys_call.h"
@@ -71,6 +72,8 @@ MemoryMap* MemoryMap::MapMemory(size_t reqSize, size_t initSize, const Option& o
     DLOG(ALLOC, "MemoryMap::MapMemory size %zu successful at %p", reqSize, mappedAddr);
     MemoryMap* memMap = new (std::nothrow) MemoryMap(mappedAddr, initSize, reqSize);
     LOGF_CHECK(memMap != nullptr) << "new MemoryMap failed";
+
+    os::PrctlSetVMA(mappedAddr, reqSize, (std::string("ARKTS_CMC_GC_") + opt.tag).c_str());
     return memMap;
 }
 
@@ -152,6 +155,8 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(size_t reqSize, size_t initSize, con
     DLOG(ALLOC, "MemMap::MapMemory size %zu successful at %p", reqSize, mappedAddr);
     MemoryMap* memMap = new (std::nothrow) MemoryMap(mappedAddr, initSize, reqSize);
     LOGF_CHECK(memMap != nullptr) << "new MemMap failed";
+
+    os::PrctlSetVMA(mappedAddr, needReqSize, (std::string("ARKTS_CMC_GC_") + opt.tag).c_str());
     return memMap;
 }
 
