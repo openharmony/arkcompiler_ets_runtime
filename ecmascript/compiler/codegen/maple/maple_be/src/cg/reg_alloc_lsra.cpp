@@ -2164,11 +2164,6 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         SpillStackMapInfo();
     }
 
-    bool enableDoLSRAPreSpill = true;
-    if (enableDoLSRAPreSpill) {
-        LiveIntervalAnalysis();
-    }
-
     InitFreeRegPool();
 
     LinearScanRegAllocator();
