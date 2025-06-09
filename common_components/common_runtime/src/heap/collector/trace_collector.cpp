@@ -245,12 +245,13 @@ void TraceCollector::MergeMutatorRoots(WorkStack& workStack)
 
 void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
 {
-    OHOS_HITRACE("ARK_RT_GC_ENUM");
+    OHOS_HITRACE("CMCGC::EnumerateAllRoots");
     EnumerateAllRootsImpl(GetThreadPool(), workStack);
 }
 
 void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
 {
+    OHOS_HITRACE("CMCGC::TracingImpl");
     if (workStack.empty()) {
         return;
     }
@@ -304,7 +305,7 @@ bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkSt
 
 void TraceCollector::TraceRoots(WorkStack& workStack)
 {
-    OHOS_HITRACE("ARK_RT_GC_TRACE");
+    OHOS_HITRACE("CMCGC::TraceRoots");
     ARK_COMMON_PHASE_TIMER("TraceRoots");
     VLOG(REPORT, "roots size: %zu", workStack.size());
 
@@ -326,6 +327,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         ConcurrentReMark(workStack, maxWorkers > 0);
         ProcessWeakReferences();
 #else
+        OHOS_HITRACE("CMCGC::ReMark[STW]");
         if (!BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped()) {
             ARK_COMMON_PHASE_TIMER("STW re-marking");
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
@@ -350,6 +352,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
 
 bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 {
+    OHOS_HITRACE("CMCGC::ClearSATBBuffer");
     ARK_COMMON_PHASE_TIMER("MarkSatbBuffer");
     if (!workStack.empty()) {
         workStack.clear();
@@ -546,20 +549,31 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
     RootSet* rootSets = rootSetsInstance; // work_around the crash of clang parser
 
     // Only one root task, no need to post task.
-    EnumStaticRoots(rootSets[0]);
-
-    MergeMutatorRoots(rootSet);
-    WorkStack tempStack = NewWorkStack();
-    for (size_t i = 0; i < threadCount; ++i) {
-        tempStack.insert(rootSets[i]);
+    {
+        OHOS_HITRACE("CMCGC::EnumStaticRoots");
+        EnumStaticRoots(rootSets[0]);
     }
-    while(!tempStack.empty()) {
-        auto temp = tempStack.back();
-        tempStack.pop_back();
-        if(!this->MarkObject(temp)) {
-            rootSet.push_back(temp);
+   
+    {
+        OHOS_HITRACE("CMCGC::MergeMutatorRoots");
+        MergeMutatorRoots(rootSet);
+    }
+
+    {
+        OHOS_HITRACE("CMCGC::PushRootInWorkStack");
+        WorkStack tempStack = NewWorkStack();
+        for (size_t i = 0; i < threadCount; ++i) {
+            tempStack.insert(rootSets[i]);
+        }
+        while (!tempStack.empty()) {
+            auto temp = tempStack.back();
+            tempStack.pop_back();
+            if (!this->MarkObject(temp)) {
+                rootSet.push_back(temp);
+            }
         }
     }
+
     VLOG(REPORT, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
 
@@ -614,7 +628,7 @@ void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, si
 
 void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 {
-    OHOS_HITRACE("ARK_RT_GC_START");
+    OHOS_HITRACE("CMCGC::RunGarbageCollection0");
     // prevent other threads stop-the-world during GC.
     // this may be removed in the future.
     ScopedSTWLock stwLock;
@@ -650,7 +664,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 
 void TraceCollector::CopyFromSpace()
 {
-    OHOS_HITRACE("ARK_RT_GC_COPY");
+    OHOS_HITRACE("CMCGC::CopyFromSpace");
     TransitionToGCPhase(GCPhase::GC_PHASE_COPY, true);
 
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);

@@ -109,17 +109,20 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
                                                 ecmascript::VMRootVisitType::UPDATE_ROOT;
     CMCRootVisitor visitor(visitorFunc);
 
-    // MarkSharedModule
-    ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
-
     ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
-    // MarkSerializeRoots
-    runtime->IterateSerializeRoot(visitor);
+    {
+        OHOS_HITRACE("CMCGC::VisitSharedRoot");
+        // MarkSharedModule
+        ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
+        // MarkSerializeRoots
+        runtime->IterateSerializeRoot(visitor);
 
-    // MarkStringCache
-    runtime->IterateCachedStringRoot(visitor);
+        // MarkStringCache
+        runtime->IterateCachedStringRoot(visitor);
+    }
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
+        OHOS_HITRACE("CMCGC::VisitLocalRoot");
         auto vm = thread->GetEcmaVM();
         ObjectXRay::VisitVMRoots(vm, visitor, type);
 
@@ -132,6 +135,7 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 
 void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
 {
+    OHOS_HITRACE("CMCGC::VisitDynamicWeakRoots");
     if (!ecmascript::Runtime::HasInstance()) {
         return;
     }
@@ -146,6 +150,7 @@ void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
     runtime->IteratorNativeDeleteInSharedGC(visitor);
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
+        OHOS_HITRACE("CMCGC::visitLocalRoot");
         auto vm = thread->GetEcmaVM();
         const_cast<ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
         thread->ClearContextCachedConstantPool();
