@@ -288,6 +288,10 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     Label isCallConstructor(&builder);
     // use builder_ to make BRANCH_CIR work.
     auto &builder_ = builder;
+#ifdef USE_READ_BARRIER
+    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
+                            Gate::InvalidGateRef, {glue, func}, glue);
+#endif
     BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder.Bind(&isHeapObject);
     {
@@ -318,11 +322,6 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                 }
                 builder.Bind(&callBridge);
                 {
-#ifdef USE_READ_BARRIER
-                  builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                                          Gate::InvalidGateRef, {glue, func},
-                                          glue);
-#endif
                     builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
                     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushArgv));
                     GateRef target = builder.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushArgv));
@@ -352,11 +351,6 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                 }
                 builder.Bind(&callBridge1);
                 {
-#ifdef USE_READ_BARRIER
-                  builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                                          Gate::InvalidGateRef, {glue, func},
-                                          glue);
-#endif
                     builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
                     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushArgv));
                     GateRef target = builder.IntPtr(RTSTUB_ID(OptimizedCallAndPushArgv));
@@ -372,10 +366,6 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     {
         if (isNew) {
             builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
-#ifdef USE_READ_BARRIER
-            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                                    Gate::InvalidGateRef, {glue, func}, glue);
-#endif
             const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
             GateRef target = builder.IntPtr(RTSTUB_ID(JSCallNew));
             auto depend = builder.GetDepend();
@@ -384,10 +374,6 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
             builder.Jump(exit);
         } else {
             builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
-#ifdef USE_READ_BARRIER
-            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                                    Gate::InvalidGateRef, {glue, func}, glue);
-#endif
             const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
             GateRef target = builder.IntPtr(RTSTUB_ID(JSCall));
             auto depend = builder.GetDepend();
@@ -597,14 +583,6 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     Label funcNotClassConstructor(env);
     Label methodNotAot(env);
 
-#ifdef USE_READ_BARRIER
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
-    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
-        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
-    }
-#endif
-
     if (!AssemblerModule::IsCallNew(callArgs_.mode)) {
         BRANCH(IsClassConstructorFromBitField(bitfield_), &funcIsClassConstructor, &funcNotClassConstructor);
         Bind(&funcIsClassConstructor);
@@ -615,6 +593,15 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         Bind(&funcNotClassConstructor);
     }
     HandleProfileCall();
+
+#ifdef USE_READ_BARRIER
+    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
+    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
+        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+    }
+#endif
+
     if (isForBaseline_ && env->IsBaselineBuiltin()) {
         sp_ = Argument(static_cast<size_t>(BaselineCallInputs::SP));
     }
