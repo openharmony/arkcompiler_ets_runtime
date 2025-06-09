@@ -610,7 +610,11 @@ RegionDesc* RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
         size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
         if (allocated >= threshold) {
             DLOG(ALLOC, "request heu gc: allocated %zu, threshold %zu", allocated, threshold);
-            collector.RequestGC(GC_REASON_HEU, true);
+            if (collector.GetGCStats().shouldRequestYoung) {
+                collector.RequestGC(GC_REASON_YOUNG, true);
+            } else {
+                collector.RequestGC(GC_REASON_HEU, true);
+            }
         }
     }
 
