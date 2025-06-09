@@ -82,7 +82,7 @@ HWTEST_F_L0(ICRunTimeTest, UpdateLoadHandler)
     uint32_t slotId = 2;
     ICRuntime icRuntime(thread, handleProfileTypeInfo, slotId, ICKind::LoadIC);
     icRuntime.UpdateLoadHandler(handleOp1, handleKeyWithElement, handleReceiver);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsTaggedArray());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsHole());
     EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsHole());
     // test op is not Element
     ObjectOperator handleOp2(thread, handleKeyWithString);

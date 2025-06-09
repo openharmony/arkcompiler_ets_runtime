@@ -246,6 +246,13 @@ void ProfileTypeAccessor::SetAsMega() const
     }
 }
 
+void ProfileTypeAccessor::SetAsMegaIfUndefined() const
+{
+    if (profileTypeInfo_->GetIcSlot(slotId_).IsUndefined()) {
+        SetAsMega();
+    }
+}
+
 void ProfileTypeAccessor::SetAsMegaForTrace(JSTaggedValue value) const
 {
     if (IsGlobalIC(kind_)) {
@@ -307,6 +314,9 @@ std::string ProfileTypeAccessor::ICStateToString(ProfileTypeAccessor::ICState st
 }
 ProfileTypeAccessor::ICState ProfileTypeAccessor::GetMegaState() const
 {
+    if (IsGlobalIC(kind_)) {
+        return ICState::MEGA;
+    }
     auto profileDataSecond = profileTypeInfo_->Get(slotId_ + 1);
     if (profileDataSecond.IsString()) {
         return ICState::IC_MEGA;

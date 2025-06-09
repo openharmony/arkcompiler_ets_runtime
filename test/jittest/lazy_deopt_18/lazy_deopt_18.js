@@ -23,14 +23,24 @@
  * 3. Changing dictionary mode cause lazy deoptimization.
  */
 
-// Modify the value of property 'x' on a specific level in the prototype chain of the object.
-function ChangePrototypeValue(obj, shouldChange) {
-    print("ChangeProto start.");
+function MakeChange(shouldChange) {
     if (shouldChange) {
         // Deleting A.prototype.y causes A.prototype to be dictionary mode,
         // triggering lazy deoptimization of the JIT-compiled 'Test2' function.
         delete A.prototype.y;
     }
+    // Additional code to prevent aggressive inlining.
+    let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+}
+
+// Modify the value of property 'x' on a specific level in the prototype chain of the object.
+function ChangePrototypeValue(obj, shouldChange) {
+    print("ChangeProto start.");
+    MakeChange(shouldChange);
     print("ChangeProto end.");
 }
 

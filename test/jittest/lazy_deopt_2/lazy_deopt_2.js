@@ -22,14 +22,24 @@
  * 2. Test2 call ChangePrototypeValue inlined.
  */
 
-// Modify the value of property 'x' on a specific level in the prototype chain of the object.
-function ChangePrototypeValue(obj, shouldChange) {
-    print("ChangeProto start.");
+function MakeChange(obj, shouldChange) {
     if (shouldChange) {
         // Change the property 'x' at the second level of the prototype chain,
         // triggering lazy deoptimization of the JIT-compiled 'Test2' function.
         obj.__proto__.__proto__.x = 2;
     }
+    // Additional code to prevent aggressive inlining.
+    let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+}
+
+// Modify the value of property 'x' on a specific level in the prototype chain of the object.
+function ChangePrototypeValue(obj, shouldChange) {
+    print("ChangeProto start.");
+    MakeChange(obj, shouldChange);
     print("ChangeProto end.");
 }
 

@@ -468,6 +468,7 @@ public:
         return JSTaggedValue(value.GetWeakReferent());
     }
     void SetAsMega() const;
+    void SetAsMegaIfUndefined() const;
     void SetAsMegaForTraceSlowMode(ObjectOperator& op) const;
     void SetAsMegaForTrace(JSTaggedValue value) const;
 

@@ -11,29 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-Test start.
-Test2 start.
-ChangeProto start.
-ChangeProto end.
-Test2 obj2: 2
-Test3
-Test2 end.
-Test obj.x: 1
-Test end.
-true
-true
-------------------------------------------------------
-Test start.
-Test2 start.
-[trace] aot inline function name: #*#ChangePrototypeValue@lazy_deopt_8 caller function name: #*#Test2@lazy_deopt_8
-ChangeProto start.
-[trace] Check Type: InsufficientProfile
-[trace] Lazy Deoptimization occurred on function: "Test"
-[trace] Lazy Deoptimize reason: PROTOTYPE_CHECK
-ChangeProto end.
-Test2 obj2: 1
-Test3
-Test2 end.
-[trace] Check Type: LazyDeopt
-Test obj.x: 2
-Test end.
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_jit_test_action("bytecode_to_cir_with_insufficient_profile_010") {
+  deps = []
+  extra_option = " --log-info=trace --compiler-trace-deopt=true "
+}

@@ -178,6 +178,14 @@ public:
 
     FrameContext *GetOrOCreateMergedContext(uint32_t bbIndex);
 
+    GateRef GetBcFrameStateCache()
+    {
+        ASSERT(frameStateCache_ != Circuit::NullGate());
+        auto cache = frameStateCache_;
+        frameStateCache_ = Circuit::NullGate();
+        return cache;
+    }
+
 private:
     static constexpr size_t FIXED_ARGS = 2; // ac & env
     struct LoopInfo {
@@ -223,14 +231,6 @@ private:
     void UpdateVirtualRegister(size_t index, GateRef gate)
     {
         liveContext_->SetValuesAt(index, gate);
-    }
-
-    GateRef GetBcFrameStateCache()
-    {
-        ASSERT(frameStateCache_ != Circuit::NullGate());
-        auto cache = frameStateCache_;
-        frameStateCache_ = Circuit::NullGate();
-        return cache;
     }
 
     FrameContext *GetMergedBbContext(uint32_t bbIndex) const
