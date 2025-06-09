@@ -2107,8 +2107,11 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
         return;
     }
 
-    double oldSpaceMarkDuration = 0, newSpaceMarkDuration = 0, newSpaceRemainSize = 0, newSpaceAllocToLimitDuration = 0,
-           oldSpaceAllocToLimitDuration = 0;
+    double oldSpaceMarkDuration = 0;
+    double newSpaceMarkDuration = 0;
+    double newSpaceRemainSize = 0;
+    double newSpaceAllocToLimitDuration = 0;
+    double oldSpaceAllocToLimitDuration = 0;
     double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
     double oldSpaceConcurrentMarkSpeed = memController_->GetFullSpaceConcurrentMarkSpeedPerMS();
     size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
