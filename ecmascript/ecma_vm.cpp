@@ -904,6 +904,9 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (!registerSymbols_.IsHole()) {
         v.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&registerSymbols_)));
     }
+    if (!finRegLists_.IsHole()) {
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&finRegLists_)));
+    }
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         DISALLOW_HANDLE_ALLOC;

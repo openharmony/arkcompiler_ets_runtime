@@ -1105,6 +1105,16 @@ public:
         registerSymbols_ = value;
     }
 
+    JSTaggedValue GetFinRegLists() const
+    {
+        return finRegLists_;
+    }
+
+    void SetFinRegLists(JSTaggedValue value)
+    {
+        finRegLists_ = value;
+    }
+
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
     bool HasPendingJob() const;
@@ -1489,6 +1499,7 @@ private:
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     void* data_{nullptr};
 
+    JSTaggedValue finRegLists_ {JSTaggedValue::Hole()};
     JSTaggedValue registerSymbols_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     std::atomic<bool> isProcessingPendingJob_{false};
