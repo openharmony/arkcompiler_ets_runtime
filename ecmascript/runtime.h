@@ -255,6 +255,14 @@ public:
         appfreezeFilterCallback_ = cb;
     }
 
+    NativeAreaAllocator *GetNativeAreaAllocator() const
+    {
+        return nativeAreaAllocator_.get();
+    }
+
+    void PreFork(JSThread *thread);
+    void PostFork();
+
     RawHeapDumpCropLevel GetRawHeapDumpCropLevel() const
     {
         return rawHeapDumpCropLevel_;
@@ -265,13 +273,6 @@ public:
         rawHeapDumpCropLevel_ = level;
     }
 
-    NativeAreaAllocator *GetNativeAreaAllocator() const
-    {
-        return nativeAreaAllocator_.get();
-    }
-
-    void PreFork(JSThread *thread);
-    void PostFork();
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -358,7 +359,7 @@ private:
 
     // for rawheap dump crop level
     RawHeapDumpCropLevel rawHeapDumpCropLevel_ {RawHeapDumpCropLevel::DEFAULT};
-    
+
     friend class EcmaVM;
     friend class JSThread;
     friend class SharedHeap;
