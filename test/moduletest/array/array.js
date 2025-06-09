@@ -21,146 +21,151 @@
  */
 var arr = new Array(100);
 var a = arr.slice(90, 100);
-print(a.length);
+assert_equal(a.length, 10);
 
 var arr1 = [1, 1, 1, 1, 1, 1];
 arr1.fill(0, 2, 4);
-print(arr1);
+assert_equal(arr1, [1,1,0,0,1,1]);
 
 var arr2 = new Array(100);
 arr2.fill(0, 2, 4);
 var a1 = arr2.slice(0, 5);
-print(arr2.length);
-print(a1);
+assert_equal(arr2.length, 100);
+assert_equal(a1, [,,0,0,,]);
 
 var arr3 = [1, 2, 3, 4, 5, 6];
 arr3.pop();
-print(arr3.length);
-print(arr3);
+assert_equal(arr3.length, 5);
+assert_equal(arr3, [1,2,3,4,5]);
 
 var arr4 = [1, 3, 4];
 arr4.splice(1, 0, 2);
-print(arr4.length);
-print(arr4);
+assert_equal(arr4.length, 4);
+assert_equal(arr4, [1,2,3,4]);
 // 1, 2, 3, 4
 var arr4 = [1, 2, 3, 4];
 arr4.splice(3, 1, 3);
-print(arr4.length);
-print(arr4);
+assert_equal(arr4.length, 4);
+assert_equal(arr4, [1,2,3,3]);
 // 1, 2, 3, 3
 
 var arr5 = [1, 2, 3, 4, 5, 6];
 arr5.shift();
-print(arr5.length);
-print(arr5);
+assert_equal(arr5.length, 5);
+assert_equal(arr5, [2,3,4,5,6]);
 // 1, 2, 3, 4, 5
 
 var arr6 = [1, 2, 3, 4, 5];
 arr6.reverse();
-print(arr6);
+assert_equal(arr6, [5,4,3,2,1]);
 
 var arr7 = [];
 arr7[2] = 10;
-print(arr7.pop()); // 10
-print(arr7.pop()); // undefined
-print(arr7.pop()); // undefined
+assert_equal(arr7.pop(), 10); // 10
+assert_equal(arr7.pop(), undefined); // undefined
+assert_equal(arr7.pop(), undefined); // undefined
 
 var arr8 = [];
 arr8[1] = 8;
-print(arr8.shift()); // undefined
-print(arr8.shift()); // 8
-print(arr8.shift()); // undefined
+assert_equal(arr8.shift(), undefined); // undefined
+assert_equal(arr8.shift(), 8); // 8
+assert_equal(arr8.shift(), undefined); // undefined
 
 // Test on Array::Splice
 var arr9 = new Array(9);
-print(arr9.length); // 9
+assert_equal(arr9.length, 9); // 9
 arr9.splice(0, 9);
-print(arr9.length); // 0
-for (let i = 0; i < arr9.length; i++) {
-    print(arr9[i]);
-}
+assert_equal(arr9.length, 0); // 0
 
 var arr10 = new Array(9);
-print(arr10.length); // 9
+assert_equal(arr10.length, 9); // 9
 arr10.splice(0, 8, 1);
-print(arr10.length); // 2
-for (let i = 0; i < arr10.length; i++) {
-    print(arr10[i]); // 1, undefined
-}
+assert_equal(arr10.length, 2); // 2
+assert_equal(arr10[0], 1);
+assert_equal(arr10[1], undefined);
 
 var arr11 = new Array(9);
-print(arr11.length); // 9
+assert_equal(arr11.length, 9); // 9
 arr11.splice(1, 8, 1);
-print(arr11.length); // 2
-for (let i = 0; i < arr11.length; i++) {
-    print(arr11[i]); // undefined, 1
-}
+assert_equal(arr11.length, 2); // 2
+assert_equal(arr11[0], undefined);
+assert_equal(arr11[1], 1);
 
 var arr12 = new Array(9);
-print(arr12.length); // 9
+assert_equal(arr12.length, 9); // 9
 arr12.splice(0, 4, 1, 2, 3, 4, 5);
-print(arr12.length); // 10
+assert_equal(arr12.length, 10); // 10
 for (let i = 0; i < arr12.length; i++) {
-    print(arr12[i]); // 1, 2, 3, 4, 5, undefined, undefined, undefined, undefined, undefined
+    let v = arr12[i];
+    if (i < 5) {
+        assert_equal(v, i + 1);
+    } else {
+        assert_equal(v, undefined);
+    }
 }
 
 var arr13 = new Array(9);
-print(arr13.length); // 9
+assert_equal(arr13.length, 9); // 9
 arr13.splice(7, 5, 1, 2, 3);
-print(arr13.length); // 10
+assert_equal(arr13.length, 10); // 10
 for (var i = 0; i < arr13.length; i++) {
-    print(arr13[i]); // undefined, undefined, undefined, undefined, undefined, undefined, undefined, 1, 2, 3
+    let v = arr13[i];
+    if (i < 7) {
+        assert_equal(v, undefined)
+    } else {
+        assert_equal(v, i - 6);
+    }
 }
 
 var arr14 = Array.apply(null, Array(16));
-print(arr14.length);
+assert_equal(arr14.length, 16);
 var arr15 = Array.apply(null, [1, 2, 3, 4, 5, 6]);
-print(arr15.length);
+assert_equal(arr15.length, 6);
 
 var a = '0';
-print(Array(5).indexOf(a));
+assert_equal(Array(5).indexOf(a), -1);
 
+let throwException = false;
 const v3 = new Float32Array(7);
 try {
     v3.filter(Float32Array)
 } catch (error) {
-    print("The NewTarget is undefined")
+    throwException = true;
 }
+assert_true(throwException)
 
 const v20 = new Array(2);
 let v21;
 try {
     v21 = v20.pop();
-    print(v21);
+    assert_equal(v21, undefined);
 } catch (error) {
 
 }
 
 var arr21 = [1, 2, 3, 4, , 6];
-print(arr21.at(0));
-print(arr21.at(5));
-print(arr21.at(-1));
-print(arr21.at(6));
-print(arr21.at('1.9'));
-print(arr21.at(true));
+assert_equal(arr21.at(0), 1);
+assert_equal(arr21.at(5), 6);
+assert_equal(arr21.at(-1), 6);
+assert_equal(arr21.at(6), undefined);
+assert_equal(arr21.at('1.9'), 2);
+assert_equal(arr21.at(true), 2);
 var arr22 = arr21.toReversed();
-print(arr22)
-print(arr21)
+assert_equal(arr22, [6,,4,3,2, 1])
+assert_equal(arr21, [1,2,3,4,,6])
 var arr23 = [1, 2, 3, 4, 5];
-print(arr23.with(2, 6)); // [1, 2, 6, 4, 5]
-print(arr23); // [1, 2, 3, 4, 5]
+assert_equal(arr23.with(2, 6), [1,2,6,4,5]); // [1, 2, 6, 4, 5]
+assert_equal(arr23, [1,2,3,4,5]); // [1, 2, 3, 4, 5]
 
 const months = ["Mar", "Jan", "Feb", "Dec"];
 const sortedMonths = months.toSorted();
-print(sortedMonths); // ['Dec', 'Feb', 'Jan', 'Mar']
-print(months); // ['Mar', 'Jan', 'Feb', 'Dec']
+assert_equal(sortedMonths, ['Dec', 'Feb', 'Jan', 'Mar']); // ['Dec', 'Feb', 'Jan', 'Mar']
+assert_equal(months, ['Mar', 'Jan', 'Feb', 'Dec']); // ['Mar', 'Jan', 'Feb', 'Dec']
 
 const values = [1, 10, 21, 2];
-const sortedValues = values.toSorted((a, b) => {
-    return a - b
-});
-print(sortedValues); // [1, 2, 10, 21]
-print(values); // [1, 10, 21, 2]
+const sortedValues = values.toSorted((a, b) => a - b);
+assert_equal(sortedValues, [1, 2, 10, 21]); // [1, 2, 10, 21]
+assert_equal(values, [1, 10, 21, 2]); // [1, 10, 21, 2]
 
 const arrs = new Array(6);
 for (let i = 0; i < 6; i++) {
@@ -170,15 +175,8 @@ for (let i = 0; i < 6; i++) {
     }
 }
 arrs.reverse();
-print(arrs); // 5,4,3,2,,0
+assert_equal(arrs, ['5', '4', '3', '2', undefined, '0']); // 5,4,3,2,,0
 
-function handleExpectedErrorCaught(prompt, e) {
-    if (e instanceof Error) {
-        print(`Expected ${e.name} caught in ${prompt}.`);
-    } else {
-        print(`Expected error message caught in ${prompt}.`);
-    }
-}
 
 function handleUnexpectedErrorCaught(prompt, e) {
     if (e instanceof Error) {
@@ -187,20 +185,18 @@ function handleUnexpectedErrorCaught(prompt, e) {
             print(`Stacktrace:\n${e.stack}`);
         }
     } else {
-        print(`Unexpected error message caught in ${prompt}: ${e}`);
     }
 }
 
 // Test cases for reverse()
-print("======== Begin: Array.prototype.reverse() ========");
 try {
     const arr0 = [];
-    print(`arr0.reverse() === arr0 ? ${arr0.reverse() === arr0}`); // true
-    print(`arr0.length after reverse() called = ${arr0.length}`); // 0
+    assert_equal(arr0.reverse(), arr0); // true
+    assert_equal(`${arr0.length}`, 0); // 0
 
     const arr1 = [1];
-    print(`arr1.reverse() === arr1 ? ${arr1.reverse() === arr1}`); // true
-    print(`arr1 after reverse() called = ${arr1}`); // 1
+    assert_equal(arr1.reverse(), arr1); // true
+    assert_equal(`${arr1}`, 1); // 1
 
     const arrWithHoles = [];
     arrWithHoles[1] = 1;
@@ -208,15 +204,13 @@ try {
     arrWithHoles[6] = undefined;
     arrWithHoles.length = 10;
     // arrWithHoles = [Hole, 1, Hole, Hole, 4, Hole, undefined, Hole, Hole, Hole]
-    print(`arrWithHoles before reverse() called = ${arrWithHoles}`); // ,1,,,4,,,,,
-    print(`arrWithHoles.reverse()               = ${arrWithHoles.reverse()}`); // ,,,,,4,,,1,
-    print(`arrWithHoles after reverse() called  = ${arrWithHoles}`); // ,,,,,4,,,1,
+    assert_equal(`${arrWithHoles}`, [,1,,,4,,,,,]); // ,1,,,4,,,,,
+    assert_equal(arrWithHoles.reverse(), [,,,,,4,,,1,]); // ,,,,,4,,,1,
+    assert_equal(`${arrWithHoles}`, [,,,,,4,,,1,]); // ,,,,,4,,,1,
 } catch (e) {
     handleUnexpectedErrorCaught(e);
 }
-print("======== End: Array.prototype.reverse() ========");
 
-print("======== Begin: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========");
 // Test case for indexOf() and lastIndexOf()
 try {
     const arr = [0, 10, 20];
@@ -226,7 +220,6 @@ try {
     arr[6] = undefined;
     arr[7] = 10;
     arr[8] = "80";
-    print("arr = [0, 10, 20, 80, 40, Hole, undefined, 10, \"80\", Hole]");
     // prompt1, results1, prompt2, results2, ...
     const resultGroups = [
         "Group 1: 0 <= fromIndex < arr.length", [
@@ -300,9 +293,16 @@ try {
     arr.lastIndexOf(null) // -1
     ]
     ];
-    for (let i = 0; i < resultGroups.length; i += 2) {
-        print(`${resultGroups[i]}: ${resultGroups[i + 1]}`);
-    }
+
+    assert_equal(resultGroups[0], [4,-1,1,7,4,-1,7,1]);
+    assert_equal(resultGroups[1], [-1,4,7,1,4,-1,1,-1,0,1,0,-1]);
+    assert_equal(resultGroups[2], [-1,-1,-1,-1,0,0]);
+    assert_equal(resultGroups[3], [0,-1]);
+    assert_equal(resultGroups[4], [ 1,-1,-1,7]);
+    assert_equal(resultGroups[5], [0,1,0,-1]);
+    assert_equal(resultGroups[6], [7,1,7,7]);
+    assert_equal(resultGroups[7], [8, 3]);
+    assert_equal(resultGroups[8], [6,6,-1,6,6,-1]);
 
     print("Group 10: fromIndex with side effects:");
     let accessCount = 0;
@@ -322,7 +322,8 @@ try {
             return 0;
         }
     }); // Expected: -1 (with accessCount = 6)
-    print(`  - indexOf:     result = ${result2}, accessCount = ${accessCount}`);
+    assert_equal(`${result2}`, -1);
+    assert_equal(`${accessCount}`, 6);
     // Details on why accessCount = 6 can be seen in ECMAScript specifications:
     // https://tc39.es/ecma262/multipage/indexed-collections.html#sec-array.prototype.lastindexof
     accessCount = 0;
@@ -333,32 +334,42 @@ try {
             return 5;
         }
     }); // Expected: -1 (with accessCount = 6)
-    print(`  - lastIndexOf: result = ${result3}, accesscount = ${accessCount}`);
+    assert_equal(`${result3}`, -1);
+    assert_equal(`${accessCount}`, 6);
 
-    print("Group 11: fromIndex that triggers exceptions:");
+    let indexOfErrorCount = 0;
+    let lastIndexOfErrorCount = 0;
     for (let [prompt, fromIndex] of [["bigint", 1n], ["symbol", Symbol()]]) {
-        for (let method of [Array.prototype.indexOf, Array.prototype.lastIndexOf]) {
+        for (let method of
+                [Array.prototype.indexOf, Array.prototype.lastIndexOf]) {
             try {
                 const result = method.call(arr, 10, fromIndex);
                 print(`ERROR: Unexpected result (which is ${result}) returned by method '${method.name}': ` +
                 `Expects a TypeError thrown for fromIndex type '${prompt}'.`);
             } catch (e) {
-                // Expects a TypeError thrown and caught here.
-                handleExpectedErrorCaught(`${method.name} when fromIndex is ${prompt}`, e);
+                if (method.name == "indexOf") {
+                    indexOfErrorCount++;
+                }
+                if (method.name == "lastIndexOf") {
+                    lastIndexOfErrorCount++;
+                }
             }
         }
     }
+    assert_equal(indexOfErrorCount, 2);
+    assert_equal(lastIndexOfErrorCount, 2);
 } catch (e) {
     handleUnexpectedErrorCaught(e);
 }
-print("======== End: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========");
 
 // Test Array.prototype.filter when callbackFn is not callable
+let callError = false;
 try {
     [].filter(1);
 } catch (e) {
-    print("CallbackFn is not callable");
+    callError = true;
 }
+assert_true(callError);
 
 var getTrap = function (t, key) {
     if (key === "length") return { [Symbol.toPrimitive]() {
@@ -369,8 +380,8 @@ var getTrap = function (t, key) {
 };
 var target1 = [];
 var obj = new Proxy(target1, { get: getTrap, has: () => true });
-print([].concat(obj));
-print(Array.prototype.concat.apply(obj))
+assert_equal([].concat(obj), [,,"baz"]);
+assert_equal(Array.prototype.concat.apply(obj), [,,"baz"]);
 
 const v55 = new Float64Array();
 const v98 = [-5.335880620598348e+307, 1.0, 1.0, 2.220446049250313e-16, -1.6304390272817058e+308];
@@ -384,7 +395,8 @@ function f110() {
 
 Object.defineProperty(f99, Symbol.species, { configurable: true, enumerable: true, value: f110 });
 v98.constructor = f99;
-print(JSON.stringify(v98.splice(4)));
+let v98Result = JSON.stringify(v98.splice(4));
+assert_equal(v98Result, "{\"0\":-1.6304390272817058e+308,\"length\":1}");
 
 var count;
 var params;
@@ -392,12 +404,10 @@ var params;
 class MyObserveArrray extends Array {
     constructor(...args) {
         super(...args);
-        print("constructor")
         params = args;
     }
 
     static get [Symbol.species]() {
-        print("get [Symbol.species]")
         count++;
         return this;
     }
@@ -407,29 +417,29 @@ count = 0;
 params = undefined;
 new MyObserveArrray().filter(() => {
 });
-print(count, 1);
-print(params, [0]);
+assert_equal(count, 1);
+assert_equal(params, [0]);
 
 count = 0;
 params = undefined;
 new MyObserveArrray().concat(() => {
 });
-print(count, 1);
-print(params, [0]);
+assert_equal(count, 1);
+assert_equal(params, [0]);
 
 count = 0;
 params = undefined;
 new MyObserveArrray().slice(() => {
 });
-print(count, 1);
-print(params, [0]);
+assert_equal(count, 1);
+assert_equal(params, [0]);
 
 count = 0;
 params = undefined;
 new MyObserveArrray().splice(() => {
 });
-print(count, 1);
-print(params, [0]);
+assert_equal(count, 1);
+assert_equal(params, [0]);
 
 new MyObserveArrray([1, 2, 3, 4]).with(0, 0);
 new MyObserveArrray([1, 2, 3, 4]).toReversed(0, 0);
@@ -437,24 +447,24 @@ new MyObserveArrray([1, 2, 3, 4]).toSpliced(0, 0, 0);
 
 arr = new Array(1026);
 arr.fill(100);
-print(arr.with(0, "n")[0])
+assert_equal(arr.with(0, "n")[0], 'n')
 
 arr = new Array(1026);
 arr.fill(100);
-print(arr.toReversed()[0])
+assert_equal(arr.toReversed()[0], 100)
 
 arr = new Array(1026);
 arr.fill(100);
-print(arr.toSpliced(0, 0, 0, 0)[0])
+assert_equal(arr.toSpliced(0, 0, 0, 0)[0], 0)
 
 var arr25 = []
 arr25[1025] = 0;
-print(arr25.includes({}, 414));
-print(arr25.includes(1025,109));
+assert_equal(arr25.includes({}, 414), false);
+assert_equal(arr25.includes(1025,109), false);
 
 var arr26 = []
 arr25[100] = 0;
-print(arr25.includes({}, 26));
+assert_equal(arr25.includes({}, 26), false);
 
 function fun1(obj, name, type) {
     return typeof type === 'undefined' || typeof desc.value === type;
@@ -487,18 +497,18 @@ fun4(694532)[fun8(fun4(694532), 527224)];
 Object.freeze(Object.prototype);
 
 Array.prototype.length = 3000;
-print(Array.prototype.length)
+assert_equal(Array.prototype.length, 3000)
 
 let unscopables1 = Array.prototype[Symbol.unscopables];
 let unscopables2 = Array.prototype[Symbol.unscopables];
-print(unscopables1 == unscopables2)
+assert_true(unscopables1 == unscopables2)
 
 arr = []
 let index = 4294967291;
 arr[index] = 0;
 arr.length = 10;
 arr.fill(10);
-print(arr)
+assert_equal(arr, [10,10,10,10,10,10,10,10,10,10]);
 
 // Test case for copyWithin()
 var arr_copywithin1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -514,14 +524,14 @@ for (let i = 0; i < 10; i++) {
 var arr_copywithin4 = new Array();
 for (let i = 0; i < 10; i++) arr_copywithin4[i] = i;
 var result_copywithin1 = arr_copywithin1.copyWithin(0, 3, 7);
-print(result_copywithin1);
+assert_equal(result_copywithin1, [3,4,5,6,4,5,6,7,8,9]);
 var result_copywithin2 = arr_copywithin2.copyWithin(0, 3, 7);
-print(result_copywithin2);
+assert_equal(result_copywithin2, [3,4,5,6,4,5,6,7,8,9]);
 var arr_copywithin3 = arr_copywithin3.copyWithin(0, 0, 10);
-print(arr_copywithin3);
+assert_equal(arr_copywithin3, [0,1,,3,4,5,6,7,8,9]);
 //elementskind is generic but hclass == generic hclass
 var arr_copywithin4 = arr_copywithin4.copyWithin(3, 0, 6);
-print(arr_copywithin4);
+assert_equal(arr_copywithin4, [0,1,2,0,1,2,3,4,5,9]);
 
 const ArraySize = 10;
 const QuarterSize = ArraySize / 4;
@@ -536,13 +546,13 @@ for (let i = 0; i < ArraySize; i++) {
     //elementskind is not generic
     result = arr_copywithin5.copyWithin(0, QuarterSize * 2, QuarterSize * 3);
 }
-print(result);
+assert_equal(result, [ 5,6,2,3,4,5,6,7,8,9]);
 
 for (let i = 0; i < ArraySize; i++) {
     //elementskind is generic but hclass != generic hclass
     result = arr_copywithin6.copyWithin(0, QuarterSize * 2, QuarterSize * 3);
 }
-print(result);
+assert_equal(result, [5,6,2,3,4,5,6,7,8,9]);
 
 // Test case for every()
 var arr_every1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -573,13 +583,13 @@ for (let i = 0; i < 10; i++) {
 var arr_every4 = new Array();
 for (let i = 0; i < 10; i++) arr_every4[i] = i;
 var result_every1 = arr_every1.every(testEvery);
-print(result_every1);
+assert_true(result_every1);
 var result_every2 = arr_every2.every(testEvery);
-print(result_every2);
+assert_true(result_every2);
 var result_every3 = arr_every3.every(testEvery);
-print(result_every3);
+assert_true(result_every3);
 var result_every4 = arr_every4.every(testEvery4);
-print(result_every4);
+assert_true(result_every4);
 
 // Test case for reduceRight()
 var arr_reduceRight1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -609,13 +619,13 @@ for (let i = 0; i < 10; i++) {
 var arr_reduceRight4 = new Array();
 for (let i = 0; i < 10; i++) arr_reduceRight4[i] = i;
 var result_reduceRight1 = arr_reduceRight1.reduceRight(testReduceRight, 100);
-print(result_reduceRight1);
+assert_equal(result_reduceRight1, 145);
 var result_reduceRight2 = arr_reduceRight2.reduceRight(testReduceRight, 100);
-print(result_reduceRight2);
+assert_equal(result_reduceRight2, 145);
 var result_reduceRight3 = arr_reduceRight3.reduceRight(testReduceRight, 100);
-print(result_reduceRight3);
+assert_equal(result_reduceRight3, 109);
 var result_reduceRight4 = arr_reduceRight4.reduceRight(testReduceRight4, 100);
-print(result_reduceRight4);
+assert_equal(result_reduceRight4, 125);
 
 // Test case for some()
 var arr_some1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -637,20 +647,20 @@ for (let i = 0; i < 10; i++) {
     arr_some3[i] = i;
 }
 var result_some1 = arr_some1.some(testSome);
-print(result_some1);
+assert_equal(result_some1, false);
 var result_some2 = arr_some2.some(testSome);
-print(result_some2);
+assert_equal(result_some2, false);
 var result_some3 = arr_some3.some(testSome);
-print(result_some3);
+assert_equal(result_some3, true);
 
 // Test case for unshift()
 var arr_unshift1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 var arr_unshift2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 var result_unshift1 = arr_unshift1.unshift(1, 2, 3, 4, 5);
-print(result_unshift1);
+assert_equal(result_unshift1, 15);
 var result_unshift2 = arr_unshift2.unshift(1, 2, 3);
-print(result_unshift2);
+assert_equal(result_unshift2, 13);
 
 class C3 {
     constructor(a5) {
@@ -674,7 +684,6 @@ class C3 {
 const v12 = new C3("p");
 new C3(v12);
 new C3(C3);
-print(new C3(C3));
 
 // Test case for toSorted()
 var arr_toSorted1 = ["Mar", "Jan", "Feb", "Dec"];
@@ -684,16 +693,15 @@ arr_toSorted2[1] = "Jan";
 arr_toSorted2[2] = "Feb";
 arr_toSorted2[3] = "Dec";
 var result_toSorted1 = arr_toSorted1.toSorted();
-print(result_toSorted1);
+assert_equal(result_toSorted1, ["Dec","Feb","Jan","Mar"]);
 var result_toSorted2 = arr_toSorted2.toSorted();
-print(result_toSorted2);
+assert_equal(result_toSorted2, ["Dec","Feb","Jan","Mar"]);
 
 const v0 = [0, 1];
-const mapEd = v0.map(() => {
-    v0["pop"]();
-});
-print(new Uint16Array(v0).length);
+const mapEd = v0.map(() => v0["pop"]());
+assert_equal(new Uint16Array(v0).length, 1);
 
+let errorCount1 = 0;
 try {
     const v2 = new ArrayBuffer(103);
 
@@ -717,8 +725,9 @@ try {
     new F3();
     v2();
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 1);
 
 try {
     const v3 = new ArrayBuffer(45);
@@ -747,8 +756,9 @@ try {
     new F4();
     v3.transfer();
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 2);
 
 try {
 
@@ -796,8 +806,9 @@ try {
     const v58 = new Int16Array();
     v58.forEach();
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 3);
 
 try {
     const v3 = new ArrayBuffer(19);
@@ -816,8 +827,9 @@ try {
     const v12 = new F4();
     new F4(v12, v3);
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 4);
 
 try {
     const v3 = new ArrayBuffer(10);
@@ -842,8 +854,9 @@ try {
     new F4(v16, v3);
     Int32Array();
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 5);
 
 try {
     const v2 = new ArrayBuffer(10);
@@ -868,8 +881,10 @@ try {
     new F3(10, F3);
     v2.transfer();
 } catch (err) {
-    print(err.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 6);
+
 
 try {
     const v1 = new Uint16Array();
@@ -877,8 +892,9 @@ try {
     }
     undefined instanceof v1.values();
 } catch (error) {
-    print(error.name);
+    errorCount1++;
 }
+assert_equal(errorCount1, 7);
 
 /*
  * @tc.name:ArrayConstructor
@@ -899,28 +915,32 @@ const originalArrays = [
     ["ark_unicodeValue 😀", "ark_unicodeValue 😎"],
 ];
 
-for (let i = 0; i < originalArrays.length; i++) {
-    print(originalArrays[i]);
-}
+assert_equal(originalArrays[0], [1, 2, 3]);
+assert_equal(originalArrays[1], ["apple", "banana", "orange"]);
+assert_equal(originalArrays[2], [true, false, true]);
+assert_equal(originalArrays[5], [Infinity, -Infinity]);
 
+errorCount1 = 0;
 try {
     const arr1 = [1, 2, 3];
-    print(arr1[10]);
-    print("Exception usage, but does not throw an error");
+    assert_equal(arr1[10], undefined);
 } catch (error) {
-    print("Caught an error: " + error);
+    errorCount1++;
 }
+assert_equal(errorCount1, 0);
 
 try {   
 } catch (error) {
     print("Caught an error: ", error);
 }
 
+let errorStr = "";
 try {
     const arr2 = new Array(-1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "RangeError: Invalid array length");
 
 /*
  * @tc.name:from
@@ -928,30 +948,32 @@ try {
  * @tc.type: FUNC
  */
 const newArray = Array.from(originalArrays);
-newArray.forEach(array => {
-    print(array);
+newArray.forEach((array, index) => {
+    assert_equal(array, originalArrays[index])
 });
 
 try {
     Array.from([1, 2, 3], "not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "TypeError: the mapfn is not callable.");
 
 try {
     Array.from([1, 2, 3], () => { throw new Error("Something went wrong"); });
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "Error: Something went wrong");
 
 try {
     Array.from(123);
     Array.from({});
     Array.from([1, 2, 3], () => {}, 123);
-    print("Exception usage, but does not throw an error");
 } catch (error) {
-    print("Caught an error: " + error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "Error: Something went wrong");
 
 /*
  * @tc.name:isArray
@@ -959,17 +981,17 @@ try {
  * @tc.type: FUNC
  */
 originalArrays.forEach((array, index) => {
-    print(Array.isArray(array));
+    assert_true(Array.isArray(array));
 });
 
 try {
-    print(Array.isArray());
-    print(Array.isArray(123));
-    print(Array.isArray("not an array"));
-    print(Array.isArray(null));
-    print(Array.isArray(undefined));
+    assert_true(!Array.isArray());
+    assert_true(!Array.isArray(123));
+    assert_true(!Array.isArray("not an array"));
+    assert_true(!Array.isArray(null));
+    assert_true(!Array.isArray(undefined));
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
 
 /*
@@ -978,13 +1000,13 @@ try {
  * @tc.type: FUNC
  */
 const ArrayOf = Array.of(...originalArrays);
-print(ArrayOf[1]);
+assert_equal(ArrayOf[1], ["apple", "banana", "orange"]);
 
 try {
     const arr1 = Array.of(undefined);
     const arr2 = Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-    print(arr1);
-    print(arr2);
+    assert_equal(arr1, [undefined]);
+    assert_equal(arr2, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 } catch (error) {
     print("Caught an error: ", error);
 }
@@ -994,17 +1016,16 @@ try {
  * @tc.desc:test Array
  * @tc.type: FUNC
  */
-print(originalArrays.at(1));
-print(originalArrays.at(3));
-print(originalArrays.at(-1));
-print(originalArrays.at(-2));
+assert_equal(originalArrays.at(1), ['apple', 'banana', 'orange']);
+assert_equal(originalArrays.at(-1), ["ark_unicodeValue 😀", "ark_unicodeValue 😎"]);
+assert_equal(originalArrays.at(-2), [[1,2,3],[4,5,6]]);
 
 try {
-    print(originalArrays.at());
-    print(originalArrays.at(100));
-    print(originalArrays.at(null));
-    print(originalArrays.at(undefined));
-    print(originalArrays.at(new Map()));
+    assert_equal(originalArrays.at(), [1,2,3]);
+    assert_equal(originalArrays.at(100), undefined);
+    assert_equal(originalArrays.at(null), [1,2,3]);
+    assert_equal(originalArrays.at(undefined), [1,2,3]);
+    assert_equal(originalArrays.at(new Map()), [1,2,3]);
 } catch (error) {
     print("Caught an error: ", error);
 }
@@ -1015,21 +1036,24 @@ try {
  * @tc.type: FUNC
  */
 const array1 = [1, "two", true];
-const array2 = [null, undefined, { key: "value" }];
+const e1 = { key: "value" };
+const array2 = [null, undefined, e1];
 const array3 = [];
 
 const concatenatedArray = array1.concat(array2, array3);
-print("Concatenated Array:", concatenatedArray);
+assert_equal(concatenatedArray, [1, "two", true, null, undefined, e1]);
 
 const nestedArray = [[1, 2], ["a", "b"], [true, false]];
 const nestedConcatenatedArray = array1.concat(nestedArray, array2);
-print("Nested Concatenated Array:", nestedConcatenatedArray);
+assert_equal(nestedConcatenatedArray,
+             [1, "two", true, [1, 2], ["a", "b"], [true, false], null, undefined, e1]);
 
-const mixedConcatenatedArray = array1.concat(4, "five", { prop: "value" });
-print("Mixed Concatenated Array:", mixedConcatenatedArray);
+const e2 = { prop: "value" };
+const mixedConcatenatedArray = array1.concat(4, "five", e2);
+assert_equal(mixedConcatenatedArray, [1, "two", true, 4, "five", e2]);
 
 const spreadConcatenatedArray = [...array1, ...array2, ...array3];
-print("Spread Concatenated Array:", spreadConcatenatedArray);
+assert_equal(spreadConcatenatedArray, [1, "two", true, null, undefined, e1]);
 
 /*
  * @tc.name:CopyWithin,Entries
@@ -1042,16 +1066,14 @@ const copiedArray3 = originalArrays[2].slice().copyWithin(1, -2);
 const copiedArray4 = originalArrays[3].slice().copyWithin(-1);
 const copiedArray5 = originalArrays[4].slice().copyWithin(0);
 
-print("Original Arrays:", originalArrays);
-print("Copied Array 1:", copiedArray1);
-print("Copied Array 2:", copiedArray2);
-print("Copied Array 3:", copiedArray3);
-print("Copied Array 4:", copiedArray4);
-print("Copied Array 5:", copiedArray5);
+assert_equal(copiedArray1, [3, 2, 3]);
+assert_equal(copiedArray2, ['apple', 'apple', 'banana']);
+assert_equal(copiedArray3, [true, false, true]);
+assert_equal(copiedArray4.toString(), '[object Object],[object Object]');
+assert_equal(copiedArray5.toString(), 'NaN,NaN,NaN');
 
 for (const [index, value] of originalArrays.entries()) {
-    print(`Index: ${index}`);
-    print(`Value: ${value}`);
+    assert_equal(originalArrays[index], value);
 }
 
 /*
@@ -1061,41 +1083,43 @@ for (const [index, value] of originalArrays.entries()) {
  */
 const numbers1 = [2, 4, 6, 8, 10];
 const allEven = numbers1.every(num => num % 2 === 0);
-print(allEven);
+assert_true(allEven);
 
 const numbers2 = [1, 2, 3, 4, 5];
 const allEven2 = numbers2.every(num => num % 2 === 0);
-print(allEven2);
+assert_true(!allEven2);
 
 const emptyArray1 = [];
 const allEmpty = emptyArray1.every(num => num % 2 === 0);
-print(allEmpty);
+assert_true(allEmpty);
 
 const emptyArray2 = [];
 const allEmpty2 = emptyArray2.every(() => true);
-print(allEmpty2);
+assert_true(allEmpty2);
 
 const mixedArray = [2, 4, "hello", 8, 10];
 const allNumbers = mixedArray.every(num => typeof num === "number");
-print(allNumbers);
+assert_true(!allNumbers);
 
 const emptyArray3 = [];
 const allNonNegative = emptyArray3.every(num => num >= 0);
-print(allNonNegative);
+assert_true(allNonNegative);
 
 try {
     const arr = [1, 2, 3];
     const result = arr.every("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "TypeError: the callbackfun is not callable.")
 
 try {
     const arr = [1, 2, 3];
     const result = arr.every(num => num < undefinedVariable);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, "ReferenceError: undefinedVariable is not defined");
 
 /*
  * @tc.name:Fill
@@ -1104,31 +1128,31 @@ try {
  */
 {
     const array1 = [1, 2, 3, 4, 5];
-    print(array1.fill(0));
+    assert_equal(array1.fill(0), [0,0,0,0,0]);
 
     const array2 = [1, 2, 3, 4, 5];
-    print(array2.fill(0, 2));
+    assert_equal(array2.fill(0, 2), [1,2,0,0,0]);
 
     const array3 = [1, 2, 3, 4, 5];
-    print(array3.fill(0, 1, 3));
+    assert_equal(array3.fill(0, 1, 3), [1,0,0,4,5]);
 
     const array4 = new Array(5);
-    print(array4.fill(0));
+    assert_equal(array4.fill(0), [0,0,0,0,0]);
 
     const array5 = Array.from({ length: 5 }, (_, index) => index + 1);
-    print(array5.fill(0, 2));
+    assert_equal(array5.fill(0, 2), [1,2,0,0,0]);
 
     const array6 = Array.from({ length: 5 }, (_, index) => index + 1);
-    print(array6.fill(0, 1, 3));
+    assert_equal(array6.fill(0, 1, 3), [1,0,0,4,5]);
 
     const array7 = Array(5).fill("hello");
-    print(array7);
+    assert_equal(array7, ['hello', 'hello', 'hello', 'hello', 'hello']);
 
     const array8 = [1, 2, 3];
-    print(array8.fill(0, -2));
+    assert_equal(array8.fill(0, -2), [1,0,0]);
 
     const array9 = [1, 2, 3];
-    print(array9.fill(0, -2, -1));
+    assert_equal(array9.fill(0, -2, -1), [1,0,3]);
 }
 
 try {
@@ -1154,20 +1178,20 @@ try {
     const numbers = [1, 2, 3, 4, 5];
 
     const evenNumbers = numbers.filter(num => num % 2 === 0);
-    print(evenNumbers);
+    assert_equal(evenNumbers, [2,4]);
 
     const greaterThanTwo = numbers.filter(num => num > 2);
-    print(greaterThanTwo);
+    assert_equal(greaterThanTwo, [3,4,5]);
 
     const lessThanTen = numbers.filter(num => num < 10);
-    print(lessThanTen);
+    assert_equal(lessThanTen, [1,2,3,4,5]);
 
     const divisibleByThree = numbers.filter(num => num % 3 === 0);
-    print(divisibleByThree);
+    assert_equal(divisibleByThree, [3]);
 
     const words = ["apple", "banana", "pear", "orange"];
     const longWords = words.filter(word => word.length >= 5);
-    print(longWords);
+    assert_equal(longWords, ['apple', 'banana', 'orange']);
 
     const persons = [
         { name: "Alice", age: 25 },
@@ -1175,22 +1199,25 @@ try {
         { name: "Charlie", age: 30 }
     ];
     const adults = persons.filter(person => person.age > 18);
-    print(adults);
+    assert_equal(adults.toString(), '[object Object],[object Object]');
 }
+
 
 try {
     const arr = [1, 2, 3];
     const result = arr.filter("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the callbackfun is not callable.');
 
 try {
     const obj = { a: 1, b: 2 };
     const result = obj.filter(() => true);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: undefined is not callable');
 
 /*
  * @tc.name:Find
@@ -1199,47 +1226,51 @@ try {
  */
 {
     const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
-    print(array.find(item => item === 5));
-    print(array.find(item => item === 11));
-    print(array.find(item => item > 5));
-    print(array.find(item => item < 0));
-    print(array.find(item => typeof item === 'string'));
-    print(array.find(item => typeof item === 'object'));
-    print(array.find(item => Array.isArray(item)));
-    print(array.find(item => item));
-    print(array.find(item => item === null));
-    print(array.find(item => item === undefined));
-    print(array.find(item => isNaN(item)));
-    print(array.find(item => item === false));
+    assert_equal(array.find(item => item === 5), undefined);
+    assert_equal(array.find(item => item === 11), undefined);
+    assert_equal(array.find(item => item > 5), 6);
+    assert_equal(array.find(item => item < 0), undefined);
+    assert_equal(array.find(item => typeof item === 'string'), "");
+    assert_equal(array.find(item => typeof item === 'object'), null);
+    assert_equal(array.find(item => Array.isArray(item)), [1,2,3]);
+    assert_equal(array.find(item => item), 6);
+    assert_equal(array.find(item => item === null), null);
+    assert_equal(array.find(item => item === undefined), undefined);
+    assert_equal(array.find(item => isNaN(item)).toString(), 'NaN');
+    assert_equal(array.find(item => item === false), false);
 }
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.find());
+    array.find();
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.find("not a function"));
+    array.find("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     let array = null;
-    print(array.find(item => item === 1));
+    array.find(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: Cannot read property find of null');
 
 try {
     array = undefined;
-    print(array.find(item => item === 1));
+    array.find(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'ReferenceError: array is not defined');
 
 /*
  * @tc.name:FindIndex
@@ -1248,47 +1279,51 @@ try {
  */
 {
     const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
-    print(array.findIndex(item => item === 5));
-    print(array.findIndex(item => item === 11));
-    print(array.findIndex(item => item > 5));
-    print(array.findIndex(item => item < 0));
-    print(array.findIndex(item => typeof item === 'string'));
-    print(array.findIndex(item => typeof item === 'object'));
-    print(array.findIndex(item => Array.isArray(item)));
-    print(array.findIndex(item => item));
-    print(array.findIndex(item => item === null));
-    print(array.findIndex(item => item === undefined));
-    print(array.findIndex(item => isNaN(item)));
-    print(array.findIndex(item => item === false));
+    assert_equal(array.findIndex(item => item === 5), -1);
+    assert_equal(array.findIndex(item => item === 11), -1);
+    assert_equal(array.findIndex(item => item > 5), 0);
+    assert_equal(array.findIndex(item => item < 0), -1);
+    assert_equal(array.findIndex(item => typeof item === 'string'), 8);
+    assert_equal(array.findIndex(item => typeof item === 'object'), 7);
+    assert_equal(array.findIndex(item => Array.isArray(item)), 11);
+    assert_equal(array.findIndex(item => item), 0);
+    assert_equal(array.findIndex(item => item === null), 7);
+    assert_equal(array.findIndex(item => item === undefined), 6);
+    assert_equal(array.findIndex(item => isNaN(item)), 5);
+    assert_equal(array.findIndex(item => item === false), 9);
 }
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findIndex());
+    array.findIndex();
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findIndex("not a function"));
+    array.findIndex("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     let array = null;
-    print(array.findIndex(item => item === 1));
+    array.findIndex(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: Cannot read property findIndex of null');
 
 try {
     array = undefined;
-    print(array.findIndex(item => item === 1));
+    array.findIndex(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'ReferenceError: array is not defined');
 
 /*
  * @tc.name:FindLast
@@ -1297,47 +1332,51 @@ try {
  */
 {
     const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
-    print(array.findLast(item => item === 5));
-    print(array.findLast(item => item === 11));
-    print(array.findLast(item => item > 5));
-    print(array.findLast(item => item < 0));
-    print(array.findLast(item => typeof item === 'string'));
-    print(array.findLast(item => typeof item === 'object'));
-    print(array.findLast(item => Array.isArray(item)));
-    print(array.findLast(item => item));
-    print(array.findLast(item => item === null));
-    print(array.findLast(item => item === undefined));
-    print(array.findLast(item => isNaN(item)));
-    print(array.findLast(item => item === false));
+    assert_equal(array.findLast(item => item === 5), undefined);
+    assert_equal(array.findLast(item => item === 11), undefined);
+    assert_equal(array.findLast(item => item > 5), 10);
+    assert_equal(array.findLast(item => item < 0), undefined);
+    assert_equal(array.findLast(item => typeof item === 'string'), "");
+    assert_equal(array.findLast(item => typeof item === 'object'), [1,2,3]);
+    assert_equal(array.findLast(item => Array.isArray(item)), [1,2,3]);
+    assert_equal(array.findLast(item => item), [1,2,3]);
+    assert_equal(array.findLast(item => item === null), null);
+    assert_equal(array.findLast(item => item === undefined), undefined);
+    assert_equal(array.findLast(item => isNaN(item)), [1,2,3]);
+    assert_equal(array.findLast(item => item === false), false);
 }
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findLast());
+    array.findLast();
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findLast("not a function"));
+    array.findLast("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     let array = null;
-    print(array.findLast(item => item === 1));
+    array.findLast(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: Cannot read property findLast of null');
 
 try {
     array = undefined;
-    print(array.findLast(item => item === 1));
+    array.findLast(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'ReferenceError: array is not defined');
 
 /*
  * @tc.name:FindLastIndex
@@ -1346,47 +1385,51 @@ try {
  */
 {
     const array = [6, 7, 8, 9, 10, NaN, undefined, null, "", false, {name: "John"}, [1, 2, 3]];
-    print(array.findLastIndex(item => item === 5));
-    print(array.findLastIndex(item => item === 11));
-    print(array.findLastIndex(item => item > 5));
-    print(array.findLastIndex(item => item < 0));
-    print(array.findLastIndex(item => typeof item === 'string'));
-    print(array.findLastIndex(item => typeof item === 'object'));
-    print(array.findLastIndex(item => Array.isArray(item)));
-    print(array.findLastIndex(item => item));
-    print(array.findLastIndex(item => item === null));
-    print(array.findLastIndex(item => item === undefined));
-    print(array.findLastIndex(item => isNaN(item)));
-    print(array.findLastIndex(item => item === false));
+    assert_equal(array.findLastIndex(item => item === 5), -1);
+    assert_equal(array.findLastIndex(item => item === 11), -1);
+    assert_equal(array.findLastIndex(item => item > 5), 4);
+    assert_equal(array.findLastIndex(item => item < 0), -1);
+    assert_equal(array.findLastIndex(item => typeof item === 'string'), 8);
+    assert_equal(array.findLastIndex(item => typeof item === 'object'), 11);
+    assert_equal(array.findLastIndex(item => Array.isArray(item)), 11);
+    assert_equal(array.findLastIndex(item => item), 11);
+    assert_equal(array.findLastIndex(item => item === null), 7);
+    assert_equal(array.findLastIndex(item => item === undefined), 6);
+    assert_equal(array.findLastIndex(item => isNaN(item)), 11);
+    assert_equal(array.findLastIndex(item => item === false), 9);
 }
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findLastIndex());
+    array.findLastIndex();
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     const array = [1, 2, 3, 4, 5];
-    print(array.findLastIndex("not a function"));
+    array.findLastIndex("not a function");
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the predicate is not callable.');
 
 try {
     let array = null;
-    print(array.findLastIndex(item => item === 1));
+    array.findLastIndex(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: Cannot read property findLastIndex of null');
 
 try {
     array = undefined;
-    print(array.findLastIndex(item => item === 1));
+    array.findLastIndex(item => item === 1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'ReferenceError: array is not defined');
 
 /*
  * @tc.name:Flat
@@ -1396,41 +1439,45 @@ try {
 {
     const array = [1, 2, [3, 4, [5, 6]], [], [[7], 8], 9, [10]];
 
-    print(array.flat());
-    print(array.flat(2));
+    assert_equal(array.flat().toString(), '1,2,3,4,5,6,7,8,9,10');
+    assert_equal(array.flat(2), [1,2,3,4,5,6,7,8,9,10]);
 
     const deeplyNestedArray = [1, [2, [3, [4, [5]]]]];
-    print(deeplyNestedArray.flat(Infinity));
+    assert_equal(deeplyNestedArray.flat(Infinity), [1,2,3,4,5]);
 
     const emptyArray = [1, [2, [], [3, []]]];
-    print(emptyArray.flat());
+    assert_equal(emptyArray.flat().toString(), '1,2,,3,');
 
     const sparseArray = [1, 2, , 3, 4, [5, , 6]];
-    print(sparseArray.flat());
+    assert_equal(sparseArray.flat(), [1,2,3,4,5,6]);
 
     const irregularArray = [1, [2, 3, [4, [5]]]];
-    print(irregularArray.flat());
+    assert_equal(irregularArray.flat().toString(), '1,2,3,4,5');
 
     const arrayWithNonArrays = [1, 'string', {name: 'John'}, null, undefined];
-    print(arrayWithNonArrays.flat());
+    assert_equal(arrayWithNonArrays.flat().toString(), '1,string,[object Object],,');
 
     const arrayWithNaNAndInfinity = [1, [NaN, Infinity], [2, [3, NaN]]];
-    print(arrayWithNaNAndInfinity.flat());
+    assert_equal(arrayWithNaNAndInfinity.flat().toString(), '1,NaN,Infinity,2,3,NaN');
 }
 
+errorStr = "";
 try {
     const array = [1, 2, [3, 4]];
-    print(array.flat('string'));
+    array.flat('string');
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, '');
 
+errorStr = "";
 try {
     const array = [1, 2, [3, 4]];
-    print(array.flat(-1));
+    array.flat(-1);
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, '');
 
 /*
  * @tc.name:FlatMap
@@ -1439,17 +1486,17 @@ try {
  */
 {
     const array = [1, 2, 3];
-    print(array.flatMap(x => [x, x * 2]));
-    print(array.flatMap(x => []));
-    print(array.flatMap(x => x * 2));
-    print(array.flatMap((x, index) => [x, index]));
+    assert_equal(array.flatMap(x => [x, x * 2]), [1,2,2,4,3,6]);
+    assert_equal(array.flatMap(x => []), []);
+    assert_equal(array.flatMap(x => x * 2), [2,4,6]);
+    assert_equal(array.flatMap((x, index) => [x, index]).toString(), '1,0,2,1,3,2');
     const sparseArray = [1, , 2, , 3];
-    print(sparseArray.flatMap(x => [x]));
+    assert_equal(sparseArray.flatMap(x => [x]).toString(), '1,2,3');
     const nestedArray = [[1, 2], [3, 4], [5, 6]];
-    print(nestedArray.flatMap(arr => arr));
+    assert_equal(nestedArray.flatMap(arr => arr).toString(), '1,2,3,4,5,6');
     const arrayWithEmptyArrays = [1, [], [2, 3], [], 4];
-    print(arrayWithEmptyArrays.flatMap(x => x));
-    print(array.flatMap(x => x % 2 === 0 ? [x, x * 2] : x));
+    assert_equal(arrayWithEmptyArrays.flatMap(x => x).toString(), '1,2,3,4');
+    assert_equal(array.flatMap(x => x % 2 === 0 ? [x, x * 2] : x).toString(), '1,2,4,3');
 }
 
 /*
@@ -1457,18 +1504,14 @@ try {
  * @tc.desc:test Array
  * @tc.type: FUNC
  */
-originalArrays.forEach(array => {
-    array.forEach(item => {
-        print(item);
-    });
-});
 
 try {
     const array = [1, 2, 3];
     array.forEach('not a function');
 } catch (error) {
-    print("Caught an error: ", error);
+    errorStr = error.toString();
 }
+assert_equal(errorStr, 'TypeError: the callbackfun is not callable.')
 
 /*
  * @tc.name:Includes
@@ -1491,11 +1534,6 @@ const testCases = [
     { array: [new Set(), new Set()], target: new Set() },
 ];
 
-testCases.forEach(({ array, target }) => {
-    const result = array.includes(target);
-    print(`Array: [${array.join(', ')}], Target: ${target}, Result: ${result}`);
-});
-
 /*
  * @tc.name:IndexOf
  * @tc.desc:test Array
@@ -1503,19 +1541,19 @@ testCases.forEach(({ array, target }) => {
  */
 {
     let arr = [1, 2, 3, 4, 5];
-    print(arr.indexOf(3));
-    print(arr.indexOf(1));
-    print(arr.indexOf(5));
-    print([].indexOf(1));
+    assert_equal(arr.indexOf(3), 2);
+    assert_equal(arr.indexOf(1), 0);
+    assert_equal(arr.indexOf(5), 4);
+    assert_equal([].indexOf(1), -1);
     let arr2 = ["apple", "banana", "cherry"];
-    print(arr2.indexOf("banana"))
+    assert_equal(arr2.indexOf("banana"), 1)
     let arr3 = [1, 2, 2, 3, 4, 2];
-    print(arr3.indexOf(2));
-    print(arr.indexOf(10));
+    assert_equal(arr3.indexOf(2), 1);
+    assert_equal(arr.indexOf(10), -1);
     let arr4 = [{id: 1}, {id: 2}, {id: 3}];
-    print(arr4.indexOf({id: 2}));
-    print(arr4.findIndex(item => item.id === 2));
-    print("not an array".indexOf(1));
+    assert_equal(arr4.indexOf({id: 2}), -1);
+    assert_equal(arr4.findIndex(item => item.id === 2), 1);
+    assert_equal("not an array".indexOf(1), -1);
 }
 
 /*
@@ -1525,16 +1563,16 @@ testCases.forEach(({ array, target }) => {
  */
 {
     let arr = ["apple", "banana", "cherry"];
-    print(arr.join());
-    print(arr.join(", "));
+    assert_equal(arr.join(), 'apple,banana,cherry');
+    assert_equal(arr.join(", "), 'apple, banana, cherry');
     let emptyArr = [];
-    print(emptyArr.join());
+    assert_equal(emptyArr.join(), "");
     let singleElementArr = ["apple"];
-    print(singleElementArr.join());
+    assert_equal(singleElementArr.join(), 'apple');
     let mixedArr = ["apple", 1, {name: "John"}];
-    print(mixedArr.join());
+    assert_equal(mixedArr.join(), 'apple,1,[object Object]');
     let customSeparatorArr = ["apple", "banana", "cherry"];
-    print(customSeparatorArr.join(" + "));
+    assert_equal(customSeparatorArr.join(" + "), 'apple + banana + cherry');
 }
 
 /*
@@ -1546,28 +1584,28 @@ testCases.forEach(({ array, target }) => {
     let arr = ["apple", "banana", "cherry"];
     let keysIter = arr.keys();
     for (let key of keysIter) {
-        print(key);
+        assert_true(key == 0 || key == 1 || key == 2);
     }
 
     let emptyArr = [];
     let emptyKeysIter = emptyArr.keys();
-    print(emptyKeysIter.next().done);
+    assert_equal(emptyKeysIter.next().done, true);
 
     let singleElementArr = ["apple"];
     let singleElementKeysIter = singleElementArr.keys();
-    print(singleElementKeysIter.next().value);
-    print(singleElementKeysIter.next().done);
+    assert_equal(singleElementKeysIter.next().value, 0);
+    assert_equal(singleElementKeysIter.next().done, true);
 
     let multiDimArr = [["apple", "banana"], ["cherry", "date"]];
     let multiDimKeysIter = multiDimArr.keys();
     for (let key of multiDimKeysIter) {
-        print(key);
+        assert_true(key == 0 || key == 1);
     }
 
     let sparseArr = [1, , 3];
     let sparseKeysIter = sparseArr.keys();
     for (let key of sparseKeysIter) {
-        print(key);
+        assert_true(key == 0 || key == 1 || key == 2);
     }
 }
 
@@ -1578,20 +1616,20 @@ testCases.forEach(({ array, target }) => {
  */
 {
     let arr = [1, 2, 3, 4, 2, 5];
-    print(arr.lastIndexOf(2));
+    assert_equal(arr.lastIndexOf(2), 4);
 
-    print(arr.lastIndexOf(1));
-    print(arr.lastIndexOf(5));
-    print(arr.lastIndexOf(6));
+    assert_equal(arr.lastIndexOf(1), 0);
+    assert_equal(arr.lastIndexOf(5), 5);
+    assert_equal(arr.lastIndexOf(6), -1);
 
     let emptyArr = [];
-    print(emptyArr.lastIndexOf(1));
+    assert_equal(emptyArr.lastIndexOf(1), -1);
 
     let arrWithNaN = [1, 2, NaN, 4, NaN];
-    print(arrWithNaN.lastIndexOf(NaN));
+    assert_equal(arrWithNaN.lastIndexOf(NaN), -1);
 
     let arrWithUndefined = [1, 2, undefined, 4];
-    print(arrWithUndefined.lastIndexOf(undefined));
+    assert_equal(arrWithUndefined.lastIndexOf(undefined), 2);
 }
 
 /*
@@ -1602,27 +1640,27 @@ testCases.forEach(({ array, target }) => {
 {
     let arr = [1, 2, 3, 4, 5];
     let mappedArr = arr.map(num => num * 2);
-    print(mappedArr);
+    assert_equal(mappedArr, [2,4,6,8,10]);
 
     let emptyArr = [];
     let mappedEmptyArr = emptyArr.map(item => item * 2);
-    print(mappedEmptyArr);
+    assert_equal(mappedEmptyArr, []);
 
     let arrWithNaN = [1, 2, NaN, 4, NaN];
     let mappedArrWithNaN = arrWithNaN.map(num => num * 2);
-    print(mappedArrWithNaN);
+    assert_equal(mappedArrWithNaN.toString(), '2,4,NaN,8,NaN');
 
     let sparseArr = [1, , 3];
     let mappedSparseArr = sparseArr.map(num => num * 2);
-    print(mappedSparseArr);
+    assert_equal(mappedSparseArr, [2,,6]);
 
     let objArr = [{id: 1}, {id: 2}, {id: 3}];
     let mappedObjArr = objArr.map(obj => obj.id);
-    print(mappedObjArr);
+    assert_equal(mappedObjArr, [1,2,3]);
 
     let multiDimArr = [[1, 2], [3, 4], [5, 6]];
     let mappedMultiDimArr = multiDimArr.map(innerArr => innerArr.map(num => num * 2));
-    print(mappedMultiDimArr);
+    assert_equal(mappedMultiDimArr.toString(), '2,4,6,8,10,12');
 }
 
 /*
@@ -1633,22 +1671,22 @@ testCases.forEach(({ array, target }) => {
 {
     let arr = [1, 2, 3, 4, 5];
     let poppedElement = arr.pop();
-    print(poppedElement);
-    print(arr);
+    assert_equal(poppedElement, 5);
+    assert_equal(arr, [1,2,3,4]);
 
     let emptyArr = [];
     let poppedEmptyElement = emptyArr.pop();
-    print(poppedEmptyElement);
-    print(emptyArr);
+    assert_equal(poppedEmptyElement, undefined);
+    assert_equal(emptyArr, []);
 
     let singleElementArr = [1];
     let poppedSingleElement = singleElementArr.pop();
-    print(poppedSingleElement);
-    print(singleElementArr);
+    assert_equal(poppedSingleElement, 1);
+    assert_equal(singleElementArr, []);
 
     let anotherSingleElementArr = ["apple"];
     let poppedAnotherSingleElement = anotherSingleElementArr.pop();
-    print(poppedAnotherSingleElement);
+    assert_equal(poppedAnotherSingleElement, 'apple');
 }
 
 /*
@@ -1659,30 +1697,30 @@ testCases.forEach(({ array, target }) => {
 {
     let arr = [1, 2, 3];
     arr.push(4);
-    print(arr);
+    assert_equal(arr, [1,2,3,4]);
 
     arr.push(5, 6);
-    print(arr);
+    assert_equal(arr, [1,2,3,4,5,6]);
 
     let emptyArr = [];
     emptyArr.push(1);
-    print(emptyArr);
+    assert_equal(emptyArr, [1]);
 
     let objArr = [{ id: 1 }];
     objArr.push({ id: 2 });
-    print(objArr);
+    assert_equal(objArr.toString(), '[object Object],[object Object]');
 
     let nestedArr = [1, 2];
     nestedArr.push([3, 4]);
-    print(nestedArr);
+    assert_equal(nestedArr, [1,2,[3,4]]);
 
     let arrWithUndefined = [1, 2, 3];
     arrWithUndefined.push(undefined);
-    print(arrWithUndefined);
+    assert_equal(arrWithUndefined, [1,2,3,undefined]);
 
     let singleElementArr = [1];
     singleElementArr.push(2);
-    print(singleElementArr);
+    assert_equal(singleElementArr, [1,2]);
 
     var ve = [''];
     try {
@@ -1690,7 +1728,8 @@ testCases.forEach(({ array, target }) => {
             var vee = ve[item];
             Array.prototype.push.call(vee[item],[,,]);
         }
-    } catch(e) { print(e); }
+    } catch(e) { errorStr = e.toString(); }
+    assert_equal(errorStr, 'TypeError: Cannot convert a UNDEFINED value to a JSObject');
 }
 
 /*
@@ -1701,19 +1740,19 @@ testCases.forEach(({ array, target }) => {
 {
     let arr = [1, 2, 3, 4, 5];
     let sum = arr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-    print(sum);
+    assert_equal(sum, 15);
 
     let emptyArr = [];
     let sumOfEmptyArr = emptyArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-    print(sumOfEmptyArr);
+    assert_equal(sumOfEmptyArr, 0);
 
     let singleArr = [1];
     let sumOfSingleArr = singleArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-    print(sumOfSingleArr);
+    assert_equal(sumOfSingleArr, 1);
 
     let arrNaN = [1, 2, NaN, 4];
     let sumOfArrNaN = arrNaN.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-    print(sumOfArrNaN);
+    assert_equal(sumOfArrNaN.toString(), 'NaN');
 }
 
 /*
@@ -1724,19 +1763,19 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c", "d", "e"];
     let result1 = array1.reduceRight((acc, curr) => acc + curr);
-    print(result1);
+    assert_equal(result1, 'edcba');
 
     let array2 = [];
     let result2 = array2.reduceRight((acc, curr) => acc + curr, "initialValue");
-    print(result2);
+    assert_equal(result2, 'initialValue');
 
     let array3 = ["a"];
     let result3 = array3.reduceRight((acc, curr) => acc + curr);
-    print(result3);
+    assert_equal(result3, 'a');
 
     let array4 = ["a", "b", undefined, "d"];
     let result4 = array4.reduceRight((acc, curr) => acc + curr);
-    print(result4);
+    assert_equal(result4, 'dundefinedba');
 }
 
 /*
@@ -1747,19 +1786,19 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c", "d", "e"];
     array1.reverse();
-    print(array1);
+    assert_equal(array1, ['e', 'd', 'c', 'b', 'a']);
 
     let emptyArray = [];
     emptyArray.reverse();
-    print(emptyArray);
+    assert_equal(emptyArray, []);
 
     let singleElementArray = ["a"];
     singleElementArray.reverse();
-    print(singleElementArray);
+    assert_equal(singleElementArray, ['a']);
 
     let arrayWithUndefined = ["a", "b", undefined, "d"];
     arrayWithUndefined.reverse();
-    print(arrayWithUndefined);
+    assert_equal(arrayWithUndefined, ['d', undefined, 'b', 'a']);
 }
 
 /*
@@ -1770,23 +1809,23 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c", "d", "e"];
     let shiftedElement1 = array1.shift();
-    print(shiftedElement1);
-    print(array1);
+    assert_equal(shiftedElement1, 'a');
+    assert_equal(array1, ['b', 'c', 'd', 'e']);
 
     let emptyArray = [];
     let shiftedElement2 = emptyArray.shift();
-    print(shiftedElement2);
-    print(emptyArray);
+    assert_equal(shiftedElement2, undefined);
+    assert_equal(emptyArray, []);
 
     let singleElementArray = ["a"];
     let shiftedElement3 = singleElementArray.shift();
-    print(shiftedElement3);
-    print(singleElementArray);
+    assert_equal(shiftedElement3, 'a');
+    assert_equal(singleElementArray, []);
 
     let arrayWithUndefined = ["a", undefined, "b", "c"];
     let shiftedElement4 = arrayWithUndefined.shift();
-    print(shiftedElement4);
-    print(arrayWithUndefined);
+    assert_equal(shiftedElement4, 'a');
+    assert_equal(arrayWithUndefined, [undefined, 'b', 'c']);
 }
 
 /*
@@ -1797,19 +1836,19 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c", "d", "e"];
     let slicedArray1 = array1.slice(1, 3);
-    print(slicedArray1);
+    assert_equal(slicedArray1, ['b', 'c']);
 
     let emptyArray = [];
     let slicedEmptyArray = emptyArray.slice(1, 3);
-    print(slicedEmptyArray);
+    assert_equal(slicedEmptyArray, []);
 
     let singleElementArray = ["a"];
     let slicedSingleElementArray = singleElementArray.slice(0, 1);
-    print(slicedSingleElementArray);
+    assert_equal(slicedSingleElementArray, ['a']);
 
     let arrayWithUndefined = ["a", undefined, "b", "c"];
     let slicedArrayWithUndefined = arrayWithUndefined.slice(1, 3);
-    print(slicedArrayWithUndefined);
+    assert_equal(slicedArrayWithUndefined, [undefined, 'b']);
 }
 
 /*
@@ -1820,23 +1859,23 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = [1, 2, 3, 4, 5];
     let isSomeEven = array1.some(num => num % 2 === 0);
-    print(isSomeEven);
+    assert_true(isSomeEven);
 
     let array2 = [1, 3, 5, 7, 9];
     let isSomeEven2 = array2.some(num => num % 2 === 0);
-    print(isSomeEven2);
+    assert_true(!isSomeEven2);
 
     let emptyArray = [];
     let isSomeEmpty = emptyArray.some(num => num > 0);
-    print(isSomeEmpty);
+    assert_true(!isSomeEmpty);
 
     let singleElementArray = [1];
     let isSomeSingleElement = singleElementArray.some(num => num > 0);
-    print(isSomeSingleElement);
+    assert_true(isSomeSingleElement);
 
     let arrayWithUndefined = [1, undefined, 3, 5];
     let isSomeUndefined = arrayWithUndefined.some(num => num === undefined);
-    print(isSomeUndefined);
+    assert_true(isSomeUndefined);
 }
 
 /*
@@ -1847,23 +1886,23 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = [3, 1, 4, 1, 5, 9, 2, 6, 5];
     array1.sort();
-    print(array1);
+    assert_equal(array1, [1,1,2,3,4,5,5,6,9]);
 
     let emptyArray = [];
     emptyArray.sort();
-    print(emptyArray);
+    assert_equal(emptyArray, []);
 
     let singleElementArray = [1];
     singleElementArray.sort();
-    print(singleElementArray);
+    assert_equal(singleElementArray, [1]);
 
     let arrayWithUndefined = [1, undefined, 3, 5];
     arrayWithUndefined.sort();
-    print(arrayWithUndefined);
+    assert_equal(arrayWithUndefined, [1,3,5,undefined]);
 
     let arrayWithStrings = ["banana", "apple", "cherry"];
     arrayWithStrings.sort();
-    print(arrayWithStrings);
+    assert_equal(arrayWithStrings, ['apple', 'banana', 'cherry']);
 }
 
 /*
@@ -1874,23 +1913,23 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c", "d", "e"];
     let removedElements1 = array1.splice(2, 2, "x", "y");
-    print(removedElements1);
-    print(array1);
+    assert_equal(removedElements1, ['c', 'd']);
+    assert_equal(array1, ['a', 'b', 'x', 'y', 'e']);
 
     let emptyArray = [];
     let removedElements2 = emptyArray.splice(0, 0, "x", "y");
-    print(removedElements2);
-    print(emptyArray);
+    assert_equal(removedElements2, []);
+    assert_equal(emptyArray, ['x', 'y']);
 
     let singleElementArray = ["a"];
     let removedElements3 = singleElementArray.splice(0, 1, "x", "y");
-    print(removedElements3);
-    print(singleElementArray);
+    assert_equal(removedElements3, ['a']);
+    assert_equal(singleElementArray, ['x', 'y']);
 
     let arrayWithUndefined = [1, undefined, 3, 5];
     let removedElements4 = arrayWithUndefined.splice(1, 2);
-    print(removedElements4);
-    print(arrayWithUndefined);
+    assert_equal(removedElements4, [undefined, 3]);
+    assert_equal(arrayWithUndefined, [1, 5]);
 }
 
 /*
@@ -1901,15 +1940,15 @@ testCases.forEach(({ array, target }) => {
 {
     let array = ["apple", "banana", "cherry"];
     let string = array.toString();
-    print(string);
+    assert_equal(string, 'apple,banana,cherry');
 
     let numbers = [1, 2, 3, 4, 5];
     let string2 = numbers.toString();
-    print(string2);
+    assert_equal(string2, '1,2,3,4,5');
 
     let mixed = [1, "two", true];
     let string3 = mixed.toString();
-    print(string3);
+    assert_equal(string3, "1,two,true");
 }
 
 /*
@@ -1920,33 +1959,33 @@ testCases.forEach(({ array, target }) => {
 {
     let array1 = ["a", "b", "c"];
     let newLength1 = array1.unshift("x", "y");
-    print(newLength1);
-    print(array1);
+    assert_equal(newLength1, 5);
+    assert_equal(array1, ['x', 'y', 'a', 'b', 'c']);
 
     let emptyArray = [];
     let newLength2 = emptyArray.unshift("x", "y");
-    print(newLength2);
-    print(emptyArray);
+    assert_equal(newLength2, 2);
+    assert_equal(emptyArray, ['x', 'y']);
 
     let singleElementArray = ["a"];
     let newLength3 = singleElementArray.unshift("x");
-    print(newLength3);
-    print(singleElementArray);
+    assert_equal(newLength3, 2);
+    assert_equal(singleElementArray, ['x', 'a']);
 
     let arrayWithUndefined = [1, 2, undefined];
     let newLength4 = arrayWithUndefined.unshift("x");
-    print(newLength4);
-    print(arrayWithUndefined);
+    assert_equal(newLength4, 4);
+    assert_equal(arrayWithUndefined, ['x', 1, 2, undefined]);
 
     let arrayWithHole = [1, 2, ,4];
     let newLength5 = arrayWithHole.unshift(5, 6, 7);
-    print(newLength5);
-    print(arrayWithHole);
+    assert_equal(newLength5, 7);
+    assert_equal(arrayWithHole, [5,6,7,1,2,,4]);
 
     let arrayWithHole1 = [1, 2, ,4];
     let newLength6 = arrayWithHole1.unshift(5, 6, 7, 8);
-    print(newLength6);
-    print(arrayWithHole1);
+    assert_equal(newLength6, 8);
+    assert_equal(arrayWithHole1, [5,6,7,8,1,2,,4]);
 }
 
 /*
@@ -1956,55 +1995,55 @@ testCases.forEach(({ array, target }) => {
  */
 {
     let array1 = ["a", "b", "c", "d", "e"];
-    print(array1.toReversed());
+    assert_equal(array1.toReversed(), ['e', 'd', 'c', 'b', 'a']);
 
     let emptyArray = [];
-    print(emptyArray.toReversed());
+    assert_equal(emptyArray.toReversed(), []);
 
     let singleElementArray = ["a"];
-    print(singleElementArray.toReversed());
+    assert_equal(singleElementArray.toReversed(), ['a']);
 
     let arrayWithUndefined = ["a", "b", undefined, "d"];
-    print(arrayWithUndefined.toReversed());
+    assert_equal(arrayWithUndefined.toReversed(), ['d', undefined, 'b', 'a']);
 }
 
 {
     let array1 = [3, 1, 4, 1, 5, 9, 2, 6, 5];
-    print(array1.toSorted());
+    assert_equal(array1.toSorted(), [1,1,2,3,4,5,5,6,9]);
 
     let emptyArray = [];
-    print(emptyArray.toSorted());
+    assert_equal(emptyArray.toSorted(), []);
 
     let singleElementArray = [1];
-    print(singleElementArray.toSorted());
+    assert_equal(singleElementArray.toSorted(), [1]);
 
     let arrayWithUndefined = [1, undefined, 3, 5];
-    print(arrayWithUndefined.toSorted());
+    assert_equal(arrayWithUndefined.toSorted(), [1,3,5,undefined]);
 
     let arrayWithStrings = ["banana", "apple", "cherry"];
-    print(arrayWithStrings.toSorted());
+    assert_equal(arrayWithStrings.toSorted(), ['apple', 'banana', 'cherry']);
 }
 
 {
     let array1 = ["a", "b", "c", "d", "e"];
     let removedElements1 = array1.toSpliced(2, 2, "x", "y");
-    print(removedElements1);
-    print(array1);
+    assert_equal(removedElements1, ['a', 'b', 'x', 'y', 'e']);
+    assert_equal(array1, ['a', 'b', 'c', 'd', 'e']);
 
     let emptyArray = [];
     let removedElements2 = emptyArray.toSpliced(0, 0, "x", "y");
-    print(removedElements2);
-    print(emptyArray);
+    assert_equal(removedElements2, ['x', 'y']);
+    assert_equal(emptyArray, []);
 
     let singleElementArray = ["a"];
     let removedElements3 = singleElementArray.toSpliced(0, 1, "x", "y");
-    print(removedElements3);
-    print(singleElementArray);
+    assert_equal(removedElements3, ['x', 'y']);
+    assert_equal(singleElementArray, ['a']);
 
     let arrayWithUndefined = [1, undefined, 3, 5];
     let removedElements4 = arrayWithUndefined.toSpliced(1, 2);
-    print(removedElements4);
-    print(arrayWithUndefined);
+    assert_equal(removedElements4, [1,5]);
+    assert_equal(arrayWithUndefined, [1,undefined,3,5]);
 }
 
 /*
@@ -2014,24 +2053,24 @@ testCases.forEach(({ array, target }) => {
  */
 {
     // print true
-    print(Array.isArray([]));
-    print(Array.isArray([1]));
-    print(Array.isArray(new Array()));
-    print(Array.isArray(new Array("a", "b", "c", "d")));
-    print(Array.isArray(new Array(3)));
-    print(Array.isArray(Array.prototype));
+    assert_true(Array.isArray([]));
+    assert_true(Array.isArray([1]));
+    assert_true(Array.isArray(new Array()));
+    assert_true(Array.isArray(new Array("a", "b", "c", "d")));
+    assert_true(Array.isArray(new Array(3)));
+    assert_true(Array.isArray(Array.prototype));
 
     // print false
-    print(Array.isArray());
-    print(Array.isArray({}));
-    print(Array.isArray(null));
-    print(Array.isArray(undefined));
-    print(Array.isArray(17));
-    print(Array.isArray("Array"));
-    print(Array.isArray(true));
-    print(Array.isArray(false));
-    print(Array.isArray(new Uint8Array(32)));
-    print(Array.isArray({ __proto__: Array.prototype }));
+    assert_true(!Array.isArray());
+    assert_true(!Array.isArray({}));
+    assert_true(!Array.isArray(null));
+    assert_true(!Array.isArray(undefined));
+    assert_true(!Array.isArray(17));
+    assert_true(!Array.isArray("Array"));
+    assert_true(!Array.isArray(true));
+    assert_true(!Array.isArray(false));
+    assert_true(!Array.isArray(new Uint8Array(32)));
+    assert_true(!Array.isArray({ __proto__: Array.prototype }));
 }
 
 var arr_push = [];
@@ -2039,7 +2078,7 @@ Object.defineProperty(arr_push, "length", { writable : false});
 try {
     arr_push.push(3);
 } catch (e) {
-    print(e instanceof TypeError);
+    assert_true(e instanceof TypeError);
 }
 
 // find index object
@@ -2048,12 +2087,14 @@ const obj0 = { ["obj0"]: 0 };
 const obj1 = { ["obj1"]: 1 };
 const obj2 = { ["obj2"]: 2 };
 const obj3 = { ["obj3"]: 3 };
+
 findIndexArray[0] = obj0;
 findIndexArray[1] = obj1;
 findIndexArray[2] = obj2;
 findIndexArray[3] = obj3;
-print(findIndexArray.findIndex(element => element == obj1));
-print(findIndexArray.findIndex(element => element == { ["obj3"]: 3 }));
+
+assert_equal(findIndexArray.findIndex(element => element == obj1), 1);
+assert_equal(findIndexArray.findIndex(element => element == { ["obj3"]: 3 }), -1);
 
 // find index bigint
 findIndexArray = new Array(4);
@@ -2061,8 +2102,8 @@ findIndexArray[0] = 1n;
 findIndexArray[1] = 2n;
 findIndexArray[2] = 3n;
 findIndexArray[3] = 4n;
-print(findIndexArray.findIndex(element => element == 2n));
-print(findIndexArray.findIndex(element => element == 0n));
+assert_equal(findIndexArray.findIndex(element => element == 2n), 1);
+assert_equal(findIndexArray.findIndex(element => element == 0n), -1);
 
 
 // find index string
@@ -2071,23 +2112,22 @@ findIndexArray[0] = "a";
 findIndexArray[1] = "b";
 findIndexArray[2] = "c";
 findIndexArray[3] = "d";
-print(findIndexArray.findIndex(element => element == "b"));
-print(findIndexArray.findIndex(element => element == "e"));
+assert_equal(findIndexArray.findIndex(element => element == "b"), 1);
+assert_equal(findIndexArray.findIndex(element => element == "e"), -1);
 
 {
     Array.prototype.__proto__ = null;
     var vp = Array.prototype;
     vp.map(function(vp) {});
     vp.filter(function(vp) {});
-    print("succ");
     Array.prototype.__proto__ = Object.prototype;
 }
 // slice
 let sliceArray = [0, 1, 2, 3, 4, 5];
-print(sliceArray.slice(0));
-print(sliceArray.slice(-1));
-print(sliceArray.slice(1, 4));
-print(sliceArray.slice(1, 10));
+assert_equal(sliceArray.slice(0), [0,1,2,3,4,5]);
+assert_equal(sliceArray.slice(-1), [5]);
+assert_equal(sliceArray.slice(1, 4), [1,2,3]);
+assert_equal(sliceArray.slice(1, 10), [1,2,3,4,5]);
 
 // Test ArrayIteratorNext for arraylike object
 {
@@ -2104,12 +2144,13 @@ print(sliceArray.slice(1, 10));
     };
     
     const iterator = Array.prototype[Symbol.iterator].call(arrayLike);
-    
+    let hasException = false;
     try {
         iterator.next()
     } catch {
-        print("Exception")
+        hasException = true;
     }
+    assert_true(hasException);
 }
 
 // Test ArrayIteratorNext for arraylike object
@@ -2126,23 +2167,30 @@ print(sliceArray.slice(1, 10));
     const valuesIterator = Array.prototype[Symbol.iterator].call(arrayLike);
     let result;
     while (!(result = valuesIterator.next()).done) {
-        print(result.value, result.done);
+        let v = result.value;
+        let d = result.done;
+        assert_true((v == 'a' && d == false) || (v == 'b' && d == false));
+
     }
-    print(result.value, result.done);
+    assert_true((result.value == undefined) && (result.done == true));
   
     // Keys Iterator
     const keysIterator = Array.prototype.keys.call(arrayLike);
     while (!(result = keysIterator.next()).done) {
-        print(result.value, result.done);
+        let v = result.value;
+        let d = result.done;
+        assert_true((v == 0 && d == false) || (v == 1 && d == false));
     }
-    print(result.value, result.done);
+    assert_true((result.value == undefined) && (result.done == true));
   
     // Entries Iterator
     const entriesIterator = Array.prototype.entries.call(arrayLike);
     while (!(result = entriesIterator.next()).done) {
-        print(result.value, result.done);
+        let v = result.value.toString();
+        let d = result.done;
+        assert_true((v == '0,a' && d == false) || (v == '1,b' && d == false));
     }
-    print(result.value, result.done);
+    assert_true((result.value == undefined) && (result.done == true));
 }
 
 // Test ArrayIteratorNext for non-jsArrayIterator
@@ -2159,9 +2207,9 @@ print(sliceArray.slice(1, 10));
         }
     } catch (error) {
         if (error instanceof TypeError) {
-            print('Test passed');
+            assert_true(true);
         } else {
-            print('Test failed');
+            assert_true(false);
         }
     }      
 }
@@ -2173,59 +2221,61 @@ let x3 = new Array();
 
 x1.constructor = null
 
-print(ArkTools.hasConstructor(x2));
-print(ArkTools.hasConstructor(x3));
+assert_equal(ArkTools.hasConstructor(x2), false);
+assert_equal(ArkTools.hasConstructor(x3), false);
 // pop 
 var y = new Array(10)
 for (let i = 0; i < y.length; i++) {
     y[i] = i
 }
-print(y.pop()); //: 9
-print(y.pop()); //: 8
-print(y.pop()); //: 7
-print(y.pop()); //: 6
-print(y.pop()); //: 5
-print(y);
+assert_equal(y.pop(), 9); //: 9
+assert_equal(y.pop(), 8); //: 8
+assert_equal(y.pop(), 7); //: 7
+assert_equal(y.pop(), 6); //: 6
+assert_equal(y.pop(), 5); //: 5
+assert_equal(y, [0,1,2,3,4]);
 // shift
 var shiftArray = new Array(10)
 for (let i = 0; i < shiftArray.length; i++) {
     shiftArray[i] = i
 }
-print(shiftArray.shift()); //: 0
-print(shiftArray.shift()); //: 1
-print(shiftArray.shift()); //: 2
-print(shiftArray.shift()); //: 3
-print(shiftArray.shift()); //: 4
-print(shiftArray);
+assert_equal(shiftArray.shift(), 0); //: 0
+assert_equal(shiftArray.shift(), 1); //: 1
+assert_equal(shiftArray.shift(), 2); //: 2
+assert_equal(shiftArray.shift(), 3); //: 3
+assert_equal(shiftArray.shift(), 4); //: 4
+assert_equal(shiftArray, [5,6,7,8,9]);
 // copyWithin
 let copyWithInArray = new Array(0, 1, 2, 3, 4);
-print(copyWithInArray.copyWithin(2,1,3))
+assert_equal(copyWithInArray.copyWithin(2,1,3), [0,1,1,2,4])
 
 for (let i = 0; i < 2; i++) {
     let copyWithInArray1 = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     copyWithInArray1.copyWithin(1,2,3);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,4,5,6,7,8,9]);
     }
     copyWithInArray1.copyWithin(1,3,2);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,4,5,6,7,8,9]);
     }
     copyWithInArray1.copyWithin(2,1,3);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,3,5,6,7,8,9]);
     }
     copyWithInArray1.copyWithin(2,3,1);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,3,5,6,7,8,9]);
     }
     copyWithInArray1.copyWithin(3,1,2);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,3,5,6,7,8,9]);
     }
     copyWithInArray1.copyWithin(3,2,1);
     if (i == 0) {
-        print(copyWithInArray1);
+        assert_equal(copyWithInArray1, [1,3,3,3,5,6,7,8,9]);
     }
 }
-print([0, 1, 2, 3].copyWithin(0, 1, -10));
+assert_equal([0, 1, 2, 3].copyWithin(0, 1, -10), [0,1,2,3]);
+
+test_end();
