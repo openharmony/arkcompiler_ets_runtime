@@ -315,6 +315,7 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
 {
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
+    SaveEnv envScope(thread);
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
     JSTaggedValue func = context->GetMethod();
     Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
