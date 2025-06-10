@@ -14,19 +14,19 @@
  */
 
 #include "jsvaluerefiscorrect_fuzzer.h"
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
-using namespace panda::ecmascript::base::utf_helper;
+using namespace common::utf_helper;
 
 namespace OHOS {
 void JSValueRefIsFalseFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -40,7 +40,7 @@ void JSValueRefIsFalseFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 void JSValueRefIsTrueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -61,7 +61,7 @@ void JSValueRefIsTrueFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsHoleFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -82,7 +82,7 @@ void JSValueRefIsHoleFuzzTest(const uint8_t *data, size_t size)
 void JSValueRefIsUndefinedFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

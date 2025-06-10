@@ -15,7 +15,7 @@
 
 #include "ecmascript/builtins/builtins_global.h"
 
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/builtins/builtins_global_uri-inl.h"
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -237,7 +237,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
         } else {
             // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
             //    throw a URIError exception.
-            if (cc >= base::utf_helper::DECODE_TRAIL_LOW && cc <= base::utf_helper::DECODE_TRAIL_HIGH) {
+            if (cc >= common::utf_helper::DECODE_TRAIL_LOW && cc <= common::utf_helper::DECODE_TRAIL_HIGH) {
                 errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
                 THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
@@ -251,7 +251,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             //    4. If kChar is less than 0xDC00 or greater than 0xDFFF, throw a URIError exception.
             //    5. Let V be UTF16Decode(C, kChar).
             uint32_t vv;
-            if (cc < base::utf_helper::DECODE_LEAD_LOW || cc > base::utf_helper::DECODE_LEAD_HIGH) {
+            if (cc < common::utf_helper::DECODE_LEAD_LOW || cc > common::utf_helper::DECODE_LEAD_HIGH) {
                 vv = cc;
             } else {
                 k++;
@@ -260,11 +260,11 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 uint16_t kc = EcmaStringAccessor(string).Get(k);
-                if (kc < base::utf_helper::DECODE_TRAIL_LOW || kc > base::utf_helper::DECODE_TRAIL_HIGH) {
+                if (kc < common::utf_helper::DECODE_TRAIL_LOW || kc > common::utf_helper::DECODE_TRAIL_HIGH) {
                     errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
-                vv = base::utf_helper::UTF16Decode(cc, kc);
+                vv = common::utf_helper::UTF16Decode(cc, kc);
             }
 
             // iv. Let Octets be the array of octets resulting by applying the UTF-8 transformation to V,
@@ -329,7 +329,7 @@ uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &strin
     uint16_t ret = 0;
     for (uint32_t i = 0; i < size; ++i) {
         uint16_t ch = stringAcc.Get(i);
-        size_t val = base::utf_helper::HexChar16Value(ch);
+        size_t val = common::utf_helper::HexChar16Value(ch);
         ret = ((ret << 4U) | val) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
     }
     return ret;
@@ -626,12 +626,12 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                                                    const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
                                                    uint32_t &start, int32_t &k, std::u16string &sStr)
 {
-    if (!base::utf_helper::IsValidUTF8(oct)) {
+    if (!common::utf_helper::IsValidUTF8(oct)) {
         CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint32_t vv = StringHelper::Utf8ToU32String(oct);
-    if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
+    if (vv < common::utf_helper::DECODE_SECOND_FACTOR) {
         if (!IsInURISet(vv)) {
             sStr = StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
         } else {
@@ -641,10 +641,10 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                 EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
         }
     } else {
-        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
-            base::utf_helper::DECODE_TRAIL_LOW);
-        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
-            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
+            common::utf_helper::DECODE_TRAIL_LOW);
+        uint16_t hv = ((((vv - common::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
+            common::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
         sStr = StringHelper::Append(StringHelper::Utf16ToU16String(&hv, 1),
                                     StringHelper::Utf16ToU16String(&lv, 1));
     }
@@ -955,10 +955,10 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 bool c4IsHexDigits = IsHexDigits(c4);
                 bool c5IsHexDigits = IsHexDigits(c5);
 #else // ENABLE_NEXT_OPTIMIZATION
-                bool c2IsHexDigits = base::utf_helper::IsHexDigits(c2);
-                bool c3IsHexDigits = base::utf_helper::IsHexDigits(c3);
-                bool c4IsHexDigits = base::utf_helper::IsHexDigits(c4);
-                bool c5IsHexDigits = base::utf_helper::IsHexDigits(c5);
+                bool c2IsHexDigits = common::utf_helper::IsHexDigits(c2);
+                bool c3IsHexDigits = common::utf_helper::IsHexDigits(c3);
+                bool c4IsHexDigits = common::utf_helper::IsHexDigits(c4);
+                bool c5IsHexDigits = common::utf_helper::IsHexDigits(c5);
 #endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c2IsHexDigits && c3IsHexDigits && c4IsHexDigits && c5IsHexDigits;
                 if (isHexDigits) {
@@ -974,8 +974,8 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 bool c1IsHexDigits = IsHexDigits(c1);
                 bool c2IsHexDigits = IsHexDigits(c2);
 #else // ENABLE_NEXT_OPTIMIZATION
-                bool c1IsHexDigits = base::utf_helper::IsHexDigits(c1);
-                bool c2IsHexDigits = base::utf_helper::IsHexDigits(c2);
+                bool c1IsHexDigits = common::utf_helper::IsHexDigits(c1);
+                bool c2IsHexDigits = common::utf_helper::IsHexDigits(c2);
 #endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c1IsHexDigits && c2IsHexDigits;
                 if (isHexDigits) {

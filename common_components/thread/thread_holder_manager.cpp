@@ -17,18 +17,16 @@
 
 #include <algorithm>
 
-#include "common_components/common_runtime/src/mutator/mutator_manager.h"
+#include "common_components/mutator/mutator_manager.h"
 #include "common_components/log/log.h"
 #include "common_interfaces/thread/thread_holder-inl.h"
 
-namespace panda {
-using MutatorManager = panda::MutatorManager;
-
+namespace common {
 void ThreadHolderManager::RegisterThreadHolder([[maybe_unused]] ThreadHolder *holder)
 {
     Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
 
-    auto& mutator_manager = panda::MutatorManager::Instance();
+    auto& mutator_manager = MutatorManager::Instance();
     mutator_manager.MutatorManagementRLock();
 
     {
@@ -44,7 +42,7 @@ void ThreadHolderManager::BindMutator(ThreadHolder *holder)
 {
     Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
 
-    auto& mutator_manager = panda::MutatorManager::Instance();
+    auto& mutator_manager = MutatorManager::Instance();
     mutator_manager.MutatorManagementRLock();
 
     mutator_manager.BindMutator(*mutator);
@@ -56,7 +54,7 @@ void ThreadHolderManager::UnbindMutator(ThreadHolder *holder)
 {
     Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
 
-    auto& mutator_manager = panda::MutatorManager::Instance();
+    auto& mutator_manager = MutatorManager::Instance();
     mutator_manager.MutatorManagementRLock();
 
     mutator_manager.UnbindMutator(*mutator);
@@ -69,7 +67,7 @@ void ThreadHolderManager::UnregisterThreadHolder(ThreadHolder *holder)
 {
     Mutator *mutator = static_cast<Mutator *>(holder->GetMutator());
 
-    auto& mutator_manager = panda::MutatorManager::Instance();
+    auto& mutator_manager = MutatorManager::Instance();
     mutator_manager.MutatorManagementRLock();
 
     {
@@ -114,4 +112,4 @@ void ThreadHolderManager::ResumeAllImpl(ThreadHolder *current)
 {
     MutatorManager::Instance().StartTheWorld();
 }
-}  // namespace panda
+}  // namespace common

@@ -78,7 +78,7 @@ void SharedGCEvacuator::UpdateReference()
         parallel_ = CalculateUpdateThreadNum();
         auto dTid = DaemonThread::GetInstance()->GetThreadId();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<UpdateReferenceTask>(dTid, this));
+            common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<UpdateReferenceTask>(dTid, this));
         }
     }
     runtime->IterateSharedRoot(rootVisitor_);
@@ -129,7 +129,7 @@ int SharedGCEvacuator::CalculateUpdateThreadNum()
     uint32_t count = workloads_.size();
     constexpr double RATIO = 1.0 / 4;
     count = std::pow(count, RATIO);
-    return static_cast<int>(std::min(std::max(1U, count), Taskpool::GetCurrentTaskpool()->GetTotalThreadNum()));
+    return static_cast<int>(std::min(std::max(1U, count), common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum()));
 }
 
 bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)

@@ -293,11 +293,11 @@ private:
         uint32_t thisLength, uint32_t seperatorLength, uint32_t lim = UINT32_MAX - 1);
     static bool IsUTF16HighSurrogate(uint16_t ch)
     {
-        return base::utf_helper::DECODE_LEAD_LOW <= ch && ch <= base::utf_helper::DECODE_LEAD_HIGH;
+        return common::utf_helper::DECODE_LEAD_LOW <= ch && ch <= common::utf_helper::DECODE_LEAD_HIGH;
     }
     static bool IsUTF16LowSurrogate(uint16_t ch)
     {
-        return base::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= base::utf_helper::DECODE_TRAIL_HIGH;
+        return common::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= common::utf_helper::DECODE_TRAIL_HIGH;
     }
     static uint32_t UTF16SurrogatePairToCodePoint(uint16_t lead, uint16_t trail);
     // 21.1.3.17.1

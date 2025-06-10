@@ -26,10 +26,10 @@ DynamicTypeConverter DynamicTypeConverter::dynTypeConverter_;
 
 void DynamicTypeConverter::Initialize()
 {
-    BaseObjectDispatcher::GetDispatcher().RegisterDynamicTypeConverter(&dynTypeConverter_);
+    common::BaseObjectDispatcher::GetDispatcher().RegisterDynamicTypeConverter(&dynTypeConverter_);
 }
 
-JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, PandaType value)
+JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, BaseType value)
 {
     JSTaggedValue result;
     std::visit(
@@ -47,11 +47,11 @@ JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, PandaType v
                 result = JSTaggedValue(static_cast<int32_t>(arg));
             } else if constexpr (std::is_floating_point_v<T>) {
                 result = JSTaggedValue(static_cast<double>(arg));
-            } else if constexpr (std::is_same_v<T, BaseUndefined>) {
+            } else if constexpr (std::is_same_v<T, common::BaseUndefined>) {
                 result = JSTaggedValue::Undefined();
-            } else if constexpr (std::is_same_v<T, BaseNull>) {
+            } else if constexpr (std::is_same_v<T, common::BaseNull>) {
                 result = JSTaggedValue::Null();
-            } else if constexpr (std::is_same_v<T, BaseBigInt>) {
+            } else if constexpr (std::is_same_v<T, common::BaseBigInt>) {
                 BigInt* bigInt = *BigInt::CreateBigint(thread->GetJSThread(), arg.length);
                 bigInt->SetSign(arg.sign);
                 for (uint32_t i = 0; i < arg.length; i++) {
@@ -71,7 +71,7 @@ JSTaggedValue DynamicTypeConverter::WrapTagged(ThreadHolder *thread, PandaType v
     return result;
 }
 
-PandaType DynamicTypeConverter::UnWrapTagged(JSTaggedValue value)
+BaseType DynamicTypeConverter::UnWrapTagged(JSTaggedValue value)
 {
     if (value.IsBoolean()) {
         return value.ToBoolean();
@@ -80,12 +80,12 @@ PandaType DynamicTypeConverter::UnWrapTagged(JSTaggedValue value)
     } else if (value.IsDouble()) {
         return static_cast<double>(value.GetDouble());
     } else if (value.IsUndefined()) {
-        return BaseUndefined();
+        return common::BaseUndefined();
     } else if (value.IsNull()) {
-        return BaseNull();
+        return common::BaseNull();
     } else if (value.IsBigInt()) {
         BigInt *bigInt = BigInt::Cast(value.GetTaggedObject());
-        BaseBigInt baseBigInt;
+        common::BaseBigInt baseBigInt;
         baseBigInt.length = bigInt->GetLength();
         baseBigInt.sign = bigInt->GetSign();
         baseBigInt.data.resize(baseBigInt.length);

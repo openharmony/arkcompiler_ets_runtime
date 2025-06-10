@@ -16,13 +16,13 @@
 #include <codecvt>
 #include <locale>
 
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "common_interfaces/objects/base_string.h"
 
-#include "ecmascript/platform/ecma_string_hash.h"
-#include "ecmascript/platform/ecma_string_hash_helper.h"
+#include "common_components/platform/string_hash.h"
+#include "common_components/platform/string_hash_helper.h"
 
-namespace panda {
+namespace common {
     constexpr size_t LOW_3BITS = 0x7;
     constexpr size_t LOW_4BITS = 0xF;
     constexpr size_t LOW_5BITS = 0x1F;
@@ -35,40 +35,40 @@ namespace panda {
     constexpr size_t OFFSET_10POS = 10;
     constexpr size_t OFFSET_6POS = 6;
 
-    size_t utf_utils::DebuggerConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len,
-                                                       size_t utf8Len, size_t start, bool modify, bool isWriteBuffer)
+    size_t UtfUtils::DebuggerConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len,
+                                                      size_t utf8Len, size_t start, bool modify, bool isWriteBuffer)
     {
-        return ecmascript::base::utf_helper::DebuggerConvertRegionUtf16ToUtf8(utf16In, utf8Out, utf16Len, utf8Len,
-                                                                              start, modify, isWriteBuffer);
+        return common::utf_helper::DebuggerConvertRegionUtf16ToUtf8(utf16In, utf8Out, utf16Len, utf8Len,
+                                                                    start, modify, isWriteBuffer);
     }
 
-    size_t utf_utils::Utf8ToUtf16Size(const uint8_t* utf8, size_t utf8Len)
+    size_t UtfUtils::Utf8ToUtf16Size(const uint8_t* utf8, size_t utf8Len)
     {
-        return ecmascript::base::utf_helper::Utf8ToUtf16Size(utf8, utf8Len);
+        return common::utf_helper::Utf8ToUtf16Size(utf8, utf8Len);
     }
 
-    size_t utf_utils::Utf16ToUtf8Size(const uint16_t* utf16, uint32_t length, bool modify, bool isGetBufferSize,
-                                      bool cesu8)
+    size_t UtfUtils::Utf16ToUtf8Size(const uint16_t* utf16, uint32_t length, bool modify, bool isGetBufferSize,
+                                     bool cesu8)
     {
-        return ecmascript::base::utf_helper::Utf16ToUtf8Size(utf16, length, modify, isGetBufferSize, cesu8);
+        return common::utf_helper::Utf16ToUtf8Size(utf16, length, modify, isGetBufferSize, cesu8);
     }
 
-    size_t utf_utils::ConvertRegionUtf8ToUtf16(const uint8_t* utf8In, uint16_t* utf16Out, size_t utf8Len,
-                                               size_t utf16Len)
+    size_t UtfUtils::ConvertRegionUtf8ToUtf16(const uint8_t* utf8In, uint16_t* utf16Out, size_t utf8Len,
+                                              size_t utf16Len)
     {
-        return ecmascript::base::utf_helper::ConvertRegionUtf8ToUtf16(utf8In, utf16Out, utf8Len, utf16Len);
+        return common::utf_helper::ConvertRegionUtf8ToUtf16(utf8In, utf16Out, utf8Len, utf16Len);
     }
 
-    size_t utf_utils::ConvertRegionUtf16ToLatin1(const uint16_t* utf16In, uint8_t* latin1Out, size_t utf16Len,
-                                                 size_t latin1Len)
+    size_t UtfUtils::ConvertRegionUtf16ToLatin1(const uint16_t* utf16In, uint8_t* latin1Out, size_t utf16Len,
+                                                size_t latin1Len)
     {
-        return ecmascript::base::utf_helper::ConvertRegionUtf16ToLatin1(utf16In, latin1Out, utf16Len, latin1Len);
+        return common::utf_helper::ConvertRegionUtf16ToLatin1(utf16In, latin1Out, utf16Len, latin1Len);
     }
 
-    size_t utf_utils::ConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len,
-                                               size_t utf8Len, size_t start, bool modify, bool isWriteBuffer, bool cesu)
+    size_t UtfUtils::ConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len,
+                                              size_t utf8Len, size_t start, bool modify, bool isWriteBuffer, bool cesu)
     {
-        return ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8(
+        return common::utf_helper::ConvertRegionUtf16ToUtf8(
             utf16In, utf8Out, utf16Len, utf8Len, start, modify, isWriteBuffer, cesu);
     }
 
@@ -79,14 +79,14 @@ namespace panda {
     uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
                                             uint32_t hashSeed)
     {
-        if (size <= static_cast<size_t>(ecmascript::EcmaStringHash::MIN_SIZE_FOR_UNROLLING)) {
+        if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
             uint32_t hash = hashSeed;
             for (uint32_t i = 0; i < size; i++) {
-                hash = (hash << static_cast<uint32_t>(ecmascript::EcmaStringHash::HASH_SHIFT)) - hash + data[i];
+                hash = (hash << static_cast<uint32_t>(StringHash::HASH_SHIFT)) - hash + data[i];
             }
             return hash;
         }
-        return ecmascript::EcmaStringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
+        return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
     }
 
     template
@@ -101,11 +101,11 @@ namespace panda {
         if (canBeCompress) {
             return ComputeHashForData(utf8Data, utf8Len, 0);
         }
-        auto utf16Len = panda::utf_utils::Utf8ToUtf16Size(utf8Data, utf8Len);
+        auto utf16Len = UtfUtils::Utf8ToUtf16Size(utf8Data, utf8Len);
         std::vector<uint16_t> tmpBuffer(utf16Len);
-        [[maybe_unused]] auto len = panda::utf_utils::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
-                                                                               utf16Len);
-        ASSERT(len == utf16Len);
+        [[maybe_unused]] auto len = UtfUtils::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
+                                                                       utf16Len);
+        DCHECK_CC(len == utf16Len);
         return ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
     }
 
@@ -242,7 +242,7 @@ namespace panda {
 
     bool BaseString::CanBeCompressed(const BaseString* string)
     {
-        ASSERT(string->IsLineString());
+        DCHECK_CC(string->IsLineString());
         if (string->IsUtf8()) {
             return CanBeCompressed(string->GetDataUtf8(), string->GetLength());
         }
@@ -304,7 +304,7 @@ namespace panda {
             return false;
         }
         // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data <= panda::utf_utils::UTF8_1B_MAX;
+        return data <= UtfUtils::UTF8_1B_MAX;
     }
 
 
@@ -312,7 +312,7 @@ namespace panda {
     template <typename T1, typename T2>
     int32_t BaseString::IndexOf(Span<const T1>& lhsSp, Span<const T2>& rhsSp, int32_t pos, int32_t max)
     {
-        ASSERT(rhsSp.size() > 0);
+        DCHECK_CC(rhsSp.size() > 0);
         auto first = static_cast<int32_t>(rhsSp[0]);
         for (int32_t i = pos; i <= max; i++) {
             if (static_cast<int32_t>(lhsSp[i]) != first) {
@@ -357,7 +357,7 @@ namespace panda {
     int32_t BaseString::LastIndexOf(Span<const T1>& lhsSp, Span<const T2>& rhsSp, int32_t pos)
     {
         int rhsSize = static_cast<int>(rhsSp.size());
-        ASSERT(rhsSize > 0);
+        DCHECK_CC(rhsSize > 0);
         auto first = rhsSp[0];
         for (int32_t i = pos; i >= 0; i--) {
             if (lhsSp[i] != first) {
@@ -423,7 +423,7 @@ namespace panda {
     bool IsSubStringAtSpan(Span<T1>& lhsSp, Span<T2>& rhsSp, uint32_t offset)
     {
         int rhsSize = static_cast<int>(rhsSp.size());
-        ASSERT(rhsSize + offset <= lhsSp.size());
+        DCHECK_CC(rhsSize + offset <= lhsSp.size());
         for (int i = 0; i < rhsSize; ++i) {
             auto left = static_cast<int32_t>(lhsSp[offset + static_cast<uint32_t>(i)]);
             auto right = static_cast<int32_t>(rhsSp[i]);
@@ -462,4 +462,4 @@ namespace panda {
         std::u16string u16str = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(str);
         return u16str;
     }
-} // namespace panda::ecmascript
+}  // namespace common

@@ -65,7 +65,7 @@ void ParallelEvacuator::SweepNewToOldRegions()
 
 void ParallelEvacuator::UpdateTrackInfo()
 {
-    for (uint32_t i = 0; i <= MAX_TASKPOOL_THREAD_NUM; i++) {
+    for (uint32_t i = 0; i <= common::MAX_TASKPOOL_THREAD_NUM; i++) {
         auto &trackInfoSet = ArrayTrackInfoSet(i);
         for (auto &each : trackInfoSet) {
             auto trackInfoVal = JSTaggedValue(each);
@@ -122,7 +122,7 @@ void ParallelEvacuator::EvacuateSpace()
         ASSERT(parallel_ >= 0);
         evacuateTaskNum_ = static_cast<uint32_t>(parallel_);
         for (uint32_t i = 1; i <= evacuateTaskNum_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
+            common::Taskpool::GetCurrentTaskpool()->PostTask(
                 std::make_unique<EvacuationTask>(heap_->GetJSThread()->GetThreadId(), i, this));
         }
     } else {
@@ -159,7 +159,7 @@ bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadI
 
 void ParallelEvacuator::UpdateRecordWeakReferenceInParallel(uint32_t idOrder)
 {
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = idOrder; i < totalThreadCount; i += (evacuateTaskNum_ + 1)) {
         ProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(i)->GetWeakReferenceQueue();
         while (true) {
@@ -285,7 +285,7 @@ void ParallelEvacuator::UpdateReference()
         LockHolder holder(mutex_);
         parallel_ = CalculateUpdateThreadNum();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
+            common::Taskpool::GetCurrentTaskpool()->PostTask(
                 std::make_unique<UpdateReferenceTask>(heap_->GetJSThread()->GetThreadId(), this));
         }
     }
@@ -611,7 +611,7 @@ void ParallelEvacuator::WorkloadSet::Clear()
 }
 
 ParallelEvacuator::EvacuationTask::EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator)
-    : Task(id), idOrder_(idOrder), evacuator_(evacuator)
+    : common::Task(id), idOrder_(idOrder), evacuator_(evacuator)
 {
     allocator_ = new TlabAllocator(evacuator->heap_);
 }

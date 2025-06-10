@@ -116,9 +116,9 @@ private:
     Mutex dumpTaskMutex_; // protect dispatch dump task
 };
 
-class ResetOutPathTask : public Task {
+class ResetOutPathTask : public common::Task {
 public:
-    ResetOutPathTask(std::string moduleName, int32_t id): Task(id), moduleName_(std::move(moduleName)) {};
+    ResetOutPathTask(std::string moduleName, int32_t id): common::Task(id), moduleName_(std::move(moduleName)) {};
     virtual ~ResetOutPathTask() override = default;
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
@@ -128,9 +128,9 @@ public:
         return true;
     }
 
-    TaskType GetTaskType() const override
+    common::TaskType GetTaskType() const override
     {
-        return TaskType::PGO_RESET_OUT_PATH_TASK;
+        return common::TaskType::PGO_RESET_OUT_PATH_TASK;
     }
 
     NO_COPY_SEMANTIC(ResetOutPathTask);
@@ -140,9 +140,9 @@ private:
     std::string moduleName_;
 };
 
-class PGODumpTask : public Task {
+class PGODumpTask : public common::Task {
 public:
-    explicit PGODumpTask(int32_t id): Task(id) {};
+    explicit PGODumpTask(int32_t id): common::Task(id) {};
     virtual ~PGODumpTask() override = default;
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
@@ -152,9 +152,9 @@ public:
         return true;
     }
 
-    TaskType GetTaskType() const override
+    common::TaskType GetTaskType() const override
     {
-        return TaskType::PGO_DUMP_TASK;
+        return common::TaskType::PGO_DUMP_TASK;
     }
 
     NO_COPY_SEMANTIC(PGODumpTask);

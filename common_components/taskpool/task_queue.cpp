@@ -15,11 +15,11 @@
 
 #include "common_components/taskpool/task_queue.h"
 
-namespace panda {
+namespace common {
 void TaskQueue::PostTask(std::unique_ptr<Task> task)
 {
     std::lock_guard<std::mutex> guard(mtx_);
-    ASSERT(!terminate_);
+    DCHECK_CC(!terminate_);
     tasks_.push_back(std::move(task));
     cv_.notify_one();
 }
@@ -27,7 +27,7 @@ void TaskQueue::PostTask(std::unique_ptr<Task> task)
 void TaskQueue::PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds)
 {
     std::lock_guard<std::mutex> guard(mtx_);
-    ASSERT(!terminate_);
+    DCHECK_CC(!terminate_);
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMilliseconds);
     delayedTasks_.insert({deadline, std::move(task)});
     cv_.notify_one();
@@ -93,7 +93,7 @@ void TaskQueue::ForEachTask(const std::function<void(Task*)> &f)
 
 void TaskQueue::MoveExpiredTask(std::unique_lock<std::mutex> &lock)
 {
-    ASSERT(!mtx_.try_lock());
+    DCHECK_CC(!mtx_.try_lock());
     while (!delayedTasks_.empty()) {
         auto it = delayedTasks_.begin();
         auto currentTime = std::chrono::steady_clock::now();
@@ -107,7 +107,7 @@ void TaskQueue::MoveExpiredTask(std::unique_lock<std::mutex> &lock)
 
 void TaskQueue::WaitForTask(std::unique_lock<std::mutex> &lock)
 {
-    ASSERT(!mtx_.try_lock());
+    DCHECK_CC(!mtx_.try_lock());
     if (!delayedTasks_.empty()) {
         auto it = delayedTasks_.begin();
         auto currentTime = std::chrono::steady_clock::now();
@@ -120,4 +120,4 @@ void TaskQueue::WaitForTask(std::unique_lock<std::mutex> &lock)
         cv_.wait(lock);
     }
 }
-}  // namespace panda
+}  // namespace common

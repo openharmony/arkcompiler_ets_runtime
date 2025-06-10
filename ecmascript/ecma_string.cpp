@@ -222,28 +222,28 @@ int32_t EcmaString::Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, 
     if (!lhs.IsUtf16() && !rhs.IsUtf16()) {
         Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
         Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
-        int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
+        int32_t charDiff = common::CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else if (!lhs.IsUtf16()) {
         Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
-        int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
+        int32_t charDiff = common::CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else if (!rhs.IsUtf16()) {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), rhsCount);
         Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), lhsCount);
-        int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
+        int32_t charDiff = common::CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
     } else {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
-        int32_t charDiff = CompareStringSpan(lhsSp, rhsSp, minCount);
+        int32_t charDiff = common::CompareStringSpan(lhsSp, rhsSp, minCount);
         if (charDiff != 0) {
             return charDiff;
         }
@@ -269,19 +269,19 @@ bool EcmaString::IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& lef
     if (!lhs.IsUtf16() && !rhs.IsUtf16()) {
         Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
         Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
-        return IsSubStringAtSpan(lhsSp, rhsSp, offset);
+        return common::IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!lhs.IsUtf16()) {
         Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
-        return IsSubStringAtSpan(lhsSp, rhsSp, offset);
+        return common::IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else if (!rhs.IsUtf16()) {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
         Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
-        return IsSubStringAtSpan(lhsSp, rhsSp, offset);
+        return common::IsSubStringAtSpan(lhsSp, rhsSp, offset);
     } else {
         Span<const uint16_t> lhsSp(lhs.GetDataUtf16(), lhsCount);
         Span<const uint16_t> rhsSp(rhs.GetDataUtf16(), rhsCount);
-        return IsSubStringAtSpan(lhsSp, rhsSp, offset);
+        return common::IsSubStringAtSpan(lhsSp, rhsSp, offset);
     }
     return false;
 }

@@ -314,8 +314,8 @@ void HeapSnapshotJSONSerializer::SerializeString(CString *str, StreamWriter *wri
                 len++;
             }
             auto [unicode, bytes] =
-                base::utf_helper::ConvertUtf8ToUnicodeChar(reinterpret_cast<const uint8_t *>(s), len);
-            if (unicode == base::utf_helper::INVALID_UTF8) {
+                common::utf_helper::ConvertUtf8ToUnicodeChar(reinterpret_cast<const uint8_t *>(s), len);
+            if (unicode == common::utf_helper::INVALID_UTF8) {
                 LOG_ECMA(WARN) << "HeapSnapshotJSONSerializer::SerializeString, str is not utf-8";
                 writer->WriteChar('?');
                 s++;

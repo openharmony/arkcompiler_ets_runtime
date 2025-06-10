@@ -15,10 +15,10 @@
 
 #include "common_components/base_runtime/base_runtime_param.h"
 
-#include "common_components/common_runtime/src/base/globals.h"
+#include "common_components/base/globals.h"
 #include "common_components/platform/cpu.h"
 
-namespace panda {
+namespace common {
 size_t BaseRuntimeParam::InitHeapSize()
 {
     size_t systemSize = PhysicalSize();
@@ -43,4 +43,4 @@ RuntimeParam BaseRuntimeParam::DefaultRuntimeParam()
 
     return param;
 }
-} // namespace panda
+} // namespace common

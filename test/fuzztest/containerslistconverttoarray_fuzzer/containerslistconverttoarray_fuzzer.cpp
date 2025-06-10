@@ -68,7 +68,7 @@ namespace OHOS {
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
         *(--newSp) = numActualArgs;
-        *(--newSp) = ToUintPtr(thread);
+        *(--newSp) = common::ToUintPtr(thread);
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }
@@ -106,7 +106,7 @@ namespace OHOS {
     void ContainerslistConvertToArrayFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

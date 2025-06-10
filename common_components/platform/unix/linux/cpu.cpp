@@ -17,7 +17,7 @@
 
 #include <unistd.h>
 
-namespace panda {
+namespace common {
 uint32_t NumberOfCpuCore()
 {
     return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
@@ -29,5 +29,5 @@ size_t PhysicalSize()
     auto pageSize = sysconf(_SC_PAGE_SIZE);
     return pages * pageSize;
 }
-}  // namespace panda
+}  // namespace common
  

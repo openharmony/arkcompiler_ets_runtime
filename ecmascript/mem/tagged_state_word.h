@@ -29,9 +29,9 @@ class TaggedStateWord {
 public:
     // Little endian
     struct GCStateWord {
-        StateWordType address_   : 48;
-        StateWordType padding_   : 12;
-        StateWordType remainded_ : 4;
+        common::StateWordType address_   : 48;
+        common::StateWordType padding_   : 12;
+        common::StateWordType remainded_ : 4;
     };
 
     struct ClassStateWord {
@@ -40,8 +40,8 @@ public:
         ClassWordType remainded_ : 4;
     };
 
-    inline void SynchronizedSetGCStateWord(StateWordType address, StateWordType padding = 0,
-                                           StateWordType remainded = 0)
+    inline void SynchronizedSetGCStateWord(common::StateWordType address, common::StateWordType padding = 0,
+                                           common::StateWordType remainded = 0)
     {
         GCStateWord newState;
         newState.address_ = address;
@@ -98,8 +98,8 @@ private:
     friend class TaggedObject;
 };
 static_assert(sizeof(TaggedStateWord) == sizeof(uint64_t), "Excepts 8 bytes");
-static_assert(BaseStateWord::PADDING_WIDTH == 60, "Excepts 60 bits");
-static_assert(BaseStateWord::FORWARD_WIDTH == 2, "Excepts 2 bits");
-static_assert(BaseStateWord::LANGUAGE_WIDTH == 2, "Excepts 2 bits");
+static_assert(common::BaseStateWord::PADDING_WIDTH == 60, "Excepts 60 bits");
+static_assert(common::BaseStateWord::FORWARD_WIDTH == 2, "Excepts 2 bits");
+static_assert(common::BaseStateWord::LANGUAGE_WIDTH == 2, "Excepts 2 bits");
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_OBJECT_STATE_WORD_H

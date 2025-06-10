@@ -140,7 +140,7 @@ using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, c
 class PUBLIC_API RuntimeOption {
 public:
     enum class PUBLIC_API GC_TYPE : uint8_t { EPSILON, GEN_GC, STW };
-    using LOG_LEVEL = panda::LOG_LEVEL;
+    using LOG_LEVEL = common::LOG_LEVEL;
 
     // This enum should follow the same value as defined in the BMS subsystem.
     // Refer to the specification in aot-guide_zh.md.

@@ -91,10 +91,10 @@ public:
         return enableType_ == EnableConcurrentSweepType::CONFIG_DISABLE;
     }
 private:
-    class SweeperTask : public Task {
+    class SweeperTask : public common::Task {
     public:
         SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type, MemSpaceType startSpaceType)
-            : Task(id), sweeper_(sweeper), type_(type), startSpaceType_(startSpaceType) {};
+            : common::Task(id), sweeper_(sweeper), type_(type), startSpaceType_(startSpaceType) {};
         ~SweeperTask() override = default;
         bool Run(uint32_t threadIndex) override;
 

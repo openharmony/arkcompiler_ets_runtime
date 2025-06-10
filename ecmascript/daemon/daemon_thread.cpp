@@ -55,7 +55,7 @@ void DaemonThread::StartRunning()
     ASSERT(tasks_.empty());
     ASSERT(GetThreadId() == 0);
     thread_ = std::make_unique<std::thread>([this] {this->Run();});
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    common::Taskpool::GetCurrentTaskpool()->Initialize();
 }
 
 void DaemonThread::EnsureRunning()
@@ -89,7 +89,7 @@ void DaemonThread::WaitFinished()
         CheckAndPostTask(TerminateDaemonTask(nullptr));
         thread_->join();
         thread_.reset();
-        Taskpool::GetCurrentTaskpool()->Destroy(GetThreadId());
+        common::Taskpool::GetCurrentTaskpool()->Destroy(GetThreadId());
     }
 #ifndef USE_CMC_GC
     ASSERT(!IsInRunningState());

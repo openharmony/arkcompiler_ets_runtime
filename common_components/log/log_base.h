@@ -51,7 +51,7 @@ enum class Component: uint64_t {
     ALL = 0xFFFFFFFFULL,
 };
  
-namespace panda {
+namespace common {
 #ifdef ENABLE_HILOG
 
 #if ECMASCRIPT_ENABLE_VERBOSE_LEVEL_LOG
@@ -66,7 +66,7 @@ struct LogOptions {
     Level level;
     ComponentMark component;
 };
-}  // namespace panda
+}  // namespace common
 
 #endif  // COMMON_COMPONENTS_LOG_LOG_BASE_H
  

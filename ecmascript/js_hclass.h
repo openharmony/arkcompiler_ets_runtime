@@ -348,11 +348,11 @@ enum class JSType : uint8_t {
     JSTYPE_DECL,
 };
 
-static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(CommonType::LINE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(common::CommonType::LINE_STRING) &&
     "line string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(CommonType::SLICED_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(common::CommonType::SLICED_STRING) &&
     "sliced string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(CommonType::TREE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(common::CommonType::TREE_STRING) &&
     "tree string type should be same with common type");
 
 struct TransitionResult {

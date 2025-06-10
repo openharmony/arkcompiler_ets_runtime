@@ -34,7 +34,7 @@ public:
     {
         panda::ecmascript::JSRuntimeOptions runtimeOptions;
         runtimeOptions.SetLogLevel("error");
-        Log::Initialize(runtimeOptions.GetLogOptions());
+        common::Log::Initialize(runtimeOptions.GetLogOptions());
     }
 
     static void NewVMThreadEntry(EcmaVM *newVm,

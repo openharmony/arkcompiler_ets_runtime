@@ -24,7 +24,7 @@ namespace OHOS {
 void BufferRefNewFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -41,7 +41,7 @@ void BufferRefMultiParamNewFuzzTest(const uint8_t *data, size_t size)
         return;
     }
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     NativePointerCallback deleter = nullptr;
     BufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
@@ -51,7 +51,7 @@ void BufferRefMultiParamNewFuzzTest(const uint8_t *data, size_t size)
 void BufferRefByteLengthFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -65,7 +65,7 @@ void BufferRefByteLengthFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
 void BufferRefGetBufferFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -79,7 +79,7 @@ void BufferRefGetBufferFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
 void BufferToStringCallbackFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

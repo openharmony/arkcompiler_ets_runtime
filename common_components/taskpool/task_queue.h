@@ -27,17 +27,17 @@
 #include <condition_variable>
 
 #include "common_components/taskpool/task.h"
-#include "libpandabase/macros.h"
+#include "common_interfaces/base/common.h"
 
-namespace panda {
+namespace common {
 using SteadyTimePoint = std::chrono::steady_clock::time_point;
 class TaskQueue {
 public:
     TaskQueue() = default;
     ~TaskQueue() = default;
 
-    NO_COPY_SEMANTIC(TaskQueue);
-    NO_MOVE_SEMANTIC(TaskQueue);
+    NO_COPY_SEMANTIC_CC(TaskQueue);
+    NO_MOVE_SEMANTIC_CC(TaskQueue);
 
     void PostTask(std::unique_ptr<Task> task);
     void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds);
@@ -66,5 +66,5 @@ private:
     std::mutex mtx_;
     std::condition_variable cv_;
 };
-}  // namespace panda
+}  // namespace common
 #endif  // COMMON_COMPONENTS_TASKPOOL_TASK_QUEUE_H

@@ -21,7 +21,6 @@
 #include "common_interfaces/heap/heap_visitor.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 enum class Root {

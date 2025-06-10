@@ -73,7 +73,7 @@ public:
         }
         EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
         *(--newSp) = numActualArgs;
-        *(--newSp) = ToUintPtr(thread);
+        *(--newSp) = reinterpret_cast<uintptr_t>(thread);
         ecmaRuntimeCallInfo->SetNewTarget(newTgt);
         return ecmaRuntimeCallInfo;
     }

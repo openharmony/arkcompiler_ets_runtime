@@ -20,13 +20,16 @@
 #include "common_interfaces/objects/base_type_converter.h"
 
 namespace panda::ecmascript {
-class DynamicTypeConverter : public DynamicTypeConverterInterface {
+using common::BaseType;
+using common::ThreadHolder;
+
+class DynamicTypeConverter : public common::DynamicTypeConverterInterface {
 public:
     static void Initialize();
 
-    JSTaggedValue PUBLIC_API WrapTagged(ThreadHolder *thread, PandaType value) override;
+    JSTaggedValue PUBLIC_API WrapTagged(ThreadHolder *thread, BaseType value) override;
 
-    PandaType PUBLIC_API UnWrapTagged(JSTaggedValue value) override;
+    BaseType PUBLIC_API UnWrapTagged(JSTaggedValue value) override;
 
 private:
     static DynamicTypeConverter dynTypeConverter_;

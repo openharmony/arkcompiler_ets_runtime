@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/base/json_helper.h"
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 
 
 namespace panda::ecmascript::base {
@@ -108,10 +108,10 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 void JsonHelper::AppendQuotedValueToC16String(const Span<const uint16_t> &sp, uint32_t &index, C16String &output)
 {
     auto ch = sp[index];
-    if (utf_helper::IsUTF16Surrogate(ch)) {
+    if (common::utf_helper::IsUTF16Surrogate(ch)) {
         // utf-16 to quoted string
-        if (ch <= utf_helper::DECODE_LEAD_HIGH) {
-            if (index + 1 < sp.size() && utf_helper::IsUTF16LowSurrogate(sp[index + 1])) {
+        if (ch <= common::utf_helper::DECODE_LEAD_HIGH) {
+            if (index + 1 < sp.size() && common::utf_helper::IsUTF16LowSurrogate(sp[index + 1])) {
                 AppendChar(output, ch);
                 AppendChar(output, sp[index + 1]);
                 ++index;
@@ -204,9 +204,9 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
                     static_cast<uint8_t>(str[i + 1]) <= ALONE_SURROGATE_3B_SECOND_END && // 1: 1th character after ch
                     static_cast<uint8_t>(str[i + 2]) >= ALONE_SURROGATE_3B_THIRD_START && // 2: 2nd character after ch
                     static_cast<uint8_t>(str[i + 2]) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: 2nd character after ch
-                    auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(
+                    auto unicodeRes = common::utf_helper::ConvertUtf8ToUnicodeChar(
                         reinterpret_cast<const uint8_t*>(str.c_str() + i), 3); // 3: Parse 3 characters
-                    ASSERT(unicodeRes.first != utf_helper::INVALID_UTF8);
+                    ASSERT(unicodeRes.first != common::utf_helper::INVALID_UTF8);
                     AppendUnicodeEscape(static_cast<uint32_t>(unicodeRes.first), output);
                     i += 2; // 2 : Skip 2 characters
                     break;

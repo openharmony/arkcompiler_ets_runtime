@@ -311,14 +311,15 @@ JSTaggedValue BuiltinsString::CodePointAt(EcmaRuntimeCallInfo *argv)
         return JSTaggedValue::Undefined();
     }
     uint16_t first = EcmaStringAccessor(thisFlat).Get<false>(pos);
-    if (first < base::utf_helper::DECODE_LEAD_LOW || first > base::utf_helper::DECODE_LEAD_HIGH || pos + 1 == thisLen) {
+    if (first < common::utf_helper::DECODE_LEAD_LOW || first > common::utf_helper::DECODE_LEAD_HIGH ||
+        pos + 1 == thisLen) {
         return GetTaggedInt(first);
     }
     uint16_t second = EcmaStringAccessor(thisFlat).Get<false>(pos + 1);
-    if (second < base::utf_helper::DECODE_TRAIL_LOW || second > base::utf_helper::DECODE_TRAIL_HIGH) {
+    if (second < common::utf_helper::DECODE_TRAIL_LOW || second > common::utf_helper::DECODE_TRAIL_HIGH) {
         return GetTaggedInt(first);
     }
-    uint32_t res = base::utf_helper::UTF16Decode(first, second);
+    uint32_t res = common::utf_helper::UTF16Decode(first, second);
     return GetTaggedInt(res);
 }
 

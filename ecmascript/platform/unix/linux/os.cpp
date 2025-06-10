@@ -86,7 +86,7 @@ void BindAllCpuCore()
     cpu_set_t cpuset;
 
     CPU_ZERO(&cpuset);
-    for (size_t i = 0; i < NumberOfCpuCore(); i++) {
+    for (size_t i = 0; i < common::NumberOfCpuCore(); i++) {
         CPU_SET(i, &cpuset);
     }
 

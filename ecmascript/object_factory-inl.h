@@ -43,7 +43,7 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
     object->SetClass(thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    object->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    object->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return EcmaString::Cast(object);
 }
@@ -55,7 +55,7 @@ EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }
@@ -67,7 +67,7 @@ EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }
@@ -79,7 +79,7 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }
@@ -91,7 +91,7 @@ EcmaString *ObjectFactory::AllocReadOnlyLineStringObject(size_t size)
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }
@@ -104,7 +104,7 @@ EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetSlicedStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }
@@ -117,7 +117,7 @@ EcmaString *ObjectFactory::AllocTreeStringObject()
         TreeString::SIZE));
 #ifdef USE_CMC_GC
     JSTaggedValue hclass = thread_->GlobalConstants()->GetTreeStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<BaseClass*>(hclass.GetTaggedObject()));
+    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
 #endif
     return str;
 }

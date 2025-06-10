@@ -17,8 +17,9 @@
 #define ECMASCRIPT_MEM_JIT_FORT_MEMDESC_H
 
 #include <deque>
+
+#include "common_components/base/asan_interface.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {

@@ -41,14 +41,14 @@ bool Runtime::firstVmCreated_ = false;
 Mutex *Runtime::vmCreationLock_ = new Mutex();
 Runtime *Runtime::instance_ = nullptr;
 #ifdef USE_CMC_GC
-BaseRuntime *Runtime::baseInstance_ = nullptr;
+common::BaseRuntime *Runtime::baseInstance_ = nullptr;
 #endif
 
 Runtime::Runtime()
 {
 #ifdef USE_CMC_GC
     if (baseInstance_ == nullptr) {
-        baseInstance_ = BaseRuntime::GetInstance();
+        baseInstance_ = common::BaseRuntime::GetInstance();
     }
 #endif
 }
@@ -78,7 +78,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
 {
     LockHolder lock(*vmCreationLock_);
     if (!firstVmCreated_) {
-        Log::Initialize(options.GetLogOptions());
+        common::Log::Initialize(options.GetLogOptions());
         EcmaVM::InitializeIcuData(options);
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE, options.GetLargeHeap());
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
@@ -88,9 +88,9 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         instance_->SetEnableLargeHeap(options.GetLargeHeap());
         SharedHeap::CreateNewInstance();
 #ifdef USE_CMC_GC
-        // Init BaseRuntime before daemon thread because creating mutator may access gcphase in heap
+        // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap
         LOG_ECMA(INFO) << "start run with cmc gc";
-        BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+        common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
 #endif
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
@@ -167,8 +167,8 @@ void Runtime::DestroyIfLastVm()
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
 #ifdef USE_CMC_GC
-        // Finish BaseRuntime after daemon thread because it will unregister mutator
-        BaseRuntime::GetInstance()->Fini();
+        // Finish common::BaseRuntime after daemon thread because it will unregister mutator
+        common::BaseRuntime::GetInstance()->Fini();
 #endif
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();
@@ -176,8 +176,8 @@ void Runtime::DestroyIfLastVm()
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
 #ifdef USE_CMC_GC
-        // Destroy BaseRuntime after daemon thread because it will unregister mutator
-        BaseRuntime::DestroyInstance();
+        // Destroy common::BaseRuntime after daemon thread because it will unregister mutator
+        common::BaseRuntime::DestroyInstance();
         // reset Base address offset
         TaggedStateWord::BASE_ADDRESS = 0;
 #endif
@@ -251,7 +251,7 @@ void Runtime::ResumeAll(JSThread *current)
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
+    common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
 #else
     SuspendBarrier barrier;
     for (uint32_t iterCount = 1U;; ++iterCount) {
@@ -313,7 +313,7 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
 {
 #ifdef USE_CMC_GC
-    BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
+    common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
 #else
     LockHolder lock(threadsLock_);
     if (suspendNewCount_ > 0) {

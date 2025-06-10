@@ -116,7 +116,7 @@ ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* o
 void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     (void)thread;
-    BaseRuntime::WriteBarrier(obj, (void *)((uintptr_t)obj + offset), (void*)value);
+    common::BaseRuntime::WriteBarrier(obj, (void *)((uintptr_t)obj + offset), (void*)value);
     return;
 }
 
@@ -129,7 +129,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void*
     for (size_t i = 0; i < count; i++) {
         uintptr_t offset = i * sizeof(uintptr_t);
         uintptr_t value = srcPtr[i];
-        BaseRuntime::WriteBarrier(dst, (void *)((uintptr_t)dst + offset), (void*)value);
+        common::BaseRuntime::WriteBarrier(dst, (void *)((uintptr_t)dst + offset), (void*)value);
     }
     return;
 }

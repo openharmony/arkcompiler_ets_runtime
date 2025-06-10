@@ -53,7 +53,7 @@ public:
     void SetUp() override
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
         thread_ = vm_->GetJSThread();
         vm_->SetEnableForceGC(true);

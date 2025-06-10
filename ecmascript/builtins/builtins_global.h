@@ -241,12 +241,12 @@ private:
                                  Placement placement = Placement::START);
     static bool IsUTF16HighSurrogate(uint16_t ch)
     {
-        return base::utf_helper::DECODE_LEAD_LOW <= ch && ch <= base::utf_helper::DECODE_LEAD_HIGH;
+        return common::utf_helper::DECODE_LEAD_LOW <= ch && ch <= common::utf_helper::DECODE_LEAD_HIGH;
     }
 
     static bool IsUTF16LowSurrogate(uint16_t ch)
     {
-        return base::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= base::utf_helper::DECODE_TRAIL_HIGH;
+        return common::utf_helper::DECODE_TRAIL_LOW <= ch && ch <= common::utf_helper::DECODE_TRAIL_HIGH;
     }
 
     // 11.1.3 Static Semantics: UTF16SurrogatePairToCodePoint ( lead, trail )

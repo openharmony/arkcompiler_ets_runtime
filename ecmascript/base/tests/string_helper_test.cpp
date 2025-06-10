@@ -14,13 +14,13 @@
  */
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
-using namespace panda::ecmascript::base::utf_helper;
+using namespace common::utf_helper;
 
 namespace panda::test {
 class StringHelperTest : public BaseTestWithScope<true> {

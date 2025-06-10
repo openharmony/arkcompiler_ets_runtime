@@ -19,9 +19,9 @@
 #include <condition_variable>
 #include <mutex>
 
-#include "libpandabase/macros.h"
+#include "common_interfaces/base/common.h"
 
-namespace panda {
+namespace common {
 enum class TaskType : uint8_t {
     PGO_SAVE_TASK,
     PGO_RESET_OUT_PATH_TASK,
@@ -39,8 +39,8 @@ public:
     virtual ~Task() = default;
     virtual bool Run(uint32_t threadIndex) = 0;
 
-    NO_COPY_SEMANTIC(Task);
-    NO_MOVE_SEMANTIC(Task);
+    NO_COPY_SEMANTIC_CC(Task);
+    NO_MOVE_SEMANTIC_CC(Task);
 
     virtual TaskType GetTaskType() const
     {
@@ -71,8 +71,8 @@ class TaskPackMonitor {
 public:
     explicit TaskPackMonitor(int running, int maxRunning) : running_(running), maxRunning_(maxRunning)
     {
-        ASSERT(running_ >= 0);
-        ASSERT(running_ <= maxRunning_);
+        DCHECK_CC(running_ >= 0);
+        DCHECK_CC(running_ <= maxRunning_);
     }
     ~TaskPackMonitor() = default;
 
@@ -87,7 +87,7 @@ public:
     bool TryAddNewOne()
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        ASSERT(running_ >= 0);
+        DCHECK_CC(running_ >= 0);
         if (running_ < maxRunning_) {
             ++running_;
             return true;
@@ -103,13 +103,13 @@ public:
         }
     }
 
-    NO_COPY_SEMANTIC(TaskPackMonitor);
-    NO_MOVE_SEMANTIC(TaskPackMonitor);
+    NO_COPY_SEMANTIC_CC(TaskPackMonitor);
+    NO_MOVE_SEMANTIC_CC(TaskPackMonitor);
 private:
     int running_ {0};
     int maxRunning_ {0};
     std::condition_variable cv_;
     std::mutex mutex_;
 };
-}  // namespace panda
+}  // namespace common
 #endif  // COMMON_COMPONENTS_TASKPOOL_TASK_H

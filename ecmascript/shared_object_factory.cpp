@@ -34,7 +34,7 @@ void ObjectFactory::NewSObjectHook() const
         return;
     }
 #ifdef USE_CMC_GC
-    BaseRuntime::RequestGC(GcType::ASYNC);
+    common::BaseRuntime::RequestGC(common::GcType::ASYNC);
 #else
     if (count++ % frequency == 0) {
         if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {

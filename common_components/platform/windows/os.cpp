@@ -15,10 +15,10 @@
 
 #include "common_components/platform/os.h"
  
-namespace panda::os {
+namespace common::os {
 int PrctlSetVMA(const void *, const size_t, const char *)
 {
     return -1;
 }
-}  // namespace panda
+}  // namespace common::os
  

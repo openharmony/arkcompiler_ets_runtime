@@ -20,7 +20,10 @@
 #include "common_interfaces/objects/base_object_accessor.h"
 
 namespace panda::ecmascript {
-class DynamicObjectAccessor : public DynamicObjectAccessorInterface {
+using common::ThreadHolder;
+using common::BaseObject;
+
+class DynamicObjectAccessor : public common::DynamicObjectAccessorInterface {
 public:
     static void Initialize();
 

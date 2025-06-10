@@ -19,7 +19,6 @@
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/platform/parameters.h"
-#include "libpandabase/mem/mem.h"
 
 namespace panda::ecmascript {
 MemMapAllocator *MemMapAllocator::GetInstance()
@@ -336,7 +335,7 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompre
 
 void MemMapAllocator::AdapterSuitablePoolCapacity(bool isLargeHeap)
 {
-    size_t physicalSize = PhysicalSize();
+    size_t physicalSize = common::PhysicalSize();
     uint64_t poolSize;
     if (isLargeHeap) {
         poolSize = LARGE_HEAP_POOL_SIZE;

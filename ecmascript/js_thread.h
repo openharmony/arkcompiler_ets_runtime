@@ -102,15 +102,14 @@ enum ThreadType : uint8_t {
 
 
 #ifdef USE_CMC_GC
-using BaseThread = panda::BaseThread;
-using BaseThreadType = panda::BaseThreadType;
-using ThreadHolder = panda::ThreadHolder;
-using ThreadFlag = panda::ThreadFlag;
-using ThreadState = panda::ThreadState;
-using ThreadStateAndFlags = panda::ThreadStateAndFlags;
-using CommonRootVisitor = panda::CommonRootVisitor;
-static constexpr uint32_t THREAD_STATE_OFFSET = panda::THREAD_STATE_OFFSET;
-static constexpr uint32_t THREAD_FLAGS_MASK = panda::THREAD_FLAGS_MASK;
+using BaseThread = common::BaseThread;
+using BaseThreadType = common::BaseThreadType;
+using ThreadHolder = common::ThreadHolder;
+using ThreadFlag = common::ThreadFlag;
+using ThreadState = common::ThreadState;
+using ThreadStateAndFlags = common::ThreadStateAndFlags;
+static constexpr uint32_t THREAD_STATE_OFFSET = common::THREAD_STATE_OFFSET;
+static constexpr uint32_t THREAD_FLAGS_MASK = common::THREAD_FLAGS_MASK;
 #else
 enum ThreadFlag : uint16_t {
     NO_FLAGS = 0 << 0,
@@ -212,7 +211,7 @@ public:
     using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag;
 #endif
 #ifdef USE_CMC_GC
-    using CMCGCPhaseBits = BitField<GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>;
+    using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>;
 #endif
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
@@ -617,12 +616,12 @@ public:
 #endif
 
 #ifdef USE_CMC_GC
-    GCPhase GetCMCGCPhase() const
+    common::GCPhase GetCMCGCPhase() const
     {
         return CMCGCPhaseBits::Decode(glueData_.sharedGCStateBitField_);
     }
 
-    void SetCMCGCPhase(GCPhase gcPhase)
+    void SetCMCGCPhase(common::GCPhase gcPhase)
     {
         CMCGCPhaseBits::Set(gcPhase, &glueData_.sharedGCStateBitField_);
     }
@@ -1692,7 +1691,7 @@ public:
     }
 
     // to impl
-    void Visit(CommonRootVisitor visitor)
+    void Visit(common::CommonRootVisitor visitor)
     {
         visitor(nullptr);
     }

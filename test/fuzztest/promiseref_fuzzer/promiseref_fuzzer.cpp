@@ -25,7 +25,7 @@ namespace OHOS {
     {
         using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -45,7 +45,7 @@ namespace OHOS {
     {
         using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
@@ -66,7 +66,7 @@ namespace OHOS {
     {
         using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";

@@ -112,9 +112,9 @@ private:
         void Process(bool isMain) override;
     };
 
-    class UpdateReferenceTask : public Task {
+    class UpdateReferenceTask : public common::Task {
     public:
-        UpdateReferenceTask(int32_t id, SharedGCEvacuator *evacuator) : Task(id), evacuator_(evacuator) {};
+        UpdateReferenceTask(int32_t id, SharedGCEvacuator *evacuator) : common::Task(id), evacuator_(evacuator) {};
         ~UpdateReferenceTask() override = default;
         NO_COPY_SEMANTIC(UpdateReferenceTask);
         NO_MOVE_SEMANTIC(UpdateReferenceTask);

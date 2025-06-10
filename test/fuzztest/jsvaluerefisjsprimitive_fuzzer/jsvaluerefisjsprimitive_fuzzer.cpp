@@ -27,7 +27,7 @@ namespace OHOS {
 void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -48,7 +48,7 @@ void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
 void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -69,7 +69,7 @@ void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
 void IsJSPrimitiveIntFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

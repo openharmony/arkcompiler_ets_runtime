@@ -178,7 +178,7 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     DaemonThread::GetInstance()->StartRunning();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    common::Taskpool::GetCurrentTaskpool()->Initialize();
     heap_->GetWorkManager()->InitializeInPostFork();
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetWorkManager()->InitializeInPostFork();
@@ -319,7 +319,7 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "EcmaVM::Initialize", "");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    common::Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
 #endif
@@ -389,7 +389,7 @@ EcmaVM::~EcmaVM()
 {
 #ifdef USE_CMC_GC
     thread_->GetThreadHolder()->TransferToNative();
-    BaseRuntime::WaitForGCFinish();
+    common::BaseRuntime::WaitForGCFinish();
     thread_->GetThreadHolder()->TransferToRunning();
 #endif
     if (isJitCompileVM_) {
@@ -435,7 +435,7 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
     heap_->WaitAllTasksFinished();
-    Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
+    common::Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     DumpCallTimeInfo();
@@ -675,7 +675,7 @@ void EcmaVM::CheckThread() const
         UNREACHABLE();
     }
     DaemonThread *dThread = DaemonThread::GetInstance();
-    if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+    if (!common::Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
         !(dThread != nullptr && dThread->GetThreadId() == JSThread::GetCurrentThreadId()) &&
         thread_->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
@@ -871,13 +871,13 @@ void EcmaVM::ClearBufferData()
 void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason reason) const
 {
 #ifdef USE_CMC_GC
-    GcType type = GcType::ASYNC;
+    common::GcType type = common::GcType::ASYNC;
     if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
         gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
         reason == GCReason::ALLOCATION_FAILED) {
-        type = GcType::FULL;
+        type = common::GcType::FULL;
     }
-    BaseRuntime::RequestGC(type);
+    common::BaseRuntime::RequestGC(type);
     return;
 #endif
     heap_->CollectGarbage(gcType, reason);

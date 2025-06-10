@@ -40,7 +40,7 @@ enum RunState : uint8_t {
     FINISH
 };
 
-class JitTaskpool : public Taskpool {
+class JitTaskpool : public common::Taskpool {
 public:
     PUBLIC_API static JitTaskpool *GetCurrentTaskpool();
     JitTaskpool() = default;
@@ -70,7 +70,7 @@ public:
 
     void Initialize(bool needInitJitFort)
     {
-        Taskpool::Initialize(0, [needInitJitFort](os::thread::native_handle_type thread) {
+        common::Taskpool::Initialize(0, [needInitJitFort](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
             constexpr int32_t priorityVal = 5; // 5: The priority can be set within range [-20, 19]
             os::thread::SetPriority(os::thread::GetCurrentThreadId(), priorityVal);
@@ -88,7 +88,7 @@ public:
     void Destroy()
     {
         WaitForJitTaskPoolReady();
-        Taskpool::Destroy(threadId_);
+        common::Taskpool::Destroy(threadId_);
     }
 
 private:
@@ -244,9 +244,9 @@ public:
         return sustainingJSHandle_.get();
     }
 
-    class AsyncTask : public Task {
+    class AsyncTask : public common::Task {
     public:
-        explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }
+        explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : common::Task(id), jitTask_(jitTask) { }
         virtual ~AsyncTask() override = default;
 
         bool Run(uint32_t threadIndex) override;
@@ -265,7 +265,7 @@ public:
 
         void Terminated()
         {
-            Task::Terminated();
+            common::Task::Terminated();
         }
 
         void ReleaseSustainingJSHandle()

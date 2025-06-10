@@ -187,7 +187,7 @@ int main(const int argc, const char **argv)
         return 1;
     }
 
-    panda::Log::Initialize(runtimeOptions.GetLogOptions());
+    common::Log::Initialize(runtimeOptions.GetLogOptions());
     std::string triple = runtimeOptions.GetTargetTriple();
     std::string stubFile = runtimeOptions.GetStubFile();
     size_t optLevel = runtimeOptions.GetOptLevel();

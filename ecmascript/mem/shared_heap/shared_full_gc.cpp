@@ -141,7 +141,7 @@ void SharedFullGC::Finish()
 
 void SharedFullGC::UpdateRecordWeakReference()
 {
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         ProcessQueue *queue = sHeap_->GetWorkManager()->GetWeakReferenceQueue(i);
 

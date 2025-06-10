@@ -22,7 +22,7 @@
 
 #include "common_components/log/log.h"
 
-namespace panda {
+namespace common {
 uint32_t NumberOfCpuCore()
 {
     return static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
@@ -41,4 +41,4 @@ size_t PhysicalSize()
     }
     return static_cast<size_t>(size);
 }
-}  // namespace panda
+}  // namespace common

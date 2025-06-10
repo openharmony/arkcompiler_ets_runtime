@@ -20,12 +20,12 @@
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
     class TaggedObject;
     class EcmaStringTable;
 }
 
+namespace common {
 // Expand to get oldEntry and newEntry, with hash conflicts from 32 bits up to
 // hashShift and Generate a subtree of indirect nodes to hold two new entries.
 template <typename Mutex, typename ThreadHolder>
@@ -594,7 +594,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
 template <typename Mutex, typename ThreadHolder>
 bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry)
 {
-    ecmascript::TaggedObject* object = reinterpret_cast<ecmascript::TaggedObject*>(entry->Value());
+    panda::ecmascript::TaggedObject* object = reinterpret_cast<panda::ecmascript::TaggedObject*>(entry->Value());
     auto fwd = visitor(object);
     if (fwd == nullptr) {
         LOG_COMMON(VERBOSE) << "StringTable: delete string " << std::hex << object;

@@ -4709,7 +4709,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
     runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
     // Dfx
-    runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
+    runtimeOptions.SetLogLevel(common::Log::LevelToString(common::Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
     runtimeOptions.SetLargeHeap(option.GetLargeHeap());
     return CreateEcmaVM(runtimeOptions);
@@ -4768,12 +4768,12 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
     }
 #endif
 #ifdef USE_CMC_GC
-        GcType type = GcType::ASYNC;
+        common::GcType type = common::GcType::ASYNC;
         if (gcType == TRIGGER_GC_TYPE::FULL_GC || gcType == TRIGGER_GC_TYPE::SHARED_FULL_GC ||
             reason == ecmascript::GCReason::ALLOCATION_FAILED) {
-            type = GcType::FULL;
+            type = common::GcType::FULL;
         }
-        panda::BaseRuntime::RequestGC(type);
+        common::BaseRuntime::RequestGC(type);
 #else  // add ALL_GC_TYPE here for toolchain
         auto sHeap = ecmascript::SharedHeap::GetInstance();
         switch (gcType) {
@@ -5670,8 +5670,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetMaxAotMethodSize(jsOption.GetMaxAotMethodSize());
     JSRuntimeOptions runtimeOptions;
-    runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
-    Log::Initialize(runtimeOptions.GetLogOptions());
+    runtimeOptions.SetLogLevel(common::Log::LevelToString(common::Log::ConvertFromRuntime(option.GetLogLevel())));
+    common::Log::Initialize(runtimeOptions.GetLogOptions());
 
     // 1. system switch 2. an file dir exits 3. whitelist 4. escape mechanism
     bool enableAOT = jsOption.GetEnableAOT() &&

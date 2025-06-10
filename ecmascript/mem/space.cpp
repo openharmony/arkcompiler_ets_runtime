@@ -138,8 +138,8 @@ void* HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, vo
     size_t mutableSize = AlignUp(objectSize - desc->instructionsSize, PageSize());
     size_t fortSize = AlignUp(desc->instructionsSize, PageSize());
     size_t allocSize = mutableSize + fortSize;
-    uintptr_t machineCodeObj =
-        reinterpret_cast<uintptr_t>(HeapAllocator::AllocateLargeJitFortRegion(allocSize, LanguageType::DYNAMIC));
+    uintptr_t machineCodeObj = reinterpret_cast<uintptr_t>(
+        common::HeapAllocator::AllocateLargeJitFortRegion(allocSize, common::LanguageType::DYNAMIC));
     assert(machineCodeObj != 0);
     if (heap_->OldSpaceExceedCapacity(fortSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";

@@ -15,7 +15,7 @@
 
 #include "common_interfaces/objects/base_object.h"
 
-namespace panda {
+namespace common {
 #ifdef USE_CMC_GC
 BaseObjectOperator BaseObject::operator_;
 
@@ -29,4 +29,4 @@ void BaseObject::RegisterStatic(BaseObjectOperatorInterfaces *staticObjOp)
     operator_.staticObjOp_ = staticObjOp;
 }
 #endif
-}  // namespace panda
+}  // namespace common

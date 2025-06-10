@@ -16,9 +16,10 @@
 
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/platform/ecma_string_hash.h"
+#include "common_components/platform/string_hash.h"
 
 using namespace panda::ecmascript;
+using namespace common;
 
 namespace panda::test {
 class EcmaStringHashTest : public BaseTestWithScope<false> {
@@ -28,7 +29,7 @@ public:
     {
         uint32_t hash = hashSeed;
         for (size_t i = 0; i < size; i++) {
-            hash = hash * EcmaStringHash::HASH_MULTIPLY + data[i];
+            hash = hash * StringHash::HASH_MULTIPLY + data[i];
         }
         return hash;
     }

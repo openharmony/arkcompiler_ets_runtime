@@ -699,7 +699,6 @@ ecma_source = [
   "ecmascript/base/sort_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
-  "ecmascript/base/utf_helper.cpp",
   "ecmascript/base/bit_helper.cpp",
   "ecmascript/builtins/builtins.cpp",
   "ecmascript/builtins/builtins_ark_tools.cpp",
@@ -1053,6 +1052,7 @@ ecma_source = [
 
 # ecmascript use implement from common_components
 ecma_source += [
+  "common_components/base/utf_helper.cpp",
   "common_components/log/log.cpp",
   "common_components/objects/base_object.cpp",
   "common_components/objects/base_string.cpp",
@@ -1358,7 +1358,7 @@ ohos_source_set("libcommon_components_set") {
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
   }
-  deps += [ "common_components/common_runtime/src:libarkcommon-runtime" ]
+  deps += [ "common_components:libarkcommon-runtime" ]
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps

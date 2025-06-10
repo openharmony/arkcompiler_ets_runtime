@@ -86,7 +86,7 @@ public:
     void SetUp() override
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
         thread_ = vm_->GetJSThread();
@@ -369,7 +369,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
     std::thread t1([&](){
         EcmaVM *vm1_ = nullptr;
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         vm1_ = JSNApi::CreateJSVM(option);
         ASSERT_TRUE(vm1_ != nullptr) << "Cannot create Runtime";
         vm1_->SetEnableForceGC(true);

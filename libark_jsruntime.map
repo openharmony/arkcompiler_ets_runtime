@@ -17,9 +17,6 @@
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
-
-      panda::MutatorBase::*;
-
       panda::ArkCrashHolder*;
 
       panda::ArrayBufferRef::*;
@@ -98,20 +95,21 @@
       panda::JsiNativeScope::*;
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
-      panda::BaseRuntime::*;
-      panda::VisitDynamicRoots*;
-      panda::VisitDynamicWeakRoots*;
-      panda::BaseObject::*;
-      panda::VisitJSThread*;
-      panda::SynchronizeGCPhaseToJSThread*;
-      panda::FillFreeObject*;
-      panda::SetBaseAddress*;
-      panda::JSGCCallback*;
+      common::BaseRuntime::*;
+      common::VisitDynamicRoots*;
+      common::VisitDynamicWeakRoots*;
+      common::BaseObject::*;
+      common::VisitJSThread*;
+      common::SynchronizeGCPhaseToJSThread*;
+      common::FillFreeObject*;
+      common::SetBaseAddress*;
+      common::JSGCCallback*;
+      common::MutatorBase::*;
+      common::Log::*;
+      common::AndroidLog*;
+      common::ThreadHolder::*;
 
       panda::ecmascript::AotCrashInfo*;
-      panda::Log::*;
-      panda::AndroidLog*;
-      panda::ecmascript::ThreadHolder::*;
       panda::ecmascript::Method::*;
       panda::ecmascript::JSPandaFileManager::*;
       panda::ecmascript::DebugInfoExtractor::*;
@@ -349,7 +347,7 @@
       panda::ecmascript::Unlink*;
       panda::ecmascript::filesystem::CreateEmptyFile*;
       panda::ecmascript::base::ArrayHelper::GetLength*;
-      panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
+      common::utf_helper::ConvertRegionUtf16ToUtf8*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
       panda::ecmascript::base::NumberHelper::StringToBigInt*;
       panda::ecmascript::base::NumberHelper::TruncateDouble*;

@@ -24,9 +24,10 @@
 #include <string>
 #include <vector>
 
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+#include "libpandabase/utils/span.h"
 
 #include "securec.h"
 #include "unicode/unistr.h"
@@ -272,10 +273,10 @@ public:
         c &= UTF8_FIRST_CODE[l - 1];
         for (int i = 0; i < l; i++) {
             b = *p++;
-            if (b < utf_helper::UTF8_2B_SECOND || b >= utf_helper::UTF8_2B_FIRST) {
+            if (b < common::utf_helper::UTF8_2B_SECOND || b >= common::utf_helper::UTF8_2B_FIRST) {
                 return INVALID_UNICODE_FROM_UTF8;
             }
-            c = (c << 6) | (b & utf_helper::UTF8_2B_THIRD); // 6: Maximum Unicode range
+            c = (c << 6) | (b & common::utf_helper::UTF8_2B_THIRD); // 6: Maximum Unicode range
         }
         if (c < UTF8_MIN_CODE[l - 1]) {
             return INVALID_UNICODE_FROM_UTF8;

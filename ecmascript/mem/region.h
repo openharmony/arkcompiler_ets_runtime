@@ -18,8 +18,8 @@
 
 #include <type_traits>
 
+#include "common_components/base/asan_interface.h"
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/gc_bitset.h"

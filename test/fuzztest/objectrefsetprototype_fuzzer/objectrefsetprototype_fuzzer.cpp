@@ -23,7 +23,7 @@ namespace OHOS {
 void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_unused]]size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "Parameter out of range.";

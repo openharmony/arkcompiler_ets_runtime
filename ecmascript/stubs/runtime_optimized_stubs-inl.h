@@ -49,17 +49,17 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, int32_t &n, 
 
         uint16_t frontChart = GetCodeUnit<T>(sp, k + 1, strLen);
         uint16_t behindChart = GetCodeUnit<T>(sp, k + 2, strLen);  // 2: means plus 2
-        if (!(base::utf_helper::IsHexDigits(frontChart) && base::utf_helper::IsHexDigits(behindChart))) {
+        if (!(common::utf_helper::IsHexDigits(frontChart) && common::utf_helper::IsHexDigits(behindChart))) {
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
 #if !ENABLE_NEXT_OPTIMIZATION
         bb = GetValueFromTwoHex(frontChart, behindChart);
 #else
-        bb = base::utf_helper::GetValueFromTwoHex(frontChart, behindChart);
+        bb = common::utf_helper::GetValueFromTwoHex(frontChart, behindChart);
 #endif
         // e. If the two most significant bits in B are not 10, throw a URIError exception.
-        if (!((bb & base::utf_helper::BIT_MASK_2) == base::utf_helper::BIT_MASK_1)) {
+        if (!((bb & common::utf_helper::BIT_MASK_2) == common::utf_helper::BIT_MASK_1)) {
             errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
@@ -73,30 +73,30 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, int32_t &n, 
 JSTaggedValue RuntimeStubs::UTF16EncodeCodePoint(JSThread *thread, const std::vector<uint8_t> &oct,
                                                  const JSHandle<EcmaString> &str, std::u16string &resStr)
 {
-    if (!base::utf_helper::IsValidUTF8(oct)) {
+    if (!common::utf_helper::IsValidUTF8(oct)) {
         CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint32_t vv = base::StringHelper::Utf8ToU32String(oct);
-    if (vv < base::utf_helper::DECODE_SECOND_FACTOR) {
+    if (vv < common::utf_helper::DECODE_SECOND_FACTOR) {
 #if !ENABLE_NEXT_OPTIMIZATION
         resStr = base::StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
     } else {
-        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & base::utf_helper::BIT16_MASK) +
-            base::utf_helper::DECODE_TRAIL_LOW);
+        uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & common::utf_helper::BIT16_MASK) +
+            common::utf_helper::DECODE_TRAIL_LOW);
         // NOLINT
-        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & base::utf_helper::BIT16_MASK) +
-            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        uint16_t hv = ((((vv - common::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & common::utf_helper::BIT16_MASK) +
+            common::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
         resStr = base::StringHelper::Append(base::StringHelper::Utf16ToU16String(&hv, 1),
                                             base::StringHelper::Utf16ToU16String(&lv, 1));
 #else
         resStr.append(base::StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1));
     } else {
-        uint16_t lv = (((vv - base::utf_helper::DECODE_SECOND_FACTOR) & base::utf_helper::BIT16_MASK) +
-            base::utf_helper::DECODE_TRAIL_LOW);
+        uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & common::utf_helper::BIT16_MASK) +
+            common::utf_helper::DECODE_TRAIL_LOW);
         // NOLINT
-        uint16_t hv = ((((vv - base::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & base::utf_helper::BIT16_MASK) +
-            base::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
+        uint16_t hv = ((((vv - common::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & common::utf_helper::BIT16_MASK) +
+            common::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
         resStr.push_back(static_cast<const char16_t>(hv));
         resStr.push_back(static_cast<const char16_t>(lv));
 #endif
@@ -119,19 +119,19 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, const JSHand
     }
     uint16_t frontChar = GetCodeUnit<T>(sp, k + 1, strLen);
     uint16_t behindChar = GetCodeUnit<T>(sp, k + 2, strLen);  // 2: means plus 2
-    if (!(base::utf_helper::IsHexDigits(frontChar) && base::utf_helper::IsHexDigits(behindChar))) {
+    if (!(common::utf_helper::IsHexDigits(frontChar) && common::utf_helper::IsHexDigits(behindChar))) {
         errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
 #if !ENABLE_NEXT_OPTIMIZATION
     uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
-    if ((bb & base::utf_helper::BIT_MASK_1) == 0) {
+    if ((bb & common::utf_helper::BIT_MASK_1) == 0) {
         resStr = base::StringHelper::Utf8ToU16String(&bb, 1);
 #else
-    uint8_t bb = base::utf_helper::GetValueFromTwoHex(frontChar, behindChar);
+    uint8_t bb = common::utf_helper::GetValueFromTwoHex(frontChar, behindChar);
     k += 2;  // 2: means plus 2
-    if ((bb & base::utf_helper::BIT_MASK_1) == 0) {
+    if ((bb & common::utf_helper::BIT_MASK_1) == 0) {
         resStr.push_back(bb);
 #endif
     } else {
@@ -158,7 +158,7 @@ JSTaggedValue RuntimeStubs::DecodePercentEncoding(JSThread *thread, const JSHand
         //     b. Let H be ((((V – 0x10000) >> 10) & 0x3FF) + 0xD800).
         //     c. Let S be the String containing the two code units H and L.
         int32_t n = 0;
-        while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & base::utf_helper::BIT_MASK_1) != 0)) {
+        while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & common::utf_helper::BIT_MASK_1) != 0)) {
             n++;
             if (n > 4) { // 4 : 4 means less than 4
                 break;
@@ -269,7 +269,7 @@ uint8_t RuntimeStubs::GetValueFromTwoHex(uint8_t front, uint8_t behind)
     size_t idxf = base::StringHelper::FindFromU8ToUpper(hexString, &front);
     size_t idxb = base::StringHelper::FindFromU8ToUpper(hexString, &behind);
 
-    uint8_t res = ((idxf << 4U) | idxb) & base::utf_helper::BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
+    uint8_t res = ((idxf << 4U) | idxb) & common::utf_helper::BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
     return res;
 }
 #endif // ENABLE_NEXT_OPTIMIZATION

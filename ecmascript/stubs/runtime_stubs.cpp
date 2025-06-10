@@ -668,7 +668,7 @@ DEF_RUNTIME_STUBS(ForceGC)
         return JSTaggedValue::Hole().GetRawData();
     }
 #ifdef USE_CMC_GC
-    BaseRuntime::RequestGC(GcType::SYNC);
+    common::BaseRuntime::RequestGC(common::GcType::SYNC);
 #else
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
 #endif

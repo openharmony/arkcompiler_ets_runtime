@@ -24,7 +24,7 @@ namespace OHOS {
 void JSValueRefIsBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

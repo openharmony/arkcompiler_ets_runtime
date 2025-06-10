@@ -27,7 +27,7 @@ namespace OHOS {
     void Uint8ArrayRefNewFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         int32_t input;
         if (size <= 0) {

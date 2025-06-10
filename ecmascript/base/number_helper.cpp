@@ -98,7 +98,7 @@ bool NumberHelper::GotoNonspace(uint8_t **ptr, const uint8_t *end)
                 ++size;
                 utf8Bit >>= 1UL;
             }
-            if (base::utf_helper::ConvertRegionUtf8ToUtf16(*ptr, &c, end - *ptr, 1) <= 0) {
+            if (common::utf_helper::ConvertRegionUtf8ToUtf16(*ptr, &c, end - *ptr, 1) <= 0) {
                 return true;
             }
         }

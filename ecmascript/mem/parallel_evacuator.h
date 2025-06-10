@@ -86,7 +86,7 @@ private:
         ParallelEvacuator *evacuator_ {nullptr};
     };
 
-    class EvacuationTask : public Task {
+    class EvacuationTask : public common::Task {
     public:
         EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator);
         ~EvacuationTask() override;
@@ -101,9 +101,9 @@ private:
         TlabAllocator *allocator_ {nullptr};
     };
 
-    class UpdateReferenceTask : public Task {
+    class UpdateReferenceTask : public common::Task {
     public:
-        UpdateReferenceTask(int32_t id, ParallelEvacuator *evacuator) : Task(id), evacuator_(evacuator) {};
+        UpdateReferenceTask(int32_t id, ParallelEvacuator *evacuator) : common::Task(id), evacuator_(evacuator) {}
         ~UpdateReferenceTask() override = default;
 
         bool Run(uint32_t threadIndex) override;
@@ -268,7 +268,7 @@ private:
     TlabAllocator *allocator_ {nullptr};
 
     uintptr_t waterLine_ = 0;
-    std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
+    std::unordered_set<JSTaggedType> arrayTrackInfoSets_[common::MAX_TASKPOOL_THREAD_NUM + 1];
     bool hasNewToOldRegions_ {false};
     uint32_t evacuateTaskNum_ = 0;
     std::atomic_int parallel_ = 0;

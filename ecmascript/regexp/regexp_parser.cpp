@@ -517,7 +517,7 @@ void RegExpParser::ParseAlternative(bool isBackward)
                         UChar32 c;
                         int32_t length = end_ - pc_ + 1;
                         // NOLINTNEXTLINE(hicpp-signed-bitwise)
-                        auto unicodeChar = base::utf_helper::ConvertUtf8ToUnicodeChar(pc_, length);
+                        auto unicodeChar = common::utf_helper::ConvertUtf8ToUnicodeChar(pc_, length);
                         c = unicodeChar.first;
                         matchedChar = static_cast<uint32_t>(c);
                         pc_ += unicodeChar.second;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -1439,7 +1439,7 @@ uint32_t RegExpParser::ParseClassAtom(RangeSet *atom)
             size_t u16_size = 0;
             if (c0_ > INT8_MAX) {  // NOLINTNEXTLINE(readability-magic-numbers)
                 pc_ -= 1;          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                auto u16_result = base::utf_helper::ConvertUtf8ToUtf16Pair(pc_, true);
+                auto u16_result = common::utf_helper::ConvertUtf8ToUtf16Pair(pc_, true);
                 value = u16_result.first;
                 u16_size = u16_result.second;
                 Advance(u16_size + 1);

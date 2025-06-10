@@ -66,10 +66,10 @@ private:
         return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_relaxed) == 1U);
     }
 
-    class SweepWeakRefTask : public Task {
+    class SweepWeakRefTask : public common::Task {
     public:
         SweepWeakRefTask(IteratorPtr iter, EcmaStringTableCleaner *cleaner, const WeakRootVisitor &visitor)
-            : Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor)
+            : common::Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor)
         {
         }
         ~SweepWeakRefTask() = default;
@@ -149,8 +149,8 @@ public:
     EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
 
 #ifdef USE_CMC_GC
-    void IterWeakRoot(const WeakRefFieldVisitor &visitor);
-    void IterWeakRoot(const WeakRefFieldVisitor &visitor, uint32_t index);
+    void IterWeakRoot(const common::WeakRefFieldVisitor &visitor);
+    void IterWeakRoot(const common::WeakRefFieldVisitor &visitor, uint32_t index);
 #endif
     void SweepWeakRef(const WeakRootVisitor &visitor);
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
@@ -177,7 +177,7 @@ private:
     // This should only call in Debugger Signal, and need to fix and remove
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
-    HashTrieMap<StringTableMutex, JSThread> stringTable_;
+    common::HashTrieMap<StringTableMutex, JSThread> stringTable_;
     EcmaStringTableCleaner *cleaner_;
 
     friend class SnapshotProcessor;
@@ -239,10 +239,10 @@ private:
         return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_relaxed) == 1U);
     }
 
-    class SweepWeakRefTask : public Task {
+    class SweepWeakRefTask : public common::Task {
     public:
         SweepWeakRefTask(IteratorPtr iter, EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor)
-            : Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor) {}
+            : common::Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor) {}
         ~SweepWeakRefTask() = default;
         
         bool Run(uint32_t threadIndex) override;

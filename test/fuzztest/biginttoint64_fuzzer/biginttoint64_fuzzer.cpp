@@ -25,7 +25,7 @@ namespace OHOS {
     void BigIntToInt64FuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::ERROR);
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         int64_t input = 0;
         size_t maxByteLen = 8;

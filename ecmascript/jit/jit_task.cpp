@@ -264,7 +264,7 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
         JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
         heapConstantTableAddr[i] = heapObj->GetRawData();
 #ifdef USE_CMC_GC
-        BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
+        common::BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
 #else
         Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
         Region *curMachineCodeObjRegion =

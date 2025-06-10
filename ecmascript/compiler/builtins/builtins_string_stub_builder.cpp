@@ -253,15 +253,15 @@ void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, Gat
         GateRef first = StringAt(glue, stringInfoGate, *pos);
         GateRef posVal = *pos;
         GateRef firstIsValid = LogicOrBuilder(env)
-            .Or(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)))
-            .Or(Int32UnsignedGreaterThan(first, Int32(base::utf_helper::DECODE_LEAD_HIGH)))
+            .Or(Int32UnsignedLessThan(first, Int32(common::utf_helper::DECODE_LEAD_LOW)))
+            .Or(Int32UnsignedGreaterThan(first, Int32(common::utf_helper::DECODE_LEAD_HIGH)))
             .Or(Int32Equal(Int32Add(posVal, Int32(1)), GetLengthFromString(thisValue)))
             .Done();
         BRANCH(firstIsValid, &returnFirst, &getNextChar);
         Bind(&getNextChar);
         GateRef second = StringAt(glue, stringInfoGate, Int32Add(*pos, Int32(1)));
-        GateRef secondIsValid = BitOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
-            Int32UnsignedGreaterThan(second, Int32(base::utf_helper::DECODE_TRAIL_HIGH)));
+        GateRef secondIsValid = BitOr(Int32UnsignedLessThan(second, Int32(common::utf_helper::DECODE_TRAIL_LOW)),
+            Int32UnsignedGreaterThan(second, Int32(common::utf_helper::DECODE_TRAIL_HIGH)));
         BRANCH(secondIsValid, &returnFirst, slowPath);
         Bind(&returnFirst);
         res->WriteVariable(IntToTaggedPtr(first));
@@ -1706,7 +1706,7 @@ GateRef BuiltinsStringStubBuilder::GetUtf16Data(GateRef stringData, GateRef inde
 
 GateRef BuiltinsStringStubBuilder::IsASCIICharacter(GateRef data)
 {
-    return Int32UnsignedLessThan(Int32Sub(data, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));
+    return Int32UnsignedLessThan(Int32Sub(data, Int32(1)), Int32(common::utf_helper::UTF8_1B_MAX));
 }
 
 GateRef BuiltinsStringStubBuilder::GetUtf8Data(GateRef stringData, GateRef index)

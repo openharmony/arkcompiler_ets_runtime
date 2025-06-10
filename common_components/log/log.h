@@ -16,6 +16,9 @@
 #ifndef COMMON_COMPONENTS_LOG_LOG_H
 #define COMMON_COMPONENTS_LOG_LOG_H
 
+#include <cstdint>
+#include <string>
+
 #include "common_components/log/log_base.h"
 
 #ifdef ENABLE_HILOG
@@ -45,7 +48,7 @@
     #define OHOS_HITRACE_COUNT(level, name, count)
 #endif
 
-namespace panda {
+namespace common {
 class PUBLIC_API Log {
 public:
     static void Initialize(const LogOptions &options);
@@ -199,18 +202,18 @@ private:
 #endif
 
 #if defined(ENABLE_HILOG)
-#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
-                                  panda::HiLog<LOG_##level, (component)>()
+#define ARK_LOG(level, component) common::Log::LogIsLoggable(Level::level, component) && \
+                                  common::HiLog<LOG_##level, (component)>()
 #elif defined(ENABLE_ANLOG)
-#define ARK_LOG(level, component) panda::AndroidLog<(Level::level)>()
+#define ARK_LOG(level, component) common::AndroidLog<(Level::level)>()
 #else
 #if defined(OHOS_UNIT_TEST)
 #define ARK_LOG(level, component) ((Level::level >= Level::INFO) ||                      \
-                                  panda::Log::LogIsLoggable(Level::level, component)) && \
-                                  panda::StdLog<(Level::level), (component)>()
+                                  common::Log::LogIsLoggable(Level::level, component)) && \
+                                  common::StdLog<(Level::level), (component)>()
 #else
-#define ARK_LOG(level, component) panda::Log::LogIsLoggable(Level::level, component) && \
-                                  panda::StdLog<(Level::level), (component)>()
+#define ARK_LOG(level, component) common::Log::LogIsLoggable(Level::level, component) && \
+                                  common::StdLog<(Level::level), (component)>()
 #endif
 #endif
 
@@ -224,6 +227,10 @@ private:
 
 #define CHECKF(cond) (UNLIKELY_CC(!(cond))) && LOG_COMMON(FATAL) << "Check failed: " << #cond
 #define LOGF_CHECK(cond) LOGF_IF(!(cond))
+
+#define DLOG(type, format...) (void)(0)
+#define VLOG(type, format...) (void)(0)
+#define COMMON_PHASE_TIMER(...) (void)(0)
 
 #ifndef NDEBUG
 #define ASSERT_LOGF(cond, msg) LOGF_IF(!(cond)) << (msg)
@@ -244,5 +251,8 @@ private:
         }                                   \
     } while (false)
 
-}  // namespace panda
+std::string Pretty(uint64_t number) noexcept;
+std::string PrettyOrderInfo(uint64_t number, const char* unit);
+std::string PrettyOrderMathNano(uint64_t number, const char* unit);
+}  // namespace common
 #endif  // COMMON_COMPONENTS_LOG_LOG_H

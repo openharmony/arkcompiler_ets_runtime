@@ -14,7 +14,7 @@
  */
 
 #include "jsvaluerefiscontainer_fuzzer.h"
-#include "ecmascript/base/utf_helper.h"
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
@@ -30,13 +30,13 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-using namespace panda::ecmascript::base::utf_helper;
+using namespace common::utf_helper;
 
 namespace OHOS {
 void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -61,7 +61,7 @@ void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
 void JSValueRefIsMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -75,7 +75,7 @@ void JSValueRefIsMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -104,7 +104,7 @@ void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
 void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -130,7 +130,7 @@ void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -155,7 +155,7 @@ void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
 void JSValueRefIsTreeSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(LOG_LEVEL::ERROR);
+    option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

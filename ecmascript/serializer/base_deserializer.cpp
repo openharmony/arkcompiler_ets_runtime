@@ -391,7 +391,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
 #ifdef USE_CMC_GC
         case SerializedObjectSpace::REGULAR_SPACE: {
             if (currentRegularObjectAddr_ + objSize >
-                    currentRegularRegionBeginAddr_ + SerializeUtils::GetRegionSize()) {
+                    currentRegularRegionBeginAddr_ + common::SerializeUtils::GetRegionSize()) {
                 ASSERT(regularRegionIndex_ < regionVector_.size());
                 currentRegularObjectAddr_ = regionVector_[regularRegionIndex_++];
                 currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
@@ -401,7 +401,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             break;
         }
         case SerializedObjectSpace::PIN_SPACE: {
-            if (currentPinObjectAddr_ + objSize > currentPinRegionBeginAddr_ + SerializeUtils::GetRegionSize()) {
+            if (currentPinObjectAddr_ + objSize >
+                    currentPinRegionBeginAddr_ + common::SerializeUtils::GetRegionSize()) {
                 ASSERT(pinRegionIndex_ < regionVector_.size());
                 currentPinObjectAddr_ = regionVector_[pinRegionIndex_++];
                 currentPinRegionBeginAddr_ = currentPinObjectAddr_;
@@ -412,7 +413,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::LARGE_SPACE: {
             // no gc for this allocate
-            res = HeapAllocator::AllocateLargeRegion(objSize);
+            res = common::HeapAllocator::AllocateLargeRegion(objSize);
             if (res == 0) {
                 DeserializeFatalOutOfMemory(objSize, false, false);
             }
@@ -641,8 +642,8 @@ void BaseDeserializer::AllocateToDifferentSpaces()
 #ifdef USE_CMC_GC
 void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 {
-    if (regularSpaceSize <= SerializeUtils::GetRegionSize()) {
-        currentRegularObjectAddr_ = HeapAllocator::AllocateNoGC(regularSpaceSize);
+    if (regularSpaceSize <= common::SerializeUtils::GetRegionSize()) {
+        currentRegularObjectAddr_ = common::HeapAllocator::AllocateNoGC(regularSpaceSize);
     } else {
         currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_,
                                                            RegionType::RegularRegion);
@@ -654,8 +655,8 @@ void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 }
 void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 {
-    if (pinSpaceSize <= SerializeUtils::GetRegionSize()) {
-        currentPinObjectAddr_ = HeapAllocator::AllocatePinNoGC(pinSpaceSize);
+    if (pinSpaceSize <= common::SerializeUtils::GetRegionSize()) {
+        currentPinObjectAddr_ = common::HeapAllocator::AllocatePinNoGC(pinSpaceSize);
     } else {
         currentPinObjectAddr_ = AllocateMultiCMCRegion(pinSpaceSize, pinRegionIndex_, RegionType::PinRegion);
     }
@@ -667,7 +668,7 @@ void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 
 uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType)
 {
-    size_t regionSize = SerializeUtils::GetRegionSize();
+    size_t regionSize = common::SerializeUtils::GetRegionSize();
     ASSERT(spaceObjSize > regionSize);
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = AlignUp(spaceObjSize, regionSize);
@@ -683,9 +684,9 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
     while (regionNum > 0) {
         uintptr_t regionAddr = 0U;
         if (regionType == RegionType::RegularRegion) {
-            regionAddr = HeapAllocator::AllocateRegion();
+            regionAddr = common::HeapAllocator::AllocateRegion();
         } else {
-            regionAddr = HeapAllocator::AllocatePinnedRegion();
+            regionAddr = common::HeapAllocator::AllocatePinnedRegion();
         }
         if (regionAddr == 0U) {
             LOG_ECMA(FATAL) << "Deserialize allocate multi cmc region fail";
