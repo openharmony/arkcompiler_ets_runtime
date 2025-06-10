@@ -839,6 +839,7 @@ void EcmaContext::IterateMegaIC(RootVisitor &v)
 
 void EcmaContext::Iterate(RootVisitor &v)
 {
+    OHOS_HITRACE("CMCGC::VisitRootEcmaContext");
     // visit global Constant
     globalConst_.Iterate(v);
 
@@ -887,6 +888,7 @@ void EcmaContext::Iterate(RootVisitor &v)
     IterateMegaIC(v);
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
+        OHOS_HITRACE("CMCGC::VisitRootHandleStorage");
         int32_t nid = currentHandleStorageIndex_;
         for (int32_t i = 0; i <= nid; ++i) {
             auto node = handleStorageNodes_.at(i);
