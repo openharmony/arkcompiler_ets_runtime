@@ -14,3 +14,6 @@ obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest
 
 #25886
 obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
+
+#26471
+obj/arkcompiler/ets_runtime/test/aottest/forin_enum_cache_chain/forin_enum_cache_chain/pgo
