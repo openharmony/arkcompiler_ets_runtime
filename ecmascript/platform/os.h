@@ -35,6 +35,7 @@ PUBLIC_API void BindMidCpuCore();
 PUBLIC_API void BindAllCpuCore();
 PUBLIC_API void SetSecurityLabel(const std::string& path);
 PUBLIC_API void InitializeMallocConfig();
+PUBLIC_API bool HasJitFortACL();
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
 bool CheckDiskSpace(const std::string& path, size_t requiredBytes);
 }  // namespace panda::ecmascript
