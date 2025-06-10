@@ -5859,6 +5859,7 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm, const Local<JSValueRe
     JSThread* thread = vm->GetJSThread();
     ecmascript::ThreadManagedScope scope(thread);
     if (!context->IsJsGlobalEnv(vm)) {
+        LOG_ECMA(WARN) << "Attempted to call GetGlobalObject on a non-JsGlobalEnv object.";
         return JSValueRef::Undefined(vm);
     }
     JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context));
