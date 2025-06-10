@@ -31,6 +31,24 @@
 #include <sstream>
 #include <unordered_set>
 
+/*
+ * Heap Verify:
+ * Checks heap invariants after each GC mark, copy and fix phase. During the check, the world is stopped.
+ * Enabled by default for debug mode. Controlled by gn option `ets_runtime_enable_heap_verify`.
+ *
+ * RB DFX:
+ * Force to use STW GC. Force to use read barrier out of GC.
+ * After GC is finished, set the lowerst bit(WEAK_TAG) of RefField that is not root or points to pinned objects.
+ * The read barrier is responsible to remove the WEAK_TAG for properly deferencing the object.
+ * Disabled by defualt. Controlled by gn-option `ets_runtime_enable_rb_dfx`.
+ *
+ * Example:
+ * standalone:
+ * python ark.py x64.release --gn-args="ets_runtime_enable_heap_verify=true ets_runtime_enable_rb_dfx=true"
+ * openharmony:
+ * ./build_system.sh --gn-args="ets_runtime_enable_heap_verify=true ets_runtime_enable_rb_dfx=true" ...
+ */
+
 namespace panda {
 
 void VisitRoots(const RefFieldVisitor& visitorFunc, bool isMark);
@@ -83,13 +101,13 @@ std::string GetObjectInfo(const BaseObject* obj)
         s << "Skip: Object is not in heap range" << std::endl;
     } else {
         auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
-        s << std::hex << "Type: " << (int) region->GetRegionType() << ", "
-          << "Start: " << region->GetRegionStart() << ", "
-          << "End: " << region->GetRegionEnd() << ", "
-          << "AllocPtr: " << region->GetRegionAllocPtr() << ", "
-          << "TraceLine: " << region->GetTraceLine() << ", "
-          << "CopyLine: " << region->GetCopyLine() << ", "
-          << "FixLine: " << region->GetFixLine() << std::endl;
+        s << std::hex << "Type: 0x" << (int) region->GetRegionType() << ", "
+          << "Start: 0x" << region->GetRegionStart() << ", "
+          << "End: 0x" << region->GetRegionEnd() << ", "
+          << "AllocPtr: 0x" << region->GetRegionAllocPtr() << ", "
+          << "TraceLine: 0x" << region->GetTraceLine() << ", "
+          << "CopyLine: 0x" << region->GetCopyLine() << ", "
+          << "FixLine: 0x" << region->GetFixLine() << std::endl;
     }
 
     return s.str();
@@ -154,20 +172,41 @@ void IsValidRef(const BaseObject* obj, const RefField<>& ref)
 
 class VerifyVisitor {
 public:
-    virtual void VerifyRef(const BaseObject* obj, RefField<>& ref)
+    void VerifyRef(const BaseObject* obj, RefField<>& ref)
     {
-        VerifyRef(obj, static_cast<const RefField<>&>(ref));
+        VerifyRefImpl(obj, ref);
+        count_++;
     }
 
-    virtual void VerifyRef(const BaseObject* obj, const RefField<>& ref)
+    void VerifyRef(const BaseObject* obj, const RefField<>& ref)
+    {
+        VerifyRefImpl(obj, ref);
+        count_++;
+    }
+
+    size_t VerifyRefCount() const
+    {
+        return count_;
+    }
+
+protected:
+    virtual void VerifyRefImpl(const BaseObject* obj, RefField<>& ref)
+    {
+        VerifyRefImpl(obj, static_cast<const RefField<>&>(ref));
+    }
+
+    virtual void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref)
     {
         UNREACHABLE();
     }
+
+private:
+    size_t count_ = 0;
 };
 
 class AfterMarkVisitor : public VerifyVisitor {
 public:
-    void VerifyRef(const BaseObject* obj, const RefField<>& ref) override
+    void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref) override
     {
         IsValidRef(obj, ref);
 
@@ -183,7 +222,7 @@ public:
 
 class AfterForwardVisitor : public VerifyVisitor {
 public:
-    void VerifyRef(const BaseObject* obj, const RefField<>& ref) override
+    void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref) override
     {
         // check objects in from-space, only alive objects are forwarded
         auto refObj = ref.GetTargetObject();
@@ -201,7 +240,7 @@ public:
 
 class AfterFixVisitor : public VerifyVisitor {
 public:
-    void VerifyRef(const BaseObject* obj, const RefField<>& ref) override
+    void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref) override
     {
         IsValidRef(obj, ref);
 
@@ -221,7 +260,7 @@ protected:
 
 class ReadBarrierSetter : public ReadBarrierVisitor {
 public:
-    void VerifyRef(const BaseObject* obj, RefField<>& ref) override
+    void VerifyRefImpl(const BaseObject* obj, RefField<>& ref) override
     {
         if (obj == nullptr) {
             // skip roots
@@ -245,7 +284,7 @@ public:
 
 class ReadBarrierUnsetter : public ReadBarrierVisitor {
 public:
-    void VerifyRef(const BaseObject* obj, RefField<>& ref) override
+    void VerifyRefImpl(const BaseObject* obj, RefField<>& ref) override
     {
         auto newRefValue = ref.GetFieldValue() & (~TAG_RB_DFX);
         ref.SetFieldValue(newRefValue);
@@ -299,7 +338,6 @@ public:
             }
 
             visitor.VerifyRef(obj, field);
-            count_++;
 
             BaseObject* refObj = nullptr;
             if (forRBDFX) {
@@ -324,11 +362,6 @@ public:
         }
     }
 
-    int IterCount()
-    {
-        return count_;
-    }
-
 private:
     void IterateRegionList(RegionList& list, VerifyVisitor& visitor)
     {
@@ -345,7 +378,6 @@ private:
     void Trace(MarkStack<BaseObject*>& markStack) {}
 
     RegionSpace& space_;
-    int count_ = 0;
 };
 
 void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
@@ -357,7 +389,7 @@ void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
     auto visitor = AfterMarkVisitor();
     iter.IterateRetraced(visitor);
 
-    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterMark verified object number: " << iter.IterCount();
+    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterMark verified ref count: " << visitor.VerifyRefCount();
 }
 
 void WVerify::VerifyAfterMark(WCollector& collector)
@@ -383,7 +415,7 @@ void WVerify::VerifyAfterForwardInternal(RegionSpace& space)
     auto visitor = AfterForwardVisitor();
     iter.IterateFromSpace(visitor);
 
-    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterForward verified object number: " << iter.IterCount();
+    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterForward verified ref count: " << visitor.VerifyRefCount();
 }
 
 void WVerify::VerifyAfterForward(WCollector& collector)
@@ -409,7 +441,7 @@ void WVerify::VerifyAfterFixInternal(RegionSpace& space)
     auto visitor = AfterFixVisitor();
     iter.IterateRetraced(visitor);
 
-    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterFix verified object number: " << iter.IterCount();
+    LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterFix verified ref count: " << visitor.VerifyRefCount();
 }
 
 void WVerify::VerifyAfterFix(WCollector& collector)
