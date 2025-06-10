@@ -14,3 +14,6 @@ regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 
 # Issue #19479
 regresstest/ark-regress/mjsunit/es6/array-concat-spreadable-function.js
+
+# Issue #20325
+regresstest/ark-regress/mjsunit/regress/regress-crbug-1263994.js
