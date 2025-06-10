@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -479,6 +479,7 @@ public:
     // This method must be called before Global is released.
     void FreeGlobalHandleAddr();
     void FreeXRefGlobalHandleAddr();
+    void MarkFromObject(std::function<void(uintptr_t)> &visitor);
     void MarkFromObject();
     bool IsObjectAlive() const;
     bool IsValidHeapObject() const;
@@ -1431,6 +1432,9 @@ private:
     uint16_t oldThreadState_ {0};
     uint32_t isEnableCMCGC_ {0};
     uint32_t hasSwitchState_ {0};
+    // This is a temporary impl to adapt interop to cmc, because some interop call napi
+    // without transfering to NATIVE
+    [[maybe_unused]] bool extraCoroutineSwitchedForInterop_ {false};
 };
 
 /**
@@ -1945,6 +1949,7 @@ private:
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+    static void MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor);
     static void MarkFromObject(const EcmaVM *vm, uintptr_t addr);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 

@@ -220,6 +220,10 @@ void BaseRuntime::RequestGC(GcType type)
             HeapManager::RequestGC(GC_REASON_APPSPAWN, false);
             break;
         }
+        case GcType::FULL_WITH_XREF: {
+            HeapManager::RequestGC(GC_REASON_XREF, false);
+            break;
+        }
     }
 }
 

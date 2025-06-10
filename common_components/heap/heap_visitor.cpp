@@ -18,6 +18,10 @@
 #include "common_components/base_runtime/hooks.h"
 #include "common_components/mutator/mutator.h"
 namespace common {
+UnmarkAllXRefsHookFunc g_unmarkAllXRefsHook = nullptr;
+SweepUnmarkedXRefsHookFunc g_sweepUnmarkedXRefsHook = nullptr;
+AddXRefToStaticRootsHookFunc g_addXRefToStaticRootsHook = nullptr;
+RemoveXRefFromStaticRootsHookFunc g_removeXRefFromStaticRootsHook = nullptr;
 
 VisitStaticRootsHookFunc g_visitStaticRootsHook = nullptr;
 UpdateStaticRootsHookFunc g_updateStaticRootsHook = nullptr;
@@ -106,5 +110,47 @@ void VisitWeakMutatorRoot(const WeakRefFieldVisitor &visitor, Mutator &mutator)
     if (mutator.GetEcmaVMPtr()) {
         VisitDynamicWeakThreadRoot(visitor, mutator.GetEcmaVMPtr());
     }
+}
+
+void RegisterUnmarkAllXRefsHook(UnmarkAllXRefsHookFunc func)
+{
+    g_unmarkAllXRefsHook = func;
+}
+
+void RegisterSweepUnmarkedXRefsHook(SweepUnmarkedXRefsHookFunc func)
+{
+    g_sweepUnmarkedXRefsHook = func;
+}
+
+void RegisterAddXRefToStaticRootsHook(AddXRefToStaticRootsHookFunc func)
+{
+    g_addXRefToStaticRootsHook = func;
+}
+
+void RegisterRemoveXRefFromStaticRootsHook(RemoveXRefFromStaticRootsHookFunc func)
+{
+    g_removeXRefFromStaticRootsHook = func;
+}
+
+void UnmarkAllXRefs()
+{
+    g_unmarkAllXRefsHook();
+}
+
+void SweepUnmarkedXRefs()
+{
+    g_sweepUnmarkedXRefsHook();
+}
+
+void AddXRefToRoots()
+{
+    AddXRefToDynamicRoots();
+    g_addXRefToStaticRootsHook();
+}
+
+void RemoveXRefFromRoots()
+{
+    RemoveXRefFromDynamicRoots();
+    g_removeXRefFromStaticRootsHook();
 }
 }  // namespace common

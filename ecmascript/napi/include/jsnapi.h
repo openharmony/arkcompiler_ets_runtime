@@ -496,6 +496,15 @@ void Global<T>::FreeXRefGlobalHandleAddr()
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     template<typename T>
+    void Global<T>::MarkFromObject(std::function<void(uintptr_t)> &visitor)
+    {
+        if (address_ == 0) {
+            return;
+        }
+        JSNApi::MarkFromObject(vm_, address_, visitor);
+    }
+
+    template<typename T>
     void Global<T>::MarkFromObject()
     {
         if (address_ == 0) {
