@@ -2774,7 +2774,7 @@ void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
 LiteCGType *LiteCGIRBuilder::GetExperimentalDeoptTy()
 {
     std::vector<LiteCGType *> paramTys = {lmirBuilder_->i64Type, lmirBuilder_->i64RefType, lmirBuilder_->i64RefType};
-    LiteCGType *functionType = lmirBuilder_->CreateFuncType(paramTys, lmirBuilder_->i64RefType, false);
+    LiteCGType *functionType = lmirBuilder_->CreateFuncType(paramTys, lmirBuilder_->voidType, false);
     return functionType;
 }
 
@@ -2795,12 +2795,9 @@ void LiteCGIRBuilder::SaveFrameTypeOnFrame(BB &bb, FrameType frameType)
 void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
 {
     BB &bb = CreateBB();
-    auto reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
-    lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
-    SaveFrameTypeOnFrame(bb, FrameType::OPTIMIZED_FRAME);
     Function &func = lmirBuilder_->GetCurFunction();
+    func.SetIsDeoptFunc();
     lmirModule_->SetFunction(LMIRModule::kDeoptEntryOffset, funcName, false);
-
     Expr glue = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 0));          // 0: glue
     Expr deoptType = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 1));     // 1: deopt_type
     Expr maybeAcc = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 2));      // 2: maybe_acc
@@ -2818,12 +2815,9 @@ void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
     PregIdx funcPregIdx = lmirBuilder_->CreatePreg(funcTypePtrPtr);
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(callee, funcPregIdx));
 
-    LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(returnType);
     maple::litecg::Args params = {glue, deoptType, maybeAcc};
-    Stmt &callNode = lmirBuilder_->ICall(lmirBuilder_->Regread(funcPregIdx), params, pregIdx);
+    Stmt &callNode = lmirBuilder_->TailICall(lmirBuilder_->Regread(funcPregIdx), params);
     lmirBuilder_->AppendStmt(bb, callNode);
-    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Return(lmirBuilder_->Regread(pregIdx)));
     lmirBuilder_->AppendBB(bb);
 }
 
@@ -3054,12 +3048,9 @@ LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef ga
     GetDeoptBundleInfo(bb, deoptFrameState, deoptBundleInfo);
     Function *callee = GetExperimentalDeopt();
     LiteCGType *funcType = GetExperimentalDeoptTy();
-    LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);
-    PregIdx returnPregIdx = lmirBuilder_->CreatePreg(returnType);
-    Stmt &callNode = lmirBuilder_->Call(*callee, params, returnPregIdx);
+    Stmt &callNode = lmirBuilder_->DeoptCall(*callee, params);
     lmirBuilder_->SetCallStmtDeoptBundleInfo(callNode, deoptBundleInfo);
     lmirBuilder_->AppendStmt(bb, callNode);
-    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Return(lmirBuilder_->Regread(returnPregIdx)));
     lmirBuilder_->AppendToLast(bb);
 
     deoptFrameState2BB_.emplace(deoptFrameState, DeoptBBInfo(&bb, deoptTypePreg));

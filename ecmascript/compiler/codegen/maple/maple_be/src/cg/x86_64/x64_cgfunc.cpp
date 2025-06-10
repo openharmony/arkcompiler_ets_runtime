@@ -65,6 +65,14 @@ void X64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     CHECK_FATAL(false, "NIY");
 }
+void X64CGFunc::SelectDeoptCall(CallNode &callNode)
+{
+    CHECK_FATAL(false, "NIY");
+}
+void X64CGFunc::SelectTailICall(IcallNode &icallNode)
+{
+    CHECK_FATAL(false, "NIY");
+}
 Operand *X64CGFunc::SelectCclz(IntrinsicopNode &intrinopNode)
 {
     CHECK_FATAL(false, "NIY");

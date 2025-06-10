@@ -184,6 +184,8 @@ public:
     virtual void SelectCall(CallNode &callNode) = 0;
     virtual void SelectIcall(IcallNode &icallNode) = 0;
     virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectDeoptCall(CallNode &callNode) = 0;
+    virtual void SelectTailICall(IcallNode &icallNode) = 0;
     virtual Operand *SelectCclz(IntrinsicopNode &intrinsicopNode) = 0;
     virtual RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) = 0;
     virtual RegOperand *SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,

@@ -196,6 +196,7 @@ public:
     IassignNode *CreateStmtIassign(const MIRType &type, FieldID fieldID, BaseNode *addr, BaseNode *src);
     CallNode *CreateStmtCall(PUIdx puIdx, const MapleVector<BaseNode *> &args, Opcode opcode = OP_call);
 
+    IcallNode *CreateStmtTailIcall(const MapleVector<BaseNode *> &args);
     IcallNode *CreateStmtIcall(const MapleVector<BaseNode *> &args);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, const MIRSymbol &ret);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, PregIdx pregIdx);

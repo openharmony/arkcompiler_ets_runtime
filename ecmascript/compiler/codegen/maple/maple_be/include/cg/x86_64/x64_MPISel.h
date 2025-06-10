@@ -33,6 +33,8 @@ public:
     Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const override;
     void SelectGoto(GotoNode &stmt) override;
     void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
+    void SelectDeoptCall(CallNode &callNode) override;
+    void SelectTailICall(IcallNode &icallNode) override;
     void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) override;
     void SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &opnd0) override;
     Operand *SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;

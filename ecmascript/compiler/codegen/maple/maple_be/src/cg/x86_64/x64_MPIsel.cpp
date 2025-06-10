@@ -117,7 +117,8 @@ void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32
     fpNum = 0;
     /* for IcallNode, the 0th operand is the function pointer */
     size_t argBegin = 0;
-    if (naryNode.GetOpCode() == OP_icall || naryNode.GetOpCode() == OP_icallproto) {
+    if (naryNode.GetOpCode() == OP_icall || naryNode.GetOpCode() == OP_icallproto ||
+        naryNode.GetOpCode() == OP_tailicall) {
         ++argBegin;
     }
 
@@ -441,6 +442,50 @@ void X64MPIsel::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
     }
 
     CHECK_FATAL(false, "Intrinsic %d: %s not implemented by the X64 CG.", intrinsic, GetIntrinsicName(intrinsic));
+}
+
+void X64MPIsel::SelectDeoptCall(CallNode &callNode)
+{
+    MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
+    MIRSymbol *fsym = GlobalTables::GetGsymTable().GetSymbolFromStidx(fn->GetStIdx().Idx(), false);
+    Operand &targetOpnd = cgFunc->GetOpndBuilder()->CreateFuncNameOpnd(*fsym);
+
+    ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
+    uint32 fpNum = 0;
+    SelectParmList(callNode, paramOpnds, fpNum);
+    /* x64abi： rax = with variable arguments passes information about the number of vector registers used */
+    if (fn->IsVarargs()) {
+        ImmOperand &fpNumImm = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, fpNum);
+        RegOperand &raxOpnd = cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, k64BitSize, kRegTyInt);
+        SelectCopy(raxOpnd, fpNumImm, PTY_i64);
+    }
+    ListOperand &retOpnds = cgFunc->GetOpndBuilder()->CreateList();
+    Insn &callInsn = AppendCall(x64::MOP_callq_l, targetOpnd, paramOpnds, retOpnds);
+    const auto &deoptBundleInfo = callNode.GetDeoptBundleInfo();
+    for (const auto &elem : deoptBundleInfo) {
+        auto valueKind = elem.second.GetMapleValueKind();
+        if (valueKind == MapleValue::kPregKind) {
+            auto *opnd = cgFunc->GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
+        } else if (valueKind == MapleValue::kConstKind) {
+            auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), PTY_i32);
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
+        } else {
+            CHECK_FATAL(false, "not supported currently");
+        }
+    }
+    cgFunc->AppendStackMapInsn(callInsn);
+}
+
+void X64MPIsel::SelectTailICall(IcallNode &icallNode)
+{
+    Operand *opnd0 = HandleExpr(icallNode, *icallNode.GetNopndAt(0));
+    RegOperand &targetOpnd = SelectCopy2Reg(*opnd0, icallNode.Opnd(0)->GetPrimType());
+    ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
+    uint32 fpNum = 0;
+    SelectParmList(icallNode, paramOpnds, fpNum);
+    Insn &callInsn = cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_tail_callq_r, targetOpnd, paramOpnds);
+    cgFunc->GetCurBB()->AppendInsn(callInsn);
 }
 
 void X64MPIsel::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd)

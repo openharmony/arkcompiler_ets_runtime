@@ -950,6 +950,9 @@ void AArch64GenProEpilog::Run()
 {
     CHECK_FATAL(cgFunc.GetFunction().GetBody()->GetFirst()->GetOpCode() == OP_label,
                 "The first statement should be a label");
+    if (cgFunc.GetFunction().IsDeoptFunc()) {   // deopt function does not need prologue/epilogue
+        return;
+    }
     // update exitBB
     if (cgFunc.IsExitBBsVecEmpty()) {
         cgFunc.PushBackExitBBsVec(*cgFunc.GetLastBB()->GetPrev());

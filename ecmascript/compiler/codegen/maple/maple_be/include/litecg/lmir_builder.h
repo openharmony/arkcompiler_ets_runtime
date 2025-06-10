@@ -362,7 +362,9 @@ public:
      */
 
     // when result is nullptr, don't need the result (or no result)
-    Stmt &Call(Function &func, Args &args, PregIdx pregIdx);
+    Stmt &DeoptCall(Function &func, Args &args);
+
+    Stmt &TailICall(Expr funcAddr, Args &args);
 
     Stmt &PureCall(Expr funcAddr, Args &args, Var *result = nullptr);
 

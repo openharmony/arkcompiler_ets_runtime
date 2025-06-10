@@ -51,6 +51,8 @@ public:
     void SelectCall(CallNode &callNode) override;
     void SelectIcall(IcallNode &icallNode) override;
     void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
+    void SelectDeoptCall(CallNode &callNode) override;
+    void SelectTailICall(IcallNode &icallNode) override;
     Operand *SelectCclz(IntrinsicopNode &intrinopNode) override;
     RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) override;
     RegOperand *SelectGetHeapConstantTable(

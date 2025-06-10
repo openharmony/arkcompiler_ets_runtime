@@ -1030,9 +1030,9 @@ DEFINE_MOP(MOP_compare_and_swapL, {&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDe
 DEFINE_MOP(MOP_string_indexof, {&OpndDesc::Reg32ID,&OpndDesc::Reg64IDS,&OpndDesc::Reg32IDS,&OpndDesc::Reg64IDS,&OpndDesc::Reg32IDS,&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg64ID,&OpndDesc::Reg32ID,&OpndDesc::AddressName,&OpndDesc::AddressName,&OpndDesc::AddressName,&OpndDesc::AddressName,&OpndDesc::AddressName,&OpndDesc::AddressName,&OpndDesc::AddressName},HASLOOP|CANTHROW|SPINTRINSIC,kLtBranch,"intrinsic_string_indexof","0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17",36)
 
 /* MOP_tail_call_opt_xbl -- branch without link (call); this is a special definition */
-DEFINE_MOP(MOP_tail_call_opt_xbl,  {&OpndDesc::AddressName,&OpndDesc::ListSrc},CANTHROW|ISTAILCALL,kLtBranch,"b","0", 1, kBranchImm,0x14000000)
+DEFINE_MOP(MOP_tail_call_opt_xbl,  {&OpndDesc::AddressName,&OpndDesc::ListSrc},CANTHROW|ISTAILCALL|ISCALL,kLtBranch,"b","0", 1, kBranchImm,0x14000000)
 /* MOP_tail_call_opt_xblr -- branch without link (call) to register; this is a special definition */
-DEFINE_MOP(MOP_tail_call_opt_xblr, {&OpndDesc::Reg64IS,&OpndDesc::ListSrc},CANTHROW|ISTAILCALL,kLtBranch,"br","0", 1, kBranchReg, 0xd61f0000)
+DEFINE_MOP(MOP_tail_call_opt_xblr, {&OpndDesc::Reg64IS,&OpndDesc::ListSrc},CANTHROW|ISTAILCALL|ISCALL,kLtBranch,"br","0", 1, kBranchReg, 0xd61f0000)
 
 /* MOP_pseudo_param_def_x, */
 DEFINE_MOP(MOP_pseudo_param_def_x, {&OpndDesc::Reg64ID},0,kLtUndef,"//MOP_pseudo_param_def","0", 0)

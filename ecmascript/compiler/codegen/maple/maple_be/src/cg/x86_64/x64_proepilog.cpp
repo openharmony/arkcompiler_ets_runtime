@@ -155,6 +155,9 @@ void X64GenProEpilog::GenerateEpilog(BB &bb)
 
 void X64GenProEpilog::Run()
 {
+    if (cgFunc.GetFunction().IsDeoptFunc()) {   // deopt function does not need prologue/epilogue
+        return;
+    }
     GenerateProlog(*(cgFunc.GetFirstBB()));
     GenerateEpilog(*(cgFunc.GetLastBB()));
 }
