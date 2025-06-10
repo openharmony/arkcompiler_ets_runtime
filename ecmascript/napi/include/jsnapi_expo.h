@@ -1403,7 +1403,10 @@ private:
     JSThread *thread_ {nullptr};
     uint16_t oldThreadState_ {0};
     uint32_t isEnableCMCGC_ {0};
-    uint32_t hasSwitchState_ {0};
+    uint32_t hasSwitchState_{0};
+    // This is a temporary impl to adapt interop to cmc, because some interop
+    // call napi without transfering to NATIVE
+    [[maybe_unused]] bool extraCoroutineSwitchedForInterop_{false};
 };
 
 /**

@@ -17,6 +17,9 @@
 #define ECMASCRIPT_RUNTIME_H
 
 #include "common_interfaces/base_runtime.h"
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/cross_vm/cross_vm_operator.h"
+#endif
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_runtime_options.h"
@@ -308,6 +311,17 @@ public:
     {
         isHybridVm_ = isHybridVm;
     }
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    void SetSTSVMInterface(arkplatform::STSVMInterface *stsIface)
+    {
+        stsVMInterface_ = stsIface;
+    }
+
+    arkplatform::STSVMInterface *GetSTSVMInterface() const
+    {
+        return stsVMInterface_;
+    }
+#endif
 
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
@@ -383,6 +397,9 @@ private:
     static Mutex *vmCreationLock_;
     static Runtime *instance_;
     static common::BaseRuntime *baseInstance_;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    arkplatform::STSVMInterface *stsVMInterface_ {nullptr};
+#endif
 
     // for string cache
     JSTaggedValue *externalRegisteredStringTable_ {nullptr};

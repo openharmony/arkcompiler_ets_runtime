@@ -401,6 +401,7 @@ config("ark_jsruntime_common_config") {
     defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
   }
   if (ets_runtime_enable_cmc_gc) {
+    defines += [ "ARK_HYBRID" ]
     defines += [ "USE_CMC_GC" ]
     if (ets_runtime_enable_cmc_rb_dfx) {
       defines += [ "ENABLE_CMC_RB_DFX" ]

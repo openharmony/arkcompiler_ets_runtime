@@ -21,6 +21,7 @@
 #include "common_components/heap/heap.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -407,6 +408,22 @@ bool IsMachineCodeObject(uintptr_t objPtr)
 {
     JSTaggedValue value(static_cast<TaggedType>(objPtr));
     return value.IsMachineCodeObject();
+}
+
+void AddXRefToDynamicRoots()
+{
+    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(ecmascript::NodeKind::NORMAL_NODE);
+    });
+}
+
+void RemoveXRefFromDynamicRoots()
+{
+    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(ecmascript::NodeKind::UNIFIED_NODE);
+    });
 }
 
 } // namespace panda

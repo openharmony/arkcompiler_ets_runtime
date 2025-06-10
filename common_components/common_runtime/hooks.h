@@ -44,6 +44,9 @@ PUBLIC_API void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void 
 PUBLIC_API void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm);
 PUBLIC_API void VisitDynamicThreadPreforwardRoot(const RefFieldVisitor &visitorFunc, void *vm);
 
+PUBLIC_API void AddXRefToDynamicRoots();
+PUBLIC_API void RemoveXRefFromDynamicRoots();
+
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);
 
