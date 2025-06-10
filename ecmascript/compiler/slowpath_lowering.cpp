@@ -901,7 +901,14 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate)
         }
     }
     ASSERT(numVreg > 0);
-    GateRef lexicalEnvGate = acc_.GetValueIn(saveRegister, numVreg - 1);
+    GateRef savedLexicalEnvGate = acc_.GetValueIn(saveRegister, numVreg - 1);
+    // If the lexical env saved in aot is hole, then use the lexical env on the function to avoid using hole as the
+    // lexical env when re-entering the interpreter.
+    GateRef lexicalEnvGate =
+        savedLexicalEnvGate == hole
+            ? builder_.Load(VariableType::JS_ANY(), glue_, argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC),
+                            builder_.IntPtr(JSFunction::LEXICAL_ENV_OFFSET))
+            : savedLexicalEnvGate;
     acc_.DeleteGate(saveRegister);
 
     // setRegsArrays
