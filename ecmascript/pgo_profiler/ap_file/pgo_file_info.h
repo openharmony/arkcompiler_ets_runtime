@@ -117,7 +117,7 @@ public:
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 15};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 16};
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
