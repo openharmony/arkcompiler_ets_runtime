@@ -168,6 +168,7 @@ private:
         GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
     void AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit);
+    void AllocateInYoungPrologueImpl(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInYoung(Variable *result, Label *exit, GateRef hclass);
     void AllocateInYoung(Variable *result, Label *error, Label *noError, GateRef hclass);
     void AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit);

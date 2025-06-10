@@ -1102,6 +1102,9 @@ public:
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  base::AlignedPointer,
+#ifdef USE_CMC_GC
+                                                 base::AlignedPointer,
+#endif
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1154,6 +1157,7 @@ public:
             BcStubEntriesIndex = 0,
 #ifdef USE_CMC_GC
             ThreadHolderIndex,
+            AllocBufferIndex,
 #else
             StateAndFlagsIndex,
 #endif
@@ -1213,6 +1217,11 @@ public:
         static size_t GetThreadHolderOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
+        }
+
+        static size_t GetAllocBufferOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::AllocBufferIndex)>(isArch32);
         }
 #else
         static size_t GetStateAndFlagsOffset(bool isArch32)
@@ -1482,6 +1491,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_ {};
 #ifdef USE_CMC_GC
         alignas(EAS) uintptr_t threadHolder_ {0};
+        alignas(EAS) uintptr_t allocBuffer_ {0};
 #else
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
 #endif
@@ -1685,6 +1695,11 @@ public:
     void Visit(CommonRootVisitor visitor)
     {
         visitor(nullptr);
+    }
+
+    void SetAllocBuffer(void* allocBuffer)
+    {
+        glueData_.allocBuffer_ = reinterpret_cast<uintptr_t>(allocBuffer);
     }
 #endif
 
