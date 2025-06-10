@@ -57,6 +57,8 @@ private:
     std::optional<size_t> oldData_;
 };
 
+[[maybe_unused]] void ForceResetAssertData();
+
 using DisallowGarbageCollection = AssertScopeT<AssertType::GARBAGE_COLLECTION_ASSERT, false, IS_ALLOW_CHECK>;
 using AllowGarbageCollection = AssertScopeT<AssertType::GARBAGE_COLLECTION_ASSERT, true, IS_ALLOW_CHECK>;
 using DisAllowHeapAlloc = AssertScopeT<AssertType::HEAP_ALLOC_ASSERT, false, IS_ALLOW_CHECK>;

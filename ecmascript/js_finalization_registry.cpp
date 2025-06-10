@@ -94,9 +94,9 @@ bool JSFinalizationRegistry::Unregister(JSThread *thread, JSHandle<JSTaggedValue
 
 void JSFinalizationRegistry::CleanFinRegLists(JSThread *thread, JSHandle<JSFinalizationRegistry> obj)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    EcmaVM* vm = thread->GetEcmaVM();
     if (obj->GetPrev().IsNull() && obj->GetNext().IsNull()) {
-        env->SetFinRegLists(thread, JSTaggedValue::Undefined());
+        vm->SetFinRegLists(JSTaggedValue::Hole());
         return;
     }
     if (!obj->GetPrev().IsNull()) {
@@ -107,7 +107,7 @@ void JSFinalizationRegistry::CleanFinRegLists(JSThread *thread, JSHandle<JSFinal
         JSHandle<JSFinalizationRegistry> next(thread, obj->GetNext());
         next->SetPrev(thread, obj->GetPrev());
     } else {
-        env->SetFinRegLists(thread, obj->GetPrev());
+        vm->SetFinRegLists(obj->GetPrev());
     }
     obj->SetPrev(thread, JSTaggedValue::Null());
     obj->SetNext(thread, JSTaggedValue::Null());
@@ -120,14 +120,10 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CheckAndCallScope scope(thread);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> maybeEnv(env);
-    if (maybeEnv->IsHole()) {
-        return;
-    }
-    JSHandle<JSTaggedValue> prev = env->GetFinRegLists();
+    EcmaVM* vm = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> prev(thread, vm->GetFinRegLists());
 
-    if (prev->IsUndefined()) {
+    if (prev->IsHole()) {
         return;
     }
     JSMutableHandle<JSTaggedValue> current(thread, prev.GetTaggedValue());
@@ -229,9 +225,9 @@ void JSFinalizationRegistry::AddFinRegLists(JSThread *thread, JSHandle<JSFinaliz
     if (!next->GetPrev().IsNull() || !next->GetNext().IsNull()) {
         return;
     }
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> lists = env->GetFinRegLists();
-    if (!lists->IsUndefined()) {
+    EcmaVM* vm = thread->GetEcmaVM();
+    JSHandle<JSTaggedValue> lists(thread, vm->GetFinRegLists());
+    if (!lists->IsHole()) {
         JSHandle<JSFinalizationRegistry> prev(lists);
         // Prevent the same object from being connected end to end,
         // which should not happen and will lead to an infinite loop
@@ -241,6 +237,6 @@ void JSFinalizationRegistry::AddFinRegLists(JSThread *thread, JSHandle<JSFinaliz
         prev->SetNext(thread, next);
         next->SetPrev(thread, prev);
     }
-    env->SetFinRegLists(thread, next);
+    vm->SetFinRegLists(next.GetTaggedValue());
 }
 } // namespace

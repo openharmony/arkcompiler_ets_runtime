@@ -25,16 +25,47 @@ namespace panda::test {
 class EcmaVMTest : public BaseTestWithOutScope {
 };
 
-static sigjmp_buf g_env;
-static bool g_abortFlag = false;
+static thread_local sigjmp_buf g_env;
+static thread_local bool g_abortFlag = false;
+static std::mutex g_signalMutex;
+
+static void ProcessHandleAllocAbort(int sig)
+{
+    ForceResetAssertData();
+    g_abortFlag = true;
+    siglongjmp(g_env, sig);
+}
+
+static int RegisterSignal(struct sigaction* oldAct = nullptr)
+{
+    std::lock_guard<std::mutex> lock(g_signalMutex);
+    
+    struct sigaction act;
+    act.sa_handler = ProcessHandleAllocAbort;
+    sigemptyset(&act.sa_mask);
+    sigaddset(&act.sa_mask, SIGABRT);
+    act.sa_flags = 0;
+    
+    return sigaction(SIGABRT, &act, oldAct);
+}
+
+static void RestoreSignal(const struct sigaction* oldAct)
+{
+    std::lock_guard<std::mutex> lock(g_signalMutex);
+    sigaction(SIGABRT, oldAct, nullptr);
+}
+
+static void ResetAbortFlag()
+{
+    g_abortFlag = false;
+}
+
 class EcmaVmIterator : public RootVisitor {
 public:
     EcmaVmIterator() = default;
     ~EcmaVmIterator() = default;
 
-    void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override
-    {
-    }
+    void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
 
     void VisitRangeRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot start,
         [[maybe_unused]] ObjectSlot end) override
@@ -43,30 +74,7 @@ public:
     }
 
     void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override
-    {
-    }
-
-    static void ProcessHandleAlocAbort(int sig)
-    {
-        g_abortFlag = true;
-        siglongjmp(g_env, sig);
-    }
-
-    static int RegisterSignal()
-    {
-        struct sigaction act;
-        act.sa_handler = ProcessHandleAlocAbort;
-        sigemptyset(&act.sa_mask);
-        sigaddset(&act.sa_mask, SIGQUIT);
-        act.sa_flags = SA_RESETHAND;
-        return sigaction(SIGABRT, &act, nullptr);
-    }
-
-    static void ResetAbortFlag()
-    {
-        g_abortFlag = false;
-    }
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
 };
 
 /*
@@ -179,24 +187,35 @@ HWTEST_F_L0(EcmaVMTest, TestHandleAlocate)
     // RESOLVING_FUNCTIONS_RECORD
     factory->NewResolvingFunctionsRecord();
 
-    ASSERT_TRUE(EcmaVmIterator::RegisterSignal() != -1);
-    EcmaVmIterator ecmaVmIterator;
-    auto ret = sigsetjmp(g_env, 1);
-    if (ret != SIGABRT) {
-        ecmaVm->Iterate(ecmaVmIterator, VMRootVisitType::HEAP_SNAPSHOT);
-    } else {
-        EXPECT_TRUE(g_abortFlag);
+    struct sigaction oldAct;
+    ASSERT_TRUE(RegisterSignal(&oldAct) != -1);
+    
+    {
+        EcmaVmIterator ecmaVmIterator;
+        auto ret = sigsetjmp(g_env, 1);
+        if (ret != SIGABRT) {
+            ecmaVm->Iterate(ecmaVmIterator, VMRootVisitType::HEAP_SNAPSHOT);
+        } else {
+            EXPECT_TRUE(g_abortFlag);
+        }
     }
 
-    ASSERT_TRUE(EcmaVmIterator::RegisterSignal() != -1);
-    EcmaVmIterator::ResetAbortFlag();
-    ret = sigsetjmp(g_env, 1);
-    if (ret != SIGABRT) {
-        ecmaVm->IterateHandle(ecmaVmIterator);
-    } else {
-        EXPECT_TRUE(g_abortFlag);
+    RestoreSignal(&oldAct);
+    ResetAbortFlag();
+    
+    ASSERT_TRUE(RegisterSignal(&oldAct) != -1);
+    {
+        EcmaVmIterator ecmaVmIterator;
+        auto ret = sigsetjmp(g_env, 1);
+        if (ret != SIGABRT) {
+            ecmaVm->IterateHandle(ecmaVmIterator);
+        } else {
+            EXPECT_TRUE(g_abortFlag);
+        }
     }
-
+    
+    RestoreSignal(&oldAct);
+    ResetAbortFlag();
     JSNApi::DestroyJSVM(ecmaVm);
 }
 }  // namespace panda::ecmascript

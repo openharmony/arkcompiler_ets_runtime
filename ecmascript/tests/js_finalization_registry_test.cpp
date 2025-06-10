@@ -97,7 +97,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_001)
 
     JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
     JSHandle<JSTaggedValue> noUnregister(thread, finaRegObj->GetNoUnregister());
-    JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
+    JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
     EXPECT_EQ(finRegLists.GetTaggedValue().GetRawData(),
         JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue().GetRawData());
     EXPECT_EQ(expectNoUnregister.GetTaggedValue().GetRawData(), noUnregister.GetTaggedValue().GetRawData());
@@ -136,7 +136,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_002)
     JSHandle<JSTaggedValue> maybeUnregister(thread, finaRegObj->GetMaybeUnregister());
     EXPECT_EQ(expectMaybeUnregister.GetTaggedValue().GetRawData(), maybeUnregister.GetTaggedValue().GetRawData());
 
-    JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
+    JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
     EXPECT_EQ(finRegLists.GetTaggedValue().GetRawData(),
         JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue().GetRawData());
     EXPECT_EQ(testValue, 0);
@@ -170,7 +170,7 @@ static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister =
             noUnregister = CellRecordVector::Append(thread, noUnregister, cell);
             finaRegObj->SetNoUnregister(thread, noUnregister);
             JSFinalizationRegistry::AddFinRegLists(thread, finaRegObj);
-            JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
+            JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
             EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
         } else {
             JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
@@ -283,8 +283,8 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CheckAndCall)
         JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
         EXPECT_EQ(testValue, 0);
     }
-    finRegLists = env->GetFinRegLists();
-    EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
+    JSHandle<JSTaggedValue> finRegLists1(thread, vm->GetFinRegLists());
+    EXPECT_EQ(finRegLists1.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
@@ -294,8 +294,8 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CheckAndCall)
     // If all objects registered in the current JSFinalizationRegistry are garbage collected,
     // clear the JSFinalizationRegistry from the list
     JSFinalizationRegistry::CheckAndCall(thread);
-    finRegLists = env->GetFinRegLists();
-    EXPECT_EQ(finRegLists.GetTaggedValue(), JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> finRegLists2(thread, vm->GetFinRegLists());
+    EXPECT_EQ(finRegLists2.GetTaggedValue(), JSTaggedValue::Hole());
 }
 
 /**
@@ -365,13 +365,13 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CleanFinRegLists)
     JSHandle<JSFinalizationRegistry> finaRegObj(thread, constructor.GetTaggedValue());
 
     JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
-    JSHandle<JSTaggedValue> finRegLists = env->GetFinRegLists();
+    JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
     EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
     EXPECT_EQ(testValue, 0);
 
     JSFinalizationRegistry::CleanFinRegLists(thread, finaRegObj);
-    finRegLists = env->GetFinRegLists();
-    EXPECT_EQ(finRegLists.GetTaggedValue(), JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> finRegLists2(thread, vm->GetFinRegLists());
+    EXPECT_EQ(finRegLists2.GetTaggedValue(), JSTaggedValue::Hole());
 }
 
 /**

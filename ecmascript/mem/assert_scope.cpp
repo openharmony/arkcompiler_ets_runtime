@@ -30,6 +30,11 @@ constexpr size_t INITIAL_ASSERT_DATA = AssertGarbageCollectBit::Mask() |
 
 thread_local size_t currentAssertData = INITIAL_ASSERT_DATA;
 
+void ForceResetAssertData()
+{
+    currentAssertData = INITIAL_ASSERT_DATA;
+}
+
 template<AssertType type, bool isAllow, bool IsDebug>
 bool AssertScopeT<type, isAllow, IsDebug>::IsAllowed()
 {
