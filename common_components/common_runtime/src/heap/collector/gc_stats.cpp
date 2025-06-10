@@ -23,6 +23,9 @@ size_t g_gcCount = 0;
 uint64_t g_gcTotalTimeUs = 0;
 size_t g_gcCollectedTotalBytes = 0;
 
+size_t g_fullGCCount = 0;
+double g_fullGCMeanRate = 0.0;
+
 uint64_t GCStats::prevGcStartTime = TimeUtil::NanoSeconds() - LONG_MIN_HEU_GC_INTERVAL_NS;
 uint64_t GCStats::prevGcFinishTime = TimeUtil::NanoSeconds() - LONG_MIN_HEU_GC_INTERVAL_NS;
 
@@ -56,6 +59,9 @@ void GCStats::Init()
     heapThreshold = std::min(BaseRuntime::GetInstance()->GetGCParam().gcThreshold, 20 * MB);
     // 0.2:set 20% heap size as intial value
     heapThreshold = std::min(static_cast<size_t>(Heap::GetHeap().GetMaxCapacity() * 0.2), heapThreshold);
+
+    targetFootprint = heapThreshold;
+    shouldRequestYoung = false;
 }
 
 void GCStats::Dump() const
