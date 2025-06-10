@@ -13,6 +13,17 @@
 
 * @gongjunsong @wuzhefengh @weng-changcheng
 
+common_components/                @wuzhefengh @weng-changcheng @dmitriitr @Prof1983 @igelhaus @ragnvald
+common_components/base_runtime/   @wuzhefengh @weng-changcheng @igelhaus
+common_components/common_runtime/ @wuzhefengh @weng-changcheng @dmitriitr
+common_components/heap/           @wuzhefengh @weng-changcheng @dmitriitr ^udav ^ipetrov
+common_components/log/            @wuzhefengh @weng-changcheng @ragnvald ^igelhaus
+common_components/objects/        @wuzhefengh @weng-changcheng @dmitriitr ^udav ^ipetrov
+common_components/platform/       @wuzhefengh @weng-changcheng @igelhaus ^dmitriitr
+common_components/serialize/      @wuzhefengh @weng-changcheng @igelhaus ^ragnvald
+common_components/taskpool/       @wuzhefengh @weng-changcheng @dmitriitr ^udav ^konstanting
+common_components/thread/         @wuzhefengh @weng-changcheng @dmitriitr ^konstanting
+
 ecmascript/builtins/         @wpyhuawei  @chenjx-huawei @dov1s
 ecmascript/checkpoint/       @lukai25 @dingding5 @chentianyuu
 ecmascript/compiler/         @ginxu @zhangyukun8 @yingguofeng @linxiang8
