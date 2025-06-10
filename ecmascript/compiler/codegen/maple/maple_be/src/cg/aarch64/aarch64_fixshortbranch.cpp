@@ -78,7 +78,6 @@ uint32 AArch64FixShortBranch::CalculateIfBBNum() const
 void AArch64FixShortBranch::PatchLongBranch()
 {
     AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    SetInsnId();
     uint32 ifBBCount = CalculateIfBBNum();
     for (BB *bb = aarch64CGFunc->GetFirstBB(); bb != nullptr; bb = bb->GetNext()) {
         if (bb->GetKind() != BB::kBBIf) {
