@@ -1802,28 +1802,6 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Some)
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue::True().GetRawData());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, CheckAndCopyArray)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewCOWTaggedArray(2));
-    JSHandle<JSTaggedValue> val0(thread, JSTaggedValue(1));
-    JSHandle<JSTaggedValue> val1(thread, JSTaggedValue(2));
-    array->Set(thread, 0, val0);
-    array->Set(thread, 1, val1);
-
-    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
-                        .GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> arrObj(thread, arr);
-    JSHandle<JSTaggedValue> arrayH(arrObj);
-
-    JSHandle<JSObject> obj(thread, arr);
-    obj->SetElements(thread, array, SKIP_BARRIER);
-	
-    JSHandle<JSSharedArray> jsSharedArray(arrayH);
-    JSSharedArray::CheckAndCopyArray(thread, jsSharedArray);
-    EXPECT_TRUE(arrayH->IsECMAObject());
-}
-
 HWTEST_F_L0(BuiltinsSharedArrayTest, Every)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

@@ -3420,7 +3420,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, const Local<JSValueRef> &context
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
                                      deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3444,7 +3444,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, const Local<JSValueRef
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc), deleter,
                                      data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3467,7 +3467,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, const Local<JSValueRef> &context
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3495,7 +3495,7 @@ Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
     JSFunction::SetSFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     JSTaggedValue sFunctionEnv = thread->GlobalConstants()->GetEmptySFunctionEnv();
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(thread, sFunctionEnv), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv<ecmascript::SKIP_BARRIER>(thread, JSHandle<GlobalEnv>(thread, sFunctionEnv));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3510,7 +3510,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, const Local<JSValueRef
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3553,7 +3553,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentWithName(EcmaVM *vm, const Local<JS
     ASSERT_PRINT(func->IsExtensible(), "Function must be extensible");
 
     func->SetCallNapi(callNapi);
-    func->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    func->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(func));
 }
 
@@ -3594,7 +3594,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, const Local<JSValue
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
                                      deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return scope.Escape(result);
 }
 
@@ -3623,7 +3623,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunction(EcmaVM *vm, const Loc
     InitClassFunction(vm, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return scope.Escape(result);
 }
 
@@ -3646,7 +3646,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunctionWithName(EcmaVM *vm, c
     JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8WithoutStringTable(name));
     JSFunction::SetFunctionNameNoPrefix(thread, *current, functionName.GetTaggedValue());
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return scope.Escape(result);
 }
 
@@ -3675,7 +3675,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, const Local<JSValue
     InitClassFunction(vm, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
-    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)), ecmascript::SKIP_BARRIER);
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return scope.Escape(result);
 }
 

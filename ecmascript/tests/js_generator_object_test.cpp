@@ -63,8 +63,8 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
     TaggedObject *genObjectHeader = factory->NewObject(genClass);
     JSHandle<JSGeneratorObject> genObj(thread, JSGeneratorObject::Cast(genObjectHeader));
     genObj->InitializeHash();
-    genObj->SetElements(thread, factory->EmptyArray(), SKIP_BARRIER);
-    genObj->SetProperties(thread, factory->EmptyArray(), SKIP_BARRIER);
+    genObj->SetElements<SKIP_BARRIER>(thread, factory->EmptyArray());
+    genObj->SetProperties<SKIP_BARRIER>(thread, factory->EmptyArray());
     genObj->SetGeneratorContext(thread, JSTaggedValue::Undefined());
     genObj->SetResumeResult(thread, JSTaggedValue::Undefined());
     JSGeneratorState state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));

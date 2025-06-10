@@ -495,8 +495,8 @@ JSHandle<JSObject> ObjectFactory::NewJSObject(const JSHandle<JSHClass> &jshclass
     JSHandle<JSObject> obj(thread_, JSObject::Cast(NewObject(jshclass)));
     JSHandle<TaggedArray> emptyArray = EmptyArray();
     obj->InitializeHash();
-    obj->SetElements(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetProperties(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetElements<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetProperties<SKIP_BARRIER>(thread_, emptyArray);
     return obj;
 }
 
@@ -807,8 +807,8 @@ JSHandle<JSObject> ObjectFactory::NewNonMovableJSObject(const JSHandle<JSHClass>
     JSHandle<JSObject> obj(thread_,
                            JSObject::Cast(NewNonMovableObject(jshclass, jshclass->GetInlinedProperties())));
     obj->InitializeHash();
-    obj->SetElements(thread_, EmptyArray(), SKIP_BARRIER);
-    obj->SetProperties(thread_, EmptyArray(), SKIP_BARRIER);
+    obj->SetElements<SKIP_BARRIER>(thread_, EmptyArray());
+    obj->SetProperties<SKIP_BARRIER>(thread_, EmptyArray());
     return obj;
 }
 
@@ -1266,42 +1266,42 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
 #ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL: {
-            JSIntl::Cast(*obj)->SetFallbackSymbol(thread_, JSTaggedValue::Undefined());
+            JSIntl::Cast(*obj)->SetFallbackSymbol<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSHandle<JSSymbol> jsSymbol = NewPublicSymbolWithChar("IntlLegacyConstructedSymbol");
             JSIntl::Cast(*obj)->SetFallbackSymbol(thread_, jsSymbol);
             break;
         }
         case JSType::JS_LOCALE: {
-            JSLocale::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSLocale::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_DATE_TIME_FORMAT: {
-            JSDateTimeFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetCalendar(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetNumberingSystem(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetTimeZone(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetLocaleIcu(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetSimpleDateTimeFormatIcu(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetIso8601(thread_, JSTaggedValue::Undefined());
-            JSDateTimeFormat::Cast(*obj)->SetBoundFormat(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetCalendar<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetNumberingSystem<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetTimeZone<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetLocaleIcu<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetSimpleDateTimeFormatIcu<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetIso8601<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSDateTimeFormat::Cast(*obj)->SetBoundFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSDateTimeFormat::Cast(*obj)->SetHourCycle(HourCycleOption::EXCEPTION);
             JSDateTimeFormat::Cast(*obj)->SetDateStyle(DateTimeStyleOption::EXCEPTION);
             JSDateTimeFormat::Cast(*obj)->SetTimeStyle(DateTimeStyleOption::EXCEPTION);
             break;
         }
         case JSType::JS_NUMBER_FORMAT: {
-            JSNumberFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetNumberingSystem(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetCurrency(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetUnit(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetMinimumIntegerDigits(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetMinimumFractionDigits(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetMaximumFractionDigits(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetMinimumSignificantDigits(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetMaximumSignificantDigits(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetUseGrouping(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetBoundFormat(thread_, JSTaggedValue::Undefined());
-            JSNumberFormat::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetNumberingSystem<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetCurrency<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetUnit<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetMinimumIntegerDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetMinimumFractionDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetMaximumFractionDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetMinimumSignificantDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetMaximumSignificantDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetUseGrouping<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetBoundFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSNumberFormat::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSNumberFormat::Cast(*obj)->SetStyle(StyleOption::EXCEPTION);
             JSNumberFormat::Cast(*obj)->SetCurrencySign(CurrencySignOption::EXCEPTION);
             JSNumberFormat::Cast(*obj)->SetCurrencyDisplay(CurrencyDisplayOption::EXCEPTION);
@@ -1313,18 +1313,18 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_RELATIVE_TIME_FORMAT: {
-            JSRelativeTimeFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSRelativeTimeFormat::Cast(*obj)->SetNumberingSystem(thread_, JSTaggedValue::Undefined());
-            JSRelativeTimeFormat::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSRelativeTimeFormat::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSRelativeTimeFormat::Cast(*obj)->SetNumberingSystem<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSRelativeTimeFormat::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSRelativeTimeFormat::Cast(*obj)->SetStyle(RelativeStyleOption::EXCEPTION);
             JSRelativeTimeFormat::Cast(*obj)->SetNumeric(NumericOption::EXCEPTION);
             break;
         }
         case JSType::JS_COLLATOR: {
-            JSCollator::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
-            JSCollator::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSCollator::Cast(*obj)->SetCollation(thread_, JSTaggedValue::Undefined());
-            JSCollator::Cast(*obj)->SetBoundCompare(thread_, JSTaggedValue::Undefined());
+            JSCollator::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSCollator::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSCollator::Cast(*obj)->SetCollation<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSCollator::Cast(*obj)->SetBoundCompare<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSCollator::Cast(*obj)->SetUsage(UsageOption::EXCEPTION);
             JSCollator::Cast(*obj)->SetCaseFirst(CaseFirstOption::EXCEPTION);
             JSCollator::Cast(*obj)->SetSensitivity(SensitivityOption::EXCEPTION);
@@ -1333,51 +1333,51 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_PLURAL_RULES: {
-            JSPluralRules::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetMinimumIntegerDigits(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetMinimumFractionDigits(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetMaximumFractionDigits(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetMinimumSignificantDigits(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetMaximumSignificantDigits(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetIcuPR(thread_, JSTaggedValue::Undefined());
-            JSPluralRules::Cast(*obj)->SetIcuNF(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetMinimumIntegerDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetMinimumFractionDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetMaximumFractionDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetMinimumSignificantDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetMaximumSignificantDigits<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetIcuPR<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPluralRules::Cast(*obj)->SetIcuNF<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSPluralRules::Cast(*obj)->SetRoundingType(RoundingType::EXCEPTION);
             JSPluralRules::Cast(*obj)->SetType(TypeOption::EXCEPTION);
             break;
         }
         case JSType::JS_DISPLAYNAMES: {
-            JSDisplayNames::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
+            JSDisplayNames::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSDisplayNames::Cast(*obj)->SetType(TypednsOption::EXCEPTION);
             JSDisplayNames::Cast(*obj)->SetStyle(StyOption::EXCEPTION);
             JSDisplayNames::Cast(*obj)->SetFallback(FallbackOption::EXCEPTION);
-            JSDisplayNames::Cast(*obj)->SetIcuLDN(thread_, JSTaggedValue::Undefined());
+            JSDisplayNames::Cast(*obj)->SetIcuLDN<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_SEGMENTER: {
-            JSSegmenter::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
+            JSSegmenter::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSegmenter::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
-            JSSegmenter::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
+            JSSegmenter::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_SEGMENTS: {
-            JSSegments::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
-            JSSegments::Cast(*obj)->SetSegmentsString(thread_, JSTaggedValue::Undefined());
-            JSSegments::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetSegmentsString<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSSegments::Cast(*obj)->SetUnicodeString<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSegments::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
             break;
         }
         case JSType::JS_SEGMENT_ITERATOR: {
-            JSSegmentIterator::Cast(*obj)->SetIcuField(thread_, JSTaggedValue::Undefined());
-            JSSegmentIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
-            JSSegmentIterator::Cast(*obj)->SetUnicodeString(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetIcuField<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetIteratedString<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSSegmentIterator::Cast(*obj)->SetUnicodeString<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSegmentIterator::Cast(*obj)->SetGranularity(GranularityOption::EXCEPTION);
             break;
         }
         case JSType::JS_LIST_FORMAT: {
-            JSListFormat::Cast(*obj)->SetLocale(thread_, JSTaggedValue::Undefined());
+            JSListFormat::Cast(*obj)->SetLocale<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSListFormat::Cast(*obj)->SetType(ListTypeOption::EXCEPTION);
             JSListFormat::Cast(*obj)->SetStyle(ListStyleOption::EXCEPTION);
-            JSListFormat::Cast(*obj)->SetIcuLF(thread_, JSTaggedValue::Undefined());
+            JSListFormat::Cast(*obj)->SetIcuLF<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
 #else
@@ -1430,8 +1430,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_FLOAT64_ARRAY:
         case JSType::JS_BIGINT64_ARRAY:
         case JSType::JS_BIGUINT64_ARRAY:
-            JSTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray(thread_, JSTaggedValue::Undefined());
-            JSTypedArray::Cast(*obj)->SetTypedArrayName(thread_, JSTaggedValue::Undefined());
+            JSTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray<SKIP_BARRIER>(thread_,
+                                                                                    JSTaggedValue::Undefined());
+            JSTypedArray::Cast(*obj)->SetTypedArrayName<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSTypedArray::Cast(*obj)->SetByteLength(0);
             JSTypedArray::Cast(*obj)->SetByteOffset(0);
             JSTypedArray::Cast(*obj)->SetArrayLength(0);
@@ -1449,8 +1450,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_FLOAT64_ARRAY:
         case JSType::JS_SHARED_BIGINT64_ARRAY:
         case JSType::JS_SHARED_BIGUINT64_ARRAY:
-            JSSharedTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray(thread_, JSTaggedValue::Undefined());
-            JSSharedTypedArray::Cast(*obj)->SetTypedArrayName(thread_, JSTaggedValue::Undefined());
+            JSSharedTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray<SKIP_BARRIER>(thread_,
+                                                                                          JSTaggedValue::Undefined());
+            JSSharedTypedArray::Cast(*obj)->SetTypedArrayName<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSharedTypedArray::Cast(*obj)->SetByteLength(0);
             JSSharedTypedArray::Cast(*obj)->SetByteOffset(0);
             JSSharedTypedArray::Cast(*obj)->SetArrayLength(0);
@@ -1458,14 +1460,14 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedTypedArray::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_REG_EXP:
-            JSRegExp::Cast(*obj)->SetByteCodeBuffer(thread_, JSTaggedValue::Undefined());
-            JSRegExp::Cast(*obj)->SetOriginalSource(thread_, JSTaggedValue::Undefined());
+            JSRegExp::Cast(*obj)->SetByteCodeBuffer<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSRegExp::Cast(*obj)->SetOriginalSource<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSRegExp::Cast(*obj)->SetOriginalFlags(thread_, JSTaggedValue(0));
-            JSRegExp::Cast(*obj)->SetGroupName(thread_, JSTaggedValue::Undefined());
+            JSRegExp::Cast(*obj)->SetGroupName<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSRegExp::Cast(*obj)->SetLength(0);
             break;
         case JSType::JS_PRIMITIVE_REF:
-            JSPrimitiveRef::Cast(*obj)->SetValue(thread_, JSTaggedValue::Undefined());
+            JSPrimitiveRef::Cast(*obj)->SetValue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_SET:
             JSSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
@@ -1475,69 +1477,70 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedSet::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_MAP:
-            JSMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            JSMap::Cast(*obj)->SetLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_SHARED_MAP:
-            JSSharedMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            JSSharedMap::Cast(*obj)->SetLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_WEAK_MAP:
-            JSWeakMap::Cast(*obj)->SetLinkedMap(thread_, JSTaggedValue::Undefined());
+            JSWeakMap::Cast(*obj)->SetLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_WEAK_SET:
-            JSWeakSet::Cast(*obj)->SetLinkedSet(thread_, JSTaggedValue::Undefined());
+            JSWeakSet::Cast(*obj)->SetLinkedSet<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_WEAK_REF:
-            JSWeakRef::Cast(*obj)->SetWeakObject(thread_, JSTaggedValue::Undefined());
+            JSWeakRef::Cast(*obj)->SetWeakObject<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_FINALIZATION_REGISTRY:
-            JSFinalizationRegistry::Cast(*obj)->SetCleanupCallback(thread_, JSTaggedValue::Undefined());
-            JSFinalizationRegistry::Cast(*obj)->SetNoUnregister(thread_, JSTaggedValue::Undefined());
-            JSFinalizationRegistry::Cast(*obj)->SetMaybeUnregister(thread_, JSTaggedValue::Undefined());
+            JSFinalizationRegistry::Cast(*obj)->SetCleanupCallback<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSFinalizationRegistry::Cast(*obj)->SetNoUnregister<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSFinalizationRegistry::Cast(*obj)->SetMaybeUnregister<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSFinalizationRegistry::Cast(*obj)->SetNext(thread_, JSTaggedValue::Null());
             JSFinalizationRegistry::Cast(*obj)->SetPrev(thread_, JSTaggedValue::Null());
             break;
         case JSType::JS_GENERATOR_OBJECT:
-            JSGeneratorObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
-            JSGeneratorObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
+            JSGeneratorObject::Cast(*obj)->SetGeneratorContext<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSGeneratorObject::Cast(*obj)->SetResumeResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSGeneratorObject::Cast(*obj)->SetGeneratorState(JSGeneratorState::UNDEFINED);
             JSGeneratorObject::Cast(*obj)->SetResumeMode(GeneratorResumeMode::UNDEFINED);
             break;
         case JSType::JS_ASYNC_GENERATOR_OBJECT:
-            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorContext<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorQueue(thread_, GetEmptyTaggedQueue().GetTaggedValue());
-            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorBrand(thread_, JSTaggedValue::Undefined());
-            JSAsyncGeneratorObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetGeneratorBrand<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAsyncGeneratorObject::Cast(*obj)->SetResumeResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSAsyncGeneratorObject::Cast(*obj)->SetAsyncGeneratorState(JSAsyncGeneratorState::UNDEFINED);
             JSAsyncGeneratorObject::Cast(*obj)->SetResumeMode(AsyncGeneratorResumeMode::UNDEFINED);
             break;
         case JSType::JS_STRING_ITERATOR:
             JSStringIterator::Cast(*obj)->SetStringIteratorNextIndex(0);
-            JSStringIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
+            JSStringIterator::Cast(*obj)->SetIteratedString<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
-            JSAsyncFromSyncIterator::Cast(*obj)->SetSyncIteratorRecord(thread_, JSTaggedValue::Undefined());
+            JSAsyncFromSyncIterator::Cast(*obj)->SetSyncIteratorRecord<SKIP_BARRIER>(thread_,
+                                                                                     JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
-            JSAsyncFromSyncIterUnwarpFunction::Cast(*obj)->SetDone(thread_, JSTaggedValue::Undefined());
+            JSAsyncFromSyncIterUnwarpFunction::Cast(*obj)->SetDone<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ARRAY_BUFFER:
-            JSArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
+            JSArrayBuffer::Cast(*obj)->SetArrayBufferData<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
             JSArrayBuffer::Cast(*obj)->ClearBitField();
             break;
         case JSType::JS_SHARED_ARRAY_BUFFER:
-            JSArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
+            JSArrayBuffer::Cast(*obj)->SetArrayBufferData<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
             JSArrayBuffer::Cast(*obj)->SetShared(true);
             break;
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
-            JSSendableArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
+            JSSendableArrayBuffer::Cast(*obj)->SetArrayBufferData<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSSendableArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
             break;
         case JSType::JS_PROMISE:
             JSPromise::Cast(*obj)->SetPromiseState(PromiseState::PENDING);
-            JSPromise::Cast(*obj)->SetPromiseResult(thread_, JSTaggedValue::Undefined());
+            JSPromise::Cast(*obj)->SetPromiseResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSPromise::Cast(*obj)->SetPromiseRejectReactions(thread_, GetEmptyTaggedQueue().GetTaggedValue());
             JSPromise::Cast(*obj)->SetPromiseFulfillReactions(thread_, GetEmptyTaggedQueue().GetTaggedValue());
             JSPromise::Cast(*obj)->SetAsyncTaskId(vm_->GetAsyncTaskId());
@@ -1546,7 +1549,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_DATA_VIEW:
             JSDataView::Cast(*obj)->SetDataView(thread_, JSTaggedValue(false));
-            JSDataView::Cast(*obj)->SetViewedArrayBuffer(thread_, JSTaggedValue::Undefined());
+            JSDataView::Cast(*obj)->SetViewedArrayBuffer<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSDataView::Cast(*obj)->SetByteLength(0);
             JSDataView::Cast(*obj)->SetByteOffset(0);
             break;
@@ -1557,20 +1560,20 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_API_HASH_MAP: {
             JSAPIHashMap::Cast(*obj)->SetSize(0);
-            JSAPIHashMap::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
+            JSAPIHashMap::Cast(*obj)->SetTable<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_HASH_SET: {
             JSAPIHashSet::Cast(*obj)->SetSize(0);
-            JSAPIHashSet::Cast(*obj)->SetTable(thread_, JSTaggedValue::Undefined());
+            JSAPIHashSet::Cast(*obj)->SetTable<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_TREE_MAP: {
-            JSAPITreeMap::Cast(*obj)->SetTreeMap(thread_, JSTaggedValue::Undefined());
+            JSAPITreeMap::Cast(*obj)->SetTreeMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_TREE_SET: {
-            JSAPITreeSet::Cast(*obj)->SetTreeSet(thread_, JSTaggedValue::Undefined());
+            JSAPITreeSet::Cast(*obj)->SetTreeSet<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_QUEUE: {
@@ -1596,15 +1599,15 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_API_LIGHT_WEIGHT_MAP: {
             JSAPILightWeightMap::Cast(*obj)->SetLength(0);
-            JSAPILightWeightMap::Cast(*obj)->SetHashes(thread_, JSTaggedValue::Undefined());
-            JSAPILightWeightMap::Cast(*obj)->SetKeys(thread_, JSTaggedValue::Undefined());
-            JSAPILightWeightMap::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
+            JSAPILightWeightMap::Cast(*obj)->SetHashes<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAPILightWeightMap::Cast(*obj)->SetKeys<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAPILightWeightMap::Cast(*obj)->SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_LIGHT_WEIGHT_SET: {
             JSAPILightWeightSet::Cast(*obj)->SetLength(0);
-            JSAPILightWeightSet::Cast(*obj)->SetHashes(thread_, JSTaggedValue::Undefined());
-            JSAPILightWeightSet::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
+            JSAPILightWeightSet::Cast(*obj)->SetHashes<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAPILightWeightSet::Cast(*obj)->SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_API_VECTOR: {
@@ -1612,30 +1615,30 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_API_BITVECTOR: {
-            JSAPIBitVector::Cast(*obj)->SetNativePointer(thread_, JSTaggedValue::Undefined());
+            JSAPIBitVector::Cast(*obj)->SetNativePointer<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSAPIBitVector::Cast(*obj)->SetLength(0);
             JSAPIBitVector::Cast(*obj)->SetModRecord(0);
             break;
         }
         case JSType::JS_API_FAST_BUFFER: {
-            JSAPIFastBuffer::Cast(*obj)->SetFastBufferData(thread_, JSTaggedValue::Undefined());
+            JSAPIFastBuffer::Cast(*obj)->SetFastBufferData<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSAPIFastBuffer::Cast(*obj)->SetLength(0);
             JSAPIFastBuffer::Cast(*obj)->SetOffset(0);
             break;
         }
         case JSType::JS_API_LIST: {
-            JSAPIList::Cast(*obj)->SetSingleList(thread_, JSTaggedValue::Undefined());
+            JSAPIList::Cast(*obj)->SetSingleList<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             JSAPIList::Cast(*obj)->SetBitField(0UL);
             break;
         }
         case JSType::JS_API_LINKED_LIST: {
-            JSAPILinkedList::Cast(*obj)->SetDoubleList(thread_, JSTaggedValue::Undefined());
+            JSAPILinkedList::Cast(*obj)->SetDoubleList<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         }
         case JSType::JS_ASYNC_FUNC_OBJECT:
-            JSAsyncFuncObject::Cast(*obj)->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
-            JSAsyncFuncObject::Cast(*obj)->SetResumeResult(thread_, JSTaggedValue::Undefined());
-            JSAsyncFuncObject::Cast(*obj)->SetPromise(thread_, JSTaggedValue::Undefined());
+            JSAsyncFuncObject::Cast(*obj)->SetGeneratorContext<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAsyncFuncObject::Cast(*obj)->SetResumeResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSAsyncFuncObject::Cast(*obj)->SetPromise<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_FUNCTION:
         case JSType::JS_GENERATOR_FUNCTION:
@@ -1646,74 +1649,89 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_PROXY_REVOC_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
+            JSProxyRevocFunction::Cast(*obj)->SetRevocableProxy<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseReactionsFunction::Cast(*obj)->SetPromise(thread_, JSTaggedValue::Undefined());
-            JSPromiseReactionsFunction::Cast(*obj)->SetAlreadyResolved(thread_, JSTaggedValue::Undefined());
+            JSPromiseReactionsFunction::Cast(*obj)->SetAlreadyResolved<SKIP_BARRIER>(thread_,
+                                                                                     JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSPromiseExecutorFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
+            JSPromiseExecutorFunction::Cast(*obj)->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSAsyncModuleFulfilledFunction::Cast(*obj)->SetModule(thread_, JSTaggedValue::Undefined());
+            JSAsyncModuleFulfilledFunction::Cast(*obj)->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSAsyncModuleRejectedFunction::Cast(*obj)->SetModule(thread_, JSTaggedValue::Undefined());
+            JSAsyncModuleRejectedFunction::Cast(*obj)->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject(thread_,
-                                                                                     JSTaggedValue::Undefined());
+            JSAsyncGeneratorResNextRetProRstFtn::Cast(*obj)->SetAsyncGeneratorObject<SKIP_BARRIER>(thread_,
+                JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetIndex(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetCapabilities(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllResolveElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->
+                SetIndex<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->
+                SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->
+                SetCapabilities<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->
+                SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllResolveElementFunction::Cast(*obj)->
+                SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseAnyRejectElementFunction::Cast(*obj)->SetIndex(0);
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetErrors(thread_, JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-            JSPromiseAnyRejectElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->
+                SetErrors<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->
+                SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->
+                SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAnyRejectElementFunction::Cast(*obj)->
+                SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             JSPromiseAllSettledElementFunction::Cast(*obj)->SetIndex(0);
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetValues(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetCapability(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-            JSPromiseAllSettledElementFunction::Cast(*obj)->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->
+                SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->
+                SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->
+                SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseAllSettledElementFunction::Cast(*obj)->
+                SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_FINALLY_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSPromiseFinallyFunction::Cast(*obj)->SetOnFinally(thread_, JSTaggedValue::Undefined());
-            JSPromiseFinallyFunction::Cast(*obj)->SetConstructor(thread_, JSTaggedValue::Undefined());
+            JSPromiseFinallyFunction::Cast(*obj)->SetOnFinally<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSPromiseFinallyFunction::Cast(*obj)->SetConstructor<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSPromiseValueThunkOrThrowerFunction::Cast(*obj)->SetResult(thread_, JSTaggedValue::Undefined());
+            JSPromiseValueThunkOrThrowerFunction::Cast(*obj)->SetResult<SKIP_BARRIER>(thread_,
+                                                                                      JSTaggedValue::Undefined());
             break;
         case JSType::JS_INTL_BOUND_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
-            JSIntlBoundFunction::Cast(*obj)->SetNumberFormat(thread_, JSTaggedValue::Undefined());
-            JSIntlBoundFunction::Cast(*obj)->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
-            JSIntlBoundFunction::Cast(*obj)->SetCollator(thread_, JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetNumberFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetDateTimeFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSIntlBoundFunction::Cast(*obj)->SetCollator<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_BOUND_FUNCTION:
-            JSBoundFunction::Cast(*obj)->SetMethod(thread_, JSTaggedValue::Undefined());
-            JSBoundFunction::Cast(*obj)->SetBoundTarget(thread_, JSTaggedValue::Undefined());
-            JSBoundFunction::Cast(*obj)->SetBoundThis(thread_, JSTaggedValue::Undefined());
-            JSBoundFunction::Cast(*obj)->SetBoundArguments(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetMethod<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundTarget<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundThis<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSBoundFunction::Cast(*obj)->SetBoundArguments<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_ARGUMENTS:
             break;
@@ -1737,18 +1755,18 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_API_PLAIN_ARRAY_ITERATOR:
             break;
         case JSType::JS_CJS_MODULE:
-            CjsModule::Cast(*obj)->SetId(thread_, JSTaggedValue::Undefined());
-            CjsModule::Cast(*obj)->SetExports(thread_, JSTaggedValue::Undefined());
-            CjsModule::Cast(*obj)->SetPath(thread_, JSTaggedValue::Undefined());
-            CjsModule::Cast(*obj)->SetFilename(thread_, JSTaggedValue::Undefined());
+            CjsModule::Cast(*obj)->SetId<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            CjsModule::Cast(*obj)->SetExports<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            CjsModule::Cast(*obj)->SetPath<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            CjsModule::Cast(*obj)->SetFilename<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             CjsModule::Cast(*obj)->SetStatus(CjsModuleStatus::UNLOAD);
             break;
         case JSType::JS_CJS_EXPORTS:
-            CjsExports::Cast(*obj)->SetExports(thread_, JSTaggedValue::Undefined());
+            CjsExports::Cast(*obj)->SetExports<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_CJS_REQUIRE:
-            CjsRequire::Cast(*obj)->SetCache(thread_, JSTaggedValue::Undefined());
-            CjsRequire::Cast(*obj)->SetParent(thread_, JSTaggedValue::Undefined());
+            CjsRequire::Cast(*obj)->SetCache<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            CjsRequire::Cast(*obj)->SetParent<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
@@ -2236,7 +2254,7 @@ void ObjectFactory::InitializeMethod(const MethodLiteral *methodLiteral, JSHandl
         method->SetExpectedPropertyCount(MethodLiteral::MAX_EXPECTED_PROPERTY_COUNT);
     }
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
-    method->SetConstantPool(thread_, JSTaggedValue::Undefined());
+    method->SetConstantPool<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     method->SetFpDelta(0);
 }
 
@@ -2349,9 +2367,9 @@ JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex 
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetJSIntlBoundFunctionClass());
 
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(NewJSObject(hclass));
-    intlBoundFunc->SetNumberFormat(thread_, JSTaggedValue::Undefined());
-    intlBoundFunc->SetDateTimeFormat(thread_, JSTaggedValue::Undefined());
-    intlBoundFunc->SetCollator(thread_, JSTaggedValue::Undefined());
+    intlBoundFunc->SetNumberFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    intlBoundFunc->SetDateTimeFormat<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    intlBoundFunc->SetCollator<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(intlBoundFunc);
     JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
@@ -2374,7 +2392,7 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetProxyRevocFunctionClass());
 
     JSHandle<JSProxyRevocFunction> revocFunction = JSHandle<JSProxyRevocFunction>::Cast(NewJSObject(hclass));
-    revocFunction->SetRevocableProxy(thread_, JSTaggedValue::Undefined());
+    revocFunction->SetRevocableProxy<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     revocFunction->SetRevocableProxy(thread_, proxy);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(revocFunction);
     JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
@@ -2397,7 +2415,7 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
 
     JSHandle<JSAsyncAwaitStatusFunction> awaitFunction =
         JSHandle<JSAsyncAwaitStatusFunction>::Cast(NewJSObject(hclass));
-    awaitFunction->SetAsyncContext(thread_, JSTaggedValue::Undefined());
+    awaitFunction->SetAsyncContext<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(awaitFunction));
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
     awaitFunction->SetMethod(thread_, method);
@@ -2415,8 +2433,8 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
     JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
-    generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
-    generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
+    generatorObject->SetGeneratorContext<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    generatorObject->SetResumeResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return generatorObject;
 }
 
@@ -2461,12 +2479,12 @@ JSHandle<GeneratorContext> ObjectFactory::NewGeneratorContext()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetGeneratorContextClass().GetTaggedObject()));
     JSHandle<GeneratorContext> obj(thread_, header);
-    obj->SetRegsArray(thread_, JSTaggedValue::Undefined());
-    obj->SetMethod(thread_, JSTaggedValue::Undefined());
-    obj->SetThis(thread_, JSTaggedValue::Undefined());
-    obj->SetAcc(thread_, JSTaggedValue::Undefined());
-    obj->SetGeneratorObject(thread_, JSTaggedValue::Undefined());
-    obj->SetLexicalEnv(thread_, JSTaggedValue::Undefined());
+    obj->SetRegsArray<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetMethod<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetThis<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetAcc<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetGeneratorObject<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetLexicalEnv<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetNRegs(0);
     obj->SetBCOffset(0);
     return obj;
@@ -2573,7 +2591,7 @@ JSHandle<JSSymbol> ObjectFactory::NewEmptySymbol()
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
-    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
     obj->SetHashField(0);
     return obj;
@@ -2585,7 +2603,7 @@ JSHandle<JSSymbol> ObjectFactory::NewJSSymbol()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
-    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
     obj->SetHashField(SymbolTable::Hash(obj.GetTaggedValue()));
     return obj;
@@ -2682,8 +2700,8 @@ JSHandle<AccessorData> ObjectFactory::NewAccessorData()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetAccessorDataClass().GetTaggedObject()));
     JSHandle<AccessorData> acc(thread_, AccessorData::Cast(header));
-    acc->SetGetter(thread_, JSTaggedValue::Undefined());
-    acc->SetSetter(thread_, JSTaggedValue::Undefined());
+    acc->SetGetter<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    acc->SetSetter<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return acc;
 }
 
@@ -2705,9 +2723,9 @@ JSHandle<PromiseCapability> ObjectFactory::NewPromiseCapability()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetCapabilityRecordClass().GetTaggedObject()));
     JSHandle<PromiseCapability> obj(thread_, header);
-    obj->SetPromise(thread_, JSTaggedValue::Undefined());
-    obj->SetResolve(thread_, JSTaggedValue::Undefined());
-    obj->SetReject(thread_, JSTaggedValue::Undefined());
+    obj->SetPromise<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetResolve<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetReject<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return obj;
 }
 
@@ -2726,8 +2744,8 @@ JSHandle<PromiseReaction> ObjectFactory::NewPromiseReaction()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetReactionsRecordClass().GetTaggedObject()));
     JSHandle<PromiseReaction> obj(thread_, header);
-    obj->SetPromiseCapability(thread_, JSTaggedValue::Undefined());
-    obj->SetHandler(thread_, JSTaggedValue::Undefined());
+    obj->SetPromiseCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetHandler<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetType(PromiseType::RESOLVE);
     return obj;
 }
@@ -2808,7 +2826,7 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
     JSHandle<JSRealm> realm(NewJSObject(hclassHandle));
     realm->SetGlobalEnv(thread_, globalEnv.GetTaggedValue());
-    realm->SetValue(thread_, JSTaggedValue::Undefined());
+    realm->SetValue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
 
     JSHandle<JSTaggedValue> realmObj = globalEnv->GetJSGlobalObject();
     JSHandle<JSTaggedValue> realmkey(thread_->GlobalConstants()->GetHandledGlobalString());
@@ -3373,7 +3391,7 @@ JSHandle<Program> ObjectFactory::NewProgram()
         JSHClass::Cast(thread_->GlobalConstants()->GetProgramClass().GetTaggedObject()));
     JSHandle<Program> p(thread_, header);
     p->InitializeHash();
-    p->SetMainFunction(thread_, JSTaggedValue::Undefined());
+    p->SetMainFunction<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return p;
 }
 
@@ -3385,9 +3403,9 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
     JSHandle<JSObject> obj = NewJSObject(hclass);
 
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
-    moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
-    moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetExports<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetDeregisterProcession<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return moduleNamespace;
 }
 
@@ -3399,7 +3417,7 @@ JSHandle<NativeModuleFailureInfo> ObjectFactory::NewNativeModuleFailureInfo()
     JSHandle<JSObject> obj = NewJSObject(hclass);
 
     JSHandle<NativeModuleFailureInfo> nativeModuleFailureInfo = JSHandle<NativeModuleFailureInfo>::Cast(obj);
-    nativeModuleFailureInfo->SetArkNativeModuleFailureInfo(thread_, JSTaggedValue::Undefined());
+    nativeModuleFailureInfo->SetArkNativeModuleFailureInfo<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return nativeModuleFailureInfo;
 }
 
@@ -3574,7 +3592,7 @@ JSHandle<ProtoChangeDetails> ObjectFactory::NewProtoChangeDetails()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProtoChangeDetailsClass().GetTaggedObject()));
     JSHandle<ProtoChangeDetails> protoInfo(thread_, header);
-    protoInfo->SetChangeListener(thread_, JSTaggedValue::Undefined());
+    protoInfo->SetChangeListener<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     protoInfo->SetRegisterIndex(ProtoChangeDetails::UNREGISTERED);
     return protoInfo;
 }
@@ -3753,7 +3771,7 @@ JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHa
     iter->SetCurrentNodeResult(thread_, holeHandle);
     iter->SetIteratedHashMap(thread_, hashMap);
     iter->SetNextIndex(0);
-    iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
+    iter->SetTaggedQueue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<TaggedQueue> queue = NewTaggedQueue(0);
     iter->SetTaggedQueue(thread_, queue);
     iter->SetIterationKind(kind);
@@ -3775,7 +3793,7 @@ JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHa
     iter->SetCurrentNodeResult(thread_, holeHandle);
     iter->SetIteratedHashSet(thread_, hashSet);
     iter->SetNextIndex(0);
-    iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
+    iter->SetTaggedQueue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<TaggedQueue> queue = NewTaggedQueue(0);
     iter->SetTaggedQueue(thread_, queue);
     iter->SetIterationKind(kind);
@@ -3820,13 +3838,12 @@ JSHandle<JSPromiseReactionsFunction> ObjectFactory::CreateJSPromiseReactionsFunc
 
     JSHandle<JSPromiseReactionsFunction> reactionsFunction =
         JSHandle<JSPromiseReactionsFunction>::Cast(NewJSObject(hclass));
-    reactionsFunction->SetPromise(thread_, JSTaggedValue::Hole());
-    reactionsFunction->SetAlreadyResolved(thread_, JSTaggedValue::Hole());
+    reactionsFunction->SetPromise<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
+    reactionsFunction->SetAlreadyResolved<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(reactionsFunction);
-    JSFunction::InitializeJSFunction(thread_, function);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
     reactionsFunction->SetMethod(thread_, method);
-    reactionsFunction->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(reactionsFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(1));
     return reactionsFunction;
@@ -3838,12 +3855,11 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseExecutorFunctionClass());
     JSHandle<JSPromiseExecutorFunction> executorFunction =
         JSHandle<JSPromiseExecutorFunction>::Cast(NewJSObject(hclass));
-    executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
+    executorFunction->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
-    JSFunction::InitializeJSFunction(thread_, function);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_EXECUTOR));
     executorFunction->SetMethod(thread_, method);
-    executorFunction->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(executorFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::TWO));
     return executorFunction;
@@ -3855,9 +3871,9 @@ JSHandle<JSAsyncModuleFulfilledFunction> ObjectFactory::CreateJSAsyncModuleFulfi
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncModuleFulfilledFunctionClass());
     JSHandle<JSAsyncModuleFulfilledFunction> fulfilledFunction =
         JSHandle<JSAsyncModuleFulfilledFunction>::Cast(NewJSObject(hclass));
-    fulfilledFunction->SetModule(thread_, JSTaggedValue::Undefined());
+    fulfilledFunction->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(fulfilledFunction);
-    JSFunction::InitializeJSFunction(thread_, function);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_FULFILLED_FUNCTION));
     fulfilledFunction->SetMethod(thread_, method);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(fulfilledFunction), method);
@@ -3871,9 +3887,9 @@ JSHandle<JSAsyncModuleRejectedFunction> ObjectFactory::CreateJSAsyncModuleReject
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncModuleRejectedFunctionClass());
     JSHandle<JSAsyncModuleRejectedFunction> rejectedFunction =
         JSHandle<JSAsyncModuleRejectedFunction>::Cast(NewJSObject(hclass));
-    rejectedFunction->SetModule(thread_, JSTaggedValue::Undefined());
+    rejectedFunction->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(rejectedFunction);
-    JSFunction::InitializeJSFunction(thread_, function);
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, function);
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_REJECTED_FUNCTION));
     rejectedFunction->SetMethod(thread_, method);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(rejectedFunction), method);
@@ -3887,17 +3903,16 @@ JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResol
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllResolveElementFunctionClass());
     JSHandle<JSPromiseAllResolveElementFunction> function =
         JSHandle<JSPromiseAllResolveElementFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetIndex(thread_, JSTaggedValue::Undefined());
-    function->SetValues(thread_, JSTaggedValue::Undefined());
-    function->SetCapabilities(thread_, JSTaggedValue::Undefined());
-    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+    function->SetIndex<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetCapabilities<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -3908,17 +3923,16 @@ JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyReject
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAnyRejectElementFunctionClass());
     JSHandle<JSPromiseAnyRejectElementFunction> function =
         JSHandle<JSPromiseAnyRejectElementFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
-    function->SetErrors(thread_, JSTaggedValue::Undefined());
-    function->SetCapability(thread_, JSTaggedValue::Undefined());
-    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+    function->SetErrors<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -3929,17 +3943,16 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
     JSHandle<JSPromiseAllSettledElementFunction> function =
         JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
-    function->SetValues(thread_, JSTaggedValue::Undefined());
-    function->SetCapability(thread_, JSTaggedValue::Undefined());
-    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+    function->SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -3950,17 +3963,16 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseAllSettledElementFunctionClass());
     JSHandle<JSPromiseAllSettledElementFunction> function =
         JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
-    function->SetValues(thread_, JSTaggedValue::Undefined());
-    function->SetCapability(thread_, JSTaggedValue::Undefined());
-    function->SetRemainingElements(thread_, JSTaggedValue::Undefined());
-    function->SetAlreadyCalled(thread_, JSTaggedValue::Undefined());
+    function->SetValues<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetRemainingElements<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetAlreadyCalled<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -3971,14 +3983,13 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunctio
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
     JSHandle<JSPromiseFinallyFunction> function =
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetConstructor(thread_, JSTaggedValue::Undefined());
-    function->SetOnFinally(thread_, JSTaggedValue::Undefined());
+    function->SetConstructor<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetOnFinally<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -3989,14 +4000,13 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseFinallyFunctionClass());
     JSHandle<JSPromiseFinallyFunction> function =
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetConstructor(thread_, JSTaggedValue::Undefined());
-    function->SetOnFinally(thread_, JSTaggedValue::Undefined());
+    function->SetConstructor<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    function->SetOnFinally<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -4008,12 +4018,12 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
         env->GetAsyncGeneratorResNextRetProRstFtnClass());
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
     function->SetMethod(thread_, method);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    function->SetAsyncGeneratorObject<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -4024,11 +4034,11 @@ JSHandle<JSAsyncFromSyncIterUnwarpFunction> ObjectFactory::NewJSAsyncFromSyncIte
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFromSyncIterUnwarpClass());
     JSHandle<JSAsyncFromSyncIterUnwarpFunction> function =
         JSHandle<JSAsyncFromSyncIterUnwarpFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION));
     function->SetMethod(thread_, method);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetDone(thread_, JSTaggedValue::Undefined());
+    function->SetDone<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -4045,7 +4055,7 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
     function->SetMethod(thread_, method);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
+    function->SetAsyncGeneratorObject<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
 }
@@ -4056,13 +4066,12 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueT
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_,
                             vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetResult(thread_, JSTaggedValue::Undefined());
+    function->SetResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;
 }
@@ -4073,12 +4082,11 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseThrowe
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseValueThunkOrThrowerFunctionClass());
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSFunction::InitializeJSBuiltinFunction(thread_, env, JSHandle<JSFunction>::Cast(function));
     JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
     function->SetMethod(thread_, method);
-    function->SetLexicalEnv(thread_, env, SKIP_BARRIER);
     SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
-    function->SetResult(thread_, JSTaggedValue::Undefined());
+    function->SetResult<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;
 }
@@ -4099,8 +4107,8 @@ JSHandle<TransitionHandler> ObjectFactory::NewTransitionHandler()
     NewObjectHook();
     TransitionHandler *handler = TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
-    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
-    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
+    handler->SetHandlerInfo<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return JSHandle<TransitionHandler>(thread_, handler);
 }
 
@@ -4111,10 +4119,10 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
         PrototypeHandler::Cast(heap_->AllocateYoungOrHugeObject(
             JSHClass::Cast(thread_->GlobalConstants()->GetPrototypeHandlerClass().GetTaggedObject())));
     JSHandle<PrototypeHandler> handler(thread_, header);
-    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
-    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
-    handler->SetHolder(thread_, JSTaggedValue::Undefined());
-    handler->SetAccessorJSFunction(thread_, JSTaggedValue::Undefined());
+    handler->SetHandlerInfo<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetHolder<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetAccessorJSFunction<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     handler->SetAccessorMethodId(0);
     return handler;
 }
@@ -4126,9 +4134,9 @@ JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
         TransWithProtoHandler::Cast(heap_->AllocateYoungOrHugeObject(
             JSHClass::Cast(thread_->GlobalConstants()->GetTransWithProtoHandlerClass().GetTaggedObject())));
     JSHandle<TransWithProtoHandler> handler(thread_, header);
-    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
-    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
-    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
+    handler->SetHandlerInfo<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return handler;
 }
 
@@ -4139,9 +4147,9 @@ JSHandle<StoreAOTHandler> ObjectFactory::NewStoreAOTHandler()
         StoreAOTHandler::Cast(heap_->AllocateYoungOrHugeObject(
             JSHClass::Cast(thread_->GlobalConstants()->GetStoreAOTHandlerClass().GetTaggedObject())));
     JSHandle<StoreAOTHandler> handler(thread_, header);
-    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
-    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
-    handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    handler->SetHandlerInfo<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    handler->SetHolder<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return handler;
 }
 
@@ -4151,7 +4159,7 @@ JSHandle<PromiseRecord> ObjectFactory::NewPromiseRecord()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetPromiseRecordClass().GetTaggedObject()));
     JSHandle<PromiseRecord> obj(thread_, header);
-    obj->SetValue(thread_, JSTaggedValue::Undefined());
+    obj->SetValue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return obj;
 }
 
@@ -4161,8 +4169,8 @@ JSHandle<ResolvingFunctionsRecord> ObjectFactory::NewResolvingFunctionsRecord()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetPromiseResolvingFunctionsRecordClass().GetTaggedObject()));
     JSHandle<ResolvingFunctionsRecord> obj(thread_, header);
-    obj->SetResolveFunction(thread_, JSTaggedValue::Undefined());
-    obj->SetRejectFunction(thread_, JSTaggedValue::Undefined());
+    obj->SetResolveFunction<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetRejectFunction<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return obj;
 }
 
@@ -4364,12 +4372,12 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTag
     obj->ClearBitField();
     obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
-    obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetNonStaticProperties(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetNonStaticElements(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticKeys(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticProperties(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticElements(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetNonStaticKeys<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetNonStaticProperties<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetNonStaticElements<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticKeys<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticProperties<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticElements<SKIP_BARRIER>(thread_, emptyArray);
     return obj;
 }
 
@@ -4795,7 +4803,7 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedMap(thread_, map);
     iter->SetNextIndex(0);
-    iter->SetEntries(thread_, JSTaggedValue::Hole());
+    iter->SetEntries<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
     iter->SetIterationKind(kind);
     return iter;
 }
@@ -4813,7 +4821,7 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedSet(thread_, set);
     iter->SetNextIndex(0);
-    iter->SetEntries(thread_, JSTaggedValue::Hole());
+    iter->SetEntries<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
     iter->SetIterationKind(kind);
     return iter;
 }
@@ -5090,7 +5098,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetPendingAsyncDependencies(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSIndex(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSAncestorIndex(SourceTextModule::UNDEFINED_INDEX);
-    obj->SetException(thread_, JSTaggedValue::Hole());
+    obj->SetException<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
@@ -5243,8 +5251,8 @@ JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetAsyncGeneratorRequestRecordClass().GetTaggedObject()));
     JSHandle<AsyncGeneratorRequest> obj(thread_, header);
-    obj->SetCompletion(thread_, JSTaggedValue::Undefined());
-    obj->SetCapability(thread_, JSTaggedValue::Undefined());
+    obj->SetCompletion<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    obj->SetCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return obj;
 }
 
@@ -5291,9 +5299,9 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHand
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
-    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
-    profileTypeInfoCell->SetBaselineCode(thread_, JSTaggedValue::Hole());
-    profileTypeInfoCell->SetHandle(thread_, JSTaggedValue::Undefined());
+    profileTypeInfoCell->SetMachineCode<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetBaselineCode<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetHandle<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return profileTypeInfoCell;
 }
 
@@ -5307,7 +5315,7 @@ JSHandle<FunctionTemplate> ObjectFactory::NewFunctionTemplate(
     JSHandle<FunctionTemplate> funcTemp(thread_, header);
     funcTemp->SetMethod(thread_, method);
     funcTemp->SetModule(thread_, module);
-    funcTemp->SetRawProfileTypeInfo(thread_, globalConstants->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
+    funcTemp->SetRawProfileTypeInfo<SKIP_BARRIER>(thread_, globalConstants->GetEmptyProfileTypeInfoCell());
     funcTemp->SetLength(length);
     return funcTemp;
 }

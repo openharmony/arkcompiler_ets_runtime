@@ -79,28 +79,31 @@
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
         return JSTaggedValue(Barriers::GetTaggedValue(this, offset));                                         \
     }                                                                                                         \
-    template<typename T>                                                                                      \
-    void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)               \
+    template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
+    void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
     {                                                                                                         \
-        if (mode == WRITE_BARRIER) {                                                                          \
+        if constexpr (mode == WRITE_BARRIER) {                                                                \
             if (value.GetTaggedValue().IsHeapObject()) {                                                      \
                 Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());         \
             } else {                                                                                          \
                 Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());      \
             }                                                                                                 \
         } else {                                                                                              \
+            static_assert(mode == SKIP_BARRIER);                                                              \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());          \
         }                                                                                                     \
     }                                                                                                         \
-    void Set##name(const JSThread *thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)             \
+    template<BarrierMode mode = WRITE_BARRIER>                                                                \
+    void Set##name(const JSThread *thread, JSTaggedValue value)                                               \
     {                                                                                                         \
-        if (mode == WRITE_BARRIER) {                                                                          \
+        if constexpr (mode == WRITE_BARRIER) {                                                                \
             if (value.IsHeapObject()) {                                                                       \
                 Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
             } else {                                                                                          \
                 Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                       \
             }                                                                                                 \
         } else {                                                                                              \
+            static_assert(mode == SKIP_BARRIER);                                                              \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                           \
         }                                                                                                     \
     }

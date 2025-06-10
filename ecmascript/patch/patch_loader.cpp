@@ -266,8 +266,8 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetEcmaVM()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
-                function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
-                                                SKIP_BARRIER);
+                function->SetRawProfileTypeInfo<SKIP_BARRIER>(thread,
+                    thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
             }
         } else if (JSTaggedValue(obj).IsFunctionTemplate()) {
             auto funcTemp = FunctionTemplate::Cast(obj);
@@ -282,8 +282,8 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetEcmaVM()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
-                funcTemp->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
-                                                SKIP_BARRIER);
+                funcTemp->SetRawProfileTypeInfo<SKIP_BARRIER>(thread,
+                    thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
             }
         }
     };

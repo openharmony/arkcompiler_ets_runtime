@@ -193,8 +193,8 @@ JSHandle<AccessorData> ObjectFactory::NewSAccessorData()
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetAccessorDataClass().GetTaggedObject()));
     JSHandle<AccessorData> acc(thread_, AccessorData::Cast(header));
-    acc->SetGetter(thread_, JSTaggedValue::Undefined());
-    acc->SetSetter(thread_, JSTaggedValue::Undefined());
+    acc->SetGetter<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    acc->SetSetter<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return acc;
 }
 
@@ -570,10 +570,10 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
     auto header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
-    profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
-    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
-    profileTypeInfoCell->SetBaselineCode(thread_, JSTaggedValue::Hole());
-    profileTypeInfoCell->SetHandle(thread_, JSTaggedValue::Undefined());
+    profileTypeInfoCell->SetValue<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    profileTypeInfoCell->SetMachineCode<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetBaselineCode<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetHandle<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return profileTypeInfoCell;
 }
 
@@ -597,7 +597,7 @@ JSHandle<FunctionTemplate> ObjectFactory::NewSFunctionTemplate(
     JSHandle<FunctionTemplate> functionTemplate(thread_, header);
     functionTemplate->SetMethod(thread_, method);
     functionTemplate->SetModule(thread_, module);
-    functionTemplate->SetRawProfileTypeInfo(thread_, globalConstants->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
+    functionTemplate->SetRawProfileTypeInfo<SKIP_BARRIER>(thread_, globalConstants->GetEmptyProfileTypeInfoCell());
     functionTemplate->SetLength(length);
     return functionTemplate;
 }
@@ -774,12 +774,12 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewSClassInfoExtractor(
     obj->ClearBitField();
     obj->SetConstructorMethod(thread_, method.GetTaggedValue());
     JSHandle<TaggedArray> emptyArray = EmptyArray();
-    obj->SetNonStaticKeys(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetNonStaticProperties(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetNonStaticElements(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticKeys(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticProperties(thread_, emptyArray, SKIP_BARRIER);
-    obj->SetStaticElements(thread_, emptyArray, SKIP_BARRIER);
+    obj->SetNonStaticKeys<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetNonStaticProperties<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetNonStaticElements<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticKeys<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticProperties<SKIP_BARRIER>(thread_, emptyArray);
+    obj->SetStaticElements<SKIP_BARRIER>(thread_, emptyArray);
     return obj;
 }
 
@@ -853,7 +853,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSConstantPrivateSymbol()
     TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
-    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
     obj->SetHashField(SymbolTable::Hash(obj.GetTaggedValue()));
     obj->SetPrivate();
@@ -866,7 +866,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
     TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
-    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
     obj->SetHashField(0);
     return obj;
@@ -909,7 +909,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     obj->SetPendingAsyncDependencies(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSIndex(SourceTextModule::UNDEFINED_INDEX);
     obj->SetDFSAncestorIndex(SourceTextModule::UNDEFINED_INDEX);
-    obj->SetException(thread_, JSTaggedValue::Hole());
+    obj->SetException<SKIP_BARRIER>(thread_, JSTaggedValue::Hole());
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
@@ -930,9 +930,9 @@ JSHandle<ModuleNamespace> ObjectFactory::NewSModuleNamespace()
     JSHandle<JSObject> obj = NewSharedOldSpaceJSObject(hclass);
 
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
-    moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
-    moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetModule<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetExports<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetDeregisterProcession<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     return moduleNamespace;
 }
 
