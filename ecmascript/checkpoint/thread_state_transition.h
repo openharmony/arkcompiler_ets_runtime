@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,6 +31,11 @@ public:
             ASSERT(self_ != nullptr);
 #if USE_CMC_GC
             if constexpr (newState == ThreadState::RUNNING) {
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+                // This is a temporary impl to adapt interop to cmc, because some interop call napi
+                // without transfering to NATIVE
+                extraCoroutineSwitchedForInterop_ = InterOpCoroutineToNative(self_->GetThreadHolder());
+#endif
                 hasSwitchState_ = self_->GetThreadHolder()->TransferToRunningIfInNative();
             } else {
                 hasSwitchState_ = self_->GetThreadHolder()->TransferToNativeIfInRunning();
@@ -92,12 +97,18 @@ public:
             }
         }
 #endif
+#if defined(USE_CMC_GC) && defined(PANDA_JS_ETS_HYBRID_MODE)
+        if (extraCoroutineSwitchedForInterop_) {
+            InterOpCoroutineToRunning(self_->GetThreadHolder());
+        }
+#endif
     }
 
 private:
     T* self_;
     ThreadState oldState_;
     bool hasSwitchState_ {false};
+    [[maybe_unused]] bool extraCoroutineSwitchedForInterop_ {false};
     NO_COPY_SEMANTIC(ThreadStateTransitionScope);
 };
 

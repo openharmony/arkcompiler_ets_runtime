@@ -28,6 +28,8 @@ namespace panda {
 // Dynamic VM Roots scanning
 PUBLIC_API void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
 PUBLIC_API void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void AddXRefToDynamicRoots();
+PUBLIC_API void RemoveXRefFromDynamicRoots();
 
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);

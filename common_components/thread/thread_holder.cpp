@@ -21,6 +21,38 @@
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+namespace panda {
+InterOpCoroutineToNativeHookFunc interOpCoroutineToNativeHook = nullptr;
+InterOpCoroutineToRunningHookFunc interOpCoroutineToRunningHook = nullptr;
+
+bool InterOpCoroutineToNative(ThreadHolder *current)
+{
+    if (interOpCoroutineToNativeHook == nullptr) {
+        return false;
+    }
+    return interOpCoroutineToNativeHook(current);
+}
+
+bool InterOpCoroutineToRunning(ThreadHolder *current)
+{
+    if (interOpCoroutineToRunningHook == nullptr) {
+        return false;
+    }
+    return interOpCoroutineToRunningHook(current);
+}
+
+void RegisterInterOpCoroutineToNativeHook(InterOpCoroutineToNativeHookFunc func)
+{
+    interOpCoroutineToNativeHook = func;
+}
+void RegisterInterOpCoroutineToRunningHook(InterOpCoroutineToRunningHookFunc func)
+{
+    interOpCoroutineToRunningHook = func;
+}
+}
+#endif
+
 namespace panda {
 thread_local ThreadHolder *currentThreadHolder = nullptr;
 
@@ -80,7 +112,7 @@ void ThreadHolder::UnregisterJSThread(JSThread *jsThread)
 
 void ThreadHolder::RegisterCoroutine(Coroutine *coroutine)
 {
-    DCHECK_CC(!IsInRunningState());
+    // Expect in Native when calling this func
     TransferToRunning();
     DCHECK_CC(coroutines_.find(coroutine) == coroutines_.end());
     coroutines_.insert(coroutine);

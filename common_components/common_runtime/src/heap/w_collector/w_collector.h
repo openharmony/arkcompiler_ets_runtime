@@ -81,6 +81,10 @@ public:
     void EnumRefFieldRoot(RefField<>& ref, RootSet& rootSet) const override;
     void TraceRefField(BaseObject* obj, RefField<>& ref, WorkStack& workStack, WeakStack& weakStack) const;
     void TraceObjectRefFields(BaseObject* obj, WorkStack& workStack, WeakStack& weakStack) override;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    void TraceXRef(RefField<>& ref, WorkStack& workStack) const;
+    void TraceObjectXRef(BaseObject* obj, WorkStack& workStack) override;
+#endif
 
     void FixObjectRefFields(BaseObject* obj) const override;
     void FixRefField(BaseObject* obj, RefField<>& field) const;
@@ -188,6 +192,8 @@ private:
 
     void PrepareFix();
     void FixHeap(); // roots and ref-fields
+
+    void CollectGarbageWithXRef();
 
     CopyTable fwdTable_;
 

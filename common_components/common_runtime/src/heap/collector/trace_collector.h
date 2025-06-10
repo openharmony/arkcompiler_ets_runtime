@@ -99,11 +99,13 @@ private:
 };
 
 class MarkingWork;
+template <bool ProcessXRef>
 class ConcurrentMarkingWork;
 
 class TraceCollector : public Collector {
     friend MarkingWork;
-    friend ConcurrentMarkingWork;
+    template <bool ProcessXRef>
+    friend class ConcurrentMarkingWork;
 
 public:
     explicit TraceCollector(Allocator& allocator, CollectorResources& resources)
@@ -155,6 +157,7 @@ public:
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return request.ShouldBeIgnored(); }
 
+    template<bool ProcessXRef>
     void ProcessMarkStack(uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
                           GlobalWorkStackQueue &globalQueue);
 
@@ -197,6 +200,13 @@ public:
         LOG_COMMON(FATAL) << "Unresolved fatal";
         UNREACHABLE_CC();
     }
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    virtual void TraceObjectXRef(BaseObject* obj, WorkStack& workStack)
+    {
+        LOG_COMMON(FATAL) << "Unresolved fatal";
+        UNREACHABLE_CC();
+    }
+#endif
 
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionSpace::IsResurrectedObject(obj); }
 
