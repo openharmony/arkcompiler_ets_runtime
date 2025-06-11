@@ -61,7 +61,7 @@ JSObject *TestNewJSObject(JSThread *thread, const JSHandle<JSHClass> &hclass)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSObject *obj = JSObject::Cast(factory->NewObject(hclass));
 
-    obj->SetElements(thread, factory->EmptyArray().GetTaggedValue(), SKIP_BARRIER);
+    obj->SetElements<SKIP_BARRIER>(thread, factory->EmptyArray().GetTaggedValue());
     return obj;
 }
 

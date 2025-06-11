@@ -373,7 +373,7 @@ public:
     static void SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
                                       const NativePointerCallback &deleter, void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
-                                   const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
+                                   const JSHandle<JSTaggedValue> &value);
     static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
                                           JSHandle<JSFunction> targetFunc);
     void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);

@@ -38,8 +38,7 @@ public:
 
     void SetGlobalEnv(JSThread* thread, JSTaggedValue value)
     {
-        // skip barrier for GlobalEnv
-        Set<false>(thread, GLOBAL_ENV_INDEX, value);
+        Set(thread, GLOBAL_ENV_INDEX, value);
     }
 };
 }  // namespace panda::ecmascript

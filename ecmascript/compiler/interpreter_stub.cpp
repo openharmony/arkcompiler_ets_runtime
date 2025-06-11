@@ -5175,17 +5175,16 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
     GateRef frame = GetFrame(sp);
-    GateRef lexEnv = GetEnvFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
 #if ENABLE_NEXT_OPTIMIZATION
     NewObjectStubBuilder newBuilder(this, globalEnv);
-    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), lexEnv, GetModule(glue, sp));
+    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
 #else
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-        lexEnv, GetModule(glue, sp) });
+        currentEnv, GetModule(glue, sp) });
 #endif
 
 #if ECMASCRIPT_ENABLE_IC
@@ -5208,17 +5207,16 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
     GateRef frame = GetFrame(sp);
-    GateRef lexEnv = GetEnvFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
 #if ENABLE_NEXT_OPTIMIZATION        
     NewObjectStubBuilder newBuilder(this, globalEnv);
-    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), lexEnv, GetModule(glue, sp));
+    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
 #else
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-        lexEnv, GetModule(glue, sp) });
+        currentEnv, GetModule(glue, sp) });
 #endif
 
 #if ECMASCRIPT_ENABLE_IC
@@ -5779,7 +5777,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    auto frame = GetFrame(sp);
+    GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
@@ -5788,9 +5787,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
     Bind(&notException);
     {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
-        auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(glue, frame);
-        SetLexicalEnvToFunction(glue, result, envHandle);
+        SetLexicalEnvToFunction(glue, result, currentEnv);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
         SetModuleToFunction(glue, result, GetModuleFromFunction(glue, currentFunc));
         CallRuntime(glue, RTSTUB_ID(SetPatchModule), { result });
@@ -5811,7 +5808,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    auto frame = GetFrame(sp);
+    GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
     GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
@@ -5820,9 +5818,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
     Bind(&notException);
     {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
-        auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(glue, frame);
-        SetLexicalEnvToFunction(glue, result, envHandle);
+        SetLexicalEnvToFunction(glue, result, currentEnv);
         GateRef currentFunc = GetFunctionFromFrame(glue, frame);
         SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(glue, currentFunc));
         SetModuleToFunction(glue, result, GetModuleFromFunction(glue, currentFunc));

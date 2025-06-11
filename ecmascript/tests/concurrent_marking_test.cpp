@@ -149,8 +149,8 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
         JSHandle<TaggedArray> emptyArray = factory->EmptyArray();
         factory->InitializeExtraProperties(hclass, obj, numInlinedProps);
         obj->InitializeHash();
-        obj->SetElements(thread, emptyArray, SKIP_BARRIER);
-        obj->SetProperties(thread, emptyArray, SKIP_BARRIER);
+        obj->SetElements<SKIP_BARRIER>(thread, emptyArray);
+        obj->SetProperties<SKIP_BARRIER>(thread, emptyArray);
         obj->SetClassWithoutBarrier(*hclass);
 
         arr->Set(thread, 0, JSTaggedValue(obj));

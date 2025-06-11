@@ -102,14 +102,14 @@ void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction
 void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHandle<JSFunction> &func)
 {
     func->InitBitField();
-    func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
-    func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetProtoOrHClass<SKIP_BARRIER>(thread, JSTaggedValue::Hole());
+    func->SetHomeObject<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
-    func->SetMachineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetBaselineCode(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
-    func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetMachineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetBaselineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
+    func->SetMethod<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetModule<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value
@@ -119,14 +119,14 @@ void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHand
 void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func)
 {
     InitializeWithDefaultValueCommon(thread, func);
-    func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetLexicalEnv<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
 }
 
 void JSFunction::InitializeBuiltinWithDefaultValue(JSThread *thread, const JSHandle<GlobalEnv> &env,
                                                    const JSHandle<JSFunction> &func)
 {
     InitializeWithDefaultValueCommon(thread, func);
-    func->SetLexicalEnv(thread, env.GetTaggedValue(), SKIP_BARRIER);
+    func->SetLexicalEnv(thread, env.GetTaggedValue());
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
@@ -1115,16 +1115,16 @@ void JSFunction::SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFuncti
 }
 
 void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
-                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode)
+                                    const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<ProfileTypeInfoCell> handleRaw(thread, func->GetRawProfileTypeInfo());
     if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
         JSHandle<ProfileTypeInfoCell> handleProfileTypeInfoCell =
             thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(value);
-        func->SetRawProfileTypeInfo(thread, handleProfileTypeInfoCell, WRITE_BARRIER);
+        func->SetRawProfileTypeInfo(thread, handleProfileTypeInfoCell);
         return;
     }
-    handleRaw->SetValue(thread, value, mode);
+    handleRaw->SetValue(thread, value);
 }
 
 void JSFunction::UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
@@ -1149,7 +1149,7 @@ void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<M
 {
     JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo());
     ASSERT(!handleRaw->IsEmptyProfileTypeInfoCell(thread));
-    handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
+    handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef());
 }
 
 void JSFunction::SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
@@ -1159,7 +1159,7 @@ void JSFunction::SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<
         LOG_BASELINEJIT(ERROR) << "skip set baselinejit cache, as profileTypeInfoCell is empty.";
         return;
     }
-    handleRaw->SetBaselineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
+    handleRaw->SetBaselineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef());
 }
 
 JSTaggedValue JSFunctionBase::GetFunctionExtraInfo() const
