@@ -1450,7 +1450,7 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
 }
 #endif
 
-HWTEST_F_L0(JSNApiTests, DISABLED_Hint_GC)
+HWTEST_F_L0(JSNApiTests, Hint_GC)
 {
     ecmascript::ThreadManagedScope managedScope(thread_);
     vm_->SetEnableForceGC(false);
