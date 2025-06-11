@@ -127,6 +127,7 @@ public:
     }
 
     EcmaString *GetOrInternFlattenString(EcmaVM *vm, EcmaString *string);
+    EcmaString *GetOrInternFlattenStringNoGC(EcmaVM *vm, EcmaString *string);
     EcmaString *GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
                                                          uint32_t offset, uint32_t utf8Len);
     EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
@@ -286,6 +287,7 @@ public:
         return hashcode & SEGMENT_MASK;
     }
     EcmaString *GetOrInternFlattenString(EcmaVM *vm, EcmaString *string);
+    EcmaString *GetOrInternFlattenStringNoGC(EcmaVM *vm, EcmaString *string);
     EcmaString *GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
         uint32_t offset, uint32_t utf8Len);
     EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
@@ -326,6 +328,7 @@ private:
     EcmaString *GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
     void InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode);
     EcmaString *AtomicGetOrInternStringImpl(JSThread *thread, const JSHandle<EcmaString> string, uint32_t hashcode);
+    EcmaString *AtomicGetOrInternStringImplNoGC(JSThread *thread, EcmaString *string, uint32_t hashcode);
 
     EcmaString *GetStringFromCompressedSubString(JSThread *thread, const JSHandle<EcmaString> string, uint32_t offset,
                                                  uint32_t utf8Len, uint32_t hashcode);

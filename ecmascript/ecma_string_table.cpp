@@ -236,6 +236,27 @@ EcmaString *EcmaStringTable::AtomicGetOrInternStringImpl(JSThread *thread, const
     return result;
 }
 
+EcmaString* EcmaStringTable::AtomicGetOrInternStringImplNoGC(JSThread *thread, EcmaString* string, uint32_t hashcode)
+{
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    Mutex& mutex = stringTable_[GetTableId(hashcode)].mutex_;
+    mutex.Lock();
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
+    EcmaString *result = GetStringThreadUnsafe(string, hashcode);
+    if (result == nullptr) {
+        InternStringThreadUnsafe(string, hashcode);
+        mutex.Unlock();
+        return string;
+    }
+    mutex.Unlock();
+    return result;
+}
+
 EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *string)
 {
     ASSERT(EcmaStringAccessor(string).NotTreeString());
@@ -246,6 +267,16 @@ EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *st
     JSHandle<EcmaString> stringHandle(thread, string);
     uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
     return AtomicGetOrInternStringImpl(thread, stringHandle, hashcode);
+}
+
+EcmaString* EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaString* string)
+{
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    if (EcmaStringAccessor(string).IsInternString()) {
+        return string;
+    }
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
+    return AtomicGetOrInternStringImplNoGC(vm->GetJSThread(), string, hashcode);
 }
 
 EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,

@@ -41,7 +41,7 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
     ASSERT(codeId.IsValid());
 
     panda_file::CodeDataAccessor cda(*pf, codeId);
-    nativePointerOrBytecodeArray_ = cda.GetInstructions();
+    nativePointerOrBytecodeArray_ = const_cast<uint8_t*>(cda.GetInstructions());
     uint32_t codeSize = cda.GetCodeSize();
     // When triggering jit compile only through the execution count of the js function, set the hotness counter
     // value to 0, to ensure that the profile type info object can be created on the first execution of the js function.

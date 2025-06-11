@@ -118,7 +118,35 @@ EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *st
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
-
+EcmaString *EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM *vm, EcmaString *string)
+{
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    if (EcmaStringAccessor(string).IsInternString()) {
+        return string;
+    }
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
+    ASSERT(!EcmaStringAccessor(string).IsInternString());
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    // Strings in string table should not be in the young space.
+#ifdef USE_CMC_GC
+    ASSERT(string->IsInSharedHeap());
+#else
+    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+#endif
+    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+        return Barriers::GetTaggedObject(obj, offset);
+    };
+    auto loadResult = stringTable_.Load(std::move(readBarrier), hashcode, string->ToBaseString());
+    if (loadResult.value != nullptr) {
+        return EcmaString::FromBaseString(loadResult.value);
+    }
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<EcmaString> stringHandle(thread, string);
+    BaseString* result = stringTable_.StoreOrLoad<false, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
+        vm->GetJSThread(), std::move(readBarrier), hashcode, loadResult, stringHandle);
+    ASSERT(result != nullptr);
+    return EcmaString::FromBaseString(result);
+}
 EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
                                                                       uint32_t offset, uint32_t utf8Len)
 {

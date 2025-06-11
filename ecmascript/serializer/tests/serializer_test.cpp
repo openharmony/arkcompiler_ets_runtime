@@ -32,11 +32,14 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/serializer/base_deserializer.h"
+#include "ecmascript/serializer/module_deserializer.h"
+#include "ecmascript/serializer/module_serializer.h"
 
 using namespace panda::ecmascript;
 using namespace testing::ext;
@@ -1051,6 +1054,20 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize CloneListTest4 fail";
+        Destroy();
+    }
+
+    void SourceTextModuleTest(SerializeData* data)
+    {
+        Init();
+        ModuleDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsSourceTextModule());
+
         Destroy();
     }
 
@@ -2672,6 +2689,58 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiSharedRegion2)
     std::thread t1(&JSDeserializerTest::SerializeMultiSharedRegionTest2, jsDeserializerTest, data.release());
     ThreadSuspensionScope scope(thread);
     t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModule)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    CString recordName = "a";
+    CString recordName1 = "@ohos:hilog";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    JSHandle<TaggedArray> requestedModules = objectFactory->NewTaggedArray(2);
+    requestedModules->Set(thread, 0, module1);
+    requestedModules->Set(thread, 1, module1);
+    module->SetRequestedModules(thread, requestedModules.GetTaggedValue());
+    JSHandle<JSTaggedValue> importName = val;
+    JSHandle<JSTaggedValue> localName = val;
+    JSHandle<ImportEntry> importEntry1 =
+        objectFactory->NewImportEntry(0, importName, localName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 0, 2);
+    JSHandle<JSTaggedValue> starString = thread->GlobalConstants()->GetHandledStarString();
+    JSHandle<ImportEntry> importEntry2 =
+        objectFactory->NewImportEntry(1, starString, localName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module, importEntry2, 1, 2);
+
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module1->SetLocalExportEntries(thread, localExportEntries);
+    module1->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module1->SetStatus(ModuleStatus::INSTANTIATED);
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SourceTextModuleTest, jsDeserializerTest, data.release());
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 };
 }  // namespace panda::test

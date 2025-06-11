@@ -29,7 +29,7 @@
 namespace panda::ecmascript {
 
 BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *hint)
-    : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
+    : data_(data), thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), engine_(hint)
 {
     sheap_ = SharedHeap::GetInstance();
     uint32_t index = data_->GetDataIndex();
@@ -159,6 +159,12 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     bool isTransferBuffer = GetAndResetTransferBuffer();
     bool isSharedArrayBuffer = GetAndResetSharedArrayBuffer();
     void *bufferPointer = GetAndResetBufferPointer();
+    // save lazyArray, moduleFileName, moduleRecordName here, cause content will change in DeserializeTaggedObject.
+    bool* lazyArray = GetLazyArray();
+    CString moduleFileName = moduleFileName_;
+    moduleFileName_.clear();
+    CString moduleRecordName = moduleRecordName_;
+    moduleRecordName_.clear();
     // deserialize object here
     uintptr_t addr = DeserializeTaggedObject(space);
 
@@ -188,6 +194,16 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         }
         func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell());
         func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+    } else if (object->GetClass()->IsSourceTextModule()) {
+        SourceTextModule* module = reinterpret_cast<SourceTextModule *>(object);
+        module->SetEcmaModuleFilenameStringForDeserialize(moduleFileName);
+        module->SetEcmaModuleRecordNameStringForDeserialize(moduleRecordName);
+        module->SetLazyImportArrayForDeserialize(lazyArray);
+        if (module->GetStatus() > ModuleStatus::INSTANTIATED) {
+            module->SetStatus(ModuleStatus::INSTANTIATED);
+        }
+        module->SetException(thread_, thread_->GlobalConstants()->GetHole());
+        module->SetCycleRoot(thread_, JSTaggedValue(module));
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
@@ -376,8 +392,42 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             slot.Update(thread_->GetGlobalEnv().GetTaggedValue().GetTaggedObject());
             break;
         }
+        case (uint8_t)EncodeFlag::MODULE_FILE_NAME: {
+            uint32_t len = data_->ReadUint32(position_);
+            if (len > 0) {
+                moduleFileName_.resize(len);
+                data_->ReadRawData(ToUintPtr(moduleFileName_.data()), len, position_);
+            } else {
+                LOG_ECMA(FATAL) << "ReadSingleEncodeData MODULE_FILE_NAME is empty.";
+            }
+            handledFieldSize = 0;
+            break;
+        }
+        case (uint8_t)EncodeFlag::MODULE_RECORD_NAME: {
+            uint32_t len = data_->ReadUint32(position_);
+            if (len > 0) {
+                moduleRecordName_.resize(len);
+                data_->ReadRawData(ToUintPtr(moduleRecordName_.data()), len, position_);
+            } else {
+                moduleRecordName_ = "";
+            }
+            handledFieldSize = 0;
+            break;
+        }
+        case (uint8_t)EncodeFlag::MODULE_LAZY_ARRAY: {
+            uint32_t len = data_->ReadUint32(position_);
+            if (len > 0) {
+                // moduleLazyArray_ will delete in release module process.
+                moduleLazyArray_ = new bool[len/sizeof(bool)];
+                data_->ReadRawData(ToUintPtr(moduleLazyArray_), len, position_);
+            } else {
+                moduleLazyArray_ = nullptr;
+            }
+            handledFieldSize = 0;
+            break;
+        }
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable flag: " << (int)encodeFlag;
             UNREACHABLE();
             break;
     }
@@ -590,8 +640,7 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
         case (uint8_t)JSType::BIGINT:
             return JSHandle<JSFunction>(env->GetBigIntFunction())->GetFunctionPrototype().GetRawData();
         default:
-            LOG_ECMA(ERROR) << "Relocate unsupported JSType: " << JSHClass::DumpJSType(static_cast<JSType>(objectType));
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "Relocate unsupported JSType: " << JSHClass::DumpJSType(static_cast<JSType>(objectType));
             UNREACHABLE();
             break;
     }

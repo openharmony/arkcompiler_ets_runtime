@@ -1280,6 +1280,21 @@ public:
         stageOfColdReload_ = stageOfColdReload;
     }
 
+    void SetApplicationVersionCode(const uint32_t versionCode)
+    {
+        applicationVersionCode_ = versionCode;
+    }
+
+    uint32_t GetApplicationVersionCode() const
+    {
+        return applicationVersionCode_;
+    }
+
+    bool IsEnableJSPandaFileAndModuleSerialize() const
+    {
+        return enableJSPandaFileAndModuleSerialize_;
+    }
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1554,6 +1569,11 @@ private:
 
     // store multi-context module manager
     std::vector<ModuleManager *> moduleManagers_ {};
+
+    // store Application versionCode
+    uint32_t applicationVersionCode_ {0};
+
+    bool enableJSPandaFileAndModuleSerialize_ { false };
 };
 }  // namespace ecmascript
 }  // namespace panda

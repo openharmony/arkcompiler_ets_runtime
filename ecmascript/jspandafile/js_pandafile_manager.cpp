@@ -23,6 +23,8 @@
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#include "ecmascript/ohos/ohos_constants.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -525,7 +527,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
         }
     }
     if (newJsPandaFile->IsNewVersion() && vm->IsAsynTranslateClasses()) {
-        newJsPandaFile->TranslateClasses(thread, methodName);
+        if (newJsPandaFile->IsBundlePack() || !vm->IsEnableJSPandaFileAndModuleSerialize()) {
+            newJsPandaFile->TranslateClasses(thread, methodName);
+        } else {
+            JSPandaFileSnapshot::ReadData(
+                thread, newJsPandaFile.get(), methodName, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+        }
     } else {
         PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
     }

@@ -23,8 +23,8 @@ namespace panda::ecmascript {
 class ValueSerializer : public BaseSerializer {
 public:
     explicit ValueSerializer(JSThread *thread, bool defaultTransfer = false, bool defaultCloneShared = false)
-        : BaseSerializer(thread),  defaultTransfer_(defaultTransfer), defaultCloneShared_(defaultCloneShared) {}
-    ~ValueSerializer()
+        : BaseSerializer(thread), defaultTransfer_(defaultTransfer), defaultCloneShared_(defaultCloneShared) {}
+    ~ValueSerializer() override
     {
         // clear transfer obj set after serialization
         transferDataSet_.clear();
@@ -37,8 +37,12 @@ public:
     bool WriteValue(JSThread *thread, const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &transfer,
                     const JSHandle<JSTaggedValue> &cloneList);
 
+protected:
+    virtual bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
+
 private:
     void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
+    virtual bool SerializeSharedObj([[maybe_unused]] TaggedObject *object);
     void SerializeJSError(TaggedObject *object);
     void SerializeNativeBindingObject(TaggedObject *object);
     bool SerializeJSArrayBufferPrologue(TaggedObject *object);
@@ -47,7 +51,6 @@ private:
     void SerializeJSRegExpPrologue(JSRegExp *jsRegExp);
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
     bool PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList);
-    bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
     bool IsInternalJSType(JSType type)
     {
         if ((type >= JSType::JS_RECORD_FIRST && type <= JSType::JS_RECORD_LAST) ||
@@ -62,6 +65,9 @@ private:
         LOG_ECMA(ERROR) << errorMessage;
         data_->SetErrorMessage(errorMessage);
     }
+
+    // process SourceTextModule fields
+    bool SerializeModuleCppObject(TaggedObject *object);
 
 private:
     bool defaultTransfer_ {false};

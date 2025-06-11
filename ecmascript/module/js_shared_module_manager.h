@@ -78,6 +78,18 @@ public:
         return sharedMutex_;
     }
 
+    inline uint32_t GetResolvedSharedModulesSize()
+    {
+        return resolvedSharedModules_.size();
+    }
+
+    void AddSharedSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
+    {
+        for (const auto& [_, moduleRecord] : resolvedSharedModules_) {
+            serializerArray->Set(thread, idx++, moduleRecord);
+        }
+    }
+
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;

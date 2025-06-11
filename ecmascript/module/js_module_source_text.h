@@ -80,11 +80,22 @@ public:
             return lhs->GetAsyncEvaluatingOrdinal() < rhs->GetAsyncEvaluatingOrdinal();
         }
     };
+    struct MutableFields {
+        JSTaggedValue TopLevelCapability;
+        JSTaggedValue NameDictionary;
+        JSTaggedValue CycleRoot;
+        JSTaggedValue AsyncParentModules;
+        JSTaggedValue SendableEnv;
+        JSTaggedValue Exception;
+        JSTaggedValue Namespace;
+    };
     using AsyncParentCompletionSet =
       CSet<JSHandle<SourceTextModule>, AsyncEvaluatingOrdinalCompare>;
 
     CAST_CHECK(SourceTextModule, IsSourceTextModule);
 
+    static void StoreAndResetMutableFields(JSThread *thread, JSHandle<SourceTextModule> module, MutableFields &fields);
+    static void RestoreMutableFields(JSThread *thread, JSHandle<SourceTextModule> module, MutableFields &fields);
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                  const JSHandle<TaggedArray> &exportStarSet);
@@ -290,6 +301,23 @@ public:
         CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
         delete ptr;
         SetEcmaModuleRecordName(ToUintPtr(nullptr));
+    }
+
+    inline void SetLazyImportArrayForDeserialize(bool *lazyImportArray)
+    {
+        SetLazyImportStatus(ToUintPtr(lazyImportArray));
+    }
+
+    inline void SetEcmaModuleFilenameStringForDeserialize(const CString &fileName)
+    {
+        CString *ptr = new CString(fileName);
+        SetEcmaModuleFilename(ToUintPtr(ptr));
+    }
+
+    inline void SetEcmaModuleRecordNameStringForDeserialize(const CString &recordName)
+    {
+        CString *ptr = new CString(recordName);
+        SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;

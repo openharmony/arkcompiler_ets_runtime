@@ -102,6 +102,19 @@ public:
             SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
         }
     }
+
+    inline uint32_t GetResolvedModulesSize() const
+    {
+        return resolvedModules_.size();
+    }
+
+    inline void AddNormalSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
+    {
+        for (const auto& [_, moduleRecord] : resolvedModules_) {
+            serializerArray->Set(thread, idx++, moduleRecord);
+        }
+    }
+
     inline bool IsVMBundlePack()
     {
         return vm_->IsBundlePack();

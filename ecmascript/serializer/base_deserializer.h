@@ -78,7 +78,7 @@ class BaseDeserializer {
 public:
     explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr);
 
-    ~BaseDeserializer()
+    virtual ~BaseDeserializer()
     {
         objectVector_.clear();
         regionVector_.clear();
@@ -89,9 +89,11 @@ public:
 
     JSHandle<JSTaggedValue> ReadValue();
 
+protected:
+    virtual uintptr_t DeserializeTaggedObject(SerializedObjectSpace space);
+
 private:
     JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
-    uintptr_t DeserializeTaggedObject(SerializedObjectSpace space);
     void DeserializeNativeBindingObject(NativeBindingAttachInfo *info);
     void DeserializeJSError(JSErrorInfo *info);
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
@@ -220,11 +222,25 @@ private:
         isWeak ? slot.UpdateWeak(addr) : slot.Update(addr);
     }
 
+    bool *GetLazyArray()
+    {
+        if (moduleLazyArray_) {
+            bool *buffer = moduleLazyArray_;
+            moduleLazyArray_ = nullptr;
+            return buffer;
+        }
+        return nullptr;
+    }
+
+protected:
+    SerializeData *data_;
+    size_t position_ {0};
+    CVector<JSTaggedType> objectVector_ {};
+
 private:
     JSThread *thread_;
     Heap *heap_;
     SharedHeap *sheap_;
-    SerializeData *data_;
     void *engine_;
 #ifdef USE_CMC_GC
     uintptr_t currentRegularObjectAddr_ {0};
@@ -249,7 +265,6 @@ private:
 #endif
     // SerializationChunk store shared objects which have been serialized
     SerializationChunk *sharedObjChunk_ {nullptr};
-    CVector<JSTaggedType> objectVector_;
     bool isWeak_ {false};
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};
@@ -259,7 +274,10 @@ private:
     CVector<NativeBindingAttachInfo> nativeBindingAttachInfos_;
     CVector<JSErrorInfo> jsErrorInfos_;
     CVector<JSHandle<JSFunction>> concurrentFunctions_;
-    size_t position_ {0};
+    // module deserialize
+    CString moduleFileName_ {};
+    CString moduleRecordName_ {};
+    bool* moduleLazyArray_ {nullptr};
 };
 }
 
