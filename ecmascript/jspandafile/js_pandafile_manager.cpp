@@ -527,7 +527,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
         }
     }
     if (newJsPandaFile->IsNewVersion() && vm->IsAsynTranslateClasses()) {
-        if (newJsPandaFile->IsBundlePack() || !vm->IsEnableJSPandaFileAndModuleSerialize()) {
+        if (newJsPandaFile->IsBundlePack() || !vm->GetJSOptions().EnableJSPandaFileAndModuleSnapshot()) {
             newJsPandaFile->TranslateClasses(thread, methodName);
         } else {
             JSPandaFileSnapshot::ReadData(
