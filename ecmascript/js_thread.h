@@ -67,6 +67,7 @@ enum class ElementsKind : uint8_t;
 enum class NodeKind : uint8_t;
 
 class MachineCode;
+class DependentInfos;
 using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
 using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
 using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
@@ -1578,8 +1579,19 @@ public:
 
     void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
     {
+        if (stageOfHotReload == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+            NotifyHotReloadDeoptimize();
+        }
         glueData_.stageOfHotReload_ = stageOfHotReload;
     }
+
+    JSHandle<DependentInfos> GetDependentInfo() const;
+
+    void SetDependentInfo(JSTaggedValue info);
+
+    JSHandle<DependentInfos> GetOrCreateThreadDependentInfo();
+
+    void NotifyHotReloadDeoptimize();
 
     ModuleManager *GetModuleManager() const;
 
@@ -2036,6 +2048,7 @@ private:
     std::atomic<bool> hasTerminated_ {false};
 
     bool isInConcurrentScope_ {false};
+    JSTaggedValue hotReloadDependInfo_ {JSTaggedValue::Undefined()};
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

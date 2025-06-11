@@ -1791,39 +1791,6 @@ void SlowPathLowering::LowerExternalModule(GateRef gate)
     GateRef jsFunc = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);
 
-    if (compilationEnv_->IsJitCompiler()) {
-        uint32_t pcOffset = acc_.TryGetPcOffset(gate);
-        uint32_t methodOffset = acc_.TryGetMethodOffset(gate);
-        bool isResolved = static_cast<const JitCompilationEnv*>(compilationEnv_)->
-            IsLdExtModuleVarResolved(methodOffset, pcOffset);
-        if (isResolved) {
-            GateRef moduleVar = builder_.CallNGCRuntime(glue_, RTSTUB_ID(GetExternalModuleVar),
-                Gate::InvalidGateRef, { glue_, jsFunc, index }, gate);
-            Label hotReload(&builder_);
-            Label noHotReload(&builder_);
-            Label setValue(&builder_);
-            DEFVALUE(resultVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-            BRANCH_CIR(builder_.NotEqual(moduleVar, builder_.HoleConstant()), &noHotReload, &hotReload);
-            builder_.Bind(&hotReload);
-            {
-                GateRef indexTagged = builder_.ToTaggedInt(index);
-                resultVal = LowerCallRuntime(gate, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc),
-                    { indexTagged, jsFunc }, true);
-
-                builder_.Jump(&setValue);
-            }
-            builder_.Bind(&noHotReload);
-            {
-                resultVal = moduleVar;
-                builder_.Jump(&setValue);
-            }
-
-            builder_.Bind(&setValue);
-            ReplaceHirWithValue(gate, *resultVal);
-            return;
-        }
-    }
-
     GateRef indexTagged = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc), {indexTagged, jsFunc}, true);
     ReplaceHirWithValue(gate, result);

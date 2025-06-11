@@ -1711,4 +1711,11 @@ JSTaggedValue BuiltinsArkTools::CreateNapiObject(EcmaRuntimeCallInfo *msg)
     JSHandle<JSObject> jsObject(factory->CreateNapiObject());
     return jsObject.GetTaggedValue();
 }
+
+JSTaggedValue BuiltinsArkTools::SetHotReloadPatchMain(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    thread->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    return JSTaggedValue::Undefined();
+}
 } // namespace panda::ecmascript::builtins

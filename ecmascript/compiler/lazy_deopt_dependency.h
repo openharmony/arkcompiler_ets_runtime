@@ -37,6 +37,7 @@ public:
 
     void Register(JSHClass *hclass, DependentGroup group);
     void Register(uint32_t detectorID, DependentGroup group);
+    void Register(DependentGroup group);
 
     void InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc);
 
@@ -44,12 +45,14 @@ private:
     std::map<JSHClass *, DependentGroups> deps_;        // hclass, groups
     std::map<uint32_t, DependentGroups> detectorDeps_;  // detectorID_, groups
     GlobalEnv *globalEnv_;
+    DependentGroups threadDeps_ {0};
 };
 
 enum class LazyDeoptDependencyKind : uint32_t {
     STABLE_HCLASS,          // Once the HClass undergoes transition, "isStable" bit remains false permanently
     NOT_PROTOTYPE_HCLASS,   // Once the HClass becomes prototype, "isPrototype" bit remains true permanently
     DETECTOR,
+    NOT_HOT_RELOAD,
 };
 
 class LazyDeoptDependency {
@@ -127,6 +130,26 @@ private:
     JSHClass *hclass_ {nullptr};
 };
 
+class HotReloadDependency final : public LazyDeoptDependency {
+public:
+    HotReloadDependency(JSThread *thread)
+        : LazyDeoptDependency(LazyDeoptDependencyKind::NOT_HOT_RELOAD), thread_(thread) {}
+
+    bool IsValid() const override
+    {
+        return thread_->GetStageOfHotReload() != StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN;
+    }
+
+    void Install(CombinedDependencies *combinedDeps) const override
+    {
+        ASSERT(IsValid());
+        combinedDeps->Register(DependentGroup::HOTRELOAD_PATCHMAIN);
+    }
+
+private:
+    JSThread *thread_ {nullptr};
+};
+
 class PUBLIC_API LazyDeoptAllDependencies {
 public:
     LazyDeoptAllDependencies() = default;
@@ -142,6 +165,7 @@ public:
     bool DependOnStableProtoChain(JSHClass *receiverHClass,
                                   JSHClass *holderHClass,
                                   GlobalEnv *globalEnv = nullptr);
+    bool DependOnHotReloadPatchMain(JSThread *thread);
     bool PreInstall(JSThread *thread);
     PUBLIC_API static bool Commit(LazyDeoptAllDependencies *dependencies,
                                   JSThread *thread, JSTaggedValue jsFunc);

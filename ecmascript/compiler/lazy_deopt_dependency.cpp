@@ -35,6 +35,11 @@ void CombinedDependencies::Register(uint32_t detectorID, DependentGroup group)
     detectorDeps_[detectorID] |= static_cast<uint32_t>(group);
 }
 
+void CombinedDependencies::Register(DependentGroup group)
+{
+    threadDeps_ |= static_cast<uint32_t>(group);
+}
+
 void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc)
 {
     JSMutableHandle<JSHClass> hclass(thread, JSTaggedValue::Undefined());
@@ -46,6 +51,12 @@ void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> 
         JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
             jsFunc, groups, dependentInfos);
         hclass->SetDependentInfos(thread, infos.GetTaggedValue());
+    }
+    if (threadDeps_) {
+        auto threadDependInfo = thread->GetOrCreateThreadDependentInfo();
+        JSHandle<DependentInfos> infos =
+            DependentInfos::AppendDependentInfos(thread, jsFunc, threadDeps_, threadDependInfo);
+        thread->SetDependentInfo(infos.GetTaggedValue());
     }
     for (auto iter : detectorDeps_) {
         uint32_t detectorID = iter.first;
@@ -137,6 +148,16 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
         current = currentHC->GetPrototype();
     }
     return success;
+}
+
+bool LazyDeoptAllDependencies::DependOnHotReloadPatchMain(JSThread *thread)
+{
+    LazyDeoptDependency *dependency = new HotReloadDependency(thread);
+    if (dependency->IsValid()) {
+        RegisterDependency(dependency);
+        return true;
+    }
+    return false;
 }
 
 bool LazyDeoptAllDependencies::PreInstall(JSThread *thread)

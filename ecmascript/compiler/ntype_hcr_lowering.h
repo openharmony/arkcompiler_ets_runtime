@@ -51,6 +51,7 @@ private:
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStoreModuleVar(GateRef gate, GateRef glue);
     void LowerLdLocalModuleVar(GateRef gate, GateRef glue);
+    void LowerLdExternalModuleVar(GateRef gate);
 
     GateRef LoadFromConstPool(GateRef glue, GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef NewActualArgv(GateRef gate, GateRef glue);

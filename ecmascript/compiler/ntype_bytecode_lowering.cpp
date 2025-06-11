@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/ntype_bytecode_lowering.h"
 
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_hclass-inl.h"
@@ -99,6 +100,10 @@ void NTypeBytecodeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
             LowerLdLocalMoudleVar(gate);
+            break;
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+            LowerLdExternalMoudleVar(gate);
             break;
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
@@ -334,6 +339,37 @@ void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.LdLocalModuleVar(jsFunc, index);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NTypeBytecodeLowering::LowerLdExternalMoudleVar(GateRef gate)
+{
+    if (!compilationEnv_->IsJitCompiler()) {
+        return;
+    }
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    uint32_t methodOffset = acc_.TryGetMethodOffset(gate);
+    if (methodOffset == 0) {
+        return;
+    }
+    auto isResolved =
+        static_cast<const JitCompilationEnv *>(compilationEnv_)->IsLdExtModuleVarResolved(methodOffset, pcOffset);
+    if (!isResolved) {
+        return;
+    }
+
+    if (enableLazyDeopt_) {
+        if (!compilationEnv_->GetDependencies()->DependOnHotReloadPatchMain(compilationEnv_->GetHostThread())) {
+            return;
+        }
+    } else {
+        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+        builder_.DeoptCheck(builder_.IsNotLdEndExecPatchMain(glue_), frameState, DeoptType::HOTRELOAD_PATCHMAIN);
+    }
+
+    GateRef jsFunc = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef value = builder_.LdExternalModuleVar(jsFunc, index);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), value);
 }
 
 void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)

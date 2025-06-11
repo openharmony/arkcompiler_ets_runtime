@@ -613,6 +613,18 @@ GateRef CircuitBuilder::LdLocalModuleVar(GateRef jsFunc, GateRef index)
     return newGate;
 }
 
+GateRef CircuitBuilder::LdExternalModuleVar(GateRef jsFunc, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->LdExternalModuleVar(), MachineType::I64,
+                                            {currentControl, currentDepend, jsFunc, index}, GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

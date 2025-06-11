@@ -18,6 +18,7 @@
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dependent_infos.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
@@ -522,6 +523,9 @@ void JSThread::Iterate(RootVisitor &visitor)
             currentGlobalEnv->Iterate(visitor);
         }
 #endif
+    }
+    if (!hotReloadDependInfo_.IsUndefined()) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&hotReloadDependInfo_)));
     }
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
@@ -1058,6 +1062,33 @@ JSHandle<GlobalEnv> JSThread::GetGlobalEnv() const
 {
     // currentEnv is GlobalEnv now
     return JSHandle<GlobalEnv>(ToUintPtr(&glueData_.currentEnv_));
+}
+
+JSHandle<DependentInfos> JSThread::GetDependentInfo() const
+{
+    return JSHandle<DependentInfos>(ToUintPtr(&hotReloadDependInfo_));
+}
+
+void JSThread::SetDependentInfo(JSTaggedValue info)
+{
+    hotReloadDependInfo_ = info;
+}
+
+JSHandle<DependentInfos> JSThread::GetOrCreateThreadDependentInfo()
+{
+    if (hotReloadDependInfo_.IsUndefined()) {
+        return GetEcmaVM()->GetFactory()->NewDependentInfos(0);
+    }
+    return GetDependentInfo();
+}
+
+void JSThread::NotifyHotReloadDeoptimize()
+{
+    if (!hotReloadDependInfo_.IsHeapObject()) {
+        return;
+    }
+    DependentInfos::DeoptimizeGroups(GetDependentInfo(), this, DependentInfos::DependentGroup::HOTRELOAD_PATCHMAIN);
+    hotReloadDependInfo_ = JSTaggedValue::Undefined();
 }
 
 PropertiesCache *JSThread::GetPropertiesCache() const

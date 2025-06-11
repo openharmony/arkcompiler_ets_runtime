@@ -24,7 +24,8 @@ namespace panda::ecmascript::kungfu {
     V(StoreModuleVar, STORE_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 3)                          \
     V(OrdinaryHasInstance, ORDINARY_HAS_INSTANCE, GateFlags::CHECKABLE, 1, 1, 2)                \
     V(MigrateArrayWithKind, MIGRATE_ARRAY_WITH_KIND, GateFlags::NONE_FLAG, 1, 1, 3)             \
-    V(LdLocalModuleVar, LD_LOCAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)
+    V(LdLocalModuleVar, LD_LOCAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)                     \
+    V(LdExternalModuleVar, LD_EXTERNAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)
 
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \

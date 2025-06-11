@@ -387,6 +387,8 @@ public:
     GateRef HasDeleteProperty(GateRef hClass);
     GateRef IsOnHeap(GateRef hClass);
     GateRef IsEcmaObject(GateRef glue, GateRef obj);
+    GateRef GetStageOfHotReload(GateRef glue);
+    GateRef IsNotLdEndExecPatchMain(GateRef glue);
 
     // Set
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
@@ -471,6 +473,7 @@ public:
     GateRef ToLength(GateRef receiver);
     GateRef StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value);
     GateRef LdLocalModuleVar(GateRef jsFunc, GateRef index);
+    GateRef LdExternalModuleVar(GateRef jsFunc, GateRef index);
     GateRef BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef gate);
 
     inline GateRef GetMethodId(GateRef glue, GateRef func);
