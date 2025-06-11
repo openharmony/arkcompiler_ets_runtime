@@ -34,6 +34,9 @@
 #include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
+#include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
+#include "ecmascript/ohos/module_snapshot_interfaces.h"
+#include "ecmascript/ohos/ohos_constants.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif
@@ -6096,6 +6099,37 @@ void JSNApi::SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback)
 void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
 {
     ecmascript::ModuleLogger::SetModuleLoggerTask(vm);
+}
+
+// Arkui trigger jsPandafile Seralize when cold start is end.
+void JSNApi::PandaFileSerialize(const EcmaVM *vm)
+{
+    if (!vm->IsEnableJSPandaFileAndModuleSerialize()) {
+        return;
+    }
+    ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+    ecmascript::ohos::JSPandaFileSnapshotInterfaces::Serialize(vm, path);
+}
+
+// Arkui trigger module Seralize when cold start is end.
+void JSNApi::ModuleSerialize(const EcmaVM *vm)
+{
+    if (!vm->IsEnableJSPandaFileAndModuleSerialize()) {
+        return;
+    }
+    ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+    ecmascript::ohos::ModuleSnapshotInterfaces::Serialize(vm, path);
+}
+
+// Ability Runtime trigger module Deseralize when application start.
+void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
+{
+    if (!vm->IsEnableJSPandaFileAndModuleSerialize()) {
+        return;
+    }
+    vm->SetApplicationVersionCode(appVersion);
+    ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+    ecmascript::ohos::ModuleSnapshotInterfaces::Deserialize(vm, path);
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,

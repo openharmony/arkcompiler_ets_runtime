@@ -15,7 +15,7 @@
 
 #include "ecmascript/platform/file.h"
 
-
+#include <dirent.h>
 #include "ecmascript/base/path_helper.h"
 #include "common_components/log/log.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -128,6 +128,33 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
     return MemMap(addr, size);
 }
 
+MemMap CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int fileSize,
+                     [[maybe_unused]] int flag, [[maybe_unused]] int prot)
+{
+    fd_t fd = open(fileName, flag, S_IRWXU | S_IRGRP | S_IROTH); // rw-r-r-
+    if (fd == INVALID_FD) {
+        LOG_ECMA(ERROR) << fileName << " file open failed";
+        return MemMap();
+    }
+    FdsanExchangeOwnerTag(fd);
+    
+    if (ftruncate(fd, fileSize) == -1) {
+        LOG_ECMA(ERROR) << fileName << " file ftruncate failed";
+        close(fd);
+        return MemMap();
+    }
+    struct stat st;
+    if (fstat(fd, &st) == -1 || st.st_size == 0) {
+        LOG_ECMA(ERROR) << fileName << " file fstat failed";
+        close(fd);
+        return MemMap();
+    }
+
+    void *addr = mmap(nullptr, fileSize, prot, MAP_SHARED, fd, 0);
+    Close(fd);
+    return MemMap(addr, fileSize);
+}
+
 MemMap FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint32_t offStart)
 {
     if (fd == INVALID_FD) {
@@ -147,6 +174,11 @@ MemMap FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint3
 int FileUnMap(MemMap addr)
 {
     return munmap(addr.GetOriginAddr(), addr.GetSize());
+}
+
+int FileSync(MemMap addr, int flag)
+{
+    return msync(addr.GetOriginAddr(), addr.GetSize(), flag);
 }
 
 CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname,
@@ -213,4 +245,28 @@ char *LoadLibError()
     return dlerror();
 }
 
+void DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix)
+{
+    DIR* dir = opendir(dirPath.data());
+    if (!dir) {
+        LOG_FULL(ERROR) << "DeleteFilesWithSuffix open dir Failed";
+        return;
+    }
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (entry->d_type == DT_REG) {
+            const std::string &fileName = entry->d_name;
+            if (fileName.find(suffix) == std::string::npos) {
+                continue;
+            }
+            std::string fullPath = std::string(dirPath) + fileName;
+            if (remove(fullPath.c_str()) == 0) {
+                LOG_ECMA(INFO) << "DeleteFilesWithSuffix remove path success: " << fullPath;
+            } else {
+                LOG_ECMA(ERROR) << "DeleteFilesWithSuffix remove path failed: " << fullPath;
+            }
+        }
+    }
+    closedir(dir);
+}
 }  // namespace panda::ecmascript

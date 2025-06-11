@@ -99,6 +99,19 @@ public:
     void AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPandaFile);
     void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();
+
+    std::unordered_set<std::shared_ptr<JSPandaFile>> GetHapJSPandaFiles()
+    {
+        std::unordered_set<std::shared_ptr<JSPandaFile>> hapJSPandaFiles;
+        LockHolder lock(jsPandaFileLock_);
+        for (const auto &item : loadedJSPandaFiles_) {
+            if (!item.second->IsBundlePack() && item.second->IsHapPath()) {
+                hapJSPandaFiles.emplace(item.second);
+            }
+        }
+        return hapJSPandaFiles;
+    }
+
 private:
     JSPandaFileManager() = default;
 

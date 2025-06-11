@@ -754,6 +754,8 @@ ecma_source = [
   "ecmascript/byte_array.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/ohos/enable_aot_list_helper.cpp",
+  "ecmascript/ohos/js_pandafile_snapshot_interfaces.cpp",
+  "ecmascript/ohos/module_snapshot_interfaces.cpp",
   "ecmascript/compiler/aot_constantpool_patcher.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
@@ -847,6 +849,7 @@ ecma_source = [
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",
+  "ecmascript/jspandafile/js_pandafile_snapshot.cpp",
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
   "ecmascript/jspandafile/literal_data_extractor.cpp",
@@ -985,6 +988,7 @@ ecma_source = [
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/napi_module_loader.cpp",
   "ecmascript/module/module_resolver.cpp",
+  "ecmascript/module/module_snapshot.cpp",
   "ecmascript/mutator_lock.cpp",
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/napi/jsnapi_expo.cpp",
@@ -1008,6 +1012,8 @@ ecma_source = [
   "ecmascript/property_accessor.cpp",
   "ecmascript/serializer/base_deserializer.cpp",
   "ecmascript/serializer/base_serializer.cpp",
+  "ecmascript/serializer/module_deserializer.cpp",
+  "ecmascript/serializer/module_serializer.cpp",
   "ecmascript/serializer/value_serializer.cpp",
   "ecmascript/shared_object_factory.cpp",
   "ecmascript/shared_objects/js_shared_map.cpp",
@@ -1701,6 +1707,15 @@ ohos_prebuilt_etc("app_aot_jit_enable_list") {
   } else {
     source = "$js_root/ecmascript/ohos/app_aot_jit_enable_list_default.conf"
   }
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("app_startup_snapshot") {
+  relative_install_dir = "ark"
+  source = "$js_root/ecmascript/ohos/app_startup_snapshot.conf"
 
   # Set the subsystem name
   part_name = "ets_runtime"

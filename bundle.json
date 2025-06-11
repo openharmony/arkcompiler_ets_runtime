@@ -62,6 +62,7 @@
         "build": {
             "sub_component": [
                 "//arkcompiler/ets_runtime:app_aot_jit_enable_list",
+                "//arkcompiler/ets_runtime:app_startup_snapshot",
                 "//arkcompiler/ets_runtime:ark_js_packages",
                 "//arkcompiler/ets_runtime:ark_js_host_linux_tools_packages",
                 "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac",

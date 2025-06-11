@@ -403,6 +403,11 @@ public:
         return extraLiteralInfo_;
     }
 
+    void SetNativePointer(void* nativePointer)
+    {
+        nativePointerOrBytecodeArray_ = nativePointer;
+    }
+
     std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(const JSPandaFile *jsPandaFile) const;
 
 private:
@@ -436,7 +441,7 @@ private:
 
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
-    alignas(EAS) const void *nativePointerOrBytecodeArray_ {nullptr};
+    alignas(EAS) void *nativePointerOrBytecodeArray_ {nullptr};
     // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
     alignas(EAS) uint64_t literalInfo_ {0ULL};
     // BuiltinId, FunctionKind are encoded in extraLiteralInfo_.

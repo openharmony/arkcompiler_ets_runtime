@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 
 #include "common_components/taskpool/task.h"
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
@@ -88,12 +89,15 @@ public:
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
+
+    static constexpr std::string_view HAP_SUFFIX = ".hap";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
     static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
     static constexpr int32_t PF_OFFSET = 0;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_COUNT = 128;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_MIN_COUNT = 2;
+    static constexpr uint32_t DEFAULT_MAIN_METHOD_INDEX = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
@@ -157,7 +161,7 @@ public:
     inline void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
         ASSERT(methodLiteral != nullptr);
-        methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
+        methodLiteralMap_.try_emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
     inline const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
@@ -468,6 +472,11 @@ public:
 
     void TranslateClasses(JSThread *thread, const CString &methodName);
 
+    bool IsHapPath() const
+    {
+        return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX);
+    }
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -524,6 +533,7 @@ private:
     CUnorderedMap<CString, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
+    friend class JSPandaFileSnapshot;
 };
 }  // namespace ecmascript
 }  // namespace panda

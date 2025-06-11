@@ -45,13 +45,14 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
             return SerializedObjectSpace::HUGE_SPACE;
         case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
         case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+        case RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE:
             return SerializedObjectSpace::SHARED_OLD_SPACE;
         case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
             return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
         case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
             return SerializedObjectSpace::SHARED_HUGE_SPACE;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable, the fault flag is: " << static_cast<uint32_t>(flag);
             UNREACHABLE();
     }
 #endif

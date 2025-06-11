@@ -1786,6 +1786,9 @@ public:
     static void NotifyEnvInitialized(EcmaVM *vm);
     static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
+    static void PandaFileSerialize(const EcmaVM *vm);
+    static void ModuleSerialize(const EcmaVM *vm);
+    static void ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);

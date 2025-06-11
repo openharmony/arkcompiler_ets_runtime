@@ -39,6 +39,8 @@ using fd_t = HANDLE;
 #define FILE_RDONLY GENERIC_READ
 #define FILE_WRONLY GENERIC_WRITE
 #define FILE_RDWR (GENERIC_READ | GENERIC_WRITE)
+#define FILE_CREAT CREATE_ALWAYS
+#define FILE_TRUNC TRUNCATE_EXISTING
 
 #ifdef ERROR
 #undef ERROR
@@ -58,10 +60,14 @@ using fd_t = int;
 #define FILE_RDONLY O_RDONLY
 #define FILE_WRONLY O_WRONLY
 #define FILE_RDWR O_RDWR
+#define FILE_CREAT O_CREAT
+#define FILE_TRUNC O_TRUNC
 #endif
 
 #define FILE_SUCCESS 1
 #define FILE_FAILED 0
+
+#define FILE_MS_SYNC 4 // Synchronous memory sync
 
 std::string PUBLIC_API GetFileDelimiter();
 std::string PUBLIC_API GetPathSeparator();
@@ -72,8 +78,11 @@ void PUBLIC_API FdsanExchangeOwnerTag(fd_t fd);
 void PUBLIC_API Close(fd_t fd);
 void FSync(fd_t fd);
 MemMap PUBLIC_API FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
+MemMap PUBLIC_API CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int fileSize,
+                                [[maybe_unused]] int flag, [[maybe_unused]] int prot);
 MemMap PUBLIC_API FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint32_t offStart);
 int PUBLIC_API FileUnMap(MemMap addr);
+int PUBLIC_API FileSync(MemMap addr, int flag);
 CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname, CString request);
 bool PUBLIC_API FileExist(const char *filename);
 int PUBLIC_API Unlink(const char *filename);
@@ -82,5 +91,18 @@ void *LoadLib(const std::string &libname);
 void *FindSymbol(void *handle, const char *symbol);
 int CloseLib(void *handle);
 char *LoadLibError();
+void PUBLIC_API DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix);
+
+class MemMapScope {
+public:
+    MemMapScope(MemMap memMap) : memMap_(memMap) {}
+    ~MemMapScope()
+    {
+        FileUnMap(memMap_);
+    }
+
+private:
+    MemMap memMap_ {};
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

@@ -32,6 +32,7 @@ constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
 static constexpr int SERIALIZE_SPACE_NUM = 7;
+static constexpr int GROUP_SIZE = SERIALIZE_SPACE_NUM + 1; // 1: incomplete data
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
@@ -73,6 +74,9 @@ enum class EncodeFlag : uint8_t {
     JS_REG_EXP,
     SHARED_OBJECT,
     GLOBAL_ENV,
+    MODULE_FILE_NAME,
+    MODULE_RECORD_NAME,
+    MODULE_LAZY_ARRAY,
     LAST
 };
 
@@ -511,6 +515,7 @@ private:
 #endif
     std::set<uintptr_t> sharedArrayBufferSet_ {};
     std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
+    friend class ModuleSnapshot;
 };
 }
 

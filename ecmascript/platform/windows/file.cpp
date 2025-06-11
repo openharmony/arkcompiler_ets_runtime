@@ -136,6 +136,13 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
     return MemMap(addr, size);
 }
 
+MemMap CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int fileSize,
+                     [[maybe_unused]] int flag, [[maybe_unused]] int prot)
+{
+    LOG_ECMA(INFO) << "Unsupport CreateFileMap";
+    return MemMap(nullptr, 0);
+}
+
 MemMap FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint32_t offStart)
 {
     // AOT not used, previewer used
@@ -150,6 +157,12 @@ int FileUnMap(MemMap addr)
         return FILE_FAILED;
     }
     return FILE_SUCCESS;
+}
+
+int FileSync(MemMap addr, int flag)
+{
+    LOG_ECMA(INFO) << "Don't used MemMap:" << addr.GetOriginAddr() << ", flag:" << flag;
+    return -1;
 }
 
 CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname,
@@ -208,5 +221,10 @@ char *LoadLibError()
 {
     LOG_ECMA(INFO) << "Unsupport LoadLibError";
     return nullptr;
+}
+
+void DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix)
+{
+    LOG_ECMA(INFO) << "Unsupport dirPath: " << dirPath << ", suffix: " << suffix;
 }
 }  // namespace panda::ecmascript

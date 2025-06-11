@@ -178,6 +178,24 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     return true;
 }
 
+bool ValueSerializer::SerializeSharedObj([[maybe_unused]] TaggedObject *object)
+{
+    [[maybe_unused]] Region *region = Region::ObjectAddressToRange(object);
+    JSHClass *objClass = object->GetClass();
+    if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
+        objClass->IsJSSharedAsyncFunction() ||
+#ifdef USE_CMC_GC
+        // add shared read only
+        (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
+#else
+        region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+#endif
+        SerializeSharedObject(object);
+        return true;
+    }
+    return false;
+}
+
 void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
 {
     if (notSupport_) {
@@ -195,19 +213,10 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         return;
     }
 
-    [[maybe_unused]] Region *region = Region::ObjectAddressToRange(object);
-    JSHClass *objClass = object->GetClass();
-    if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
-        objClass->IsJSSharedAsyncFunction() ||
-#ifdef USE_CMC_GC
-        // add shared read only
-        (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
-#else
-        region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
-#endif
-        SerializeSharedObject(object);
+    if (SerializeSharedObj(object)) {
         return;
     }
+    JSHClass *objClass = object->GetClass();
     if (objClass->IsNativeBindingObject()) {
         SerializeNativeBindingObject(object);
         return;
@@ -220,6 +229,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     JSTaggedValue trackInfo;
     JSTaggedType hashfield = JSTaggedValue::VALUE_ZERO;
     JSType type = objClass->GetObjectType();
+    SourceTextModule::MutableFields moduleMutableFields;
     // serialize prologue
     switch (type) {
         case JSType::JS_ARRAY_BUFFER: {
@@ -253,6 +263,15 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
             break;
         }
+        case JSType::SOURCE_TEXT_MODULE_RECORD: {
+            if (!SerializeModuleCppObject(object)) {
+                notSupport_ = true;
+                return;
+            }
+            SourceTextModule::StoreAndResetMutableFields(thread_,
+                JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
+            break;
+        }
         default:
             break;
     }
@@ -281,6 +300,11 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             } else {
                 Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
             }
+            break;
+        }
+        case JSType::SOURCE_TEXT_MODULE_RECORD: {
+            SourceTextModule::RestoreMutableFields(thread_,
+               JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
             break;
         }
         default:
@@ -511,6 +535,48 @@ bool ValueSerializer::PrepareClone(JSThread *thread, const JSHandle<JSTaggedValu
             }
         }
         index++;
+    }
+    return true;
+}
+
+// especially process cpp object in SourceTextModule
+bool ValueSerializer::SerializeModuleCppObject(TaggedObject *object)
+{
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>(thread_, object);
+    CString moduleFileName = module->GetEcmaModuleFilenameString();
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_FILE_NAME);
+    if (!moduleFileName.empty()) {
+        data_->WriteUint32(moduleFileName.size());
+        data_->WriteRawData(reinterpret_cast<uint8_t *>(moduleFileName.data()), moduleFileName.size());
+    } else {
+        LOG_ECMA(ERROR) << "ValueSerialize::SerializeModuleCppObject moduleFileName is empty";
+        return false;
+    }
+
+    CString moduleRecordName = module->GetEcmaModuleRecordNameString();
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_RECORD_NAME);
+    if (!moduleRecordName.empty()) {
+        data_->WriteUint32(moduleRecordName.size());
+        data_->WriteRawData(reinterpret_cast<uint8_t *>(moduleRecordName.data()), moduleRecordName.size());
+    } else {
+        data_->WriteUint32(0);
+    }
+
+    bool *lazyArray = module->GetLazyImportStatusArray();
+    // ModuleRequests size is equal to lazy array size.
+    JSTaggedValue requests =  module->GetModuleRequests();
+    data_->WriteEncodeFlag(EncodeFlag::MODULE_LAZY_ARRAY);
+    if (lazyArray && requests.IsTaggedArray()) {
+        JSHandle<TaggedArray> moduleRequests(thread_, requests);
+        size_t lazyArraySpaceSize = moduleRequests->GetLength() * sizeof(bool);
+        if (lazyArraySpaceSize != 0) {
+            data_->WriteUint32(lazyArraySpaceSize);
+            data_->WriteRawData(reinterpret_cast<uint8_t *>(lazyArray), lazyArraySpaceSize);
+        } else {
+            data_->WriteUint32(0);
+        }
+    } else {
+        data_->WriteUint32(0);
     }
     return true;
 }

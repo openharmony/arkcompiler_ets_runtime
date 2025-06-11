@@ -18,12 +18,13 @@
 
 namespace panda::ecmascript::ohos {
 namespace OhosConstants {
-constexpr const char* SANDBOX_ARK_PROFILE_PATH = "/data/storage/ark-profile";
-constexpr const char* ARM64 = "arm64";
-constexpr const char* RUNTIME_SO_PATH = "/system/lib64/platformsdk/libark_jsruntime.so";
-constexpr const char* PATH_SEPARATOR = "/";
-constexpr const char* AOT_RUNTIME_INFO_NAME = "aot_runtime_info.log";
-constexpr const char* SPLIT_STR = "|";
+    constexpr const char* SANDBOX_ARK_PROFILE_PATH = "/data/storage/ark-profile";
+    constexpr const char* ARM64 = "arm64";
+    constexpr const char* RUNTIME_SO_PATH = "/system/lib64/platformsdk/libark_jsruntime.so";
+    constexpr const char* PATH_SEPARATOR = "/";
+    constexpr const char* AOT_RUNTIME_INFO_NAME = "aot_runtime_info.log";
+    constexpr const char* SPLIT_STR = "|";
+    constexpr const char* PANDAFILE_AND_MODULE_SNAPSHOT_DIR = "/data/storage/ark-cache/";
 }  // namespace OhosConstants
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_COMPILER_OHOS_CONSTANTS_H

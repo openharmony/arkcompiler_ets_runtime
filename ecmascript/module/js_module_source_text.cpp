@@ -2195,4 +2195,35 @@ JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThre
     }
     return JSHandle<JSTaggedValue>::Cast(GetRequestedModuleFromCache(thread, requestedModules, idx));
 }
+
+void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<SourceTextModule> module,
+    MutableFields& fields)
+{
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    fields.TopLevelCapability = module->GetTopLevelCapability();
+    fields.NameDictionary = module->GetNameDictionary();
+    fields.CycleRoot = module->GetCycleRoot();
+    fields.AsyncParentModules = module->GetAsyncParentModules();
+    fields.SendableEnv = module->GetSendableEnv();
+    fields.Exception = module->GetException();
+    fields.Namespace = module->GetNamespace();
+    module->SetTopLevelCapability(thread, undefinedValue);
+    module->SetNameDictionary(thread, undefinedValue);
+    module->SetCycleRoot(thread, undefinedValue);
+    module->SetAsyncParentModules(thread, undefinedValue);
+    module->SetSendableEnv(thread, undefinedValue);
+    module->SetException(thread, undefinedValue);
+    module->SetNamespace(thread, undefinedValue);
+}
+
+void SourceTextModule::RestoreMutableFields(JSThread* thread, JSHandle<SourceTextModule> module, MutableFields& fields)
+{
+    module->SetTopLevelCapability(thread, fields.AsyncParentModules);
+    module->SetNameDictionary(thread, fields.NameDictionary);
+    module->SetCycleRoot(thread, fields.CycleRoot);
+    module->SetAsyncParentModules(thread, fields.AsyncParentModules);
+    module->SetSendableEnv(thread, fields.SendableEnv);
+    module->SetException(thread, fields.Exception);
+    module->SetNamespace(thread, fields.Namespace);
+}
 } // namespace panda::ecmascript
