@@ -313,24 +313,8 @@ bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoin
     return true;
 }
 
-void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
+void JSDebugger::HandleSymbolicBreakpoint(const JSHandle<Method> &method)
 {
-    if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
-        return;
-    }
-    FrameHandler frameHandler(ecmaVm_->GetJSThread());
-    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
-        return;
-    }
-    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
-    debuggerMgr->MethodEntry(method, envHandle);
-
-    // scriptParsed for sendable object
-    if (method->IsSendableMethod()) {
-        hooks_->SendableMethodEntry(method);
-    }
-
-    // pause for symbolicBreakpoints
     if (symbolicBreakpoints_.empty()) {
         return;
     }
@@ -343,6 +327,33 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
     if (symbolicBreakpoint != symbolicBreakpoints_.end()) {
         hooks_->HitSymbolicBreakpoint();
     }
+}
+
+void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
+{
+    if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
+        return;
+    }
+    FrameHandler frameHandler(ecmaVm_->GetJSThread());
+    // No frame before the first method is executed
+    if (!frameHandler.HasFrame()) {
+        // Handle first method
+        HandleSymbolicBreakpoint(method);
+        return;
+    }
+    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
+        return;
+    }
+    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
+    debuggerMgr->MethodEntry(method, envHandle);
+
+    // scriptParsed for sendable object
+    if (method->IsSendableMethod()) {
+        hooks_->SendableMethodEntry(method);
+    }
+
+    // pause for symbolicBreakpoints
+    HandleSymbolicBreakpoint(method);
 }
 
 void JSDebugger::MethodExit([[maybe_unused]] JSHandle<Method> method)

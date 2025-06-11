@@ -211,6 +211,7 @@ private:
     bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
     void DumpBreakpoints();
     bool IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const;
+    void HandleSymbolicBreakpoint(const JSHandle<Method> &method);
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};
