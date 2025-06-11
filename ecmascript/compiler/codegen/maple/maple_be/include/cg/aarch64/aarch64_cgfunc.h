@@ -615,6 +615,8 @@ private:
                                   const MIRFunction *callee = nullptr);
     void SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, bool isCallNative = false);
     void SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds);
+    void DoOptForStackStrInsns(std::vector<Insn *> &insnForStackArgs, std::vector<Insn *> &optInsns);
+    bool CheckStrPairOpt(Insn *insn1, Insn *insn2);
     void SelectRem(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType, bool isSigned, bool is64Bits);
     void SelectCvtInt2Int(const BaseNode *parent, Operand *&resOpnd, Operand *opnd0, PrimType fromType,
                           PrimType toType);

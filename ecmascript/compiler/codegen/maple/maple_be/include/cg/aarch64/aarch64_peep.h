@@ -562,6 +562,13 @@ private:
     CGFunc *cgFunc;
 };
 
+class CmpZeroBranch : public PeepPattern {
+public:
+    explicit CmpZeroBranch(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
+    ~CmpZeroBranch() override = default;
+    void Run(BB &bb, Insn &insn) override;
+};
+
 /*
  * Optimize the following patterns:
  * mov x1, #0x5
@@ -624,6 +631,7 @@ private:
         kAddLdrOpt,
         kCsetEorOpt,
         kMoveCmpOpt,
+        kCmpZeroBranch,
         kPeepholeOptsNum
     };
 };
