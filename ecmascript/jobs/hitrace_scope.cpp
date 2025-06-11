@@ -107,8 +107,19 @@ EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
     JsFrameInfo jsFrameInfo = jsStackInfo.front();
     size_t pos = jsFrameInfo.pos.find(':', 0);
     if (pos != CString::npos) {
-        int lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
-        int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
+        int64_t tmp = std::strtoll(jsFrameInfo.pos.substr(0, pos).c_str(), nullptr, 10);
+        if (tmp < INT_MIN || tmp > INT_MAX) {
+            LOG_ECMA(ERROR) << "MicroJobTrace: Invalid line number: " << jsFrameInfo.pos.substr(0, pos);
+            return;
+        }
+
+        int64_t val = std::strtoll(jsFrameInfo.pos.substr(pos + 1).c_str(), nullptr, 10);
+        if (val < INT_MIN || val > INT_MAX) {
+            LOG_ECMA(ERROR) << "MicroJobTrace: Invalid column number: " << jsFrameInfo.pos.substr(pos + 1);
+            return;
+        }
+        int lineNumber = static_cast<int>(tmp);
+        int columnNumber = static_cast<int>(val);
         auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
         if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
             sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);

@@ -35,7 +35,7 @@ static int CharToInt(char c)
 
 static void Division(CString &num, uint32_t conversionToRadix, uint32_t currentRadix, uint32_t &remain)
 {
-    ASSERT(conversionToRadix != 0);
+    ASSERT(conversionToRadix > 0 && conversionToRadix <= sizeof(dp));
     uint32_t temp = 0;
     remain = 0;
     for (size_t i = 0; i < num.size(); i++) {
