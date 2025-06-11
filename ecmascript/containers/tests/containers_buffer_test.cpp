@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_buffer.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -703,4 +704,24 @@ HWTEST_F_L0(ContainersBufferTest, WriteFloatAndReadFloatTest002)
         ASSERT_TRUE(std::fabs(res - value) < 1e-4);
     }
 }
+
+HWTEST_F_L0(ContainersBufferTest, CreateFromArrayTest001)
+{
+    JSHandle<JSTaggedValue> arr =
+        JSHandle<JSTaggedValue>(thread, JSArray::ArrayCreate(thread, JSTaggedNumber(10))->GetTaggedObject());
+    InitializeBufferConstructor();
+    JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
+                                                             ContainersBufferTest::GetArgvCount(4));
+    objCallInfo->SetFunction(newTarget.GetTaggedValue());
+    objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+    objCallInfo->SetThis(JSTaggedValue::Undefined());
+    objCallInfo->SetCallArg(0, arr.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+    JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    JSHandle<JSAPIFastBuffer> buffer(thread, result);
+    ASSERT_EQ(result, JSTaggedValue::Exception());
+}
+
 };  // namespace panda::test

@@ -229,13 +229,17 @@ JSTaggedValue JSAPIFastBuffer::CreateBufferFromArrayLike(JSThread *thread, const
                                                          const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "CreateBufferFromArrayLike must accept object", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR,
+                                                            "CreateBufferFromArrayLike must accept object.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, obj, lengthKeyHandle).GetValue();
     JSTaggedNumber number = JSTaggedValue::ToLength(thread, value);
     if (number.GetNumber() > JSObject::MAX_ELEMENT_INDEX) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "len is bigger than 2^32 - 1", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "len is bigger than 2^32 - 1.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     uint32_t len = number.ToUint32();
     auto fastBufferData = NewUint8Array(thread, len);
@@ -244,7 +248,9 @@ JSTaggedValue JSAPIFastBuffer::CreateBufferFromArrayLike(JSThread *thread, const
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue next = JSTaggedValue::GetProperty(thread, obj, i).GetValue().GetTaggedValue();
         if (!next.IsInt()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "value in arraylike must be a integer", JSTaggedValue::Exception());
+            JSTaggedValue error =
+                ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "value in arraylike must be a integer.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         buffer->SetValueByIndex(thread, i, JSTaggedValue(static_cast<uint8_t>(next.GetInt())), JSType::JS_UINT8_ARRAY);
     }
@@ -262,7 +268,9 @@ JSTaggedValue JSAPIFastBuffer::FromArrayBuffer(JSThread *thread, const JSHandle<
     auto srcBuffer = JSHandle<JSArrayBuffer>(src);
     uint32_t srcLength = srcBuffer->GetArrayBufferByteLength();
     if (srcLength <= byteOffset) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "byteOffset must less than length", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR,
+                                                            "byteOffset must less than length.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     auto len = std::min(length, srcLength);
     auto array = NewUint8Array(thread, len);
@@ -810,7 +818,8 @@ JSTaggedValue JSAPIFastBuffer::IndexOf(JSThread *thread, JSHandle<JSAPIFastBuffe
             }
             return JSTaggedValue(StringMatch(thread, buffer, data, start, len, isReverse));
         }
-        THROW_TYPE_ERROR_AND_RETURN(thread, "IndexOf value invalid.", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "IndexOf value invalid.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!valueHandle->IsInt()) {
         std::ostringstream oss;
@@ -1321,7 +1330,7 @@ JSTaggedValue JSAPIFastBuffer::ReadInt(JSThread *thread, JSHandle<JSAPIFastBuffe
     int64_t value = ret.GetNumber();
     // 1 : calculate bit mask
     int64_t negetiveMask = (1LL << (byteLength * JSAPIFastBuffer::ONE_BYTE_BIT_LENGTH - 1));
-    
+
     if (value & negetiveMask) {
         int64_t bitMask = negetiveMask | (negetiveMask - 1);
         bitMask &= -value;
