@@ -84,7 +84,7 @@ public:
     }
 
 #if ENABLE_NEXT_OPTIMIZATION
-    static bool IsFastValueToQuotedString(const Span<const uint8_t> &sp);
+    static bool IsFastValueToQuotedString(const common::Span<const uint8_t> &sp);
 #else
     static bool IsFastValueToQuotedString(const CString &str);
 #endif
@@ -93,9 +93,10 @@ public:
     // Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
     // \b (BACKSPACE), \f (FORM FEED), \n (LINE FEED), \r (CARRIAGE RETURN), \t (CHARACTER TABULATION).
 #if ENABLE_NEXT_OPTIMIZATION
-    static void AppendQuotedValueToC16String(const Span<const uint16_t> &sp, uint32_t &index, C16String &output);
+    static void AppendQuotedValueToC16String(const common::Span<const uint16_t>& sp, uint32_t& index,
+                                             C16String& output);
     template <typename SrcType, typename DstType>
-    static void AppendValueToQuotedString(const Span<const SrcType> &sp, DstType &output);
+    static void AppendValueToQuotedString(const common::Span<const SrcType> &sp, DstType &output);
 #else
     static void AppendValueToQuotedString(const CString& str, CString& output);
 #endif

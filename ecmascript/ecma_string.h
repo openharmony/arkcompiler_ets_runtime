@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,8 @@
 #include <cstring>
 
 #include "common_components/base/utf_helper.h"
+#include "common_interfaces/objects/string/base_string.h"
+#include "common_interfaces/objects/string/base_string-inl.h"
 #include "common_interfaces/objects/string/line_string.h"
 #include "common_interfaces/objects/string/sliced_string.h"
 #include "common_interfaces/objects/string/tree_string.h"
@@ -31,6 +33,9 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"
+#include "common_interfaces/objects/string/line_string.h"
+#include "common_interfaces/objects/string/sliced_string.h"
+#include "common_interfaces/objects/string/tree_string.h"
 #include "libpandabase/macros.h"
 #include "securec.h"
 #include "unicode/locid.h"
@@ -164,7 +169,7 @@ private:
     inline const uint8_t *GetDataUtf8() const;
     inline const uint16_t *GetDataUtf16() const;
 
-    inline Span<const uint8_t> FastToUtf8Span() const;
+    inline common::Span<const uint8_t> FastToUtf8Span() const;
 
     // require is LineString
     inline uint8_t *GetDataUtf8Writable();
@@ -235,10 +240,7 @@ private:
     // Check that two spans are equal. Should have the same length.
     /* static */
     template<typename T, typename T1>
-    static bool StringsAreEquals(Span<const T> &str1, Span<const T1> &str2)
-    {
-        return BaseString::StringsAreEquals(str1, str2);
-    }
+    static bool StringsAreEquals(common::Span<const T> &str1, common::Span<const T1> &str2);
 
     // Compares string1 + string2 by bytes, It doesn't check canonical unicode equivalence.
     bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2);
@@ -288,9 +290,9 @@ private:
 
     std::u16string ToU16String(uint32_t len = 0);
 
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false);
+    common::Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false);
 
-    Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true);
+    common::Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true);
 
     Span<const uint16_t> ToUtf16Span(CVector<uint16_t> &buf)
     {
@@ -319,7 +321,7 @@ private:
         auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
             return Barriers::GetTaggedObject<mode>(obj, offset);
         };
-        ToBaseString()->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
+        LineString::Cast(ToBaseString())->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
     }
 
     static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len);
@@ -334,20 +336,21 @@ private:
 
     bool PUBLIC_API ToTypedArrayIndex(uint32_t *index);
 
-    template<typename T>
-    static EcmaString *TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode);
+    template <typename T>
+    static EcmaString* TrimBody(const JSThread* thread, const JSHandle<EcmaString>& src, common::Span<T>& data,
+                                TrimMode mode);
 
-    static EcmaString *Trim(const JSThread *thread, const JSHandle<EcmaString> &src, TrimMode mode = TrimMode::TRIM);
+    static EcmaString* Trim(const JSThread* thread, const JSHandle<EcmaString>& src, TrimMode mode = TrimMode::TRIM);
 
     // memory block copy
     template<typename T>
-    static bool MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count);
+    static bool MemCopyChars(common::Span<T> &dst, size_t dstMax, common::Span<const T> &src, size_t count);
 
     template<typename T1, typename T2>
-    static int32_t IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos, int32_t max);
+    static int32_t IndexOf(common::Span<const T1> &lhsSp, common::Span<const T2> &rhsSp, int32_t pos, int32_t max);
 
     template<typename T1, typename T2>
-    static int32_t LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos);
+    static int32_t LastIndexOf(common::Span<const T1> &lhsSp, common::Span<const T2> &rhsSp, int32_t pos);
 
     bool IsFlat() const;
 
@@ -582,7 +585,7 @@ class TreeEcmaString : public EcmaString {
 private:
     using TaggedObject::SIZE;
 public:
-    DECL_VISIT_OBJECT(TreeString::FIRST_OFFSET, TreeString::SIZE);
+    DECL_VISIT_OBJECT(TreeString::LEFT_OFFSET, TreeString::SIZE);
 
     CAST_CHECK(TreeEcmaString, IsTreeString);
 
@@ -616,7 +619,7 @@ public:
         auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
             return Barriers::GetTaggedObject(obj, offset);
         };
-        return JSTaggedValue(ToTreeString()->GetFirst<TaggedObject*>(std::move(readBarrier)));
+        return JSTaggedValue(ToTreeString()->GetLeftSubString<TaggedObject*>(std::move(readBarrier)));
     }
 
     template <typename T>
@@ -627,7 +630,7 @@ public:
                 Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
             } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
         };
-        ToTreeString()->SetFirst(std::move(writeBarrier), value->GetTaggedObject());
+        ToTreeString()->SetLeftSubString(std::move(writeBarrier), value->GetTaggedObject());
     }
 
     void SetFirst(const JSThread* thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)
@@ -637,7 +640,7 @@ public:
                 Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
             } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
         };
-        ToTreeString()->SetFirst(std::move(writeBarrier), value.GetTaggedObject());
+        ToTreeString()->SetLeftSubString(std::move(writeBarrier), value.GetTaggedObject());
     };
 
     JSTaggedValue GetSecond() const
@@ -645,7 +648,7 @@ public:
         auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
             return Barriers::GetTaggedObject(obj, offset);
         };
-        return JSTaggedValue(ToTreeString()->GetSecond<TaggedObject*>(std::move(readBarrier)));
+        return JSTaggedValue(ToTreeString()->GetRightSubString<TaggedObject*>(std::move(readBarrier)));
     }
 
     template <typename T>
@@ -656,7 +659,7 @@ public:
                 Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
             } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
         };
-        ToTreeString()->SetSecond(std::move(writeBarrier), value->GetTaggedObject());
+        ToTreeString()->SetRightSubString(std::move(writeBarrier), value->GetTaggedObject());
     }
 
     void SetSecond(const JSThread* thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)
@@ -666,7 +669,7 @@ public:
                 Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
             } else { Barriers::SetPrimitive<JSTaggedType>(obj, offset, reinterpret_cast<JSTaggedType>(str)); }
         };
-        ToTreeString()->SetSecond(std::move(writeBarrier), value.GetTaggedObject());
+        ToTreeString()->SetRightSubString(std::move(writeBarrier), value.GetTaggedObject());
     };
 
     bool IsFlat() const
@@ -890,7 +893,7 @@ public:
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf)
+    common::Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf)
     {
         return string_->ToUtf8Span(buf);
     }
@@ -1135,14 +1138,7 @@ public:
         return EcmaString::Trim(thread, src, mode);
     }
 
-    static bool IsASCIICharacter(uint16_t data)
-    {
-        if (data == 0) {
-            return false;
-        }
-        // \0 is not considered ASCII in Ecma-Modified-UTF8 [only modify '\u0000']
-        return data <= common::utf_helper::UTF8_1B_MAX;
-    }
+    static bool IsASCIICharacter(uint16_t data);
 
     bool IsFlat() const
     {
@@ -1169,7 +1165,7 @@ public:
         return string_->NotTreeString();
     }
 
-    inline Span<const uint8_t> FastToUtf8Span() const;
+    inline common::Span<const uint8_t> FastToUtf8Span() const;
 
     // the returned string may be a linestring or slicestring!!
     PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,

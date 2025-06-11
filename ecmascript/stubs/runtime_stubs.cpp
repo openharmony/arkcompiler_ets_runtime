@@ -3185,7 +3185,6 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
     return JSTaggedValue::True().GetRawData();
 }
 
-
 DEF_RUNTIME_STUBS(GetOrInternStringFromHashTrieTable)
 {
     RUNTIME_STUBS_HEADER(GetOrInternStringFromHashTrieTable);

@@ -206,7 +206,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
         EcmaString* str1 = EcmaString::Cast(result.GetTaggedObject());
         // Verify BigInt properties
         EXPECT_EQ(EcmaStringAccessor(str1).GetLength(), str->ToBaseString()->GetLength());
-        EXPECT_EQ(EcmaStringAccessor(str1).GetDataUtf8(), str->ToBaseString()->GetDataUtf8());
+        EXPECT_EQ(EcmaStringAccessor(str1).GetDataUtf8(), LineString::Cast(str->ToBaseString())->GetDataUtf8());
     }
 }
 

@@ -25,12 +25,12 @@ void BaseClassRoots::InitializeCompositeBaseClass(CompositeBaseClassAllocator &a
     if (initialized_.exchange(true)) {
         return;
     }
-    CreateCompositeBaseClass(CommonType::LINE_STRING, allocator);
-    CreateCompositeBaseClass(CommonType::SLICED_STRING, allocator);
-    CreateCompositeBaseClass(CommonType::TREE_STRING, allocator);
+    CreateCompositeBaseClass(ObjectType::LINE_STRING, allocator);
+    CreateCompositeBaseClass(ObjectType::SLICED_STRING, allocator);
+    CreateCompositeBaseClass(ObjectType::TREE_STRING, allocator);
 }
 
-void BaseClassRoots::CreateCompositeBaseClass(CommonType type, CompositeBaseClassAllocator& allocator)
+void BaseClassRoots::CreateCompositeBaseClass(ObjectType type, CompositeBaseClassAllocator& allocator)
 {
     CompositeBaseClass* classObject = allocator();
     classObject->class_.ClearBitField();
@@ -40,7 +40,7 @@ void BaseClassRoots::CreateCompositeBaseClass(CommonType type, CompositeBaseClas
     baseClasses_[index] = &classObject->class_;
 }
 
-BaseClass* BaseClassRoots::GetBaseClass(CommonType type) const
+BaseClass* BaseClassRoots::GetBaseClass(ObjectType type) const
 {
     return baseClasses_[TypeToIndex[static_cast<size_t>(type)]];
 }

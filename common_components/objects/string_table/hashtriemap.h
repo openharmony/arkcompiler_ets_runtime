@@ -18,8 +18,10 @@
 
 #include "common_components/heap/heap.h"
 #include "common_components/log/log.h"
+#include "common_interfaces/base/common.h"
 #include "common_interfaces/objects/readonly_handle.h"
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
+#include "common_interfaces/objects/string/base_string-inl.h"
 
 namespace panda::ecmascript {
 class TaggedObject;
@@ -141,13 +143,13 @@ struct HashTrieMapLoadResult {
 
 inline HashTrieMapEntry* HashTrieMapNode::AsEntry()
 {
-    ASSERT(isEntry_ && "HashTrieMap: called entry on non-entry node");
+    DCHECK_CC(isEntry_ && "HashTrieMap: called entry on non-entry node");
     return static_cast<HashTrieMapEntry*>(this);
 }
 
 inline HashTrieMapIndirect* HashTrieMapNode::AsIndirect()
 {
-    ASSERT(!isEntry_ && "HashTrieMap: called indirect on entry node");
+    DCHECK_CC(!isEntry_ && "HashTrieMap: called indirect on entry node");
     return static_cast<HashTrieMapIndirect*>(this);
 }
 
@@ -323,8 +325,8 @@ public:
         hashTrieMap_->DecreaseInuseCount();
     }
 
-    NO_COPY_SEMANTIC(HashTrieMapInUseScope);
-    NO_MOVE_SEMANTIC(HashTrieMapInUseScope);
+    NO_COPY_SEMANTIC_CC(HashTrieMapInUseScope);
+    NO_MOVE_SEMANTIC_CC(HashTrieMapInUseScope);
 
 private:
     HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* hashTrieMap_;

@@ -702,8 +702,8 @@ GateRef CircuitBuilder::IsCompositeHClass(GateRef hClass)
 {
     GateRef objectType = GetObjectType(hClass);
     return BitAnd(
-        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(common::CommonType::LAST_OBJECT_TYPE))),
-        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(common::CommonType::FIRST_OBJECT_TYPE))));
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(common::ObjectType::LAST_OBJECT_TYPE))),
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(common::ObjectType::FIRST_OBJECT_TYPE))));
 }
 
 void CircuitBuilder::CheckHClassFieldInvalidAccess([[maybe_unused]]GateRef glue, [[maybe_unused]] GateRef hClass)

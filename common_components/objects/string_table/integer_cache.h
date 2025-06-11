@@ -17,7 +17,7 @@
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTEGER_CACHE_H
 
 #include <array>
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/line_string-inl.h"
 
 namespace common {
 
@@ -30,8 +30,8 @@ namespace common {
  +--------------+--------------+
  */
 class IntegerCache final {
-static constexpr size_t OBJECT_ALIGN = 8;
-static_assert(LineString::DATA_OFFSET % OBJECT_ALIGN == 0);
+    static constexpr size_t OBJECT_ALIGN = 8;
+    static_assert(LineString::DATA_OFFSET % OBJECT_ALIGN == 0);
 
 public:
     NO_MOVE_SEMANTIC_CC(IntegerCache);
@@ -42,7 +42,8 @@ public:
 
     static void InitIntegerCache(BaseString* string)
     {
-        if (string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0) {
+        if (string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0 &&
+            string->IsLineString()) {
             IntegerCache* cache = Extract(string);
             cache->isInteger_ = 0;
         }
@@ -50,9 +51,9 @@ public:
 
     static IntegerCache* Extract(BaseString* string)
     {
-        DCHECK_CC(string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE
-            && string->GetLength() > 0 && string->IsInternString());
-        IntegerCache* cache = reinterpret_cast<IntegerCache*>(string->GetData());
+        DCHECK_CC(string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE && string->GetLength() > 0 &&
+            string->IsLineString());
+        IntegerCache* cache = reinterpret_cast<IntegerCache*>(LineString::Cast(string)->GetData());
         return cache;
     }
 

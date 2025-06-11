@@ -1435,7 +1435,7 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
         return JSTaggedNumber(0);
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
+    common::Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);

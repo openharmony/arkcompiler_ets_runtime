@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "common_components/base/utf_helper.h"
+#include "common_interfaces/objects/utils/span.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "libpandabase/utils/span.h"
@@ -367,7 +368,7 @@ public:
     }
 
     template<typename T>
-    static inline uint32_t GetStart(Span<T> &data, uint32_t length)
+    static inline uint32_t GetStart(common::Span<T> &data, uint32_t length)
     {
         uint32_t start = 0;
         while (start < length && IsNonspace(data[start])) {
@@ -377,7 +378,7 @@ public:
     }
 
     template<typename T>
-    static inline int32_t GetEnd(Span<T> &data, int32_t start, uint32_t length)
+    static inline int32_t GetEnd(common::Span<T> &data, int32_t start, uint32_t length)
     {
         if (length == 0U) {
             return 0;

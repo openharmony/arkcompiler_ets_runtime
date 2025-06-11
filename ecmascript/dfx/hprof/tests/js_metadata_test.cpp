@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1031,8 +1031,8 @@ public:
                 TransWithProtoHandler::TRANSITION_HCLASS_OFFSET,
                 TransWithProtoHandler::PROTO_CELL_OFFSET,
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::HANDLER_INFO_OFFSET}},
-            {JSType::TREE_STRING, {TreeString::FIRST_OFFSET, TreeString::SECOND_OFFSET,
-                                   TreeString::SIZE - TreeString::FIRST_OFFSET}},
+            {JSType::TREE_STRING, {TreeString::LEFT_OFFSET, TreeString::RIGHT_OFFSET,
+                                       TreeString::SIZE - TreeString::LEFT_OFFSET}},
             {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}}
         };
         // { typeName: [all parents of this type]}
@@ -1766,8 +1766,8 @@ public:
                 TransWithProtoHandler::TRANSITION_HCLASS_OFFSET - TransWithProtoHandler::HANDLER_INFO_OFFSET,
                 TransWithProtoHandler::PROTO_CELL_OFFSET - TransWithProtoHandler::TRANSITION_HCLASS_OFFSET,
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::PROTO_CELL_OFFSET}},
-            {JSType::TREE_STRING, {TreeString::SECOND_OFFSET - TreeString::FIRST_OFFSET,
-                                   TreeString::SIZE - TreeString::SECOND_OFFSET}},
+            {JSType::TREE_STRING, {TreeString::RIGHT_OFFSET - TreeString::LEFT_OFFSET,
+                                   TreeString::SIZE - TreeString::RIGHT_OFFSET}},
             {JSType::VTABLE, {}}
         };
     }
