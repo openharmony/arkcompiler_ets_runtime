@@ -355,7 +355,11 @@ config("ark_jsruntime_common_config") {
   if (ark_standalone_build) {
     defines += [ "STANDALONE_MODE" ]
   }
-  
+
+  if (is_arkui_x) {
+    defines += [ "IS_ARKUI_X" ]
+  }
+
   if (enable_next_optimization) {
     defines += [ "NEXT_OPTIMIZATION_MACRO" ]
   }
@@ -1050,13 +1054,15 @@ if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
 }
 
-if (current_cpu == "arm64") {
-  ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
-} else if (current_cpu == "amd64" || current_cpu == "x64" ||
-           current_cpu == "x86_64") {
-  ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
-} else if (current_cpu == "arm") {
-  ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
+if (!is_arkui_x) {
+  if (current_cpu == "arm64") {
+    ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
+  } else if (current_cpu == "amd64" || current_cpu == "x64" ||
+             current_cpu == "x86_64") {
+    ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
+  } else if (current_cpu == "arm") {
+    ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
+  }
 }
 
 if (enable_next_optimization) {
@@ -1526,8 +1532,8 @@ config("arkjs_runtime_lto_link_config") {
     }
     if (ets_runtime_feature_enable_pgo && enable_enhanced_opt) {
       ldflags += [
-          "-Wl,--aarch64-inline-plt",
-          "-Wl,-mllvm,-enable-partial-inlining",
+        "-Wl,--aarch64-inline-plt",
+        "-Wl,-mllvm,-enable-partial-inlining",
       ]
       if (ets_runtime_feature_enable_codemerge) {
         ldflags += [

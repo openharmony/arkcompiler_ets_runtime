@@ -40,6 +40,12 @@ extern "C" uintptr_t GetFixedReturnAddr(uintptr_t argGlue, uintptr_t prevCallSit
     return fixed;
 }
 
+#ifdef IS_ARKUI_X
+JSTaggedType LazyDeoptEntry()
+{
+    return 0;
+}
+#endif
 class FrameWriter {
 public:
     explicit FrameWriter(Deoptimizier *deoptimizier) : thread_(deoptimizier->GetThread())
