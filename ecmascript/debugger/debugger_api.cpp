@@ -755,8 +755,10 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
         JSTaggedValue key = ee->GetImportName();
         name.Update(key);
         if (key.IsString()) {
-            JSHandle<JSTaggedValue> importModule = JSHandle<JSTaggedValue>::Cast(
-                SourceTextModule::GetRequestedModuleFromCache(thread, requestedModules, ee->GetModuleRequestIndex()));
+            JSHandle<JSTaggedValue> importModule =
+                JSHandle<JSTaggedValue>::Cast(SourceTextModule::GetModuleFromCacheOrResolveNewOne(
+                    thread, module, requestedModules, ee->GetModuleRequestIndex()));
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(importModule->IsSourceTextModule());
             std::string importName = EcmaStringAccessor(ee->GetImportName()).ToStdString();
             Local<JSValueRef> value = GetModuleValue(ecmaVm, importModule, importName);
@@ -792,8 +794,10 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         JSTaggedValue localName = ee->GetLocalName();
         name.Update(localName);
         if (JSTaggedValue::SameValue(key, starString.GetTaggedValue())) {
-            JSHandle<JSTaggedValue> importModule = JSHandle<JSTaggedValue>::Cast(
-                SourceTextModule::GetRequestedModuleFromCache(thread, requestedModules, ee->GetModuleRequestIndex()));
+            JSHandle<JSTaggedValue> importModule =
+                JSHandle<JSTaggedValue>::Cast(SourceTextModule::GetModuleFromCacheOrResolveNewOne(
+                    thread, module, requestedModules, ee->GetModuleRequestIndex()));
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(importModule->IsSourceTextModule());
             Local<ObjectRef> importModuleObj = ObjectRef::New(ecmaVm);
             GetLocalExportVariables(ecmaVm, importModuleObj, importModule, true);

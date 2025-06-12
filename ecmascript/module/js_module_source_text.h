@@ -421,9 +421,8 @@ public:
     static void SetExportName(JSThread *thread, const JSHandle<SourceTextModule> requestedModule,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
     static void RecordEvaluatedOrError(JSThread *thread, JSHandle<SourceTextModule> module);
-    static JSHandle<SourceTextModule> GetRequestedModuleFromCache(JSThread *thread,
-                                                                  const JSHandle<TaggedArray> requestedModules,
-                                                                  uint32_t idx);
+    static JSHandle<SourceTextModule> GetModuleFromCacheOrResolveNewOne(JSThread *thread,
+        const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx);
     static bool PreModuleInstantiation(JSThread *thread,
                                        JSHandle<SourceTextModule> module,
                                        const ExecuteTypes &executeType);
@@ -470,10 +469,14 @@ private:
     static void HandleErrorStack(JSThread *thread, const CVector<JSHandle<SourceTextModule>> &errorStack);
     static void SetExceptionToModule(JSThread *thread, JSHandle<SourceTextModule> module,
                                      JSTaggedValue exception);
-    static JSHandle<SourceTextModule> GetModuleFromCacheOrResolveNewOne(JSThread *thread,
-        const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx);
     static JSHandle<JSTaggedValue> GetRequestedModuleMayThrowError(JSThread *thread,
-        const JSHandle<TaggedArray> requestedModules, uint32_t idx, JSHandle<JSTaggedValue> exception);
+                                                                   const JSHandle<SourceTextModule> module,
+                                                                   uint32_t idx,
+                                                                   const JSHandle<TaggedArray> requestedModules,
+                                                                   JSHandle<JSTaggedValue> exception);
+    static void SetRequestedModules(JSThread *thread, JSHandle<TaggedArray> requestedModules,
+                                    uint32_t idx, JSHandle<JSTaggedValue> requiredModule, bool isShared);
+
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };
