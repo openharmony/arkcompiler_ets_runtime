@@ -1290,11 +1290,6 @@ public:
         return applicationVersionCode_;
     }
 
-    bool IsEnableJSPandaFileAndModuleSerialize() const
-    {
-        return enableJSPandaFileAndModuleSerialize_;
-    }
-
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1572,8 +1567,6 @@ private:
 
     // store Application versionCode
     uint32_t applicationVersionCode_ {0};
-
-    bool enableJSPandaFileAndModuleSerialize_ { false };
 };
 }  // namespace ecmascript
 }  // namespace panda
