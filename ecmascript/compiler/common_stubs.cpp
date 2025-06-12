@@ -244,7 +244,8 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
         GateRef target = IntPtr(RTSTUB_ID(JSCallNew));
         auto depend = env->GetCurrentLabel()->GetDepend();
-        res = env->GetBuilder()->Call(cs, glue, target, depend, args, Circuit::NullGate(), "NewFloat32Array stub slowpath");
+        res = env->GetBuilder()->Call(cs, glue, target, depend, args,
+                                      Circuit::NullGate(), "NewFloat32Array stub slowpath");
         Jump(&exit);
     }
     Bind(&exit);
@@ -1537,7 +1538,8 @@ void MapIteratorNextStubBuilder::GenerateCircuit()
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef, GetGlobalEnv(glue));
+    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef,
+                                                                 GetGlobalEnv(glue));
     builder.Next(&result, &exit);
     Bind(&exit);
     Return(*result);
@@ -1553,7 +1555,8 @@ void SetIteratorNextStubBuilder::GenerateCircuit()
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef, GetGlobalEnv(glue));
+    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef,
+                                                                 GetGlobalEnv(glue));
     builder.Next(&result, &exit);
     Bind(&exit);
     Return(*result);

@@ -576,7 +576,7 @@ bool BytecodeMetaData::IsBytecodeNoThrow(EcmaOpcode &opcode) {
 
 void BytecodeMetaData::InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags)
 {
-    if(IsBytecodeNoThrow(opcode)) {
+    if (IsBytecodeNoThrow(opcode)) {
         flags |= BytecodeFlags::NO_THROW;
     }
 }

@@ -637,7 +637,6 @@ void TypedBytecodeLowering::LoadOnPrototypeForHeapObjectReceiver(const LoadObjPr
     Variable &result, LoadObjByNameOnProtoTypeInfo ldProtoInfo)
 {
     auto gate = tacc.GetGate();
-
     // prototype change marker check
     if (!TryLazyDeoptStableProtoChain(tacc, ldProtoInfo.typeIndex, gate)) {
         builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), ldProtoInfo.frameState);

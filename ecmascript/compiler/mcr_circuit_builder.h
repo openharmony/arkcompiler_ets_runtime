@@ -512,7 +512,8 @@ GateRef CircuitBuilder::TaggedIsJSFunction(GateRef glue, GateRef x)
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef glue, GateRef x)
 {
-    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_ASYNC_GENERATOR_OBJECT)).Done();
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x))
+                                .And(IsJsType(glue, x, JSType::JS_ASYNC_GENERATOR_OBJECT)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsJSGlobalObject(GateRef glue, GateRef x)
