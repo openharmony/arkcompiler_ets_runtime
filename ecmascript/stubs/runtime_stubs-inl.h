@@ -2303,7 +2303,7 @@ void RuntimeStubs::DumpInfoForMoreLdInfo(JSThread *thread, JSHandle<JSTaggedValu
     }
 }
 
-void RuntimeStubs::DumpInfoForLdObjByValue(JSHandle<JSTaggedValue> &receiver, JSHandle<JSTaggedValue> &profile,
+void RuntimeStubs::DumpInfoForLdObjByValue(JSHandle<JSTaggedValue> &profile,
                                            JSTaggedValue slotId, JSTaggedValue key, CString &msg)
 {
     msg += "[DFX]Trace Load Value Detail: ";

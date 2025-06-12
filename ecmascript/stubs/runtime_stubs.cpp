@@ -4410,7 +4410,7 @@ DEF_RUNTIME_STUBS(TraceLoadValueDetail)
     JSTaggedValue slotId = GetArg(argv, argc, 2);
     JSTaggedValue key = GetArg(argv, argc, 3);
     CString msg = "";
-    DumpInfoForLdObjByValue(receiver, profile, slotId, key, msg);
+    DumpInfoForLdObjByValue(profile, slotId, key, msg);
 #if ECMASCRIPT_ENABLE_TRACE_LOAD_MORE
     msg += " | ";
     auto thread = JSThread::GlueToJSThread(argGlue);
