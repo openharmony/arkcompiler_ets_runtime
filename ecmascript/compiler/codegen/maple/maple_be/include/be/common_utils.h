@@ -131,7 +131,8 @@ constexpr int32 kInsnFifthOpnd = 4;
 constexpr int32 kInsnSixthOpnd = 5;
 constexpr int32 kInsnSeventhOpnd = 6;
 constexpr int32 kInsnEighthOpnd = 7;
-constexpr int32 kInsnMaxOpnd = 8;
+constexpr int32 kInsnNinthOpnd = 8;
+constexpr int32 kInsnMaxOpnd = 9;
 
 /* Reg of CCLocInfo */
 constexpr uint32 kFirstReg = 0;

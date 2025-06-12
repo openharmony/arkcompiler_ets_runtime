@@ -110,7 +110,7 @@ private:
     struct DeoptBBInfo {
         maple::litecg::BB *deoptBB = nullptr;
         maple::litecg::PregIdx deoptTypePreg = 0;
-        std::map<uint32_t, maple::litecg::BB*> deoptType2BB;
+        std::unordered_map<uint32_t, maple::litecg::BB*> deoptType2BB;
 
         DeoptBBInfo(maple::litecg::BB *bb, maple::litecg::PregIdx preg) : deoptBB(bb), deoptTypePreg(preg)
         {}
@@ -130,17 +130,17 @@ private:
     maple::litecg::LMIRBuilder *lmirBuilder_ {nullptr};
     std::unordered_map<GateRef, maple::litecg::LiteCGValue> gate2Expr_;
     std::set<OpCode> illegalOpHandlers_;
-    std::map<GateId, int> instID2bbID_;
-    std::map<int, maple::litecg::BB *> bbID2BB_;
+    std::unordered_map<GateId, int> instID2bbID_;
+    std::vector<maple::litecg::BB *> bbID2BB_;
     int slotSize_ {-1};
     maple::litecg::Type *slotType_ {nullptr};
-    std::map<int, std::vector<PhiDesc>> bbID2unmergedPhis_;
-    std::map<int, std::vector<PhiDesc>> bbID2basePhis_; // use for collect all the base references
+    std::unordered_map<int, std::vector<PhiDesc>> bbID2unmergedPhis_;
+    std::unordered_map<int, std::vector<PhiDesc>> bbID2basePhis_; // use for collect all the base references
     // derived phi reference gate to base phi preg map
-    std::map<GateRef, maple::litecg::PregIdx> derivedPhiGate2BasePhiPreg_;
-    std::map<GateRef, GateRef> derivedGate2BaseGate_; // derived reference gate to base reference gate map
-    std::map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
-    std::map<GateRef, DeoptBBInfo> deoptFrameState2BB_;
+    std::unordered_map<GateRef, maple::litecg::PregIdx> derivedPhiGate2BasePhiPreg_;
+    std::unordered_map<GateRef, GateRef> derivedGate2BaseGate_; // derived reference gate to base reference gate map
+    std::unordered_map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
+    std::unordered_map<GateRef, DeoptBBInfo> deoptFrameState2BB_;
     maple::ConstantFold cf_;
     std::unordered_map<GateRef, maple::litecg::Expr> derivedrefGate;
     struct ConstTableInfo {
@@ -171,7 +171,7 @@ private:
     maple::litecg::BB &GetOrCreateBB(int bbID);
     maple::litecg::BB &GetFirstBB();
     maple::litecg::BB &CreateBB();
-    void AddPhiDesc(int bbID, PhiDesc &desc, std::map<int, std::vector<PhiDesc>> &bbID2Phis);
+    void AddPhiDesc(int bbID, PhiDesc &desc, std::unordered_map<int, std::vector<PhiDesc>> &bbID2Phis);
     DerivedStatus CheckDerivedPhi(GateRef gate, std::set<GateRef> &vis);
     void FindBaseRefForPhi(GateRef gate, const std::vector<GateRef> &phiIns);
     maple::litecg::Type *ConvertLiteCGTypeFromGate(GateRef gate, bool isSigned = true) const;

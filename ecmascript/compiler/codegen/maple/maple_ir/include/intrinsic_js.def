@@ -26,3 +26,13 @@ DEF_MIR_INTRINSIC(HEAP_CONSTANT,\
                   "__heap_constant", kArgTyI64, kArgTyI64, kArgTyI64)
 DEF_MIR_INTRINSIC(GET_HEAP_CONSTANT_TABLE,\
                   "__get_heap_constant_table", kArgTyI64, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(TAGGED_IS_HEAPOBJECT,\
+                  "__tagged_is_heapobject", kArgTyI8, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(IS_STABLE_ELEMENTS,\
+                  "__is_stable_elements", kArgTyI32, kArgTyI64, kArgTyI32, kArgTyI32)
+DEF_MIR_INTRINSIC(HAS_PENDING_EXCEPTION,\
+                  "__has_pending_exception", kArgTyI64, kArgTyI64, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(TAGGED_OBJECT_IS_STRING,\
+                  "__tagged_object_is_string", kArgTyI8, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(IS_COW_ARRAY,\
+                  "__is_cow_array", kArgTyI8, kArgTyI64, kArgTyI64)

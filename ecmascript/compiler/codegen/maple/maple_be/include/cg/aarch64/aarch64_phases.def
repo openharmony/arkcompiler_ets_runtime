@@ -29,7 +29,6 @@
  ADDTARGETPHASE("postcfgo", false);
  ADDTARGETPHASE("cgpostpeephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
- ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
  ADDTARGETPHASE("fixshortbranch", true);
  ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
  ADDTARGETPHASE("cgemit", true);

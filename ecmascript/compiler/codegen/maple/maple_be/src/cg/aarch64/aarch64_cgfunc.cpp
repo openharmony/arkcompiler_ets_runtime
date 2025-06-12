@@ -4512,6 +4512,44 @@ RegOperand *AArch64CGFunc::SelectHeapConstant(IntrinsicopNode &node, Operand &op
     return &destReg;
 }
 
+RegOperand *AArch64CGFunc::SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1)
+{
+    RegOperand &destReg = CreateRegisterOperandOfType(PTY_i64);
+    MOperator mOp = MOP_tagged_is_heapobject;
+    if (opnd0.IsImmediate()) {
+        uint64 value = static_cast<uint64>(static_cast<ImmOperand &>(opnd0).GetValue());
+        uint64 heapObjectMask = static_cast<uint64_t>(static_cast<ImmOperand&>(opnd1).GetValue());
+        if (!static_cast<int64>(value & heapObjectMask)) {
+            ImmOperand &value = CreateImmOperand(1, k64BitSize, true);
+            GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, value));
+        } else {
+            ImmOperand &value = CreateImmOperand(0, k64BitSize, true);
+            GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, value));
+        }
+    } else {
+        GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1));
+    }
+    return &destReg;
+}
+
+RegOperand *AArch64CGFunc::SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0,
+                                                  Operand &opnd1, Operand &opnd2)
+{
+    RegOperand &destReg = CreateRegisterOperandOfType(PTY_i32);
+    MOperator mOp = MOP_is_stable_elements;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2));
+    return &destReg;
+}
+
+RegOperand *AArch64CGFunc::SelectHasPendingException(IntrinsicopNode &node, Operand &opnd0,
+                                                     Operand &opnd1, Operand &opnd2)
+{
+    RegOperand &destReg = CreateRegisterOperandOfType(PTY_i64);
+    MOperator mOp = MOP_has_pending_exception;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2));
+    return &destReg;
+}
+
 RegOperand *AArch64CGFunc::SelectGetHeapConstantTable(IntrinsicopNode &node,
     Operand &opnd0, Operand &opnd1, Operand &opnd2)
 {
@@ -4519,6 +4557,26 @@ RegOperand *AArch64CGFunc::SelectGetHeapConstantTable(IntrinsicopNode &node,
     RegOperand &destReg = CreateRegisterOperandOfType(retType);
     MOperator mOp = MOP_get_heap_const_table;
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2));
+    return &destReg;
+}
+
+RegOperand *AArch64CGFunc::SelectTaggedObjectIsString(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                                      Operand &opnd2, Operand &opnd3, Operand &opnd4)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg = CreateRegisterOperandOfType(retType);
+    MOperator mOp = MOP_tagged_object_is_string;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2, opnd3, opnd4));
+    return &destReg;
+}
+
+RegOperand *AArch64CGFunc::SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                            Operand &opnd2, Operand &opnd3, Operand &opnd4,  Operand &opnd5)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg = CreateRegisterOperandOfType(retType);
+    MOperator mOp = MOP_is_cow_array;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2, opnd3, opnd4, opnd5));
     return &destReg;
 }
 

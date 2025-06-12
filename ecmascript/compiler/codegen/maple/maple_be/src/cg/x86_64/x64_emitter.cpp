@@ -1479,6 +1479,98 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             assmbler.Mov(kQ, heapConstMem, TransferReg(opnd0));
             break;
         }
+        case x64::MOP_tagged_is_heapobject: {
+            ImmOpnd taggedObjectMask = TransferImm(&insn.GetOperand(kInsnFourthOpnd));
+            assmbler.Movabs(taggedObjectMask, TransferReg(opnd1)); // tmpReg
+            auto &srcReg = insn.GetOperand(kInsnThirdOpnd);
+            assmbler.Test(kQ, TransferReg(opnd1), TransferReg(&srcReg));
+            assmbler.Sete(TransferReg(opnd0));
+            break;
+        }
+        case x64::MOP_is_stable_elements: {
+            Mem bitFieldMem;
+            bitFieldMem.base = TransferReg(opnd1);
+            auto &bitFieldOffset = insn.GetOperand(kInsnThirdOpnd);
+            bitFieldMem.disp.second = TransferImm(&bitFieldOffset).first;
+            bitFieldMem.SetMemType();
+            assmbler.Mov(kL, bitFieldMem, TransferReg(opnd0));
+            auto &stableElemenBit = insn.GetOperand(kInsnFourthOpnd);
+            assmbler.Shr(kL, TransferImm(&stableElemenBit), TransferReg(opnd0));
+            ImmOpnd testBit {1, false};
+            assmbler.And(kL, testBit, TransferReg(opnd0));
+            break;
+        }
+        case MOP_has_pending_exception: {
+            Mem exceptionMem;
+            exceptionMem.base = TransferReg(opnd1);
+            exceptionMem.disp.second = TransferImm(&insn.GetOperand(kInsnThirdOpnd)).first;
+            exceptionMem.size = k64Bits;
+            exceptionMem.SetMemType();
+            ImmOpnd holeOpnd = TransferImm(&insn.GetOperand(kInsnFourthOpnd));
+            assmbler.Cmp(kQ, holeOpnd, exceptionMem);
+            assmbler.Setne(TransferReg(opnd0));
+            break;
+        }
+        case x64::MOP_tagged_object_is_string: {
+            auto dstReg = TransferReg(opnd0);
+            auto srcReg = TransferReg(&insn.GetOperand(kInsnThirdOpnd));
+            auto tmpReg1 = TransferReg(&insn.GetOperand(kInsnSeventhOpnd));
+            auto tmpReg2 = TransferReg(&insn.GetOperand(kInsnEighthOpnd));
+            Mem hclass;
+            hclass.base = srcReg;
+            hclass.disp.second = 0;
+            hclass.SetMemType();
+            assmbler.Mov(kQ, hclass, tmpReg2);
+            Mem bitFieldMem;
+            bitFieldMem.base = tmpReg2;
+            auto &bitFieldOffset = insn.GetOperand(kInsnFourthOpnd);
+            bitFieldMem.disp.second = TransferImm(&bitFieldOffset).first;
+            bitFieldMem.SetMemType();
+            bitFieldMem.size = k8ByteSize;
+            assmbler.MovZx(kB, kL, bitFieldMem, tmpReg1);
+            auto &stringFirst = insn.GetOperand(kInsnFifthOpnd);
+            auto &stringLast = insn.GetOperand(kInsnSixthOpnd);
+            int stringLastValue = TransferImm(&stringLast).first;
+            int stringFirstValue = TransferImm(&stringFirst).first;
+            ImmOpnd stringDis {stringLastValue - stringFirstValue, false};
+            assmbler.Sub(kL, TransferImm(&stringFirst), tmpReg1);
+            assmbler.Cmp(kL, stringDis, tmpReg1);
+            assmbler.Setbe(dstReg);
+            break;
+        }
+        case x64::MOP_is_cow_array: {
+            auto dstReg = TransferReg(opnd0);
+            auto srcReg = TransferReg(&insn.GetOperand(kInsnThirdOpnd));
+            auto tmpReg1 = TransferReg(&insn.GetOperand(kInsnEighthOpnd));
+            auto tmpReg2 = TransferReg(&insn.GetOperand(kInsnNinthOpnd));
+            Mem elements;
+            elements.base = srcReg;
+            auto &elementsOffset = insn.GetOperand(kInsnFourthOpnd);
+            elements.disp.second = TransferImm(&elementsOffset).first;
+            elements.SetMemType();
+            assmbler.Mov(kQ, elements, tmpReg2);
+            Mem hclass;
+            hclass.base = tmpReg2;
+            hclass.disp.second = 0;
+            hclass.SetMemType();
+            assmbler.Mov(kQ, hclass, tmpReg2);
+            Mem bitFieldMem;
+            bitFieldMem.base = tmpReg2;
+            auto &bitFieldOffset = insn.GetOperand(kInsnFifthOpnd);
+            bitFieldMem.disp.second = TransferImm(&bitFieldOffset).first;
+            bitFieldMem.SetMemType();
+            bitFieldMem.size = k8ByteSize;
+            assmbler.MovZx(kB, kL, bitFieldMem, tmpReg1);
+            auto &cowArrary = insn.GetOperand(kInsnSixthOpnd);
+            auto &cowArrayLast = insn.GetOperand(kInsnSeventhOpnd);
+            int cowArrayLastValue = TransferImm(&cowArrayLast).first;
+            int cowArrayFirstValue = TransferImm(&cowArrary).first;
+            ImmOpnd cowDis {cowArrayLastValue - cowArrayFirstValue, false};
+            assmbler.Sub(kL, TransferImm(&cowArrary), tmpReg1);
+            assmbler.Cmp(kL, cowDis, tmpReg1);
+            assmbler.Setbe(dstReg);
+            break;
+        }
         default: {
             insn.Dump();
             LogInfo::MapleLogger() << "\n";

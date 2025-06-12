@@ -115,7 +115,12 @@ enum class CallInfoKind : bool {
     V(ReadSp, (GateRef gate))                                                             \
     V(InitVreg, (GateRef gate))                                                           \
     V(BitRev, (GateRef gate, GateRef e1))                                                 \
-    V(FinishAllocate, (GateRef gate, GateRef e1))
+    V(FinishAllocate, (GateRef gate, GateRef e1))                                         \
+    V(TaggedIsHeapObjectIntrinsic, (GateRef gate))                                        \
+    V(IsStableElementsIntrinsic, (GateRef gate))                                          \
+    V(HasPendingExceptionIntrinsic, (GateRef gate))                                       \
+    V(CheckObjectIsStringIntrinsic, (GateRef gate, GateRef e1, GateRef e2))               \
+    V(IsJsCOWArrayIntrinsic, (GateRef gate, GateRef e1, GateRef e2))                      \
 
 bool IsAddIntergerType(MachineType machineType);
 bool IsMulIntergerType(MachineType machineType);

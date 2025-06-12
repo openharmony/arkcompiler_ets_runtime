@@ -404,10 +404,6 @@ void MIRLower::LowerFunc(MIRFunction &func)
     DEBUG_ASSERT(origBody != nullptr, "nullptr check");
     BlockNode *newBody = LowerBlock(*origBody);
     DEBUG_ASSERT(newBody != nullptr, "nullptr check");
-    LowerBuiltinExpect(*newBody);
-    if (!InLFO()) {
-        LowerCandCior(*newBody);
-    }
     func.SetBody(newBody);
 }
 

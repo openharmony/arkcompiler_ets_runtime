@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
@@ -229,6 +230,7 @@ public:
     GateRef IfTrue(GateRef ifBranch);
     GateRef IfFalse(GateRef ifBranch);
     GateRef IsJsCOWArray(GateRef glue, GateRef obj);
+    GateRef IsJsCOWArray(GateRef glue, GateRef obj, const CompilationEnv *compilationEnv);
     GateRef IsCOWArray(GateRef objectType);
     GateRef IsTaggedArray(GateRef glue, GateRef object);
     GateRef CheckJSType(GateRef glue, GateRef object, JSType jsType);
@@ -399,6 +401,7 @@ public:
 
     GateRef FunctionIsResolved(GateRef function);
     GateRef HasPendingException(GateRef glue); // shareir
+    GateRef HasPendingException(GateRef glue, const CompilationEnv *compilationEnv);
     GateRef IsUtf8String(GateRef string);
     GateRef IsUtf16String(GateRef string);
     GateRef IsInternString(GateRef string);
@@ -533,6 +536,7 @@ public:
     inline GateRef IsDictionaryMode(GateRef glue, GateRef object);
     inline GateRef IsJsType(GateRef glue, GateRef object, JSType type);
     inline GateRef IsStableElements(GateRef hClass);
+    inline GateRef IsStableElements(GateRef hClass, CompilationEnv *compilationEnv);
     inline GateRef IsStableArguments(GateRef hClass);
     inline GateRef IsStableArray(GateRef hClass);
     inline GateRef IsDictionaryElement(GateRef hClass);
@@ -790,6 +794,7 @@ public:
     inline GateRef TaggedIsException(GateRef x);
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
+    inline GateRef TaggedIsHeapObject(GateRef x, const CompilationEnv *compilationEnv);
     inline GateRef TaggedIsJSFunction(GateRef glue, GateRef x);
     inline GateRef TaggedIsArrayIterator(GateRef glue, GateRef obj);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef glue, GateRef x);
@@ -831,6 +836,7 @@ public:
     inline GateRef TaggedIsBoundFunction(GateRef glue, GateRef obj);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef glue, GateRef obj);
+    inline GateRef TaggedObjectIsString(GateRef glue, GateRef obj, const CompilationEnv *compilationEnv);
     inline GateRef TaggedObjectIsShared(GateRef glue, GateRef obj);
     inline GateRef TaggedObjectIsEcmaObject(GateRef glue, GateRef obj);
     inline GateRef TaggedObjectIsByteArray(GateRef glue, GateRef obj);

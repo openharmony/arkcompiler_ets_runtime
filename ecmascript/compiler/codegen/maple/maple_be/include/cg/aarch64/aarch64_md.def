@@ -903,6 +903,47 @@ DEFINE_MOP(MOP_pure_call, {&OpndDesc::Reg64IS, &OpndDesc::ListSrc},0,kLtBranch,"
 DEFINE_MOP(MOP_heap_const, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__heap_constant","0,1,2",1)
 
 /*
+ * ldr dest,  [src]
+ * ldrb dest, [dest, 8]
+ * sub dest,  dest, 1
+ * cmp  dest, #2
+ * cset dest, ls
+ */
+DEFINE_MOP(MOP_tagged_object_is_string, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32},ISINTRINSIC,kLtAlu,"__tagged_object_is_string","0,1,2",5)
+
+/*
+ * ldr  dest,  [src, 24]
+ * ldr  dest,  [dest]
+ * ldrb dest,  [dest, 8]
+ * sub  dest,  dest, 158
+ * cmp  dest, #1
+ * cset dest, ls
+ */
+DEFINE_MOP(MOP_is_cow_array, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32},ISINTRINSIC,kLtAlu,"__is_cow_array","0,1,2",6)
+
+/*
+ * mov dest, 6
+ * movk dest, dest 65535 LSL 48
+ * and dest, src, dest
+ * cmp dest, 0
+ * cset dest, eq
+ */
+DEFINE_MOP(MOP_tagged_is_heapobject, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__tagged_is_heapobject","0,1,2",5)
+
+/*
+ * ldr dest, [src, #8] // 8: JSHClass::BIT_FIELD_OFFSET
+ * ubfx dest, dest, 19, 1 // 19: JSHClass::IsStableElementsBit::START_BIT 1:length
+ */
+DEFINE_MOP(MOP_is_stable_elements, {&OpndDesc::Reg32ID, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32},ISINTRINSIC,kLtAlu,"__is_stable_elements","0,1,2,3",2)
+
+/*
+ * ldr dest, [src, #imm] // imm: exception offset
+ * cmp dest, 0x5 (HOLE)
+ * cset dest, ne
+ */
+DEFINE_MOP(MOP_has_pending_exception, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__has_pending_exception","0,1,2,3",3)
+
+/*
  * ldr dest, [src, MACHINECODE_OFFSET]
  * ldr dest, [dest, CONSTANT_TABLE_OFFSET]
  */

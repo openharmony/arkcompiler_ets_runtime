@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/mem/chunk_containers.h"
 
@@ -26,9 +27,10 @@ class PostSchedule {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
-    PostSchedule(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk, bool fastBarrier = false)
+    PostSchedule(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk,
+                CompilationEnv *env, bool fastBarrier = false)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit), builder_(circuit), acc_(circuit),
-          fastBarrier_(fastBarrier)
+          compilationEnv_(env), fastBarrier_(fastBarrier)
     {
     }
 
@@ -104,6 +106,7 @@ private:
     Circuit* circuit_ {nullptr};
     CircuitBuilder builder_;
     GateAccessor acc_;
+    CompilationEnv *compilationEnv_ {nullptr};
     bool fastBarrier_ {false};
 };
 };  // namespace panda::ecmascript::kungfu

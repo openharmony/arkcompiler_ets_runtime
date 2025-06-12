@@ -660,27 +660,40 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
 
-    GateRef intVal = builder_.ChangeTaggedPointerToInt64(value);
-    GateRef objMask = circuit_->GetConstantGateWithoutCache(
-        MachineType::I64, JSTaggedValue::TAG_HEAPOBJECT_MASK, GateType::NJSValue());
-    GateRef masked = builder_.Int64And(intVal, objMask, GateType::Empty(), "checkHeapObject");
-    GateRef falseVal = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef condition = builder_.Equal(masked, falseVal, "checkHeapObject");
     Label exit(&builder_);
     Label isHeapObject(&builder_);
     Label *currentLabel = env.GetCurrentLabel();
-    BRANCH_CIR(condition, &isHeapObject, &exit);
-    {
-        GateRef ifBranch = currentLabel->GetControl();
-        PrepareToScheduleNewGate(ifBranch, currentBBGates);
-        PrepareToScheduleNewGate(condition, currentBBGates);
-        PrepareToScheduleNewGate(falseVal, currentBBGates);
-        PrepareToScheduleNewGate(masked, currentBBGates);
-        PrepareToScheduleNewGate(intVal, currentBBGates);
-        PrepareToScheduleNewGate(objMask, currentBBGates);
-        PrepareToScheduleNewGate(store, currentBBGates);
-        PrepareToScheduleNewGate(addr, currentBBGates);
+    if (compilationEnv_ != nullptr && compilationEnv_->SupportIntrinsic() && !acc_.IsConstant(value)) {
+        GateRef heapObjectCheck = builder_.TaggedIsHeapObject(value, compilationEnv_);
+        BRANCH_CIR(heapObjectCheck, &isHeapObject, &exit);
+        {
+            GateRef ifBranch = currentLabel->GetControl();
+            PrepareToScheduleNewGate(ifBranch, currentBBGates);
+            PrepareToScheduleNewGate(heapObjectCheck, currentBBGates);
+            PrepareToScheduleNewGate(store, currentBBGates);
+            PrepareToScheduleNewGate(addr, currentBBGates);
+        }
+    } else {
+        GateRef intVal = builder_.ChangeTaggedPointerToInt64(value);
+        GateRef objMask = circuit_->GetConstantGateWithoutCache(
+            MachineType::I64, JSTaggedValue::TAG_HEAPOBJECT_MASK, GateType::NJSValue());
+        GateRef masked = builder_.Int64And(intVal, objMask, GateType::Empty(), "checkHeapObject");
+        GateRef falseVal = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        GateRef condition = builder_.Equal(masked, falseVal, "checkHeapObject");
+        BRANCH_CIR(condition, &isHeapObject, &exit);
+        {
+            GateRef ifBranch = currentLabel->GetControl();
+            PrepareToScheduleNewGate(ifBranch, currentBBGates);
+            PrepareToScheduleNewGate(condition, currentBBGates);
+            PrepareToScheduleNewGate(falseVal, currentBBGates);
+            PrepareToScheduleNewGate(masked, currentBBGates);
+            PrepareToScheduleNewGate(intVal, currentBBGates);
+            PrepareToScheduleNewGate(objMask, currentBBGates);
+            PrepareToScheduleNewGate(store, currentBBGates);
+            PrepareToScheduleNewGate(addr, currentBBGates);
+        }
     }
+
     GateRef ifTrue = isHeapObject.GetControl();
     GateRef ifFalse = exit.GetControl();
     builder_.Bind(&isHeapObject);

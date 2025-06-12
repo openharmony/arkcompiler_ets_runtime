@@ -47,8 +47,20 @@ public:
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     RegOperand &SelectHeapConstant(
         IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
+    RegOperand &SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0,
+                                         Operand &opnd1, const BaseNode &parent) override;
+    RegOperand &SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                       Operand &opnd2, const BaseNode &parent) override;
+    RegOperand &SelectHasPendingException(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent) override;
     RegOperand &SelectGetHeapConstantTable(
         IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent) override;
+    RegOperand &SelectTaggedObjectIsString(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, Operand &opnd3,
+        Operand &opnd4, const BaseNode &parent) override;
+    RegOperand &SelectIsCOWArray(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, Operand &opnd3,
+        Operand &opnd4, Operand &opnd5, const BaseNode &parent) override;
 
 private:
     MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId = 0) const override;

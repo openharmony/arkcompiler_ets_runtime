@@ -305,13 +305,13 @@ class LSRALinearScanRegAllocator : public RegAllocator {
                 return false;
             }
             if (lhs->GetFirstDef() == rhs->GetFirstDef() && lhs->GetLastUse() == rhs->GetLastUse() &&
-                lhs->GetRegNO() == rhs->GetRegNO() && lhs->GetRegType() == rhs->GetRegType() &&
-                lhs->GetAssignedReg() == rhs->GetAssignedReg()) {
-                return false;
-            }
-            if (lhs->GetFirstDef() == rhs->GetFirstDef() && lhs->GetLastUse() == rhs->GetLastUse() &&
-                lhs->GetPhysUse() == rhs->GetPhysUse() && lhs->GetRegType() == rhs->GetRegType()) {
-                return lhs->GetRegNO() < rhs->GetRegNO();
+                lhs->GetRegType() == rhs->GetRegType()) {
+                if (lhs->GetRegNO() == rhs->GetRegNO() && lhs->GetAssignedReg() == rhs->GetAssignedReg()) {
+                    return false;
+                }
+                if (lhs->GetPhysUse() == rhs->GetPhysUse()) {
+                    return lhs->GetRegNO() < rhs->GetRegNO();
+                }
             }
             if (lhs->GetPhysUse() != 0 && rhs->GetPhysUse() != 0) {
                 if (lhs->GetFirstDef() == rhs->GetFirstDef()) {
@@ -364,13 +364,17 @@ public:
           callQueue(alloc.Adapter()),
           active(alloc.Adapter()),
           freeUntilPos(alloc.Adapter()),
+#ifdef ARK_LITECG_DEBUG
           intCallerRegSet(alloc.Adapter()),
           intCalleeRegSet(alloc.Adapter()),
           intParamRegSet(alloc.Adapter()),
+#endif
           intSpillRegSet(alloc.Adapter()),
+#ifdef ARK_LITECG_DEBUG
           fpCallerRegSet(alloc.Adapter()),
           fpCalleeRegSet(alloc.Adapter()),
           fpParamRegSet(alloc.Adapter()),
+#endif
           fpSpillRegSet(alloc.Adapter()),
           loopBBRegSet(alloc.Adapter()),
           bfs(bbSort),
@@ -468,18 +472,22 @@ private:
     MapleVector<uint32> freeUntilPos;
 
     /* Change these into vectors so it can be added and deleted easily. */
+#ifdef ARK_LITECG_DEBUG
     MapleSet<regno_t> intCallerRegSet;   /* integer caller saved */
     MapleSet<regno_t> intCalleeRegSet;   /*         callee       */
     MapleSet<regno_t> intParamRegSet;    /*         parameters    */
+#endif
     MapleVector<regno_t> intSpillRegSet; /* integer regs put aside for spills */
 
     /* and register */
     uint32 intCallerMask = 0;          /* bit mask for all possible caller int */
     uint32 intCalleeMask = 0;          /*                           callee     */
     uint32 intParamMask = 0;           /*     (physical-register)   parameter  */
+#ifdef ARK_LITECG_DEBUG
     MapleSet<uint32> fpCallerRegSet;   /* float caller saved */
     MapleSet<uint32> fpCalleeRegSet;   /*       callee       */
     MapleSet<uint32> fpParamRegSet;    /*       parameter    */
+#endif
     MapleVector<uint32> fpSpillRegSet; /* float regs put aside for spills */
     MapleUnorderedSet<uint32> loopBBRegSet;
     Bfs *bfs = nullptr;

@@ -157,7 +157,7 @@ void SlowPathLowering::LowerToJSCall(GateRef hirGate, const std::vector<GateRef>
 void SlowPathLowering::ReplaceHirWithPendingException(GateRef hirGate,
     GateRef state, GateRef depend, GateRef value)
 {
-    auto condition = builder_.HasPendingException(glue_);
+    auto condition = builder_.HasPendingException(glue_, compilationEnv_);
     GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
     GateRef ifTrue = builder_.IfTrue(ifBranch);
     GateRef ifFalse = builder_.IfFalse(ifBranch);
@@ -215,7 +215,7 @@ void SlowPathLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value)
  */
 void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef value)
 {
-    auto condition = builder_.HasPendingException(glue_);
+    auto condition = builder_.HasPendingException(glue_, compilationEnv_);
     GateRef state = builder_.GetState();
     GateRef depend = builder_.GetDepend();
     GateRef ifBranch = builder_.Branch(state, condition, BranchWeight::DEOPT_WEIGHT, 1, "checkException");
@@ -1173,7 +1173,7 @@ void SlowPathLowering::LowerThrowIfNotObject(GateRef gate)
     Label isEcmaObject(&builder_);
     Label notEcmaObject(&builder_);
     Label isHeapObject(&builder_);
-    BRANCH_CIR(builder_.TaggedIsHeapObject(value), &isHeapObject, &notEcmaObject);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(value, compilationEnv_), &isHeapObject, &notEcmaObject);
     builder_.Bind(&isHeapObject);
     BRANCH_CIR(builder_.TaggedObjectIsEcmaObject(glue_, value), &isEcmaObject, &notEcmaObject);
     builder_.Bind(&isEcmaObject);
@@ -1996,7 +1996,7 @@ void SlowPathLowering::CheckSuperAndNewTarget(NewObjectStubBuilder &objBuilder, 
     Label normalPath(&builder_);
     Label needAllocateThis(&builder_);
 
-    BRANCH_CIR(builder_.TaggedIsHeapObject(super), &isHeapObj, &slowPath);
+    BRANCH_CIR(builder_.TaggedIsHeapObject(super, compilationEnv_), &isHeapObj, &slowPath);
     builder_.Bind(&isHeapObj);
     BRANCH_CIR(builder_.IsJSFunction(glue_, super), &isJsFunc, &slowPath);
     builder_.Bind(&isJsFunc);

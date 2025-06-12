@@ -1047,7 +1047,7 @@ void NativeInlineLowering::ReplaceGateWithPendingException(GateRef hirGate, Gate
     // copy depend-wire of hirGate to value
     GateRef depend = builder_.GetDepend();
     // exception condition
-    GateRef condition = builder_.HasPendingException(glue_);
+    GateRef condition = builder_.HasPendingException(glue_, compilationEnv_);
     auto ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
 
     GateRef ifTrue = builder_.IfTrue(ifBranch);

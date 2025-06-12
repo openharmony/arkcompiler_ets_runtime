@@ -85,8 +85,20 @@ public:
     virtual Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual RegOperand &SelectHeapConstant(
         IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
+    virtual RegOperand &SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0,
+                                                 Operand &opnd1, const BaseNode &parent) = 0;
+    virtual RegOperand &SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                               Operand &opnd2, const BaseNode &parent) = 0;
+    virtual RegOperand &SelectHasPendingException(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent) = 0;
     virtual RegOperand &SelectGetHeapConstantTable(
         IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent) = 0;
+    virtual RegOperand &SelectTaggedObjectIsString(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, Operand &opnd3,
+        Operand &opnd4, const BaseNode &parent) = 0;
+    virtual RegOperand &SelectIsCOWArray(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, Operand &opnd3,
+        Operand &opnd4, Operand &opnd5, const BaseNode &parent) = 0;
     Operand *SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent);
     virtual Operand *SelectLnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     Operand *SelectMin(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
