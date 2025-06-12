@@ -71,7 +71,8 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
             ee.Update(starExportEntries->Get(idx));
             // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             JSHandle<SourceTextModule> requestedModule =
-                GetRequestedModuleFromCache(thread, requestedModules, ee->GetModuleRequestIndex());
+                GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, ee->GetModuleRequestIndex());
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
             ASSERT(requestedModule.GetTaggedValue().IsSourceTextModule());
             SetExportName(thread, requestedModule, exportedNames, newExportStarSet);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
@@ -227,7 +228,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
         ee.Update(starExportEntries->Get(idx));
         // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
         JSHandle<SourceTextModule> requestedModule =
-            GetRequestedModuleFromCache(thread, requestedModules, ee->GetModuleRequestIndex());
+            GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, ee->GetModuleRequestIndex());
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         ASSERT(requestedModule.GetTaggedValue().IsSourceTextModule());
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, requestedModule,
                                                            starResolution, resolvedMap);
@@ -554,13 +556,7 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
             JSHandle<JSTaggedValue> requiredModule =
                 ModuleResolver::HostResolveImportedModule(thread, module, required, executeType);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            if (!isShared) {
-                requestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
-            } else {
-                JSHandle<EcmaString> requireModuleName =
-                    thread->GetEcmaVM()->GetFactory()->NewFromUtf8(GetModuleName(requiredModule.GetTaggedValue()));
-                requestedModules->Set(thread, idx, requireModuleName.GetTaggedValue());
-            }
+            SetRequestedModules(thread, requestedModules, idx, requiredModule, isShared);
             PreModuleInstantiation(thread, JSHandle<SourceTextModule>::Cast(requiredModule), executeType);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         }
@@ -600,7 +596,7 @@ int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<Sourc
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<JSTaggedValue> moduleHdl =
-                GetRequestedModuleMayThrowError(thread, requestedModules, idx, exception);
+                GetRequestedModuleMayThrowError(thread, module, idx, requestedModules, exception);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(moduleHdl);
             index = FinishModuleInstantiation(thread, requiredModule, stack, index, exception);
@@ -667,7 +663,8 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
         importName.Update(in->GetImportName());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
         JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
-            GetRequestedModuleFromCache(thread, requestedModules, in->GetModuleRequestIndex()));
+            GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, in->GetModuleRequestIndex()));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         ASSERT(importedModule.GetTaggedValue().IsSourceTextModule());
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
@@ -744,7 +741,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         importName.Update(in->GetImportName());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
         JSHandle<SourceTextModule> importedModule =
-            GetRequestedModuleFromCache(thread, requestedModules, in->GetModuleRequestIndex());
+            GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, in->GetModuleRequestIndex());
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         ASSERT(importedModule.GetTaggedValue().IsSourceTextModule());
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
@@ -1578,7 +1576,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             JSHandle<SourceTextModule> requestedModule =
-                GetRequestedModuleFromCache(thread, requestedModules, ee->GetModuleRequestIndex());
+                GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, ee->GetModuleRequestIndex());
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             ASSERT(requestedModule.GetTaggedValue().IsSourceTextModule());
             // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolvedMap).
             importName.Update(ee->GetImportName());
@@ -2139,28 +2138,21 @@ void SourceTextModule::HandleErrorStack(JSThread *thread, const CVector<JSHandle
     }
 }
 
-JSHandle<SourceTextModule> SourceTextModule::GetRequestedModuleFromCache(JSThread *thread,
-                                                                         const JSHandle<TaggedArray> requestedModules,
-                                                                         uint32_t idx)
-{
-    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
-    if (request->IsSourceTextModule()) {
-        // current is normal module: directly get require SourceTextModule.
-        return JSHandle<SourceTextModule>::Cast(request);
-    }
-    // current is shared module: resolve or find request module by request string.
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
-    return moduleManager->GetImportedModule(requestStr);
-}
-
 JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(JSThread *thread,
     const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx)
 {
+    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
     JSHandle<SourceTextModule> requireModule;
-    JSTaggedValue request = requestedModules->Get(idx);
-    if (!request.IsHole()) {
-        requireModule = GetRequestedModuleFromCache(thread, requestedModules, idx);
+    if (!request->IsHole()) {
+        if (request->IsSourceTextModule()) {
+            // current is normal module: directly get require SourceTextModule.
+            return JSHandle<SourceTextModule>::Cast(request);
+        }
+        // current is shared module: resolve or find request module by request string.
+        ModuleManager *moduleManager = thread->GetModuleManager();
+        CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
+        // may return undefined
+        requireModule = moduleManager->GetImportedModule(requestStr);
     }
     if (requireModule.GetTaggedValue().IsSourceTextModule()) {
         return requireModule;
@@ -2178,12 +2170,15 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(J
     */
     JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
     JSHandle<JSTaggedValue> required(thread, moduleRequests->Get(idx));
-    return JSHandle<SourceTextModule>::Cast(
-        ModuleResolver::HostResolveImportedModule(thread, module, required));
+    JSHandle<JSTaggedValue> requiredModule = ModuleResolver::HostResolveImportedModule(thread, module, required);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
+    SetRequestedModules(thread, requestedModules, idx, requiredModule, SourceTextModule::IsSharedModule(module));
+    return JSHandle<SourceTextModule>::Cast(requiredModule);
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThread *thread,
-    const JSHandle<TaggedArray> requestedModules, uint32_t idx, JSHandle<JSTaggedValue> exception)
+    const JSHandle<SourceTextModule> module, uint32_t idx, const JSHandle<TaggedArray> requestedModules,
+    JSHandle<JSTaggedValue> exception)
 {
     JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
     if (UNLIKELY(request->IsHole())) {
@@ -2193,7 +2188,20 @@ JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThre
         thread->SetException(exception.GetTaggedValue());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     }
-    return JSHandle<JSTaggedValue>::Cast(GetRequestedModuleFromCache(thread, requestedModules, idx));
+    return JSHandle<JSTaggedValue>::Cast(GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx));
+}
+
+void SourceTextModule::SetRequestedModules(JSThread *thread, JSHandle<TaggedArray> requestedModules, uint32_t idx,
+    JSHandle<JSTaggedValue> requiredModule, bool isShared)
+{
+    if (!isShared) {
+        requestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
+    } else {
+        CString recordName = GetModuleName(requiredModule.GetTaggedValue());
+        JSHandle<EcmaString> requireModuleName =
+            thread->GetEcmaVM()->GetFactory()->NewFromUtf8(recordName);
+        requestedModules->Set(thread, idx, requireModuleName.GetTaggedValue());
+    }
 }
 
 void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<SourceTextModule> module,

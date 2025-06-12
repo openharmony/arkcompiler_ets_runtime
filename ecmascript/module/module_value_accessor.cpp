@@ -244,7 +244,8 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespaceInternal(JSThread *thread, 
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(curModule));
     JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     JSHandle<SourceTextModule> requiredModule =
-        SourceTextModule::GetRequestedModuleFromCache(thread, requestedModules, index);
+        SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, index);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
 
     ModuleTypes moduleType = requiredModule->GetTypes();

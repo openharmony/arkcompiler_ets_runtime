@@ -102,7 +102,8 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<SourceTextModule> requiredModule =
-                SourceTextModule::GetRequestedModuleFromCache(thread, requestedModules, idx);
+                SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
@@ -139,7 +140,8 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<SourceTextModule> requiredModule =
-                SourceTextModule::GetRequestedModuleFromCache(thread, requestedModules, idx);
+                SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
