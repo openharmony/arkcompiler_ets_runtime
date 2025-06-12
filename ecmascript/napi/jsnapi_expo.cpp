@@ -1898,7 +1898,7 @@ Local<ArrayRef> SetIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCa
 }
 
 // ---------------------------------- Buffer -----------------------------------
-Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
+Local<BufferRef> BufferRef::New(const EcmaVM *vm, const Local<JSValueRef> &context, int32_t length)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
@@ -1916,11 +1916,19 @@ Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
     if (!result) {
         LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
     }
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<BufferRef>(obj);
 }
 
-Local<BufferRef> BufferRef::New(
-    const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)
+Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread->GetGlobalEnv()));
+    return New(vm, context, length);
+}
+
+Local<BufferRef> BufferRef::New(const EcmaVM *vm, const Local<JSValueRef> &context, void *buffer,
+    int32_t length, const NativePointerCallback &deleter, void *data)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
@@ -1939,7 +1947,16 @@ Local<BufferRef> BufferRef::New(
     if (!result) {
         LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
     }
+    current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
+}
+
+Local<BufferRef> BufferRef::New(
+    const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter, void *data)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread->GetGlobalEnv()));
+    return New(vm, context, buffer, length, deleter, data);
 }
 
 int32_t BufferRef::ByteLength(const EcmaVM *vm)

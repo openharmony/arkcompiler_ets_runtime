@@ -1545,8 +1545,11 @@ public:
 class PUBLIC_API BufferRef : public ObjectRef {
 public:
     static Local<BufferRef> New(const EcmaVM *vm, int32_t length);
+    static Local<BufferRef> New(const EcmaVM *vm, const Local<JSValueRef> &context, int32_t length);
     static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const NativePointerCallback &deleter,
                                 void *data);
+    static Local<BufferRef> New(const EcmaVM *vm, const Local<JSValueRef> &context, void *buffer, int32_t length,
+                                const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
     void *GetBuffer(const EcmaVM *vm);
