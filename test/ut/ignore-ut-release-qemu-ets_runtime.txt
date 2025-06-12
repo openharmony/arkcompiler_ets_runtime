@@ -57,7 +57,6 @@ obj/arkcompiler/ets_runtime/test/aottest/webkit_call_convention/webkit_call_conv
 obj/arkcompiler/ets_runtime/test/deopttest/elements_kind/elements_kind/SlowPath/LiteCG
 obj/arkcompiler/ets_runtime/test/deopttest/newobjrange_nodeopt/newobjrange_nodeopt/LiteCG
 obj/arkcompiler/ets_runtime/ecmascript/compiler/aot_file/tests/AOTFileTestWithQemu
-obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerThirdTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest/heap_dump_test.o
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapTrackerSecondTestWithQemu
@@ -195,3 +194,7 @@ obj/arkcompiler/ets_runtime/ecmascript/tests/JS_ListFormat_TestWithQemu
 
 #25244
 obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssert
+
+#24283
+#26429
+obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWithQemu
