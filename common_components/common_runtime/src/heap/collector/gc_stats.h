@@ -95,10 +95,22 @@ public:
     double collectionRate; // bytes per nano-second
 
     size_t heapThreshold;
+    size_t targetFootprint;
+
+    // Use for heuristic request, set by last gc status.
+    bool shouldRequestYoung;
+
+    bool isYoungGC()
+    {
+        return reason == GCReason::GC_REASON_YOUNG;
+    }
 };
 extern size_t g_gcCount;
 extern uint64_t g_gcTotalTimeUs;
 extern size_t g_gcCollectedTotalBytes;
+
+extern size_t g_fullGCCount;
+extern double g_fullGCMeanRate;
 } // namespace panda
 
 #endif

@@ -14,7 +14,9 @@
  */
 #include "common_components/common_runtime/src/heap/collector/trace_collector.h"
 #include <new>
+#include <iomanip>
 
+#include "base/runtime_param.h"
 #include "common_components/common_runtime/src/heap/allocator/alloc_buffer.h"
 
 namespace panda {
@@ -594,24 +596,52 @@ void TraceCollector::UpdateGCStats()
     gcStats.Dump();
 
     size_t oldThreshold = gcStats.heapThreshold;
-    size_t liveBytes = space.GetAllocatedBytes();
+    size_t oldTargetFootprint = gcStats.targetFootprint;
     size_t recentBytes = space.GetRecentAllocatedSize();
     size_t survivedBytes = space.GetSurvivedSize();
+    size_t bytesAllocated = space.GetAllocatedBytes();
 
-    // 4 ways to estimate heap next threshold.
-    double heapGrowth = 1 + (BaseRuntime::GetInstance()->GetHeapParam().heapGrowth);
-    size_t threshold1 = survivedBytes * heapGrowth;
-    size_t threshold2 = oldThreshold * heapGrowth;
-    size_t threshold3 = survivedBytes * 1.2 / (1.0 + gcStats.garbageRatio);
-    size_t threshold4 = space.GetTargetSize();
-    size_t newThreshold = (threshold1 + threshold2 + threshold3 + threshold4) / 4;
+    size_t targetSize;
+    HeapParam& heapParam = BaseRuntime::GetInstance()->GetHeapParam();
+    GCParam& gcParam = BaseRuntime::GetInstance()->GetGCParam();
+    if (!gcStats.isYoungGC()) {
+        gcStats.shouldRequestYoung = true;
+        size_t delta = bytesAllocated * (1.0 / heapParam.heapUtilization - 1.0);
+        size_t growBytes = std::min(delta, gcParam.maxGrowBytes);
+        growBytes = std::max(growBytes, gcParam.minGrowBytes);
+        targetSize = bytesAllocated + growBytes * gcParam.multiplier;
+    } else {
+        gcStats.shouldRequestYoung = gcStats.collectionRate * gcParam.ygcRateAdjustment >= g_fullGCMeanRate
+                                && bytesAllocated <= oldThreshold;
+        size_t adjustMaxGrowBytes = gcParam.maxGrowBytes * gcParam.multiplier;
+        if (bytesAllocated + adjustMaxGrowBytes < oldTargetFootprint) {
+            targetSize = bytesAllocated + adjustMaxGrowBytes;
+        } else {
+            targetSize = std::max(bytesAllocated, oldTargetFootprint);
+        }
+    }
 
-    // 0.98: make sure new threshold does not exceed reasonable limit.
-    gcStats.heapThreshold = std::min(newThreshold, static_cast<size_t>(space.GetMaxCapacity() * 0.98));
-    gcStats.heapThreshold = std::min(gcStats.heapThreshold, BaseRuntime::GetInstance()->GetGCParam().gcThreshold);
-    g_gcRequests[GC_REASON_HEU].SetMinInterval(BaseRuntime::GetInstance()->GetGCParam().gcInterval);
-    VLOG(REPORT, "live bytes %zu (survived %zu, recent-allocated %zu), update gc threshold %zu -> %zu", liveBytes,
-         survivedBytes, recentBytes, oldThreshold, gcStats.heapThreshold);
+    gcStats.targetFootprint = targetSize;
+    size_t remainingBytes = recentBytes;
+    remainingBytes = std::min(remainingBytes, gcParam.kMaxConcurrentRemainingBytes);
+    remainingBytes = std::max(remainingBytes, gcParam.kMinConcurrentRemainingBytes);
+
+    if (UNLIKELY(remainingBytes > gcStats.targetFootprint)) {
+        remainingBytes = std::min(gcParam.kMinConcurrentRemainingBytes, gcStats.targetFootprint);
+    }
+    gcStats.heapThreshold = std::max(gcStats.targetFootprint - remainingBytes, bytesAllocated);
+    gcStats.heapThreshold = std::min(gcStats.heapThreshold, gcParam.gcThreshold);
+
+    if (!gcStats.isYoungGC()) {
+        g_gcRequests[GC_REASON_HEU].SetMinInterval(gcParam.gcInterval);
+    } else {
+        g_gcRequests[GC_REASON_YOUNG].SetMinInterval(gcParam.gcInterval);
+    }
+
+    LOG_COMMON(INFO) << "allocated bytes " << bytesAllocated << " (survive bytes " << survivedBytes
+                     << ", recent-allocated " << recentBytes << "), update target footprint "
+                     << oldTargetFootprint << " -> " << gcStats.targetFootprint
+                     << ", update gc threshold " << oldThreshold << " -> " << gcStats.heapThreshold;
     OHOS_HITRACE_COUNT("ARK_RT_post_GC_HeapSize", Heap::GetHeap().GetAllocatedSize());
 }
 
@@ -635,7 +665,8 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 
     gcReason_ = reason;
     PreGarbageCollection(true);
-    VLOG(REPORT, "[GC] Start %s %s gcIndex= %lu", GetCollectorName(), g_gcRequests[gcReason_].name, gcIndex);
+    LOG_COMMON(INFO) << "[GC] Start " << GetCollectorName() << " " << g_gcRequests[gcReason_].name << " gcIndex="
+                     << gcIndex;
     GCStats& gcStats = GetGCStats();
     gcStats.collectedBytes = 0;
     gcStats.gcStartTime = TimeUtil::NanoSeconds();
@@ -652,14 +683,32 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     PostGarbageCollection(gcIndex);
     MutatorManager::Instance().DestroyExpiredMutators();
     gcStats.gcEndTime = TimeUtil::NanoSeconds();
-    UpdateGCStats();
+
     uint64_t gcTimeNs = gcStats.gcEndTime - gcStats.gcStartTime;
     double rate = (static_cast<double>(gcStats.collectedBytes) / gcTimeNs) * (static_cast<double>(NS_PER_S) / MB);
-    VLOG(REPORT, "total gc time: %s us, collection rate %.3lf MB/s\n", Pretty(gcTimeNs / NS_PER_US).Str(), rate);
+    {
+        std::ostringstream oss;
+        const int prec = 3;
+        oss << "total gc time: " << Pretty(gcTimeNs / NS_PER_US).Str() << " us, collection rate ";
+        oss << std::setprecision(prec) << rate << " MB/s";
+        LOG_COMMON(INFO) << oss.str();
+    }
+
     g_gcCount++;
     g_gcTotalTimeUs += (gcTimeNs / NS_PER_US);
     g_gcCollectedTotalBytes += gcStats.collectedBytes;
     gcStats.collectionRate = rate;
+
+    if (!gcStats.isYoungGC()) {
+        if (g_fullGCCount == 0) {
+            g_fullGCMeanRate = rate;
+        } else {
+            g_fullGCMeanRate = (g_fullGCMeanRate * g_fullGCCount + rate) / (g_fullGCCount + 1);
+        }
+        g_fullGCCount++;
+    }
+
+    UpdateGCStats();
 }
 
 void TraceCollector::CopyFromSpace()
