@@ -115,6 +115,46 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DISPATCH_LAST_WITH_ACC()                                                          \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter)       \
 
+#ifdef USE_CMC_GC
+#define UPDATE_HOTNESS(_sp, callback)                                                                  \
+    varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                          \
+    BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                         \
+    Bind(&slowPath);                                                                                   \
+    {                                                                                                  \
+        GateRef func = GetFunctionFromFrame(glue, GetFrame(_sp));                                      \
+        GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit())); \
+        GateRef interruptsFlag = LoadPrimitive(VariableType::INT8(), glue, iVecOffset);                \
+        varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                          \
+        Label initialized(env);                                                                        \
+        Label callRuntime(env);                                                                        \
+        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                           \
+                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),            \
+               &callRuntime, &initialized);                                                            \
+        Bind(&callRuntime);                                                                            \
+        if (!(callback).IsEmpty()) {                                                                   \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), {func});   \
+        } else {                                                                                       \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), {func});           \
+        }                                                                                              \
+        Label handleException(env);                                                                    \
+        Label noException(env);                                                                        \
+        BRANCH(HasPendingException(glue), &handleException, &noException);                             \
+        Bind(&handleException);                                                                        \
+        {                                                                                              \
+            DISPATCH_LAST();                                                                           \
+        }                                                                                              \
+        Bind(&noException);                                                                            \
+        {                                                                                              \
+            Jump(&dispatch);                                                                           \
+        }                                                                                              \
+        Bind(&initialized);                                                                            \
+        CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});                                              \
+        (callback).TryDump();                                                                          \
+        (callback).TryJitCompile();                                                                    \
+        Jump(&dispatch);                                                                               \
+    }                                                                                                  \
+    Bind(&dispatch);
+#else
 #define UPDATE_HOTNESS(_sp, callback)                                                                          \
     varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                                  \
     BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                                 \
@@ -152,6 +192,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);
+#endif
 
 #define CHECK_EXCEPTION(res, offset)                                                      \
     CheckException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,         \
