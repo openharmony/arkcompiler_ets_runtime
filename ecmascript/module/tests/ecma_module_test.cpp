@@ -72,7 +72,7 @@ public:
 
     static JSHandle<JSTaggedValue> MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo);
     static JSHandle<JSTaggedValue> MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo);
-    static JSTaggedValue MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo);
+    static JSHandle<JSTaggedValue> MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo);
 
     EcmaVM *instance {nullptr};
     ecmascript::EcmaHandleScope *scope {nullptr};
@@ -103,7 +103,7 @@ JSHandle<JSTaggedValue> EcmaModuleTest::MockRequireNapiValue(JsiRuntimeCallInfo 
     return current;
 }
 
-JSTaggedValue EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo)
+JSHandle<JSTaggedValue> EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo)
 {
     EcmaVM *vm = runtimeCallInfo->GetVM();
     CROSS_THREAD_CHECK(vm);
@@ -116,10 +116,10 @@ JSTaggedValue EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runti
     JSHandle<EcmaString> name = factory->NewFromUtf8("name");
     JSHandle<EcmaString> value = factory->NewFromUtf8("BusinessError");
     JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(key), code);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(name),
                                         JSHandle<JSTaggedValue>::Cast(value));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSTaggedValue err = error.GetTaggedValue();
     if (thread->HasPendingException()) {
         LOG_ECMA(DEBUG) << "An exception has already occurred before, keep old exception here.";
@@ -127,7 +127,7 @@ JSTaggedValue EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runti
         thread->SetException(err);
     }
 
-    return message.GetTaggedValue();
+    return message;
 }
 
 class MockModuleValueAccessor : public ModuleValueAccessor {
