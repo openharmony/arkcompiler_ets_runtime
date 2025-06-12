@@ -480,10 +480,16 @@ public:
         };
         Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
 
-        RegionDesc* region = recentPinnedRegionList_.GetHeadRegion();
-        if (region != nullptr && region != RegionDesc::NullRegion()) {
-            region->SetTraceLine();
+        RegionDesc* pinRegion = recentPinnedRegionList_.GetHeadRegion();
+        if (pinRegion != nullptr && pinRegion != RegionDesc::NullRegion()) {
+            pinRegion->SetTraceLine();
         }
+
+        RegionDesc* readOnlyRegion = readOnlyRegionList_.GetHeadRegion();
+        if (readOnlyRegion != nullptr && readOnlyRegion != RegionDesc::NullRegion()) {
+            readOnlyRegion->SetTraceLine();
+        }
+
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
             RegionDesc* region = fixedPinnedRegionList_[i]->GetHeadRegion();
             if (region != nullptr && region != RegionDesc::NullRegion()) {
