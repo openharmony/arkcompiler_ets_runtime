@@ -549,6 +549,13 @@ if (globalThis["ArkPrivate"] != undefined) {
         let result = buf1.writeBigUInt64BE(BigInt(0xdecafafecacefade), 0);
         map.set("buffer.readBigUInt64BE() failed, expect: 8, output: " + result, result === 8);
     }
+    {
+        try{
+            let buf = new FastBuffer([undefined]);
+        } catch (e) {
+            map.set("new buffer from array failed, expect: 401, output: " + e.code, e.code === 401);
+        }
+    }
 
     let flag = undefined;
     function elements(value, key, map) {
