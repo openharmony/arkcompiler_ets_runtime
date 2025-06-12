@@ -22,6 +22,7 @@
 #include "common_components/heap/heap.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/mutator/mutator_manager.h"
+#include "common_interfaces/objects/composite_base_class.h"
 #include "common_interfaces/thread/thread_state_transition.h"
 
 namespace panda::ecmascript {
@@ -100,7 +101,7 @@ void BaseRuntime::Init(const RuntimeParam &param)
     PagePool::Instance().Init(param_.heapParam.heapSize * KB / COMMON_PAGE_SIZE);
     mutatorManager_ = NewAndInit<MutatorManager>();
     heapManager_ = NewAndInit<HeapManager>(param_);
-
+    baseClassRoots_ = NewAndInit<BaseClassRoots>();
     LOG_COMMON(INFO) << "Arkcommon runtime started.";
     // Record runtime parameter to report. heap growth value needs to plus 1.
     VLOG(REPORT, "Runtime parameter:\n\tHeap size: %zu(KB)\n\tRegion size: %zu(KB)\n\tExemption threshold: %.2f\n\t"
@@ -130,6 +131,7 @@ void BaseRuntime::Fini()
         // here we need to check and call fini.
         CheckAndFini<HeapManager>(heapManager_);
         CheckAndFini<MutatorManager>(mutatorManager_);
+        CheckAndFini<BaseClassRoots>(baseClassRoots_);
         PagePool::Instance().Fini();
     }
 

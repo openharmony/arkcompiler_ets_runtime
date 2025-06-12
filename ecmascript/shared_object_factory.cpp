@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "common_interfaces/objects/base_class.h"
+#include "common_interfaces/objects/composite_base_class.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
@@ -176,6 +178,22 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlySharedHClass(JSHClass *hclass,
     newClass->SetIsJSShared(true);
     ASSERT(newClass->IsInSharedHeap());
     return newClass;
+}
+
+JSTaggedValue ObjectFactory::InitHClassInCompositeBaseClass(JSHClass* hclass, common::CommonType type)
+{
+    common::BaseClassRoots& classRoots = common::BaseRuntime::GetInstance()->GetBaseClassRoots();
+    auto* newClass = reinterpret_cast<JSHClass*>(classRoots.GetBaseClass(type));
+    newClass->SetClassWithoutBarrier(hclass);
+    newClass->SetObjectSize(0);
+    newClass->SetExtensible(true);
+    newClass->SetIsPrototype(false);
+    newClass->SetHasDeleteProperty(false);
+    newClass->SetIsAllTaggedProp(true);
+    newClass->SetElementsKind(ElementsKind::GENERIC);
+    newClass->SetConstructionCounter(0);
+    newClass->SetIsJSShared(true);
+    return JSTaggedValue(newClass);
 }
 #endif
 

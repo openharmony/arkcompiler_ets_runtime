@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_OBJECT_FACTORY_H
 #define ECMASCRIPT_OBJECT_FACTORY_H
 
+#include "common_interfaces/objects/base_class.h"
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
@@ -810,8 +811,8 @@ public:
 
     JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-
 #ifdef USE_CMC_GC
+    JSTaggedValue InitHClassInCompositeBaseClass(JSHClass* hclass, common::CommonType type);
     JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 #endif
@@ -972,7 +973,7 @@ private:
     friend class EcmaString;
     friend class SnapshotProcessor;
     friend class SingleCharTable;
-    void InitObjectFields(const TaggedObject *object);
+    void InitObjectFields(const TaggedObject *object, JSTaggedValue initValue = JSTaggedValue::Undefined());
 
     JSThread *thread_ {nullptr};
     bool isTriggerGc_ {false};

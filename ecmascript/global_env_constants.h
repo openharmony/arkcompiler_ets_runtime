@@ -113,7 +113,8 @@ class ObjectFactory;
     V(JSTaggedValue, SharedMutantTaggedArrayClass, SHARED_MUTANT_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)          \
     /* COWMutantTaggedArray only in local now */                                                                      \
     V(JSTaggedValue, SharedAOTLiteralInfoClass, SHARED_AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                \
-    /* VTable only in local now */
+    /* VTable only in local now */                                                                                    \
+    V(JSTaggedValue, CompositeBaseClassClass, COMPOSITE_BASE_CLASS_CLASS_INDEX, ecma_roots_class)
 #endif
 
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
@@ -683,6 +684,9 @@ public:
 
 private:
     void InitSharedStrings(ObjectFactory *factory);
+#ifdef USE_CMC_GC
+    void InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass);
+#endif
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory);
     void InitRootsClasses(ObjectFactory *factory);

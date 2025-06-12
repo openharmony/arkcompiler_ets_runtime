@@ -204,7 +204,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, uint
                          size, type, inlinedProps);
 }
 
-void ObjectFactory::InitObjectFields(const TaggedObject *object)
+void ObjectFactory::InitObjectFields(const TaggedObject *object, JSTaggedValue initValue)
 {
     auto *klass = object->GetClass();
     auto objBodySize = klass->GetObjectSize() - TaggedObject::TaggedObjectSize();

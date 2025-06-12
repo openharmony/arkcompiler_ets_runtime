@@ -1309,7 +1309,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     while (stringBegin < stringEnd) {
         // str is from snapshot file, which is in native heap.
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);
-        str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
+        str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(lineStringClass.GetTaggedObject()));
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {

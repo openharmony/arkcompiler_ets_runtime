@@ -110,12 +110,12 @@ HWTEST_F_L0(JSHClassTest, HasReferenceField)
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> obj1Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::LINE_STRING, nullHandle);
-    JSHandle<JSHClass> obj2Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TREE_STRING, nullHandle);
+    JSHandle<JSHClass> obj1Class = JSHandle<JSHClass>::Cast(thread->GlobalConstants()->GetHandledLineStringClass());
+    JSHandle<JSHClass> obj2Class = JSHandle<JSHClass>::Cast(thread->GlobalConstants()->GetHandledTreeStringClass());
     JSHandle<JSHClass> obj3Class =
         factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_NATIVE_POINTER, nullHandle);
     JSHandle<JSHClass> obj4Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
-    JSHandle<JSHClass> obj5Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::SLICED_STRING, nullHandle);
+    JSHandle<JSHClass> obj5Class = JSHandle<JSHClass>::Cast(thread->GlobalConstants()->GetHandledSlicedStringClass());
     EXPECT_FALSE(obj1Class->HasReferenceField());
     EXPECT_TRUE(obj2Class->HasReferenceField());
     EXPECT_FALSE(obj3Class->HasReferenceField());
