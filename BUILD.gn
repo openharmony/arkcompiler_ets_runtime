@@ -1076,13 +1076,15 @@ if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
 }
 
-if (current_cpu == "arm64") {
-  ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
-} else if (current_cpu == "amd64" || current_cpu == "x64" ||
-           current_cpu == "x86_64") {
-  ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
-} else if (current_cpu == "arm") {
-  ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
+if (!is_arkui_x) {
+  if (current_cpu == "arm64") {
+    ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
+  } else if (current_cpu == "amd64" || current_cpu == "x64" ||
+            current_cpu == "x86_64") {
+    ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
+  } else if (current_cpu == "arm") {
+    ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
+  }
 }
 
 if (enable_next_optimization) {

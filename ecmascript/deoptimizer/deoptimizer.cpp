@@ -41,6 +41,14 @@ extern "C" uintptr_t GetFixedReturnAddr(uintptr_t argGlue, uintptr_t prevCallSit
     return fixed;
 }
 
+// Not use lazy deopt on arkui_x.
+#ifdef CROSS_PLATFORM
+JSTaggedType LazyDeoptEntry()
+{
+    return 0;
+}
+#endif
+
 class FrameWriter {
 public:
     explicit FrameWriter(Deoptimizier *deoptimizier) : thread_(deoptimizier->GetThread())
