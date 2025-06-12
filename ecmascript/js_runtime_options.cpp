@@ -1476,7 +1476,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 return false;
         }
     }
-#ifdef PANDA_TARGET_32
+#if defined(PANDA_TARGET_32) || defined(IS_ARKUI_X)
     SetEnableAotLazyDeopt(false);
     SetEnableJitLazyDeopt(false);
     SetEnableLazyDeoptTrace(false);
