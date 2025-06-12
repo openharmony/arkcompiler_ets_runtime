@@ -353,6 +353,7 @@ config("ark_jsruntime_common_config") {
 
   if (ets_runtime_enable_cmc_gc) {
     print("########## ets_runtime enable cmc-gc ##############")
+    defines += [ "ARK_HYBRID" ]
     defines += [ "USE_CMC_GC" ]
     defines += [ "USE_READ_BARRIER" ]
     if (ets_runtime_enable_cmc_rb_dfx) {

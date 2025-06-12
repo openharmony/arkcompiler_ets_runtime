@@ -4093,6 +4093,11 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
     }
 #endif
 #ifdef USE_CMC_GC
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    // This is a temporary impl to adapt interop to cmc, because some interop call napi
+    // without transfering to NATIVE
+    extraCoroutineSwitchedForInterop_ = InterOpCoroutineToNative(thread_->GetThreadHolder());
+#endif
     hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
     (void)oldThreadState_;
 #else
@@ -4115,6 +4120,11 @@ JsiFastNativeScope::~JsiFastNativeScope()
         thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
 #endif
     }
+#if defined(USE_CMC_GC) && defined(PANDA_JS_ETS_HYBRID_MODE)
+    if (extraCoroutineSwitchedForInterop_) {
+        InterOpCoroutineToRunning(thread_->GetThreadHolder());
+    }
+#endif
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
@@ -5832,6 +5842,15 @@ void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    vm->GetCrossVMOperator()->MarkFromObject(value, visitor);
+}
+
 void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
 {
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {

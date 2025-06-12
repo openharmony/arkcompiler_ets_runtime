@@ -19,6 +19,7 @@
 #include <mutex>
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -155,6 +156,22 @@ void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc)
         const_cast<ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
         thread->ClearContextCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
+    });
+}
+
+void AddXRefToDynamicRoots()
+{
+    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(ecmascript::NodeKind::NORMAL_NODE);
+    });
+}
+
+void RemoveXRefFromDynamicRoots()
+{
+    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(ecmascript::NodeKind::UNIFIED_NODE);
     });
 }
 

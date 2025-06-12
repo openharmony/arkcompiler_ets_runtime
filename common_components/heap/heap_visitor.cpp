@@ -21,6 +21,10 @@ namespace panda {
 VisitStaticRootsHookFunc g_visitStaticRootsHook = nullptr;
 UpdateStaticRootsHookFunc g_updateStaticRootsHook = nullptr;
 SweepStaticRootsHookFunc g_sweepStaticRootsHook = nullptr;
+UnmarkAllXRefsHookFunc g_unmarkAllXRefsHook = nullptr;
+SweepUnmarkedXRefsHookFunc g_sweepUnmarkedXRefsHook = nullptr;
+AddXRefToStaticRootsHookFunc g_addXRefToStaticRootsHook = nullptr;
+RemoveXRefFromStaticRootsHookFunc g_removeXRefFromStaticRootsHook = nullptr;
 
 void RegisterVisitStaticRootsHook(VisitStaticRootsHookFunc func)
 {
@@ -36,6 +40,22 @@ void RegisterSweepStaticRootsHook(SweepStaticRootsHookFunc func)
 {
     g_sweepStaticRootsHook = func;
 }
+void RegisterUnmarkAllXRefsHook(UnmarkAllXRefsHookFunc func)
+{
+    g_unmarkAllXRefsHook = func;
+}
+void RegisterSweepUnmarkedXRefsHook(SweepUnmarkedXRefsHookFunc func)
+{
+    g_sweepUnmarkedXRefsHook = func;
+}
+void RegisterAddXRefToStaticRootsHook(AddXRefToStaticRootsHookFunc func)
+{
+    g_addXRefToStaticRootsHook = func;
+}
+void RegisterRemoveXRefFromStaticRootsHook(RemoveXRefFromStaticRootsHookFunc func)
+{
+    g_removeXRefFromStaticRootsHook = func;
+}
 
 void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
 {
@@ -49,6 +69,28 @@ void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
             g_updateStaticRootsHook(visitor);
         }
     }
+}
+
+void UnmarkAllXRefs()
+{
+    g_unmarkAllXRefsHook();
+}
+
+void SweepUnmarkedXRefs()
+{
+    g_sweepUnmarkedXRefsHook();
+}
+
+void AddXRefToRoots()
+{
+    AddXRefToDynamicRoots();
+    g_addXRefToStaticRootsHook();
+}
+
+void RemoveXRefFromRoots()
+{
+    RemoveXRefFromDynamicRoots();
+    g_removeXRefFromStaticRootsHook();
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)

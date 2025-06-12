@@ -30,6 +30,12 @@ CrossVMOperator::CrossVMOperator(EcmaVM *vm) : vm_(vm)
 /*static*/
 void CrossVMOperator::DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface)
 {
+#ifdef USE_CMC_GC
+    auto vmOperator = vm->GetCrossVMOperator();
+    *ecmaIface = vmOperator->ecmaVMInterface_.get();
+    vmOperator->stsVMInterface_ = static_cast<arkplatform::STSVMInterface *>(stsIface);
+    Runtime::GetInstance()->SetSTSVMInterface(vmOperator->stsVMInterface_);
+#else
     auto vmOperator = vm->GetCrossVMOperator();
     *ecmaIface = vmOperator->ecmaVMInterface_.get();
     vmOperator->stsVMInterface_ = static_cast<arkplatform::STSVMInterface *>(stsIface);
@@ -37,6 +43,17 @@ void CrossVMOperator::DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface)
     if (unifiedGC->GetSTSVMInterface() == nullptr) {
         unifiedGC->SetSTSVMInterface(vmOperator->stsVMInterface_);
     }
+#endif
+}
+
+void CrossVMOperator::MarkFromObject(JSTaggedType value, std::function<void(uintptr_t)> &visitor)
+{
+    JSTaggedValue taggedValue(value);
+    if (!taggedValue.IsHeapObject()) {
+        return;
+    }
+    TaggedObject *object = taggedValue.GetHeapObject();
+    visitor(reinterpret_cast<uintptr_t>(object));       // This is only mark, so could pass a stack reference
 }
 
 void CrossVMOperator::MarkFromObject(JSTaggedType value)
@@ -67,7 +84,11 @@ bool CrossVMOperator::IsValidHeapObject(JSTaggedType value)
         return false;
     }
     TaggedObject *object = taggedValue.GetHeapObject();
+#ifdef USE_CMC_GC
+    return static_cast<BaseObject *>(object)->IsValidObject();
+#else
     return vm_->GetHeap()->ContainObject(object);
+#endif
 }
 
 bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
