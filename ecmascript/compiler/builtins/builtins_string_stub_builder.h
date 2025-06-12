@@ -109,8 +109,8 @@ public:
     NO_COPY_SEMANTIC(FlatStringStubBuilder);
     void GenerateCircuit() override {}
 
-    void FlattenString(GateRef glue, GateRef str, Label *fastPath);
-    void FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *fastPath);
+    void FlattenString(GateRef glue, GateRef str, Label *exit);
+    void FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *exit);
     GateRef GetParentFromSlicedString(GateRef glue, GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::PARENT_OFFSET);
@@ -145,6 +145,7 @@ public:
     }
 
 private:
+    void FlattenStringImpl(GateRef glue, GateRef str, Label *handleSlicedString, Label *exit);
     Variable flatString_ { GetEnvironment(), VariableType::JS_POINTER(), NextVariableId(), Undefined() };
     Variable startIndex_ { GetEnvironment(), VariableType::INT32(), NextVariableId(), Int32(0) };
     GateRef length_ { Circuit::NullGate() };

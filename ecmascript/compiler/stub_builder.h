@@ -280,6 +280,7 @@ public:
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef glue, GateRef x);
     GateRef TaggedIsInternalAccessor(GateRef glue, GateRef x);
+    GateRef TaggedIsNativeModuleFailureInfo(GateRef glue, GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag space);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd);
@@ -289,6 +290,7 @@ public:
     GateRef InSharedSweepableSpace(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef glue, GateRef x);
     GateRef TaggedIsJSArray(GateRef glue, GateRef x);
+    GateRef TaggedIsJSProxy(GateRef glue, GateRef x);
     GateRef IsTaggedArray(GateRef glue, GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef glue, GateRef x);
     GateRef TaggedIsJSGlobalObject(GateRef glue, GateRef x);
@@ -411,6 +413,7 @@ public:
 #endif
 
     void CanNotConvertNotValidObject(GateRef glue, GateRef obj);
+    void IsNotValidObject(GateRef flag);
     void IsNotPropertyKey(GateRef obj);
     GateRef CreateDataProperty(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
     GateRef CreateDataPropertyOrThrow(GateRef glue, GateRef onj, GateRef proKey, GateRef value);
@@ -683,7 +686,7 @@ public:
     GateRef IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr);
     GateRef FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData);
     GateRef JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
-    GateRef JSObjectGetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef propAttr);
+    GateRef JSObjectGetPropertyWithRep(GateRef glue, GateRef obj, GateRef hClass, GateRef propAttr);
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef key, GateRef value);
     GateRef ShouldCallSetter(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
     GateRef CallSetterHelper(GateRef glue,
@@ -798,6 +801,9 @@ public:
     GateRef IsDoubleRepInPropAttr(GateRef attr);
     GateRef IsTaggedRepInPropAttr(GateRef attr);
     GateRef SetTaggedRepInPropAttr(GateRef attr);
+    GateRef SetEnumerableFiledInPropAttr(GateRef attr, GateRef value);
+    GateRef SetWritableFieldInPropAttr(GateRef attr, GateRef value);
+    GateRef SetConfigurableFieldInPropAttr(GateRef attr, GateRef value);
     template<class T>
     void SetHClassBit(GateRef glue, GateRef hClass, GateRef value);
     template<typename DictionaryT>
