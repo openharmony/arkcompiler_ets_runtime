@@ -35,7 +35,7 @@ foreach(file, test_js_files) {
   }
 }
 
-module_output_path = "ets_runtime"
+module_output_path = "ets_runtime/ets_runtime"
 
 host_unittest_action("CpuProfilerTest") {
   module_out_path = module_output_path
