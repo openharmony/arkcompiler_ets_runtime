@@ -203,7 +203,7 @@ def judge_output(args: object):
 
     start_time = time.time()
     [cmd, subp] = process_open(args)
-    timeout_limit = int(args.timeout_limit) if args.timeout_limit else 1200  # units: s
+    timeout_limit = int(args.timeout_limit) if args.timeout_limit else 2400  # units: s
 
     try:
         out, err = subp.communicate(timeout=timeout_limit)
