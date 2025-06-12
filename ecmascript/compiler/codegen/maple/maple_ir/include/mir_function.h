@@ -1396,6 +1396,15 @@ public:
         return &debugComments.emplace_back(dbgComment, module->GetMPAllocator().GetMemPool());
     }
 
+    void SetIsDeoptFunc()
+    {
+        isDeoptFunc = true;
+    }
+
+    bool IsDeoptFunc() const
+    {
+        return isDeoptFunc;
+    }
 private:
     MIRModule *module;      // the module that owns this function
     PUIdx puIdx = 0;        // the PU index of this function
@@ -1502,6 +1511,7 @@ private:
     SaveInfo frameTypeInfo {0, false, 0};
     SaveInfo funcIdxInfo {0, false, 0};
     MapleList<MapleString> debugComments {module->GetMPAllocator().Adapter()};
+    bool isDeoptFunc = false;
 };
 }  // namespace maple
 #endif  // MAPLE_IR_INCLUDE_MIR_FUNCTION_H

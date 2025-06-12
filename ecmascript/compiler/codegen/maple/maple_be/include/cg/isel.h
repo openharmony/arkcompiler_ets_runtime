@@ -71,6 +71,8 @@ public:
     virtual void SelectCall(CallNode &callNode) = 0;
     virtual void SelectIcall(IcallNode &icallNode) = 0;
     virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
+    virtual void SelectDeoptCall(CallNode &callNode) = 0;
+    virtual void SelectTailICall(IcallNode &icallNode) = 0;
     virtual Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const = 0;
     virtual Operand &ProcessReturnReg(PrimType primType, int32 sReg) = 0;
     virtual void SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &opnd0) = 0;

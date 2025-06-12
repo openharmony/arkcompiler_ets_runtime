@@ -313,6 +313,14 @@ CallNode *MIRBuilder::CreateStmtCall(PUIdx puIdx, const MapleVector<BaseNode *> 
     return stmt;
 }
 
+IcallNode *MIRBuilder::CreateStmtTailIcall(const MapleVector<BaseNode *> &args)
+{
+    auto *stmt = NewNode<IcallNode>(*GetCurrentFuncCodeMpAllocator(), OP_tailicall);
+    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
+    stmt->SetOpnds(args);
+    return stmt;
+}
+
 IcallNode *MIRBuilder::CreateStmtIcall(const MapleVector<BaseNode *> &args)
 {
     auto *stmt = NewNode<IcallNode>(*GetCurrentFuncCodeMpAllocator(), OP_icall);

@@ -1351,6 +1351,20 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             break;
         }
 
+        /* tail call */
+        case x64::MOP_tail_callq_r: {
+            assmbler.Jmp(TransferReg(opnd0));
+            break;
+        }
+        case x64::MOP_tail_callq_l: {
+            assmbler.Jmp(TransferFuncName(opnd0));
+            break;
+        }
+        case x64::MOP_tail_callq_m: {
+            assmbler.Jmp(TransferMem(opnd0, funcUniqueId));
+            break;
+        }
+
         /* ret */
         case x64::MOP_retq:
             assmbler.Ret();

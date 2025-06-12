@@ -205,6 +205,26 @@ static void HandleIntrinCall(StmtNode &stmt, MPISel &iSel)
     iSel.SelectIntrinsicCall(call);
 }
 
+static void HandleDeoptCall(StmtNode &stmt, MPISel &iSel)
+{
+    CGFunc *cgFunc = iSel.GetCurFunc();
+    auto &deoptCallNode = static_cast<CallNode &>(stmt);
+    cgFunc->GetCurBB()->SetKind(BB::kBBNoReturn);
+    cgFunc->PushBackNoReturnCallBBsVec(*cgFunc->GetCurBB());
+    iSel.SelectDeoptCall(deoptCallNode);
+    cgFunc->SetCurBB(*cgFunc->StartNewBB(deoptCallNode));
+}
+
+static void HandleTailICall(StmtNode &stmt, MPISel &iSel)
+{
+    CGFunc *cgFunc = iSel.GetCurFunc();
+    auto &tailIcallNode = static_cast<IcallNode&>(stmt);
+    cgFunc->GetCurBB()->SetKind(BB::kBBNoReturn);
+    cgFunc->PushBackNoReturnCallBBsVec(*cgFunc->GetCurBB());
+    iSel.SelectTailICall(tailIcallNode);
+    cgFunc->SetCurBB(*cgFunc->StartNewBB(tailIcallNode));
+}
+
 static void HandleRangeGoto(StmtNode &stmt, MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
@@ -502,6 +522,8 @@ static void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_deoptcall, HandleDeoptCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_tailicall, HandleTailICall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_rangegoto, HandleRangeGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brfalse, HandleCondbr);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brtrue, HandleCondbr);

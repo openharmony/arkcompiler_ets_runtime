@@ -120,7 +120,8 @@ void LMIRBuilder::SetCallStmtDeoptBundleInfo(Stmt &callNode,
             deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRConst*>(value.data))));
         }
     }
-    if (callNode.GetOpCode() == OP_call || callNode.GetOpCode() == OP_callassigned) {
+    if (callNode.GetOpCode() == OP_call || callNode.GetOpCode() == OP_callassigned ||
+        callNode.GetOpCode() == OP_deoptcall) {
         static_cast<CallNode &>(callNode).SetDeoptBundleInfo(deoptInfos);
     } else {
         static_cast<IcallNode &>(callNode).SetDeoptBundleInfo(deoptInfos);
@@ -446,13 +447,23 @@ Stmt &LMIRBuilder::CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB,
     return *mirBuilder.CreateStmtSwitch(cond.GetNode(), GetBBLabelIdx(defaultBB), switchTable);
 }
 
-Stmt &LMIRBuilder::Call(Function &func, Args &args_, PregIdx pregIdx)
+Stmt &LMIRBuilder::DeoptCall(Function &func, Args &args_)
 {
     MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
     for (const auto &arg : args_) {
         args.emplace_back(arg.GetNode());
     }
-    return *mirBuilder.CreateStmtCallRegassigned(func.GetPuidx(), args, pregIdx, OP_callassigned);
+    return *mirBuilder.CreateStmtCall(func.GetPuidx(), args, OP_deoptcall);
+}
+
+Stmt &LMIRBuilder::TailICall(Expr funcAddr, Args &args_)
+{
+    MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
+    args.push_back(funcAddr.GetNode());
+    for (const auto &arg : args_) {
+        args.emplace_back(arg.GetNode());
+    }
+    return *mirBuilder.CreateStmtTailIcall(args);
 }
 
 Stmt &LMIRBuilder::PureCall(Expr funcAddr, Args &args_, Var *result)

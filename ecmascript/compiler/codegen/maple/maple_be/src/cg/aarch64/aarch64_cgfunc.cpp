@@ -3330,7 +3330,8 @@ void AArch64CGFunc::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, bo
 {
     size_t opndIdx = 0;
     // the first opnd of ICallNode is not parameter of function
-    if (naryNode.GetOpCode() == OP_icall || naryNode.GetOpCode() == OP_icallproto || isCallNative) {
+    if (naryNode.GetOpCode() == OP_icall || naryNode.GetOpCode() == OP_icallproto || isCallNative ||
+        naryNode.GetOpCode() == OP_tailicall) {
         opndIdx++;
     }
     auto [callee, calleeType] = GetCalleeFunction(naryNode);
@@ -4474,6 +4475,52 @@ void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
         SelectPureCall(intrinsiccallNode);
         return;
     }
+}
+
+void AArch64CGFunc::SelectDeoptCall(CallNode &callNode)
+{
+    MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
+    MIRSymbol *fsym = GetFunction().GetLocalOrGlobalSymbol(fn->GetStIdx(), false);
+    if (GetCG()->GenerateVerboseCG()) {
+        const std::string &comment = fsym->GetName();
+        GetCurBB()->AppendInsn(CreateCommentInsn(comment));
+    }
+    ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
+    SelectParmListWrapper(callNode, *srcOpnds, false);
+
+    Insn &callInsn = AppendCall(*fsym, *srcOpnds);
+    const auto &deoptBundleInfo = callNode.GetDeoptBundleInfo();
+    for (const auto &elem : deoptBundleInfo) {
+        auto valueKind = elem.second.GetMapleValueKind();
+        if (valueKind == MapleValue::kPregKind) {
+            auto *opnd = GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
+        } else if (valueKind == MapleValue::kConstKind) {
+            auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), callNode);
+            callInsn.AddDeoptBundleInfo(elem.first, *opnd);
+        } else {
+            CHECK_FATAL(false, "not supported currently");
+        }
+    }
+    AppendStackMapInsn(callInsn);
+    GetFunction().SetHasCall();
+}
+
+void AArch64CGFunc::SelectTailICall(IcallNode &icallNode)
+{
+    ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
+    SelectParmListWrapper(icallNode, *srcOpnds, false);
+
+    Operand *srcOpnd = HandleExpr(icallNode, *icallNode.GetNopndAt(0));
+    Operand *fptrOpnd = srcOpnd;
+    if (fptrOpnd->GetKind() != Operand::kOpdRegister) {
+        PrimType ty = icallNode.Opnd(0)->GetPrimType();
+        fptrOpnd = &SelectCopy(*srcOpnd, ty, ty);
+    }
+    DEBUG_ASSERT(fptrOpnd->IsRegister(), "SelectIcall: function pointer not RegOperand");
+    RegOperand *regOpnd = static_cast<RegOperand *>(fptrOpnd);
+    Insn &callInsn = GetInsnBuilder()->BuildInsn(MOP_tail_call_opt_xblr, *regOpnd, *srcOpnds);
+    GetCurBB()->AppendInsn(callInsn);
 }
 
 Operand *AArch64CGFunc::SelectCclz(IntrinsicopNode &intrnNode)
