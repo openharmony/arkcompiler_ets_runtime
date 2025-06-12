@@ -140,6 +140,11 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
 #else
     arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
 #endif
+    if (runtimeOptions.EnableMultiContext()) {
+        // Simulate creating a new context and switch to the new context.
+        Local<JSValueRef> context = JSNApi::CreateContext(vm);
+        JSNApi::SwitchContext(vm, context);
+    }
     if (runtimeOptions.GetTestAssert()) {
         Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
         Local<FunctionRef> assertEqual = FunctionRef::New(vm, AssertEqual);

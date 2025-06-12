@@ -370,7 +370,7 @@ template("host_moduletest_action") {
     if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
       js_vm_options += " --enable-heap-verify=false"
     }
-    js_vm_options += " --enable-context=true"
+    js_vm_options += " --multi-context=true"
     js_vm_options += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -444,7 +444,6 @@ template("host_moduletest_action") {
     if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
       _asm_run_options_ += " --enable-heap-verify=false"
     }
-    _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -518,6 +517,7 @@ template("host_moduletest_action") {
     if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
       _asm_run_options_ += " --enable-heap-verify=false"
     }
+    _asm_run_options_ += " --multi-context=true"
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -658,7 +658,7 @@ template("host_moduletest_action") {
     if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
       _asm_run_options_ += " --enable-heap-verify=false"
     }
-    _asm_run_options_ += " --enable-context=true"
+    _asm_run_options_ += " --multi-context=true"
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -920,7 +920,7 @@ template("host_moduletest_assert_action") {
       js_vm_options += " --enable-ark-tools=true"
       js_vm_options += " --enable-force-gc=false"
     }
-    js_vm_options += " --enable-context=true"
+    js_vm_options += " --multi-context=true"
     js_vm_options += " --test-assert=true"
     js_vm_options += common_options
     args = [
@@ -980,7 +980,6 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
-    _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += " --test-assert=true"
     _asm_run_options_ += common_options
     args = [
@@ -1040,6 +1039,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+    _asm_run_options_ += " --multi-context=true"
     _asm_run_options_ = " --test-assert=true"
     _asm_run_options_ += common_options
     args = [
@@ -1152,7 +1152,7 @@ template("host_moduletest_assert_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
-    _asm_run_options_ += " --enable-context=true"
+    _asm_run_options_ += " --multi-context=true"
     _asm_run_options_ += " --test-assert=true"
     _asm_run_options_ += common_options
 
@@ -1343,7 +1343,6 @@ template("host_perf_test_action") {
     if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
       _asm_run_options_ += " --enable-force-gc=false"
     }
-    _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options
     _asm_run_options_ += " --entry-point=${_target_name_}"
     args = [
@@ -1735,10 +1734,10 @@ template("host_aot_js_test_action") {
       _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
     }
 
+    _aot_run_options_ += " --multi-context=true"
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     _aot_run_options_ += _icu_data_path_options_
-    _aot_run_options_ += " --enable-context=true"
 
     args = [
       "--script-file",
@@ -2011,10 +2010,10 @@ template("host_aot_js_test_action") {
         _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
       }
 
+      _aot_run_options_ += " --multi-context=true"
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
       _aot_run_options_ += _icu_data_path_options_
-      _aot_run_options_ += " --enable-context=true"
 
       args = [
         "--script-file",
@@ -2306,10 +2305,10 @@ template("host_aot_js_test_action") {
         _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
       }
 
+      _aot_run_options_ += " --multi-context=true"
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
       _aot_run_options_ += _icu_data_path_options_
-      _aot_run_options_ += " --enable-context=true"
 
       args = [
         "--script-file",
@@ -2670,10 +2669,10 @@ template("host_aot_js_assert_test_action") {
       _aot_run_options_ += " --compiler-enable-lowering-builtin=true"
     }
 
+    _aot_run_options_ += " --multi-context=true"
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     _aot_run_options_ += _icu_data_path_options_
-    _aot_run_options_ += " --enable-context=true"
     _aot_run_options_ += " --test-assert=true"
 
     args = [
@@ -3238,7 +3237,6 @@ template("host_aot_test_action") {
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
     }
-    _aot_run_options_ += " --enable-context=true"
 
     if (defined(invoker.is_enable_typed_op_profiler) &&
         invoker.is_enable_typed_op_profiler) {
@@ -3255,6 +3253,7 @@ template("host_aot_test_action") {
       _aot_run_options_ += " --compiler-trace-deopt=true"
     }
 
+    _aot_run_options_ += " --multi-context=true"
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -3674,7 +3673,7 @@ template("host_aot_test_action") {
       if (defined(invoker.log_option)) {
         _aot_run_options_ += invoker.log_option
       }
-      _aot_run_options_ += " --enable-context=true"
+      _aot_run_options_ += " --multi-context=true"
 
       if (defined(invoker.is_enable_typed_op_profiler) &&
           invoker.is_enable_typed_op_profiler) {
@@ -4136,7 +4135,7 @@ template("host_aot_test_action") {
       if (defined(invoker.log_option)) {
         _aot_run_options_ += invoker.log_option
       }
-      _aot_run_options_ += " --enable-context=true"
+      _aot_run_options_ += " --multi-context=true"
 
       if (defined(invoker.is_enable_typed_op_profiler) &&
           invoker.is_enable_typed_op_profiler) {
@@ -4674,7 +4673,7 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
     }
-    _aot_run_options_ += " --enable-context=true"
+    _aot_run_options_ += " --multi-context=true"
 
     if (defined(invoker.is_enable_typed_op_profiler) &&
         invoker.is_enable_typed_op_profiler) {
