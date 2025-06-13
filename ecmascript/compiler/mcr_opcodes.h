@@ -202,16 +202,17 @@ namespace panda::ecmascript::kungfu {
     V(HClassStableArrayCheck,      HCLASS_STABLE_ARRAY_CHECK,      GateFlags::CHECKABLE, 1, 1, 1)       \
     V(HeapAlloc,                   HEAP_ALLOC,                     GateFlags::NONE_FLAG, 0, 1, 2)       \
     V(RangeCheckPredicate,         RANGE_CHECK_PREDICATE,          GateFlags::CHECKABLE, 1, 1, 2)       \
+    V(BuiltinInstanceHClassCheck,  BUILTIN_INSTANCE_HCLASS_CHECK,  GateFlags::CHECKABLE, 1, 1, 1)       \
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
     V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \
     V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)       \
     V(StringAdd,                   STRING_ADD,                     GateFlags::NO_WRITE,  1, 1, 2)       \
-    V(ArrayForEach,                ARRAY_FOR_EACH,                 GateFlags::NONE_FLAG, 1, 1, 3)       \
+    V(ArrayForEach,                ARRAY_FOR_EACH,                 GateFlags::HAS_FRAME_STATE, 1, 1, 3) \
     V(ArrayFilter,                 ARRAY_FILTER,                   GateFlags::NONE_FLAG, 1, 1, 4)       \
-    V(ArrayFindOrFindIndex,        ARRAY_FIND_OR_FINDINDEX,        GateFlags::NONE_FLAG, 1, 1, 4)       \
+    V(ArrayFindOrFindIndex,        ARRAY_FIND_OR_FINDINDEX,        GateFlags::HAS_FRAME_STATE, 1, 1, 4) \
     V(ArrayMap,                    ARRAY_MAP,                      GateFlags::NONE_FLAG, 1, 1, 4)       \
-    V(ArraySome,                   ARRAY_SOME,                     GateFlags::NONE_FLAG, 1, 1, 3)       \
-    V(ArrayEvery,                  ARRAY_EVERY,                    GateFlags::NONE_FLAG, 1, 1, 3)
+    V(ArraySome,                   ARRAY_SOME,                     GateFlags::HAS_FRAME_STATE, 1, 1, 3) \
+    V(ArrayEvery,                  ARRAY_EVERY,                    GateFlags::HAS_FRAME_STATE, 1, 1, 3)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                                                 \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                                             \

@@ -28,16 +28,28 @@ using DependentGroup = DependentInfos::DependentGroup;
 using DependentGroups = DependentInfos::DependentGroups;
 class CombinedDependencies {
 public:
+    CombinedDependencies(GlobalEnv *globalEnv)
+    {
+        globalEnv_ = globalEnv;
+    }
+    NO_COPY_SEMANTIC(CombinedDependencies);
+    NO_MOVE_SEMANTIC(CombinedDependencies);
+
     void Register(JSHClass *hclass, DependentGroup group);
+    void Register(uint32_t detectorID, DependentGroup group);
 
     void InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc);
 
 private:
-    std::map<JSHClass *, DependentGroups> deps_;  // hclass, groups
+    std::map<JSHClass *, DependentGroups> deps_;        // hclass, groups
+    std::map<uint32_t, DependentGroups> detectorDeps_;  // detectorID_, groups
+    GlobalEnv *globalEnv_;
 };
 
 enum class LazyDeoptDependencyKind : uint32_t {
-    STABLE_HCLASS = 0x0ULL, // Once the hClass happended transition, it's not a stable hClass.
+    STABLE_HCLASS,          // Once the HClass undergoes transition, "isStable" bit remains false permanently
+    NOT_PROTOTYPE_HCLASS,   // Once the HClass becomes prototype, "isPrototype" bit remains true permanently
+    DETECTOR,
 };
 
 class LazyDeoptDependency {
@@ -49,6 +61,49 @@ public:
     virtual void Install(CombinedDependencies *combinedDeps) const = 0;
 private:
     [[maybe_unused]]LazyDeoptDependencyKind kind_;
+};
+
+class DetectorDependency final : public LazyDeoptDependency {
+public:
+    DetectorDependency (uint32_t detectorID, GlobalEnv *globalEnv)
+        : LazyDeoptDependency(LazyDeoptDependencyKind::DETECTOR),
+          detectorID_(detectorID), globalEnv_(globalEnv) {}
+
+    bool IsValid() const override
+    {
+        return globalEnv_->GetDetectorValue(detectorID_);
+    }
+
+    void Install(CombinedDependencies *combinedDeps) const override
+    {
+        ASSERT(IsValid());
+        combinedDeps->Register(detectorID_, DependentGroup::DETECTOR_CHECK);
+    }
+    
+private:
+    uint32_t detectorID_;
+    GlobalEnv *globalEnv_;
+};
+
+class NotPrototypeDependency final : public LazyDeoptDependency {
+public:
+    NotPrototypeDependency(JSHClass *hclass)
+        : LazyDeoptDependency(LazyDeoptDependencyKind::NOT_PROTOTYPE_HCLASS),
+          hclass_(hclass) {}
+
+    bool IsValid() const override
+    {
+        return !hclass_->IsPrototype();
+    }
+
+    void Install(CombinedDependencies *combinedDeps) const override
+    {
+        ASSERT(IsValid());
+        combinedDeps->Register(hclass_, DependentGroup::IS_PROTOTYPE_CHECK);
+    }
+
+private:
+    JSHClass *hclass_ {nullptr};
 };
 
 class StableHClassDependency final : public LazyDeoptDependency {
@@ -80,9 +135,13 @@ public:
         Clear();
     }
 
+    bool DependOnArrayDetector(GlobalEnv *globalEnv);
+    bool DependOnDetector(uint32_t detectorID, GlobalEnv *globalEnv);
+    bool DependOnNotPrototype(JSHClass *hclass);
     bool DependOnStableHClass(JSHClass *hclass);
     bool DependOnStableProtoChain(JSHClass *receiverHClass,
-                                  JSHClass *holderHClass);
+                                  JSHClass *holderHClass,
+                                  GlobalEnv *globalEnv = nullptr);
     bool PreInstall(JSThread *thread);
     PUBLIC_API static bool Commit(LazyDeoptAllDependencies *dependencies,
                                   JSThread *thread, JSTaggedValue jsFunc);
@@ -95,9 +154,19 @@ public:
         dependencies_.clear();
     }
 
+    void SetGlobalEnv(GlobalEnv *globalEnv)
+    {
+        globalEnv_ = globalEnv;
+    }
+
+    GlobalEnv* GetGlobalEnv()
+    {
+        return globalEnv_;
+    }
 private:
     void RegisterDependency(const LazyDeoptDependency *dependency);
     std::vector<const LazyDeoptDependency *> dependencies_;
+    GlobalEnv *globalEnv_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LAZY_DEOPT_DEPENDENCY_H

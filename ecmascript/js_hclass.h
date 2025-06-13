@@ -491,6 +491,7 @@ public:
     static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
     static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
     
+    static void NotifyHClassNotPrototypeChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static void NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static JSHandle<JSTaggedValue> PUBLIC_API EnableProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -663,7 +664,7 @@ public:
     }
 
     // These types are not complete hclass, does not has profile field.
-    inline bool HasProfileType() const
+    inline bool IsCompositeHClass() const
     {
         common::CommonType jsType = static_cast<common::CommonType>(GetObjectType());
         return !(common::CommonType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::CommonType::LAST_OBJECT_TYPE);

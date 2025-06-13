@@ -27,7 +27,7 @@
 function Test3(shouldChange)
 {
     if (shouldChange) {
-        ArkTools.forceLazyDeopt(C.prototype, true);
+        ArkTools.forceLazyDeopt(C.prototype, 1, true);
     }
     
     // Additional code to prevent aggressive inlining.

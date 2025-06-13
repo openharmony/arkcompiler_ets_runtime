@@ -159,6 +159,7 @@ private:
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerRangeCheckPredicate(GateRef gate);
+    void LowerBuiltinInstanceHClassCheck(GateRef gate);
     void LowerBuiltinPrototypeHClassCheck(GateRef gate);
     void BuiltinInstanceStringTypeCheck(GateRef gate);
     void LowerLoadBuiltinObject(GateRef gate);

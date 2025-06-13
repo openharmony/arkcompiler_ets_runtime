@@ -87,6 +87,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_SETTER:
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::INTERN_STRING_CHECK:
+        case OpCode::BUILTIN_INSTANCE_HCLASS_CHECK:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::TYPE_OF_CHECK:
         case OpCode::TYPED_CONSTRUCTOR_CHECK:

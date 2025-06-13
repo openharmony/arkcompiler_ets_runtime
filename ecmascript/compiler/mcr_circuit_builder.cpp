@@ -364,6 +364,21 @@ GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
     return ret;
 }
 
+GateRef CircuitBuilder::BuiltinInstanceHClassCheck(GateRef gate, BuiltinTypeId type,
+                                                   ElementsKind kind, bool isPrototypeOfPrototype)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    BuiltinPrototypeHClassAccessor accessor(type, kind, isPrototypeOfPrototype);
+    GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinInstanceHClassCheck(accessor.ToValue()),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type,
                                                     ElementsKind kind, bool isPrototypeOfPrototype)
 {
@@ -1906,14 +1921,15 @@ GateRef CircuitBuilder::ArrayIteratorBuiltin(GateRef thisArray, GateRef callID)
     return ret;
 }
 
-GateRef CircuitBuilder::ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+GateRef CircuitBuilder::ArrayForEach(GateRef thisValue, GateRef callBackFn,
+                                     GateRef usingThis, GateRef frameState, uint32_t pcOffset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayForEach(static_cast<uint64_t>(pcOffset)),
                                         MachineType::I64,
-                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, frameState},
                                         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -1964,28 +1980,30 @@ GateRef CircuitBuilder::ArrayMap(
     return ret;
 }
 
-GateRef CircuitBuilder::ArraySome(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+GateRef CircuitBuilder::ArraySome(GateRef thisValue, GateRef callBackFn,
+                                  GateRef usingThis, GateRef frameState, uint32_t pcOffset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->ArraySome(static_cast<uint64_t>(pcOffset)),
                                         MachineType::I64,
-                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, frameState},
                                         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+GateRef CircuitBuilder::ArrayEvery(GateRef thisValue, GateRef callBackFn,
+                                   GateRef usingThis, GateRef frameState, uint32_t pcOffset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayEvery(static_cast<uint64_t>(pcOffset)),
                                         MachineType::I64,
-                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, frameState},
                                         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -2035,14 +2053,15 @@ GateRef CircuitBuilder::ArraySlice(GateRef thisValue, GateRef startIndex, GateRe
 }
 
 GateRef CircuitBuilder::ArrayFindOrFindIndex(
-    GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset)
+    GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, GateRef frameState, uint32_t pcOffset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayFindOrFindIndex(static_cast<uint64_t>(pcOffset)),
                                         MachineType::I64,
-                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, callIDRef},
+                                        {currentControl, currentDepend, thisValue, callBackFn,
+                                            usingThis, callIDRef, frameState},
                                         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

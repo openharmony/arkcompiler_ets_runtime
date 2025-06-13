@@ -2425,7 +2425,7 @@ private:
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableAotLazyDeopt_ {false};
-    bool enableJitLazyDeopt_ {false};
+    bool enableJitLazyDeopt_ {true};
     bool enableLazyDeoptTrace_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};

@@ -4256,6 +4256,7 @@ void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef rec
                 .Done();
             BRANCH(isEnvPrototypeCheck, &isEnvPrototype, &exit);
             Bind(&isEnvPrototype);
+            CallRuntime(glue, RTSTUB_ID(NotifyArrayPrototypeChanged), {});
             SetArrayElementsGuardians(glue, globalEnv, False());
             Jump(&exit);
         }
@@ -5741,7 +5742,6 @@ void StubBuilder::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef n
         BRANCH(Equal(oldHClass, newHClass), &exit, &notEqualHClass);
         Bind(&notEqualHClass);
         {
-            SetIsPrototypeToHClass(glue, newHClass, True());
             CallRuntime(glue, RTSTUB_ID(NoticeThroughChainAndRefreshUser), { oldHClass, newHClass });
             Jump(&exit);
         }

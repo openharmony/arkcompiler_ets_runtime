@@ -1030,16 +1030,16 @@ void JITProfiler::AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *
         auto transitionElementsKind = transitionHClass->GetElementsKind();
         auto profileType = ProfileType::CreateBuiltinsArray(abcId, type, elementsKind, transitionElementsKind,
                                                             everOutOfBounds);
-        PGOObjectInfo info(profileType);
+        PGOObjectInfo info(profileType, receiver);
         AddObjectInfoImplement(bcOffset, info);
     } else if (receiver->IsTypedArray()) {
         JSType jsType = receiver->GetObjectType();
         auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap, everOutOfBounds);
-        PGOObjectInfo info(profileType);
+        PGOObjectInfo info(profileType, receiver);
         AddObjectInfoImplement(bcOffset, info);
     } else {
         auto type = receiver->GetObjectType();
-        PGOObjectInfo info(ProfileType::CreateBuiltins(abcId, type));
+        PGOObjectInfo info(ProfileType::CreateBuiltins(abcId, type), receiver);
         AddObjectInfoImplement(bcOffset, info);
     }
 }

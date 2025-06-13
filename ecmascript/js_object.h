@@ -770,6 +770,9 @@ public:
                                  JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key);
     static JSHandle<EnumCache> GetOrCreateEnumCache(JSThread *thread, JSHandle<JSHClass> jsHClass);
     static JSHandle<JSTaggedValue> GetOrCreateDependentInfos(JSThread *thread, JSHandle<JSHClass> jsHClass);
+    static JSHandle<JSTaggedValue> GetOrCreateDetectorDependentInfos(JSThread *thread,
+                                                                     uint32_t detectorID,
+                                                                     GlobalEnv *globalEnv);
     static inline void SetEnumCacheKind([[maybe_unused]] const JSThread *thread,
                                         JSHandle<EnumCache> enumCache, const EnumCacheKind kind)
     {

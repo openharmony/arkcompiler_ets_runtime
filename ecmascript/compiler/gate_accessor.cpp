@@ -321,7 +321,8 @@ ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
 
 BuiltinPrototypeHClassAccessor GateAccessor::GetBuiltinHClassAccessor(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK);
+    ASSERT(GetOpCode(gate) == OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK ||
+           GetOpCode(gate) == OpCode::BUILTIN_INSTANCE_HCLASS_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return BuiltinPrototypeHClassAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }

@@ -613,6 +613,8 @@ public:
                             OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadTypedArrayLength(GateRef gate, ParamType paramType, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
+    GateRef BuiltinInstanceHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind,
+                                       bool isPrototypeOfPrototype);
     GateRef BuiltinPrototypeHClassCheck(GateRef gate, BuiltinTypeId type, ElementsKind kind,
                                         bool isPrototypeOfPrototype);
     GateRef OrdinaryHasInstanceCheck(GateRef target, GateRef jsFunc, std::vector<GateRef> &expectedHCIndexes);
@@ -896,15 +898,16 @@ public:
     GateRef ArrayIncludesIndexOf(
         GateRef elements, GateRef target, GateRef fromIndex, GateRef len, GateRef CallID, GateRef ArrayKind);
     GateRef ArrayIteratorBuiltin(GateRef thisArray, GateRef callID);
-    GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis,
+        GateRef frameState, uint32_t pcOffset);
     GateRef ArraySort(GateRef thisValue, GateRef callBackFn);
     GateRef ArrayFilter(
         GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
     GateRef ArrayMap(GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
-    GateRef ArraySome(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
-    GateRef ArrayFindOrFindIndex(
-        GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset);
-    GateRef ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArraySome(GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
+    GateRef ArrayFindOrFindIndex(GateRef thisValue, GateRef callBackFn,
+        GateRef usingThis, GateRef callIDRef, GateRef frameState, uint32_t pcOffset);
+    GateRef ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
     GateRef ArrayPop(GateRef thisValue, GateRef frameState);
     GateRef ArrayPush(GateRef thisValue, GateRef value);
     GateRef ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState);
