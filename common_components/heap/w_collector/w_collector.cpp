@@ -673,6 +673,9 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
     }
     std::atomic_thread_fence(std::memory_order_release);
     obj->SetSizeForwarded(size);
+    // Avoid seeing the fwd pointer before observing the size modification
+    // when calling GetSize during the CopyPhase.
+    std::atomic_thread_fence(std::memory_order_release);
     obj->SetForwardingPointerAfterExclusive(toObj);
     return toObj;
 }
