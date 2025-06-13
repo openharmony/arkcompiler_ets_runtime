@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -198,19 +198,19 @@ void StringBuilderOptimizer::StatusTransfer(GateRef gate)
     Status status = GetStatus(gate);
     switch (status.state) {
         case State::BEGIN_STRING_BUILDER:
-            acc_.SetStringStatus(gate, EcmaString::BEGIN_STRING_ADD);
+            acc_.SetStringStatus(gate, BaseString::BEGIN_STRING_ADD);
             break;
         case State::IN_STRING_BUILDER:
-            acc_.SetStringStatus(gate, EcmaString::IN_STRING_ADD);
+            acc_.SetStringStatus(gate, BaseString::IN_STRING_ADD);
             break;
         case State::CONFIRMED_IN_STRING_BUILDER:
-            acc_.SetStringStatus(gate, EcmaString::CONFIRMED_IN_STRING_ADD);
+            acc_.SetStringStatus(gate, BaseString::CONFIRMED_IN_STRING_ADD);
             break;
         case State::END_STRING_BUILDER:
-            acc_.SetStringStatus(gate, EcmaString::END_STRING_ADD);
+            acc_.SetStringStatus(gate, BaseString::END_STRING_ADD);
             break;
         default: {
-            acc_.SetStringStatus(gate, EcmaString::INVALID_STRING_ADD);
+            acc_.SetStringStatus(gate, BaseString::INVALID_STRING_ADD);
             break;
         }
     }

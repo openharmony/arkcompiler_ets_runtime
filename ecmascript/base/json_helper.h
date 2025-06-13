@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,7 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/property_attributes.h"
-#include "libpandabase/utils/span.h"
+#include "common_interfaces/objects/utils/span.h"
 
 namespace panda::ecmascript::base {
 constexpr int HEX_DIGIT_MASK = 0xF;
@@ -74,13 +74,13 @@ public:
     }
 
     static bool IsFastValueToQuotedString(const CString& str);
-    static bool IsFastValueToQuotedString(const Span<const uint8_t>& sp);
+    static bool IsFastValueToQuotedString(const common::Span<const uint8_t>& sp);
     
     // String values are wrapped in QUOTATION MARK (") code units. The code units " and \ are escaped with \ prefixes.
     // Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
     // \b (BACKSPACE), \f (FORM FEED), \n (LINE FEED), \r (CARRIAGE RETURN), \t (CHARACTER TABULATION).
     static void AppendValueToQuotedString(const CString& str, CString& output);
-    static void AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output);
+    static void AppendValueToQuotedString(const common::Span<const uint8_t>& sp, CString& output);
 
     static inline bool CompareKey(const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &a,
                                   const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &b)

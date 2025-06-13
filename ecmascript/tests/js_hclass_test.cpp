@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -64,8 +64,11 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 #endif
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetSize();
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
+    EXPECT_EQ(objectSize, 24U);
+#else
     EXPECT_EQ(objectSize, 16U);
-
+#endif
     objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
     objectSize = (*objectClass)->SizeFromJSHClass(*objectClass);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)

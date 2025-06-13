@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -511,7 +511,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
             BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment());
-            GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineEcmaString::DATA_OFFSET));
+            GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineString::DATA_OFFSET));
             GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
             BRANCH_CIR(builder_.Int64NotEqual(res, builder_.Int64(-1)), &isInteger, &notLineUtf8String);
             builder_.Bind(&isInteger);

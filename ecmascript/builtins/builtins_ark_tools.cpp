@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1072,7 +1072,7 @@ JSTaggedValue BuiltinsArkTools::StringMaxLength([[maybe_unused]] EcmaRuntimeCall
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
     CHECK(info && info->GetArgsNumber() == 0);
-    return JSTaggedValue(static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) - 1);
+    return JSTaggedValue(static_cast<uint32_t>(BaseString::MAX_STRING_LENGTH) - 1);
 }
 
 JSTaggedValue BuiltinsArkTools::ArrayBufferMaxByteLength([[maybe_unused]] EcmaRuntimeCallInfo *info)

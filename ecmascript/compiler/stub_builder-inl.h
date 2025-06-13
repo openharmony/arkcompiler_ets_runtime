@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -804,7 +804,8 @@ inline GateRef StubBuilder::TaggedIsSpecial(GateRef x)
 inline GateRef StubBuilder::TaggedIsRegularObject(GateRef glue, GateRef x)
 {
     GateRef objectType = GetObjectType(LoadHClass(glue, x));
-    return Int32LessThan(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+    return BitAnd(Int32LessThan(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+                  Int32GreaterThan(objectType, Int32(static_cast<int32_t>(JSType::STRING_LAST))));
 }
 
 inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
@@ -1366,6 +1367,16 @@ inline GateRef StubBuilder::LoadHClass(GateRef glue, GateRef object)
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
     return env_->GetBuilder()->StoreHClass(glue, object, hClass, mAttr);
+}
+
+inline void StubBuilder::StoreBaseAddressForBaseClass([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef object,
+                                                      [[maybe_unused]] GateRef hClass)
+{
+    GateRef baseAddr = Int64LSR(ChangeTaggedPointerToInt64(hClass),
+                                Int64(BITS_PER_BYTE * TaggedStateWord::STATE_WORD_OFFSET));
+    baseAddr = TruncInt64ToInt16(baseAddr);
+    env_->GetBuilder()->Store(VariableType::INT16(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET),
+                              baseAddr, MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
@@ -2528,7 +2539,9 @@ inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, Gate
 
 inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 {
-    return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+    return BitOr(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))),
+                 BitAnd(Int32GreaterThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))),
+                        Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::STRING_LAST)))));
 }
 
 inline void StubBuilder::SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue,
@@ -2897,6 +2910,11 @@ inline GateRef StubBuilder::ZExtInt16ToInt64(GateRef x)
 inline GateRef StubBuilder::TruncInt64ToInt32(GateRef x)
 {
     return env_->GetBuilder()->TruncInt64ToInt32(x);
+}
+
+inline GateRef StubBuilder::TruncInt64ToInt16(GateRef x)
+{
+    return env_->GetBuilder()->TruncInt64ToInt16(x);
 }
 
 inline GateRef StubBuilder::TruncPtrToInt32(GateRef x)
@@ -3766,12 +3784,12 @@ inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), length);
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf16(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
 }
 
 inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
@@ -3787,21 +3805,21 @@ inline GateRef StubBuilder::AlignDown(GateRef x, GateRef alignment)
 
 inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, bool compressed)
 {
-    GateRef len = Int32LSL(length, Int32(EcmaString::LengthBits::START_BIT));
+    GateRef len = Int32LSL(length, Int32(BaseString::LengthBits::START_BIT));
     GateRef mixLength;
     if (compressed) {
-        mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
+        mixLength = Int32Or(len, Int32(BaseString::STRING_COMPRESSED));
     } else {
-        mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));
+        mixLength = Int32Or(len, Int32(BaseString::STRING_UNCOMPRESSED));
     }
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
+    Store(VariableType::INT32(), glue, str, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
 inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, GateRef isCompressed)
 {
-    GateRef len = Int32LSL(length, Int32(EcmaString::LengthBits::START_BIT));
+    GateRef len = Int32LSL(length, Int32(BaseString::LengthBits::START_BIT));
     GateRef mixLength = Int32Or(len, ZExtInt1ToInt32(BoolNot(isCompressed))); // encode bool to CompressedStatus
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
+    Store(VariableType::INT32(), glue, str, IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
 inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
@@ -4149,7 +4167,7 @@ inline GateRef StubBuilder::HashFromHclassAndStringKey([[maybe_unused]] GateRef 
 {
     GateRef clsHash =
         Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(MegaICCache::HCLASS_SHIFT)); // skip 8bytes
-    GateRef keyHash = LoadPrimitive(VariableType::INT32(), key, IntPtr(EcmaString::RAW_HASHCODE_OFFSET));
+    GateRef keyHash = LoadPrimitive(VariableType::INT32(), key, IntPtr(BaseString::RAW_HASHCODE_OFFSET));
     GateRef temp = Int32Xor(Int32Xor(Int32Mul(clsHash, Int32(31)), Int32Mul(keyHash, Int32(0x9e3779b9))),
                             Int32LSR(keyHash, Int32(16)));
     return Int32And(temp, Int32(MegaICCache::CACHE_LENGTH_MASK));

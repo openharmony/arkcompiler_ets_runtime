@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -138,12 +138,12 @@ GateRef CircuitBuilder::IsLineString(GateRef glue, GateRef obj)
 
 GateRef CircuitBuilder::ComputeSizeUtf8(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), length);
 }
 
 GateRef CircuitBuilder::ComputeSizeUtf16(GateRef length)
 {
-    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+    return PtrAdd(IntPtr(LineString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
 }
 
 GateRef CircuitBuilder::AlignUp(GateRef x, GateRef alignment)

@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -178,12 +178,12 @@ host_unittest_action("ECMA_StringHash_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("ECMA_String_Test") {
+host_unittest_action("BASE_String_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    #"ecma_string_test.cpp",
+    "base_string_test.cpp",
   ]
 
   configs = [
@@ -3449,7 +3449,7 @@ group("unittest") {
     ":ECMA_StringHash_Test",
     ":ECMA_StringTable_Test",
 
-    #":ECMA_String_Test",
+    ":BASE_String_Test",
     ":ECMA_VM_Test",
     ":GC_ConcurrentMarking_Test",
     ":GC_ConcurrentSweep_Test",
@@ -3621,7 +3621,7 @@ group("host_unittest") {
     ":ECMA_StringHash_TestAction",
     ":ECMA_StringTable_TestAction",
 
-    #":ECMA_String_TestAction",
+    ":BASE_String_TestAction",
     ":ECMA_VM_TestAction",
     ":GC_ConcurrentMarking_TestAction",
     ":GC_ConcurrentSweep_TestAction",
@@ -3756,7 +3756,7 @@ group("host_unittest") {
       ":ECMA_StringHash_TestAction",
       ":ECMA_StringTable_TestAction",
 
-      #":ECMA_String_TestAction",
+      ":BASE_String_TestAction",
       ":ECMA_VM_TestAction",
       ":GC_ConcurrentMarking_TestAction",
       ":GC_ConcurrentSweep_TestAction",

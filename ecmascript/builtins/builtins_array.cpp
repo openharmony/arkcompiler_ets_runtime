@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1345,7 +1345,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     if (len > 0) {
         allocateLength = sepLength * (len - 1) + len;
     }
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         context->JoinStackPopFastPath(thisHandle);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
@@ -1384,7 +1384,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
             concatStr.append(sepStr);
         }
         concatStr.append(nextStr);
-        if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
+        if (concatStr.size() > BaseString::MAX_STRING_LENGTH) {
             context->JoinStackPopFastPath(thisHandle);
             THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
         }

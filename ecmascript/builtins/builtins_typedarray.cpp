@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -902,7 +902,7 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         }
     }
     allocateLength += static_cast<uint64_t>(sepLength) * (length - 1);
-    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+    if (allocateLength > BaseString::MAX_STRING_LENGTH) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     auto newString =

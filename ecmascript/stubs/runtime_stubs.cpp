@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -3130,9 +3130,9 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
         }
     } else {
         ASSERT(stringAcc.IsSlicedString());
-        auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
+        auto parent = SlicedEcmaString::Cast(string.GetTaggedValue())->GetParent();
         auto parentStrAcc = EcmaStringAccessor(parent);
-        auto startIndex = SlicedString::Cast(string.GetTaggedValue())->GetStartIndex();
+        auto startIndex = SlicedEcmaString::Cast(string.GetTaggedValue())->GetStartIndex();
         if (parentStrAcc.IsLineString()) {
             if (parentStrAcc.IsUtf8()) {
                 result = RuntimeDecodeURIComponent<uint8_t>(thread, string,
@@ -3442,7 +3442,7 @@ JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
 {
     DISALLOW_GARBAGE_COLLECTION;
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
+    common::Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
     if (base::NumberHelper::IsEmptyString(str.begin(), str.end())) {
         return base::BuiltinsBase::GetTaggedDouble(base::NAN_VALUE);
     }
@@ -3731,10 +3731,10 @@ int32_t RuntimeStubs::StringGetStart(bool isUtf8, EcmaString *srcString, int32_t
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
+        common::Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
+        common::Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return static_cast<int32_t>(base::StringHelper::GetStart(data, length));
     }
 }
@@ -3744,10 +3744,10 @@ int32_t RuntimeStubs::StringGetEnd(bool isUtf8, EcmaString *srcString,
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (isUtf8) {
-        Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
+        common::Span<const uint8_t> data(EcmaStringAccessor(srcString).GetDataUtf8() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     } else {
-        Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
+        common::Span<const uint16_t> data(EcmaStringAccessor(srcString).GetDataUtf16() + startIndex, length);
         return base::StringHelper::GetEnd(data, start, length);
     }
 }

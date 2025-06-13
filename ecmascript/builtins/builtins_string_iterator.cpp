@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/builtins/builtins_string_iterator.h"
+
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"

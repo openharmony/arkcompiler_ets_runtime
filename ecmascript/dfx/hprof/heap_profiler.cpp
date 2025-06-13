@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -318,7 +318,7 @@ CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> VisitObj(CUnorderedMap<uint64_t
     VisitObjVisitor visitor(notFoundObj, objMap, refSetMap);
     for (auto objInfo : objMap) {
         auto newAddr = objInfo.second->Data();
-        auto jsHclassAddr = *reinterpret_cast<uint64_t *>(newAddr);
+        auto jsHclassAddr = *reinterpret_cast<uint32_t *>(newAddr);
         auto jsHclassItem = objMap.find(jsHclassAddr);
         if (jsHclassItem == objMap.end()) {
             LOG_ECMA(ERROR) << "ark raw heap decode hclass not find jsHclassAddr=" << std::hex << jsHclassAddr;
