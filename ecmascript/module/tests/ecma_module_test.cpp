@@ -627,7 +627,7 @@ HWTEST_F_L0(EcmaModuleTest, GetRecordName2)
 
 HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex)
 {
-    ThreadNativeScope nativeScope(thread);
+    ecmascript::ThreadNativeScope nativeScope(thread);
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
@@ -1715,7 +1715,7 @@ HWTEST_F_L0(EcmaModuleTest, NeedTranslateToNormalized)
 
 HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
 {
-    ThreadNativeScope nativeScope(thread);
+    ecmascript::ThreadNativeScope nativeScope(thread);
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
     JSNApi::EnableUserUncaughtErrorHandler(instance);
     JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
@@ -3785,7 +3785,7 @@ HWTEST_F_L0(EcmaModuleTest, GetRecordName3)
 
 HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex3)
 {
-    ThreadNativeScope nativeScope(thread);
+    ecmascript::ThreadNativeScope nativeScope(thread);
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);

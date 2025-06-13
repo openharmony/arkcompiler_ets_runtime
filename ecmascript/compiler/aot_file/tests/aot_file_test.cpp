@@ -205,7 +205,7 @@ protected:
         ASSERT_TRUE(vm != nullptr);
         {
             AOTCompilationEnv aotCompilationEnv(vm);
-            ThreadManagedScope managedScope(vm->GetJSThread());
+            ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
             LocalScope scope(vm);
             arg_list_t pandaFileNames {testAbcPath};
             std::map<std::string, std::shared_ptr<OhosPkgArgs>> pkgArgsMap;
@@ -289,7 +289,7 @@ protected:
             JSNApi::DestroyJSVM(vm);
         });
         {
-            ThreadSuspensionScope suspensionScope(vm->GetJSThread());
+            ecmascript::ThreadSuspensionScope suspensionScope(vm->GetJSThread());
             t1.join();
         }
 

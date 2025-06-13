@@ -28,12 +28,17 @@ template <typename LoaderCallback, typename EqualsCallback>
 EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, uint32_t hashcode, LoaderCallback loaderCallback,
                                                EqualsCallback equalsCallback)
 {
-    BaseString *result = stringTable_.LoadOrStore<true>(vm->GetJSThread(), hashcode, loaderCallback, equalsCallback);
+#ifdef USE_CMC_GC
+    auto holder = vm->GetJSThread()->GetThreadHolder();
+#else
+    auto holder = vm->GetJSThread();
+#endif
+    BaseString *result = stringTable_.LoadOrStore<true>(holder, hashcode, loaderCallback, equalsCallback);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
 
-inline void StringTableMutex::LockWithThreadState(JSThread* thread)
+inline void EcmaStringTableMutex::LockWithThreadState(JSThread* thread)
 {
     return RuntimeLock(thread, mtx_);
 }

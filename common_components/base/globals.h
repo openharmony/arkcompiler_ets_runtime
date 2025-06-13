@@ -32,6 +32,8 @@ constexpr size_t KB = 1024;
 constexpr size_t MB = KB * KB;
 constexpr size_t GB = KB * KB * KB;
 
+constexpr size_t ALIGN_OBJECT = 8;
+
 template<typename T>
 struct Identity {
     using type = T;

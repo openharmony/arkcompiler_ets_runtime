@@ -1062,6 +1062,7 @@ ecma_source += [
   "common_components/log/log.cpp",
   "common_components/objects/base_object.cpp",
   "common_components/objects/base_string.cpp",
+  "common_components/objects/base_string_table.cpp",
   "common_components/objects/composite_base_class.cpp",
   "common_components/taskpool/taskpool.cpp",
   "common_components/taskpool/runner.cpp",

@@ -1506,7 +1506,7 @@ HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
         EXPECT_TRUE(hasDeleted);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread_);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread_);
         t1.join();
     }
 
@@ -2268,7 +2268,7 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
         JSNApi::DestroyJSVM(vm);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread_);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread_);
         t1.join();
     }
 }

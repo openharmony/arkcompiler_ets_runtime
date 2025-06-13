@@ -1777,7 +1777,7 @@ HWTEST_F_L0(JSNApiTests, PrintExceptionInfo)
         JSNApi::DestroyJSVM(vm2);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread_);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread_);
         t1.join();
     }
 }

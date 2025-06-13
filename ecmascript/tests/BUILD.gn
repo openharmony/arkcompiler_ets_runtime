@@ -292,6 +292,7 @@ host_unittest_action("ECMA_StringTable_Test") {
   sources = [
     # test file
     "ecma_string_table_test.cpp",
+    "base_string_table_test.cpp",
   ]
 
   configs = [

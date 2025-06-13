@@ -218,7 +218,7 @@ HWTEST_F_L0(GCTest, SharedGCSuspendAll)
 {
     EXPECT_TRUE(thread->IsInRunningState());
     {
-        SuspendAllScope suspendScope(thread);
+        ecmascript::SuspendAllScope suspendScope(thread);
         EXPECT_TRUE(!thread->IsInRunningState());
     }
     EXPECT_TRUE(thread->IsInRunningState());

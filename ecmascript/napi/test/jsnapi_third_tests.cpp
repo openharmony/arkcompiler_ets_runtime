@@ -377,7 +377,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_CreateJSVM_DestroyJSVM)
         JSNApi::DestroyJSVM(vm1_);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread_);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread_);
         t1.join();
     }
 }
@@ -623,7 +623,7 @@ HWTEST_F_L0(JSNApiTests, SynchronizVMInfo)
         JSNApi::DestroyJSVM(hostVM);
     });
     {
-        ThreadSuspensionScope suspensionScope(thread_);
+        ecmascript::ThreadSuspensionScope suspensionScope(thread_);
         t1.join();
     }
 }
@@ -1204,7 +1204,7 @@ HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
     obj->DefineProperty(vm_, toPrimitiveKey, attribute);
     {
         // Test that Uint32Value and Int32Value should transition to Running if needed.
-        ThreadNativeScope nativeScope(thread_);
+        ecmascript::ThreadNativeScope nativeScope(thread_);
         uint32_t res = obj->Uint32Value(vm_);
         EXPECT_TRUE(res == 1);
         res = obj->Int32Value(vm_);
