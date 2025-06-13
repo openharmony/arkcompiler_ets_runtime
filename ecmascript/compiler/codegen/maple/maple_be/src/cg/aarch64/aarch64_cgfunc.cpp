@@ -3448,6 +3448,53 @@ bool AArch64CGFunc::DoCallerEnsureValidParm(RegOperand &destOpnd, RegOperand &sr
     return false;
 }
 
+void AArch64CGFunc::DoOptForStackStrInsns(std::vector<Insn *> &insnForStackArgs, std::vector<Insn *> &optInsns)
+{
+    for (size_t i = 0; i + 1 < insnForStackArgs.size(); i += 2) { // 2 : iterate two insns each loop
+        auto &insn1 = insnForStackArgs[i];
+        auto &insn2 = insnForStackArgs[i + 1];
+        if (!CheckStrPairOpt(insn1, insn2)) {
+            optInsns.emplace_back(insn1);
+            optInsns.emplace_back(insn2);
+        } else {
+            auto &reg1 = insn1->GetOperand(kInsnFirstOpnd);
+            auto &reg2 = insn2->GetOperand(kInsnFirstOpnd);
+            auto &mem1 = static_cast<MemOperand&>(insn1->GetOperand(kInsnSecondOpnd));
+            Insn &stpInsn = GetInsnBuilder()->BuildInsn(MOP_xstp, reg1, reg2, mem1);
+            optInsns.emplace_back(&stpInsn);
+        }
+    }
+    if (insnForStackArgs.size() % 2 == 1) { // 2: is for even, this is for odd situation.
+        optInsns.emplace_back(insnForStackArgs.back());
+    }
+}
+
+bool AArch64CGFunc::CheckStrPairOpt(Insn *insn1, Insn *insn2)
+{
+    if (insn1 == nullptr || insn2 == nullptr) {
+        return false;
+    }
+    if (insn1->GetMachineOpcode() != MOP_xstr || insn2->GetMachineOpcode() != MOP_xstr) {
+        return false;
+    }
+    auto &mem1 = static_cast<MemOperand&>(insn1->GetOperand(kInsnSecondOpnd));
+    auto &mem2 = static_cast<MemOperand&>(insn2->GetOperand(kInsnSecondOpnd));
+    if (mem1.GetAddrMode() != MemOperand::kAddrModeBOi || mem2.GetAddrMode() != MemOperand::kAddrModeBOi) {
+        return false;
+    }
+    OfstOperand *mem1Offset = mem1.GetOffsetImmediate();
+    OfstOperand *mem2Offset = mem2.GetOffsetImmediate();
+    int64 mem1OffsetValue = mem1Offset ? mem1Offset->GetOffsetValue() : 0;
+    int64 mem2OffsetValue = mem2Offset ? mem2Offset->GetOffsetValue() : 0;
+    if (mem1OffsetValue % k8ByteSize != 0) {
+        return false;
+    }
+    if (mem2OffsetValue != mem1OffsetValue + k8ByteSize) {
+        return false;
+    }
+    return true;
+}
+
 void AArch64CGFunc::SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds)
 {
     size_t i = 0;
@@ -3492,7 +3539,7 @@ void AArch64CGFunc::SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds
             Insn &strInsn = GetInsnBuilder()->BuildInsn(PickStInsn(GetPrimTypeBitSize(primType), primType), *expRegOpnd,
                                                         actMemOpnd);
             actMemOpnd.SetStackArgMem(true);
-            if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel1 && stackArgsCount < kShiftAmount12) {
+            if (stackArgsCount < kShiftAmount12) {
                 (void)insnForStackArgs.emplace_back(&strInsn);
                 stackArgsCount++;
             } else {
@@ -3501,7 +3548,9 @@ void AArch64CGFunc::SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds
         }
         DEBUG_ASSERT(ploc.reg1 == 0, "SelectCall NYI");
     }
-    for (auto &strInsn : insnForStackArgs) {
+    std::vector<Insn *> insnForStackArgsOpt;
+    DoOptForStackStrInsns(insnForStackArgs, insnForStackArgsOpt);
+    for (auto &strInsn : insnForStackArgsOpt) {
         GetCurBB()->AppendInsn(*strInsn);
     }
 }
