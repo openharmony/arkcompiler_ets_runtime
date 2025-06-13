@@ -32,7 +32,6 @@ public:
     TypeInfoAccessor(const CompilationEnv *env, Circuit* circuit, GateRef gate)
         : compilationEnv_(env),
           acc_(circuit),
-          argAcc_(circuit),
           gate_(gate)
     {
         pgoType_ = acc_.TryGetPGOType(gate);
@@ -129,7 +128,6 @@ protected:
 
     const CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
-    ArgumentAccessor argAcc_;
     GateRef gate_;
     PGOTypeRef pgoType_;
     // NOTICE-PGO: wx delete in part3

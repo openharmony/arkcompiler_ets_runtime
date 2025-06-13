@@ -58,7 +58,7 @@ public:
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
-          argAcc_(circuit),
+          argAcc_(circuit->GetArgumentAccessor()),
           pgoTypeLog_(circuit),
           noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           compilationEnv_(ctx->GetCompilationEnv()),
@@ -388,7 +388,7 @@ private:
     size_t hitTypedOpCount_ {0};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
-    ArgumentAccessor argAcc_;
+    ArgumentAccessor *argAcc_;
     EcmaOpcode currentOp_ {static_cast<EcmaOpcode>(0xff)};
     PGOTypeLogList pgoTypeLog_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;

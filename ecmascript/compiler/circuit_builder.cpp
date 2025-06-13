@@ -906,11 +906,11 @@ GateRef CircuitBuilder::CheckJSType(GateRef glue, GateRef object, JSType jsType)
 GateRef CircuitBuilder::GetObjectByIndexFromConstPool(GateRef glue, GateRef hirGate, GateRef frameState, GateRef index,
                                                       ConstPoolType type)
 {
-    ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
+    GateRef jsFunc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
     GateRef module = GetModuleFromFunction(glue, jsFunc);
-    GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
-    GateRef unsharedConstPool = unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef sharedConstpool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef unsharedConstPool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef obj = GetObjectFromConstPool(glue, hirGate, sharedConstpool, unsharedConstPool, module, index, type);
     return obj;
 }
@@ -1079,8 +1079,8 @@ GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
 
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
-    ArgumentAccessor argAcc(circuit_);
-    GateRef unsharedConstpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
+    GateRef unsharedConstpool = argAcc->GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
     return LoadHClassFromConstpool(unsharedConstpool, index);
 }
 

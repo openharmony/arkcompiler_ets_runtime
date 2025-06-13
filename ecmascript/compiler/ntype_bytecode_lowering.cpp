@@ -311,7 +311,7 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
 
         GateRef func = builder_.Undefined();
         if (acc_.HasFrameState(gate)) {
-            func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            func = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
         }
 
         GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));
@@ -330,7 +330,7 @@ void NTypeBytecodeLowering::AddProfiling(GateRef gate)
 void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
 {
     AddProfiling(gate);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef jsFunc = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.LdLocalModuleVar(jsFunc, index);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -339,7 +339,7 @@ void NTypeBytecodeLowering::LowerLdLocalMoudleVar(GateRef gate)
 void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)
 {
     AddProfiling(gate);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef jsFunc = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef value = acc_.GetValueIn(gate, 1);
     builder_.StoreModuleVar(jsFunc, index, value);

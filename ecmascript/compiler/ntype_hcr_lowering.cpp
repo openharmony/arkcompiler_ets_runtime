@@ -86,12 +86,12 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     GateRef cpId = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     GateRef frameState = GetFrameState(gate);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef jsFunc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
     GateRef module = builder_.GetModuleFromFunction(glue, jsFunc);
-    GateRef unsharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
-    GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef unsharedConstpool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef sharedConstpool = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
 
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
@@ -133,12 +133,12 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 
 GateRef NTypeHCRLowering::NewActualArgv(GateRef gate, GateRef glue)
 {
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
-    size_t length = argAcc.ArgsCount() - funcIdx;
+    size_t length = argAcc->ArgsCount() - funcIdx;
     GateRef array = CreateElementsWithLength(gate, glue, length);
-    for (size_t i = funcIdx; i < argAcc.ArgsCount(); i++) {
-        GateRef value = argAcc.ArgsAt(i);
+    for (size_t i = funcIdx; i < argAcc->ArgsCount(); i++) {
+        GateRef value = argAcc->ArgsAt(i);
         builder_.StoreToTaggedArray(array, i - funcIdx, value);
     }
     return array;
@@ -149,11 +149,11 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     CreateArgumentsAccessor accessor = acc_.GetCreateArgumentsAccessor(gate);
     CreateArgumentsAccessor::Mode mode = accessor.GetMode();
     Environment env(gate, circuit_, &builder_);
-    ArgumentAccessor argAcc(circuit_);
+    ArgumentAccessor *argAcc = circuit_->GetArgumentAccessor();
     GateRef frameState = GetFrameState(gate);
-    GateRef actualArgc = builder_.TruncInt64ToInt32(argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC));
+    GateRef actualArgc = builder_.TruncInt64ToInt32(argAcc->GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC));
     GateRef expectedArgc = builder_.Int32(methodLiteral_->GetNumArgs());
-    GateRef argv = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGV);
+    GateRef argv = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGV);
     DEFVALUE(actualArgv, (&builder_), VariableType::NATIVE_POINTER(), argv);
     DEFVALUE(actualArgvArray, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef startIdx = acc_.GetValueIn(gate, 0);

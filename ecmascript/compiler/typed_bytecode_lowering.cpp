@@ -694,7 +694,7 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByNameOnProto(const LoadObjProper
     GateRef gate = tacc.GetGate();
     PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
     GateRef plrGate = builder_.Int32(plr.GetData());
-    GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef unsharedConstPool = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
     size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
     if (LIKELY(!plr.IsAccessor())) {
         result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPool, holderHClassIndex);
@@ -1015,7 +1015,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             }
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+            GateRef unsharedConstPool = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
             size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             GateRef value = tacc.GetValue();
             if (tacc.IsHolderEqNewHolder(0)) {
@@ -1599,7 +1599,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByValue(GateRef gate)
             builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef unsharedConstPoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+            GateRef unsharedConstPoool = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
             size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             if (LIKELY(!plr.IsAccessor())) {
                 result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPoool, holderHClassIndex);
@@ -2017,7 +2017,7 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
     GateRef ctor = tacc.GetCtor();
 
     GateRef superCtor = builder_.GetSuperConstructor(ctor);
-    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
+    GateRef newTarget = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     GateRef thisObj = builder_.TypedSuperAllocateThis(superCtor, newTarget);
 
     // call constructor
@@ -2646,7 +2646,7 @@ void TypedBytecodeLowering::AddProfiling(GateRef gate)
 
         GateRef func = builder_.Undefined();
         if (acc_.HasFrameState(gate)) {
-            func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+            func = argAcc_->GetFrameArgsIn(gate, FrameArgIdx::FUNC);
         }
 
         GateRef bcIndex = builder_.Int32ToTaggedInt(builder_.Int32(acc_.TryGetBcIndex(gate)));

@@ -3021,7 +3021,7 @@ void LiteCGIRBuilder::GetDeoptBundleInfo(BB &bb, GateRef deoptFrameState,
     }
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     frameState = deoptFrameState;
-    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
+    ArgumentAccessor *argAcc = const_cast<Circuit *>(circuit_)->GetArgumentAccessor();
 
     // inline depth
     int32_t specInlineDepthIndex  = static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH);
@@ -3039,10 +3039,10 @@ void LiteCGIRBuilder::GetDeoptBundleInfo(BB &bb, GateRef deoptFrameState,
         GateRef env = acc_.GetValueIn(frameValues, envIndex);
         GateRef acc = acc_.GetValueIn(frameValues, accIndex);
         auto pc = acc_.TryGetPcOffset(frameState);
-        GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-        GateRef newTarget = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
-        GateRef thisObj = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
-        GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
+        GateRef jsFunc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+        GateRef newTarget = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
+        GateRef thisObj = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
+        GateRef actualArgc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
             GateRef vregValue = acc_.GetValueIn(frameValues, i);

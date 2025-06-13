@@ -2977,7 +2977,7 @@ void LLVMIRBuilder::GetDeoptBundleInfo(GateRef deoptFrameState, std::vector<LLVM
     
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     GateRef frameState = deoptFrameState;
-    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
+    ArgumentAccessor *argAcc = const_cast<Circuit *>(circuit_)->GetArgumentAccessor();
     for (int32_t curDepth = static_cast<int32_t>(maxDepth); curDepth >= 0; curDepth--) {
         ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
         GateRef frameValues = acc_.GetValueIn(frameState, 1); // 1: frame values
@@ -2988,10 +2988,10 @@ void LLVMIRBuilder::GetDeoptBundleInfo(GateRef deoptFrameState, std::vector<LLVM
         GateRef env = acc_.GetValueIn(frameValues, envIndex);
         GateRef acc = acc_.GetValueIn(frameValues, accIndex);
         auto pc = acc_.TryGetPcOffset(frameState);
-        GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-        GateRef newTarget = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
-        GateRef thisObj = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
-        GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
+        GateRef jsFunc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+        GateRef newTarget = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
+        GateRef thisObj = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
+        GateRef actualArgc = argAcc->GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
             GateRef vregValue = acc_.GetValueIn(frameValues, i);
