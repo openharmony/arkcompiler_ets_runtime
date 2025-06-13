@@ -24,6 +24,8 @@
 #else
 #include <sys/mman.h>
 #endif
+
+#include "common_components/platform/os.h"
 #include "common_components/common_runtime/src/base/globals.h"
 #include "common_components/common_runtime/src/base/sys_call.h"
 #include "common_components/common_runtime/src/heap/allocator/treap.h"
@@ -150,6 +152,7 @@ protected:
 #if defined(__linux__) || defined(PANDA_TARGET_OHOS)
         ARK_COMMON_PRCTL(result, size, memName);
 #endif
+        os::PrctlSetVMA(result, size, (std::string("ARKTS_CMC_GC_PAGE_POOL_") + memName).c_str());
         return reinterpret_cast<uint8_t*>(result);
     }
 
