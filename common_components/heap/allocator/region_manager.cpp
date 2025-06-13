@@ -528,18 +528,7 @@ RegionDesc* RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
 {
     // a chance to invoke heuristic gc.
     if (allowGC && !Heap::GetHeap().IsGcStarted()) {
-        Collector& collector = Heap::GetHeap().GetCollector();
-        size_t threshold = collector.GetGCStats().GetThreshold();
-        size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
-        if (allocated >= threshold) {
-            if (collector.GetGCStats().shouldRequestYoung) {
-                DLOG(ALLOC, "request heu gc: young %zu, threshold %zu", allocated, threshold);
-                collector.RequestGC(GC_REASON_YOUNG, true);
-            } else {
-                DLOG(ALLOC, "request heu gc: allocated %zu, threshold %zu", allocated, threshold);
-                collector.RequestGC(GC_REASON_HEU, true);
-            }
-        }
+        Heap::GetHeap().TryHeuristicGC();
     }
 
     // check for allocation since we do not want gc threads and mutators do any harm to each other.

@@ -66,6 +66,7 @@ public:
 
     virtual Collector& GetCollector() = 0;
     virtual Allocator& GetAllocator() = 0;
+    virtual void TryHeuristicGC() = 0;
     /* to avoid misunderstanding, variant types of heap size are defined as followed:
      * |------------------------------ max capacity ---------------------------------|
      * |------------------------------ current capacity ------------------------|

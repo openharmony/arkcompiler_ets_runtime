@@ -354,6 +354,9 @@ config("ark_jsruntime_common_config") {
   if (ets_runtime_enable_cmc_gc) {
     defines += [ "USE_CMC_GC" ]
     defines += [ "USE_READ_BARRIER" ]
+    if (is_ohos && current_cpu == "arm64") {
+      defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
+    }
     if (ets_runtime_enable_cmc_rb_dfx) {
         defines += [ "ENABLE_CMC_RB_DFX" ]
         print("########## ets_runtime enable cmc RB-DFX ##############")

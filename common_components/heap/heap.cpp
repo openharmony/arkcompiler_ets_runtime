@@ -17,6 +17,7 @@
 
 #include "common_components/heap/collector/collector_proxy.h"
 #include "common_components/heap/collector/collector_resources.h"
+#include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/heap/w_collector/idle_barrier.h"
 #include "common_components/heap/w_collector/enum_barrier.h"
 #include "common_components/heap/w_collector/trace_barrier.h"
@@ -98,7 +99,7 @@ public:
     CollectorResources& GetCollectorResources() override;
     void RegisterAllocBuffer(AllocationBuffer& buffer) override;
     void StopGCWork() override;
-
+    void TryHeuristicGC() override;
     class ScopedFileHandler {
     public:
         ScopedFileHandler(const char* fileName, const char* mode) { file = fopen(fileName, mode); }
@@ -132,7 +133,7 @@ private:
     PreforwardBarrier preforwardBarrier;
     CopyBarrier copyBarrier;
     Barrier* currentBarrier = nullptr;
-
+    HeuristicGCPolicy heuristicGCPolicy;
     // manage gc roots entry
     StaticRootTable staticRootTable;
 
@@ -171,6 +172,7 @@ void HeapImpl::Init(const RuntimeParam& param)
     Heap::GetHeap().EnableGC(param.gcParam.enableGC);
     collectorProxy.Init(param);
     collectorResources.Init();
+    heuristicGCPolicy.Init();
 }
 
 void HeapImpl::Fini()
@@ -191,6 +193,11 @@ void HeapImpl::StartRuntimeThreads()
 void HeapImpl::StopRuntimeThreads()
 {
     collectorResources.StopRuntimeThreads();
+}
+
+void HeapImpl::TryHeuristicGC()
+{
+    heuristicGCPolicy.TryHeuristicGC();
 }
 
 Collector& HeapImpl::GetCollector() { return collectorProxy.GetCurrentCollector(); }

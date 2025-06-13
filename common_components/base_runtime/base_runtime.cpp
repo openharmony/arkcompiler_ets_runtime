@@ -19,6 +19,7 @@
 #include "common_components/base_runtime/hooks.h"
 #include "common_components/common/page_pool.h"
 #include "common_components/heap/allocator/region_desc.h"
+#include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/heap/heap.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/mutator/mutator_manager.h"
@@ -156,6 +157,9 @@ void BaseRuntime::PreFork(ThreadHolder *holder)
 void BaseRuntime::PostFork()
 {
     HeapManager::StartRuntimeThreads();
+#ifdef ENABLE_COLD_STARTUP_GC_POLICY
+    StartupStatusManager::OnAppStartup();
+#endif
 }
 
 void BaseRuntime::WriteBarrier(void* obj, void* field, void* ref)

@@ -40,6 +40,7 @@ source_Heap = [
   "heap/collector/finalizer_processor.cpp",
   "heap/collector/gc_request.cpp",
   "heap/collector/gc_stats.cpp",
+  "heap/collector/heuristic_gc_policy.cpp",
   "heap/collector/task_queue.cpp",
   "heap/collector/copy_data_manager.cpp",
   "heap/w_collector/w_collector.cpp",
