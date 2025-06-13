@@ -20,7 +20,7 @@ declare_args() {
 if (defined(timeout)) {
   _timeout_ = timeout
 } else {
-  _timeout_ = 1200
+  _timeout_ = 2400
 }
 
 config("include_maple") {
