@@ -63,6 +63,7 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
+    ENABLE_MULTI_CONTEXT = 1 << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
     ENABLE_ESM_TRACE = 1 << 24,
@@ -241,6 +242,7 @@ enum CommandValues {
     OPTION_COMPILER_JIT_METHOD_DICHOTOMY,
     OPTION_COMPILER_JIT_METHOD_PATH,
     OPTION_MEM_CONFIG,
+    OPTION_MULTI_CONTEXT,
 
     // OPTION_LAST should at the last
     OPTION_LAST,
@@ -558,6 +560,11 @@ public:
     bool EnableConcurrentMark() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
+    }
+
+    bool EnableMultiContext() const
+    {
+        return (multiContext_) || ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MULTI_CONTEXT) != 0);
     }
 
     bool EnableSharedConcurrentMark() const
@@ -2164,6 +2171,16 @@ public:
         return enableMergePoly_;
     }
 
+    void SetMultiContext(bool value)
+    {
+        multiContext_ = value;
+    }
+
+    bool IsMultiContext() const
+    {
+        return multiContext_;
+    }
+
     void SetJitMethodDichotomy(std::string jitMethodDichotomy)
     {
         jitMethodDichotomy_ = jitMethodDichotomy;
@@ -2505,6 +2522,7 @@ private:
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};
+    bool multiContext_ {false};
     std::string jitMethodDichotomy_ {"disable"};
     std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
     size_t heapSize_ = {0};

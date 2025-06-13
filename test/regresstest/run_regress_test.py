@@ -99,6 +99,8 @@ def parse_args_run_mode(parser):
                         help="the root path for qemu-aarch64 or qemu-arm")
     parser.add_argument('--disable-force-gc', action='store_true',
                         help="Run regress tests with close force-gc")
+    parser.add_argument('--multi-context', action='store_true',
+                        help="Run regress tests with multi context")
     parser.add_argument('--compiler-opt-track-field', default=False, action='store',
                         dest="compiler_opt_track_field",
                         help='enable compiler opt track field. Default value: False\n')
@@ -848,6 +850,8 @@ class RegressTestRun(RegressTestStep):
         if self.args.ark_aot:
             command.append(f"--stub-file={self.args.stub_path}")
             command.append(f"--aot-file={aot_file}")
+        if self.args.multi_context:
+            command.append("--multi-context=true")
         if self.args.disable_force_gc:
             command.append("--enable-force-gc=false")
         else:

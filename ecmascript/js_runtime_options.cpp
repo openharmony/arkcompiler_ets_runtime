@@ -373,6 +373,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-jit-method-dichotomy", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_DICHOTOMY},
         {"compiler-jit-method-path", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_PATH},
         {"mem-config", required_argument, nullptr, OPTION_MEM_CONFIG},
+        {"multi-context", required_argument, nullptr, OPTION_MULTI_CONTEXT},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1470,6 +1471,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_MEM_CONFIG:
                 SetMemConfigProperty(optarg);
+                break;
+            case OPTION_MULTI_CONTEXT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetMultiContext(argBool);
+                } else {
+                    return false;
+                }
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
