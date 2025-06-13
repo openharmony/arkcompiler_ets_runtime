@@ -19,21 +19,29 @@
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
-void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count, bool flag)
+uint8_t* BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count)
 {
     uint8_t *dst = buffer_ + offset_;
-    if (flag) {
-        std::cout << "buffer_:0x" << std::hex << buffer_ << " offset_:0x" << offset_ << std::endl;
-    }
     if (dst >= buffer_ && dst + count <= buffer_ + length_) {
         if (memcpy_s(dst, buffer_ + length_ - dst, src, count) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
-            return;
+            return nullptr;
         };
         offset_ = offset_ + count;
     }  else {
         LOG_FULL(FATAL) << "parse buffer error, length is 0 or overflow";
     }
+    return dst;
+}
+
+void BinaryBufferWriter::WriteBufferToDst(uint8_t *dst, const uint8_t *src, uint32_t count)
+{
+    // dst is the address of the buffer to be written, uint8_t *dst = buffer_ + offset_;
+    if (memcpy_s(dst, buffer_ + length_ - dst, src, count) != EOK) {
+        LOG_FULL(FATAL) << "dst memcpy_s failed";
+        return;
+    };
+    return;
 }
 
 void ArkStackMapBuilder::Dump(const StackMapDumper& dumpInfo) const
@@ -100,38 +108,127 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::GenerateArkSta
     return std::make_pair(ptr, secSize);
 }
 
-void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
+static bool CheckIsBasePair(LLVMStackMapType::DwarfRegType reg, LLVMStackMapType::OffsetType offset,
+                            const LLVMStackMapType::DwarfRegAndOffsetType &stackmap1)
+{
+    LLVMStackMapType::DwarfRegType reg1 = stackmap1.first;
+    LLVMStackMapType::OffsetType offset1 = stackmap1.second;
+    return (reg == reg1 && offset == offset1);
+}
+
+static void updateReducedOffsets(bool isBaseDerivedEq, size_t regOffsetSize,
+                                 size_t &stackmapNumDiff, size_t &localTotalOffset, size_t &totalReducedOffset)
+{
+    if (isBaseDerivedEq) {
+        stackmapNumDiff += 1;
+        totalReducedOffset += regOffsetSize;
+        localTotalOffset += regOffsetSize;
+    }
+}
+// at GenArkCallsiteAOTFileInfo, stackmapOffset and deoptoffset is calculated and set here, and there is an alignup
+// between. When calculating the total reduced stackmap offset for the optimization decribed below, alignup
+// before need to be taken into account. Examples:
+// 1) original: takes 3 bytes ==> after alignup becomes 4 bytes   optimization: takes 2 bytes ==> no alignup
+//original: +-----------------+    +-----------------+  optimization: +-----------------+    +-----------------+
+//          |--------|--------| => |--------|--------|                +--------|--------+ => +--------|--------+
+//          +--------+             +--------|--------+
+// reducedOffset = 3-2=1 (calculated by removing repeated info), but we should have 4-2=2 instead.
+// =====> reducedOffset should + 1
+// 2) original: info takes 8 bytes ==> no alignup     optimization: info takes 5 bytes ==> after alignup becomes 6 bytes
+// reducedOffset = 8-5=3, but we should have 8-6=2 because of alignup in optimization
+// =====> reducedOffset should - 1
+static size_t updateReducedOffByAlign(bool alignBefore, bool isAligned, size_t reducedOffset)
+{
+    if (alignBefore && !isAligned) {
+        reducedOffset += 1;
+    } else if (!alignBefore && isAligned) {
+        reducedOffset -= 1;
+    }
+    return reducedOffset;
+}
+
+// Original layout: stackmap info dwarfRegAndOff (with size 2*n) for base reference (stackmap info in pair)
+// --------------+----------------------+
+// StackMaps[i]  |regNo: 6   offset: -40|
+//               +----------------------+  <-- base ref1 (same info in pair)
+//               |regNo: 6   offset: -40|
+//               +----------------------+
+//               |regNo: 7   offset: -32|
+//               +----------------------+  <-- derived ref1 (different info in pair, base ref up, derived ref down)
+//               |regNo: 7   offset: -24|
+//               +----------------------+
+// =======>>> after optimization, remove the repeated info for base reference (dwarfRegAndOff size might be odd now)
+// --------------+----------------------+
+// StackMaps[i]  |regNo: 6   offset: -40|  <-- base ref1
+//               +----------------------+
+//               |regNo: 7   offset: -32|
+//               +----------------------+  <-- derived ref1
+//               |regNo: 7   offset: -24|
+//               +----------------------+
+size_t ArkStackMapBuilder::SaveArkStackMap(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
 {
     size_t n = info.callsites.size();
+    size_t totalReducedOffset = 0;
     for (size_t i = 0; i < n; i++) {
-        auto &callSite = info.callsites.at(i);
+        ARKCallsite &callSite = info.callsites.at(i);
         LLVMStackMapType::CallSiteInfo stackmaps = callSite.stackmaps;
         size_t m = stackmaps.size();
+        bool isBaseDerivedEq = false;
+        size_t stackmapNumDiff = 0;
+        size_t localTotalOffset = 0;
+        callSite.head.stackmapOffsetInSMSec -= totalReducedOffset;
         for (size_t j = 0; j < m; j++) {
+            if (isBaseDerivedEq) {
+                // skip writing this repeated base ref info to buffer
+                isBaseDerivedEq = false;
+                continue;
+            }
             auto &stackmap = stackmaps.at(j);
             LLVMStackMapType::DwarfRegType reg = stackmap.first;
             LLVMStackMapType::OffsetType offset = stackmap.second;
             if (j == 0) {
                 ASSERT(callSite.head.stackmapOffsetInSMSec == writer.GetOffset());
             }
+            if (j % STACKMAP_TYPE_NUM == 0 && j != m - 1) { // j should be multiple of 2
+                auto &stackmap1 = stackmaps.at(j + 1);
+                // check if next ref&offset are same with this, if same => base ref, else => derived ref
+                isBaseDerivedEq = CheckIsBasePair(reg, offset, stackmap1);
+            }
             std::vector<uint8_t> regOffset;
             size_t regOffsetSize = 0;
-            LLVMStackMapType::EncodeRegAndOffset(regOffset, regOffsetSize, reg, offset, triple);
+            LLVMStackMapType::EncodeRegAndOffset(regOffset, regOffsetSize, reg, offset, triple, isBaseDerivedEq);
             writer.WriteBuffer(reinterpret_cast<const uint8_t *>(regOffset.data()), regOffset.size());
+            ASSERT(regOffsetSize == regOffset.size());
             dumper_.arkStackMapSize += regOffsetSize;
-            if (j == m - 1) {
-                ASSERT((callSite.head.stackmapOffsetInSMSec + callSite.CalStackMapSize(triple)) == writer.GetOffset());
+            // record the reduced stackmapNum, reduced size in buffer
+            updateReducedOffsets(isBaseDerivedEq, regOffsetSize, stackmapNumDiff, localTotalOffset, totalReducedOffset);
+            // when is base ref , stackmapSize - 2 is the last round, j = m - 1 will be skipped
+            if (j == m - 1 || (isBaseDerivedEq && j == m - 2)) {
+                ASSERT((callSite.head.stackmapOffsetInSMSec + callSite.CalStackMapSize(triple)) -
+                       localTotalOffset == writer.GetOffset());
             }
         }
+        callSite.head.stackmapNum -= stackmapNumDiff;
     }
+    uint32_t beforeAlign = writer.GetOffset();
     writer.AlignOffset();
+    bool isAligned = beforeAlign != writer.GetOffset();
+    totalReducedOffset = updateReducedOffByAlign(align, isAligned, totalReducedOffset);
+    ASSERT((totalReducedOffset + writer.GetOffset()) % LLVMStackMapType::STACKMAP_ALIGN_BYTES == 0);
+    return totalReducedOffset;
 }
 
-void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
+void ArkStackMapBuilder::SaveArkDeopt(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple,
+                                      size_t totalReducedOffset)
 {
-    for (auto &it: info.callsites) {
+    for (ARKCallsite &it: info.callsites) {
         auto& callsite2Deopt = it.callsite2Deopt;
         size_t m = callsite2Deopt.size();
+        if (m != 0) {
+            ASSERT(it.head.deoptOffset >= totalReducedOffset);
+        }
+        // match deoptOffset with ref&offset size reduced in SaveArkStackMap
+        it.head.deoptOffset -= totalReducedOffset;
         for (size_t j = 0; j < m; j++) {
             auto &deopt = callsite2Deopt.at(j);
             if (j == 0) {
@@ -173,18 +270,28 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, Binary
 }
 
 void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
-    const ARKCallsiteAOTFileInfo& info, Triple triple)
+    ARKCallsiteAOTFileInfo& info, Triple triple)
 {
     BinaryBufferWriter writer(ptr, length);
     ASSERT(length >= info.secHead.secSize);
     writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(info.secHead)), sizeof(ArkStackMapHeader));
     dumper_.callsiteHeadSize += sizeof(ArkStackMapHeader);
+    std::vector<uint8_t *> ptrVector;
     for (auto &it: info.callsites) {
-        writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHeader));
+        uint8_t *dst = writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHeader));
         dumper_.callsiteHeadSize += sizeof(CallsiteHeader);
+        ptrVector.emplace_back(dst);
     }
-    SaveArkStackMap(info, writer, triple);
-    SaveArkDeopt(info, writer, triple);
+    size_t totalReducedOffset = SaveArkStackMap(info, writer, triple);
+    SaveArkDeopt(info, writer, triple, totalReducedOffset);
+    ASSERT(ptrVector.size() == info.callsites.size());
+    size_t count = 0;
+    // rewrite CallsiteHeader, SaveArkStackMap and SaveArkDeopt change stackmapNum, stackMapOffset, and deoptOffset
+    for (auto &it: info.callsites) {
+        writer.WriteBufferToDst(ptrVector[count], reinterpret_cast<const uint8_t *>(&(it.head)),
+                                sizeof(CallsiteHeader));
+        count += 1;
+    }
 #ifndef NDEBUG
     ArkStackMapParser parser;
     parser.ParseArkStackMapAndDeopt(ptr, length);
@@ -325,7 +432,9 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMa
         result.callsites[static_cast<uint32_t>(loc)] = callsite;
         dumper_.stackmapNum += i.size();
     }
-    stackmapOffset = AlignUp(stackmapOffset, LLVMStackMapType::STACKMAP_ALIGN_BYTES);
+    uint32_t stackmapOffsetBak = stackmapOffset;
+    stackmapOffset = AlignUp(stackmapOffset, LLVMStackMapType::STACKMAP_ALIGN_BYTES); // => deoptOffset % 2 = 0
+    align = (stackmapOffset > stackmapOffsetBak);
     secSize = stackmapOffset;
     for (auto &x: pc2Deopts) {
         int loc = FindLoc(CallsitePcs, x.first);

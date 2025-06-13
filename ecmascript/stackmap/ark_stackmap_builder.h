@@ -37,7 +37,8 @@ class BinaryBufferWriter {
 public:
     BinaryBufferWriter(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
     ~BinaryBufferWriter() = default;
-    void WriteBuffer(const uint8_t *src, uint32_t count, bool flag = false);
+    uint8_t *WriteBuffer(const uint8_t *src, uint32_t count);
+    void WriteBufferToDst(uint8_t *dst, const uint8_t *src, uint32_t count);
     uint32_t GetOffset() const
     {
         return offset_;
@@ -82,6 +83,7 @@ private:
     static constexpr int DECIMAL_LENS = 2;
     static constexpr size_t DEOPT_ENTRY_SIZE = 2;
     static constexpr size_t GC_ENTRY_SIZE = 2;
+    static constexpr size_t STACKMAP_TYPE_NUM = 2;
 
     template <class Vec>
     void SortCallSite(const std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
@@ -91,10 +93,11 @@ private:
                         std::vector<intptr_t> &callsitePcs);
     void GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMapInfo,
                                    ARKCallsiteAOTFileInfo &result, Triple triple);
-    void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
-    void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
+    void SaveArkDeopt(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple,
+                      size_t totalReducedOffset);
+    size_t SaveArkStackMap(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
     void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
-                                    const ARKCallsiteAOTFileInfo& info, Triple triple);
+                                    ARKCallsiteAOTFileInfo& info, Triple triple);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
     void GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt,
         std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple);
@@ -102,6 +105,7 @@ private:
 
     bool traceStackMap_{false};
     StackMapDumper dumper_;
+    bool align = false;
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H

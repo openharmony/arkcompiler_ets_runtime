@@ -16,32 +16,43 @@
 
 namespace panda::ecmascript::kungfu {
 void LLVMStackMapType::EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
-    DwarfRegType reg, OffsetType offset, Triple triple)
+    DwarfRegType reg, OffsetType offset, Triple triple, bool isBase)
 {
     SLeb128Type dwarfRegAndOff = offset;
     auto fpReg = GCStackMapRegisters::GetFpRegByTriple(triple);
     auto spReg = GCStackMapRegisters::GetSpRegByTriple(triple);
+    if (offset % STACKMAP_OFFSET_MUL != 0) {
+        LOG_ECMA(FATAL) << "offset is not multiple of 8";
+    }
     if (reg == fpReg) {
-        dwarfRegAndOff = (dwarfRegAndOff << 1) + FP_VALUE;
+        dwarfRegAndOff = dwarfRegAndOff | FP_VALUE; // use last digit for fp/sp reg
     } else if (reg == spReg) {
-        dwarfRegAndOff = (dwarfRegAndOff << 1) + SP_VALUE;
+        dwarfRegAndOff = dwarfRegAndOff | SP_VALUE;
     } else {
         LOG_ECMA(FATAL) << "dwarfreg branch is unreachable";
         UNREACHABLE();
+    }
+    if (isBase) {
+        dwarfRegAndOff |= NO_DERIVED; // use the second to last digit for base ref/has derived ref
     }
     size_t valueSize = panda::leb128::SignedEncodingSize(dwarfRegAndOff);
     regOffset.resize(valueSize);
     regOffsetSize = panda::leb128::EncodeSigned(dwarfRegAndOff, regOffset.data());
 }
 
-void LLVMStackMapType::DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset)
+bool LLVMStackMapType::DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset)
 {
     if (regOffset % STACKMAP_TYPE_NUM == LLVMStackMapType::FP_VALUE) {
         reg = GCStackMapRegisters::FP;
     } else {
         reg = GCStackMapRegisters::SP;
     }
-    offset = static_cast<LLVMStackMapType::OffsetType>(regOffset >> 1);
+    bool isBase = (regOffset >> 1) % STACKMAP_TYPE_NUM;
+
+    // the last digit and the second to last digit are used to flag reg type and base ref/has derived ref
+    offset = static_cast<LLVMStackMapType::OffsetType>((regOffset >> STACKMAP_OFFSET_EXP) << STACKMAP_OFFSET_EXP);
+    ASSERT(offset % STACKMAP_OFFSET_MUL == 0);
+    return isBase;
 }
 
 void LLVMStackMapType::EncodeVRegsInfo(std::vector<uint8_t> &vregsInfo, size_t &vregsInfoSize,
