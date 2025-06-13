@@ -76,6 +76,7 @@ group("ark_aot_ts_test") {
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",
+    "asyncreenterinterpreter",
     "asyncgeneratorrest",
     "async_context",
     "async_env",
