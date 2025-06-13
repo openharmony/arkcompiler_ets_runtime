@@ -207,7 +207,7 @@ static int TimeOffset()
 // DateTimeFormat_001
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_001)
 {
-    /**ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("en-US"));
     auto jsObj = JSHandle<JSObject>(thread, JSDateTimeFormatForObj_001(thread));
     auto constructorResult = JSDateTimeFormatConstructor(thread, jsObj, localesString);
@@ -223,35 +223,35 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_001)
     auto cstr = EcmaStringAccessor(resultStr).ToCString();
     if (TimeOffset() == utc) {
         if (cstr.find("GMT") != std::string::npos) {
-            EXPECT_STREQ("10/08/22, 12:00:00 AM GMT", cstr.c_str());
+            //EXPECT_STREQ("10/08/22, 12:00:00 AM GMT", cstr.c_str());
         }
         if (cstr.find("UTC") != std::string::npos) {
-            EXPECT_STREQ("10/08/22, 12:00:00 AM UTC", cstr.c_str());
+            //EXPECT_STREQ("10/08/22, 12:00:00 AM UTC", cstr.c_str());
         }
     }
     if (TimeOffset() == shanghai) {
         if (cstr.find("CST") != std::string::npos) {
-            EXPECT_STREQ("10/08/22, 08:00:00 AM CST", cstr.c_str());
+            //EXPECT_STREQ("10/08/22, 08:00:00 AM CST", cstr.c_str());
         }
         if (cstr.find("GMT+8") != std::string::npos) {
-            EXPECT_STREQ("10/08/22, 08:00:00 AM GMT+8", cstr.c_str());
+            //EXPECT_STREQ("10/08/22, 08:00:00 AM GMT+8", cstr.c_str());
         }
     }
     if (TimeOffset() == americaRegina) {
         if (cstr.find("CST") != std::string::npos) {
-            EXPECT_STREQ("10/07/22, 06:00:00 PM CST", cstr.c_str());
+            //EXPECT_STREQ("10/07/22, 06:00:00 PM CST", cstr.c_str());
         }
     }
     if (TimeOffset() == americaNewYork) {
         if (cstr.find("EST") != std::string::npos) {
-            EXPECT_STREQ("10/07/22, 06:00:00 PM EST", cstr.c_str());
+            //EXPECT_STREQ("10/07/22, 06:00:00 PM EST", cstr.c_str());
         }
     }
     if (TimeOffset() == sysDefaultTimezone) {
         if (cstr.find("GMT-3") != std::string::npos) {
-            EXPECT_STREQ("10/07/22, 09:00:00 PM GMT-3", cstr.c_str());
+            //EXPECT_STREQ("10/07/22, 09:00:00 PM GMT-3", cstr.c_str());
         }
-    }*/
+    }
 }
 
 static JSTaggedValue JSDateTimeFormatForObj_002(JSThread *thread)
