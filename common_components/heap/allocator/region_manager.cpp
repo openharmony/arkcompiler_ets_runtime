@@ -712,6 +712,24 @@ void RegionManager::FixMatureRegionList(TraceCollector& collector, RegionList& l
     });
 }
 
+static void FixRecentMatureRegion(TraceCollector& collector, RegionDesc* region)
+{
+    region->VisitAllObjectsBeforeFix([&collector, &region](BaseObject* object) {
+        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object) || region->IsInRSet(object)) {
+            DLOG(FIX, "fix: mature obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
+            collector.FixObjectRefFields(object);
+        }
+    });
+}
+
+void RegionManager::FixRecentMatureRegionList(TraceCollector& collector, RegionList& list)
+{
+    list.VisitAllRegions([&collector](RegionDesc* region) {
+        DLOG(REGION, "fix mature region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
+        FixRecentMatureRegion(collector, region);
+    });
+}
+
 void RegionManager::FixOldPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats)
 {
     size_t garbageSize = 0;
@@ -743,12 +761,12 @@ void RegionManager::FixAllRegionLists()
         FixMatureRegionList(collector, appSpawnRegionList_);
 
         // fix survived object but should be with line judgement.
-        FixMatureRegionList(collector, recentLargeRegionList_);
-        FixMatureRegionList(collector, recentPinnedRegionList_);
-        FixMatureRegionList(collector, rawPointerRegionList_);
+        FixRecentMatureRegionList(collector, recentLargeRegionList_);
+        FixRecentMatureRegionList(collector, recentPinnedRegionList_);
+        FixRecentMatureRegionList(collector, rawPointerRegionList_);
         FixMatureRegionList(collector, oldPinnedRegionList_);
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            FixMatureRegionList(collector, *fixedPinnedRegionList_[i]);
+            FixRecentMatureRegionList(collector, *fixedPinnedRegionList_[i]);
             FixMatureRegionList(collector, *oldFixedPinnedRegionList_[i]);
         }
         return;
