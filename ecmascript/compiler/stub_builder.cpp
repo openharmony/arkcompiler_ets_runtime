@@ -12365,7 +12365,7 @@ GateRef StubBuilder::NeedBarrier(GateRef kind){
 }
 
 void StubBuilder::StartTraceLoadValueDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef receiver,
-    [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId, GateRef key)
+    [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId, [[maybe_unused]] GateRef key)
 {
 #if ECMASCRIPT_ENABLE_TRACE_LOAD_VALUE
     CallRuntime(glue, RTSTUB_ID(TraceLoadValueDetail), {receiver, profileTypeInfo, slotId, key});
@@ -12460,13 +12460,14 @@ void StubBuilder::EndTraceStore([[maybe_unused]] GateRef glue)
 #endif
 }
 
-void StubBuilder::StartTraceDefineFunc(GateRef glue, GateRef methodId, GateRef profileTypeInfo, GateRef slotId)
+void StubBuilder::StartTraceDefineFunc([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef methodId,
+                                       [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId)
 {
 #if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
     CallRuntime(glue, RTSTUB_ID(TraceDefineFunc), {methodId, profileTypeInfo, IntToTaggedInt(slotId)});
 #endif
 }
-void StubBuilder::EndTraceDefineFunc(GateRef glue)
+void StubBuilder::EndTraceDefineFunc([[maybe_unused]] GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
     CallRuntime(glue, RTSTUB_ID(TraceDefineFuncEnd), {});
