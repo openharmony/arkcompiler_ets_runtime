@@ -1994,7 +1994,8 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
         gate, glue_, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypedNativeInlineLowering::CheckAndConvertToUInt(GateRef glue, GateRef msg, Label* notIntegerStr, Label* nonZeroLength)
+GateRef TypedNativeInlineLowering::CheckAndConvertToUInt(GateRef glue, GateRef msg, Label* notIntegerStr,
+                                                         Label* nonZeroLength)
 {
     auto length = builder_.GetLengthFromString(msg);
     BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), notIntegerStr, nonZeroLength);

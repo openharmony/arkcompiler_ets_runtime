@@ -258,7 +258,8 @@ GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef obj
 
 GateRef CircuitBuilder::GetEnumCacheKindFromEnumCache(GateRef enumCache)
 {
-    GateRef enumCacheKind = LoadWithoutBarrier(VariableType::INT32(), enumCache, IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET));
+    GateRef enumCacheKind = LoadWithoutBarrier(VariableType::INT32(), enumCache,
+                                               IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET));
     return enumCacheKind;
 }
 
