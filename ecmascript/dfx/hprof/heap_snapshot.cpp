@@ -698,12 +698,19 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
+#ifdef USE_CMC_GC
+    common::Heap &heap = common::Heap::GetHeap();
+    heap.ForEachObject([this, isInFinish, isSimplify](BaseObject *obj) {
+        GenerateNode(JSTaggedValue(reinterpret_cast<JSTaggedType>(obj)), 0, isInFinish, isSimplify);
+    }, isSimplify);
+#else
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
         heap->IterateOverObjects([this, isInFinish, isSimplify](TaggedObject *obj) {
             GenerateNode(JSTaggedValue(obj), 0, isInFinish, isSimplify);
         }, isSimplify);
     }
+#endif
 }
 
 Node *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod)
@@ -1256,6 +1263,28 @@ void HeapSnapshot::AddSyntheticRoot()
     InsertNodeAt(0, syntheticRoot);
     CUnorderedSet<JSTaggedType> values {};
     CList<Edge *> rootEdges;
+
+#ifdef USE_CMC_GC
+    common::RefFieldVisitor visitor = [this, &rootEdges, &syntheticRoot, &values](common::RefField<> &refField) {
+        JSTaggedValue value {refField.GetFieldValue()};
+        if (value.IsHeapObject()) {
+            Node *rootNode = this->entryMap_.FindEntry(refField.GetFieldValue());
+            if (rootNode != nullptr) {
+                JSTaggedType valueTo = value.GetRawData();
+                auto it = values.find(valueTo);
+                if (it == values.end()) {
+                    values.insert(valueTo);
+                    Edge *edge = Edge::NewEdge(this->chunk_, EdgeType::SHORTCUT, syntheticRoot, rootNode,
+                                               this->GetString("-subroot-"));
+                    rootEdges.emplace_back(edge);
+                    syntheticRoot->IncEdgeCount();
+                }
+            }
+        }
+    };
+    common::VisitRoots(visitor, false);
+#else
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ROOT_EDGE_BUILDER_CORE(slot)                                                                        \
     do {                                                                                                    \
@@ -1361,6 +1390,7 @@ void HeapSnapshot::AddSyntheticRoot()
     EdgeBuilderRootVisitor edgeBuilderRootVisitor(*this, syntheticRoot, rootEdges, values);
     rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), edgeBuilderRootVisitor);
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+#endif  // USE_CMC_GC
 
     // add root edges to edges begin
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());

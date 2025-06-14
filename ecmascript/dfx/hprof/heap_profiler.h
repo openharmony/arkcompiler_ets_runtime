@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
 #define ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
 
+#ifdef USE_CMC_GC
+#include "common_components/heap/heap.h"
+#endif
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
