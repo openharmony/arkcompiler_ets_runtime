@@ -355,14 +355,6 @@ DEF_RUNTIME_STUBS(GetHash32)
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(ComputeHashcode)
-{
-    JSTaggedType ecmaString = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    auto string = reinterpret_cast<EcmaString *>(ecmaString);
-    uint32_t result = EcmaStringAccessor(string).ComputeHashcode();
-    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(NewInternalString)
 {
     RUNTIME_STUBS_HEADER(NewInternalString);
@@ -1049,20 +1041,6 @@ DEF_RUNTIME_STUBS(NewJSTypedArrayIterator)
     return iter.GetTaggedValue().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(MapIteratorNext)
-{
-    RUNTIME_STUBS_HEADER(MapIteratorNext);
-    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return JSMapIterator::NextInternal(thread, thisObj).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(SetIteratorNext)
-{
-    RUNTIME_STUBS_HEADER(SetIteratorNext);
-    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return JSSetIterator::NextInternal(thread, thisObj).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(StringIteratorNext)
 {
     RUNTIME_STUBS_HEADER(StringIteratorNext);
@@ -1084,13 +1062,6 @@ DEF_RUNTIME_STUBS(IteratorReturn)
     return builtins::BuiltinsIterator::ReturnInternal(thread, thisObj).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetNextPropName)
-{
-    RUNTIME_STUBS_HEADER(GetNextPropName);
-    JSHandle<JSTaggedValue> iter = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeGetNextPropName(thread, iter).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(GetNextPropNameSlowpath)
 {
     RUNTIME_STUBS_HEADER(GetNextPropNameSlowpath);
@@ -1098,13 +1069,6 @@ DEF_RUNTIME_STUBS(GetNextPropNameSlowpath)
     ASSERT(iter->IsForinIterator());
     JSTaggedValue res = JSForInIterator::NextInternalSlowpath(thread, JSHandle<JSForInIterator>::Cast(iter));
     return res.GetRawData();
-}
-
-DEF_RUNTIME_STUBS(IterNext)
-{
-    RUNTIME_STUBS_HEADER(IterNext);
-    JSHandle<JSTaggedValue> iter = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeIterNext(thread, iter).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CloseIterator)
@@ -2107,13 +2071,6 @@ DEF_RUNTIME_STUBS(GetResolvedRecordBindingModule)
     return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetPropIterator)
-{
-    RUNTIME_STUBS_HEADER(GetPropIterator);
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeGetPropIterator(thread, value).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(GetPropIteratorSlowpath)
 {
     RUNTIME_STUBS_HEADER(GetPropIteratorSlowpath);
@@ -2133,13 +2090,6 @@ DEF_RUNTIME_STUBS(AsyncFunctionEnter)
 {
     RUNTIME_STUBS_HEADER(AsyncFunctionEnter);
     return RuntimeAsyncFunctionEnter(thread).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(GetIterator)
-{
-    RUNTIME_STUBS_HEADER(GetIterator);
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    return RuntimeGetIterator(thread, obj).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetAsyncIterator)
@@ -2252,15 +2202,6 @@ DEF_RUNTIME_STUBS(MismatchError)
     LOG_ECMA(ERROR) << "Sendable obj Match field type fail. expected type: " <<
         ClassHelper::StaticFieldTypeToString(shareFieldType.GetInt()) << ", actual type: " << oss.str();
     return JSTaggedValue::Undefined().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(NewJSPrimitiveRef)
-{
-    RUNTIME_STUBS_HEADER(NewJSPrimitiveRef);
-    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0); // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue> (argv, argc, 1);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewJSPrimitiveRef(thisFunc, obj).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ThrowRangeError)

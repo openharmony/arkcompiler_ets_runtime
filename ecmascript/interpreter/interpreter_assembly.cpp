@@ -209,7 +209,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 #if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ArkCompiler::InterpreterAssembly::Execute", "");
 #endif
-    SaveEnv envScope(thread);
     // When the  function is jit-compiled, the Method object is reinstalled.
     // In this case, the AotWithCall field may be updated.
     // This causes a Construct that is not a ClassConstructor to call jit code.
@@ -222,7 +221,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     thread->CheckSafepoint();
     uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
-    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
 
     callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     method = callTarget->GetCallTarget();
@@ -265,6 +263,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         method = callTarget->GetCallTarget();
     }
 #endif
+    // When C++ enters ASM, save the current globalenv and restore to glue after call
+    SaveEnv envScope(thread);
+    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
 
@@ -316,6 +317,7 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
 {
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
+    // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread);
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
     JSTaggedValue func = context->GetMethod();

@@ -229,6 +229,9 @@ namespace panda::ecmascript {
     V(CopyCallTarget)                          \
     V(CopyArgvArray)
 
+// When ASM enters C++ via CallNGCRuntime, if the C++ process requires GetGlobalEnv(),
+// the current globalenv in ASM must be set to glue before CallNGCRuntime!
+
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(HeapAlloc)                                \
     V(AllocateInYoung)                          \
@@ -244,11 +247,9 @@ namespace panda::ecmascript {
     V(RegularJSObjDeletePrototype)              \
     V(CallJSObjDeletePrototype)                 \
     V(ToPropertyKey)                            \
-    V(NewJSPrimitiveRef)                        \
     V(ThrowTypeError)                           \
     V(MismatchError)                            \
     V(GetHash32)                                \
-    V(ComputeHashcode)                          \
     V(NewInternalString)                        \
     V(NewTaggedArray)                           \
     V(NewCOWTaggedArray)                        \
@@ -301,15 +302,11 @@ namespace panda::ecmascript {
     V(CreateStringIterator)                     \
     V(NewJSArrayIterator)                       \
     V(NewJSTypedArrayIterator)                  \
-    V(MapIteratorNext)                          \
-    V(SetIteratorNext)                          \
     V(StringIteratorNext)                       \
     V(ArrayIteratorNext)                        \
     V(IteratorReturn)                           \
-    V(GetNextPropName)                          \
     V(GetNextPropNameSlowpath)                  \
     V(ThrowIfNotObject)                         \
-    V(IterNext)                                 \
     V(CloseIterator)                            \
     V(SuperCallSpread)                          \
     V(OptSuperCallSpread)                       \
@@ -375,11 +372,9 @@ namespace panda::ecmascript {
     V(GetResolvedRecordIndexBindingModule)      \
     V(GetResolvedRecordBindingModule)           \
     V(Throw)                                    \
-    V(GetPropIterator)                          \
     V(GetPropIteratorSlowpath)                  \
     V(PrimitiveStringCreate)                    \
     V(AsyncFunctionEnter)                       \
-    V(GetIterator)                              \
     V(GetAsyncIterator)                         \
     V(SetGeneratorState)                        \
     V(ThrowThrowNotExists)                      \
@@ -544,6 +539,9 @@ namespace panda::ecmascript {
     V(GetNativePcOfstForBaseline)               \
     V(AotCallBuiltinTrace)                      \
     V(NumberBigIntNativePointerToString)
+
+// When ASM enters C++ via CallRuntime, if the C++ process requires GetGlobalEnv(),
+// the current globalenv in ASM must be set to glue before CallRuntime!
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
