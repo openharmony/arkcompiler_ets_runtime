@@ -34,6 +34,7 @@
 #include <memory>
 
 namespace panda::ecmascript {
+class EcmaStringTable;
 using AppfreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 class Runtime {
 public:

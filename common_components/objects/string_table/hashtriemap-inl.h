@@ -20,11 +20,6 @@
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
 
-namespace panda::ecmascript {
-    class TaggedObject;
-    class EcmaStringTable;
-}
-
 namespace common {
 // Expand to get oldEntry and newEntry, with hash conflicts from 32 bits up to
 // hashShift and Generate a subtree of indirect nodes to hold two new entries.

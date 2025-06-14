@@ -21,15 +21,12 @@
 #include "common_interfaces/objects/base_string.h"
 
 namespace panda::ecmascript {
-    class TaggedObject;
-    class EcmaStringTable;
+class TaggedObject;
 }
 
 namespace common {
 template <typename Mutex, typename ThreadHolder>
 class HashTrieMap {
-    friend class panda::ecmascript::EcmaStringTable;
-
 public:
     using WeakRefFieldVisitor = std::function<bool(RefField<>&)>;
     using WeakRootVisitor = std::function<panda::ecmascript::TaggedObject *(panda::ecmascript::TaggedObject* p)>;
@@ -226,10 +223,9 @@ public:
     {
         return mu_;
     }
-
+    std::atomic<Indirect*> root_;
 private:
     Mutex mu_;
-    std::atomic<Indirect*> root_;
     std::atomic<uint32_t> inuseCount_{0};
     template <bool IsLock>
     Node* Expand(Entry* oldEntry, Entry* newEntry, uint32_t newHash, uint32_t hashShift, Indirect* parent);

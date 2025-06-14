@@ -28,10 +28,6 @@
 namespace common {
 BaseString* BaseStringTableImpl::AllocateLineStringObject(size_t size)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     size = AlignUp(size, ALIGN_OBJECT);
     BaseString* str;
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
@@ -42,16 +38,11 @@ BaseString* BaseStringTableImpl::AllocateLineStringObject(size_t size)
     BaseClass* cls = BaseRuntime::GetInstance()->GetBaseClassRoots().GetBaseClass(CommonType::LINE_STRING);
     str->SetFullBaseClassWithoutBarrier(cls);
     return str;
-#endif
 }
 
 BaseString* BaseStringTableImpl::GetOrInternFlattenString(ThreadHolder* holder, const HandleCreator& handleCreator,
                                                           BaseString* string)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     ASSERT(string->NotTreeString());
     if (string->IsInternString()) {
         return string;
@@ -72,7 +63,6 @@ BaseString* BaseStringTableImpl::GetOrInternFlattenString(ThreadHolder* holder, 
         holder, readBarrier, hashcode, loadResult, stringHandle);
     ASSERT(result != nullptr);
     return result;
-#endif
 }
 
 BaseString* BaseStringTableImpl::GetOrInternStringFromCompressedSubString(ThreadHolder* holder,
@@ -80,10 +70,6 @@ BaseString* BaseStringTableImpl::GetOrInternStringFromCompressedSubString(Thread
                                                                           const ReadOnlyHandle<BaseString>& string,
                                                                           uint32_t offset, uint32_t utf8Len)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     const uint8_t* utf8Data = string->GetDataUtf8() + offset;
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     auto readBarrier = [](void* obj, size_t offset)-> BaseObject* {
@@ -122,7 +108,6 @@ BaseString* BaseStringTableImpl::GetOrInternStringFromCompressedSubString(Thread
         });
     ASSERT(result != nullptr);
     return result;
-#endif
 }
 
 BaseString* BaseStringTableImpl::GetOrInternString(ThreadHolder* holder,
@@ -130,10 +115,6 @@ BaseString* BaseStringTableImpl::GetOrInternString(ThreadHolder* holder,
                                                    uint32_t utf8Len,
                                                    bool canBeCompress)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto allocator = [this](size_t size, CommonType type)-> BaseString* {
         ASSERT(type == CommonType::LINE_STRING);
@@ -160,17 +141,12 @@ BaseString* BaseStringTableImpl::GetOrInternString(ThreadHolder* holder,
         });
     ASSERT(result != nullptr);
     return result;
-#endif
 }
 
 BaseString* BaseStringTableImpl::GetOrInternString(ThreadHolder* holder, const HandleCreator& handleCreator,
                                                    const uint16_t* utf16Data, uint32_t utf16Len,
                                                    bool canBeCompress)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     uint32_t hashcode = BaseString::ComputeHashcodeUtf16(const_cast<uint16_t*>(utf16Data), utf16Len);
     auto allocator = [this](size_t size, CommonType type)-> BaseString* {
         ASSERT(type == CommonType::LINE_STRING);
@@ -198,15 +174,10 @@ BaseString* BaseStringTableImpl::GetOrInternString(ThreadHolder* holder, const H
         });
     ASSERT(result != nullptr);
     return result;
-#endif
 }
 
 BaseString* BaseStringTableImpl::TryGetInternString(const ReadOnlyHandle<BaseString>& string)
 {
-#ifndef USE_CMC_GC
-    LOG_COMMON(FATAL) << "only be used when cmc-gc is enabled";
-    UNREACHABLE();
-#else
     auto readBarrier = [](void* obj, size_t offset)-> BaseObject* {
         return BaseObject::Cast(
             reinterpret_cast<MAddress>(BaseRuntime::ReadBarrier(
@@ -214,6 +185,5 @@ BaseString* BaseStringTableImpl::TryGetInternString(const ReadOnlyHandle<BaseStr
     };
     uint32_t hashcode = string->GetHashcode(readBarrier);
     return stringTable_.Load<false>(readBarrier, hashcode, *string);
-#endif
 }
 }

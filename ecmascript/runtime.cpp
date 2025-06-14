@@ -135,14 +135,14 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     mainThread_->SetMainThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
-#ifdef USE_CMC_GC
-    auto& baseStringTable = common::BaseRuntime::GetInstance()->GetStringTable();
-    stringTable_ = std::make_unique<EcmaStringTable>(&baseStringTable,
-                                                     static_cast<common::BaseStringTableImpl*>(&baseStringTable)->
-                                                     GetHashTrieMap());
-#else
-    stringTable_ = std::make_unique<EcmaStringTable>();
-#endif
+    if (g_isEnableCMCGC) {
+        auto& baseStringTable = common::BaseRuntime::GetInstance()->GetStringTable();
+        stringTable_ = std::make_unique<EcmaStringTable>(true, &baseStringTable,
+                                                         &static_cast<common::BaseStringTableImpl*>(&baseStringTable)->
+                                                         GetHashTrieMap());
+    } else {
+        stringTable_ = std::make_unique<EcmaStringTable>(false);
+    }
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
         const_cast<EcmaVM*>(vm)->GetJSOptions(), DaemonThread::GetInstance());
 }
