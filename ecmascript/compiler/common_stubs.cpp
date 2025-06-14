@@ -240,6 +240,9 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
         GateRef thisObj = Undefined();
         GateRef argc = Int64(4); // 4: means func newtarget thisObj arg0
         GateRef argv = IntPtr(0);
+#ifdef USE_READ_BARRIER
+        CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, ctor});
+#endif
         std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
         GateRef target = IntPtr(RTSTUB_ID(JSCallNew));
