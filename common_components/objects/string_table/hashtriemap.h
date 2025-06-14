@@ -102,11 +102,6 @@ public:
             return value_;
         }
 
-        BaseString** ValueAddress()
-        {
-            return &value_;
-        }
-
         void SetValue(BaseString* v)
         {
             value_ = v;
