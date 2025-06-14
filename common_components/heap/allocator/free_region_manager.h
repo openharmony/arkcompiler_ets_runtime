@@ -91,7 +91,6 @@ public:
     // add units [idx, idx + num)
     void AddGarbageUnits(uint32_t idx, uint32_t num)
     {
-        ScopedEnterSaferegion enterSaferegion(true);
         std::lock_guard<std::mutex> lg(dirtyUnitTreeMutex_);
         if (UNLIKELY_CC(!dirtyUnitTree_.MergeInsert(idx, num, true))) {
             LOG_COMMON(FATAL) << "tid " << GetTid() << ": failed to add dirty units [" <<
@@ -101,7 +100,6 @@ public:
 
     void AddReleaseUnits(uint32_t idx, uint32_t num)
     {
-        ScopedEnterSaferegion enterSaferegion(true);
         std::lock_guard<std::mutex> lg(releasedUnitTreeMutex_);
         if (UNLIKELY_CC(!releasedUnitTree_.MergeInsert(idx, num, true))) {
             LOG_COMMON(FATAL) << "tid %d: failed to add release units [" <<

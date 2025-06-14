@@ -71,6 +71,7 @@ public:
     static void FixToRegionList(TraceCollector& collector, RegionList& list);
     static void FixOldRegionList(TraceCollector& collector, RegionList& list);
     static void FixMatureRegionList(TraceCollector& collector, RegionList& list);
+    static void FixRecentMatureRegionList(TraceCollector& collector, RegionList& list);
 
     void Initialize(size_t regionNum, uintptr_t regionInfoStart);
 
