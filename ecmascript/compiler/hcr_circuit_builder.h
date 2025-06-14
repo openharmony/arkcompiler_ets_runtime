@@ -183,35 +183,29 @@ GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef glue, GateRef x)
 }
 
 #ifndef NDEBUG
-GateRef CircuitBuilder::LoadHClassWithLineASM(GateRef glue, GateRef object, [[maybe_unused]] int line)
+GateRef CircuitBuilder::LoadHClassWithLineASM([[maybe_unused]] GateRef glue, GateRef object, [[maybe_unused]] int line)
 {
     // ReadBarrier is not need for loading hClass as long as it is non-movable
     // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    GateRef lowAddress = Load(VariableType::INT32(), glue, object, offset);
-    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
-    GateRef baseAddress = Load(VariableType::INT64(), glue, glue, baseAddressOffset);
-    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
+    GateRef value = Load(VariableType::INT64(), glue, object, offset);
+    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
 }
 #else
-GateRef CircuitBuilder::LoadHClass(GateRef glue, GateRef object)
+GateRef CircuitBuilder::LoadHClass([[maybe_unused]] GateRef glue, GateRef object)
 {
     // ReadBarrier is not need for loading hClass as long as it is non-movable
     // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    GateRef lowAddress = LoadWithoutBarrier(VariableType::INT32(), object, offset);
-    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
-    GateRef baseAddress = LoadWithoutBarrier(VariableType::INT64(), glue, baseAddressOffset);
-    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
+    GateRef value = LoadWithoutBarrier(VariableType::INT64(), object, offset);
+    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
 }
 #endif
 
-GateRef CircuitBuilder::LoadHClassByConstOffset(GateRef glue, GateRef object)
+GateRef CircuitBuilder::LoadHClassByConstOffset([[maybe_unused]] GateRef glue, GateRef object)
 {
-    GateRef lowAddress = LoadConstOffset(VariableType::INT32(), object, TaggedObject::HCLASS_OFFSET);
-    GateRef baseAddressOffset = IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()));
-    GateRef baseAddress = LoadWithoutBarrier(VariableType::INT64(), glue, baseAddressOffset);
-    return Int64ToTaggedPtr(Int64Add(baseAddress, ZExtInt32ToInt64(lowAddress)));
+    GateRef value = LoadConstOffset(VariableType::INT64(), object, TaggedObject::HCLASS_OFFSET);
+    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
 }
 
 GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
@@ -284,8 +278,7 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
 
 void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    Store(VariableType::INT32(), glue, object, IntPtr(TaggedStateWord::STATE_WORD_OFFSET), Int32(0));
-    TransitionHClass(glue, object, hClass, mAttr);
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass, mAttr);
 }
 
 void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)

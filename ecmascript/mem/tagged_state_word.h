@@ -20,7 +20,7 @@
 #include "common_interfaces/objects/base_state_word.h"
 #include <atomic>
 
-using ClassWordType = uint32_t;
+using ClassWordType = uint64_t;
 
 namespace panda::ecmascript {
 class TaggedObject;
@@ -35,8 +35,8 @@ public:
     };
 
     struct ClassStateWord {
-        ClassWordType class_ : 32;
-        ClassWordType padding_ : 28;
+        ClassWordType class_ : 48;
+        ClassWordType padding_ : 12;
         ClassWordType remainded_ : 4;
     };
 
@@ -56,19 +56,21 @@ public:
 
     inline void SynchronizedSetClass(ClassWordType cls)
     {
-        reinterpret_cast<volatile std::atomic<ClassWordType> *>(&class_)->store(cls, std::memory_order_release);
+        reinterpret_cast<volatile std::atomic<uint32_t> *>(&class_)->store(
+            static_cast<uint32_t>(cls), std::memory_order_release);
     }
 
     inline uintptr_t GetClass() const
     {
-        return static_cast<uintptr_t>(class_.class_) + BASE_ADDRESS;
+        return static_cast<uintptr_t>(class_.class_);
     }
 
     inline uintptr_t SynchronizedGetClass() const
     {
         return static_cast<uintptr_t>(
-            reinterpret_cast<volatile std::atomic<ClassWordType> *>(reinterpret_cast<uintptr_t>(&class_))->
-            load(std::memory_order_acquire)) + BASE_ADDRESS;
+                   reinterpret_cast<volatile std::atomic<uint32_t> *>(reinterpret_cast<uintptr_t>(&class_))
+                       ->load(std::memory_order_acquire)) +
+               BASE_ADDRESS;
     }
 
     inline void SetForwardingAddress(uintptr_t fwdPtr)

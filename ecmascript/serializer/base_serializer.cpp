@@ -21,7 +21,8 @@ namespace panda::ecmascript {
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
     if (g_isEnableCMCGC) {
-        SerializedObjectSpace spaceType = common::SerializeUtils::GetSerializeObjectSpace(ToUintPtr(object));
+        SerializedObjectSpace spaceType =
+            SerializedObjectSpace(static_cast<int>(common::SerializeUtils::GetSerializeObjectSpace(ToUintPtr(object))));
         if (spaceType == SerializedObjectSpace::OTHER) {
             LOG_ECMA(FATAL) << "unsupported space type";
         }

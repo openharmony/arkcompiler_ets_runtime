@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/runtime.h"
-#include "ecmascript/base/config.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_interfaces/base_runtime.h"
 #include "ecmascript/dynamic_object_accessor.h"
@@ -32,7 +31,6 @@
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using namespace panda;
-uint32_t PUBLIC_API g_isEnableCMCGC = 0;
 int32_t Runtime::vmCount_ = 0;
 int32_t Runtime::destroyCount_ = 0;
 bool Runtime::firstVmCreated_ = false;

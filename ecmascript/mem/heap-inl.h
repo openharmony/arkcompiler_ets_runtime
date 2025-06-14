@@ -1087,7 +1087,8 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
     (void)thread;
     if (UNLIKELY(g_isEnableCMCGC)) {
-        return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
+        return reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
     }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
     CheckHugeAndTriggerSharedGC(thread, size);
@@ -1130,7 +1131,8 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
             common::HeapAllocator::AllocateInReadOnly(size, common::LanguageType::DYNAMIC));
     } else {
         object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
-        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(
+            thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
     }
     ASSERT(object != nullptr);
     object->SetClass(thread, hclass);

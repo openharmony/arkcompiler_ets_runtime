@@ -71,11 +71,8 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     Register bitFieldRegister(X16);
     Register tempRegister(X17); // can not be used to store any variable
     Register functionTypeRegister(X18, W);
-    Register tempRegisterW(X17, W); // can not be used to store any variable
-    __ Ldr(tempRegisterW, MemoryOperand(callTargetRegister, TaggedObject::HCLASS_OFFSET));
-    Register baseAddrRegister(X16);
-    __ Ldr(baseAddrRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)));
-    __ Add(tempRegister, tempRegister, baseAddrRegister);
+    __ Ldr(tempRegister, MemoryOperand(callTargetRegister, TaggedObject::HCLASS_OFFSET));
+    __ And(tempRegister, tempRegister, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
     __ Ldr(bitFieldRegister, MemoryOperand(tempRegister, JSHClass::BIT_FIELD_OFFSET));
     __ And(functionTypeRegister, bitFieldRegister.W(), LogicalImmediate::Create(0xFF, RegWSize));
     __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_FIRST)));
@@ -765,11 +762,8 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Cmp(temp, Immediate(0));
         __ B(Condition::NE, &notEcmaObject);
         // acc is heap object
-        Register tempW(X7, W);
-        __ Ldr(tempW, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
-        Register baseAddrRegister(X16);
-        __ Ldr(baseAddrRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)));
-        __ Add(temp, temp, baseAddrRegister);
+        __ Ldr(temp, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
+        __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
         __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
         __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
         __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));
@@ -887,11 +881,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ Cmp(temp, Immediate(0));
             __ B(Condition::NE, &notEcmaObject);
             // acc is heap object
-            Register tempW(X19, W);
-            __ Ldr(tempW, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
-            Register baseAddrRegister(X16);
-            __ Ldr(baseAddrRegister, MemoryOperand(glue, JSThread::GlueData::GetBaseAddressOffset(false)));
-            __ Add(temp, temp, baseAddrRegister);
+            __ Ldr(temp, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
+            __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
             __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
             __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));

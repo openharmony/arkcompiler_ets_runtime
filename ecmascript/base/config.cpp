@@ -13,26 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_SERIALIZE_UTILS_H
-#define COMMON_COMPONENTS_SERIALIZE_UTILS_H
-
-#include <cstddef>
 #include <cstdint>
+#include "common_interfaces/base/common.h"
 
-namespace common {
+namespace panda::ecmascript {
 
-enum class SerializedBaseObjectSpace : uint8_t {
-    REGULAR_SPACE,
-    PIN_SPACE,
-    LARGE_SPACE,
-    READ_ONLY_SPACE,
-    OTHER,
-};
+uint32_t PUBLIC_API g_isEnableCMCGC = 0;
 
-class SerializeUtils {
-public:
-    static SerializedBaseObjectSpace GetSerializeObjectSpace(uintptr_t obj);
-    static size_t GetRegionSize();
-};
-}  // namespace common
-#endif  // COMMON_COMPONENTS_SERIALIZE_UTILS_H
+}  // namespace panda::ecmascript
+

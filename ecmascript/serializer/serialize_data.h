@@ -29,7 +29,7 @@ namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
-static constexpr int SERIALIZE_SPACE_NUM = 7;
+static constexpr int SERIALIZE_SPACE_NUM = 12;
 static constexpr int GROUP_SIZE = SERIALIZE_SPACE_NUM + 1; // 1: incomplete data
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
@@ -78,7 +78,22 @@ enum class EncodeFlag : uint8_t {
     LAST
 };
 
-using common::SerializedObjectSpace;
+enum class SerializedObjectSpace : uint8_t {
+    REGULAR_SPACE,
+    PIN_SPACE,
+    LARGE_SPACE,
+    READ_ONLY_SPACE,
+    OTHER,
+
+    OLD_SPACE,
+    NON_MOVABLE_SPACE,
+    MACHINE_CODE_SPACE,
+    HUGE_SPACE,
+    SHARED_OLD_SPACE,
+    SHARED_NON_MOVABLE_SPACE,
+    SHARED_HUGE_SPACE,
+};
+using common::SerializedBaseObjectSpace;
 
 enum class SerializeType : uint8_t {
     VALUE_SERIALIZE,

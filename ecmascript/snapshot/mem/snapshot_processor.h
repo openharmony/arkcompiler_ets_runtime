@@ -21,6 +21,7 @@
 #include <sstream>
 
 #include "common_components/serialize/serialize_utils.h"
+#include "ecmascript/serializer/serialize_data.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
@@ -166,7 +167,7 @@ private:
     void DeserializeClassWord(TaggedObject *object);
     void DeserializePandaMethod(uintptr_t begin, uintptr_t end, MethodLiteral *methods,
                                 size_t &methodNums, size_t &others);
-    void DeserializeSpaceObject(uintptr_t beginAddr, size_t objSize, common::SerializedObjectSpace spaceType);
+    void DeserializeSpaceObject(uintptr_t beginAddr, size_t objSize, SerializedObjectSpace spaceType);
     void DeserializeSpaceObject(uintptr_t beginAddr, Space* space, size_t spaceObjSize);
     void DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObjectSpace* space, size_t hugeSpaceObjSize);
     void HandleRootObject(SnapshotType type, uintptr_t rootObjectAddr, size_t objType, size_t &constSpecialIndex);
@@ -240,7 +241,7 @@ private:
 
     class AllocateProxy {
     public:
-        AllocateProxy(common::SerializedObjectSpace spaceType) : spaceType_(spaceType) {}
+        AllocateProxy(SerializedObjectSpace spaceType) : spaceType_(spaceType) {}
         ~AllocateProxy()
         {
             for (RegionProxy &proxy : regions_) {
@@ -255,7 +256,7 @@ private:
         AllocResult Allocate(size_t size, uintptr_t &regionIndex);
 
         void StopAllocate(SharedHeap *sHeap);
-        
+
         size_t GetAllocatedSize() const
         {
             return allocatedSize_;
@@ -266,13 +267,13 @@ private:
         void AllocateNewRegion(size_t size, uintptr_t &regionIndex);
         std::vector<RegionProxy> regions_ {};
         RegionProxy currentRegion_ {};
-        common::SerializedObjectSpace spaceType_ {common::SerializedObjectSpace::OTHER};
+        SerializedObjectSpace spaceType_ {SerializedObjectSpace::OTHER};
         size_t allocatedSize_ {0};
         size_t commonRegionSize_ {0};
     };
-    AllocateProxy regularObjAllocator_ {common::SerializedObjectSpace::REGULAR_SPACE};
-    AllocateProxy pinnedObjAllocator_ {common::SerializedObjectSpace::PIN_SPACE};
-    AllocateProxy largeObjAllocator_ {common::SerializedObjectSpace::LARGE_SPACE};
+    AllocateProxy regularObjAllocator_ {SerializedObjectSpace::REGULAR_SPACE};
+    AllocateProxy pinnedObjAllocator_ {SerializedObjectSpace::PIN_SPACE};
+    AllocateProxy largeObjAllocator_ {SerializedObjectSpace::LARGE_SPACE};
     size_t commonRegionSize_ {0};
     LocalSpace *oldLocalSpace_ {nullptr};
     LocalSpace *nonMovableLocalSpace_ {nullptr};

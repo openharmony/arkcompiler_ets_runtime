@@ -165,7 +165,7 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
         uintptr_t stringEnd = stringBegin + hdr.stringSize;
         processor.DeserializeString(stringBegin, stringEnd);
         processor.DeserializeObjectExcludeString(regularObjBegin, hdr.regularObjSize, hdr.pinnedObjSize,
-                                             hdr.largeObjSize);
+                                                 hdr.largeObjSize);
     } else {
         uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
         uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
@@ -173,7 +173,7 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
         uintptr_t stringEnd = stringBegin + hdr.stringSize;
         processor.DeserializeString(stringBegin, stringEnd);
         processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
-                                             hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
+                                                 hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
     }
 
 #if !defined(CROSS_PLATFORM)

@@ -397,8 +397,8 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGateForCMCGC(GateRef gate,
     GateRef allocBufferAddrOffset = circuit_->GetConstantGateWithoutCache(
         MachineType::I64, allocBufferOffset, GateType::NJSValue());
     GateRef allocBufferAddr = builder_.PtrAdd(glue, allocBufferAddrOffset);
-    GateRef allocBufferAddress = builder_.LoadFromAddressWithoutBarrier(
-                                            VariableType::NATIVE_POINTER(), allocBufferAddr);
+    GateRef allocBufferAddress =
+        builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), allocBufferAddr);
 
     GateRef addrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef tlRegionAddr = builder_.PtrAdd(allocBufferAddress, addrOffset);

@@ -135,10 +135,10 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     Register argvRegister = r9;
     Register bitFieldRegister = r12;
     Register tempRegister = r11;  // can not be used to store any variable
-    __ Movl(Operand(callTargetRegister, TaggedObject::HCLASS_OFFSET), tempRegister);
-    Register baseAddrRegister = r12;
-    __ Movq(Operand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)), baseAddrRegister);
-    __ Addq(baseAddrRegister, tempRegister);  // hclass
+    __ Movq(Operand(callTargetRegister, TaggedObject::HCLASS_OFFSET), tempRegister);  // hclass
+    Register maskRegister = r12;
+    __ Movabs(TaggedObject::GC_STATE_MASK, maskRegister);
+    __ And(maskRegister, tempRegister);
     __ Movq(Operand(tempRegister, JSHClass::BIT_FIELD_OFFSET), bitFieldRegister);
     __ Cmpb(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST), bitFieldRegister);
     __ Jb(&notJSFunction);
@@ -1100,9 +1100,10 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Cmpq(0, temp);
         __ Jne(&notEcmaObject);
         // acc is heap object
-        __ Movl(Operand(ret, JSFunction::HCLASS_OFFSET), temp);
-        __ Movq(Operand(glueRegister, JSThread::GlueData::GetBaseAddressOffset(false)), r10);
-        __ Addq(r10, temp); // hclass
+        __ Movq(Operand(ret, JSFunction::HCLASS_OFFSET), temp);  // hclass
+        Register maskRegister = r10;
+        __ Movabs(TaggedObject::GC_STATE_MASK, maskRegister);
+        __ And(maskRegister, temp);
         __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
         __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
         __ Ja(&notEcmaObject);
@@ -1381,9 +1382,10 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ Cmpq(0, temp);
             __ Jne(&notEcmaObject);
             // acc is heap object
-            __ Movl(Operand(ret, JSFunction::HCLASS_OFFSET), temp);
-            __ Movq(Operand(r13, JSThread::GlueData::GetBaseAddressOffset(false)), r11);
-            __ Addq(r11, temp); // hclass
+            __ Movq(Operand(ret, JSFunction::HCLASS_OFFSET), temp);  // hclass
+            Register maskRegister = r11;
+            __ Movabs(TaggedObject::GC_STATE_MASK, maskRegister);
+            __ And(maskRegister, temp);
             __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
             __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
             __ Ja(&notEcmaObject);

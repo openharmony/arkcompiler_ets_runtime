@@ -560,19 +560,17 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
 
 GateRef CircuitBuilder::HasPendingException(GateRef glue, [[maybe_unused]] const CompilationEnv *compilationEnv)
 {
-#ifdef IMPOSSIBLE
     if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
         std::string comment = "HasPendingExceptionIntrinsic";
         auto currentLabel = env_->GetCurrentLabel();
         auto currentDepend = currentLabel->GetDepend();
         GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
         GateRef hasPendingException = GetCircuit()->NewGate(circuit_->HasPendingExceptionIntrinsic(),
-            MachineType::I3, { currentDepend, glue, exceptionOffset, Int64(JSTaggedValue::VALUE_HOLE) },
+            MachineType::I1, { currentDepend, glue, exceptionOffset, Int64(JSTaggedValue::VALUE_HOLE) },
             GateType::NJSValue(), comment.c_str());
         currentLabel->SetDepend(hasPendingException);
         return hasPendingException;
     }
-#endif
     return HasPendingException(glue);
 }
 

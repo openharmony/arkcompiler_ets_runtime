@@ -96,7 +96,7 @@ public:
                     continue;
                 }
                 BaseObject* obj = reinterpret_cast<BaseObject*>(regionStart +
-                    reinterpret_cast<HeapAddress>((i * kBitsPerWord) * kBitsPerByte + j * kBitsPerByte));
+                    static_cast<HeapAddress>((i * kBitsPerWord) * kBitsPerByte + j * kBitsPerByte));
                 func(obj);
             }
         }

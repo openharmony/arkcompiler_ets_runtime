@@ -76,6 +76,7 @@ public:
         return sizeof(TaggedObject);
     }
 
+    static constexpr uint64_t GC_STATE_MASK = 0x0FFFFFFFFFFFFFFF;
     static constexpr int HCLASS_OFFSET = 0;
     static constexpr int SIZE = sizeof(TaggedStateWord);
 

@@ -74,7 +74,7 @@ public:
 
     JSHClass *GetJSHClass() const
     {
-        return reinterpret_cast<JSHClass *>((value_ & 0xFFFFFFFD) + TaggedStateWord::BASE_ADDRESS);
+        return reinterpret_cast<JSHClass *>(value_ & (~TAG_MARK_BIT));
     }
 private:
     MarkWordType value_ {0};

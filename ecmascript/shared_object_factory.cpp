@@ -630,7 +630,8 @@ JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
             JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
     } else {
         header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
-            JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject()), TaggedArray::SIZE);
+            JSHClass::Cast(thread_->GlobalConstants()->GetSharedTaggedArrayClass().GetTaggedObject()),
+            TaggedArray::SIZE);
     }
     JSHandle<TaggedArray> array(thread_, header);
     array->SetLength(0);
