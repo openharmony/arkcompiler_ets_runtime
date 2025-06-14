@@ -77,30 +77,6 @@ const size_t RegionManager::MAX_UNIT_COUNT_PER_REGION = (128 * KB) / COMMON_PAGE
 // size of huge page is 2048KB.
 const size_t RegionManager::HUGE_PAGE = (2048 * KB) / COMMON_PAGE_SIZE;
 
-class CopyTask : public common::Task {
-public:
-    CopyTask(int32_t id, RegionManager& manager, RegionDesc& region, size_t regionCnt, TaskPackMonitor &monitor)
-        : Task(id), regionManager_(manager), startRegion_(region), regionCount_(regionCnt), monitor_(monitor) {}
-
-    ~CopyTask() override = default;
-
-    bool Run([[maybe_unused]] uint32_t threadIndex) override
-    {
-        // set current thread as a gc thread.
-        ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
-        regionManager_.ParallelCopyFromRegions(startRegion_, regionCount_);
-        monitor_.NotifyFinishOne();
-        ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-        return true;
-    }
-
-private:
-    RegionManager &regionManager_;
-    RegionDesc &startRegion_;
-    size_t regionCount_;
-    TaskPackMonitor &monitor_;
-};
-
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
 void RegionDesc::DumpRegionDesc(LogType type) const
 {
@@ -223,6 +199,18 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
         }
     }
     return true;
+}
+
+void RegionDesc::VisitRememberSet(const std::function<void(BaseObject*)>& func)
+{
+    RegionRSet* rSet = GetRSet();
+    if (IsLargeRegion()) {
+        if (rSet->IsMarkedCard(0)) {
+            func(reinterpret_cast<BaseObject*>(GetRegionStart()));
+        }
+        return;
+    }
+    rSet->VisitAllMarkedCard(func, GetRegionStart());
 }
 
 void RegionList::MergeRegionList(RegionList& srcList, RegionDesc::RegionType regionType)
@@ -421,11 +409,6 @@ void RegionManager::SetLargeObjectThreshold()
     }
 }
 
-void RegionManager::SetGarbageThreshold()
-{
-    fromSpaceGarbageThreshold_ = BaseRuntime::GetInstance()->GetGCParam().garbageThreshold;
-}
-
 void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
 {
     size_t metadataSize = GetMetadataSize(nRegion);
@@ -438,11 +421,9 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
     inactiveZone_ = regionHeapStart_;
     SetMaxUnitCountForRegion();
     SetLargeObjectThreshold();
-    SetGarbageThreshold();
     // propagate region heap layout
     RegionDesc::Initialize(nRegion, regionInfoAddr, regionHeapStart_);
     freeRegionManager_.Initialize(nRegion);
-    exemptedRegionThreshold_ = BaseRuntime::GetInstance()->GetHeapParam().exemptionThreshold;
 
     DLOG(REPORT, "region info @0x%zx+%zu, heap [0x%zx, 0x%zx), unit count %zu", regionInfoAddr, metadataSize,
          regionHeapStart_, regionHeapEnd_, nRegion);
@@ -486,29 +467,10 @@ size_t RegionManager::ReleaseRegion(RegionDesc* region)
     return res;
 }
 
-void RegionManager::ReassembleFromSpace()
-{
-    fromRegionList_.MergeRegionList(toRegionList_, RegionDesc::RegionType::FROM_REGION);
-    fromRegionList_.MergeRegionList(tlToRegionList_, RegionDesc::RegionType::FROM_REGION);
-    fromRegionList_.MergeRegionList(exemptedFromRegionList_, RegionDesc::RegionType::FROM_REGION);
-}
-
-void RegionManager::ReassembleAppspawnSpace()
-{
-    appSpawnRegionList_.MergeRegionList(toRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
-    appSpawnRegionList_.MergeRegionList(tlToRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
-    appSpawnRegionList_.MergeRegionList(exemptedFromRegionList_, RegionDesc::RegionType::APPSPAWN_REGION);
-}
-
 void RegionManager::CountLiveObject(const BaseObject* obj)
 {
     RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
     region->AddLiveByteCount(obj->GetSize());
-}
-
-void RegionManager::AssembleSmallGarbageCandidates()
-{
-    fromRegionList_.MergeRegionList(recentFullRegionList_, RegionDesc::RegionType::FROM_REGION);
 }
 
 void RegionManager::AssembleLargeGarbageCandidates()
@@ -516,70 +478,31 @@ void RegionManager::AssembleLargeGarbageCandidates()
     oldLargeRegionList_.MergeRegionList(recentLargeRegionList_, RegionDesc::RegionType::OLD_LARGE_REGION);
 }
 
-void RegionManager::AssemblePinnedGarbageCandidates(bool collectAll)
+void RegionManager::AssemblePinnedGarbageCandidates()
 {
     oldPinnedRegionList_.MergeRegionList(recentPinnedRegionList_, RegionDesc::RegionType::FULL_PINNED_REGION);
     RegionDesc* region = oldPinnedRegionList_.GetHeadRegion();
-    while (region != nullptr) {
-        RegionDesc* nextRegion = region->GetNextRegion();
-        if (collectAll && (region->GetRawPointerObjectCount() > 0)) {
-            oldPinnedRegionList_.DeleteRegion(region);
-            rawPointerRegionList_.PrependRegion(region, RegionDesc::RegionType::RAW_POINTER_REGION);
-        }
-
-        region = nextRegion;
-    }
     for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
         oldFixedPinnedRegionList_[i]->MergeRegionList(*fixedPinnedRegionList_[i],
             RegionDesc::RegionType::FULL_FIXED_PINNED_REGION);
     }
 }
 
-// copy only regions whose garbage bytes is greater than or equal to exemptedRegionThreshold.
-void RegionManager::ExemptFromRegions()
+void RegionManager::ClearRSet()
 {
-    size_t forwardBytes = 0;
-    size_t floatingGarbage = 0;
-    size_t oldFromBytes = fromRegionList_.GetUnitCount() * RegionDesc::UNIT_SIZE;
-    RegionDesc* fromRegion = fromRegionList_.GetHeadRegion();
-    while (fromRegion != nullptr) {
-        size_t threshold = static_cast<size_t>(exemptedRegionThreshold_ * fromRegion->GetRegionSize());
-        size_t liveBytes = fromRegion->GetLiveByteCount();
-        long rawPtrCnt = fromRegion->GetRawPointerObjectCount();
-        if (liveBytes > threshold) { // ignore this region
-            RegionDesc* del = fromRegion;
-            DLOG(REGION, "region %p @0x%zx+%zu exempted by forwarding: %zu units, %u live bytes", del,
-                del->GetRegionStart(), del->GetRegionAllocatedSize(),
-                del->GetUnitCount(), del->GetLiveByteCount());
-
-            fromRegion = fromRegion->GetNextRegion();
-            if (fromRegionList_.TryDeleteRegion(del, RegionDesc::RegionType::FROM_REGION,
-                                                RegionDesc::RegionType::EXEMPTED_FROM_REGION)) {
-                ExemptFromRegion(del);
-            }
-            floatingGarbage += (del->GetRegionSize() - del->GetLiveByteCount());
-        } else if (rawPtrCnt > 0) {
-            RegionDesc* del = fromRegion;
-            DLOG(REGION, "region %p @0x%zx+%zu pinned by forwarding: %zu units, %u live bytes rawPtr cnt %u",
-                del, del->GetRegionStart(), del->GetRegionAllocatedSize(),
-                del->GetUnitCount(), del->GetLiveByteCount(), rawPtrCnt);
-
-            fromRegion = fromRegion->GetNextRegion();
-            if (fromRegionList_.TryDeleteRegion(del, RegionDesc::RegionType::FROM_REGION,
-                                                RegionDesc::RegionType::RAW_POINTER_REGION)) {
-                rawPointerRegionList_.PrependRegion(del, RegionDesc::RegionType::RAW_POINTER_REGION);
-            }
-            floatingGarbage += (del->GetRegionSize() - del->GetLiveByteCount());
-        } else {
-            forwardBytes += fromRegion->GetLiveByteCount();
-            fromRegion = fromRegion->GetNextRegion();
-        }
+    auto clearFunc = [](RegionDesc* region) {
+        region->ClearRSet();
+    };
+    recentPinnedRegionList_.VisitAllRegions(clearFunc);
+    oldPinnedRegionList_.VisitAllRegions(clearFunc);
+    recentLargeRegionList_.VisitAllRegions(clearFunc);
+    oldLargeRegionList_.VisitAllRegions(clearFunc);
+    rawPointerRegionList_.VisitAllRegions(clearFunc);
+    appSpawnRegionList_.VisitAllRegions(clearFunc);
+    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+        fixedPinnedRegionList_[i]->VisitAllRegions(clearFunc);
+        oldFixedPinnedRegionList_[i]->VisitAllRegions(clearFunc);
     }
-
-    size_t newFromBytes = fromRegionList_.GetUnitCount() * RegionDesc::UNIT_SIZE;
-    size_t exemptedFromBytes = exemptedFromRegionList_.GetUnitCount() * RegionDesc::UNIT_SIZE;
-    VLOG(REPORT, "exempt from-space: %zu B - %zu B -> %zu B, %zu B floating garbage, %zu B to copy",
-         oldFromBytes, exemptedFromBytes, newFromBytes, floatingGarbage, forwardBytes);
 }
 
 void RegionManager::ForEachObjectUnsafe(const std::function<void(BaseObject*)>& visitor) const
@@ -609,10 +532,11 @@ RegionDesc* RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
         size_t threshold = collector.GetGCStats().GetThreshold();
         size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
         if (allocated >= threshold) {
-            DLOG(ALLOC, "request heu gc: allocated %zu, threshold %zu", allocated, threshold);
             if (collector.GetGCStats().shouldRequestYoung) {
+                DLOG(ALLOC, "request heu gc: young %zu, threshold %zu", allocated, threshold);
                 collector.RequestGC(GC_REASON_YOUNG, true);
             } else {
+                DLOG(ALLOC, "request heu gc: allocated %zu, threshold %zu", allocated, threshold);
                 collector.RequestGC(GC_REASON_HEU, true);
             }
         }
@@ -672,146 +596,12 @@ RegionDesc* RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
     return nullptr;
 }
 
-uintptr_t RegionManager::AllocRegion()
-{
-    RegionDesc* region = TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, false);
-    DCHECK_CC(region != nullptr);
-
-    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-        phase == GC_PHASE_POST_MARK) {
-        region->SetTraceLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
-        region->SetCopyLine();
-    } else if (phase == GC_PHASE_FIX) {
-        region->SetCopyLine();
-        region->SetFixLine();
-    }
-
-    DLOG(REGION, "alloc small object region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
-        region, region->GetRegionStart(), region->GetRegionSize(),
-        region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-        region->GetRegionType());
-    recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_FULL_REGION);
-
-    uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionSize());
-    DCHECK_CC(addr != 0);
-
-    return start;
-}
-
-uintptr_t RegionManager::AllocPinnedRegion()
-{
-    RegionDesc* region = TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, false);
-    DCHECK_CC(region != nullptr);
-    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-        phase == GC_PHASE_POST_MARK) {
-        region->SetTraceLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
-        region->SetCopyLine();
-    } else if (phase == GC_PHASE_FIX) {
-        region->SetCopyLine();
-        region->SetFixLine();
-    }
-
-    DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
-         region->GetRegionAllocatedSize(),
-         region->GetRegionType());
-    recentPinnedRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_PINNED_REGION);
-
-    uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionSize());
-    DCHECK_CC(addr != 0);
-
-    return start;
-}
-
-uintptr_t RegionManager::AllocLargeRegion(size_t size)
-{
-    return AllocLarge(size, false);
-}
-
-void RegionManager::ParallelCopyFromRegions(RegionDesc &startRegion, size_t regionCnt)
-{
-    RegionDesc *currentRegion = &startRegion;
-    for (size_t count = 0; (count < regionCnt) && currentRegion != nullptr; ++count) {
-        RegionDesc *region = currentRegion;
-        currentRegion = currentRegion->GetNextRegion();
-        CopyRegion(region);
-    }
-
-    AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
-    if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion(); // clear thread local region for gc threads.
-    }
-}
-
-uintptr_t RegionManager::AllocJitFortRegion(size_t size)
-{
-    auto res =  AllocLarge(size, false);
-    return res;
-}
-
-void RegionManager::CopyFromRegions(Taskpool *threadPool)
-{
-    if (threadPool != nullptr) {
-        uint32_t parallel = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(true) - 1;
-        uint32_t threadNum = parallel + 1;
-        // We won't change fromRegionList during gc, so we can use it without lock.
-        size_t totalRegionCount = fromRegionList_.GetRegionCount();
-        if (UNLIKELY_CC(totalRegionCount == 0)) {
-            return;
-        }
-        size_t regionCntEachTask = totalRegionCount / static_cast<size_t>(threadNum);
-        size_t leftRegionCnt = totalRegionCount - regionCntEachTask * parallel;
-        RegionDesc* region = fromRegionList_.GetHeadRegion();
-        TaskPackMonitor monitor(parallel, parallel);
-        for (uint32_t i = 0; i < parallel; ++i) {
-            ASSERT_LOGF(region != nullptr, "from region list records wrong region info");
-            RegionDesc* startRegion = region;
-            for (size_t count = 0; count < regionCntEachTask; ++count) {
-                region = region->GetNextRegion();
-            }
-            threadPool->PostTask(std::make_unique<CopyTask>(0, *this, *startRegion, regionCntEachTask, monitor));
-        }
-        ParallelCopyFromRegions(*region, leftRegionCnt);
-        monitor.WaitAllFinished();
-    } else {
-        CopyFromRegions();
-    }
-}
-
-void RegionManager::ExemptFromRegion(RegionDesc* region)
-{
-    exemptedFromRegionList_.PrependRegion(region, RegionDesc::RegionType::EXEMPTED_FROM_REGION);
-}
-
-void RegionManager::CopyFromRegions()
-{
-    // iterate each region in fromRegionList
-    RegionDesc* fromRegion = fromRegionList_.GetHeadRegion();
-    while (fromRegion != nullptr) {
-        ASSERT_LOGF(fromRegion->IsValidRegion(), "region is not head when get head region of from region list");
-        RegionDesc* region = fromRegion;
-        fromRegion = fromRegion->GetNextRegion();
-        CopyRegion(region);
-    }
-
-    VLOG(REPORT, "copy %zu from-region units", fromRegionList_.GetUnitCount());
-
-    AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
-    if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion(); // clear region for next GC
-    }
-}
-
 static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
     // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
-    region->VisitAllObjectsBeforeFix([&collector, region](BaseObject* object) {
+    auto gcReason = Heap::GetHeap().GetGCReason();
+    region->VisitAllObjectsBeforeFix([&collector, region, &gcReason](BaseObject* object) {
         if (region->IsNewObjectSinceForward(object)) {
             // handle dead objects in tl-regions for concurrent gc.
             if (collector.IsToVersion(object)) {
@@ -829,7 +619,7 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
     });
 }
 
-static void FixRecentRegionList(TraceCollector& collector, RegionList& list)
+void RegionManager::FixRecentRegionList(TraceCollector& collector, RegionList& list)
 {
     list.VisitAllRegions([&collector](RegionDesc* region) {
         DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
@@ -844,7 +634,7 @@ static void FixToRegion(TraceCollector& collector, RegionDesc* region)
     });
 }
 
-static void FixToRegionList(TraceCollector& collector, RegionList& list)
+void RegionManager::FixToRegionList(TraceCollector& collector, RegionList& list)
 {
     list.VisitAllRegions([&collector](RegionDesc* region) {
         DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
@@ -854,7 +644,8 @@ static void FixToRegionList(TraceCollector& collector, RegionList& list)
 
 static void FixOldRegion(TraceCollector& collector, RegionDesc* region)
 {
-    region->VisitAllObjects([&collector](BaseObject* object) {
+    auto gcReason = Heap::GetHeap().GetGCReason();
+    region->VisitAllObjects([&collector, &gcReason](BaseObject* object) {
         if (collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else {
@@ -868,8 +659,10 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
 {
     size_t garbageSize = 0;
     RegionDesc* region = list.GetHeadRegion();
+    auto gcReason = Heap::GetHeap().GetGCReason();
     while (region != nullptr) {
-        if (region->GetLiveByteCount() == 0) {
+        auto liveBytes = region->GetLiveByteCount();
+        if (liveBytes == 0) {
             RegionDesc* del = region;
             region = region->GetNextRegion();
             list.DeleteRegion(del);
@@ -878,7 +671,7 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
             continue;
         }
         region->VisitAllObjectsWithFixedSize(cellCount,
-            [&collector, &region, &cellCount, &garbageSize](BaseObject* object) {
+            [&collector, &region, &cellCount, &garbageSize, &gcReason](BaseObject* object) {
             if (collector.IsSurvivedObject(object)) {
                 collector.FixObjectRefFields(object);
             } else {
@@ -893,7 +686,7 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
     stats.pinnedGarbageSize += garbageSize;
 }
 
-static void FixOldRegionList(TraceCollector& collector, RegionList& list)
+void RegionManager::FixOldRegionList(TraceCollector& collector, RegionList& list)
 {
     list.VisitAllRegions([&collector](RegionDesc* region) {
         DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
@@ -901,10 +694,29 @@ static void FixOldRegionList(TraceCollector& collector, RegionList& list)
     });
 }
 
+static void FixMatureRegion(TraceCollector& collector, RegionDesc* region)
+{
+    region->VisitAllObjects([&collector, &region](BaseObject* object) {
+        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object) || region->IsInRSet(object)) {
+            DLOG(FIX, "fix: mature obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
+            collector.FixObjectRefFields(object);
+        }
+    });
+}
+
+void RegionManager::FixMatureRegionList(TraceCollector& collector, RegionList& list)
+{
+    list.VisitAllRegions([&collector](RegionDesc* region) {
+        DLOG(REGION, "fix mature region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
+        FixMatureRegion(collector, region);
+    });
+}
+
 void RegionManager::FixOldPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats)
 {
     size_t garbageSize = 0;
     RegionDesc* region = list.GetHeadRegion();
+    auto gcReason = Heap::GetHeap().GetGCReason();
     while (region != nullptr) {
         if (region->GetLiveByteCount() == 0) {
             RegionDesc* del = region;
@@ -924,25 +736,36 @@ void RegionManager::FixOldPinnedRegionList(TraceCollector& collector, RegionList
 void RegionManager::FixAllRegionLists()
 {
     TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+
     // fix all objects.
-    FixToRegionList(collector, toRegionList_);
-    FixToRegionList(collector, tlToRegionList_);
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        FixMatureRegionList(collector, oldLargeRegionList_);
+        FixMatureRegionList(collector, appSpawnRegionList_);
+
+        // fix survived object but should be with line judgement.
+        FixMatureRegionList(collector, recentLargeRegionList_);
+        FixMatureRegionList(collector, recentPinnedRegionList_);
+        FixMatureRegionList(collector, rawPointerRegionList_);
+        FixMatureRegionList(collector, oldPinnedRegionList_);
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            FixMatureRegionList(collector, *fixedPinnedRegionList_[i]);
+            FixMatureRegionList(collector, *oldFixedPinnedRegionList_[i]);
+        }
+        return;
+    }
     GCStats& stats = Heap::GetHeap().GetCollector().GetGCStats();
     // fix only survived objects.
-    FixOldRegionList(collector, exemptedFromRegionList_);
     FixOldRegionList(collector, oldLargeRegionList_);
     FixOldRegionList(collector, appSpawnRegionList_);
 
     // fix survived object but should be with line judgement.
-    FixRecentRegionList(collector, tlRegionList_);
-    FixRecentRegionList(collector, recentFullRegionList_);
     FixRecentRegionList(collector, recentLargeRegionList_);
     FixRecentRegionList(collector, recentPinnedRegionList_);
     FixRecentRegionList(collector, rawPointerRegionList_);
     FixOldPinnedRegionList(collector, oldPinnedRegionList_, stats);
     for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        FixFixedRegionList(collector, *oldFixedPinnedRegionList_[i], i, stats);
         FixRecentRegionList(collector, *fixedPinnedRegionList_[i]);
+        FixFixedRegionList(collector, *oldFixedPinnedRegionList_[i], i, stats);
     }
 }
 
@@ -1001,37 +824,12 @@ void RegionManager::DumpRegionDesc() const
 }
 #endif
 
-void RegionManager::DumpRegionStats(const char* msg) const
+void RegionManager::DumpRegionStats() const
 {
     size_t totalSize = regionHeapEnd_ - regionHeapStart_;
     size_t totalUnits = totalSize / RegionDesc::UNIT_SIZE;
     size_t activeSize = inactiveZone_ - regionHeapStart_;
     size_t activeUnits = activeSize / RegionDesc::UNIT_SIZE;
-
-    size_t tlRegions = tlRegionList_.GetRegionCount();
-    size_t tlUnits = tlRegionList_.GetUnitCount();
-    size_t tlSize = tlUnits * RegionDesc::UNIT_SIZE;
-    size_t allocTLSize = tlRegionList_.GetAllocatedSize();
-
-    size_t fromRegions = fromRegionList_.GetRegionCount();
-    size_t fromUnits = fromRegionList_.GetUnitCount();
-    size_t fromSize = fromUnits * RegionDesc::UNIT_SIZE;
-    size_t allocFromSize = fromRegionList_.GetAllocatedSize();
-
-    size_t exemptedFromRegions = exemptedFromRegionList_.GetRegionCount();
-    size_t exemptedFromUnits = exemptedFromRegionList_.GetUnitCount();
-    size_t exemptedFromSize = exemptedFromUnits * RegionDesc::UNIT_SIZE;
-    size_t allocExemptedFromSize = exemptedFromRegionList_.GetAllocatedSize();
-
-    size_t toRegions = toRegionList_.GetRegionCount() + tlToRegionList_.GetRegionCount();
-    size_t toUnits = toRegionList_.GetUnitCount() + tlToRegionList_.GetUnitCount();
-    size_t toSize = toUnits * RegionDesc::UNIT_SIZE;
-    size_t allocToSize = toRegionList_.GetAllocatedSize() + tlToRegionList_.GetAllocatedSize();
-
-    size_t recentFullRegions = recentFullRegionList_.GetRegionCount();
-    size_t recentFullUnits = recentFullRegionList_.GetUnitCount();
-    size_t recentFullSize = recentFullUnits * RegionDesc::UNIT_SIZE;
-    size_t allocRecentFullSize = recentFullRegionList_.GetAllocatedSize();
 
     size_t garbageRegions = garbageRegionList_.GetRegionCount();
     size_t garbageUnits = garbageRegionList_.GetUnitCount();
@@ -1058,24 +856,12 @@ void RegionManager::DumpRegionStats(const char* msg) const
     size_t recentLargeSize = recentlargeUnits * RegionDesc::UNIT_SIZE;
     size_t allocRecentLargeSize = recentLargeRegionList_.GetAllocatedSize();
 
-    size_t usedUnits = GetUsedUnitCount();
     size_t releasedUnits = freeRegionManager_.GetReleasedUnitCount();
     size_t dirtyUnits = freeRegionManager_.GetDirtyUnitCount();
-    size_t listedUnits = fromUnits + exemptedFromUnits + toUnits + garbageUnits +
-        recentFullUnits + largeUnits + recentlargeUnits + pinnedUnits + recentPinnedUnits;
-
-    VLOG(REPORT, msg);
 
     VLOG(REPORT, "\ttotal units: %zu (%zu B)", totalUnits, totalSize);
     VLOG(REPORT, "\tactive units: %zu (%zu B)", activeUnits, activeSize);
 
-    VLOG(REPORT, "\ttl-regions %zu: %zu units (%zu B, alloc %zu)", tlRegions,  tlUnits, tlSize, allocTLSize);
-    VLOG(REPORT, "\tfrom-regions %zu: %zu units (%zu B, alloc %zu)", fromRegions,  fromUnits, fromSize, allocFromSize);
-    VLOG(REPORT, "\texempted from-regions %zu: %zu units (%zu B, alloc %zu)",
-         exemptedFromRegions, exemptedFromUnits, exemptedFromSize, allocExemptedFromSize);
-    VLOG(REPORT, "\tto-regions %zu: %zu units (%zu B, alloc %zu)", toRegions, toUnits, toSize, allocToSize);
-    VLOG(REPORT, "\trecent-full regions %zu: %zu units (%zu B, alloc %zu)",
-         recentFullRegions, recentFullUnits, recentFullSize, allocRecentFullSize);
     VLOG(REPORT, "\tgarbage regions %zu: %zu units (%zu B, alloc %zu)",
          garbageRegions, garbageUnits, garbageSize, allocGarbageSize);
     VLOG(REPORT, "\tpinned regions %zu: %zu units (%zu B, alloc %zu)",
@@ -1087,92 +873,8 @@ void RegionManager::DumpRegionStats(const char* msg) const
     VLOG(REPORT, "\trecent large-object regions %zu: %zu units (%zu B, alloc %zu)",
          recentlargeRegions, recentlargeUnits, recentLargeSize, allocRecentLargeSize);
 
-    VLOG(REPORT, "\tlisted units: %zu (%zu B)", listedUnits, listedUnits * RegionDesc::UNIT_SIZE);
-    VLOG(REPORT, "\tused units: %zu (%zu B)", usedUnits, usedUnits * RegionDesc::UNIT_SIZE);
     VLOG(REPORT, "\treleased units: %zu (%zu B)", releasedUnits, releasedUnits * RegionDesc::UNIT_SIZE);
     VLOG(REPORT, "\tdirty units: %zu (%zu B)", dirtyUnits, dirtyUnits * RegionDesc::UNIT_SIZE);
-
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_totalSize", totalSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_totalUnits", totalUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_activeSize", activeSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_activeUnits", activeUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_tlRegions", tlRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_tlUnits", tlUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_tlSize", tlSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocTLSize", allocTLSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_fromRegions", fromRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_fromUnits", fromUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_fromSize", fromSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocFromSize", allocFromSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_exemptedFromRegions", exemptedFromRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_exemptedFromUnits", exemptedFromUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_exemptedFromSize", exemptedFromSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocExemptedFromSize", allocExemptedFromSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_toRegions", toRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_toUnits", toUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_toSize", toSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocToSize", allocToSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentFullRegions", recentFullRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentFullUnits", recentFullUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentFullSize", recentFullSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocRecentFullSize", allocRecentFullSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_garbageRegions", garbageRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_garbageUnits", garbageUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_garbageSize", garbageSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocGarbageSize", allocGarbageSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_pinnedRegions", pinnedRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_pinnedUnits", pinnedUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_pinnedSize", pinnedSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocPinnedSize", allocPinnedSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentPinnedRegions", recentPinnedRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentPinnedUnits", recentPinnedUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentPinnedSize", recentPinnedSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocRecentPinnedSize", allocRecentPinnedSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_largeRegions", largeRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_largeUnits", largeUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_largeSize", largeSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocLargeSize", allocLargeSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentlargeRegions", recentlargeRegions);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentlargeUnits", recentlargeUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_recentLargeSize", recentLargeSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_allocRecentLargeSize", allocRecentLargeSize);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_usedUnits", usedUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_releasedUnits", releasedUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_dirtyUnits", dirtyUnits);
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "Ark_GC_listedUnits", listedUnits);
-}
-
-RegionDesc* RegionManager::AllocateThreadLocalRegion(bool expectPhysicalMem)
-{
-    RegionDesc* region = TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem);
-    if (region != nullptr) {
-        if (IsGcThread()) {
-            tlToRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
-            DLOG(REGION, "alloc to-region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
-                region, region->GetRegionStart(), region->GetRegionSize(),
-                region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-                region->GetRegionType());
-        } else {
-            GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-            if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-                phase == GC_PHASE_POST_MARK) {
-                region->SetTraceLine();
-            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
-                region->SetCopyLine();
-            } else if (phase == GC_PHASE_FIX) {
-                region->SetCopyLine();
-                region->SetFixLine();
-            }
-
-            tlRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_REGION);
-            DLOG(REGION, "alloc tl-region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u, gc phase: %u",
-                region, region->GetRegionStart(), region->GetRegionSize(),
-                region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-                region->GetRegionType(), phase);
-        }
-    }
-
-    return region;
 }
 
 void RegionManager::RequestForRegion(size_t size)
@@ -1205,38 +907,6 @@ void RegionManager::RequestForRegion(size_t size)
     DLOG(ALLOC, "wait %zu ns to alloc %zu(B)", sleepTime, size);
     std::this_thread::sleep_for(std::chrono::nanoseconds{ sleepTime });
     prevRegionAllocTime_ = TimeUtil::NanoSeconds();
-}
-
-void RegionManager::CopyRegion(RegionDesc* region)
-{
-    LOGF_CHECK(region->IsFromRegion()) << "region type " << static_cast<uint8_t>(region->GetRegionType());
-
-    DLOG(COPY, "try copy region %p @0x%zx+%zu type %u, live bytes %u",
-        region, region->GetRegionStart(), region->GetRegionAllocatedSize(),
-        region->GetRegionType(), region->GetLiveByteCount());
-
-    if (region->GetLiveByteCount() == 0) {
-        return;
-    }
-
-    int32_t rawPointerCount = region->GetRawPointerObjectCount();
-    CHECK_CC(rawPointerCount == 0);
-    Collector& collector = Heap::GetHeap().GetCollector();
-    bool forwarded = region->VisitLiveObjectsUntilFalse(
-        [&collector](BaseObject* obj) { return collector.ForwardObject(obj); });
-    if (forwarded) {
-        // region->SetRouteState(RegionDesc::RouteState::COPYED)
-        // CollectRegion(region)
-    } else {
-        DLOG(COPY, "failure to copy region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u, %u live bytes",
-            region, region->GetRegionStart(), region->GetRegionAllocatedSize(),
-            region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-            region->GetRegionType(), region->GetLiveByteCount());
-
-        fromRegionList_.DeleteRegion(region);
-        // since this region is possibly partially-forwarded, treat it as to-region so its state-word can be restored.
-        EnlistToRegion(region);
-    }
 }
 
 uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
@@ -1298,5 +968,26 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
 
     DLOG(ALLOC, "alloc read only obj 0x%zx(%zu)", addr, size);
     return addr;
+}
+
+void RegionManager::VisitRememberSet(const std::function<void(BaseObject*)>& func)
+{
+    auto visitFunc = [&func](RegionDesc* region) {
+        region->VisitAllObjects([&region, &func](BaseObject* obj) {
+            if (region->IsInRSet(obj)) {
+                func(obj);
+            }
+        });
+    };
+    recentPinnedRegionList_.VisitAllRegions(visitFunc);
+    oldPinnedRegionList_.VisitAllRegions(visitFunc);
+    recentLargeRegionList_.VisitAllRegions(visitFunc);
+    oldLargeRegionList_.VisitAllRegions(visitFunc);
+    appSpawnRegionList_.VisitAllRegions(visitFunc);
+    rawPointerRegionList_.VisitAllRegions(visitFunc);
+    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+        fixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
+        oldFixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
+    }
 }
 } // namespace common

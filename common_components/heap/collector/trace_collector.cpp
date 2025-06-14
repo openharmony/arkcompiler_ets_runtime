@@ -339,6 +339,9 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
             ConcurrentReMark(workStack, maxWorkers > 0);
             ProcessWeakReferences();
         } else {
+            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+                LOGF_CHECK(MarkRememberSet(workStack)) << "not cleared\n";
+            }
             ProcessWeakReferences();
         }
 #endif
@@ -413,8 +416,58 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
     return true;
 }
 
+void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStack)
+{
+    object->ForEachRefField([this, &workStack, &object](RefField<>& field) {
+        BaseObject* targetObj = field.GetTargetObject();
+        if (Heap::IsHeapAddress(targetObj)) {
+            RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(targetObj));
+            if (region->IsInYoungSpace() &&
+                !region->IsNewObjectSinceTrace(targetObj) &&
+                !this->MarkObject(targetObj)) {
+                workStack.push_back(targetObj);
+                DLOG(TRACE, "remember set trace obj: %p@%p, ref: %p", object, &field, targetObj);
+            }
+        }
+    });
+}
+
+bool TraceCollector::MarkRememberSet(WorkStack& workStack)
+{
+    COMMON_PHASE_TIMER("MarkRememberSet");
+    if (!workStack.empty()) {
+        workStack.clear();
+    }
+    auto func = [this, &workStack](BaseObject* object) {
+        if (Heap::IsHeapAddress(object)) {
+            MarkRememberSetImpl(object, workStack);
+        }
+    };
+    auto visitRSetObj = [this, &workStack, &func]() {
+        RegionSpace& space = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        space.VisitOldSpaceRememberSet(func);
+    };
+    visitRSetObj();
+    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
+    do {
+        if (LIKELY_CC(!workStack.empty())) {
+            Taskpool *threadPool = GetThreadPool();
+            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
+        }
+        visitRSetObj();
+        if (workStack.empty()) {
+            TransitionToGCPhase(GCPhase::GC_PHASE_REMARK_SATB, true);
+            visitRSetObj();
+        }
+    } while (!workStack.empty());
+    return true;
+}
+
 void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
 {
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        LOGF_CHECK(MarkRememberSet(remarkStack)) << "not cleared\n";
+    }
     LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
 }
 
@@ -664,6 +717,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     PreGarbageCollection(true);
     LOG_COMMON(INFO) << "[GC] Start " << GetCollectorName() << " " << g_gcRequests[gcReason_].name << " gcIndex="
                      << gcIndex;
+    Heap::GetHeap().SetGCReason(reason);
     GCStats& gcStats = GetGCStats();
     gcStats.collectedBytes = 0;
     gcStats.gcStartTime = TimeUtil::NanoSeconds();
@@ -671,7 +725,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     DoGarbageCollection();
 
     HeapBitmapManager::GetHeapBitmapManager().ClearHeapBitmap();
-    reinterpret_cast<RegionSpace&>(theAllocator_).DumpRegionStats("region statistics when gc ends");
+    reinterpret_cast<RegionSpace&>(theAllocator_).DumpAllRegionStats("region statistics when gc ends");
 
     if (reason == GC_REASON_OOM) {
         Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(true);
@@ -719,8 +773,6 @@ void TraceCollector::CopyFromSpace()
     stats.fromSpaceSize = space.FromSpaceSize();
     space.CopyFromSpace(GetThreadPool());
 
-    // CopyFromSpace changes from-space size by exempting from regions, so re-read it.
-    // to-space is meaningless.
     stats.smallGarbageSize = space.FromSpaceSize() - space.ToSpaceSize();
 }
 

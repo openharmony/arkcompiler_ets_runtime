@@ -67,14 +67,15 @@ public:
         return RoundUp<size_t>(metadataSize, COMMON_PAGE_SIZE);
     }
 
+    static void FixRecentRegionList(TraceCollector& collector, RegionList& list);
+    static void FixToRegionList(TraceCollector& collector, RegionList& list);
+    static void FixOldRegionList(TraceCollector& collector, RegionList& list);
+    static void FixMatureRegionList(TraceCollector& collector, RegionList& list);
+
     void Initialize(size_t regionNum, uintptr_t regionInfoStart);
 
     RegionManager()
-        : freeRegionManager_(*this), tlRegionList_("thread local regions"),
-          recentFullRegionList_("recent full regions"), fullTraceRegions_("full trace regions"),
-          fromRegionList_("from regions"), ghostFromRegionList_("ghost from regions"),
-          exemptedFromRegionList_("escaped from regions"), toRegionList_("to-regions"),
-          tlToRegionList_("tl-to-regions"), garbageRegionList_("garbage regions"),
+        : freeRegionManager_(*this), garbageRegionList_("garbage regions"),
           recentPinnedRegionList_("recent pinned regions"), oldPinnedRegionList_("old pinned regions"),
           rawPointerRegionList_("raw pointer pinned regions"), oldLargeRegionList_("old large regions"),
           recentLargeRegionList_("recent large regions"), readOnlyRegionList_("read only region"),
@@ -90,25 +91,17 @@ public:
 
     RegionManager& operator=(const RegionManager&) = delete;
 
-    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false);
-
-    void ParallelCopyFromRegions(RegionDesc &startRegion, size_t regionCnt);
-    void CopyFromRegions(Taskpool *threadPool);
-    void CopyFromRegions();
-    void CopyRegion(RegionDesc* region);
     void FixAllRegionLists();
     void FixOldPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats);
     void FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
 
     using RootSet = MarkStack<BaseObject*>;
 
-    void ExemptFromRegion(RegionDesc* region);
-
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     void DumpRegionDesc() const;
 #endif
 
-    void DumpRegionStats(const char* msg) const;
+    void DumpRegionStats() const;
 
     uintptr_t GetInactiveZone() const { return inactiveZone_; }
 
@@ -138,12 +131,15 @@ public:
     // take a region with *num* units for allocation
     RegionDesc* TakeRegion(size_t num, RegionDesc::UnitRole, bool expectPhysicalMem = false, bool allowgc = true);
 
-    // only used for deserialize allocation, allocate one region and regard it as full region
-    // adapt for concurrent gc
-    uintptr_t AllocRegion();
-    uintptr_t AllocPinnedRegion();
-    uintptr_t AllocLargeRegion(size_t size);
-    uintptr_t AllocJitFortRegion(size_t size);
+    RegionDesc* TakeRegion(bool expectPhysicalMem, bool allowgc)
+    {
+        return TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem, allowgc);
+    }
+
+    void AddRecentPinnedRegion(RegionDesc* region)
+    {
+        recentPinnedRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_PINNED_REGION);
+    }
 
     uintptr_t AllocPinnedFromFreeList(size_t size);
 
@@ -203,13 +199,6 @@ public:
         uintptr_t addr = 0;
         std::mutex& regionListMutex = recentPinnedRegionList_.GetListMutex();
 
-        // enter saferegion when wait lock to avoid gc timeout.
-        // note that release the mutex when function end.
-        {
-            // stw gc may deadlock here
-            // ScopedEnterSaferegion enterSaferegion(true)
-            // regionListMutex.lock()
-        }
         std::lock_guard<std::mutex> lock(regionListMutex);
         RegionDesc* headRegion = recentPinnedRegionList_.GetHeadRegion();
         if (headRegion != nullptr) {
@@ -272,41 +261,24 @@ public:
         return addr;
     }
 
-    void EnlistFullThreadLocalRegion(RegionDesc* region) noexcept
-    {
-        ASSERT_LOGF(region->IsThreadLocalRegion(), "unexpected region type");
-        if (IsGcThread()) {
-            EnlistToRegion(region);
-        } else {
-            recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_FULL_REGION);
-        }
-    }
-
-    void EnlistToRegion(RegionDesc* region) noexcept
-    {
-        ASSERT_LOGF(Heap::GetHeap().IsGcStarted(), "GC is not started");
-        toRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
-    }
-
-    void RemoveThreadLocalRegion(RegionDesc* region) noexcept
-    {
-        ASSERT_LOGF(region->IsThreadLocalRegion(), "unexpected region type");
-        if (IsGcThread()) {
-            tlToRegionList_.DeleteRegion(region);
-        } else {
-            tlRegionList_.DeleteRegion(region);
-        }
-    }
-
     void CountLiveObject(const BaseObject* obj);
 
-    void AssembleSmallGarbageCandidates();
     void AssembleLargeGarbageCandidates();
-    void AssemblePinnedGarbageCandidates(bool collectAll);
+    void AssemblePinnedGarbageCandidates();
 
-    void CollectFromSpaceGarbage()
+    void ReassembleAppspawnSpace(RegionList& regionList)
     {
-        garbageRegionList_.MergeRegionList(fromRegionList_, RegionDesc::RegionType::GARBAGE_REGION);
+        appSpawnRegionList_.MergeRegionList(regionList, RegionDesc::RegionType::APPSPAWN_REGION);
+    }
+
+    void CollectFromSpaceGarbage(RegionList& fromList)
+    {
+        garbageRegionList_.MergeRegionList(fromList, RegionDesc::RegionType::GARBAGE_REGION);
+    }
+
+    void AddRawPointerRegion(RegionDesc* region)
+    {
+        rawPointerRegionList_.PrependRegion(region, RegionDesc::RegionType::RAW_POINTER_REGION);
     }
 
     size_t CollectRegion(RegionDesc* region)
@@ -329,30 +301,6 @@ public:
         }
     }
 
-    void AddRawPointerObject(BaseObject* obj)
-    {
-        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        region->IncRawPointerObjectCount();
-        if (region->IsFromRegion() &&
-            fromRegionList_.TryDeleteRegion(region, RegionDesc::RegionType::FROM_REGION,
-                                            RegionDesc::RegionType::RAW_POINTER_REGION)) {
-            GCPhase phase = Heap::GetHeap().GetGCPhase();
-            CHECK_CC(phase != GCPhase::GC_PHASE_COPY && phase != GCPhase::GC_PHASE_PRECOPY);
-            if (phase == GCPhase::GC_PHASE_POST_MARK) {
-                // region->ClearGhostRegionBit()
-            };
-            rawPointerRegionList_.PrependRegion(region, RegionDesc::RegionType::RAW_POINTER_REGION);
-        } else {
-            CHECK_CC(region->GetRegionType() != RegionDesc::RegionType::LONE_FROM_REGION);
-        }
-    }
-
-    void RemoveRawPointerObject(BaseObject* obj)
-    {
-        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        region->DecRawPointerObjectCount();
-    }
-
     void ReclaimRegion(RegionDesc* region);
     size_t ReleaseRegion(RegionDesc* region);
 
@@ -370,13 +318,6 @@ public:
     // targetSize: size of memory which we do not release and keep it as cache for future allocation.
     size_t ReleaseGarbageRegions(size_t targetSize) { return freeRegionManager_.ReleaseGarbageRegions(targetSize); }
 
-    // these methods are helpers for compaction. Since pinned object can not be moved during compaction,
-    // we first virtually reclaim all compactable heap memory, which are handled in cartesian tree. So far we get a map
-    // of heap memory about which region can be used for compaction.
-    void ExemptFromRegions();
-    void ReassembleFromSpace();
-    void ReassembleAppspawnSpace();
-
     void ForEachObjectUnsafe(const std::function<void(BaseObject*)>& visitor) const;
     void ForEachObjectSafe(const std::function<void(BaseObject*)>& visitor) const;
 
@@ -384,25 +325,20 @@ public:
 
     size_t GetRecentAllocatedSize() const
     {
-        return recentFullRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
-            recentPinnedRegionList_.GetAllocatedSize();
+        return recentLargeRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();
     }
 
     size_t GetSurvivedSize() const
     {
-        return fromRegionList_.GetAllocatedSize() + exemptedFromRegionList_.GetAllocatedSize() +
-            toRegionList_.GetAllocatedSize() + tlToRegionList_.GetAllocatedSize() +
-            oldPinnedRegionList_.GetAllocatedSize() + oldLargeRegionList_.GetAllocatedSize();
+        return oldPinnedRegionList_.GetAllocatedSize() + oldLargeRegionList_.GetAllocatedSize();
     }
 
     size_t GetUsedUnitCount() const
     {
-        return fromRegionList_.GetUnitCount() + exemptedFromRegionList_.GetUnitCount() + toRegionList_.GetUnitCount() +
-            tlToRegionList_.GetUnitCount() + recentFullRegionList_.GetUnitCount() + oldLargeRegionList_.GetUnitCount() +
-            recentLargeRegionList_.GetUnitCount() + oldPinnedRegionList_.GetUnitCount() +
-            recentPinnedRegionList_.GetUnitCount() + readOnlyRegionList_.GetUnitCount() +
-            rawPointerRegionList_.GetUnitCount() + largeTraceRegions_.GetUnitCount() +
-            appSpawnRegionList_.GetUnitCount() + fullTraceRegions_.GetUnitCount() + tlRegionList_.GetUnitCount();
+        return oldLargeRegionList_.GetUnitCount() + recentLargeRegionList_.GetUnitCount() +
+            oldPinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount() +
+            rawPointerRegionList_.GetUnitCount() + readOnlyRegionList_.GetUnitCount() +
+            largeTraceRegions_.GetUnitCount() + appSpawnRegionList_.GetUnitCount();
     }
 
     size_t GetDirtyUnitCount() const { return freeRegionManager_.GetDirtyUnitCount(); }
@@ -416,26 +352,11 @@ public:
 
     size_t GetAllocatedSize() const
     {
-        size_t threadLocalSize = 0;
-        AllocBufferVisitor visitor = [&threadLocalSize](AllocationBuffer& regionBuffer) {
-            RegionDesc* region = regionBuffer.GetRegion();
-            if (UNLIKELY_CC(region == RegionDesc::NullRegion())) {
-                return;
-            }
-            threadLocalSize += region->GetRegionAllocatedSize();
-        };
-        Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
-        // exclude garbageRegionList for live object set.
-        return fromRegionList_.GetAllocatedSize() + exemptedFromRegionList_.GetAllocatedSize() +
-            toRegionList_.GetAllocatedSize() + tlToRegionList_.GetAllocatedSize() +
-            recentFullRegionList_.GetAllocatedSize() + oldLargeRegionList_.GetAllocatedSize() +
-            recentLargeRegionList_.GetAllocatedSize() + oldPinnedRegionList_.GetAllocatedSize() +
-            recentPinnedRegionList_.GetAllocatedSize() + readOnlyRegionList_.GetAllocatedSize() +
-            rawPointerRegionList_.GetAllocatedSize() + largeTraceRegions_.GetAllocatedSize() +
-            appSpawnRegionList_.GetAllocatedSize() + fullTraceRegions_.GetAllocatedSize() + threadLocalSize;
+        return oldLargeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
+            oldPinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize() +
+            rawPointerRegionList_.GetAllocatedSize() + readOnlyRegionList_.GetAllocatedSize() +
+            largeTraceRegions_.GetAllocatedSize() + appSpawnRegionList_.GetAllocatedSize();
     }
-
-    inline size_t GetFromSpaceSize() const { return fromRegionList_.GetAllocatedSize(); }
 
     inline size_t GetPinnedSpaceSize() const
     {
@@ -447,9 +368,6 @@ public:
         }
         return pinnedSpaceSize;
     }
-
-    // valid only between forwarding phase and flipping phase.
-    size_t GetToSpaceSize() const { return toRegionList_.GetAllocatedSize() + tlToRegionList_.GetAllocatedSize(); }
 
     RegionDesc* GetNextNeighborRegion(RegionDesc* region) const
     {
@@ -468,7 +386,6 @@ public:
 
     void SetMaxUnitCountForRegion();
     void SetLargeObjectThreshold();
-    void SetGarbageThreshold();
 
     void PrepareTrace()
     {
@@ -536,12 +453,7 @@ public:
 
     void ClearAllGCInfo()
     {
-        ClearGCInfo(toRegionList_);
-        ClearGCInfo(tlToRegionList_);
-        ClearGCInfo(exemptedFromRegionList_);
         ClearGCInfo(oldLargeRegionList_);
-        ClearGCInfo(tlRegionList_);
-        ClearGCInfo(recentFullRegionList_);
         ClearGCInfo(recentLargeRegionList_);
         ClearGCInfo(recentPinnedRegionList_);
         ClearGCInfo(rawPointerRegionList_);
@@ -573,6 +485,9 @@ public:
         };
         readOnlyRegionList_.VisitAllRegions(visitor);
     }
+
+    void VisitRememberSet(const std::function<void(BaseObject*)>& func);
+    void ClearRSet();
 private:
     static const size_t MAX_UNIT_COUNT_PER_REGION;
     static const size_t HUGE_PAGE;
@@ -594,32 +509,6 @@ private:
 
     // region lists actually represent life cycle of regions.
     // each region must belong to only one list at any time.
-
-    // regions for movable (small-sized) objects.
-    // regions for thread-local allocation.
-    // regions in this list are already used for allocation but not full yet, i.e. local regions.
-    RegionList tlRegionList_;
-
-    // recentFullRegionList is a list of regions which is already full, thus escape current gc.
-    RegionList recentFullRegionList_;
-    // RegionList fullRegionList; // mimic old space
-
-    // if region is allocated during gc trace phase, it is called a trace-region, it is recorded here when it is full.
-    RegionCache fullTraceRegions_;
-
-    // fromRegionList is a list of full regions waiting to be collected (i.e. for forwarding).
-    // region type must be FROM_REGION.
-    RegionList fromRegionList_;
-    RegionList ghostFromRegionList_;
-
-    // regions exempted by ExemptFromRegions, which will not be moved during current GC.
-    RegionList exemptedFromRegionList_;
-
-    // toRegionList is a list of to-space regions produced by gc threads.
-    // when a region is prepended to this list, the region is probably not full, so the statistics
-    // of this region-list are not reliable and need to be updated.
-    RegionList toRegionList_;
-    RegionList tlToRegionList_;
 
     // cache for fromRegionList after forwarding.
     RegionList garbageRegionList_;
@@ -665,9 +554,6 @@ private:
     std::atomic<uintptr_t> inactiveZone_ = { 0 };
     size_t maxUnitCountPerRegion_ = MAX_UNIT_COUNT_PER_REGION; // max units count for threadLocal buffer.
     size_t largeObjectThreshold_;
-    double fromSpaceGarbageThreshold_ = 0.5; // 0.5: default garbage ratio.
-    double exemptedRegionThreshold_;
-
     friend class VerifyIterator;
 };
 } // namespace common

@@ -120,7 +120,8 @@ void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset,
     return;
 }
 
-void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void* dst, size_t count)
+void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj, void* src, void* dst,
+                                        size_t count)
 {
     // need opt
     (void)thread;
@@ -129,7 +130,9 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void*
     for (size_t i = 0; i < count; i++) {
         uintptr_t offset = i * sizeof(uintptr_t);
         uintptr_t value = srcPtr[i];
-        common::BaseRuntime::WriteBarrier(dst, (void *)((uintptr_t)dst + offset), (void*)value);
+        void* obj = reinterpret_cast<void*>(const_cast<TaggedObject*>(dstObj));
+        void* field = reinterpret_cast<void*>((uintptr_t)dst + offset);
+        common::BaseRuntime::WriteBarrier(obj, field, (void*)value);
     }
     return;
 }

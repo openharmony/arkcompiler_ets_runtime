@@ -58,8 +58,8 @@ Address HeapAllocator::AllocateInReadOnly(size_t size, LanguageType language)
 
 uintptr_t HeapAllocator::AllocateLargeJitFortRegion(size_t size, LanguageType language)
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    auto address =  manager.AllocJitFortRegion(size);
+    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    auto address =  allocator.AllocJitFortRegion(size);
     BaseObject::Cast(address)->SetLanguageType(language);
     return address;
 }
@@ -77,20 +77,20 @@ Address HeapAllocator::AllocatePinNoGC(size_t size)
 
 Address HeapAllocator::AllocateRegion()
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    return manager.AllocRegion();
+    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    return allocator.AllocRegion();
 }
 
 Address HeapAllocator::AllocatePinnedRegion()
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    return manager.AllocPinnedRegion();
+    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    return allocator.AllocPinnedRegion();
 }
 
 Address HeapAllocator::AllocateLargeRegion(size_t size)
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    return manager.AllocLargeRegion(size);
+    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    return allocator.AllocLargeRegion(size);
 }
 
 }  // namespace common

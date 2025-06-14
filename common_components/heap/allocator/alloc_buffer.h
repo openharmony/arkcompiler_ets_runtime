@@ -44,7 +44,7 @@ public:
             tlRegion_, tlRegion_->GetRegionStart(), tlRegion_->GetRegionAllocatedSize());
         tlRegion_ = RegionDesc::NullRegion();
     }
-    void RefershRegion();
+    void ClearThreadLocalRegion();
 
     bool SetPreparedRegion(RegionDesc* newPreparedRegion)
     {

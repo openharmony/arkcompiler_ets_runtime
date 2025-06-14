@@ -36,11 +36,13 @@ void PostTraceBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress 
 void PostTraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     RefField<> newField(ref);
+    UpdateRememberSet(obj, ref);
     field.SetFieldValue(newField.GetFieldValue());
 }
 
 void PostTraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
+    UpdateRememberSet(obj, ref);
 }
 
 void PostTraceBarrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const
@@ -66,7 +68,7 @@ BaseObject* PostTraceBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>
     BaseObject* target = nullptr;
     RefField<false> oldField(field.GetFieldValue(order));
 
-    target = ReadRefField(nullptr, oldField);
+    target = ReadRefField(obj, oldField);
     DLOG(TBARRIER, "katomic read obj %p ref@%p: %#zx -> %p", obj, &field, oldField.GetFieldValue(), target);
     return target;
 }

@@ -46,6 +46,8 @@ public:
 
     void CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
                          HeapAddress srcField, MIndex srcSize) const override;
+    
+    void UpdateRememberSet(BaseObject* object, BaseObject* ref) const;
 };
 } // namespace common
 

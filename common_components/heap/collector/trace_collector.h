@@ -301,6 +301,7 @@ protected:
     void EnumerateAllRoots(WorkStack& workStack);
     void TraceRoots(WorkStack& workStack);
     bool MarkSatbBuffer(WorkStack& workStack);
+    bool MarkRememberSet(WorkStack& workStack);
 
     // concurrent marking.
     void TracingImpl(WorkStack& workStack, bool parallel);
@@ -313,6 +314,7 @@ protected:
     }
 
 private:
+    void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
     void ConcurrentReMark(WorkStack& remarkStack, bool parallel);
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;

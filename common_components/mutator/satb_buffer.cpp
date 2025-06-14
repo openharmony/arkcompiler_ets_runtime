@@ -28,6 +28,9 @@ bool SatbBuffer::ShouldEnqueue(const BaseObject* obj)
     if (UNLIKELY_CC(obj == nullptr)) {
         return false;
     }
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && !RegionSpace::IsYoungSpaceObject(obj)) {
+        return false;
+    }
     if (RegionSpace::IsNewObjectSinceTrace(obj)) {
         return false;
     }

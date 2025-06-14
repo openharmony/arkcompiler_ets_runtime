@@ -73,7 +73,7 @@ void CopyBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, 
 BaseObject* CopyBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& field, MemoryOrder order) const
 {
     RefField<false> tmpField(field.GetFieldValue(order));
-    BaseObject* target = ReadRefField(nullptr, tmpField);
+    BaseObject* target = ReadRefField(obj, tmpField);
     DLOG(FBARRIER, "atomic read obj %p ref-field@%p: %#zx -> %p", obj, &field, tmpField.GetFieldValue(), target);
     return target;
 }

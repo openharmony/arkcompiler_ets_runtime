@@ -71,6 +71,10 @@ public:
 
     void EnableGC(bool val) override { return isGCEnabled.store(val); }
 
+    GCReason GetGCReason() override { return gcReason; }
+
+    void SetGCReason(GCReason reason) override { gcReason = reason; }
+
     HeapAddress Allocate(size_t size, AllocType allocType, bool allowGC = true) override;
 
     GCPhase GetGCPhase() const override;
@@ -133,6 +137,7 @@ private:
     StaticRootTable staticRootTable;
 
     std::atomic<bool> isGCEnabled = { true };
+    GCReason gcReason = GCReason::GC_REASON_INVALID;
 }; // end class HeapImpl
 
 static ImmortalWrapper<HeapImpl> g_heapInstance;

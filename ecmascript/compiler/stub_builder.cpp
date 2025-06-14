@@ -3248,9 +3248,14 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
         Bind(&indexLessCapacity);
         {
             GateRef rep = HandlerBaseGetRep(handlerInfo);
-            GateRef base = PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
             GateRef toIndex = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+#ifdef USE_CMC_GC
+            GateRef offset = PtrAdd(toIndex, IntPtr(TaggedArray::DATA_OFFSET));
+            SetValueWithRep(glue, array, offset, value, rep, &repChange);
+#else
+            GateRef base = PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
             SetValueWithRep(glue, base, toIndex, value, rep, &repChange);
+#endif
             Jump(&exit);
         }
         Bind(&repChange);
@@ -12860,7 +12865,7 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     Label exit(env);
 #endif
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
-                   {glue, TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
+                   {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
 #ifndef USE_CMC_GC
     Label handleBarrier(env);
     BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);

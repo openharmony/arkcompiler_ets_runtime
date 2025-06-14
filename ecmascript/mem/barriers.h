@@ -178,7 +178,8 @@ public:
                                         TaggedObject *value, Region *valueRegion);
 #ifdef USE_CMC_GC
     static void PUBLIC_API CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
-    static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, void* src, void* dst, size_t count);
+    static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj,
+                                                        void* src, void* dst, size_t count);
 #endif
 };
 }  // namespace panda::ecmascript

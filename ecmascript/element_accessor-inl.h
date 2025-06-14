@@ -49,7 +49,12 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
         size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
         // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
         if (value.GetTaggedValue().IsHeapObject()) {
+#ifdef USE_CMC_GC
+            Barriers::SetObject<true>(thread, reinterpret_cast<void*>(elements),
+                TaggedArray::DATA_OFFSET + offset, convertedValue);
+#else
             Barriers::SetObject<true>(thread, elements->GetData(), offset, convertedValue);
+#endif
         } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
             Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);
         }
@@ -82,7 +87,12 @@ void ElementAccessor::FastSet(const JSThread *thread, JSHandle<TaggedArray> elem
             break;
         case ElementsKind::TAGGED:
             if (value.GetTaggedValue().IsHeapObject()) {
+#ifdef USE_CMC_GC
+                Barriers::SetObject<true>(thread, elements->GetThis(),
+                    TaggedArray::DATA_OFFSET + offset, rawValue.GetRawData());
+#else
                 Barriers::SetObject<true>(thread, elements->GetData(), offset, rawValue.GetRawData());
+#endif
             } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
                 Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, rawValue.GetRawData());
             }

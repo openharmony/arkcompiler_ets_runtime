@@ -80,8 +80,8 @@ PagePool& PagePool::Instance() noexcept
 
 Allocator* Allocator::CreateAllocator()
 {
-    RegionSpace* regionSpace = new (std::nothrow) RegionSpace();
-    LOGF_CHECK(regionSpace != nullptr) << "New RegionSpace failed";
-    return regionSpace;
+    RegionSpace* heapSpace = new (std::nothrow) RegionSpace();
+    LOGF_CHECK(heapSpace != nullptr) << "New RegionSpace failed";
+    return heapSpace;
 }
 } // namespace common

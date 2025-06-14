@@ -25,6 +25,7 @@
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
@@ -186,7 +187,7 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     }
 
 #ifdef USE_CMC_GC
-    Barriers::CMCArrayCopyWriteBarrier(thread, (void*)srcAddr, (void*)dstAddr, count);
+    Barriers::CMCArrayCopyWriteBarrier(thread, dstObj, (void*)srcAddr, (void*)dstAddr, count);
     return;
 #endif
 
