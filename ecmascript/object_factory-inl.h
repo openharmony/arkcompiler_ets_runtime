@@ -31,11 +31,15 @@ namespace panda::ecmascript {
 EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
 {
     TaggedObject *object = nullptr;
+#ifdef USE_CMC_GC
+    object = sHeap_->AllocateOldOrHugeObjectNoGC(thread_, size);
+#else
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         object = reinterpret_cast<TaggedObject *>(sHeap_->GetHugeObjectSpace()->Allocate(thread_, size));
     } else {
         object = reinterpret_cast<TaggedObject *>(sHeap_->GetOldSpace()->TryAllocateAndExpand(thread_, size, true));
     }
+#endif
     if (object == nullptr) {
         LOG_ECMA(FATAL) << "Alloc size " << size << " bytes string fail";
         UNREACHABLE();
