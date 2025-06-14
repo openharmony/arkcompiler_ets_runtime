@@ -12,11 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -60,6 +62,8 @@ HWTEST_F_L0(NumberSpeculativeRetypeTests, ConvertTest)
     CircuitBuilder builder(&circuit);
     Environment env(0, &builder);
     builder.SetEnvironment(&env);
+    circuit.GetArgumentAccessor()->NewCommonArg(ecmascript::kungfu::CommonArgIdx::GLUE, MachineType::I64,
+                                                GateType::NJSValue());
 
     // construct circuit
     auto value1 = builder.Int32(static_cast<uint64_t>(JSTaggedValue::VALUE_HOLE));
@@ -115,6 +119,8 @@ HWTEST_F_L0(NumberSpeculativeRetypeTests, ReTypeTest)
     CircuitBuilder builder(&circuit);
     Environment env(0, &builder);
     builder.SetEnvironment(&env);
+    circuit.GetArgumentAccessor()->NewCommonArg(ecmascript::kungfu::CommonArgIdx::GLUE, MachineType::I64,
+                                                GateType::NJSValue());
 
     // construct circuit
     auto entry = acc.GetStateRoot();

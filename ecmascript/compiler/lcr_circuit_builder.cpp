@@ -198,13 +198,12 @@ GateRef CircuitBuilder::LoadFromAddressWithoutBarrier(VariableType type, GateRef
     return result;
 }
 
-GateRef CircuitBuilder::DoubleTrunc(GateRef gate, GateRef value, const char* comment)
+GateRef CircuitBuilder::DoubleTrunc(GateRef glue, GateRef gate, GateRef value, const char* comment)
 {
     if (GetCompilationConfig()->IsAArch64()) {
         return DoubleTrunc(value, comment);
     }
 
-    GateRef glue = acc_.GetGlueFromArgList();
     return CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {value}, gate, comment);
 }
 

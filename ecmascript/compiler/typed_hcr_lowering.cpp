@@ -798,8 +798,7 @@ void TypedHCRLowering::BuiltinInstanceStringTypeCheck(GateRef gate)
     ASSERT(type == BuiltinTypeId::STRING);
     GateRef frameState = GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef glue = acc_.GetGlueFromArgList();
-    GateRef typeCheck = builder_.TaggedObjectIsString(glue, receiver, compilationEnv_);
+    GateRef typeCheck = builder_.TaggedObjectIsString(glue_, receiver, compilationEnv_);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::BUILTININSTANCEHCLASSMISMATCH2);
 }
 
@@ -1235,7 +1234,7 @@ void TypedHCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue)
 void TypedHCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
@@ -1258,7 +1257,7 @@ void TypedHCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState
 void TypedHCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef elementSize = GetElementSize(id);
@@ -1457,7 +1456,7 @@ void TypedHCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue, TypedS
 void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
@@ -1568,7 +1567,7 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
 
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef elementSize = builder_.Int32(sizeof(uint8_t));
@@ -1640,7 +1639,7 @@ void TypedHCRLowering::CallTargetIsCompiledCheck(GateRef func, GateRef frameStat
     BRANCH_CIR_LIKELY(isCompiled, exit, checkAlreadyDeopt);
     builder_.Bind(checkAlreadyDeopt);
     {
-        GateRef glue = acc_.GetGlueFromArgList();
+        GateRef glue = glue_;
         GateRef method = builder_.GetMethodFromFunction(glue, func);
         GateRef hasDeopt = builder_.AlreadyDeopt(method);
         builder_.DeoptCheck(hasDeopt, frameState, DeoptType::CALLTARGETNOTCOMPILED);
@@ -2066,7 +2065,7 @@ void TypedHCRLowering::LowerTypeOfCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef value = acc_.GetValueIn(gate, 0);
     GateTypeAccessor accessor(acc_.TryGetValue(gate));
     ParamType type = accessor.GetParamType();
@@ -3010,7 +3009,7 @@ void TypedHCRLowering::LowerMonoCallGetterOnProto(GateRef gate, GateRef glue)
 GateRef TypedHCRLowering::LoadPropertyFromHolder(GateRef holder, PropertyLookupResult plr)
 {
     GateRef result = Circuit::NullGate();
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     // while loading from iterator result, it may be the case that traversing an array including holes using 'for of',
     // need to convert hole to undefined
     if (plr.IsNotHole() || (compilationEnv_->IsJitCompiler() && !plr.IsLoadFromIterResult())) {

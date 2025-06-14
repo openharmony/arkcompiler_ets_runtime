@@ -133,7 +133,7 @@ GateRef BuiltinLowering::TypedFloor(GateRef gate)
         BRANCH_CIR(condition, &IsNan, &NotNan);
         builder_.Bind(&NotNan);
         {
-            GateRef glue = acc_.GetGlueFromArgList();
+            GateRef glue = glue_;
             int index = RTSTUB_ID(FloatFloor);
             GateRef floor = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
             result = builder_.DoubleToTaggedDoublePtr(floor);
@@ -184,7 +184,7 @@ void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value)
 
 void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
 
     size_t index = 0;
     GateRef thisObj = acc_.GetValueIn(gate, index++);
@@ -253,7 +253,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     GateRef globalEnvFunction =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), acc_.GetGlueFromArgList(), builder_.GetGlobalEnv(),
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, builder_.GetGlobalEnv(),
                                    static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     return builder_.Equal(function, globalEnvFunction);
@@ -389,7 +389,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 
 void BuiltinLowering::LowerTypedStringify(GateRef gate)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef value = acc_.GetValueIn(gate, 1);
     std::vector<GateRef> args;
     args.emplace_back(value);
@@ -399,7 +399,7 @@ void BuiltinLowering::LowerTypedStringify(GateRef gate)
 
 void BuiltinLowering::LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
@@ -431,7 +431,7 @@ void BuiltinLowering::LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID 
 
 void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
@@ -459,7 +459,7 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
 
 void BuiltinLowering::LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     switch (id) {
@@ -476,7 +476,7 @@ void BuiltinLowering::LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID i
 void BuiltinLowering::LowerNumberConstructor(GateRef gate)
 {
     auto env = builder_.GetCurrentEnvironment();
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), IntToTaggedIntPtr(builder_.Int32(0)));
     GateRef param = acc_.GetValueIn(gate, 0);
     Label exit(env);
@@ -523,7 +523,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
 
 void BuiltinLowering::LowerGlobalDecodeURIComponent(GateRef gate)
 {
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef param = acc_.GetValueIn(gate, 0);
     GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(DecodeURIComponent), { param }, true);
     ReplaceHirWithValue(gate, result);
@@ -533,7 +533,7 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
 {
     Environment env(gate, circuit_, &builder_);
     size_t numIn = acc_.GetNumValueIn(gate);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     GateRef function = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, builder_.GetGlobalEnv(),
                                                   static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef nativeCode = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), function,
@@ -562,7 +562,7 @@ void BuiltinLowering::AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id)
     GateRef frameArgs =  acc_.GetFrameArgs(gate);
     GateRef callerFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
     std::vector<GateRef> args{callerFunc, builder_.Int32ToTaggedInt(builder_.Int32(id))};
-    GateRef trace = builder_.CallRuntime(acc_.GetGlueFromArgList(), index, Gate::InvalidGateRef, args, gate);
+    GateRef trace = builder_.CallRuntime(glue_, index, Gate::InvalidGateRef, args, gate);
     acc_.SetDep(gate, trace);
     builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
 }

@@ -33,7 +33,7 @@ public:
     };
     NumberSpeculativeRetype(Circuit* circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
         : circuit_(circuit), acc_(circuit), builder_(circuit),
-          typeInfos_(typeInfos), chunk_(chunk) {}
+          typeInfos_(typeInfos), chunk_(chunk), glue_(acc_.GetGlueFromArgList()) {}
     GateRef VisitGate(GateRef gate);
     void setState(NumberSpeculativeRetype::State state);
     void ConvertMonoAccessorValueIn(GateRef gate);
@@ -201,6 +201,7 @@ private:
     ChunkVector<TypeInfo>& typeInfos_;
     State state_ {0};
     [[maybe_unused]] Chunk *chunk_ {nullptr};
+    GateRef glue_ {Circuit::NullGate()};
 };
 
 class NumberSpeculativeRetypeManager : public PassVisitor {

@@ -34,7 +34,8 @@ public:
           builder_(circuit, ctx->GetCompilerConfig()),
           compilationEnv_(ctx->GetCompilationEnv()),
           enableLog_(enableLog),
-          methodName_(name)
+          methodName_(name),
+          glue_(acc_.GetGlueFromArgList())
     {
         if (ctx->GetCompilerConfig() != nullptr) {
             typedOpProfiling_ = ctx->GetCompilerConfig()->IsTypedOpProfiling();
@@ -83,6 +84,7 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     bool typedOpProfiling_ {false};
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_HCR_OPT_PASS_H

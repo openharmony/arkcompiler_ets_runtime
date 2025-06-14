@@ -38,7 +38,7 @@ void TSHCROptPass::AddProfiling(GateRef gate)
         OpCode opcode  = acc_.GetOpCode(gate);
         auto opcodeGate = builder_.Int32(static_cast<uint32_t>(opcode));
         GateRef constOpcode = builder_.Int32ToTaggedInt(opcodeGate);
-        GateRef traceGate = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(ProfileTypedOp),
+        GateRef traceGate = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileTypedOp),
                                                  acc_.GetDep(gate), { constOpcode }, gate);
         acc_.SetDep(gate, traceGate);
         builder_.SetDepend(acc_.GetDep(gate));

@@ -476,6 +476,7 @@ private:
     GateAccessor acc_;
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
+    GateRef glue_ {Circuit::NullGate()};
 
     LLVMModuleRef module_ {nullptr};
     LLVMContextRef context_ {nullptr};

@@ -54,6 +54,7 @@ LiteCGIRBuilder::LiteCGIRBuilder(const std::vector<std::vector<GateRef>> *schedu
       jsPandaFile_(jsPandaFile),
       funcName_(funcName),
       acc_(circuit),
+      glue_(acc_.GetGlueFromArgList()),
       bbID2BB_(scheduledGates_->size(), nullptr),
       cf_(*module->GetModule())
 {
@@ -931,7 +932,7 @@ Expr LiteCGIRBuilder::CreateExprFromLiteCGValue(const LiteCGValue &value)
     } else if (value.kind == LiteCGValueKind::kConstKind) {
         return lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data));
     } else if (value.kind == LiteCGValueKind::kGlueAdd) {
-        auto glue = acc_.GetGlueFromArgList();
+        auto glue = glue_;
         return lmirBuilder_->Add(ConvertLiteCGTypeFromGate(glue), GetExprFromGate(glue),
             lmirBuilder_->ConstVal(*std::get<maple::MIRConst*>(value.data)));
     }
@@ -1118,7 +1119,7 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     Expr e1Value = GetExprFromGate(e1);
     Expr e2Value = GetExprFromGate(e2);
     // save glue + offset
-    if (e1 == acc_.GetGlueFromArgList() && acc_.GetOpCode(e2) == OpCode::CONSTANT) {
+    if (e1 == glue_ && acc_.GetOpCode(e2) == OpCode::CONSTANT) {
         SaveGate2Expr(gate, e2Value, true);
         return;
     }
@@ -3091,7 +3092,7 @@ LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef ga
         return iter->second;
     }
     BB &bb = lmirBuilder_->CreateBB();  // deoptBB
-    Expr glue = GetExprFromGate(acc_.GetGlueFromArgList());
+    Expr glue = GetExprFromGate(glue_);
 
     std::vector<Expr> params;
     params.push_back(glue);  // glue

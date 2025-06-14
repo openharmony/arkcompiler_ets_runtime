@@ -29,7 +29,7 @@ public:
     NumberSpeculativeLowering(Circuit* circuit, CompilationConfig* cmpCfg, Chunk* chunk,
         ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg), typeInfos_(typeInfos),
-          rangeInfos_(rangeInfos), rangeGuardGates_(chunk) {}
+          rangeInfos_(rangeInfos), rangeGuardGates_(chunk), glue_(acc_.GetGlueFromArgList()) {}
     void Run();
 
 private:
@@ -115,6 +115,7 @@ private:
     ChunkVector<TypeInfo>& typeInfos_;
     ChunkVector<RangeInfo>& rangeInfos_;
     ChunkVector<GateRef> rangeGuardGates_;
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_LOWERING_H
