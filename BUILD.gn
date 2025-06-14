@@ -1574,6 +1574,7 @@ ohos_shared_library("libark_jsruntime") {
     public_external_deps = [
       "icu:shared_icui18n",
       "icu:shared_icuuc",
+      "runtime_core:arkplatform_header",
     ]
   }
   innerapi_tags = [ "platformsdk_indirect" ]
