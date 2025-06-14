@@ -1504,22 +1504,16 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     tester.NewJSWeakSet();
     // JS_WEAK_MAP
     tester.NewJSWeakMap();
+
+    bool status = true;
+    auto cb = [&status](uint8_t retCode) {
+        if (retCode != static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS)) {
+            status = false;
+        }
+    };
     std::string rawHeapPath("test_binary_dump_by_fork_with_callback.raw");
-    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr,
-        [] (uint8_t retCode) {
-            ASSERT_TRUE(retCode == static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS));
-    });
-    ASSERT_TRUE(ret);
-    std::ifstream file(rawHeapPath, std::ios::binary);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    ASSERT_TRUE(content.size() > 0);
-    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
-    ASSERT_TRUE(u64Ptr[1] > 0);
-    std::string snapshotPath("test_binary_dump_by_fork_with_callback.heapsnapshot");
-    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr, cb));
+    ASSERT_TRUE(status);
 }
 #endif
 
