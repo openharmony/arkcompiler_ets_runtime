@@ -717,6 +717,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
 #ifdef USE_READ_BARRIER
@@ -1866,6 +1867,7 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     // entry of aot
