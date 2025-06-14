@@ -47,7 +47,7 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
 
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
         ObjectSlot realEnd = start;
-        start += layout->GetPropertiesCapacity(); // only += operator is supported
+        realEnd += layout->GetPropertiesCapacity(); // only += operator is supported
         end = std::min(end, realEnd);
 
         int index = 0;
