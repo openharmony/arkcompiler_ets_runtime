@@ -311,6 +311,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::OBJECT_CONSTRUCTOR:
         case OpCode::BOOLEAN_CONSTRUCTOR:
         case OpCode::LD_LOCAL_MODULE_VAR:
+        case OpCode::LD_EXTERNAL_MODULE_VAR:
         case OpCode::STORE_MODULE_VAR:
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
         case OpCode::ORDINARY_HAS_INSTANCE:

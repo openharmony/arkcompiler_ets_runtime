@@ -41,6 +41,9 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
         case OpCode::LD_LOCAL_MODULE_VAR:
             LowerLdLocalModuleVar(gate, glue);
             break;
+        case OpCode::LD_EXTERNAL_MODULE_VAR:
+            LowerLdExternalModuleVar(gate);
+            break;
         default:
             break;
     }
@@ -348,6 +351,16 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate, GateRef glue)
     }
     builder_.Bind(&exit);
     ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void NTypeHCRLowering::LowerLdExternalModuleVar(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef value = builder_.CallNGCRuntime(glue_, RTSTUB_ID(GetExternalModuleVar), Gate::InvalidGateRef,
+                                            {glue_, jsFunc, index}, gate);
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), value);
 }
 
 void NTypeHCRLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)

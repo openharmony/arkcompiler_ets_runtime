@@ -1694,4 +1694,17 @@ GateRef CircuitBuilder::IsStableArrayLengthWriteable(GateRef glue, GateRef array
     env_->SubCfgExit();
     return ret;
 }
+
+GateRef CircuitBuilder::GetStageOfHotReload(GateRef glue)
+{
+    GateRef stageOfColdReloadOffset = IntPtr(JSThread::GlueData::GetStageOfHotReloadOffset(env_->Is32Bit()));
+    return LoadWithoutBarrier(VariableType::INT32(), glue, stageOfColdReloadOffset);
+}
+
+GateRef CircuitBuilder::IsNotLdEndExecPatchMain(GateRef glue)
+{
+    return Int32NotEqual(GetStageOfHotReload(glue),
+                         Int32(static_cast<int>(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN)));
+}
+
 }  // namespace panda::ecmascript::kungfu

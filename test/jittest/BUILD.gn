@@ -57,6 +57,7 @@ group("ark_jit_ts_test") {
     "lazy_deopt_25",
     "lazy_deopt_26",
     "lazy_deopt_27",
+    "lazy_deopt_module_var",
     "for_loop",
     "for_of",
     "typed_array",
