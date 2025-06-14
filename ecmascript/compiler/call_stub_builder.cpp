@@ -441,12 +441,17 @@ GateRef CallStubBuilder::JSCallDispatch()
     {
         // func_ should be ToSpace Reference
         CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
-        // every callmode except SUPER_CALL_SPREAD_WITH_ARGV has argv on the frame which is GC root,
-        // so only need to copy argv here for SUPER_CALL_SPREAD_WITH_ARGV callmode
+        // every callmode except SUPER_CALL_SPREAD_WITH_ARGV and CALL_THIS_ARGV_WITH_RETURN has
+        // argv on the frame which is GC root, so only need to copy argv here for these two types of callmode
         if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
             // argv should be ToSpace Reference
             CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
                 { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+        } else if (callArgs_.mode == JSCallMode::CALL_THIS_ARGV_WITH_RETURN) {
+            // argv should be ToSpace Reference
+            CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+                { glue_, callArgs_.callThisArgvWithReturnArgs.argv,
+                    ZExtInt32ToInt64(callArgs_.callThisArgvWithReturnArgs.argc) });
         }
         Jump(&finishPrepare);
     }
