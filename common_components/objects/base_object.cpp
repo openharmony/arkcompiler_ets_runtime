@@ -16,7 +16,6 @@
 #include "common_interfaces/objects/base_object.h"
 
 namespace common {
-#ifdef USE_CMC_GC
 BaseObjectOperator BaseObject::operator_;
 
 void BaseObject::RegisterDynamic(BaseObjectOperatorInterfaces *dynamicObjOp)
@@ -28,5 +27,4 @@ void BaseObject::RegisterStatic(BaseObjectOperatorInterfaces *staticObjOp)
 {
     operator_.staticObjOp_ = staticObjOp;
 }
-#endif
 }  // namespace common

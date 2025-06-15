@@ -39,6 +39,10 @@
 #include "common_components/taskpool/taskpool.h"
 #include "common_interfaces/base_runtime.h"
 
+#if defined(_WIN64)
+#include <sysinfoapi.h>
+#endif
+
 namespace common {
 uintptr_t RegionDesc::UnitInfo::totalUnitCount = 0;
 uintptr_t RegionDesc::UnitInfo::unitInfoStart = 0;

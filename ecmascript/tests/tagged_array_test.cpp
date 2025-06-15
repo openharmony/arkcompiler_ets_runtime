@@ -64,10 +64,10 @@ HWTEST_F_L0(TaggedArrayTest, SetAndGetIdx)
     // trigger gc
     ecmaVM->CollectGarbage(TriggerGCType::OLD_GC);
     EXPECT_EQ(taggedArray->GetIdx(newObj1.GetTaggedValue()), 0U);
-#ifndef USE_CMC_GC
-    // cmc gc may not evacuate tl region.
-    EXPECT_EQ(taggedArray->GetIdx(objValue), TaggedArray::MAX_ARRAY_INDEX);
-#endif
+    if (!g_isEnableCMCGC) {
+        // cmc gc may not evacuate tl region.
+        EXPECT_EQ(taggedArray->GetIdx(objValue), TaggedArray::MAX_ARRAY_INDEX);
+    }
 }
 
 HWTEST_F_L0(TaggedArrayTest, Append)

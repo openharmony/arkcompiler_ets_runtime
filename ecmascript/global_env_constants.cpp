@@ -15,6 +15,7 @@
 
 #include "ecmascript/global_env_constants.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/free_object.h"
@@ -98,7 +99,6 @@ void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
     #undef INIT_GLOBAL_ENV_CONSTANT_STRING
 }
 
-#ifdef USE_CMC_GC
 void GlobalEnvConstants::InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass)
 {
     auto compositeBaseClassClass = factory->
@@ -114,15 +114,14 @@ void GlobalEnvConstants::InitCompositeBaseClasses(ObjectFactory* factory, JSHCla
             return reinterpret_cast<common::CompositeBaseClass*>(compositeBaseClass);
         });
 }
-#endif
 
 void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
 {
     // Global constants are readonly.
     JSHClass *hClass = *factory->InitSClassClass();
-#ifdef USE_CMC_GC
-    InitCompositeBaseClasses(factory, hClass);
-#endif
+    if (g_isEnableCMCGC) {
+        InitCompositeBaseClasses(factory, hClass);
+    }
     SetConstant(ConstantIndex::HCLASS_CLASS_INDEX, JSTaggedValue(hClass));
     // To reverse the order, the hclass of string needs to load default supers
     SetConstant(ConstantIndex::TAGGED_ARRAY_CLASS_INDEX,
@@ -133,21 +132,21 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE_OFFSET, JSType::FREE_OBJECT_WITH_ONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
-#ifdef USE_CMC_GC
-    SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
-                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::LINE_STRING));
-    SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
-                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::SLICED_STRING));
-    SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
-                factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::TREE_STRING));
-#else
-    SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
-    SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
-    SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
-#endif
+    if (g_isEnableCMCGC) {
+        SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
+                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::LINE_STRING));
+        SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
+                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::SLICED_STRING));
+        SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
+                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::TREE_STRING));
+    } else {
+        SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
+        SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
+        SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
+    }
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
@@ -178,17 +177,17 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
-#ifdef USE_CMC_GC
-    SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
-    ASSERT(GetSJSNativePointerClass().IsInSharedHeap());
-    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
-    ASSERT(!GetJSNativePointerClass().IsInSharedHeap());
-#else
-    SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
-#endif
+    if (g_isEnableCMCGC) {
+        SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+        ASSERT(GetSJSNativePointerClass().IsInSharedHeap());
+        SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+        ASSERT(!GetJSNativePointerClass().IsInSharedHeap());
+    } else {
+        SetConstant(ConstantIndex::SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+    }
     SetConstant(ConstantIndex::LEXICAL_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
     SetConstant(ConstantIndex::SFUNCTION_ENV_CLASS_INDEX,
@@ -283,37 +282,37 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, ResolvedRecordBinding::SIZE, JSType::RESOLVEDRECORDBINDING_RECORD));
     SetConstant(ConstantIndex::SENDABLE_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SENDABLE_ENV));
-#ifdef USE_CMC_GC
-    SetConstant(ConstantIndex::SHARED_TAGGED_ARRAY_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_ARRAY));
-    ASSERT(GetSharedTaggedArrayClass().IsInSharedHeap());
+    if (g_isEnableCMCGC) {
+        SetConstant(ConstantIndex::SHARED_TAGGED_ARRAY_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_ARRAY));
+        ASSERT(GetSharedTaggedArrayClass().IsInSharedHeap());
 
-    SetConstant(ConstantIndex::SHARED_CONSTANT_POOL_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::CONSTANT_POOL));
-    ASSERT(GetSharedConstantPoolClass().IsInSharedHeap());
+        SetConstant(ConstantIndex::SHARED_CONSTANT_POOL_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::CONSTANT_POOL));
+        ASSERT(GetSharedConstantPoolClass().IsInSharedHeap());
 
-    SetConstant(ConstantIndex::SHARED_AOT_LITERAL_INFO_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
-    ASSERT(GetSharedAOTLiteralInfoClass().IsInSharedHeap());
+        SetConstant(ConstantIndex::SHARED_AOT_LITERAL_INFO_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
+        ASSERT(GetSharedAOTLiteralInfoClass().IsInSharedHeap());
 
-    // ProfileTypeInfo only in local now
+        // ProfileTypeInfo only in local now
 
-    // VTable only in local now
+        // VTable only in local now
 
-    // COWMutantTaggedArray only in local now
+        // COWMutantTaggedArray only in local now
 
-    SetConstant(ConstantIndex::SHARED_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
-    ASSERT(GetSharedMutantTaggedArrayClass().IsInSharedHeap());
+        SetConstant(ConstantIndex::SHARED_MUTANT_TAGGED_ARRAY_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::MUTANT_TAGGED_ARRAY));
+        ASSERT(GetSharedMutantTaggedArrayClass().IsInSharedHeap());
 
-    SetConstant(ConstantIndex::SHARED_DICTIONARY_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
-    ASSERT(GetSharedDictionaryClass().IsInSharedHeap());
+        SetConstant(ConstantIndex::SHARED_DICTIONARY_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
+        ASSERT(GetSharedDictionaryClass().IsInSharedHeap());
 
-    SetConstant(ConstantIndex::SHARED_COW_ARRAY_CLASS_INDEX,
-        factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
-    ASSERT(GetSharedCOWArrayClass().IsInSharedHeap());
-#endif
+        SetConstant(ConstantIndex::SHARED_COW_ARRAY_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
+        ASSERT(GetSharedCOWArrayClass().IsInSharedHeap());
+    }
 }
 
 void GlobalEnvConstants::InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory)
@@ -413,11 +412,11 @@ void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory
                 factory->CreateDefaultClassConstructorHClass(hClass));
     SetConstant(ConstantIndex::JS_PROXY_ORDINARY_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSProxy::SIZE, JSType::JS_PROXY));
-#ifndef USE_CMC_GC
-    // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
-    SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
-        factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
-#endif
+    if (!g_isEnableCMCGC) {
+        // napi_wrap need set NativePointer to object, so only mark the shared bit in shared JSNativePointer hclass.
+        SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
+            factory->NewEcmaReadOnlyHClass(hClass, JSNativePointer::SIZE, JSType::JS_NATIVE_POINTER));
+    }
 }
 
 void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory)

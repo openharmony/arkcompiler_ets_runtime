@@ -17,9 +17,8 @@
 #define ECMASCRIPT_MEM_HEAP_INL_H
 
 #include "clang.h"
-#ifdef USE_CMC_GC
 #include "common_interfaces/heap/heap_allocator.h"
-#endif
+#include "ecmascript/base/config.h"
 #include "ecmascript/mem/heap.h"
 
 #include "ecmascript/base/block_hook_scope.h"
@@ -209,12 +208,12 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass)
 
 TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 {
-#ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
+    }
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         object = AllocateHugeObject(size);
     } else {
         object = AllocateInYoungSpace(size);
@@ -231,16 +230,14 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
         }
     }
     return object;
-#endif
 }
 
 TaggedObject *Heap::AllocateInYoungSpace(size_t size)
 {
-#ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject *>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
+    }
     return reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
-#endif
 }
 
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
@@ -266,12 +263,11 @@ void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *objec
 
 uintptr_t Heap::AllocateYoungSync(size_t size)
 {
-#ifdef USE_CMC_GC
-    // check sync
-    return common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC);
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        // check sync
+        return common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC);
+    }
     return activeSemiSpace_->AllocateSync(size);
-#endif
 }
 
 bool Heap::MoveYoungRegion(Region *region)
@@ -306,14 +302,15 @@ void SharedHeap::MergeToOldSpaceSync(SharedLocalSpace *localSpace)
 TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return nullptr;
     }
-#ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
-#else
-    auto object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
-#endif
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::Allocate(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
+    }
     if (object != nullptr) {
         object->SetClass(thread_, hclass);
     }
@@ -334,30 +331,30 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
 
-#ifdef USE_CMC_GC
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
-            size, common::LanguageType::DYNAMIC));
-    } else {
-        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInOld(
-            size, common::LanguageType::DYNAMIC));
-    }
-#else
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        object = AllocateHugeObject(size);
-    } else {
-        object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateFast(size));
-        if (object == nullptr) {
-            bool gcSuccess = CheckAndTriggerOldGC();
-            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, gcSuccess));
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        if (size > g_maxRegularHeapObjectSize) {
+            object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
+                size, common::LanguageType::DYNAMIC));
+        } else {
+            object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInOld(
+                size, common::LanguageType::DYNAMIC));
         }
-        if (object == nullptr) {
-            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
-            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
+    } else {
+        if (size > g_maxRegularHeapObjectSize) {
+            object = AllocateHugeObject(size);
+        } else {
+            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateFast(size));
+            if (object == nullptr) {
+                bool gcSuccess = CheckAndTriggerOldGC();
+                object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, gcSuccess));
+            }
+            if (object == nullptr) {
+                CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+                object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
+            }
+            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
         }
-        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     }
-#endif
     return object;
 }
 
@@ -386,7 +383,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
 
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         object = AllocateHugeObject(hclass, size);
     } else {
         object = AllocateReadOnlyOrHugeObject(size);
@@ -402,12 +399,11 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
 
 TaggedObject* Heap::AllocateReadOnlyOrHugeObject(size_t size)
 {
-#ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInReadOnly(
-        size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInReadOnly(
+            size, common::LanguageType::DYNAMIC));
+    }
     return reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
-#endif
 }
 
 TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass)
@@ -427,16 +423,16 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = nullptr;
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         object = AllocateHugeObject(hclass, size);
     } else {
-#ifdef USE_CMC_GC
-        object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
-            size, common::LanguageType::DYNAMIC));
-#else
-        object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
-        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
-#endif
+        if (UNLIKELY(g_isEnableCMCGC)) {
+            object = reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+                size, common::LanguageType::DYNAMIC));
+        } else {
+            object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
+            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
+        }
         object->SetClass(thread_, hclass);
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -448,12 +444,13 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
 TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-#ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
-#else
-    auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
-#endif
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
+    }
     if (UNLIKELY(object == nullptr)) {
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
         UNREACHABLE();
@@ -468,13 +465,14 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
 TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-#ifdef USE_CMC_GC
-    // check why shareheap allocate in readonly
-    auto object = reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
-#else
-    auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
-#endif
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        // check why shareheap allocate in readonly
+        object = reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
+    }
     if (UNLIKELY(object == nullptr)) {
         LOG_ECMA_MEM(FATAL) << "Heap::AllocateClassClass can not allocate any space";
         UNREACHABLE();
@@ -488,10 +486,10 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
 
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
-#ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
+    }
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
     CheckAndTriggerOldGC(size);
 
@@ -514,7 +512,6 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
         }
     }
     return object;
-#endif
 }
 
 TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
@@ -531,9 +528,7 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
 
 TaggedObject *Heap::AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *desc)
 {
-#ifdef USE_CMC_GC
-    ASSERT(desc != nullptr && "in CMCGC, this path is always jitfort.");
-#endif
+    ASSERT(!g_isEnableCMCGC || desc != nullptr && "in CMCGC, this path is always jitfort.");
     TaggedObject *object;
     if (desc) {
         object = reinterpret_cast<TaggedObject *>(hugeMachineCodeSpace_->Allocate(
@@ -552,16 +547,17 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
     if (!desc) {
         // Jit Fort disabled
         ASSERT(!GetEcmaVM()->GetJSOptions().GetEnableJitFort());
-        object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
-#ifdef USE_CMC_GC
-            reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
-                size, common::LanguageType::DYNAMIC)) :
-            reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
-                size, common::LanguageType::DYNAMIC));
-#else
-            reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
-            reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
-#endif
+        if (UNLIKELY(g_isEnableCMCGC)) {
+            object = (size > g_maxRegularHeapObjectSize) ?
+                reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInHuge(
+                    size, common::LanguageType::DYNAMIC)) :
+                reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+                    size, common::LanguageType::DYNAMIC));
+        } else {
+            object = (size > g_maxRegularHeapObjectSize) ?
+                reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size)) :
+                reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
+        }
         CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_,
             "Heap::AllocateMachineCodeObject");
         object->SetClass(thread_, hclass);
@@ -575,7 +571,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
     ASSERT(GetEcmaVM()->GetJSOptions().GetEnableJitFort());
     if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort()) {
         desc->instructionsAddr = 0;
-        if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        if (size <= g_maxRegularHeapObjectSize) {
             // for non huge code cache obj, allocate fort space before allocating the code object
             uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc);
             if (mem == ToUintPtr(nullptr)) {
@@ -584,15 +580,16 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
             desc->instructionsAddr = mem;
         }
     }
-    object = (size > MAX_REGULAR_HEAP_OBJECT_SIZE) ?
-#ifdef USE_CMC_GC
-        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
-        reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
-            size, common::LanguageType::DYNAMIC));
-#else
-        reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
-        reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = (size > g_maxRegularHeapObjectSize) ?
+            reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
+            reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmove(
+                size, common::LanguageType::DYNAMIC));
+    } else {
+        object = (size > g_maxRegularHeapObjectSize) ?
+            reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
+            reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
+    }
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, machineCodeSpace_, desc,
         "Heap::AllocateMachineCodeObject");
     object->SetClass(thread_, hclass);
@@ -618,10 +615,10 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInNonmove(
-        size, common::LanguageType::DYNAMIC));
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInNonmove(
+            size, common::LanguageType::DYNAMIC));
+    }
 
     ASSERT(!thread->IsJitThread());
     if (GetEcmaVM()->GetThreadCheckStatus()) {
@@ -660,10 +657,11 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
 
 TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    // will invoked by asm interpreter stub AllocateInSOld
-    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        // will invoked by asm interpreter stub AllocateInSOld
+        return reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
+    }
 
     ASSERT(!thread->IsJitThread());
     if (GetEcmaVM()->GetThreadCheckStatus()) {
@@ -807,9 +805,9 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 // only call in js-thread
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
-#ifdef USE_CMC_GC
-    return;
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return;
+    }
 
     if (!current->InYoungSpace()) {
         // This clear may exist data race with concurrent sweeping, so use CAS
@@ -894,9 +892,9 @@ void Heap::InitializeIdleStatusControl(std::function<void(bool)> callback)
 
 void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
 {
-#ifdef USE_CMC_GC
-    return;
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return;
+    }
     if (!CheckCanTriggerConcurrentMarking(thread)) {
         return;
     }
@@ -919,56 +917,58 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return AllocateHugeObject(thread, hclass, size);
     }
 
-#ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
-    object->SetClass(thread, hclass);
-#else
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
-    if (object == nullptr) {
-        object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
-        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-            "SharedHeap::AllocateNonMovableOrHugeObject");
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
         object->SetClass(thread, hclass);
-        TryTriggerConcurrentMarking(thread);
     } else {
-        object->SetClass(thread, hclass);
-    }
+        object = thread->IsJitThread() ? nullptr :
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+        if (object == nullptr) {
+            object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+                "SharedHeap::AllocateNonMovableOrHugeObject");
+            object->SetClass(thread, hclass);
+            TryTriggerConcurrentMarking(thread);
+        } else {
+            object->SetClass(thread, hclass);
+        }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+        OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
-#endif // USE_CMC_GC
+    }
     return object;
 }
 
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return AllocateHugeObject(thread, size);
     }
 
-#ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
-#else
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
-    if (object == nullptr) {
-        object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
-        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-            "SharedHeap::AllocateNonMovableOrHugeObject");
-        TryTriggerConcurrentMarking(thread);
-    }
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = thread->IsJitThread() ? nullptr :
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
+        if (object == nullptr) {
+            object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+                "SharedHeap::AllocateNonMovableOrHugeObject");
+            TryTriggerConcurrentMarking(thread);
+        }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+        OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
-#endif //USE_CMC_GC
+    }
     return object;
 }
 
@@ -981,72 +981,75 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
 TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return AllocateHugeObject(thread, hclass, size);
     }
 
-#ifdef USE_CMC_GC
-    TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(
-        size, common::LanguageType::DYNAMIC));
-    object->SetClass(thread, hclass);
-#else
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
-    if (object == nullptr) {
-        object = AllocateInSOldSpace(thread, size);
-        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(
+            size, common::LanguageType::DYNAMIC));
         object->SetClass(thread, hclass);
-        TryTriggerConcurrentMarking(thread);
     } else {
-        object->SetClass(thread, hclass);
-    }
+        object = thread->IsJitThread() ? nullptr :
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
+        if (object == nullptr) {
+            object = AllocateInSOldSpace(thread, size);
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+            object->SetClass(thread, hclass);
+            TryTriggerConcurrentMarking(thread);
+        } else {
+            object->SetClass(thread, hclass);
+        }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(thread->GetEcmaVM(), object, size);
+        OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
-#endif // USE_CMC_GC
+    }
     return object;
 }
 
 TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return AllocateHugeObject(thread, size);
     }
 
-#ifdef USE_CMC_GC
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-        reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
-#else
-    TaggedObject *object = thread->IsJitThread() ? nullptr :
-        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
-    if (object == nullptr) {
-        object = AllocateInSOldSpace(thread, size);
-        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
-        TryTriggerConcurrentMarking(thread);
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = thread->IsJitThread() ? nullptr :
+            reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = thread->IsJitThread() ? nullptr :
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
+        if (object == nullptr) {
+            object = AllocateInSOldSpace(thread, size);
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+            TryTriggerConcurrentMarking(thread);
+        }
     }
-#endif
     return object;
 }
 
 TaggedObject *SharedHeap::AllocateOldOrHugeObjectNoGC(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateNoGC(size));
-    return object;
-#else
-    std::abort();
-#endif
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+        TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateNoGC(size));
+        return object;
+    } else {
+        std::abort();
+    }
 }
 
 TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    (void)thread;
-    ASSERT(!thread->IsJitThread());
-    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        (void)thread;
+        ASSERT(!thread->IsJitThread());
+        return reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInOld(size, common::LanguageType::DYNAMIC));
+    }
     // jit thread no heap
     bool allowGC = !thread->IsJitThread();
     if (allowGC) {
@@ -1068,7 +1071,6 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
         }
     }
     return object;
-#endif
 }
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
@@ -1083,10 +1085,11 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 
 TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
     (void)thread;
-    return reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
-#else
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        return reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInHuge(size, common::LanguageType::DYNAMIC));
+    }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
     CheckHugeAndTriggerSharedGC(thread, size);
     auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
@@ -1107,7 +1110,6 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
     }
     TryTriggerConcurrentMarking(thread);
     return object;
-#endif
 }
 
 TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass)
@@ -1119,17 +1121,19 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
 TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return AllocateHugeObject(thread, hclass, size);
     }
 
-#ifdef USE_CMC_GC
-    auto object = reinterpret_cast<TaggedObject *>(
-        common::HeapAllocator::AllocateInReadOnly(size, common::LanguageType::DYNAMIC));
-#else
-    auto object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
-    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
-#endif
+    TaggedObject *object = nullptr;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        object = reinterpret_cast<TaggedObject *>(
+            common::HeapAllocator::AllocateInReadOnly(size, common::LanguageType::DYNAMIC));
+    } else {
+        object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(
+            thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
+    }
     ASSERT(object != nullptr);
     object->SetClass(thread, hclass);
     return object;
@@ -1137,12 +1141,10 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
 
 TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    ASSERT(false);
-#endif
+    ASSERT(!g_isEnableCMCGC);
 
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return nullptr;
     }
     TaggedObject *object = nullptr;
@@ -1156,12 +1158,10 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
 
 TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
 {
-#ifdef USE_CMC_GC
-    ASSERT(false);
-#endif
+    ASSERT(!g_isEnableCMCGC);
 
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+    if (size > g_maxRegularHeapObjectSize) {
         return nullptr;
     }
     TaggedObject *object = nullptr;
@@ -1185,16 +1185,16 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
-#ifdef USE_CMC_GC
-    common::GcType type = common::GcType::ASYNC;
-    if constexpr (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
-        gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
-        gcReason == GCReason::ALLOCATION_FAILED) {
-        type = common::GcType::FULL;
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        common::GcType type = common::GcType::ASYNC;
+        if constexpr (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
+            gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
+            gcReason == GCReason::ALLOCATION_FAILED) {
+            type = common::GcType::FULL;
+        }
+        common::BaseRuntime::RequestGC(type);
+        return;
     }
-    common::BaseRuntime::RequestGC(type);
-    return;
-#endif
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
         gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
@@ -1294,14 +1294,11 @@ void SharedHeap::InvokeSharedNativePointerCallbacks()
 
 void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)
 {
-#ifndef USE_CMC_GC
     ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
-#endif
     std::lock_guard<std::mutex> lock(sNativePointerListMutex_);
     sharedNativePointerList_.emplace_back(pointer);
 }
 
-#ifdef USE_CMC_GC
 void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
 {
     auto& sharedNativePointerCallbacks = Runtime::GetInstance()->GetSharedNativePointerCallbacks();
@@ -1320,7 +1317,6 @@ void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
     }
     ShrinkWithFactor(sharedNativePointerList_);
 }
-#endif
 
 void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
 {
@@ -1440,9 +1436,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 
 void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
 {
-#ifndef USE_CMC_GC
     ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
-#endif
     if (isConcurrent) {
         concurrentNativePointerList_.emplace_back(pointer);
     } else {
@@ -1450,7 +1444,6 @@ void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
     }
 }
 
-#ifdef USE_CMC_GC
 void Heap::IteratorNativePointerList(WeakVisitor &visitor)
 {
     auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
@@ -1490,7 +1483,6 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
     }
     ShrinkWithFactor(concurrentNativePointerList_);
 }
-#endif
 
 void Heap::RemoveFromNativePointerList(const JSNativePointer* pointer)
 {

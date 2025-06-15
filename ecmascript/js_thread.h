@@ -37,11 +37,9 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
 #include "ecmascript/patch/patch_loader.h"
-#ifdef USE_CMC_GC
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder.h"
-#endif
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
@@ -93,6 +91,7 @@ enum class BCStubStatus: uint8_t {
     NORMAL_BC_STUB,
     PROFILE_BC_STUB,
     JIT_PROFILE_BC_STUB,
+    STW_COPY_BC_STUB,
 };
 
 enum ThreadType : uint8_t {
@@ -102,7 +101,6 @@ enum ThreadType : uint8_t {
 };
 
 
-#ifdef USE_CMC_GC
 using BaseThread = common::BaseThread;
 using BaseThreadType = common::BaseThreadType;
 using ThreadHolder = common::ThreadHolder;
@@ -111,41 +109,6 @@ using ThreadState = common::ThreadState;
 using ThreadStateAndFlags = common::ThreadStateAndFlags;
 static constexpr uint32_t THREAD_STATE_OFFSET = common::THREAD_STATE_OFFSET;
 static constexpr uint32_t THREAD_FLAGS_MASK = common::THREAD_FLAGS_MASK;
-#else
-enum ThreadFlag : uint16_t {
-    NO_FLAGS = 0 << 0,
-    SUSPEND_REQUEST = 1 << 0,
-    ACTIVE_BARRIER = 1 << 1,
-};
-
-static constexpr uint32_t THREAD_STATE_OFFSET = 16;
-static constexpr uint32_t THREAD_FLAGS_MASK = (0x1 << THREAD_STATE_OFFSET) - 1;
-enum class ThreadState : uint16_t {
-    CREATED = 0,
-    RUNNING = 1,
-    NATIVE = 2,
-    WAIT = 3,
-    IS_SUSPENDED = 4,
-    TERMINATED = 5,
-};
-
-union ThreadStateAndFlags {
-    explicit ThreadStateAndFlags(uint32_t val = 0): asInt(val) {}
-    struct {
-        volatile uint16_t flags;
-        volatile ThreadState state;
-    } asStruct;
-    struct {
-        uint16_t flags;
-        ThreadState state;
-    } asNonvolatileStruct;
-    volatile uint32_t asInt;
-    uint32_t asNonvolatileInt;
-    std::atomic<uint32_t> asAtomicInt;
-private:
-    NO_COPY_SEMANTIC(ThreadStateAndFlags);
-};
-#endif
 
 class SuspendBarrier {
 public:
@@ -181,25 +144,17 @@ private:
 
 static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 
-#if defined(USE_CMC_GC) && defined(IMPOSSIBLE)
-class JSThread : public BaseThread {
-#else
 class JSThread {
-#endif
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
     static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x1;
-#ifdef USE_READ_BARRIER
     static constexpr int READ_BARRIER_STATE_BITFIELD_MASK = 0x2;
-#endif
-#ifdef USE_CMC_GC
     static constexpr int CMC_GC_PHASE_BITFIELD_START = 8;
     static constexpr int CMC_GC_PHASE_BITFIELD_NUM = 8;
     static constexpr int CMC_GC_PHASE_BITFIELD_MASK =
         (((1 << CMC_GC_PHASE_BITFIELD_NUM) - 1) << CMC_GC_PHASE_BITFIELD_START);
-#endif
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
@@ -208,12 +163,8 @@ public:
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
-#ifdef USE_READ_BARRIER
     using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag;
-#endif
-#ifdef USE_CMC_GC
     using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>;
-#endif
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
@@ -527,6 +478,7 @@ public:
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
     void SwitchJitProfileStubs(bool isEnablePgo);
+    void SwitchStwCopyStubs(bool isStwCopy);
 
     ThreadId GetThreadId() const
     {
@@ -537,9 +489,7 @@ public:
 
     static ThreadId GetCurrentThreadId();
 
-#ifdef USE_CMC_GC
     void IterateWeakEcmaGlobalStorage(WeakVisitor &visitor);
-#endif
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 
@@ -604,7 +554,6 @@ public:
         return status == SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     }
 
-#ifdef USE_READ_BARRIER
     bool NeedReadBarrier() const
     {
         return ReadBarrierStateBit::Decode(glueData_.sharedGCStateBitField_);
@@ -614,9 +563,7 @@ public:
     {
         ReadBarrierStateBit::Set(flag, &glueData_.sharedGCStateBitField_);
     }
-#endif
 
-#ifdef USE_CMC_GC
     common::GCPhase GetCMCGCPhase() const
     {
         return CMCGCPhaseBits::Decode(glueData_.sharedGCStateBitField_);
@@ -626,7 +573,6 @@ public:
     {
         CMCGCPhaseBits::Set(gcPhase, &glueData_.sharedGCStateBitField_);
     }
-#endif
 
     void SetPGOProfilerEnable(bool enable)
     {
@@ -1099,12 +1045,22 @@ public:
         return glueData_.IsEnableElementsKind_;
     }
 
+    uint32_t PUBLIC_API IsEnableCMCGC() const
+    {
+        return glueData_.isEnableCMCGC_;
+    }
+
+    void SetEnableCMCGC(bool enableCMCGC)
+    {
+        glueData_.isEnableCMCGC_ = enableCMCGC;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
+                                                 base::AlignedBool,
                                                  base::AlignedPointer,
-#ifdef USE_CMC_GC
                                                  base::AlignedPointer,
-#endif
+                                                 base::AlignedPointer,
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1155,12 +1111,10 @@ public:
                                                  base::AlignedUint32> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
-#ifdef USE_CMC_GC
+            IsEnableCMCGCIndex,
             ThreadHolderIndex,
             AllocBufferIndex,
-#else
             StateAndFlagsIndex,
-#endif
             ExceptionIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
@@ -1213,7 +1167,6 @@ public:
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
-#ifdef USE_CMC_GC
         static size_t GetThreadHolderOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
@@ -1223,12 +1176,12 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::AllocBufferIndex)>(isArch32);
         }
-#else
+
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
         }
-#endif
+
         static size_t GetExceptionOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ExceptionIndex)>(isArch32);
@@ -1473,6 +1426,12 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::megaHitCountIndex)>(isArch32);
         }
+
+        static size_t GetIsEnableCMCGCOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsEnableCMCGCIndex)>(isArch32);
+        }
+
         static size_t GetArrayHClassIndexesIndexOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
@@ -1489,12 +1448,10 @@ public:
         }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
-#ifdef USE_CMC_GC
+        alignas(EAS) uint32_t isEnableCMCGC_ {0};
         alignas(EAS) uintptr_t threadHolder_ {0};
         alignas(EAS) uintptr_t allocBuffer_ {0};
-#else
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
-#endif
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
@@ -1647,56 +1604,49 @@ public:
 
     bool IsSuspended() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         bool f = ReadFlag(ThreadFlag::SUSPEND_REQUEST);
         bool s = (GetState() != ThreadState::RUNNING);
         return f && s;
-#endif
     }
 
     inline bool HasSuspendRequest() const
     {
-#ifdef USE_CMC_GC
-        return GetThreadHolder()->HasSuspendRequest();
-#else
-        return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
-#endif
+        if (LIKELY(!IsEnableCMCGC())) {
+            return ReadFlag(ThreadFlag::SUSPEND_REQUEST);
+        } else {
+            return GetThreadHolder()->HasSuspendRequest();
+        }
     }
 
     void CheckSafepointIfSuspended()
     {
-#ifdef USE_CMC_GC
-        GetThreadHolder()->CheckSafepointIfSuspended();
-#else
-        if (HasSuspendRequest()) {
-            WaitSuspension();
+        if (LIKELY(!IsEnableCMCGC())) {
+            if (HasSuspendRequest()) {
+                WaitSuspension();
+            }
+        } else {
+            GetThreadHolder()->CheckSafepointIfSuspended();
         }
-#endif
     }
 
     bool IsInSuspendedState() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         return GetState() == ThreadState::IS_SUSPENDED;
-#endif
     }
 
     bool IsInRunningState() const
     {
-#ifdef USE_CMC_GC
-        return GetThreadHolder()->IsInRunningState();
-#else
-        return GetState() == ThreadState::RUNNING;
-#endif
+        if (LIKELY(!IsEnableCMCGC())) {
+            return GetState() == ThreadState::RUNNING;
+        } else {
+            return GetThreadHolder()->IsInRunningState();
+        }
     }
 
     bool IsInRunningStateOrProfiling() const;
 
-#ifdef USE_CMC_GC
     ThreadHolder *GetThreadHolder() const
     {
         return reinterpret_cast<ThreadHolder *>(glueData_.threadHolder_);
@@ -1712,18 +1662,60 @@ public:
     {
         glueData_.allocBuffer_ = reinterpret_cast<uintptr_t>(allocBuffer);
     }
-#endif
 
     ThreadState GetState() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         return static_cast<ThreadState>(stateAndFlags >> THREAD_STATE_OFFSET);
-#endif
     }
-    void PUBLIC_API UpdateState(ThreadState newState);
+
+    ThreadState PUBLIC_API UpdateState(ThreadState newState);
+
+    // newState must be non running
+    ThreadState PUBLIC_API TransferToNonRunning(ThreadState newState)
+    {
+        ASSERT(newState != ThreadState::RUNNING);
+        ThreadState oldState = GetState();
+        if (oldState == ThreadState::RUNNING) {
+            TransferFromRunningToSuspended(newState);
+        } else if (oldState != newState) {
+            StoreState(newState);
+        }
+        return oldState;
+    }
+
+    // newState must be running
+    ThreadState PUBLIC_API TransferToRunningIfNonRunning()
+    {
+        ThreadState oldState = GetState();
+        if (LIKELY(oldState != ThreadState::RUNNING)) {
+            TransferToRunning();
+        }
+        return oldState;
+    }
+
+    // newState must be non running and oldState must be running.
+    void PUBLIC_API TransferToNonRunningInRunning(ThreadState newState)
+    {
+        ASSERT(newState != ThreadState::RUNNING);
+        ASSERT(GetState() == ThreadState::RUNNING);
+        GetState();
+        TransferFromRunningToSuspended(newState);
+    }
+
+    // oldState must be non running.
+    void PUBLIC_API TransferInNonRunning(ThreadState newState)
+    {
+        ASSERT(GetState() != ThreadState::RUNNING);
+        GetState();
+        if (newState == ThreadState::RUNNING) {
+            TransferToRunning();
+        } else {
+            StoreState(newState);
+        }
+    }
+
     void SuspendThread(bool internalSuspend, SuspendBarrier* barrier = nullptr);
     void ResumeThread(bool internalSuspend);
     void WaitSuspension();
@@ -1919,43 +1911,36 @@ private:
         glueData_.globalConst_ = globalConst;
     }
 
-    void TransferFromRunningToSuspended(ThreadState newState);
+    void PUBLIC_API TransferFromRunningToSuspended(ThreadState newState);
 
-    void TransferToRunning();
+    void PUBLIC_API TransferToRunning();
 
-    inline void StoreState(ThreadState newState);
+    void PUBLIC_API StoreState(ThreadState newState);
 
     void StoreRunningState(ThreadState newState);
 
     void StoreSuspendedState(ThreadState newState);
 
+    void TryTriggerFullMarkBySharedLimit();
+
     bool ReadFlag(ThreadFlag flag) const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         uint32_t stateAndFlags = glueData_.stateAndFlags_.asAtomicInt.load(std::memory_order_acquire);
         uint16_t flags = (stateAndFlags & THREAD_FLAGS_MASK);
         return (flags & static_cast<uint16_t>(flag)) != 0;
-#endif
     }
 
     void SetFlag(ThreadFlag flag)
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         glueData_.stateAndFlags_.asAtomicInt.fetch_or(flag, std::memory_order_seq_cst);
-#endif
     }
 
     void ClearFlag(ThreadFlag flag)
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#else
+        ASSERT(!IsEnableCMCGC());
         glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
-#endif
     }
 
     void DumpStack() DUMP_API_ATTR;

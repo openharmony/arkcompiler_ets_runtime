@@ -13,49 +13,48 @@
  * limitations under the License.
  */
 
-#ifdef USE_CMC_GC
 #include "common_components/serialize/serialize_utils.h"
-#endif
 #include "ecmascript/serializer/base_serializer-inl.h"
 
 namespace panda::ecmascript {
 
 SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *object) const
 {
-#ifdef USE_CMC_GC
-    SerializedObjectSpace spaceType = common::SerializeUtils::GetSerializeObjectSpace(ToUintPtr(object));
-    if (spaceType == SerializedObjectSpace::OTHER) {
-        LOG_ECMA(FATAL) << "unsupported space type";
+    if (g_isEnableCMCGC) {
+        SerializedObjectSpace spaceType =
+            SerializedObjectSpace(static_cast<int>(common::SerializeUtils::GetSerializeObjectSpace(ToUintPtr(object))));
+        if (spaceType == SerializedObjectSpace::OTHER) {
+            LOG_ECMA(FATAL) << "unsupported space type";
+        }
+        return spaceType;
+    } else {
+        auto region = Region::ObjectAddressToRange(object);
+        auto flag = region->GetRegionSpaceFlag();
+        switch (flag) {
+            case RegionSpaceFlag::IN_OLD_SPACE:
+            case RegionSpaceFlag::IN_YOUNG_SPACE:
+            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+                return SerializedObjectSpace::OLD_SPACE;
+            case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
+            case RegionSpaceFlag::IN_READ_ONLY_SPACE:
+                return SerializedObjectSpace::NON_MOVABLE_SPACE;
+            case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
+                return SerializedObjectSpace::MACHINE_CODE_SPACE;
+            case RegionSpaceFlag::IN_HUGE_OBJECT_SPACE:
+                return SerializedObjectSpace::HUGE_SPACE;
+            case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
+            case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+            case RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE:
+                return SerializedObjectSpace::SHARED_OLD_SPACE;
+            case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+                return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
+            case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
+                return SerializedObjectSpace::SHARED_HUGE_SPACE;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable, the fault flag is: " << static_cast<uint32_t>(flag);
+                UNREACHABLE();
+        }
     }
-    return spaceType;
-#else
-    auto region = Region::ObjectAddressToRange(object);
-    auto flag = region->GetRegionSpaceFlag();
-    switch (flag) {
-        case RegionSpaceFlag::IN_OLD_SPACE:
-        case RegionSpaceFlag::IN_YOUNG_SPACE:
-        case RegionSpaceFlag::IN_APPSPAWN_SPACE:
-            return SerializedObjectSpace::OLD_SPACE;
-        case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
-        case RegionSpaceFlag::IN_READ_ONLY_SPACE:
-            return SerializedObjectSpace::NON_MOVABLE_SPACE;
-        case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
-            return SerializedObjectSpace::MACHINE_CODE_SPACE;
-        case RegionSpaceFlag::IN_HUGE_OBJECT_SPACE:
-            return SerializedObjectSpace::HUGE_SPACE;
-        case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
-        case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
-        case RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE:
-            return SerializedObjectSpace::SHARED_OLD_SPACE;
-        case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
-            return SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE;
-        case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
-            return SerializedObjectSpace::SHARED_HUGE_SPACE;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable, the fault flag is: " << static_cast<uint32_t>(flag);
-            UNREACHABLE();
-    }
-#endif
 }
 
 void BaseSerializer::WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize)
@@ -225,11 +224,7 @@ void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
 {
     JSTaggedValue moduleValue = func->GetModule();
     if (moduleValue.IsHeapObject()) {
-#ifdef USE_CMC_GC
         if (!moduleValue.IsInSharedHeap()) {
-#else
-        if (!Region::ObjectAddressToRange(moduleValue.GetTaggedObject())->InSharedHeap()) {
-#endif
             LOG_ECMA(ERROR) << "Shared function reference to local module";
         }
         if (!SerializeReference(moduleValue.GetTaggedObject())) {

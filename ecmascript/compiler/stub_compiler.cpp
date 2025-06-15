@@ -100,7 +100,7 @@ void StubCompiler::RunPipeline(LLVMModule *module, NativeAreaAllocator *allocato
         PassRunner<StubPassData> pipeline(&data);
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
-        pipeline.RunPass<SchedulingPass>();
+        pipeline.RunPass<SchedulingPass>(cs->IsStwCopyStub());
         pipeline.RunPass<StubLLVMIRGenPass>(i);
     }
 }

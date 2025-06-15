@@ -28,9 +28,9 @@ public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
     PostSchedule(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk,
-                CompilationEnv *env, bool fastBarrier = false)
+                CompilationEnv *env, bool fastBarrier = false, bool isStwCopyStub = false)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit), builder_(circuit), acc_(circuit),
-          compilationEnv_(env), fastBarrier_(fastBarrier)
+          compilationEnv_(env), fastBarrier_(fastBarrier), isStwCopyStub_(isStwCopyStub)
     {
     }
 
@@ -50,6 +50,7 @@ private:
     void GenerateExtraBB(ControlFlowGraph &cfg);
 
     bool VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
+    bool VisitHeapAllocForCMCGC(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
     bool VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
     bool VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
 
@@ -64,6 +65,12 @@ private:
                                                  std::vector<GateRef> &failBBGates,
                                                  std::vector<GateRef> &endBBGates,
                                                  int64_t flag);
+    void LoweringHeapAllocAndPrepareScheduleGateForCMCGC(GateRef gate,
+                                                           std::vector<GateRef> &currentBBGates,
+                                                           std::vector<GateRef> &successBBGates,
+                                                           std::vector<GateRef> &failBBGates,
+                                                           std::vector<GateRef> &endBBGates,
+                                                           [[maybe_unused]] int64_t flag);
     void LoweringHeapAllocate(GateRef gate,
                               std::vector<GateRef> &currentBBGates,
                               std::vector<GateRef> &successBBGates,
@@ -79,16 +86,10 @@ private:
                                                            std::vector<GateRef> &endBBGates);
 
     void LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
-#ifdef USE_READ_BARRIER
-#ifdef USE_CMC_GC
     void LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates,
                                                                      std::vector<GateRef> &successBBGates,
                                                                      std::vector<GateRef> &failBBGates,
                                                                      std::vector<GateRef> &endBBGates);
-#else
-    void LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
-#endif
-#endif
 
     void PrepareToScheduleNewGate(GateRef gate, std::vector<GateRef> &gates);
     MemoryAttribute::Barrier GetBarrierKind(GateRef gate);
@@ -108,6 +109,7 @@ private:
     GateAccessor acc_;
     CompilationEnv *compilationEnv_ {nullptr};
     bool fastBarrier_ {false};
+    bool isStwCopyStub_ {false};
 };
 };  // namespace panda::ecmascript::kungfu
 

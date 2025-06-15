@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
@@ -227,13 +228,13 @@ void Jit::SetDisableCodeSign(bool isDisableCodeSign)
 
 bool Jit::IsEnableAsyncCopyToFort() const
 {
-#ifdef USE_CMC_GC
-    // async alloc needs adaption work from CMCGC
-    // Need to also modify js_runtime_options.h
-    return false;
-#else
-    return isEnableAsyncCopyToFort_;
-#endif
+    if (g_isEnableCMCGC) {
+        // async alloc needs adaption work from CMCGC
+        // Need to also modify js_runtime_options.h
+        return false;
+    } else {
+        return isEnableAsyncCopyToFort_;
+    }
 }
 
 void Jit::SetEnableAsyncCopyToFort(bool isEnableAsyncCopyToFort)

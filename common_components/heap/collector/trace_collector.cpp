@@ -193,18 +193,10 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
         workStack.pop_back();
         auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
         region->AddLiveByteCount(obj->GetSize());
-#ifndef USE_CMC_GC
-        if (!obj->HasRefField()) {
-            continue;
-        }
-        TraceObjectRefFields(obj, workStack, weakStack);
-
-#else
         [[maybe_unused]] auto beforeSize = workStack.count();
         TraceObjectRefFields(obj, workStack, weakStack);
         DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
              beforeSize, workStack.count(), workStack.count() - beforeSize);
-#endif
         // try to fork new task if needed.
         if (threadPool != nullptr) {
             TryForkTask(threadPool, workStack, globalQueue);
@@ -363,7 +355,7 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
     if (!workStack.empty()) {
         workStack.clear();
     }
-    constexpr size_t maxIterationTime = 120ULL * 1000 * 1000 * 1000; // 2 mins.
+    constexpr uint64_t maxIterationTime = 120ULL * 1000 * 1000 * 1000; // 2 mins.
     constexpr size_t maxIterationLoopNum = 1000;
     auto visitSatbObj = [this, &workStack]() {
         WorkStack remarkStack;

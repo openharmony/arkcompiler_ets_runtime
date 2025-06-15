@@ -22,9 +22,6 @@
 #include "common_components/heap/collector/gc_infos.h"
 #include "common_components/mutator/thread_local.h"
 #include "common_components/mutator/satb_buffer.h"
-#ifdef _WIN64
-#include "common_components/os/windows/unwind_win.h"
-#endif
 #include "common_interfaces/thread/mutator_base.h"
 #include "common_interfaces/thread/thread_holder.h"
 

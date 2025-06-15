@@ -70,10 +70,10 @@
 #define SET_VALUE_PRIMITIVE(addr, offset, value) \
     Barriers::SetPrimitive<JSTaggedType>(this, offset, (value).GetRawData())
 
-#if !defined(NDEBUG) && USE_CMC_GC
+#if !defined(NDEBUG)
 #define FIELD_ACCESS_CHECK(needCheck, name, check)                                \
     if constexpr (needCheck) {                                                    \
-        if (check()) {                                                            \
+        if (g_isEnableCMCGC && check()) {                                         \
             LOG_FULL(FATAL) << #name" field can't be used under check: "#check;   \
             UNREACHABLE();                                                        \
         };                                                                        \

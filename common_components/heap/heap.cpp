@@ -29,6 +29,7 @@
 #if defined(_WIN64)
 #include <windows.h>
 #include <psapi.h>
+#undef ERROR
 #endif
 #if defined(__APPLE__)
 #include <mach/mach.h>

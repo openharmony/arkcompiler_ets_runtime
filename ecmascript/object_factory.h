@@ -416,7 +416,7 @@ public:
                                      MemSpaceType spaceType = MemSpaceType::SEMI_SPACE);
 
     JSHandle<PropertyBox> NewPropertyBox(const JSHandle<JSTaggedValue> &name);
-    
+
     JSHandle<EnumCache> NewEnumCache();
 
     JSHandle<ProtoChangeMarker> NewProtoChangeMarker();
@@ -811,11 +811,9 @@ public:
 
     JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-#ifdef USE_CMC_GC
     JSTaggedValue InitHClassInCompositeBaseClass(JSHClass* hclass, common::CommonType type);
     JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-#endif
 
     JSHandle<TaggedArray> SharedEmptyArray() const;
 

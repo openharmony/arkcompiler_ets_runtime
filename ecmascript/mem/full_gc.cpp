@@ -27,9 +27,7 @@ FullGC::FullGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 
 void FullGC::RunPhases()
 {
-#ifdef USE_CMC_GC
-    ASSERT("FullGC should be disabled" && false);
-#endif
+    ASSERT("FullGC should be disabled" && !g_isEnableCMCGC);
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("FullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))

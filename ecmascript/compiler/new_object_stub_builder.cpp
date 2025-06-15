@@ -1638,8 +1638,13 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
     auto env = GetEnvironment();
     Label success(env);
     Label next(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        callRuntime, &checkNext);
+    Bind(&checkNext);
 
-#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
+#if defined(ARK_ASAN_ON)
     Jump(callRuntime);
 #else
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
@@ -1670,13 +1675,16 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
 
 void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
 {
-#ifndef USE_CMC_GC
     // disable fastpath for now
     auto env = GetEnvironment();
     Label callRuntime(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &callRuntime, &checkNext);
+    Bind(&checkNext);
     AllocateInSOldPrologue(result, &callRuntime, exit);
     Bind(&callRuntime);
-#endif
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
@@ -1685,8 +1693,7 @@ void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef
     }
 }
 
-#ifdef USE_CMC_GC
-void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *callRuntime, Label *exit)
+void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMCGC(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
     Label success(env);
@@ -1708,7 +1715,7 @@ void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *
         Jump(exit);
     }
 }
-#else
+
 void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
@@ -1732,7 +1739,6 @@ void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *
         Jump(exit);
     }
 }
-#endif
 
 void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *result,
     Label *callRuntime, [[maybe_unused]] Label *exit)
@@ -1748,7 +1754,19 @@ void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *re
     BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
     Bind(&next);
 #endif
-    AllocateInYoungPrologueImpl(result, callRuntime, exit);
+    Label isCMCGC(env);
+    Label notCMCGC(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &isCMCGC, &notCMCGC);
+    Bind(&isCMCGC);
+    {
+        AllocateInYoungPrologueImplForCMCGC(result, callRuntime, exit);
+    }
+    Bind(&notCMCGC);
+    {
+        AllocateInYoungPrologueImpl(result, callRuntime, exit);
+    }
 #endif
 }
 

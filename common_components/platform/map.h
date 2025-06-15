@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +14,13 @@
  * limitations under the License.
  */
 
-#include "common_components/mutator/thread_local.h"
+#ifndef COMMON_COMPONENTS_PLATFORM_MAP_H
+#define COMMON_COMPONENTS_PLATFORM_MAP_H
 
-#include "common_components/heap/allocator/alloc_buffer.h"
-#include "common_components/base/globals.h"
+#include <cstddef>
 
 namespace common {
-
-thread_local ThreadLocalData threadLocalData;
-ThreadLocalData* ThreadLocal::GetThreadLocalData()
-{
-    return &threadLocalData;
+bool PageProtect(void *mem, size_t size, int prot);
 }
-} // namespace common
+
+#endif

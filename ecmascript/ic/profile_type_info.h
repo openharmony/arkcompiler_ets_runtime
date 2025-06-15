@@ -249,14 +249,9 @@ public:
 
     void SetExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> extraInfoMap)
     {
-#ifdef USE_CMC_GC
         Barriers::SetObject<true>(thread, reinterpret_cast<void*>(this),
                                   TaggedArray::DATA_OFFSET + GetExtraInfoMapOffset(),
                                   extraInfoMap.GetTaggedValue().GetRawData());
-#else
-        Barriers::SetObject<true>(thread, GetData(), GetExtraInfoMapOffset(),
-                                  extraInfoMap.GetTaggedValue().GetRawData());
-#endif
     }
 
     uint16_t GetJitHotnessThreshold() const

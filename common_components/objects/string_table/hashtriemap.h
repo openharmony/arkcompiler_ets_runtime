@@ -21,19 +21,14 @@
 #include "common_interfaces/objects/base_string.h"
 
 namespace panda::ecmascript {
-    class TaggedObject;
-    class EcmaStringTable;
+class TaggedObject;
 }
 
 namespace common {
 template <typename Mutex, typename ThreadHolder>
 class HashTrieMap {
-    friend class panda::ecmascript::EcmaStringTable;
-
 public:
-#ifdef USE_CMC_GC
     using WeakRefFieldVisitor = std::function<bool(RefField<>&)>;
-#endif
     using WeakRootVisitor = std::function<panda::ecmascript::TaggedObject *(panda::ecmascript::TaggedObject* p)>;
 
     static constexpr uint32_t N_CHILDREN_LOG2 = 3U;
@@ -189,9 +184,7 @@ public:
     // All other threads have stopped due to the gc and Clear phases.
     // Therefore, the operations related to atoms in ClearNodeFromGc and Clear use std::memory_order_relaxed,
     // which ensures atomicity but does not guarantee memory order
-#ifdef USE_CMC_GC
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRefFieldVisitor& visitor);
-#endif
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor);
     // Iterator
     template <typename ReadBarrier>
@@ -230,18 +223,15 @@ public:
     {
         return mu_;
     }
-
+    std::atomic<Indirect*> root_;
 private:
     Mutex mu_;
-    std::atomic<Indirect*> root_;
     std::atomic<uint32_t> inuseCount_{0};
     template <bool IsLock>
     Node* Expand(Entry* oldEntry, Entry* newEntry, uint32_t newHash, uint32_t hashShift, Indirect* parent);
     template <typename ReadBarrier>
     void Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid);
-#ifdef USE_CMC_GC
     bool CheckWeakRef(const WeakRefFieldVisitor& visitor, Entry* entry);
-#endif
     bool CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry);
 
     template <typename ReadBarrier>

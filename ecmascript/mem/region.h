@@ -538,9 +538,7 @@ public:
 
     bool InSharedHeap() const
     {
-#ifdef USE_CMC_GC
-        std::abort();
-#endif
+        ASSERT(!g_isEnableCMCGC);
         auto flag = packedData_.flags_.spaceFlag_;
         return flag >= RegionSpaceFlag::SHARED_SPACE_BEGIN && flag <= RegionSpaceFlag::SHARED_SPACE_END;
     }

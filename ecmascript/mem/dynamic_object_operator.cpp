@@ -22,9 +22,9 @@ DynamicObjectOperator DynamicObjectOperator::dynOperator_;
 
 void DynamicObjectOperator::Initialize()
 {
-#ifdef USE_CMC_GC
-    BaseObject::RegisterDynamic(&dynOperator_);
-#endif
+    if (g_isEnableCMCGC) {
+        BaseObject::RegisterDynamic(&dynOperator_);
+    }
 }
 
 void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,

@@ -254,7 +254,7 @@ void CollectorResources::StartGCThreads()
     }
     // set thread name.
 #ifdef __WIN64
-    int ret = pthread_setname_np(gcMainThread, "gc-main-thread");
+    int ret = pthread_setname_np(gcMainThread_, "gc-main-thread");
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "pthread_setname_np() in CollectorResources::StartGCThreads() return " <<
         ret << " rather than 0";
 #endif

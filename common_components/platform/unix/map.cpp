@@ -13,29 +13,20 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include <sys/mman.h>
+#include "common_components/log/log.h"
+#include "common_components/platform/map.h"
 
 namespace common {
-HeapProfilerListener &HeapProfilerListener::GetInstance()
-{
-    static HeapProfilerListener instance;
-    return instance;
-}
 
-void HeapProfilerListener::RegisterMoveEventCb(const std::function<void(uintptr_t, uintptr_t, size_t)> &cb)
+bool PageProtect(void *mem, size_t size, int prot)
 {
-    moveEventCb_ = cb;
-}
-
-void HeapProfilerListener::UnRegisterMoveEventCb()
-{
-    moveEventCb_ = nullptr;
-}
-
-void HeapProfilerListener::OnMoveEvent(uintptr_t fromObj, uintptr_t toObj, size_t size)
-{
-    if (moveEventCb_) {
-        moveEventCb_(fromObj, toObj, size);
+    int ret = mprotect(mem, size, prot);
+    if (ret != 0) {
+        LOG_COMMON(ERROR) << "PageProtect mem = " << mem << ", size = " << size << ", change to " << prot
+                          << " failed, ret = " << ret << ", error code is " << errno;
+        return false;
     }
+    return true;
 }
 }  // namespace common

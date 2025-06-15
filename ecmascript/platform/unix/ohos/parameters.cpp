@@ -38,4 +38,13 @@ namespace panda::ecmascript {
         return defaultSize;
 #endif
     }
+
+    bool IsEnableCMCGC(bool defaultValue)
+    {
+#if !defined(STANDALONE_MODE)
+        return OHOS::system::GetBoolParameter("persist.ark.enable.cmc.gc", defaultValue);
+#else
+        return defaultValue;
+#endif
+    }
 }  // namespace panda::ecmascript

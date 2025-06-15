@@ -112,27 +112,28 @@ void StubBuilder::LoopBegin(Label *loopHead)
 
 GateRef StubBuilder::CheckSuspend(GateRef glue)
 {
-#ifdef USE_CMC_GC
+    GateRef stateAndFlagsOffset = IntPtr(JSThread::GlueData::GetStateAndFlagsOffset(env_->IsArch32Bit()));
+    GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), glue, stateAndFlagsOffset);
+    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
+}
+
+GateRef StubBuilder::CheckSuspendForCMCGC(GateRef glue)
+{
     GateRef threadHolderOffset = IntPtr(JSThread::GlueData::GetThreadHolderOffset(env_->IsArch32Bit()));
     GateRef threadHolder = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, threadHolderOffset);
     GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), threadHolder, IntPtr(0));
     return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
-#else
-    GateRef stateAndFlagsOffset = IntPtr(JSThread::GlueData::GetStateAndFlagsOffset(env_->IsArch32Bit()));
-    GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), glue, stateAndFlagsOffset);
-    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
-#endif
 }
 
 void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue)
 {
-#ifdef USE_CMC_GC
-    // TODO: remove this after CheckSuspend is done.
-    CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});
-    LoopEnd(loopHead);
-#else
     Label loopEnd(env);
     Label needSuspend(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &needSuspend, &checkNext);
+    Bind(&checkNext);
     BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
     Bind(&needSuspend);
     {
@@ -141,7 +142,6 @@ void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, G
     }
     Bind(&loopEnd);
     LoopEnd(loopHead);
-#endif
 }
 
 void StubBuilder::LoopEnd(Label *loopHead)
@@ -1896,6 +1896,11 @@ void StubBuilder::VerifyBarrier(GateRef glue, GateRef obj, [[maybe_unused]] Gate
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
@@ -1919,7 +1924,17 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-#ifndef USE_CMC_GC
+    Label callRuntime(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &callRuntime, &checkNext);
+    Bind(&callRuntime);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(CMCGCMarkingBarrier), {glue, obj, offset, value});
+        Jump(&exit);
+    }
+    Bind(&checkNext);
     // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
     GateRef objectRegion = ObjectAddressToRange(obj);
     GateRef valueRegion = ObjectAddressToRange(value);
@@ -1974,10 +1989,6 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
         default:
             UNREACHABLE();
     }
-#else
-    CallNGCRuntime(glue, RTSTUB_ID(CMCGCMarkingBarrier), {glue, obj, offset, value});
-    Jump(&exit);
-#endif
     Bind(&exit);
     env->SubCfgExit();
 }
@@ -3249,14 +3260,23 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
         {
             GateRef rep = HandlerBaseGetRep(handlerInfo);
             GateRef toIndex = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
-#ifdef USE_CMC_GC
-            GateRef offset = PtrAdd(toIndex, IntPtr(TaggedArray::DATA_OFFSET));
-            SetValueWithRep(glue, array, offset, value, rep, &repChange);
-#else
-            GateRef base = PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
-            SetValueWithRep(glue, base, toIndex, value, rep, &repChange);
-#endif
-            Jump(&exit);
+            Label isCMCGC(env);
+            Label notCMCGC(env);
+            BRANCH_UNLIKELY(LoadPrimitive(
+                VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+                &isCMCGC, &notCMCGC);
+            Bind(&isCMCGC);
+            {
+                GateRef offset = PtrAdd(toIndex, IntPtr(TaggedArray::DATA_OFFSET));
+                SetValueWithRep(glue, array, offset, value, rep, &repChange);
+                Jump(&exit);
+            }
+            Bind(&notCMCGC);
+            {
+                GateRef base = PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
+                SetValueWithRep(glue, base, toIndex, value, rep, &repChange);
+                Jump(&exit);
+            }
         }
         Bind(&repChange);
         {
@@ -12851,22 +12871,17 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
                             GateRef dstAddr, GateRef taggedValueCount, GateRef needBarrier,
                             CopyKind copyKind)
 {
-#ifdef USE_CMC_GC
-    (void)srcObj;
-    (void)dstObj;
-    (void)needBarrier;
-    (void)copyKind;
-#endif
-
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-#ifndef USE_CMC_GC
     Label exit(env);
-#endif
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-#ifndef USE_CMC_GC
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     Label handleBarrier(env);
     BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
     Bind(&handleBarrier);
@@ -12888,7 +12903,6 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
         Jump(&exit);
     }
     Bind(&exit);
-#endif
     env->SubCfgExit();
 }
 
@@ -12933,8 +12947,12 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, Gate
     index = Int32Add(*index, Int32(1));
     LoopEnd(&begin);
     Bind(&loopExit);
-#ifndef USE_CMC_GC
-    BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
+    Label checkNext(env);
+    BRANCH_NO_WEIGHT(needBarrier, &checkNext, &exit);
+    Bind(&checkNext);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &handleBarrier);
     Bind(&handleBarrier);
     {
         CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
@@ -12943,9 +12961,6 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, Gate
 
         Jump(&exit);
     }
-#else
-    Jump(&exit);
-#endif
     Bind(&exit);
     env->SubCfgExit();
 }

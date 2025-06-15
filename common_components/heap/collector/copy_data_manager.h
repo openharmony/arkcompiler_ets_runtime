@@ -76,7 +76,7 @@ class HeapBitmapManager {
         {
 #if defined(_WIN64)
             allocSpinLock.Lock();
-            uintptr_t startAddr = allocZone[type].zonePosition.fetch_add(sz);
+            uintptr_t startAddr = allocZone_[type].zonePosition.fetch_add(sz);
             uintptr_t endAddr = startAddr + sz;
             uintptr_t lastAddr = lastCommitEndAddr[type].load(std::memory_order_relaxed);
             if (endAddr <= lastAddr) {
@@ -96,11 +96,11 @@ class HeapBitmapManager {
         void ReleaseMemory()
         {
 #if defined(_WIN64)
-            LOGE_IF(UNLIKELY_CC(!VirtualFree(reinterpret_cast<void*>(startAddress), size, MEM_DECOMMIT))) <<
+            LOGE_IF(UNLIKELY_CC(!VirtualFree(reinterpret_cast<void*>(startAddress_), size_, MEM_DECOMMIT))) <<
                 "VirtualFree failed in ReturnPage, errno: " << GetLastError();
 #elif defined(__APPLE__)
-            MemorySet(startAddress, size, 0, size);
-            (void)madvise(reinterpret_cast<void*>(startAddress), size, MADV_DONTNEED);
+            MemorySet(startAddress_, size_, 0, size_);
+            (void)madvise(reinterpret_cast<void*>(startAddress_), size_, MADV_DONTNEED);
 #else
             MemorySet(startAddress_, size_, 0, size_);
             DLOG(REGION, "clear copy-data @[%#zx+%zu, %#zx)", startAddress_, size_, startAddress_ + size_);
@@ -111,7 +111,7 @@ class HeapBitmapManager {
             for (size_t i = 0; i < Zone::ZoneType::ZONE_TYPE_CNT; ++i) {
                 allocZone_[i].zonePosition = allocZone_[i].zoneStartAddress;
 #if defined(_WIN64)
-                lastCommitEndAddr[i].store(allocZone[i].zoneStartAddress);
+                lastCommitEndAddr[i].store(allocZone_[i].zoneStartAddress);
 #endif
             }
         }
@@ -131,7 +131,7 @@ public:
     ~HeapBitmapManager()
     {
 #ifdef _WIN64
-        if (!VirtualFree(reinterpret_cast<void*>(heapBitmapStart), 0, MEM_RELEASE)) {
+        if (!VirtualFree(reinterpret_cast<void*>(heapBitmapStart_), 0, MEM_RELEASE)) {
             LOG_COMMON(ERROR) << "VirtualFree error for HeapBitmapManager";
         }
 #else

@@ -843,13 +843,10 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg
     __ Jne(lNonCallable);
 
     __ Movq(jsFuncReg, rsi); // save jsFunc
-#ifdef USE_CMC_GC
-    __ Movl(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax);
-    __ Movq(Operand(rdi, JSThread::GlueData::GetBaseAddressOffset(false)), rdx);
-    __ Addq(rdx, rax);       // get jsHclass
-#else
     __ Movq(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
-#endif
+    Register maskRegister = rdx;
+    __ Movabs(TaggedObject::GC_STATE_MASK, maskRegister);
+    __ And(maskRegister, rax);
     Register jsHclassReg = rax;
     __ Movl(Operand(jsHclassReg, JSHClass::BIT_FIELD_OFFSET), rax);
     __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable
@@ -1479,7 +1476,7 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
         __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
 
         __ Leaq(Operand(rsp, AsmInterpretedFrame::GetSize(false)), opRegister);
-        
+
         __ Cmpq(0, hasExceptionRegister);
         __ Jne(&gotoExceptionHandler);
         AsmInterpreterCall::DispatchCall(assembler, r12, opRegister, callTargetRegister, methodRegister, rsi, false);

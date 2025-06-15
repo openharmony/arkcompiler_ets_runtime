@@ -266,7 +266,7 @@ public:
 
 protected:
     void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
-    
+
     BaseHeap *heap_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};
@@ -315,11 +315,8 @@ public:
     uintptr_t Allocate(size_t objectSize, JSThread *thread, void *desc,
         AllocateEventType allocType = AllocateEventType::NORMAL);
     uintptr_t Allocate(size_t objectSize, JSThread *thread);
-#ifdef USE_CMC_GC
-    void *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
-#else
+    void *PUBLIC_API AllocateFortForCMC(size_t objectSize, JSThread *thread, void *desc);
     Region *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
-#endif
 };
 
 }  // namespace panda::ecmascript

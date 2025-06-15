@@ -15,9 +15,7 @@
 
 #include "ecmascript/serializer/base_deserializer.h"
 
-#ifdef USE_CMC_GC
 #include "common_interfaces/heap/heap_allocator.h"
-#endif
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -25,6 +23,7 @@
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/napi/jsnapi_helper.h"
+#include "mem/mem.h"
 
 namespace panda::ecmascript {
 
@@ -259,11 +258,9 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
     size_t handledFieldSize = sizeof(JSTaggedType);
     ObjectSlot slot(objAddr + fieldOffset);
     switch (encodeFlag) {
-#ifdef USE_CMC_GC
         case (uint8_t)SerializedObjectSpace::REGULAR_SPACE:
         case (uint8_t)SerializedObjectSpace::PIN_SPACE:
-        case (uint8_t)SerializedObjectSpace::LARGE_SPACE: {
-#else
+        case (uint8_t)SerializedObjectSpace::LARGE_SPACE:
         case (uint8_t)SerializedObjectSpace::OLD_SPACE:
         case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:
         case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:
@@ -271,7 +268,6 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)SerializedObjectSpace::SHARED_OLD_SPACE:
         case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
         case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE: {
-#endif
             SerializedObjectSpace space = SerializeData::DecodeSpace(encodeFlag);
             HandleNewObjectEncodeFlag(space, objAddr, fieldOffset);
             break;
@@ -438,7 +434,6 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
 {
     uintptr_t res = 0U;
     switch (space) {
-#ifdef USE_CMC_GC
         case SerializedObjectSpace::REGULAR_SPACE: {
             if (currentRegularObjectAddr_ + objSize >
                     currentRegularRegionBeginAddr_ + common::SerializeUtils::GetRegionSize()) {
@@ -469,11 +464,10 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             }
             break;
         }
-#else
         case SerializedObjectSpace::OLD_SPACE: {
             if (oldSpaceBeginAddr_ + objSize > AlignUp(oldSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(oldRegionIndex_ < regionVector_.size());
-                oldSpaceBeginAddr_ = regionVector_[oldRegionIndex_++]->GetBegin();
+                oldSpaceBeginAddr_ = reinterpret_cast<Region *>(regionVector_[oldRegionIndex_++])->GetBegin();
             }
             res = oldSpaceBeginAddr_;
             oldSpaceBeginAddr_ += objSize;
@@ -482,7 +476,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         case SerializedObjectSpace::NON_MOVABLE_SPACE: {
             if (nonMovableSpaceBeginAddr_ + objSize > AlignUp(nonMovableSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(nonMovableRegionIndex_ < regionVector_.size());
-                nonMovableSpaceBeginAddr_ = regionVector_[nonMovableRegionIndex_++]->GetBegin();
+                nonMovableSpaceBeginAddr_ =
+                    reinterpret_cast<Region *>(regionVector_[nonMovableRegionIndex_++])->GetBegin();
             }
             res = nonMovableSpaceBeginAddr_;
             nonMovableSpaceBeginAddr_ += objSize;
@@ -491,7 +486,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         case SerializedObjectSpace::MACHINE_CODE_SPACE: {
             if (machineCodeSpaceBeginAddr_ + objSize > AlignUp(machineCodeSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(machineCodeRegionIndex_ < regionVector_.size());
-                machineCodeSpaceBeginAddr_ = regionVector_[machineCodeRegionIndex_++]->GetBegin();
+                machineCodeSpaceBeginAddr_ =
+                    reinterpret_cast<Region *>(regionVector_[machineCodeRegionIndex_++])->GetBegin();
             }
             res = machineCodeSpaceBeginAddr_;
             machineCodeSpaceBeginAddr_ += objSize;
@@ -508,7 +504,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         case SerializedObjectSpace::SHARED_OLD_SPACE: {
             if (sOldSpaceBeginAddr_ + objSize > AlignUp(sOldSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(sOldRegionIndex_ < regionVector_.size());
-                sOldSpaceBeginAddr_ = regionVector_[sOldRegionIndex_++]->GetBegin();
+                sOldSpaceBeginAddr_ = reinterpret_cast<Region *>(regionVector_[sOldRegionIndex_++])->GetBegin();
             }
             res = sOldSpaceBeginAddr_;
             sOldSpaceBeginAddr_ += objSize;
@@ -517,7 +513,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE: {
             if (sNonMovableSpaceBeginAddr_ + objSize > AlignUp(sNonMovableSpaceBeginAddr_, DEFAULT_REGION_SIZE)) {
                 ASSERT(sNonMovableRegionIndex_ < regionVector_.size());
-                sNonMovableSpaceBeginAddr_ = regionVector_[sNonMovableRegionIndex_++]->GetBegin();
+                sNonMovableSpaceBeginAddr_ =
+                    reinterpret_cast<Region *>(regionVector_[sNonMovableRegionIndex_++])->GetBegin();
             }
             res = sNonMovableSpaceBeginAddr_;
             sNonMovableSpaceBeginAddr_ += objSize;
@@ -531,7 +528,6 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             }
             break;
         }
-#endif
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -648,47 +644,46 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
 
 void BaseDeserializer::AllocateToDifferentSpaces()
 {
-#ifdef USE_CMC_GC
-    size_t regularSpaceSize = data_->GetRegularSpaceSize();
-    if (regularSpaceSize > 0) {
-        // statistic object size
-        AllocateToRegularSpace(regularSpaceSize);
+    if (g_isEnableCMCGC) {
+        size_t regularSpaceSize = data_->GetRegularSpaceSize();
+        if (regularSpaceSize > 0) {
+            // statistic object size
+            AllocateToRegularSpace(regularSpaceSize);
+        }
+        size_t pinSpaceSize = data_->GetPinSpaceSize();
+        if (pinSpaceSize > 0) {
+            // statistic object size
+            AllocateToPinSpace(pinSpaceSize);
+        }
+    } else {
+        size_t oldSpaceSize = data_->GetOldSpaceSize();
+        if (oldSpaceSize > 0) {
+            heap_->GetOldSpace()->IncreaseLiveObjectSize(oldSpaceSize);
+            AllocateToOldSpace(oldSpaceSize);
+        }
+        size_t nonMovableSpaceSize = data_->GetNonMovableSpaceSize();
+        if (nonMovableSpaceSize > 0) {
+            heap_->GetNonMovableSpace()->IncreaseLiveObjectSize(nonMovableSpaceSize);
+            AllocateToNonMovableSpace(nonMovableSpaceSize);
+        }
+        size_t machineCodeSpaceSize = data_->GetMachineCodeSpaceSize();
+        if (machineCodeSpaceSize > 0) {
+            heap_->GetMachineCodeSpace()->IncreaseLiveObjectSize(machineCodeSpaceSize);
+            AllocateToMachineCodeSpace(machineCodeSpaceSize);
+        }
+        size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
+        if (sOldSpaceSize > 0) {
+            sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
+            AllocateToSharedOldSpace(sOldSpaceSize);
+        }
+        size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
+        if (sNonMovableSpaceSize > 0) {
+            sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
+            AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
+        }
     }
-    size_t pinSpaceSize = data_->GetPinSpaceSize();
-    if (pinSpaceSize > 0) {
-        // statistic object size
-        AllocateToPinSpace(pinSpaceSize);
-    }
-#else
-    size_t oldSpaceSize = data_->GetOldSpaceSize();
-    if (oldSpaceSize > 0) {
-        heap_->GetOldSpace()->IncreaseLiveObjectSize(oldSpaceSize);
-        AllocateToOldSpace(oldSpaceSize);
-    }
-    size_t nonMovableSpaceSize = data_->GetNonMovableSpaceSize();
-    if (nonMovableSpaceSize > 0) {
-        heap_->GetNonMovableSpace()->IncreaseLiveObjectSize(nonMovableSpaceSize);
-        AllocateToNonMovableSpace(nonMovableSpaceSize);
-    }
-    size_t machineCodeSpaceSize = data_->GetMachineCodeSpaceSize();
-    if (machineCodeSpaceSize > 0) {
-        heap_->GetMachineCodeSpace()->IncreaseLiveObjectSize(machineCodeSpaceSize);
-        AllocateToMachineCodeSpace(machineCodeSpaceSize);
-    }
-    size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
-    if (sOldSpaceSize > 0) {
-        sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
-        AllocateToSharedOldSpace(sOldSpaceSize);
-    }
-    size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
-    if (sNonMovableSpaceSize > 0) {
-        sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
-        AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
-    }
-#endif
 }
 
-#ifdef USE_CMC_GC
 void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 {
     if (regularSpaceSize <= common::SerializeUtils::GetRegionSize()) {
@@ -721,6 +716,7 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
     ASSERT(spaceObjSize > regionSize);
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = AlignUp(spaceObjSize, regionSize);
+    ASSERT(regionSize != 0);
     size_t regionNum = regionAlignedSize / regionSize;
     uintptr_t firstRegionAddr = 0U;
     std::vector<size_t> regionRemainSizeVector;
@@ -758,7 +754,7 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
     }
     return firstRegionAddr;
 }
-#else
+
 void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                                            SerializedObjectSpace spaceType)
 {
@@ -776,7 +772,7 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         }
         Region *currentRegion = space->GetCurrentRegion();
         FreeObject::FillFreeObject(heap_, currentRegion->GetBegin(), currentRegion->GetSize());
-        regionVector_.push_back(currentRegion);
+        regionVector_.push_back(ToUintPtr(currentRegion));
         regionNum--;
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
@@ -806,7 +802,7 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
             region->SetHighWaterMark(region->GetEnd() - regionRemainSizeVector[index++]);
         }
         region->IncreaseAliveObject(region->GetAllocatedBytes());
-        regionVector_.push_back(region);
+        regionVector_.push_back(ToUintPtr(region));
         allocateRegions.push_back(region);
         regionNum--;
     }
@@ -872,7 +868,7 @@ void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
     uintptr_t object = space->AllocateNoGCAndExpand(thread_, sOldSpaceSize);
     if (UNLIKELY(object == 0U)) {
         AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_, SerializedObjectSpace::SHARED_OLD_SPACE);
-        sOldSpaceBeginAddr_ = regionVector_[sOldRegionIndex_++]->GetBegin();
+        sOldSpaceBeginAddr_ = reinterpret_cast<Region *>(regionVector_[sOldRegionIndex_++])->GetBegin();
     } else {
         if (thread_->IsSharedConcurrentMarkingOrFinished()) {
             Region *region = Region::ObjectAddressToRange(object);
@@ -890,7 +886,7 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
     if (UNLIKELY(object == 0U)) {
         AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_,
                                   SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE);
-        sNonMovableSpaceBeginAddr_ = regionVector_[sNonMovableRegionIndex_++]->GetBegin();
+        sNonMovableSpaceBeginAddr_ = reinterpret_cast<Region *>(regionVector_[sNonMovableRegionIndex_++])->GetBegin();
     } else {
         if (thread_->IsSharedConcurrentMarkingOrFinished()) {
             Region *region = Region::ObjectAddressToRange(object);
@@ -900,7 +896,6 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
         sNonMovableSpaceBeginAddr_ = object;
     }
 }
-#endif
 
 }  // namespace panda::ecmascript
 

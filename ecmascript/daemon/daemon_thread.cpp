@@ -91,10 +91,8 @@ void DaemonThread::WaitFinished()
         thread_.reset();
         common::Taskpool::GetCurrentTaskpool()->Destroy(GetThreadId());
     }
-#ifndef USE_CMC_GC
-    ASSERT(!IsInRunningState());
-    ASSERT(!IsRunning());
-#endif
+    ASSERT(g_isEnableCMCGC || !IsInRunningState());
+    ASSERT(g_isEnableCMCGC || !IsRunning());
     ASSERT(thread_ == nullptr);
     ASSERT(tasks_.empty());
     ResetThreadId();
@@ -122,9 +120,9 @@ void DaemonThread::Run()
     os::thread::native_handle_type thread = os::thread::GetNativeHandle();
     os::thread::SetThreadName(thread, "OS_GC_Thread");
     ASSERT(JSThread::GetCurrent() == nullptr);
-#ifdef USE_CMC_GC
-    glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr));
-#endif
+    if (g_isEnableCMCGC) {
+        glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr));
+    }
     RegisterThread(this);
     SetThreadId();
     ASSERT(JSThread::GetCurrent() == this);
@@ -144,9 +142,9 @@ void DaemonThread::Run()
     ASSERT(postedGroups_ == 0);
     ASSERT(tasks_.empty());
     UnregisterThread(this);
-#ifdef USE_CMC_GC
-    glueData_.threadHolder_ = 0;
-#endif
+    if (g_isEnableCMCGC) {
+        glueData_.threadHolder_ = 0;
+    }
 }
 
 bool DaemonThread::AddTaskGroup(DaemonTaskGroup taskGroup)

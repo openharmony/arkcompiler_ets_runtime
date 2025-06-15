@@ -25,6 +25,7 @@
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -350,6 +351,29 @@ private:
         Mutex workListMutex_;
     };
 
+    class ToRunningScope {
+    public:
+        ToRunningScope(ThreadHolder *holder, bool isEnable) : holder_(holder), scope_(nullptr)
+        {
+            if (isEnable) {
+                scope_ = new ThreadHolder::TryBindMutatorScope(holder);
+                holder->TransferToRunning();
+            }
+        }
+
+        ~ToRunningScope()
+        {
+            if (scope_ != nullptr) {
+                holder_->TransferToNative();
+                delete scope_;
+            }
+        }
+
+    private:
+        ThreadHolder *holder_;
+        ThreadHolder::TryBindMutatorScope *scope_;
+    };
+
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT {50};
     static constexpr uint32_t MS_PRE_SECOND {1000};
@@ -371,9 +395,7 @@ private:
     Mutex skipCtorMethodIdMutex_;
     JITProfiler* jitProfiler_ {nullptr};
     CVector<ProfileType> recordedTransRootType_;
-#ifdef USE_CMC_GC
     ThreadHolder *holder_ {nullptr};
-#endif
     friend class PGOProfilerManager;
 };
 

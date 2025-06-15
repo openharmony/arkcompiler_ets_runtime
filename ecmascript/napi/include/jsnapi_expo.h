@@ -1400,8 +1400,9 @@ public:
 
 private:
     JSThread *thread_;
-    [[maybe_unused]] uint16_t oldThreadState_;
-    [[maybe_unused]] bool hasSwitchState_ {false};
+    uint16_t oldThreadState_ {0};
+    uint32_t isEnableCMCGC_ {0};
+    uint32_t hasSwitchState_ {0};
 };
 
 class PUBLIC_API JsiFastNativeScope {
@@ -1414,7 +1415,8 @@ public:
 private:
     JSThread *thread_ {nullptr};
     uint16_t oldThreadState_ {0};
-    bool hasSwitchState_ {false};
+    uint32_t isEnableCMCGC_ {0};
+    uint32_t hasSwitchState_ {0};
 };
 
 /**

@@ -36,7 +36,7 @@ void HeapBitmapManager::InitializeHeapBitmap()
     allHeapBitmapSize_ = heapBitmapSize;
 
 #ifdef _WIN64
-    void* startAddress = VirtualAlloc(NULL, allHeapBitmapSize, MEM_RESERVE, PAGE_READWRITE);
+    void* startAddress = VirtualAlloc(NULL, allHeapBitmapSize_, MEM_RESERVE, PAGE_READWRITE);
     if (startAddress == NULL) {
         LOG_COMMON(FATAL) << "failed to initialize HeapBitmapManager";
         UNREACHABLE_CC();

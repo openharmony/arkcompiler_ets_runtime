@@ -41,6 +41,11 @@ void BarrierStubBuilder::DoBatchBarrier()
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     Label handleMark(env);
     Label handleBitSet(env);
     BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
@@ -295,6 +300,11 @@ void BarrierStubBuilder::DoMoveBarrierCrossRegion(GateRef srcAddr, GateRef srcOb
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     Label handleMark(env);
     Label handleBitSet(env);
     Label doMove(env);
@@ -370,6 +380,11 @@ void BarrierStubBuilder::DoMoveBarrierInRegion(GateRef srcAddr)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     Label handleMark(env);
     Label handleBitSet(env);
     Label doMove(env);
@@ -731,6 +746,11 @@ void BarrierStubBuilder::DoReverseBarrier()
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label checkNext(env);
+    BRANCH_UNLIKELY(LoadPrimitive(
+        VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &exit, &checkNext);
+    Bind(&checkNext);
     Label handleMark(env);
     Label handleBitSet(env);
     Label doReverse(env);
@@ -920,7 +940,7 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
         {
             GateRef item1 = LoadPrimitive(VariableType::INT64(), bitSet, *vstartByteIndex);
             GateRef item2 = LoadPrimitive(VariableType::INT64(), bitSet, *vendByteIndex);
-            
+
             // revStart <- Int64BitReverse(bitSet[vstartByteIndex])
             // revEnd <- Int64BitReverse(bitSet[vendByteIndex])
             GateRef revStart = Int64BitReverse(item1);

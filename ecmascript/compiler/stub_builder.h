@@ -181,6 +181,7 @@ public:
     void LoopEnd(Label *loopHead);
     void LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
+    GateRef CheckSuspendForCMCGC(GateRef glue);
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);

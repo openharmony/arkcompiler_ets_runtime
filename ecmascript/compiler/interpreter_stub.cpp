@@ -84,6 +84,9 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DECLARE_ASM_HANDLER_JIT_PROFILE(name, base, format) \
     DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_JIT_PROFILE_CALL_BACK, format)
 
+#define DECLARE_ASM_HANDLER_STW_COPY(name) \
+    DECLARE_ASM_HANDLER_BASE(name##StwCopy, true, REGISTER_NULL_CALL_BACK, SlotIDFormat::IMM8)
+
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
 
@@ -119,7 +122,6 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DISPATCH_LAST_WITH_ACC()                                                          \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter)       \
 
-#ifdef USE_CMC_GC
 #define UPDATE_HOTNESS(_sp, callback)                                                                  \
     varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                          \
     BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                         \
@@ -152,52 +154,22 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Jump(&dispatch);                                                                           \
         }                                                                                              \
         Bind(&initialized);                                                                            \
-        /* Call runtime only when using cmc, everything else in UPDATE_HOTNESS is the same. */         \
-        CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});                                              \
+        Label callCheckSafePoint(env);                                                                 \
+        Label afterCheckSafePoint(env);                                                                \
+        BRANCH_UNLIKELY(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(                              \
+            JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),                              \
+            &callCheckSafePoint, &afterCheckSafePoint);                                                \
+        Bind(&callCheckSafePoint);                                                                     \
+        {                                                                                              \
+            CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});                                          \
+            Jump(&afterCheckSafePoint);                                                                \
+        }                                                                                              \
+        Bind(&afterCheckSafePoint);                                                                    \
         (callback).TryDump();                                                                          \
         (callback).TryJitCompile();                                                                    \
         Jump(&dispatch);                                                                               \
     }                                                                                                  \
     Bind(&dispatch);
-#else
-#define UPDATE_HOTNESS(_sp, callback)                                                                          \
-    varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                                  \
-    BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                                 \
-    Bind(&slowPath);                                                                                           \
-    {                                                                                                          \
-        GateRef func = GetFunctionFromFrame(glue, GetFrame(_sp));                                                    \
-        GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));         \
-        GateRef interruptsFlag = LoadPrimitive(VariableType::INT8(), glue, iVecOffset);                        \
-        varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
-        Label initialized(env);                                                                                \
-        Label callRuntime(env);                                                                                \
-        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                                   \
-                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                    \
-            &callRuntime, &initialized);                                                                       \
-        Bind(&callRuntime);                                                                                    \
-        if (!(callback).IsEmpty()) {                                                                           \
-            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });         \
-        } else {                                                                                               \
-            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });                 \
-        }                                                                                                      \
-        Label handleException(env);                                                                            \
-        Label noException(env);                                                                                \
-        BRANCH(HasPendingException(glue), &handleException, &noException);                                     \
-        Bind(&handleException);                                                                                \
-        {                                                                                                      \
-            DISPATCH_LAST();                                                                                   \
-        }                                                                                                      \
-        Bind(&noException);                                                                                    \
-        {                                                                                                      \
-            Jump(&dispatch);                                                                                   \
-        }                                                                                                      \
-        Bind(&initialized);                                                                                    \
-        (callback).TryDump();                                                                                  \
-        (callback).TryJitCompile();                                                                            \
-        Jump(&dispatch);                                                                                       \
-    }                                                                                                          \
-    Bind(&dispatch);
-#endif
 
 #define CHECK_EXCEPTION(res, offset)                                                      \
     CheckException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,         \
@@ -6385,6 +6357,7 @@ ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_JIT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_JIT_PROFILE)
+ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DECLARE_ASM_HANDLER_STW_COPY)
 
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH

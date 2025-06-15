@@ -15,6 +15,7 @@
 
 #include "ecmascript/serializer/value_serializer.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/base/array_helper.h"
 
@@ -182,18 +183,24 @@ bool ValueSerializer::SerializeSharedObj([[maybe_unused]] TaggedObject *object)
 {
     [[maybe_unused]] Region *region = Region::ObjectAddressToRange(object);
     JSHClass *objClass = object->GetClass();
-    if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
-        objClass->IsJSSharedAsyncFunction() ||
-#ifdef USE_CMC_GC
-        // add shared read only
-        (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
-#else
-        region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
-#endif
-        SerializeSharedObject(object);
-        return true;
+    if (g_isEnableCMCGC) {
+        if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
+            objClass->IsJSSharedAsyncFunction() ||
+            // add shared read only
+            (serializeSharedEvent_ == 0 && object->IsInSharedHeap())) {
+            SerializeSharedObject(object);
+            return true;
+        }
+        return false;
+    } else {
+        if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
+            objClass->IsJSSharedAsyncFunction() ||
+            region->InSharedReadOnlySpace() || (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
+            SerializeSharedObject(object);
+            return true;
+        }
+        return false;
     }
-    return false;
 }
 
 void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
@@ -303,8 +310,8 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         }
         case JSType::SOURCE_TEXT_MODULE_RECORD: {
-            SourceTextModule::RestoreMutableFields(thread_,
-               JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
+            SourceTextModule::RestoreMutableFields(
+                thread_, JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
             break;
         }
         default:
@@ -356,7 +363,7 @@ void ValueSerializer::SerializeNativeBindingObject(TaggedObject *object)
     auto info = reinterpret_cast<panda::JSNApi::NativeBindingInfo *>(
         JSNativePointer::Cast(nativeBindingValue->GetTaggedObject())->GetExternalPointer());
     if (info == nullptr) {
-        std::string errorMessage = "Serialize don't support NativeBindingInfo is nullptr";;
+        std::string errorMessage = "Serialize don't support NativeBindingInfo is nullptr";
         PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
         return;

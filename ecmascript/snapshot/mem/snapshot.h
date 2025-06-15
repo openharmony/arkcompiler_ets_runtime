@@ -61,17 +61,14 @@ protected:
             return VerifyVersion("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
         }
 
-#ifdef USE_CMC_GC
         size_t regularObjSize {0};
         size_t pinnedObjSize {0};
         size_t largeObjSize {0};
-#else
         size_t oldSpaceObjSize {0};
         size_t nonMovableObjSize {0};
         size_t machineCodeObjSize {0};
         size_t snapshotObjSize {0};
         size_t hugeObjSize {0};
-#endif
         size_t stringSize {0};
         uintptr_t pandaFileBegin {0};
         size_t rootObjectSize {0};

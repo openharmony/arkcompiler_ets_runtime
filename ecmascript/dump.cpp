@@ -4809,15 +4809,13 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<Reference> &vec) const
 {
-    if (IsCompositeHClass()) {
-        vec.emplace_back(CString("__proto__"), GetPrototype());
-        vec.emplace_back(CString("Layout"), GetLayout());
-        vec.emplace_back(CString("Transitions"), GetTransitions());
-        vec.emplace_back(CString("Parent"), GetParent());
-        vec.emplace_back(CString("ProtoChangeMarker"), GetProtoChangeMarker());
-        vec.emplace_back(CString("ProtoChangeDetails"), GetProtoChangeDetails());
-        vec.emplace_back(CString("EnumCache"), GetEnumCache());
-    }
+    vec.emplace_back(CString("__proto__"), GetPrototype());
+    vec.emplace_back(CString("Layout"), GetLayout());
+    vec.emplace_back(CString("Transitions"), GetTransitions());
+    vec.emplace_back(CString("Parent"), GetParent());
+    vec.emplace_back(CString("ProtoChangeMarker"), GetProtoChangeMarker());
+    vec.emplace_back(CString("ProtoChangeDetails"), GetProtoChangeDetails());
+    vec.emplace_back(CString("EnumCache"), GetEnumCache());
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
     vec.emplace_back(CString("BitField1"), JSTaggedValue(GetBitField1()));
 }

@@ -25,6 +25,7 @@ ohos_executable("profdump") {
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
     "$js_root/ecmascript/compiler:libark_mock_stub_set",
+    "$js_root:libcommon_components_set",
   ]
   external_deps = [
     "runtime_core:arkfile_header_deps",
@@ -54,7 +55,6 @@ ohos_executable("profdump") {
   }
 
   if (ets_runtime_enable_cmc_gc) {
-    deps += [ "$js_root:libcommon_components_set" ]
     if (ark_hybrid) {
       deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
     }

@@ -167,7 +167,7 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef glue, GateRef obj)
 
 GateRef CircuitBuilder::IsJsCOWArray(GateRef glue, GateRef obj, [[maybe_unused]] const CompilationEnv *compilationEnv)
 {
-#ifndef USE_CMC_GC
+#ifdef IMPOSSIBLE
     if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
         std::string comment = "is_js_cow_array";
         auto currentLabel = env_->GetCurrentLabel();
@@ -560,7 +560,6 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
 
 GateRef CircuitBuilder::HasPendingException(GateRef glue, [[maybe_unused]] const CompilationEnv *compilationEnv)
 {
-#ifndef USE_CMC_GC
     if (compilationEnv != nullptr && compilationEnv->SupportIntrinsic()) {
         std::string comment = "HasPendingExceptionIntrinsic";
         auto currentLabel = env_->GetCurrentLabel();
@@ -572,7 +571,6 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue, [[maybe_unused]] const
         currentLabel->SetDepend(hasPendingException);
         return hasPendingException;
     }
-#endif
     return HasPendingException(glue);
 }
 

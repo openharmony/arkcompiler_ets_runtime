@@ -56,7 +56,7 @@ public:
     {
         freePagesTree_.Fini();
 #ifdef _WIN64
-        LOGE_IF(!VirtualFree(base, 0, MEM_RELEASE) <<
+        LOGE_IF(!VirtualFree(base_, 0, MEM_RELEASE)) <<
                 "VirtualFree failed in PagePool destruction, errno: " << GetLastError();
 #else
         LOGE_IF(munmap(base_, totalPageCount_ * COMMON_PAGE_SIZE) != EOK) <<
@@ -84,7 +84,7 @@ public:
                 size_t current = usedZone_;
                 usedZone_ += pageSize;
 #ifdef _WIN64
-                LOGE_IF(UNLIKELY_CC(!VirtualAlloc(base + current, pageSize, MEM_COMMIT, PAGE_READWRITE))) <<
+                LOGE_IF(UNLIKELY_CC(!VirtualAlloc(base_ + current, pageSize, MEM_COMMIT, PAGE_READWRITE))) <<
                     "VirtualAlloc commit failed in GetPage, errno: " << GetLastError();
 #endif
                 return base_ + current;

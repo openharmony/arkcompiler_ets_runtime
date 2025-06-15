@@ -18,9 +18,7 @@
 
 #include <limits>
 
-#ifdef USE_CMC_GC
 #include "common_components/serialize/serialize_utils.h"
-#endif
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/runtime.h"
@@ -31,7 +29,7 @@ namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
-static constexpr int SERIALIZE_SPACE_NUM = 7;
+static constexpr int SERIALIZE_SPACE_NUM = 12;
 static constexpr int GROUP_SIZE = SERIALIZE_SPACE_NUM + 1; // 1: incomplete data
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
@@ -59,7 +57,7 @@ enum class EncodeFlag : uint8_t {
     // 0x05: shared non movable space
     // 0x06: shared huge space
     NEW_OBJECT = 0x00,
-    REFERENCE = 0x07,
+    REFERENCE = 0x10,
     WEAK,
     PRIMITIVE,
     MULTI_RAW_DATA,
@@ -80,8 +78,13 @@ enum class EncodeFlag : uint8_t {
     LAST
 };
 
-#ifndef USE_CMC_GC
 enum class SerializedObjectSpace : uint8_t {
+    REGULAR_SPACE,
+    PIN_SPACE,
+    LARGE_SPACE,
+    READ_ONLY_SPACE,
+    OTHER,
+
     OLD_SPACE,
     NON_MOVABLE_SPACE,
     MACHINE_CODE_SPACE,
@@ -90,9 +93,7 @@ enum class SerializedObjectSpace : uint8_t {
     SHARED_NON_MOVABLE_SPACE,
     SHARED_HUGE_SPACE,
 };
-#else
-using common::SerializedObjectSpace;
-#endif
+using common::SerializedBaseObjectSpace;
 
 enum class SerializeType : uint8_t {
     VALUE_SERIALIZE,
@@ -137,19 +138,20 @@ public:
 
     static size_t AlignUpRegionAvailableSize(size_t size)
     {
-#ifdef USE_CMC_GC
-        size_t regionSize = common::SerializeUtils::GetRegionSize();
-        if (size == 0) {
-            return regionSize;
+        if (g_isEnableCMCGC) {
+            size_t regionSize = common::SerializeUtils::GetRegionSize();
+            if (size == 0) {
+                return regionSize;
+            }
+            ASSERT(regionSize != 0);
+            return ((size - 1) / regionSize + 1) * regionSize; // 1: align up
+        } else {
+            if (size == 0) {
+                return Region::GetRegionAvailableSize();
+            }
+            size_t regionAvailableSize = Region::GetRegionAvailableSize();
+            return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
         }
-        return ((size - 1) / regionSize + 1) * regionSize; // 1: align up
-#else
-        if (size == 0) {
-            return Region::GetRegionAvailableSize();
-        }
-        size_t regionAvailableSize = Region::GetRegionAvailableSize();
-        return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
-#endif
     }
 
     bool ExpandBuffer(size_t requestedSize)
@@ -339,7 +341,6 @@ public:
         return incompleteData_;
     }
 
-#ifdef USE_CMC_GC
     const std::vector<size_t>& GetRegularRemainSizeVector() const
     {
         return regularRemainSizeVector_;
@@ -348,12 +349,10 @@ public:
     {
         return pinRemainSizeVector_;
     }
-#else
     const std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM>& GetRegionRemainSizeVectors() const
     {
         return regionRemainSizeVectors_;
     }
-#endif
 
     size_t GetRegularSpaceSize() const
     {
@@ -392,38 +391,41 @@ public:
 
     void CalculateSerializedObjectSize(SerializedObjectSpace space, size_t objectSize)
     {
-        switch (space) {
-#ifdef USE_CMC_GC
-            case SerializedObjectSpace::REGULAR_SPACE:
-                AlignSpaceObjectSize(regularRemainSizeVector_, regularSpaceSize_, objectSize);
-                break;
-            case SerializedObjectSpace::PIN_SPACE:
-                AlignSpaceObjectSize(pinRemainSizeVector_, pinSpaceSize_, objectSize);
-                break;
-#else
-            case SerializedObjectSpace::OLD_SPACE:
-                AlignSpaceObjectSize(oldSpaceSize_, objectSize, SerializedObjectSpace::OLD_SPACE);
-                break;
-            case SerializedObjectSpace::NON_MOVABLE_SPACE:
-                AlignSpaceObjectSize(nonMovableSpaceSize_, objectSize, SerializedObjectSpace::NON_MOVABLE_SPACE);
-                break;
-            case SerializedObjectSpace::MACHINE_CODE_SPACE:
-                AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize, SerializedObjectSpace::MACHINE_CODE_SPACE);
-                break;
-            case SerializedObjectSpace::SHARED_OLD_SPACE:
-                AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize, SerializedObjectSpace::SHARED_OLD_SPACE);
-                break;
-            case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
-                AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize,
-                                     SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE);
-                break;
-#endif
-            default:
-                break;
+        if (g_isEnableCMCGC) {
+            switch (space) {
+                case SerializedObjectSpace::REGULAR_SPACE:
+                    AlignSpaceObjectSize(regularRemainSizeVector_, regularSpaceSize_, objectSize);
+                    break;
+                case SerializedObjectSpace::PIN_SPACE:
+                    AlignSpaceObjectSize(pinRemainSizeVector_, pinSpaceSize_, objectSize);
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            switch (space) {
+                case SerializedObjectSpace::OLD_SPACE:
+                    AlignSpaceObjectSize(oldSpaceSize_, objectSize, SerializedObjectSpace::OLD_SPACE);
+                    break;
+                case SerializedObjectSpace::NON_MOVABLE_SPACE:
+                    AlignSpaceObjectSize(nonMovableSpaceSize_, objectSize, SerializedObjectSpace::NON_MOVABLE_SPACE);
+                    break;
+                case SerializedObjectSpace::MACHINE_CODE_SPACE:
+                    AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize, SerializedObjectSpace::MACHINE_CODE_SPACE);
+                    break;
+                case SerializedObjectSpace::SHARED_OLD_SPACE:
+                    AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize, SerializedObjectSpace::SHARED_OLD_SPACE);
+                    break;
+                case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
+                    AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize,
+                                         SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
-#ifndef USE_CMC_GC
     void AlignSpaceObjectSize(size_t &spaceSize, size_t objectSize, SerializedObjectSpace spaceType)
     {
         size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
@@ -434,7 +436,7 @@ public:
         spaceSize += objectSize;
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
     }
-#else
+
     void AlignSpaceObjectSize(std::vector<size_t> &remainSizeVec, size_t &spaceSize, size_t objectSize)
     {
         size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
@@ -445,7 +447,6 @@ public:
         spaceSize += objectSize;
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
     }
-#endif
 
     void DecreaseSharedArrayBufferReference()
     {
@@ -480,7 +481,7 @@ public:
     void SetErrorMessage(const std::string &errorMessage)
     {
         errorMessage_ = errorMessage;
-    } 
+    }
 
     const std::string &GetErrorMessage() const
     {
@@ -507,12 +508,9 @@ private:
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
     std::string errorMessage_;
-#ifdef USE_CMC_GC
     std::vector<size_t> regularRemainSizeVector_ {};
     std::vector<size_t> pinRemainSizeVector_ {};
-#else
     std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM> regionRemainSizeVectors_ {};
-#endif
     std::set<uintptr_t> sharedArrayBufferSet_ {};
     std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
     friend class ModuleSnapshot;

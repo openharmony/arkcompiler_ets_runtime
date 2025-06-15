@@ -13,16 +13,12 @@
  * limitations under the License.
  */
 
-#include "common_components/mutator/thread_local.h"
+#include <cstdint>
+#include "common_interfaces/base/common.h"
 
-#include "common_components/heap/allocator/alloc_buffer.h"
-#include "common_components/base/globals.h"
+namespace panda::ecmascript {
 
-namespace common {
+uint32_t PUBLIC_API g_isEnableCMCGC = 0;
 
-thread_local ThreadLocalData threadLocalData;
-ThreadLocalData* ThreadLocal::GetThreadLocalData()
-{
-    return &threadLocalData;
-}
-} // namespace common
+}  // namespace panda::ecmascript
+

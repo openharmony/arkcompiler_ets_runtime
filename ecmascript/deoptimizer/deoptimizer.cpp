@@ -543,9 +543,9 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
         JSTaggedValue acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
-#ifdef USE_READ_BARRIER
-        base::GCHelper::CopyCallTarget(callTarget.GetTaggedObject());
-#endif
+        if (g_isEnableCMCGC) {
+            base::GCHelper::CopyCallTarget(callTarget.GetTaggedObject());
+        }
         statePtr->function = callTarget;
         statePtr->acc = acc;
 
@@ -791,7 +791,7 @@ void Deoptimizier::ProcessLazyDeopt(JSHandle<JSTaggedValue> maybeAcc, const uint
     if (NeedOverwriteAcc(resumePc)) {
         statePtr->acc = maybeAcc.GetTaggedValue();
     }
-    
+
     // Todo: add check constructor
 
     if (!thread_->HasPendingException()) {

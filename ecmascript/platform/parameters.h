@@ -24,5 +24,7 @@ namespace panda::ecmascript {
     uint64_t GetImportDuration(uint64_t defaultTime);
 
     size_t GetPoolSize(size_t defaultSize);
+
+    bool IsEnableCMCGC(bool defaultValue);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_PARAMETERS_H

@@ -4200,23 +4200,24 @@ JsiNativeScope::JsiNativeScope(const EcmaVM *vm)
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
     }
 #endif
-#ifdef USE_CMC_GC
-    hasSwitchState_ = thread_->GetThreadHolder()->TransferToNativeIfInRunning();
-#else
-    oldThreadState_ = static_cast<uint16_t>(thread_->GetState());
-    thread_->UpdateState(ecmascript::ThreadState::NATIVE);
-#endif
+    if (LIKELY(!vm->IsEnableCMCGC())) {
+        oldThreadState_ = static_cast<uint16_t>(thread_->TransferToNonRunning(ecmascript::ThreadState::NATIVE));
+        hasSwitchState_ = oldThreadState_ != static_cast<uint16_t>(ecmascript::ThreadState::NATIVE);
+    } else {
+        isEnableCMCGC_ = true;
+        hasSwitchState_ = thread_->GetThreadHolder()->TransferToNativeIfInRunning();
+    }
 }
 
 JsiNativeScope::~JsiNativeScope()
 {
-#ifdef USE_CMC_GC
     if (hasSwitchState_) {
-        thread_->GetThreadHolder()->TransferToRunning();
+        if (LIKELY(!isEnableCMCGC_)) {
+            thread_->TransferInNonRunning(static_cast<ecmascript::ThreadState>(oldThreadState_));
+        } else {
+            thread_->GetThreadHolder()->TransferToRunning();
+        }
     }
-#else
-    thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
-#endif
 }
 
 // ------------------------------------ JsiFastNativeScope -----------------------------------------------
@@ -4230,28 +4231,23 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
         const_cast<EcmaVM*>(vm)->IncreaseUpdateThreadStateTransCount();
     }
 #endif
-#ifdef USE_CMC_GC
-    hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
-    (void)oldThreadState_;
-#else
-    ecmascript::ThreadState oldState = thread_->GetState();
-    if (oldState == ecmascript::ThreadState::RUNNING) {
-        return;
+    if (LIKELY(!vm->IsEnableCMCGC())) {
+        oldThreadState_ = static_cast<uint16_t>(thread_->TransferToRunningIfNonRunning());
+        hasSwitchState_ = oldThreadState_ != static_cast<uint16_t>(ecmascript::ThreadState::RUNNING);
+    } else {
+        isEnableCMCGC_ = true;
+        hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
     }
-    oldThreadState_ = static_cast<uint16_t>(oldState);
-    hasSwitchState_ = true;
-    thread_->UpdateState(ecmascript::ThreadState::RUNNING);
-#endif
 }
 
 JsiFastNativeScope::~JsiFastNativeScope()
 {
     if (hasSwitchState_) {
-#ifdef USE_CMC_GC
-        thread_->GetThreadHolder()->TransferToNative();
-#else
-        thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
-#endif
+        if (LIKELY(!isEnableCMCGC_)) {
+            thread_->TransferToNonRunningInRunning(static_cast<ecmascript::ThreadState>(oldThreadState_));
+        } else {
+            thread_->GetThreadHolder()->TransferToNative();
+        }
     }
 }
 
@@ -4619,15 +4615,16 @@ void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 // Enable cross thread execution except in gc process.
 bool JSNApi::CheckAndSetAllowCrossThreadExecution(EcmaVM *vm)
 {
-#ifdef USE_CMC_GC
-    return false;
-#endif
-    if (vm->GetHeap()->InGC() || SharedHeap::GetInstance()->InGC()) {
+    if (ecmascript::g_isEnableCMCGC) {
         return false;
+    } else {
+        if (vm->GetHeap()->InGC() || SharedHeap::GetInstance()->InGC()) {
+            return false;
+        }
+        LOG_ECMA(WARN) << "enable cross thread execution when not in gc process";
+        vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
+        return true;
     }
-    LOG_ECMA(WARN) << "enable cross thread execution when not in gc process";
-    vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
-    return true;
 }
 
 void* JSNApi::GetEnv(EcmaVM *vm)
@@ -4779,44 +4776,44 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
     ecmascript::ThreadManagedScope managedScope(thread);
     if (thread != nullptr && vm->IsInitialized()) {
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
-    if (thread->IsMainThreadFast()) {
-        LOG_ECMA(INFO) << "JSNApi::TriggerGC gcType: " << static_cast<int>(gcType);
-        std::ostringstream stack;
-        ecmascript::Backtrace(stack, true);
-        LOG_ECMA(INFO) << stack.str();
-    }
-#endif
-#ifdef USE_CMC_GC
-        common::GcType type = common::GcType::ASYNC;
-        if (gcType == TRIGGER_GC_TYPE::FULL_GC || gcType == TRIGGER_GC_TYPE::SHARED_FULL_GC ||
-            reason == ecmascript::GCReason::ALLOCATION_FAILED) {
-            type = common::GcType::FULL;
-        }
-        common::BaseRuntime::RequestGC(type);
-#else  // add ALL_GC_TYPE here for toolchain
-        auto sHeap = ecmascript::SharedHeap::GetInstance();
-        switch (gcType) {
-            case TRIGGER_GC_TYPE::SEMI_GC:
-                vm->CollectGarbage(vm->GetHeap()->SelectGCType(), reason);
-                break;
-            case TRIGGER_GC_TYPE::OLD_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, reason);
-                break;
-            case TRIGGER_GC_TYPE::FULL_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, reason);
-                break;
-            case TRIGGER_GC_TYPE::SHARED_GC:
-                sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_GC,
-                    ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
-                break;
-            case TRIGGER_GC_TYPE::SHARED_FULL_GC:
-                sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_FULL_GC,
-                    ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
-                break;
-            default:
-                break;
+        if (thread->IsMainThreadFast()) {
+            LOG_ECMA(INFO) << "JSNApi::TriggerGC gcType: " << static_cast<int>(gcType);
+            std::ostringstream stack;
+            ecmascript::Backtrace(stack, true);
+            LOG_ECMA(INFO) << stack.str();
         }
 #endif
+        if (ecmascript::g_isEnableCMCGC) {
+            common::GcType type = common::GcType::ASYNC;
+            if (gcType == TRIGGER_GC_TYPE::FULL_GC || gcType == TRIGGER_GC_TYPE::SHARED_FULL_GC ||
+                reason == ecmascript::GCReason::ALLOCATION_FAILED) {
+                type = common::GcType::FULL;
+            }
+            common::BaseRuntime::RequestGC(type);
+        } else {
+            auto sHeap = ecmascript::SharedHeap::GetInstance();
+            switch (gcType) {
+                case TRIGGER_GC_TYPE::SEMI_GC:
+                    vm->CollectGarbage(vm->GetHeap()->SelectGCType(), reason);
+                    break;
+                case TRIGGER_GC_TYPE::OLD_GC:
+                    vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, reason);
+                    break;
+                case TRIGGER_GC_TYPE::FULL_GC:
+                    vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, reason);
+                    break;
+                case TRIGGER_GC_TYPE::SHARED_GC:
+                    sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_GC,
+                        ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
+                    break;
+                case TRIGGER_GC_TYPE::SHARED_FULL_GC:
+                    sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_FULL_GC,
+                        ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }
 
