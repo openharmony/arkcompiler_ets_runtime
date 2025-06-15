@@ -652,10 +652,14 @@ void HashTrieMap<Mutex, ThreadHolder>::Iter(ReadBarrier&& readBarrier, Indirect*
 template <typename Mutex, typename ThreadHolder>
 bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRefFieldVisitor& visitor, HashTrieMap::Entry* entry)
 {
-    bool isAlive = visitor(reinterpret_cast<RefField<>&>(*entry->ValueAddress()));
+    // RefField only support 64-bit value, so could not cirectly pass `Entry::Value` to WeakRefFieldVisitor
+    // int 32-bit machine
+    uint64_t str = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(entry->Value()));
+    bool isAlive = visitor(reinterpret_cast<RefField<> &>(str));
     if (!isAlive) {
         return true;
     }
+    entry->SetValue(reinterpret_cast<BaseString *>(static_cast<uintptr_t>(str)));
     return false;
 }
 
