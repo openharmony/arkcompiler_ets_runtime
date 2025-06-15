@@ -518,26 +518,27 @@ void CallStubBuilder::JSCallNative(Label *exit)
     thisValue_ = Undefined();
     numArgs_ = Int32Add(actualNumArgs_, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     auto env = GetEnvironment();
-    Label jsProxy(env);
-    Label notJsProxy(env);
-    BRANCH(IsJsProxy(glue_, func_), &jsProxy, &notJsProxy);
-    Bind(&jsProxy);
+    Label isJSFunction(env);
+    Label notJSFunction(env);
+    BRANCH(IsJSFunction(glue_, func_), &isJSFunction, &notJSFunction);
+    Bind(&isJSFunction);
     {
         JSCallNativeInner(exit, true);
     }
-    Bind(&notJsProxy);
+    Bind(&notJSFunction);
     {
         JSCallNativeInner(exit, false);
     }
 }
 
-void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJsProxy)
+void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJSFunction)
 {
-    if (isJsProxy) {
+    if (isJSFunction) {
+        nativeCode_ = LoadPrimitive(VariableType::NATIVE_POINTER(), func_, IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
+    } else {
+        // JSProxy or JSBoundFunction
         nativeCode_ = LoadPrimitive(VariableType::NATIVE_POINTER(), method_,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    } else {
-        nativeCode_ = LoadPrimitive(VariableType::NATIVE_POINTER(), func_, IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
     }
     GateRef ret;
     int idxForNative = PrepareIdxForNative();
@@ -552,7 +553,7 @@ void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJsProxy)
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
-            if (!isJsProxy) {
+            if (isJSFunction) {
                 GateRef numArgsKeeper = numArgs_;
                 CallFastBuiltin(&notFastBuiltins, exit, hir_);
                 Bind(&notFastBuiltins);
