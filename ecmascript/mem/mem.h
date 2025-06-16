@@ -27,6 +27,7 @@
 #define LOG_ECMA_MEM(level) LOG_GC(level) << __func__ << ":" << __LINE__ << " "
 
 namespace panda::ecmascript {
+
 enum class MemAlignment : uint8_t {
     MEM_ALIGN_OBJECT = 8,
     MEM_ALIGN_REGION = 16,
@@ -83,7 +84,7 @@ static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 static constexpr size_t MAX_32BIT_OBJECT_SPACE_SIZE = 1_GB;
 static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE_FOR_CMC = 32_KB; // initialize from CMC-GC
 static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = DEFAULT_REGION_SIZE * 2 / 3;
-static size_t g_maxRegularHeapObjectSize = MAX_REGULAR_HEAP_OBJECT_SIZE;
+inline size_t g_maxRegularHeapObjectSize = MAX_REGULAR_HEAP_OBJECT_SIZE;
 // internal allocator
 static constexpr size_t CHUNK_ALIGN_SIZE = 4_KB;
 static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;
