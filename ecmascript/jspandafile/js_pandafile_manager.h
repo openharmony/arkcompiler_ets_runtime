@@ -134,6 +134,8 @@ private:
     static void *AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode);
     static void FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode);
 
+    static bool UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile);
+
     RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was shared by all vm.
     std::unordered_map<const CString, std::shared_ptr<JSPandaFile>, CStringHash> loadedJSPandaFiles_;
