@@ -203,7 +203,6 @@ namespace panda::ecmascript {
     V(JSHClassFindProtoTransitions)            \
     V(FinishObjSizeTracking)                   \
     V(NumberHelperStringToDouble)              \
-    V(GetStringToListCacheArray)               \
     V(IntLexicographicCompare)                 \
     V(DoubleLexicographicCompare)              \
     V(FastArraySortString)                     \

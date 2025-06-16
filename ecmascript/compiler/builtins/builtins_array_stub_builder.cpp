@@ -2994,7 +2994,9 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
     Label lessStrLen(env);
     BRANCH(Int32LessThan(strLen, Int32(builtins::StringToListResultCache::MAX_STRING_LENGTH)), &lessStrLen, slowPath);
     Bind(&lessStrLen);
-    GateRef cacheArray = CallNGCRuntime(glue, RTSTUB_ID(GetStringToListCacheArray), { glue });
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    auto cacheArray =
+        GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::STRING_TO_LIST_RESULT_CACHE_INDEX);
 
     Label cacheDef(env);
     BRANCH(TaggedIsUndefined(cacheArray), slowPath, &cacheDef);
@@ -3018,7 +3020,6 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
 
         GateRef cacheResArray = GetValueFromTaggedArray(glue, cacheArray,
             Int32Add(index, Int32(builtins::StringToListResultCache::ARRAY_INDEX)));
-        GateRef globalEnv = GetCurrentGlobalEnv();
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
         GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));

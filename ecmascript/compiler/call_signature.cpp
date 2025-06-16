@@ -1822,20 +1822,6 @@ DEF_CALL_SIGNATURE(CallBigIntAsUintN)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(GetStringToListCacheArray)
-{
-    // 1 : 1 input parameters
-    CallSignature callSignature("GetStringToListCacheArray", 0, 1,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = callSignature;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
-        VariableType::NATIVE_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(BigIntEquals)
 {
     // 2 : 2 input parameters
