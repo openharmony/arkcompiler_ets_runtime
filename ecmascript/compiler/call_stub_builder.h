@@ -214,7 +214,7 @@ private:
 
     void JSCallInit(Label *exit, Label *funcIsHeapObject, Label *funcIsCallable, Label *funcNotCallable);
     void JSCallNative(Label *exit);
-    void JSCallNativeInner(Label *exit, bool isJsProxy);
+    void JSCallNativeInner(Label *exit, bool isJSFunction);
     void JSCallJSFunction(Label *exit, Label *noNeedCheckException = nullptr);
     void JSFastAotCall(Label *exit);
     void JSSlowAotCall(Label *exit);

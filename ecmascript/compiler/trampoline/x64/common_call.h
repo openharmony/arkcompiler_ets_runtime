@@ -223,7 +223,7 @@ private:
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid,
                              bool hasException = false);
-    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
+    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);

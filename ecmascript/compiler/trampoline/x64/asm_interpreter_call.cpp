@@ -148,10 +148,10 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     {
         __ Testq(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), bitFieldRegister);
         __ Jz(&notCallable);
-        CallNativeEntry(assembler, true);
+        CallNativeEntry(assembler, false);
     }
     __ Bind(&callNativeEntry);
-    CallNativeEntry(assembler, false);
+    CallNativeEntry(assembler, true);
     __ Bind(&callJSFunctionEntry);
     {
         Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
@@ -925,17 +925,19 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     }
 }
 
-void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy)
+void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction)
 {
     Register glue = rdi;
     Register argv = r9;
     Register function = rsi;
     Register nativeCode = r10;
-    if (isJsProxy) {
-        Register method = rdx;
-        __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
+    // get native pointer
+    if (isJSFunction) {
+        __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode);
     } else {
-        __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode); // get native pointer
+        // JSProxy or JSBoundFunction
+        Register method = rdx;
+        __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode);
     }
 
     __ PushAlignBytes();
