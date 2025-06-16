@@ -206,4 +206,17 @@ assert_equal(numParsedObj.numberval9, 0);// less than Number.MIN_VALUE, expect 0
 	}
 	assert_equal(err.name, 'SyntaxError');
 }
+
+{
+	const v12 = new Uint16Array(4);
+	const v13 = new Uint16Array(2);
+	v12.toJSON = v13;
+	function f14() {
+		const v14 = new Uint16Array(3);
+		this.toJSON = v14;
+	}
+	const v21 = JSON.stringify(v12);
+	JSON.parse(v21, f14);
+}
+
 test_end();

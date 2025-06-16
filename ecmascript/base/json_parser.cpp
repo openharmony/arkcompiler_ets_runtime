@@ -1393,7 +1393,7 @@ bool Internalize::RecurseAndApply(JSThread *thread, const JSHandle<JSObject> &ho
     // If newElement is undefined, then Perform ? val.[[Delete]](P).
     if (value->IsUndefined()) {
         SCheckMode sCheckMode = transformType == TransformType::SENDABLE ? SCheckMode::SKIP : SCheckMode::CHECK;
-        changeResult = JSObject::DeleteProperty(thread, holder, name, sCheckMode);
+        changeResult = JSTaggedValue::DeleteProperty(thread, JSHandle<JSTaggedValue>(holder), name, sCheckMode);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     } else {
         // Perform ? CreateDataProperty(val, P, newElement)
