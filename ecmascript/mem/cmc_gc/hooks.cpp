@@ -32,6 +32,7 @@ using panda::ecmascript::ObjectXRay;
 using panda::ecmascript::FreeObject;
 using panda::ecmascript::ObjectSlot;
 using panda::ecmascript::JSThread;
+using panda::ecmascript::TaggedType;
 
 class CMCRootVisitor final : public panda::ecmascript::RootVisitor {
 public:
@@ -216,7 +217,7 @@ void JitFortUnProt(size_t size, void* base)
 
 bool IsMachineCodeObject(uintptr_t objPtr)
 {
-    JSTaggedValue value(objPtr);
+    JSTaggedValue value(static_cast<TaggedType>(objPtr));
     return value.IsMachineCodeObject();
 }
 
