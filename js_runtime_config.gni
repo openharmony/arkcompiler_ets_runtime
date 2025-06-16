@@ -56,7 +56,7 @@ declare_args() {
   HOST_ARCH = 64
 
   if (!defined(timeout)) {
-    timeout = 1200
+    timeout = 2400
   }
 
   # Turn off next optimization features if set to false

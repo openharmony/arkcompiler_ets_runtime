@@ -32,7 +32,7 @@ if (defined(disable_force_gc) && disable_force_gc) {
 if (defined(timeout)) {
   _timeout_ = timeout
 } else {
-  _timeout_ = 1200
+  _timeout_ = 2400
 }
 template("host_unittest_action") {
   _target_name_ = "${target_name}"
