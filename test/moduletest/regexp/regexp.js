@@ -948,4 +948,13 @@ assert_equal(res8.flags,'g');
   let reg = /a(?:|x)$/
   assert_equal(JSON.stringify(reg.exec("ax")), '["ax"]')
 }
+try {
+  class C12 {
+  }
+  const v16 = ("symbol").constructor.fromCharCode(C12);
+  const v17 = v16.repeat(65534);
+  v17.replace(/(?<a>)/dumgs, v17);
+} catch (e) {
+  assert_equal(e.name, "RangeError");
+}
 test_end();

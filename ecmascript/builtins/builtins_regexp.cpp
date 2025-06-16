@@ -1299,6 +1299,9 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
             // store length of replacement string in resultLengthArray
             resultLengthArray[REPLACE_RESULT_VAL * i + 1] = static_cast<uint64_t>(replacementLength);
             resultStrLength += replacementLength;
+            if (resultStrLength >= BaseString::MAX_STRING_LENGTH) {
+                THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+            }
             isUtf8 &= EcmaStringAccessor(replacementString).IsUtf8();
             // iii. Let nextSourcePosition be position + matchLength.
             nextSourcePosition = position + matchLength;
