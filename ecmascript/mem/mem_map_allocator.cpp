@@ -81,7 +81,8 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 
 void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 {
-    size_t initialNonmovableObjectCapacity = std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY);
+    size_t initialNonmovableObjectCapacity =
+        AlignUp(std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
 
 #if defined(PANDA_TARGET_64)
     size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity * 2;
