@@ -241,13 +241,13 @@ void TraceCollector::MergeMutatorRoots(WorkStack& workStack)
 
 void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::EnumerateAllRoots", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumerateAllRoots", "");
     EnumerateAllRootsImpl(GetThreadPool(), workStack);
 }
 
 void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::TracingImpl", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TracingImpl", "");
     if (workStack.empty()) {
         return;
     }
@@ -301,7 +301,7 @@ bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkSt
 
 void TraceCollector::TraceRoots(WorkStack& workStack)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::TraceRoots", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots", "");
     COMMON_PHASE_TIMER("TraceRoots");
     VLOG(REPORT, "roots size: %zu", workStack.size());
 
@@ -322,7 +322,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         ConcurrentReMark(workStack, maxWorkers > 0);
         ProcessWeakReferences();
 #else
-        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::ReMark[STW]", "");
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ReMark[STW]", "");
         if (!BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped()) {
             COMMON_PHASE_TIMER("STW re-marking");
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
@@ -350,7 +350,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
 
 bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::MarkSatbBuffer", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MarkSatbBuffer", "");
     COMMON_PHASE_TIMER("MarkSatbBuffer");
     if (!workStack.empty()) {
         workStack.clear();
@@ -573,7 +573,7 @@ void TraceCollector::PreGarbageCollection(bool isConcurrent)
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpBeforeGC();
 #endif
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "ARK_RT_pre_GC_HeapSize",
+    OHOS_HITRACE_COUNT(HITRACE_LEVEL_COMMERCIAL, "ARK_RT_pre_GC_HeapSize",
         Heap::GetHeap().GetAllocatedSize());
 }
 
@@ -600,12 +600,12 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
     // Only one root task, no need to post task.
     EnumStaticRoots(rootSets[0]);
     {
-        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::MergeMutatorRoots", "");
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MergeMutatorRoots", "");
         MergeMutatorRoots(rootSet);
     }
 
     {
-        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::PushRootInWorkStack", "");
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInWorkStack", "");
         WorkStack tempStack = NewWorkStack();
         for (size_t i = 0; i < threadCount; ++i) {
             tempStack.insert(rootSets[i]);
@@ -684,7 +684,7 @@ void TraceCollector::UpdateGCStats()
                      << ", recent-allocated " << recentBytes << "), update target footprint "
                      << oldTargetFootprint << " -> " << gcStats.targetFootprint
                      << ", update gc threshold " << oldThreshold << " -> " << gcStats.heapThreshold;
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_MAX, "ARK_RT_post_GC_HeapSize", Heap::GetHeap().GetAllocatedSize());
+    OHOS_HITRACE_COUNT(HITRACE_LEVEL_COMMERCIAL, "ARK_RT_post_GC_HeapSize", Heap::GetHeap().GetAllocatedSize());
 }
 
 void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, size_t size) const
@@ -700,7 +700,7 @@ void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, si
 
 void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::RunGarbageCollection", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", "");
     // prevent other threads stop-the-world during GC.
     // this may be removed in the future.
     ScopedSTWLock stwLock;
@@ -756,7 +756,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 
 void TraceCollector::CopyFromSpace()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::CopyFromSpace", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CopyFromSpace", "");
     TransitionToGCPhase(GCPhase::GC_PHASE_COPY, true);
 
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);

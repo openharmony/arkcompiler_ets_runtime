@@ -457,7 +457,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     const ExecuteTypes &executeType)
 {
     STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SourceTextModule::Instantiate", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SourceTextModule::Instantiate", "");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleHdl);
     // 1. Let module be this Source Text Module Record.
@@ -855,7 +855,7 @@ void SourceTextModule::HandleEvaluateResult(JSThread *thread, JSHandle<SourceTex
 JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &moduleHdl,
                                          const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SourceTextModule::Evaluate", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SourceTextModule::Evaluate", "");
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is one of LINKED, EVALUATING-ASYNC, or EVALUATED.
     JSMutableHandle<SourceTextModule> module(thread, moduleHdl);

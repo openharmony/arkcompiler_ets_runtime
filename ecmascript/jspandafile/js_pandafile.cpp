@@ -169,7 +169,7 @@ void JSPandaFile::InitializeMergedPF()
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
     CString traceInfo = "JSPandaFile::InitializeMergedPF:" + ToCString(numClasses_);
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, traceInfo.c_str(), "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
@@ -450,7 +450,7 @@ bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadInde
 
 void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JSPandaFile::TranslateClass", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClass", "");
     std::vector<std::pair<uint32_t, uint32_t>> indexes;
     indexes.reserve(ASYN_TRANSLATE_CLSSS_COUNT);
     do {
@@ -496,7 +496,7 @@ void JSPandaFile::SetAllMethodLiteralToMap()
 {
     // async to optimize SetAllMethodLiteralToMap later
     CString traceInfo = "JSPandaFile::SetAllMethodLiteralToMap:" + ToCString(numMethods_);
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, traceInfo.c_str(), "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     MethodLiteral *methodLiterals = GetMethodLiterals();
     size_t methodIdx = 0;
     while (methodIdx < numMethods_) {

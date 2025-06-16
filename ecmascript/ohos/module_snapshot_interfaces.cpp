@@ -22,7 +22,7 @@ namespace panda::ecmascript::ohos {
 void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
 {
     LOG_ECMA(INFO) << "ModuleSnapshotInterfaces::Serialize: " << path;
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Serialize", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Serialize", "");
     // check application white list
     if (!filesystem::Exists(path.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshotInterface::Serialize: " << path <<" is not exists";
@@ -34,7 +34,7 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
 void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path)
 {
     LOG_ECMA(INFO) << "ModuleSnapshotInterfaces::Deserialize: " << path;
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Deserialize", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Deserialize", "");
     // check application white list
     if (!filesystem::Exists(path.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshotInterface::Deserialize: " << path << " is not exists";

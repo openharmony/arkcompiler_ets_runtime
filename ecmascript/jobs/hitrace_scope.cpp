@@ -100,7 +100,7 @@ EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
 
     std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
     if (jsStackInfo.empty()) {
-        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, strTrace.c_str());
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, strTrace.c_str());
         return;
     }
 
@@ -127,13 +127,13 @@ EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
     }
 
     strTrace += ", funcName: " + jsFrameInfo.functionName + ", url: " + jsFrameInfo.fileName + ":" + jsFrameInfo.pos;
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, strTrace.c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, strTrace.c_str());
 }
 
 EnqueueJobTrace::~EnqueueJobTrace()
 {
     if (isMicroJobTraceEnable_) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
     }
 }
 
@@ -144,14 +144,14 @@ ExecuteJobTrace::ExecuteJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
         uint64_t jobId = pendingJob->GetJobId();
         std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(jobId);
         strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
-        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, strTrace.c_str());
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, strTrace.c_str());
     }
 }
 
 ExecuteJobTrace::~ExecuteJobTrace()
 {
     if (isMicroJobTraceEnable_) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
     }
 }
 }  // namespace panda::ecmascript::job

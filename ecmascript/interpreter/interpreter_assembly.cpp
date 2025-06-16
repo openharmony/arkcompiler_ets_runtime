@@ -207,7 +207,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, AsmExecute);
 #if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ArkCompiler::InterpreterAssembly::Execute", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ArkCompiler::InterpreterAssembly::Execute", "");
 #endif
     // When the  function is jit-compiled, the Method object is reinstalled.
     // In this case, the AotWithCall field may be updated.

@@ -158,7 +158,7 @@ void GCStats::PrintVerboseGCStatistic()
 
 void GCStats::GCFinishTrace()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("PartialGC::Finish" + std::to_string(heap_->IsConcurrentFullMark())
         + ";Reason" + std::to_string(static_cast<int>(gcReason_))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
@@ -707,7 +707,7 @@ void SharedGCStats::PrintGCStatistic()
 
 void SharedGCStats::SharedGCFinishTrace()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("SharedGC::Finish;Reason"
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedGC::Finish;Reason"
         + std::to_string(static_cast<int>(gcReason_))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())

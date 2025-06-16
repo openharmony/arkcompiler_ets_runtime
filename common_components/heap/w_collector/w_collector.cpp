@@ -337,7 +337,7 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
 
 void WCollector::PreforwardStaticRoots()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::PreforwardStaticRoots", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardStaticRoots", "");
     RefFieldVisitor visitor = [this](RefField<>& refField) {
         RefField<> oldField(refField);
         BaseObject* oldObj = oldField.GetTargetObject();
@@ -418,7 +418,7 @@ void WCollector::EnumRoots(WorkStack& workStack)
     reinterpret_cast<RegionSpace&>(theAllocator_).PrepareTrace();
 
     COMMON_PHASE_TIMER("enum roots & update old pointers within");
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::EnumRoots", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumRoots", "");
     TransitionToGCPhase(GCPhase::GC_PHASE_ENUM, true);
     EnumerateAllRoots(workStack);
 }
@@ -435,7 +435,7 @@ void WCollector::TraceHeap(WorkStack& workStack)
 
 void WCollector::PostTrace()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::PostTrace", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PostTrace", "");
     COMMON_PHASE_TIMER("PostTrace");
     TransitionToGCPhase(GC_PHASE_POST_MARK, true);
 
@@ -448,7 +448,7 @@ void WCollector::PostTrace()
 void WCollector::Preforward()
 {
     COMMON_PHASE_TIMER("Preforward");
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::Preforward[STW]", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Preforward[STW]", "");
     TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
 
     [[maybe_unused]] Taskpool *threadPool = GetThreadPool();
@@ -463,7 +463,7 @@ void WCollector::PrepareFix()
 {
     // make sure all objects before fixline is initialized
     COMMON_PHASE_TIMER("PrepareFix");
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::PrepareFix[STW]", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PrepareFix[STW]", "");
     reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFix();
     reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
     TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
@@ -472,7 +472,7 @@ void WCollector::PrepareFix()
 void WCollector::FixHeap()
 {
     COMMON_PHASE_TIMER("FixHeap");
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::FixHeap", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::FixHeap", "");
     reinterpret_cast<RegionSpace&>(theAllocator_).FixHeap();
 
     WVerify::VerifyAfterFix(*this);
@@ -480,7 +480,7 @@ void WCollector::FixHeap()
 
 void WCollector::DoGarbageCollection()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::DoGarbageCollection", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoGarbageCollection", "");
     if (gcMode_ == GCMode::STW) { // 2: stw-gc
 #ifdef ENABLE_CMC_RB_DFX
         WVerify::DisableReadBarrierDFX(*this);
@@ -600,9 +600,9 @@ void WCollector::MarkNewObject(BaseObject* obj)
 
 void WCollector::ProcessWeakReferences()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::ProcessWeakReferences", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessWeakReferences", "");
     {
-        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::ProcessGlobalWeakStack", "");
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessGlobalWeakStack", "");
         while (!globalWeakStack_.empty()) {
             RefField<>& field = reinterpret_cast<RefField<>&>(*globalWeakStack_.back());
             globalWeakStack_.pop_back();
@@ -624,7 +624,7 @@ void WCollector::ProcessWeakReferences()
     }
 #ifndef ARK_USE_SATB_BARRIER
     {
-        OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::ProcessWeakRoots", "");
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessWeakRoots", "");
         WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
             RefField<> oldField(refField);
             BaseObject *oldObj = oldField.GetTargetObject();
@@ -750,7 +750,7 @@ void WCollector::ClearAllGCInfo()
 
 void WCollector::CollectSmallSpace()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::CollectSmallSpace", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectSmallSpace", "");
     GCStats& stats = GetGCStats();
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
     {

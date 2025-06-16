@@ -74,7 +74,7 @@ public:
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SaveTask::Run", "");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SaveTask::Run", "");
         encoder_->StartSaveTask(pgoInfo_, this);
         return true;
     }

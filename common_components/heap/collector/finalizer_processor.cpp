@@ -259,7 +259,7 @@ void FinalizerProcessor::RegisterFinalizer(BaseObject* obj)
 
 void FinalizerProcessor::ReclaimHeapGarbage()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "ARK_RT_GC_RECLAIM", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "ARK_RT_GC_RECLAIM", "");
     Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(false);
     shouldReclaimHeapGarbage_.store(false, std::memory_order_relaxed);
 }

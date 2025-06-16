@@ -177,7 +177,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
     CString traceInfo = "JSPandaFileManager::LoadJSPandaFileSecure:" + filename;
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, traceInfo.c_str(), "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;

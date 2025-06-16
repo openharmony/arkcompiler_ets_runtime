@@ -26,14 +26,14 @@ public:
         : enableESMTrace_(thread->GetEcmaVM()->GetJSOptions().EnableESMTrace())
     {
         if (enableESMTrace_) {
-            ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, traceInfo.c_str());
+            ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str());
         }
     }
 
     ~ModuleTraceScope()
     {
         if (enableESMTrace_) {
-            ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
         }
     }
 private:
