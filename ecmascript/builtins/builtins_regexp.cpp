@@ -1556,9 +1556,10 @@ JSTaggedValue BuiltinsRegExp::RegExpSplit(JSThread *thread, const JSHandle<JSTag
                 JSObject::GetProperty(thread, splitter, lastIndexString).GetValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSTaggedNumber lastIndexNumber = JSTaggedValue::ToLength(thread, lastIndexHandle);
-            // ii. ReturnIfAbrupt(e).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            uint32_t lastIndex = lastIndexNumber.GetNumber();
+            // ii. Set e to min(e, size).
+            uint32_t lastIndex = static_cast<uint32_t>(std::min(
+                static_cast<uint64_t>(lastIndexNumber.GetNumber()), static_cast<uint64_t>(size)));
             // iii. If e = p, let q be AdvanceStringIndex(S, q, unicodeMatching).
             if (lastIndex == startIndex) {
                 endIndex = static_cast<uint32_t>(AdvanceStringIndex(jsString, endIndex, unicodeMatching));
