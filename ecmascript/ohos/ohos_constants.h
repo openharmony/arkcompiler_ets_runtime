@@ -24,7 +24,7 @@ namespace OhosConstants {
     constexpr const char* PATH_SEPARATOR = "/";
     constexpr const char* AOT_RUNTIME_INFO_NAME = "aot_runtime_info.log";
     constexpr const char* SPLIT_STR = "|";
-    constexpr const char* PANDAFILE_AND_MODULE_SNAPSHOT_DIR = "/data/storage/ark-cache/";
+    constexpr const char* PANDAFILE_AND_MODULE_SNAPSHOT_DIR = "/data/storage/system_optimize/ark_startup_cache/";
 }  // namespace OhosConstants
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_COMPILER_OHOS_CONSTANTS_H
