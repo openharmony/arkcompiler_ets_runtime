@@ -42,6 +42,7 @@ ohos_shared_library("libcompiler_service") {
   version_script = "libaot_compiler_service.map"
   sources = [
     "${js_root}/common_components/log/log.cpp",
+    "${js_root}/ecmascript/compiler/aot_compiler_stats.cpp",
     "interface/aot_compiler_interface_proxy.cpp",
     "interface/aot_compiler_interface_stub.cpp",
     "src/aot_args_handler.cpp",
@@ -54,6 +55,22 @@ ohos_shared_library("libcompiler_service") {
     "src/screen_status_listener.cpp",
     "src/thermal_mgr_listener.cpp",
   ]
+  if (enable_target_compilation) {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/ohos/directory.cpp",
+      "${js_root}/ecmascript/platform/unix/linux/os.cpp",
+    ]
+  } else if (is_mingw) {
+    sources += [
+      "${js_root}/ecmascript/platform/windows/directory.cpp",
+      "${js_root}/ecmascript/platform/windows/os.cpp",
+    ]
+  } else {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/directory.cpp",
+      "${js_root}/ecmascript/platform/unix/linux/os.cpp",
+    ]
+  }
   external_deps = [
     "ability_base:want",
     "access_token:libaccesstoken_sdk",

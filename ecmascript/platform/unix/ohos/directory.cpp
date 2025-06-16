@@ -37,4 +37,9 @@ bool SetFileModeAsDefault(const std::string &filename)
     mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
     return OHOS::ChangeModeFile(filename, mode);
 }
+
+uint64_t GetFolderSize(const std::string &path)
+{
+    return OHOS::GetFolderSize(path);
+}
 }  // namespace panda::ecmascript

@@ -582,4 +582,49 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_020, TestSize.Level0)
     EXPECT_EQ(g_aotRet, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
 #endif
 }
+
+/**
+* @tc.name: AotCompilerImplTest_021
+* @tc.desc: AotCompilerImpl::ParseArkCacheFromArgs()
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_021, TestSize.Level0)
+{
+    std::string pkgInfoValue =
+        "{\"abcName\":\"ets/modules.abc\","
+        "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+        "\"processUid\":\"0xbf4\"}";
+    std::unordered_map<std::string, std::string> argsMap {
+        {"aot-file", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry"},
+        {"compiler-pkg-info", pkgInfoValue},
+        {"appIdentifier", "5765880207853624761"}
+    };
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
+    std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
+    EXPECT_EQ(arkCachePath, "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
+}
+
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_022, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
+    std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
+    EXPECT_TRUE(arkCachePath.empty());
+}
+
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_023, TestSize.Level0)
+{
+    std::string pkgInfoValue =
+        "{\"abcName\":\"ets/modules.abc\","
+        "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+        "\"processUid\":\"0xbf4\"}";
+    std::unordered_map<std::string, std::string> argsMap {
+        {"aot-file", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry"},
+        {"compiler-pkg-info", pkgInfoValue},
+        {"appIdentifier", "5765880207853624761"}
+    };
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
+    int32_t result = aotImpl.SendSysEvent(argsMap);
+    EXPECT_EQ(result, 0);
+}
 } // namespace OHOS::ArkCompiler

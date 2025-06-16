@@ -79,4 +79,9 @@ bool CheckDiskSpace([[maybe_unused]] const std::string& path, [[maybe_unused]] s
     LOG_ECMA(INFO) << "Check Disk Space not support in Windows";
     return true;
 }
+
+uint64_t GetDeviceValidSize(const std::string &path)
+{
+    return 0;
+}
 }  // namespace panda::ecmascript

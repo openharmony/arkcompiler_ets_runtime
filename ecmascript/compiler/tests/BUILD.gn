@@ -179,6 +179,24 @@ host_unittest_action("AotVersionTest") {
   external_deps = [ "zlib:libz" ]
 }
 
+host_unittest_action("AotCompilerStatsTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "aot_compiler_stats_test.cpp",
+  ]
+
+  deps = [
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+  external_deps = [ 
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
+}
+
 host_unittest_action("NumberSpeculativeRetypeTest") {
   module_out_path = module_output_path
 
@@ -200,6 +218,7 @@ group("host_unittest") {
 
   # deps file
   deps = [
+    ":AotCompilerStatsTestAction",
     ":AotVersionTestAction",
     ":AssemblerTestAction",
     ":ConstantFoldingTestAction",

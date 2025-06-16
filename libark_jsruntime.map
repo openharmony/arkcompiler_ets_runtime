@@ -213,7 +213,9 @@
       panda::ecmascript::FileMap*;
       panda::ecmascript::FileUnMap*;
       panda::ecmascript::ForceCreateDirectory*;
+      panda::ecmascript::GetDeviceValidSize*;
       panda::ecmascript::GetFileDelimiter*;
+      panda::ecmascript::GetFolderSize*;
       panda::ecmascript::GetPathSeparator*;
       panda::ecmascript::InterpreterAssembly::GetCallSize*;
       panda::ecmascript::Heap::AddGCListener*;

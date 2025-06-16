@@ -108,6 +108,7 @@ public:
     }
 
     void PUBLIC_API PrintCompilerStatsLog();
+    int32_t PUBLIC_API SendDataPartitionSysEvent(const std::string &path) const;
 
 private:
     void SendSysEvent() const;

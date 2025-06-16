@@ -34,4 +34,9 @@ bool SetFileModeAsDefault([[maybe_unused]] const std::string &filename)
 {
     return true;
 }
+
+uint64_t GetFolderSize([[maybe_unused]] const std::string &path)
+{
+    return 0;
+}
 }  // namespace panda::ecmascript

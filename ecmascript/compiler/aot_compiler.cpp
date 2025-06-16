@@ -211,6 +211,7 @@ int Main(const int argc, const char **argv)
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
+            compilerStats.SendDataPartitionSysEvent(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

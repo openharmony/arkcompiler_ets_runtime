@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
+#include <sys/statfs.h>
 #include <sys/statvfs.h>
 #include <sys/xattr.h>
 #include <unistd.h>
@@ -132,5 +133,22 @@ bool CheckDiskSpace(const std::string& path, size_t requiredBytes)
     }
     size_t availableBytes = static_cast<size_t>(stat.f_bavail) * stat.f_frsize;
     return availableBytes >= requiredBytes;
+}
+
+uint64_t GetDeviceValidSize(const std::string &path)
+{
+    struct statfs stat;
+    if (statfs(path.c_str(), &stat) != 0) {
+        LOG_ECMA(ERROR) << "execute fail because it is not a partition " << path.c_str();
+        return 0;
+    }
+    constexpr uint64_t units = 1024;
+    uint64_t bfree = static_cast<uint64_t>(stat.f_bfree);
+    uint64_t bsize = static_cast<uint64_t>(stat.f_bsize);
+    if (bfree > UINT64_MAX / bsize) {
+        LOG_ECMA(ERROR) << "overflow detected: bfree * bsize";
+        return 0;
+    }
+    return (bfree * bsize) / (units * units);
 }
 }  // namespace panda::ecmascript
