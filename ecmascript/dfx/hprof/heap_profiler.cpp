@@ -14,6 +14,7 @@
  */
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include "common_interfaces/profiler/heap_profiler_listener.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -115,6 +116,13 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), stringTable_(vm), chunk_
 {
     isProfiling_ = false;
     entryIdMap_ = GetChunk()->New<EntryIdMap>();
+    if (g_isEnableCMCGC) {
+        std::function<void(uintptr_t, uintptr_t, size_t)> moveEventCb_ = [this](uintptr_t fromObj, uintptr_t toObj,
+                                                                                size_t size) {
+            this->MoveEvent(fromObj, reinterpret_cast<TaggedObject *>(toObj), size);
+        };
+        common::HeapProfilerListener::GetInstance().RegisterMoveEventCb(moveEventCb_);
+    }
 }
 
 HeapProfiler::~HeapProfiler()
@@ -122,6 +130,9 @@ HeapProfiler::~HeapProfiler()
     JSPandaFileManager::GetInstance()->ClearNameMap();
     ClearSnapshot();
     GetChunk()->Delete(entryIdMap_);
+    if (g_isEnableCMCGC) {
+        common::HeapProfilerListener::GetInstance().UnRegisterMoveEventCb();
+    }
 }
 
 void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
@@ -360,12 +371,16 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             }
         }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
-        const_cast<Heap*>(vm_->GetHeap())->Prepare();
-        SharedHeap::GetInstance()->Prepare(true);
-        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-            ASSERT(!thread->IsInRunningState());
-            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
-        });
+        if (g_isEnableCMCGC) {
+            common::Heap::GetHeap().WaitForGCFinish();
+        } else {
+            const_cast<Heap*>(vm_->GetHeap())->Prepare();
+            SharedHeap::GetInstance()->Prepare(true);
+            Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+                ASSERT(!thread->IsInRunningState());
+                const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+            });
+        }
         // OOM and ThresholdReachedDump.
         if (dumpOption.isDumpOOM) {
             res = BinaryDump(stream, dumpOption);
