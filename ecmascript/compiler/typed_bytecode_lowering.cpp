@@ -593,7 +593,7 @@ GateRef TypedBytecodeLowering::GetPrimitiveTypeProto(PrimitiveType primitiveType
         UNREACHABLE();
     }
     ASSERT(index != static_cast<size_t>(-1));
-    return builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, builder_.GetGlobalEnv(), index);
+    return builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, circuit_->GetGlobalEnvCache(), index);
 }
 
 void TypedBytecodeLowering::PolyPrimitiveTypeCheckAndLoad(LoadObjByNameDataInfo &info,
@@ -1304,7 +1304,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBuilt
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);
         GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
-        GateRef globalEnvObj = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(index));
+        GateRef globalEnvObj = builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), static_cast<size_t>(index));
         builder_.DeoptCheck(builder_.Equal(receiverHClass, globalEnvObj), frameState,
                             DeoptType::INCONSISTENTHCLASS12);
         // 2. load property
@@ -1410,7 +1410,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
 {
     GateRef gate = tacc.GetGate();
     JSTaggedValue key = tacc.GetKeyTaggedValue();
-    std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
+    std::optional<GlobalEnvField> protoField = ToGlobalEnvPrototypeField(type);
     if (key.IsUndefined() || !protoField.has_value()) {
         return false;
     }
@@ -1423,7 +1423,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     // Unable to handle accessor at the moment
     if (!plr.IsFound() || plr.IsAccessor()) {
         if (type == BuiltinTypeId::ARRAY_ITERATOR) {
-            protoField = ToGlobelEnvPrototypeField(BuiltinTypeId::ITERATOR);
+            protoField = ToGlobalEnvPrototypeField(BuiltinTypeId::ITERATOR);
             if (!protoField.has_value()) {
                 return false;
             }
@@ -1471,7 +1471,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     }
     // Successfully goes to typed path
     GateRef plrGate = builder_.Int32(plr.GetData());
-    GateRef prototype = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(*protoField));
+    GateRef prototype = builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), static_cast<size_t>(*protoField));
     GateRef result = builder_.LoadProperty(prototype, plrGate, plr.IsFunction());
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     return true;
@@ -2783,7 +2783,7 @@ void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
 void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
 {
     AddProfiling(gate);
-    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
     JSHandle<JSFunction> objectFunc(compilationEnv_->GetGlobalEnv()->GetObjectFunction());

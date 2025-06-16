@@ -436,6 +436,10 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
         return true;
     }
 
+    if (methodLiteral->IsShared()) {
+        return true;
+    }
+
     return false;
 }
 

@@ -287,7 +287,7 @@ void MCRLowering::LowerArrayGuardianCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
 
     GateRef frameState = acc_.GetFrameState(gate);
-    GateRef check = builder_.GetArrayElementsGuardians(builder_.GetGlobalEnv());
+    GateRef check = builder_.GetArrayElementsGuardians(circuit_->GetGlobalEnvCache());
     builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY1);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -311,8 +311,8 @@ void MCRLowering::LowerMathHClassConsistencyCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
 
-    GateRef cond = builder_.Equal(receiverHClass,
-        builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), GlobalEnv::MATH_FUNCTION_CLASS_INDEX));
+    GateRef cond = builder_.Equal(
+        receiverHClass, builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), GlobalEnv::MATH_FUNCTION_CLASS_INDEX));
 
     builder_.DeoptCheck(cond, acc_.GetFrameState(gate), DeoptType::INCONSISTENTHCLASS14);
 
@@ -377,16 +377,19 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             GateRef glue = glue_;
             if (dstType == ValueType::ECMA_STRING) {
                 if (env_->IsJitCompiler()) {
-                    result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToString, {glue, value });
+                    result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToString,
+                                               {glue, value, circuit_->GetGlobalEnvCache()});
                 } else {
-                    BuiltinsStringStubBuilder builder(&env, builder_.GetGlobalEnv(glue));
+                    BuiltinsStringStubBuilder builder(&env, circuit_->GetGlobalEnvCache());
                     result = builder.CreateStringBySingleCharCode(glue, value);
                 }
             } else if (dstType == ValueType::INT32) {
-                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32, { glue, value });
+                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32,
+                                           {glue, value, circuit_->GetGlobalEnvCache()});
             } else {
                 ASSERT((dstType == ValueType::FLOAT64));
-                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToDouble, { glue, value });
+                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToDouble,
+                                           {glue, value, circuit_->GetGlobalEnvCache()});
             }
             break;
         }
@@ -1334,7 +1337,8 @@ void MCRLowering::LowerStringAdd(GateRef gate)
     auto status = acc_.GetStringStatus(gate);
 
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::StringAdd,
-        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), builder_.Int32(status) });
+                                       {glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1),
+                                        builder_.Int32(status), circuit_->GetGlobalEnvCache()});
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript

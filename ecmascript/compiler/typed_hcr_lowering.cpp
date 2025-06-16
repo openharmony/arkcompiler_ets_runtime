@@ -432,7 +432,7 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef glue, GateRef gate)
     SetDeoptTypeInfo(builtinType, deoptType, typedArrayRootHclassIndex, typedArrayRootHclassOnHeapIndex);
 
     GateRef frameState = GetFrameState(gate);
-    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
@@ -519,7 +519,7 @@ void TypedHCRLowering::LowerEcmaMapCheck(GateRef glue, GateRef gate)
     GateRef hclass = builder_.LoadHClassByConstOffset(glue, receiver);
 
     size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
-    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef mapHclass = builder_.GetGlobalEnvObj(globalEnv, mapHclassIndex);
     GateRef isMap = builder_.Equal(hclass, mapHclass, "Check HClass");
 
@@ -720,7 +720,7 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue, receiver);
             // If the Elements kind is Generic, hclass comparison is required. Other kinds can ensure that hclass has
             // not been modified.
-            GateRef globalEnv = builder_.GetGlobalEnv(glue);
+            GateRef globalEnv = circuit_->GetGlobalEnvCache();
             ihcMatches = LogicOrBuilder(env)
                 .Or(builder_.Equal(receiverHClass,
                                    builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
@@ -1376,9 +1376,9 @@ void TypedHCRLowering::LowerStringLoadElement(GateRef gate, GateRef glue)
     GateRef result = Circuit::NullGate();
     if (compilationEnv_->IsJitCompiler()) {
         result = builder_.CallStub(glue, gate, CommonStubCSigns::StringLoadElement,
-                                   { glue, receiver, index }, "StringLoadElement stub");
+                                   {glue, receiver, index, circuit_->GetGlobalEnvCache()}, "StringLoadElement stub");
     } else {
-        BuiltinsStringStubBuilder builder(&env, builder_.GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder builder(&env, circuit_->GetGlobalEnvCache());
         result = builder.GetSingleCharCodeByIndex(glue, receiver, index);
     }
 
@@ -2054,7 +2054,8 @@ void TypedHCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
     BRANCH_CIR(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);
     builder_.Bind(&lenEqual);
     {
-        result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringEqual, { glue, left, right });
+        result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringEqual,
+                                   {glue, left, right, circuit_->GetGlobalEnvCache()});
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -2145,7 +2146,7 @@ void TypedHCRLowering::LowerTypedConstructorCheck(GateRef gate, GateRef glue)
     size_t functionIndex = static_cast<size_t>(acc_.TryGetValue(gate));
     GateRef frameState = GetFrameState(gate);
     GateRef newTarget = acc_.GetValueIn(gate, 0);
-    GateRef globalEnv = builder_.GetGlobalEnv(glue);
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef builtinFunc = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, functionIndex);
     GateRef check = builder_.Equal(builtinFunc, newTarget);
     auto type =
@@ -2172,7 +2173,7 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef globalEnv = builder_.GetGlobalEnv(glue);
+            GateRef globalEnv = circuit_->GetGlobalEnvCache();
             GateRef arrayFunc =
                 builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
             check = builder_.Equal(arrayFunc, newTarget);
@@ -2252,7 +2253,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             builder_.Int64GreaterThan(*arrayLength, builder_.Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
         builder_.Bind(&lengthValid);
         {
-            NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+            NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
             newBuilder.SetParameters(glue, 0);
             res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
             GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
@@ -2283,7 +2284,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef g
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     GateRef newTarget = acc_.GetValueIn(gate, 0);
-    GateRef globalEnv = builder_.GetGlobalEnv(glue);
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef arrayFunc =
         builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
     GateRef check = builder_.Equal(arrayFunc, newTarget);
@@ -2293,7 +2294,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef g
 
 void TypedHCRLowering::NewFloat32ArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
 {
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
     newBuilder.SetParameters(glue, 0);
     GateRef res = newBuilder.NewFloat32ArrayWithSize(glue, builder_.Int32(0));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
@@ -2348,12 +2349,13 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
         GateRef res = Circuit::NullGate();
         if (acc_.GetNumValueIn(gate) == 1) {
             res = builder_.CallStub(glue, gate, CommonStubCSigns::NewFloat32ArrayWithNoArgs,
-                                    { glue }, "NewFloat32ArrayWithNoArgs stub");
+                                    {glue, circuit_->GetGlobalEnvCache()}, "NewFloat32ArrayWithNoArgs stub");
         } else {
             ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: new target and arg0
-            res = builder_.CallStub(glue, gate, CommonStubCSigns::NewFloat32Array,
-                                    { glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) },
-                                    "NewFloat32Array stub");
+            res = builder_.CallStub(
+                glue, gate, CommonStubCSigns::NewFloat32Array,
+                {glue, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), circuit_->GetGlobalEnvCache()},
+                "NewFloat32Array stub");
         }
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
         return;
@@ -2374,7 +2376,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
     ConvertFloat32ArrayConstructorLength(arg0, &arrayLength, &arrayCreateByLength, &arrayCreate);
     builder_.Bind(&arrayCreateByLength);
     {
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
         newBuilder.SetParameters(glue, 0);
         GateRef truncedLength = builder_.TruncInt64ToInt32(*arrayLength);
         res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
@@ -2382,7 +2384,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
     }
     builder_.Bind(&arrayCreate);
     {
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
         newBuilder.SetParameters(glue, 0);
         GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue);
         GateRef argc = builder_.Int64(4); // 4: means func newtarget thisObj arg0
@@ -2401,7 +2403,7 @@ void TypedHCRLowering::NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
     GateRef intialHClass =
         builder_.Load(VariableType::JS_ANY(), glue, newTarget, builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef arrayLength = builder_.Int64(0);
-    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
     newBuilder.SetParameters(glue, 0);
     GateRef res = newBuilder.NewJSArrayWithSize(intialHClass, arrayLength);
     GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
@@ -2431,7 +2433,7 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef globalEnv = builder_.GetGlobalEnv(glue);
+            GateRef globalEnv = circuit_->GetGlobalEnvCache();
             GateRef targetFunc =
                 builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
             check = builder_.Equal(targetFunc, newTarget);
@@ -2523,7 +2525,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
                 BRANCH_CIR(builder_.TaggedIsUndefinedOrNull(value), &isNullOrUndefined, &slowPath);
                 builder_.Bind(&isNullOrUndefined);
                 {
-                    GateRef globalEnv = builder_.GetGlobalEnv(glue);
+                    GateRef globalEnv = circuit_->GetGlobalEnvCache();
                     GateRef objectFunctionPrototype = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue,
                         globalEnv, GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
                     res = builder_.OrdinaryNewJSObjectCreate(glue, objectFunctionPrototype);
@@ -2564,7 +2566,7 @@ void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef globalEnv = builder_.GetGlobalEnv(glue);
+            GateRef globalEnv = circuit_->GetGlobalEnvCache();
             GateRef booleanFunc =
                 builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
             check = builder_.Equal(booleanFunc, newTarget);
@@ -2617,7 +2619,7 @@ void TypedHCRLowering::LowerBooleanConstructor(GateRef gate, GateRef glue)
 
 GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value)
 {
-    GateRef globalEnv = builder_.GetGlobalEnv(glue);
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef ctor = Circuit::NullGate();
     switch (type) {
         case PrimitiveType::PRIMITIVE_NUMBER: {
@@ -2695,7 +2697,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstanceForJIT(GateRef gate, GateRef glue
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef target = acc_.GetValueIn(gate, 1);
     auto result = builder_.CallStub(glue, gate, CommonStubCSigns::OrdinaryHasInstance,
-                                    { glue, obj, target }, "OrdinaryHasInstance stub");
+                                    {glue, obj, target, circuit_->GetGlobalEnvCache()}, "OrdinaryHasInstance stub");
     ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

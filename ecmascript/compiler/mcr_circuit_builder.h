@@ -269,7 +269,7 @@ GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
         BRANCH(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
-            GateRef globalEnv = GetGlobalEnv(glue);
+            GateRef globalEnv = circuit_->GetGlobalEnvCache();
             result = GetArrayElementsGuardians(globalEnv);
             Jump(&exit);
         }
@@ -835,6 +835,13 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, Gat
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), glue, array, dataOffset);
+}
+
+GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index, GateRef depend)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(VariableType::JS_ANY(), glue, array, dataOffset, depend);
 }
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index)

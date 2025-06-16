@@ -1458,12 +1458,16 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         }
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16: {
             uint16_t imm = READ_INST_16_1();
+            uint16_t slotId = READ_INST_8_0();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ArrayLiteralIDType, imm));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
             uint16_t imm = READ_INST_16_2();
+            uint16_t slotId = READ_INST_16_0();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ArrayLiteralIDType, imm));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::GETMODULENAMESPACE_IMM8: {

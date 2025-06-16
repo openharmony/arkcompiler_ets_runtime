@@ -349,6 +349,7 @@ private:
     void LowerLdStr(GateRef gate);
     void LowerGetSharedConstPool(GateRef gate);
     void LowerGetUnsharedConstPool(GateRef gate);
+    bool TryLowerGetGlobalEnvCache(GateRef gate);
     void LowerLdLazyExternalModuleVar(GateRef gate);
     void LowerLdLazySendableExternalModuleVar(GateRef gate);
     GateRef GetStringFromConstPool(GateRef gate, GateRef stringId, uint32_t stringIdIdx);

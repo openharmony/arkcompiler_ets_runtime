@@ -21,7 +21,7 @@
 #include "ecmascript/ts_types/builtin_type_id.h"
 
 namespace panda::ecmascript {
-inline constexpr std::optional<GlobalEnvField> ToGlobelEnvPrototypeField(BuiltinTypeId type)
+inline constexpr std::optional<GlobalEnvField> ToGlobalEnvPrototypeField(BuiltinTypeId type)
 {
     switch (type) {
         case BuiltinTypeId::UINT8_CLAMPED_ARRAY:

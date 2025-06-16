@@ -729,6 +729,7 @@ public:
 
     inline GateRef PrimitiveToNumber(GateRef x, ParamType paramType);
     inline GateRef GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index);
+    inline GateRef GetValueFromTaggedArray(GateRef glue, GateRef array, GateRef index, GateRef depend);
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
     inline GateRef GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index);
     inline GateRef GetArrayElementsGuardians(GateRef env);
