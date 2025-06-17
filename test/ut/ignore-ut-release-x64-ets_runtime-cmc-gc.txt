@@ -1,7 +1,1 @@
 # Known failure list for ut - release - x64 - ets_runtime -cmc -gc
-
-#26061
-obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestContextAssert
-obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestAsmAssert
-obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
-obj/arkcompiler/ets_runtime/test/moduletest/object/objectContext
