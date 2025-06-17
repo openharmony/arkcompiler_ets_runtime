@@ -101,8 +101,8 @@ HWTEST_F_L0(JSTypedArrayTest, ToPropKey_001)
     JSHandle<EcmaString> handleEcmaStrPropKeyTo2 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo2);
     EXPECT_NE(0U, sizeof(handleUndefined));
     EXPECT_NE(0U, sizeof(handleHole));
-    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString());
-    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString());
+    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString(thread));
+    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString(thread));
     EXPECT_EQ(uniCharArrTo1[0], 'u');
     EXPECT_EQ(uniCharArrTo1[1], 'n');
     EXPECT_EQ(uniCharArrTo1[2], 'd');
@@ -138,10 +138,10 @@ HWTEST_F_L0(JSTypedArrayTest, ToPropKey_002)
     JSHandle<EcmaString> handleEcmaStrPropKeyTo2 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo2);
     JSHandle<EcmaString> handleEcmaStrPropKeyTo3 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo3);
     JSHandle<EcmaString> handleEcmaStrPropKeyTo4 = JSHandle<EcmaString>::Cast(hnadleTagValEcmaStrPropKeyTo4);
-    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString());
-    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString());
-    CString uniCharArrTo3(EcmaStringAccessor(handleEcmaStrPropKeyTo3).ToCString());
-    CString uniCharArrTo4(EcmaStringAccessor(handleEcmaStrPropKeyTo4).ToCString());
+    CString uniCharArrTo1(EcmaStringAccessor(handleEcmaStrPropKeyTo1).ToCString(thread));
+    CString uniCharArrTo2(EcmaStringAccessor(handleEcmaStrPropKeyTo2).ToCString(thread));
+    CString uniCharArrTo3(EcmaStringAccessor(handleEcmaStrPropKeyTo3).ToCString(thread));
+    CString uniCharArrTo4(EcmaStringAccessor(handleEcmaStrPropKeyTo4).ToCString(thread));
     EXPECT_EQ(uniCharArrTo1[0], '0');
     EXPECT_EQ(uniCharArrTo1[1], 0); // "0"
     EXPECT_EQ(uniCharArrTo2[0], '-');
@@ -228,9 +228,10 @@ HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBufferOrByteArray)
     for (size_t i = 0; i < cVecJSType.size(); i++) {
         JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(i));
 
-        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(), JSTaggedValue::Undefined());
+        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(thread), JSTaggedValue::Undefined());
         handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
-        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(), handleTagValArrayBufferFrom.GetTaggedValue());
+        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(thread),
+            handleTagValArrayBufferFrom.GetTaggedValue());
     }
 }
 
@@ -252,9 +253,9 @@ HWTEST_F_L0(JSTypedArrayTest, SetTypedArrayName)
     for (size_t i = 0; i < cVecJSType.size(); i++) {
         JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(i));
 
-        EXPECT_EQ(handleTypedArray->GetTypedArrayName(), JSTaggedValue::Undefined());
+        EXPECT_EQ(handleTypedArray->GetTypedArrayName(thread), JSTaggedValue::Undefined());
         handleTypedArray->SetTypedArrayName(thread, handleTagValEcmaStrNameFrom);
-        EXPECT_EQ(handleTypedArray->GetTypedArrayName(), handleTagValEcmaStrNameFrom.GetTaggedValue());
+        EXPECT_EQ(handleTypedArray->GetTypedArrayName(thread), handleTagValEcmaStrNameFrom.GetTaggedValue());
     }
 }
 
@@ -1276,7 +1277,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastCopyElementToArray_TypedArray)
         }
         EXPECT_TRUE(JSTypedArray::FastCopyElementToArray(thread, handleTagValTypedArrayFrom, handleTagArrTo));
         for (int i = 0; i < numElementsTypedArray; i++) {
-            EXPECT_EQ(handleTagArrTo->Get(i), handleTagValValueSet.GetTaggedValue());
+            EXPECT_EQ(handleTagArrTo->Get(thread, i), handleTagValValueSet.GetTaggedValue());
         }
     }
 }
@@ -1413,9 +1414,9 @@ HWTEST_F_L0(JSTypedArrayTest, GetOffHeapBuffer)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSTypedArray> typedArray(int8Array);
-    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray().IsByteArray());
+    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray(thread).IsByteArray());
     JSTypedArray::GetOffHeapBuffer(thread, typedArray);
-    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray().IsArrayBuffer());
+    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray(thread).IsArrayBuffer());
     JSTaggedValue data1 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),
                                                                0, JSType::JS_INT8_ARRAY);
     JSTaggedValue data2 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),

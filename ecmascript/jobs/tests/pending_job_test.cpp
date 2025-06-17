@@ -70,11 +70,12 @@ HWTEST_F_L0(PendingJobTest, GetJob)
     JSHandle<JSTaggedValue> handlePendingJobVal(factory->NewPendingJob(handleFunc, handleArgv));
     EXPECT_TRUE(handlePendingJobVal->IsPendingJob());
     JSHandle<PendingJob> handlePendingJob(handlePendingJobVal);
-    EXPECT_TRUE(handlePendingJob->GetJob().IsJSFunction());
+    EXPECT_TRUE(handlePendingJob->GetJob(thread).IsJSFunction());
 
     JSHandle<JSFunction> handleNativeFunc(env->GetTypedArrayFunction());
     handlePendingJob->SetJob(thread, handleNativeFunc.GetTaggedValue());
-    EXPECT_EQ(JSTaggedValue::SameValue(handlePendingJob->GetJob(), handleNativeFunc.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, handlePendingJob->GetJob(thread), handleNativeFunc.GetTaggedValue()),
+              true);
 }
 
 /**
@@ -94,15 +95,15 @@ HWTEST_F_L0(PendingJobTest, GetArguments)
     JSHandle<JSTaggedValue> handlePendingJobVal(factory->NewPendingJob(handleFunc, handleArgv1));
     EXPECT_TRUE(handlePendingJobVal->IsPendingJob());
     JSHandle<PendingJob> handlePendingJob(handlePendingJobVal);
-    EXPECT_TRUE(handlePendingJob->GetArguments().IsTaggedArray());
+    EXPECT_TRUE(handlePendingJob->GetArguments(thread).IsTaggedArray());
 
     JSHandle<TaggedArray> handleArgv2 = factory->NewTaggedArray(1);
     handleArgv2->Set(thread, 0, JSTaggedValue(1));
     handlePendingJob->SetArguments(thread, handleArgv2.GetTaggedValue());
 
-    JSHandle<TaggedArray> resultArray(thread, handlePendingJob->GetArguments());
+    JSHandle<TaggedArray> resultArray(thread, handlePendingJob->GetArguments(thread));
     EXPECT_EQ(resultArray->GetLength(), 1U);
-    EXPECT_EQ(resultArray->Get(0).GetInt(), 1);
+    EXPECT_EQ(resultArray->Get(thread, 0).GetInt(), 1);
 }
 
 /**
@@ -121,7 +122,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_001)
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
 
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> reject(thread, capbility->GetReject());
+    JSHandle<JSTaggedValue> reject(thread, capbility->GetReject(thread));
 
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
     rejectReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
@@ -135,9 +136,9 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_001)
     JSHandle<PendingJob> handlePendingJob = factory->NewPendingJob(promiseReactionsJob, handleArgv);
     JSTaggedValue callResult = PendingJob::ExecutePendingJob(handlePendingJob, thread);
     EXPECT_EQ(callResult, JSTaggedValue::Undefined());
-    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsPromise->GetPromiseResult(), JSTaggedValue(44)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsPromise->GetPromiseResult(thread), JSTaggedValue(44)), true);
 }
 
 /**
@@ -157,7 +158,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_002)
     JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("resolve"));
 
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
@@ -171,9 +172,9 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_002)
     JSHandle<PendingJob> handlePendingJob = factory->NewPendingJob(promiseReactionsJob, handleArgv);
     JSTaggedValue callResult = PendingJob::ExecutePendingJob(handlePendingJob, thread);
     EXPECT_EQ(callResult, JSTaggedValue::Undefined());
-    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsPromise->GetPromiseResult(), paramMsg.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsPromise->GetPromiseResult(thread), paramMsg.GetTaggedValue()), true);
 }
 
 /**
@@ -205,20 +206,21 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_003)
     JSHandle<PendingJob> handlePendingJob = factory->NewPendingJob(promiseReactionsJob, handleArgv);
     JSTaggedValue callResult = PendingJob::ExecutePendingJob(handlePendingJob, thread);
     EXPECT_EQ(callResult, JSTaggedValue::Undefined());
-    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsPromise->GetPromiseResult(), JSTaggedValue::Undefined()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsPromise->GetPromiseResult(thread), JSTaggedValue::Undefined()), true);
 }
 
 JSTaggedValue TestPromiseOnResolved(EcmaRuntimeCallInfo *argv)
 {
-    auto factory = argv->GetThread()->GetEcmaVM()->GetFactory();
+    auto thread = argv->GetThread();
+    auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> result = BuiltinsBase::GetCallArg(argv, 0);
     EXPECT_TRUE(result->IsPromiseReaction());
     auto handlerMsg = factory->NewFromASCII("after_resolve");
     JSHandle<PromiseReaction> reaction = JSHandle<PromiseReaction>::Cast(result);
-    JSHandle<JSTaggedValue> handler(argv->GetThread(), reaction->GetHandler());
-    EXPECT_EQ(JSTaggedValue::SameValue(handler.GetTaggedValue(), handlerMsg.GetTaggedValue()), true);
+    JSHandle<JSTaggedValue> handler(argv->GetThread(), reaction->GetHandler(argv->GetThread()));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, handler.GetTaggedValue(), handlerMsg.GetTaggedValue()), true);
     return JSTaggedValue::Undefined();
 }
 
@@ -239,7 +241,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_004)
     JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("after_resolve"));
 
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
@@ -254,9 +256,9 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_004)
     JSHandle<PendingJob> handlePendingJob = factory->NewPendingJob(testPromiseResolved, handleArgv);
     JSTaggedValue callResult = PendingJob::ExecutePendingJob(handlePendingJob, thread);
     EXPECT_EQ(callResult, JSTaggedValue::Undefined());
-    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(jsPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(jsPromise->GetPromiseResult(thread).IsUndefined(), true);
 }
 
 JSTaggedValue TestPromiseResolveThenableJob(EcmaRuntimeCallInfo *argv)
@@ -302,6 +304,6 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_005)
     EXPECT_EQ(callResult, JSTaggedValue::Undefined());
 
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsPromise->GetPromiseResult(), JSTaggedValue(44)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsPromise->GetPromiseResult(thread), JSTaggedValue(44)), true);
 }
 } // namespace panda::test

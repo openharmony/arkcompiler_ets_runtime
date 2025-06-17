@@ -73,7 +73,7 @@ public:
         isExecuteBuffer_.store(mode, std::memory_order_release);
     }
 
-    static CString PUBLIC_API GetRecordName(JSTaggedValue module);
+    static CString PUBLIC_API GetRecordName(const JSThread *thread, JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const CString &key);
 
     uint32_t NextModuleAsyncEvaluatingOrdinal()
@@ -123,7 +123,7 @@ public:
     void SyncModuleExecuteMode(JSThread *thread);
 
     // fast path ldexternalmodulevar for jit
-    static bool CheckModuleValueOutterResolved(int32_t index, JSFunction *jsFunc);
+    static bool CheckModuleValueOutterResolved(JSThread *thread, int32_t index, JSFunction *jsFunc);
     static JSTaggedValue GetExternalModuleVarFastPathForJIT(JSThread *thread, int32_t index, JSFunction *jsFunc);
 
 private:

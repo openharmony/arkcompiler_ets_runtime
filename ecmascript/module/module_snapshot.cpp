@@ -67,7 +67,7 @@ void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, cons
     JSHandle<TaggedArray> deserializedModules = JSHandle<TaggedArray>::Cast(deserializer.ReadValue());
     uint32_t length = deserializedModules->GetLength();
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = deserializedModules->Get(i);
+        JSTaggedValue value = deserializedModules->Get(thread, i);
         JSHandle<SourceTextModule> moduleHdl(thread, SourceTextModule::Cast(value.GetTaggedObject()));
         CString moduleName = SourceTextModule::GetModuleName(moduleHdl.GetTaggedValue());
         if (SourceTextModule::IsSharedModule(moduleHdl)) {

@@ -45,9 +45,9 @@ public:
         return reinterpret_cast<LayoutInfo *>(obj);
     }
 
-    static LayoutInfo* GetLayoutInfoFromHClass(const JSHClass* hclass)
+    static LayoutInfo* GetLayoutInfoFromHClass(const JSThread *thread, const JSHClass* hclass)
     {
-        return LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+        return LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
     }
 
     void Initialize(const JSThread *thread, int num = 0);
@@ -60,17 +60,17 @@ public:
     void SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
     void SetKey(const JSThread *thread, int index, const JSTaggedValue &key);
     void SetNormalAttr(const JSThread *thread, int index, const PropertyAttributes &attr);
-    JSTaggedValue GetKey(int index) const;
-    PropertyAttributes GetAttr(int index) const;
-    JSTaggedValue GetSortedKey(int index) const;
-    uint32_t GetSortedIndex(int index) const;
+    JSTaggedValue GetKey(const JSThread *thread, int index) const;
+    PropertyAttributes GetAttr(const JSThread *thread, int index) const;
+    JSTaggedValue GetSortedKey(const JSThread *thread, int index) const;
+    uint32_t GetSortedIndex(const JSThread *thread, int index) const;
     void SetSortedIndex(const JSThread *thread, int index, int sortedIndex);
     bool CheckIsDuplicateKey(const JSThread *thread, int curKeyIdx, uint32_t curKeyHashCode, const JSTaggedValue &key);
     template<bool checkDuplicateKeys = false>
     void AddKey(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
     void SetIsNotHole(const JSThread *thread, int index);
-    void UpdateTrackTypeAttr(int index, const PropertyAttributes &attr);
-    void SetIsPGODumped(int index);
+    void UpdateTrackTypeAttr(const JSThread *thread, int index, const PropertyAttributes &attr);
+    void SetIsPGODumped(const JSThread *thread, int index);
 
     inline uint32_t GetLength() const
     {
@@ -94,19 +94,19 @@ public:
     }
 
     int FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
-    int BinarySearch(JSTaggedValue key, int propertiesNumber);
+    int BinarySearch(const JSThread *thread, JSTaggedValue key, int propertiesNumber);
     void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray);
-    void GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> &keyVector);
+    void GetAllKeysForSerialization(const JSThread *thread, int end, std::vector<JSTaggedValue> &keyVector);
     void GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
                             TaggedArray *keyArray, uint32_t filter);
-    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(int end) const;
+    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(const JSThread *thread, int end) const;
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
                         JSHandle<TaggedQueue> shadowQueue, int32_t lastLength);
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys);
 
-    void DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
-    bool UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
-    CString GetSymbolKeyString(JSTaggedValue key);
+    void DumpFieldIndexByPGO(const JSThread *thread, int index, pgo::HClassLayoutDesc* desc);
+    bool UpdateFieldIndexByPGO(const JSThread *thread, int index, pgo::HClassLayoutDesc* desc);
+    CString GetSymbolKeyString(const JSThread *thread, JSTaggedValue key);
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

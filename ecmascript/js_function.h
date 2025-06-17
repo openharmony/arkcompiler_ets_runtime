@@ -59,9 +59,9 @@ public:
         return IsCallNapiBit::Decode(bitField);
     }
 
-    FunctionKind GetFunctionKind() const
+    FunctionKind GetFunctionKind(const JSThread *thread) const
     {
-        JSTaggedValue method = GetMethod();
+        JSTaggedValue method = GetMethod(thread);
         return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
     }
 
@@ -80,26 +80,26 @@ public:
         return IsFastCallBit::Decode(bitField);
     }
 
-    static bool IsCompiledCodeFromCallTarget(JSTaggedValue callTarget)
+    static bool IsCompiledCodeFromCallTarget(const JSThread *thread, JSTaggedValue callTarget)
     {
         if (callTarget.IsJSFunction()) {
             return Cast(callTarget.GetTaggedObject())->IsCompiledCode();
         } else {
             ECMAObject *target = reinterpret_cast<ECMAObject*>(callTarget.GetTaggedObject());
             ASSERT(target != nullptr);
-            Method *method = target->GetCallTarget();
+            Method *method = target->GetCallTarget(thread);
             return method->IsAotWithCallField();
         }
     }
 
-    static bool IsFastCallFromCallTarget(JSTaggedValue callTarget)
+    static bool IsFastCallFromCallTarget(const JSThread *thread, JSTaggedValue callTarget)
     {
         if (callTarget.IsJSFunction()) {
             return Cast(callTarget.GetTaggedObject())->IsCompiledFastCall();
         } else {
             ECMAObject *target = reinterpret_cast<ECMAObject*>(callTarget.GetTaggedObject());
             ASSERT(target != nullptr);
-            Method *method = target->GetCallTarget();
+            Method *method = target->GetCallTarget(thread);
             return method->IsFastCall();
         }
     }
@@ -178,7 +178,7 @@ public:
         SetCodeEntryOrNativePointer(ToUintPtr(nativePointer));
     }
 
-    JSTaggedValue GetFunctionExtraInfo() const;
+    JSTaggedValue GetFunctionExtraInfo(const JSThread *thread) const;
 
     /* compiled code flag field */
     using IsCompiledCodeBit = BitField<bool, 0, 1>;        // offset 0
@@ -253,12 +253,12 @@ public:
     static bool NameSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
                            bool mayThrow);
     static void SetFunctionNameNoPrefix(JSThread *thread, JSFunction *func, JSTaggedValue name);
-    inline JSTaggedValue GetFunctionPrototype() const
+    inline JSTaggedValue GetFunctionPrototype(const JSThread *thread) const
     {
-        ASSERT(HasFunctionPrototype());
-        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        ASSERT(HasFunctionPrototype(thread));
+        JSTaggedValue protoOrHClass = GetProtoOrHClass(thread);
         if (protoOrHClass.IsJSHClass()) {
-            return JSHClass::Cast(protoOrHClass.GetTaggedObject())->GetPrototype();
+            return JSHClass::Cast(protoOrHClass.GetTaggedObject())->GetPrototype(thread);
         }
 
         return protoOrHClass;
@@ -267,44 +267,44 @@ public:
     static void SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
                                                      JSTaggedValue protoOrHClass);
 
-    static EcmaString* GetFunctionNameString(ObjectFactory *factory, JSHandle<EcmaString> concatString,
-                                             JSHandle<JSTaggedValue> target);
+    static EcmaString *GetFunctionNameString(const JSThread *thread, ObjectFactory *factory,
+                                             JSHandle<EcmaString> concatString, JSHandle<JSTaggedValue> target);
 
-    inline bool HasInitialClass() const
+    inline bool HasInitialClass(const JSThread *thread) const
     {
-        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass(thread);
         return protoOrHClass.IsJSHClass();
     }
 
-    inline bool HasFunctionPrototype() const
+    inline bool HasFunctionPrototype(const JSThread *thread) const
     {
-        JSTaggedValue protoOrHClass = GetProtoOrHClass();
+        JSTaggedValue protoOrHClass = GetProtoOrHClass(thread);
         return !protoOrHClass.IsHole();
     }
 
     void SetFunctionLength(const JSThread *thread, JSTaggedValue length);
 
-    inline bool IsGetterOrSetter() const
+    inline bool IsGetterOrSetter(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind == FunctionKind::GETTER_FUNCTION || kind == FunctionKind::SETTER_FUNCTION;
     }
 
-    inline bool IsGetter() const
+    inline bool IsGetter(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind == FunctionKind::GETTER_FUNCTION;
     }
 
-    inline bool IsBase() const
+    inline bool IsBase(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind <= FunctionKind::CLASS_CONSTRUCTOR;
     }
 
-    inline bool IsDerivedConstructor() const
+    inline bool IsDerivedConstructor(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind == FunctionKind::DERIVED_CONSTRUCTOR;
     }
 
@@ -323,9 +323,9 @@ public:
         return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::DERIVED_CONSTRUCTOR);
     }
 
-    inline bool IsBuiltinConstructor()
+    inline bool IsBuiltinConstructor(const JSThread *thread)
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind >= FunctionKind::BUILTIN_PROXY_CONSTRUCTOR && kind <= FunctionKind::BUILTIN_CONSTRUCTOR;
     }
 
@@ -360,11 +360,11 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
-    inline bool HasProfileTypeInfo(JSThread *thread) const
+    inline bool HasProfileTypeInfo(const JSThread *thread) const
     {
-        return GetRawProfileTypeInfo().IsProfileTypeInfoCell() &&
-               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->IsEmptyProfileTypeInfoCell(thread) &&
-               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->GetValue().IsUndefined();
+        return GetRawProfileTypeInfo(thread).IsProfileTypeInfoCell() &&
+               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo(thread))->IsEmptyProfileTypeInfoCell(thread) &&
+               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo(thread))->GetValue(thread).IsUndefined();
     }
 
     static void SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
@@ -380,24 +380,25 @@ public:
     void SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
     void ClearMachineCode(const JSThread *thread);
 
-    JSTaggedValue GetNativeFunctionExtraInfo() const;
-    CString GetRecordName() const;
-    JSTaggedValue GetProfileTypeInfo() const
+    JSTaggedValue GetNativeFunctionExtraInfo(const JSThread *thread) const;
+    CString GetRecordName(const JSThread *thread) const;
+    JSTaggedValue GetProfileTypeInfo(const JSThread *thread) const
     {
-        JSTaggedValue raw = GetRawProfileTypeInfo();
-        return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+        JSTaggedValue raw = GetRawProfileTypeInfo(thread);
+        return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue(thread);
     }
 
     void SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall);
-    void SetJitHotnessCnt(uint16_t cnt);
-    uint16_t GetJitHotnessCnt() const;
+    void SetJitHotnessCnt(const JSThread *thread, uint16_t cnt);
+    uint16_t GetJitHotnessCnt(const JSThread *thread) const;
 
     static void InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func);
 
-    bool IsSendableOrConcurrentFunction() const;
+    bool IsSendableOrConcurrentFunction(JSThread *thread) const;
     bool IsSharedFunction() const;
 
-    static uint32_t CalcuExpotedOfProperties(const JSHandle<JSFunction> &fun, bool *isStartSlackTracking);
+    static uint32_t CalcuExpotedOfProperties(JSThread *thread, const JSHandle<JSFunction> &fun,
+                                             bool *isStartSlackTracking);
     static void InitializeJSFunctionCommon(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind);
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
@@ -440,7 +441,7 @@ public:
 private:
     static JSHandle<JSHClass> GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
                                                          JSHandle<JSHClass> ctorInitialClass);
-    static std::vector<JSTaggedType> GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg,
+    static std::vector<JSTaggedType> GetArgsData(JSThread *thread, bool isFastCall, JSHandle<JSTaggedValue> &thisArg,
                                                  JSHandle<JSFunction> mainFunc,  CJSInfo* cjsInfo);
 };
 
@@ -665,21 +666,21 @@ public:
 
 class FunctionTemplate : public TaggedObject {
 public:
-    FunctionKind GetFunctionKind() const
+    FunctionKind GetFunctionKind(const JSThread *thread) const
     {
-        JSTaggedValue method = GetMethod();
+        JSTaggedValue method = GetMethod(thread);
         return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
     }
 
-    inline bool IsGetterOrSetter() const
+    inline bool IsGetterOrSetter(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind == FunctionKind::GETTER_FUNCTION || kind == FunctionKind::SETTER_FUNCTION;
     }
 
-    inline bool IsGetter() const
+    inline bool IsGetter(const JSThread *thread) const
     {
-        FunctionKind kind = GetFunctionKind();
+        FunctionKind kind = GetFunctionKind(thread);
         return kind == FunctionKind::GETTER_FUNCTION;
     }
 

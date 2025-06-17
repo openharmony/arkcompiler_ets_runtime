@@ -175,7 +175,7 @@ public:
         return reinterpret_cast<NumberToStringResultCache*>(object);
     }
     static JSTaggedValue CreateCacheTable(const JSThread *thread);
-    JSTaggedValue FindCachedResult(int entry, JSTaggedValue &target);
+    JSTaggedValue FindCachedResult(const JSThread *thread, int entry, JSTaggedValue &target);
     void SetCachedResult(const JSThread *thread, int entry, JSTaggedValue &number, JSHandle<EcmaString> &result);
     int GetNumberHash(JSTaggedValue &number)
     {

@@ -200,8 +200,8 @@ HWTEST_F_L0(JSSharedArrayTest, LengthSetterTest003)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> self(thread, arr);
     auto *hclass = self->GetJSHClass();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    PropertyAttributes attr(layoutInfo->GetAttr(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
+    PropertyAttributes attr(layoutInfo->GetAttr(thread, JSArray::LENGTH_INLINE_PROPERTY_INDEX));
     attr.SetWritable(false);
     layoutInfo->SetNormalAttr(thread, 0, attr);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(10));
@@ -225,8 +225,8 @@ HWTEST_F_L0(JSSharedArrayTest, LengthSetterTest004)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> self(thread, arr);
     auto *hclass = self->GetJSHClass();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    PropertyAttributes attr(layoutInfo->GetAttr(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
+    PropertyAttributes attr(layoutInfo->GetAttr(thread, JSArray::LENGTH_INLINE_PROPERTY_INDEX));
     attr.SetWritable(false);
     layoutInfo->SetNormalAttr(thread, 0, attr);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(10));
@@ -265,7 +265,7 @@ HWTEST_F_L0(JSSharedArrayTest, CheckAndCopyArray)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSSharedArray> jsArray = factory->NewJSSArray();
-    JSHandle<TaggedArray> prop(thread, jsArray->GetProperties());
+    JSHandle<TaggedArray> prop(thread, jsArray->GetProperties(thread));
     JSHClass* hclass = JSHandle<TaggedObject>(prop)->GetClass();
     hclass->SetObjectType(JSType::COW_TAGGED_ARRAY);
     ASSERT_EQ(hclass->GetObjectType(), JSType::COW_TAGGED_ARRAY);

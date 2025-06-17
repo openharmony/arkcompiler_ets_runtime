@@ -33,7 +33,7 @@ public:
     static inline JSTaggedValue FastMod(JSTaggedValue left, JSTaggedValue right);
     static inline JSTaggedValue FastEqual(JSTaggedValue left, JSTaggedValue right);
     static inline JSTaggedValue FastTypeOf(JSThread *thread, JSTaggedValue obj);
-    static inline JSTaggedValue FastStrictEqual(JSTaggedValue left, JSTaggedValue right);
+    static inline JSTaggedValue FastStrictEqual(JSThread *thread, JSTaggedValue left, JSTaggedValue right);
     static inline JSTaggedValue NewLexicalEnv(JSThread *thread, ObjectFactory *factory, uint16_t numVars);
     static inline JSTaggedValue GetGlobalOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     template<ObjectFastOperator::Status status = ObjectFastOperator::Status::None>

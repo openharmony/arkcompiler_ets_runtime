@@ -26,8 +26,8 @@ namespace panda::ecmascript::containers {
 #define CONTAINER_BUFFER_CHECK(name)                                                                       \
     JSHandle<JSTaggedValue> self = GetThis(argv);                                                          \
     if (!self->IsJSAPIBuffer()) {                                                                          \
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBuffer()) {             \
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());            \
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBuffer()) {       \
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));      \
         } else {                                                                                           \
             JSTaggedValue error =                                                                          \
                 ContainerError::BusinessError(thread, BIND_ERROR, "The " #name " method cannot be bound"); \

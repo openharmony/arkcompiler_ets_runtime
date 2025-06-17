@@ -25,7 +25,8 @@ namespace panda::ecmascript {
 class TransitionsDictionary : public TaggedHashTable<TransitionsDictionary> {
 public:
     using HashTableT = TaggedHashTable<TransitionsDictionary>;
-    static inline bool IsMatch([[maybe_unused]] const JSTaggedValue &key,
+    static inline bool IsMatch([[maybe_unused]] const JSThread *thread,
+                               [[maybe_unused]] const JSTaggedValue &key,
                                [[maybe_unused]] const JSTaggedValue &otherKey)
     {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -43,13 +44,13 @@ public:
         return key == otherKey && metaData == otherDetails;
     }
 
-    static inline int Hash(const JSTaggedValue &key, const JSTaggedValue &metaData)
+    static inline int Hash(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &metaData)
     {
         ASSERT(key.IsStringOrSymbol());
 
         uint32_t hash = 0;
         if (key.IsString()) {
-            hash = EcmaStringAccessor(key).GetHashcode();
+            hash = EcmaStringAccessor(key).GetHashcode(thread);
         } else if (key.IsSymbol()) {
             hash = JSSymbol::Cast(key.GetTaggedObject())->GetHashField();
         }
@@ -93,10 +94,10 @@ public:
         return HashTableT::Shrink(thread, dictionary, 0);
     }
 
-    inline JSTaggedValue GetAttributes(int entry) const
+    inline JSTaggedValue GetAttributes(const JSThread *thread, int entry) const
     {
         int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-        return HashTableT::Get(index);
+        return HashTableT::Get(thread, index);
     }
 
     inline void SetAttributes(const JSThread *thread, int entry, JSTaggedValue metaData)
@@ -127,15 +128,15 @@ public:
         IncreaseHoleEntriesCount(thread);
     }
 
-    int FindEntry(const JSTaggedValue &key, const JSTaggedValue &metaData);
+    int FindEntry(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &metaData);
     template <typename Callback>
-    void IterateEntryValue(Callback callback)
+    void IterateEntryValue(const JSThread *thread, Callback callback)
     {
         auto number = EntriesCount();
         int size = Size();
         int hasIteratedNum = 0;
         for (int entry = 0; entry < size; entry++) {
-            JSTaggedValue ret = GetValue(entry);
+            JSTaggedValue ret = GetValue(thread, entry);
             if (ret.IsWeak()) {
                 auto next = ret.GetTaggedWeakRef();
                 callback(JSHClass::Cast(next));
@@ -164,13 +165,13 @@ public:
         return true;
     }
 
-    static int ComputeCompactSize(const JSHandle<TransitionsDictionary> &table, int computeHashTableSize,
-        int tableSize, int addedElements)
+    static int ComputeCompactSize(const JSThread *thread, const JSHandle<TransitionsDictionary> &table,
+                                  int computeHashTableSize, int tableSize, int addedElements)
     {
         int realEntryCount = 0;
         for (int i = 0; i < tableSize; i++) {
             // value is weak reference, if not use will be set undefined.
-            if (TransitionsDictionary::CheckWeakExist(table->GetValue(i))) {
+            if (TransitionsDictionary::CheckWeakExist(table->GetValue(thread, i))) {
                 realEntryCount++;
             }
         }

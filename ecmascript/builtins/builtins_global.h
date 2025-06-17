@@ -232,7 +232,7 @@ private:
     static bool IsHexDigits(uint16_t ch);
     static uint8_t GetValueFromTwoHex(uint16_t front, uint16_t behind);
 #endif // ENABLE_NEXT_OPTIMIZATION
-    static uint16_t GetValueFromHexString(const JSHandle<EcmaString> &string);
+    static uint16_t GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string);
     // 22.1.3.17.2 StringPad ( S, maxLength, fillString, placement )
     static EcmaString *StringPad(JSThread *thread,
                                  const JSHandle<EcmaString> &string,

@@ -52,8 +52,8 @@ JSTaggedValue ContainersDeque::InsertFront(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The insertFront method cannot be bound");
@@ -77,8 +77,8 @@ JSTaggedValue ContainersDeque::InsertEnd(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The insertEnd method cannot be bound");
@@ -101,8 +101,8 @@ JSTaggedValue ContainersDeque::GetFirst(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getFirst method cannot be bound");
@@ -111,7 +111,7 @@ JSTaggedValue ContainersDeque::GetFirst(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    JSTaggedValue firstElement = deque->GetFront();
+    JSTaggedValue firstElement = deque->GetFront(thread);
     return firstElement;
 }
 
@@ -124,8 +124,8 @@ JSTaggedValue ContainersDeque::GetLast(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLast method cannot be bound");
@@ -134,7 +134,7 @@ JSTaggedValue ContainersDeque::GetLast(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    JSTaggedValue lastElement = deque->GetTail();
+    JSTaggedValue lastElement = deque->GetTail(thread);
     return lastElement;
 }
 
@@ -147,8 +147,8 @@ JSTaggedValue ContainersDeque::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The has method cannot be bound");
@@ -159,7 +159,7 @@ JSTaggedValue ContainersDeque::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    bool isHas = deque->Has(value.GetTaggedValue());
+    bool isHas = deque->Has(thread, value.GetTaggedValue());
     return GetTaggedBoolean(isHas);
 }
 
@@ -172,8 +172,8 @@ JSTaggedValue ContainersDeque::PopFirst(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The popFirst method cannot be bound");
@@ -195,8 +195,8 @@ JSTaggedValue ContainersDeque::PopLast(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The popLast method cannot be bound");
@@ -218,8 +218,8 @@ JSTaggedValue ContainersDeque::ForEach(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIDeque()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIDeque()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIDeque()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The forEach method cannot be bound");
@@ -232,7 +232,7 @@ JSTaggedValue ContainersDeque::ForEach(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -243,12 +243,12 @@ JSTaggedValue ContainersDeque::ForEach(EcmaRuntimeCallInfo *argv)
     uint32_t first = deque->GetFirst();
     uint32_t last = deque->GetLast();
 
-    JSHandle<TaggedArray> elements(thread, deque->GetElements());
+    JSHandle<TaggedArray> elements(thread, deque->GetElements(thread));
     uint32_t capacity = elements->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t index = 0;
     while (first != last) {
-        JSTaggedValue kValue = deque->Get(index);
+        JSTaggedValue kValue = deque->Get(thread, index);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, 3); // 3:three args
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -273,8 +273,8 @@ JSTaggedValue ContainersDeque::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");
@@ -295,8 +295,8 @@ JSTaggedValue ContainersDeque::GetSize(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIDeque()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIDeque()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIDeque()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLength method cannot be bound");
@@ -305,7 +305,7 @@ JSTaggedValue ContainersDeque::GetSize(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    uint32_t length = deque->GetSize();
+    uint32_t length = deque->GetSize(thread);
 
     return JSTaggedValue(length);
 }

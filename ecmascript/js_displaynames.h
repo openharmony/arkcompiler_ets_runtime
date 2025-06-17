@@ -98,7 +98,7 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::LocaleDisplayNames *GetIcuLocaleDisplayNames() const;
+    icu::LocaleDisplayNames *GetIcuLocaleDisplayNames(JSThread *thread) const;
 
     static void FreeIcuLocaleDisplayNames(void *env, void *pointer, void* hint);
 

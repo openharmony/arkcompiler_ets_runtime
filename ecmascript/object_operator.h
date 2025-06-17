@@ -120,7 +120,7 @@ public:
         if (key_->IsString() && receiver_->IsString()) {
             JSTaggedValue lenKey = thread_->GlobalConstants()->GetLengthString();
             EcmaString *proKey = EcmaString::Cast(key_->GetTaggedObject());
-            return EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()));
+            return EcmaStringAccessor::StringsAreEqual(thread_, proKey, EcmaString::Cast(lenKey.GetTaggedObject()));
         }
         return false;
     }

@@ -48,8 +48,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor1)
     ASSERT_TRUE(JSObject::IsRegExp(thread, regexpObject));
 
     JSHandle<JSRegExp> jsRegexp(thread, JSRegExp::Cast(regexpObject->GetTaggedObject()));
-    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
-    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
+    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource(thread));
+    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags(thread).GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalSource), pattern), 0);
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalFlags), flags), 0);
@@ -83,8 +83,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor2)
     ASSERT_TRUE(JSObject::IsRegExp(thread, regexpObject));
 
     JSHandle<JSRegExp> jsRegexp(thread, JSRegExp::Cast(regexpObject->GetTaggedObject()));
-    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
-    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
+    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource(thread));
+    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags(thread).GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalSource), pattern), 0);
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalFlags), flags), 0);
@@ -118,8 +118,8 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpConstructor3)
     ASSERT_TRUE(JSObject::IsRegExp(thread, regexpObject));
 
     JSHandle<JSRegExp> jsRegexp(thread, JSRegExp::Cast(regexpObject->GetTaggedObject()));
-    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource());
-    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags().GetInt());
+    JSHandle<JSTaggedValue> originalSource(thread, jsRegexp->GetOriginalSource(thread));
+    uint8_t flagsBits = static_cast<uint8_t>(jsRegexp->GetOriginalFlags(thread).GetInt());
     JSHandle<JSTaggedValue> originalFlags(thread, BuiltinsRegExp::FlagsBitsToString(thread, flagsBits));
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalSource), pattern1), 0);
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(originalFlags), flags2), 0);
@@ -586,13 +586,13 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
     JSHandle<EcmaString> string1 = factory->NewFromASCII("abc");
     JSHandle<EcmaString> string2 = factory->NewFromASCII("abcd");
     CVector<CString> vec;
-    regExpParserCache->SetCache(*string1, 0, JSTaggedValue::True(), 2, vec);
-    ASSERT_TRUE(regExpParserCache->GetCache(*string1, 0, vec).first.IsTrue());
-    ASSERT_TRUE(regExpParserCache->GetCache(*string1, 0, vec).second == 2U);
-    ASSERT_TRUE(regExpParserCache->GetCache(*string1,
+    regExpParserCache->SetCache(thread, *string1, 0, JSTaggedValue::True(), 2, vec);
+    ASSERT_TRUE(regExpParserCache->GetCache(thread, *string1, 0, vec).first.IsTrue());
+    ASSERT_TRUE(regExpParserCache->GetCache(thread, *string1, 0, vec).second == 2U);
+    ASSERT_TRUE(regExpParserCache->GetCache(thread, *string1,
                                             RegExpParserCache::CACHE_SIZE, vec).first.IsHole());
-    ASSERT_TRUE(regExpParserCache->GetCache(*string2, 0, vec).first.IsHole());
-    ASSERT_TRUE(regExpParserCache->GetCache(*string2, UINT32_MAX, vec).first.IsHole());
+    ASSERT_TRUE(regExpParserCache->GetCache(thread, *string2, 0, vec).first.IsHole());
+    ASSERT_TRUE(regExpParserCache->GetCache(thread, *string2, UINT32_MAX, vec).first.IsHole());
 }
 
 HWTEST_F_L0(BuiltinsRegExpTest, FlagD)

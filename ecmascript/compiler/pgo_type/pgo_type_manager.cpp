@@ -70,11 +70,11 @@ uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
                 continue;
             }
             JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
-            if (!hclass->HasTransitions()) {
-                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
+            if (!hclass->HasTransitions(thread_)) {
+                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(thread_, hclass);
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
-                    JSTaggedValue key = layoutInfo->GetKey(i);
+                    JSTaggedValue key = layoutInfo->GetKey(thread_, i);
                     if (key.IsSymbol() && JSSymbol::Cast(key)->HasId()) {
                         count++;
                     }
@@ -100,11 +100,11 @@ void PGOTypeManager::GenSymbolInfo()
             }
             ProfileType childType = child.first;
             JSHClass* hclass = JSHClass::Cast(JSTaggedValue(child.second).GetTaggedObject());
-            if (!hclass->HasTransitions()) {
-                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(hclass);
+            if (!hclass->HasTransitions(thread_)) {
+                LayoutInfo* layoutInfo = LayoutInfo::GetLayoutInfoFromHClass(thread_, hclass);
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
-                    JSTaggedValue symbol = layoutInfo->GetKey(i);
+                    JSTaggedValue symbol = layoutInfo->GetKey(thread_, i);
                     if (symbol.IsSymbol() && JSSymbol::Cast(symbol)->HasId()) {
                         JSSymbol* symbolPtr = JSSymbol::Cast(symbol.GetTaggedObject());
                         uint64_t symbolId = symbolPtr->GetPrivateId();

@@ -199,8 +199,8 @@ HWTEST_F_L0(ICHandlerTest, StoreTransition)
 
     JSHandle<JSTaggedValue> handlerValue = TransitionHandler::StoreTransition(thread, handleOp);
     JSHandle<TransitionHandler> handler = JSHandle<TransitionHandler>::Cast(handlerValue);
-    EXPECT_TRUE(handler->GetHandlerInfo().IsPropertyBox());
-    EXPECT_TRUE(handler->GetTransitionHClass().IsHeapObject());
+    EXPECT_TRUE(handler->GetHandlerInfo(thread).IsPropertyBox());
+    EXPECT_TRUE(handler->GetTransitionHClass(thread).IsHeapObject());
 }
 
 /**
@@ -235,11 +235,11 @@ HWTEST_F_L0(ICHandlerTest, LoadPrototype)
     // test op is Found and hclass has Prototype
     JSHandle<JSTaggedValue> handlerValue2 = PrototypeHandler::LoadPrototype(thread, handleOp2, obj2Class);
     JSHandle<PrototypeHandler> handler2 = JSHandle<PrototypeHandler>::Cast(handlerValue2);
-    JSHandle<JSTaggedValue> handlerInfo2(thread, handler2->GetHandlerInfo());
+    JSHandle<JSTaggedValue> handlerInfo2(thread, handler2->GetHandlerInfo(thread));
     EXPECT_EQ(HandlerBase::GetOffset(handlerInfo2->GetInt()), 2);
-    JSHandle<JSTaggedValue> resultMarker(thread, handler2->GetProtoCell());
+    JSHandle<JSTaggedValue> resultMarker(thread, handler2->GetProtoCell(thread));
     EXPECT_TRUE(resultMarker->IsProtoChangeMarker());
-    EXPECT_TRUE(handler2->GetHolder().IsJSGlobalObject());
+    EXPECT_TRUE(handler2->GetHolder(thread).IsJSGlobalObject());
 }
 
 /**
@@ -269,10 +269,10 @@ HWTEST_F_L0(ICHandlerTest, StorePrototype)
     // test hclass has Prototype
     JSHandle<JSTaggedValue> handlerValue = PrototypeHandler::StorePrototype(thread, handleOp, objClass);
     JSHandle<PrototypeHandler> handler = JSHandle<PrototypeHandler>::Cast(handlerValue);
-    JSHandle<JSTaggedValue> handlerInfo(thread, handler->GetHandlerInfo());
+    JSHandle<JSTaggedValue> handlerInfo(thread, handler->GetHandlerInfo(thread));
     EXPECT_EQ(HandlerBase::GetOffset(handlerInfo->GetInt()), 2);
-    JSHandle<JSTaggedValue> resultMarker(thread, handler->GetProtoCell());
+    JSHandle<JSTaggedValue> resultMarker(thread, handler->GetProtoCell(thread));
     EXPECT_TRUE(resultMarker->IsProtoChangeMarker());
-    EXPECT_TRUE(handler->GetHolder().IsJSGlobalObject());
+    EXPECT_TRUE(handler->GetHolder(thread).IsJSGlobalObject());
 }
 } // namespace panda::test

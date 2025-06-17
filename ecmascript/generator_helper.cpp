@@ -25,7 +25,7 @@ namespace panda::ecmascript {
 JSHandle<JSObject> GeneratorHelper::Next(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                          JSTaggedValue value)
 {
-    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
+    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
     genObject->SetResumeResult(thread, value);
     genObject->SetGeneratorState(JSGeneratorState::EXECUTING);
     genObject->SetResumeMode(GeneratorResumeMode::NEXT);
@@ -44,7 +44,7 @@ JSHandle<JSObject> GeneratorHelper::Next(JSThread *thread, const JSHandle<Genera
 JSHandle<JSObject> GeneratorHelper::Return(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                            JSTaggedValue value)
 {
-    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
+    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
     genObject->SetResumeMode(GeneratorResumeMode::RETURN);
     genObject->SetResumeResult(thread, value);
 
@@ -61,7 +61,7 @@ JSHandle<JSObject> GeneratorHelper::Return(JSThread *thread, const JSHandle<Gene
 JSHandle<JSObject> GeneratorHelper::Throw(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                           JSTaggedValue value)
 {
-    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
+    JSHandle<JSGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
     genObject->SetResumeMode(GeneratorResumeMode::THROW);
     genObject->SetResumeResult(thread, value);
 

@@ -65,18 +65,19 @@ uint32_t GetValueUInt32(JSHandle<JSTaggedValue> valueHandle)
     return static_cast<uint32_t>(GetValueInt32(valueHandle));
 }
 
-JSTypedArray *GetUInt8ArrayFromBufferObject(JSTaggedValue buffer)
+JSTypedArray *GetUInt8ArrayFromBufferObject(JSThread *thread, JSTaggedValue buffer)
 {
     if (buffer.IsJSUint8Array()) {
         return JSTypedArray::Cast(buffer.GetTaggedObject());
     }
     ASSERT(buffer.IsJSAPIBuffer());
-    return JSTypedArray::Cast(JSAPIFastBuffer::Cast(buffer.GetTaggedObject())->GetFastBufferData().GetTaggedObject());
+    return JSTypedArray::Cast(
+        JSAPIFastBuffer::Cast(buffer.GetTaggedObject())->GetFastBufferData(thread).GetTaggedObject());
 }
 
-JSTypedArray *GetUInt8ArrayFromBufferObject(JSHandle<JSTaggedValue> buffer)
+JSTypedArray *GetUInt8ArrayFromBufferObject(JSThread *thread, JSHandle<JSTaggedValue> buffer)
 {
-    return GetUInt8ArrayFromBufferObject(buffer.GetTaggedValue());
+    return GetUInt8ArrayFromBufferObject(thread, buffer.GetTaggedValue());
 }
 
 bool IsNegetiveNumber(JSHandle<JSTaggedValue> &v)
@@ -85,13 +86,13 @@ bool IsNegetiveNumber(JSHandle<JSTaggedValue> &v)
     return v->GetNumber() < 0;
 }
 
-bool IsValidEncoding(JSHandle<JSTaggedValue> &str)
+bool IsValidEncoding(JSThread *thread, JSHandle<JSTaggedValue> &str)
 {
     if (!str->IsString()) {
         return false;
     }
     auto strAccessor = EcmaStringAccessor(JSHandle<EcmaString>(str));
-    auto res = strAccessor.ToStdString();
+    auto res = strAccessor.ToStdString(thread);
     return JSAPIFastBuffer::GetEncodingType(res) != JSAPIFastBuffer::EncodingType::INVALID;
 }
 
@@ -121,7 +122,7 @@ JSTaggedValue ContainersBuffer::BufferConstructor(EcmaRuntimeCallInfo *argv)
         RANGE_ERROR_CHECK(value, value, 0, UINT32_MAX);
         JSAPIFastBuffer::AllocateFastBuffer(thread, bufferObj, GetValueUInt32(value));
     } else if (value->IsString()) {
-        if (byteOffsetOrEncoding->IsString() && !IsValidEncoding(byteOffsetOrEncoding)) {
+        if (byteOffsetOrEncoding->IsString() && !IsValidEncoding(thread, byteOffsetOrEncoding)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
@@ -295,13 +296,13 @@ JSTaggedValue ContainersBuffer::IndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 2);  // 2 means the third arg
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
-        if (!IsValidEncoding(encoding)) {
+        if (!IsValidEncoding(thread, encoding)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
+        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
     return JSAPIFastBuffer::IndexOf(thread, buffer, value, offsetIndex, encodingType);
 }
@@ -334,13 +335,13 @@ JSTaggedValue ContainersBuffer::Includes(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 2);  // 2 means the third arg
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
-        if (!IsValidEncoding(encoding)) {
+        if (!IsValidEncoding(thread, encoding)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
+        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
     return JSAPIFastBuffer::Includes(thread, buffer, value, offsetIndex, encodingType);
 }
@@ -374,13 +375,13 @@ JSTaggedValue ContainersBuffer::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 2);  // 2 means the third arg
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
-        if (!IsValidEncoding(encoding)) {
+        if (!IsValidEncoding(thread, encoding)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
+        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
     return JSAPIFastBuffer::IndexOf(thread, buffer, value, static_cast<uint32_t>(offsetIndex), encodingType, true);
 }
@@ -434,13 +435,13 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> start = GetCallArg(argv, 1);  // 1 means the second arg
     if (start->IsString()) {
         JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
-        if (!IsValidEncoding(start)) {
+        if (!IsValidEncoding(thread, start)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(start));
+        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, start));
         return JSAPIFastBuffer::Fill(thread, buffer, value, encodingType, 0, length);
     }
     JSHandle<JSTaggedValue> end = GetCallArg(argv, 2);       // 2 means the third arg
@@ -460,13 +461,13 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
     }
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
-        if (!IsValidEncoding(encoding)) {
+        if (!IsValidEncoding(thread, encoding)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
+        encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
     return JSAPIFastBuffer::Fill(thread, buffer, value, encodingType, startIndex, endIndex);
 }
@@ -489,13 +490,13 @@ JSTaggedValue ContainersBuffer::Write(EcmaRuntimeCallInfo *argv)
                                                 JSAPIFastBuffer::UTF8);
         }
         if (secondArg->IsString()) {
-            if (!IsValidEncoding(secondArg)) {
+            if (!IsValidEncoding(thread, secondArg)) {
                 JSTaggedValue error = ContainerError::BusinessError(
                     thread, ErrorFlag::TYPE_ERROR,
                     "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
                 THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
             }
-            encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(secondArg));
+            encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, secondArg));
             return JSAPIFastBuffer::WriteString(thread, buffer, firstArg, 0, buffer->GetLength(), encodingType);
         }
         uint32_t offset = 0;
@@ -511,13 +512,13 @@ JSTaggedValue ContainersBuffer::Write(EcmaRuntimeCallInfo *argv)
         }
         JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 3);  // 3 means the fourth arg
         if (encoding->IsString()) {
-            if (!IsValidEncoding(encoding)) {
+            if (!IsValidEncoding(thread, encoding)) {
                 JSTaggedValue error = ContainerError::BusinessError(
                     thread, ErrorFlag::TYPE_ERROR,
                     "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
                 THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
             }
-            encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(encoding));
+            encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
         }
         return JSAPIFastBuffer::WriteString(thread, buffer, firstArg, offset, maxLength, encodingType);
     }
@@ -537,13 +538,13 @@ JSTaggedValue ContainersBuffer::ToString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> end = GetCallArg(argv, 2);       // 2 means the third arg
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (firstArg->IsString()) {
-        if (!IsValidEncoding(firstArg)) {
+        if (!IsValidEncoding(thread, firstArg)) {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        encodingType = JSAPIFastBuffer::GetEncodingType(firstArg);
+        encodingType = JSAPIFastBuffer::GetEncodingType(thread, firstArg);
     }
     uint32_t startIndex = 0;
     if (start->IsNumber()) {

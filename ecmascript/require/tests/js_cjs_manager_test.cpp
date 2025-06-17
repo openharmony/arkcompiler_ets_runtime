@@ -74,7 +74,7 @@ HWTEST_F_L0(CjsManagerTest, InitializeCommonJS)
         SlowRuntimeStub::LdObjByName(thread, module.GetTaggedValue(),
                                      exportsKey.GetTaggedValue(), false, JSTaggedValue::Undefined());
 
-    EXPECT_EQ(JSTaggedValue::SameValue(exportsVal, JSTaggedValue::Hole()), false);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, exportsVal, JSTaggedValue::Hole()), false);
 }
 
 /**

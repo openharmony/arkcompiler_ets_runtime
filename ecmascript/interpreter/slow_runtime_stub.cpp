@@ -853,7 +853,7 @@ JSTaggedValue SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(JSThread *thread
     INTERPRETER_TRACE(thread, Trygetobjprop);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSTaggedValue> obj(thread, global.GetTaggedObject()->GetClass()->GetPrototype());
+    JSHandle<JSTaggedValue> obj(thread, global.GetTaggedObject()->GetClass()->GetPrototype(thread));
     JSHandle<JSTaggedValue> propHandle(thread, prop);
     return RuntimeStubs::RuntimeTryLdGlobalByName(thread, obj, propHandle);
 }
@@ -1029,7 +1029,7 @@ JSTaggedValue SlowRuntimeStub::LdSendableClass(JSThread *thread, JSTaggedValue e
     INTERPRETER_TRACE(thread, LdSendableClass);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> envHandle(thread, env);
-    return RuntimeStubs::RuntimeLdSendableClass(envHandle, level);
+    return RuntimeStubs::RuntimeLdSendableClass(thread, envHandle, level);
 }
 
 JSTaggedValue SlowRuntimeStub::LdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc)
@@ -1109,7 +1109,7 @@ JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *f
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSFunction> functionHandle(thread, function);
-    uint32_t slotSize = functionHandle->GetCallTarget()->GetSlotSize();
+    uint32_t slotSize = functionHandle->GetCallTarget(thread)->GetSlotSize();
     return RuntimeStubs::RuntimeNotifyInlineCache(thread, functionHandle, slotSize);
 }
 

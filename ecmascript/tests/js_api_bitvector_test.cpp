@@ -127,7 +127,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, Push)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
         JSAPIBitVector::Push(thread, bitVector, value);
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     for (uint32_t i = 0; i < increasedLength; i++) {
@@ -171,7 +171,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, Set)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
         JSAPIBitVector::Push(thread, bitVector, value);
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     JSTaggedValue res = bitVector->Set(thread, index, JSTaggedValue(1));
@@ -234,7 +234,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, Has_instance)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
         JSAPIBitVector::Push(thread, bitVector, value);
     }
-    bool res = bitVector->Has(JSTaggedValue(1));
+    bool res = bitVector->Has(thread, JSTaggedValue(1));
     EXPECT_TRUE(res);
 }
 
@@ -285,7 +285,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, SetBitsByRange)
     JSTaggedValue res = JSAPIBitVector::SetBitsByRange(thread, bitVector, value, value1, value2);
     EXPECT_EQ(res, JSTaggedValue::Undefined());
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     for (uint32_t i = startIndex; i < endIndex; i++) {
@@ -336,7 +336,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, SetAllBits)
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSTaggedValue res = JSAPIBitVector::SetAllBits(thread, bitVector, value);
     EXPECT_EQ(res, JSTaggedValue::Undefined());
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     for (uint32_t i = 0; i < increasedLength; i++) {
@@ -430,7 +430,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, FlipBitByIndex)
     }
     JSTaggedValue res = JSAPIBitVector::FlipBitByIndex(thread, bitVector, index);
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     EXPECT_EQ(res, JSTaggedValue::Undefined());
@@ -458,7 +458,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, FlipBitsByRange)
     JSTaggedValue res = JSAPIBitVector::FlipBitsByRange(thread, bitVector, value1, value2);
     EXPECT_EQ(res, JSTaggedValue::Undefined());
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     for (uint32_t i = startIndex; i < endIndex; i++) {
@@ -485,7 +485,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, Resize)
     JSAPIBitVector::Resize(thread, bitVector, newLength);
     EXPECT_EQ(bitVector->GetLength(), newLength);
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
     for (uint32_t i = increasedLength; i < newLength; i++) {
@@ -509,8 +509,9 @@ HWTEST_F_L0(JSAPIBitVectorTest, OwnKeys)
     }
 
     JSHandle<TaggedArray> keys = JSAPIBitVector::OwnKeys(thread, bitVector);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(0))),
-        EcmaString::Cast(keys->Get(0).GetTaggedObject())));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                    *(base::NumberHelper::NumberToString(thread, JSTaggedValue(0))),
+                                                    EcmaString::Cast(keys->Get(thread, 0).GetTaggedObject())));
 }
 
 /**

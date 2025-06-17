@@ -471,14 +471,15 @@ public:
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
         {
+            JSThread *thread = argv->GetThread();
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             JSHandle<JSTaggedValue> vector = GetCallArg(argv, 2); // 2 means the secode arg
             if (!vector->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIVector::Cast(vector.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    elements->Get(key->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    elements->Get(thread, key->GetInt());
                 }
             }
             return JSTaggedValue::Undefined();

@@ -64,7 +64,7 @@ public:
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
     // 24.1.1.2 IsDetachedBuffer(arrayBuffer)
     static void IsDetachedBuffer(JSThread *thread, const JSHandle<JSTypedArray> &arrayBuffer);
-    static bool IsDetachedBuffer(JSTaggedValue arrayBuffer);
+    static bool IsDetachedBuffer(JSThread *thread, JSTaggedValue arrayBuffer);
     // 24.1.1.5 GetValueFromBuffer ( arrayBuffer, byteIndex, type, isLittleEndian )
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                             DataViewType type, bool littleEndian);
@@ -111,7 +111,7 @@ public:
                                           DataViewType type, double val, bool littleEndian);
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                             DataViewType type, bool littleEndian);
-    static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
+    static void *GetDataPointFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 
 protected:
     static constexpr uint64_t MAX_NATIVE_SIZE_LIMIT = 4_GB;

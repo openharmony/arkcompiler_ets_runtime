@@ -62,13 +62,13 @@ HWTEST_F_L0(EcmaGlobalStorageTest, XRefGlobalNodes)
         weakRefArray->Set(thread, INT_VALUE_1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
-    EXPECT_TRUE(!weakRefArray->Get(INT_VALUE_0).IsUndefined());
-    EXPECT_TRUE(weakRefArray->Get(INT_VALUE_1).IsUndefined());
+    EXPECT_TRUE(!weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_1).IsUndefined());
 
     thread->DisposeXRefGlobalHandle(xRefArrayAddress);
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     vm->SetEnableForceGC(true);
-    EXPECT_TRUE(weakRefArray->Get(INT_VALUE_0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
 }
 
 HWTEST_F_L0(EcmaGlobalStorageTest, SetNodeKind)
@@ -86,7 +86,7 @@ HWTEST_F_L0(EcmaGlobalStorageTest, SetNodeKind)
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     thread->SetNodeKind(NodeKind::NORMAL_NODE);
     vm->SetEnableForceGC(true);
-    EXPECT_TRUE(weakRefArray->Get(INT_VALUE_0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
 }
 
 HWTEST_F_L0(EcmaGlobalStorageTest, EcmaGlobalStorage)

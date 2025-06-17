@@ -55,8 +55,10 @@ uint32_t FreeObject::Available() const
     if (hclass->IsFreeObjectWithShortField()) {
         return hclass->GetObjectSize();
     }
-    ASSERT(GetSize().IsInt());
-    return GetSize().GetInt();
+    // bypass the load barrier
+    auto taggedInt = JSTaggedValue(Barriers::GetPrimitive<JSTaggedType>(this, SIZE_OFFSET));
+    ASSERT(taggedInt.IsInt());
+    return taggedInt.GetInt();
 }
 
 bool FreeObject::IsFreeObject() const

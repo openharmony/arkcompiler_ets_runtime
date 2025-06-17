@@ -47,16 +47,16 @@ public:
     static inline void InterpreterFrameCopyArgs(JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs,
                                                 uint32_t numDeclaredArgs, bool haveExtraArgs = true);
     static JSTaggedValue GetFunction(JSTaggedType *sp);
-    static JSTaggedValue GetNewTarget(JSTaggedType *sp);
+    static JSTaggedValue GetNewTarget(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetThis(JSTaggedType *sp);
-    static JSTaggedValue GetConstantPool(JSTaggedType *sp);
+    static JSTaggedValue GetConstantPool(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp);
-    static JSTaggedValue GetModule(JSTaggedType *sp);
-    static JSTaggedValue GetProfileTypeInfo(JSTaggedType *sp);
-    static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
+    static JSTaggedValue GetModule(JSThread *thread, JSTaggedType *sp);
+    static JSTaggedValue GetProfileTypeInfo(JSThread *thread, JSTaggedType *sp);
+    static uint32_t GetNumArgs(JSThread *thread, JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
-    static bool AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
+    static bool AssemblyIsFastNewFrameEnter(JSThread *thread, JSFunction *ctor, JSHandle<Method> method);
     static PUBLIC_API int64_t GetCallSize(EcmaOpcode opcode);
 
 #ifndef EXCLUDE_C_INTERPRETER

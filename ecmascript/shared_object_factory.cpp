@@ -293,7 +293,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> 
         SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
-            SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+            SetAOTFuncEntry(method->GetJSPandaFile(thread_), *function, *method);
     } else {
         SetCodeEntryToFunctionFromMethod(function, method);
     }
@@ -440,7 +440,7 @@ JSHandle<TaggedArray> ObjectFactory::CopySArray(const JSHandle<TaggedArray> &old
     newArray->SetExtraLength(old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
-        newArray->Set(thread_, i, old->Get(i));
+        newArray->Set(thread_, i, old->Get(thread_, i));
     }
 
     ASSERT(!g_isEnableCMCGC || newArray->IsInSharedHeap());
@@ -469,7 +469,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &o
 
     uint32_t oldLength = old->GetLength();
     for (uint32_t i = 0; i < oldLength; i++) {
-        newArray->Set(thread_, i, old->Get(i));
+        newArray->Set(thread_, i, old->Get(thread_, i));
     }
     for (uint32_t i = oldLength; i < length; i++) {
         newArray->Set(thread_, i, initVal);
@@ -553,9 +553,9 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSortSLayoutInfo(const JSHandle<Layo
     size_t keyOffset = 0;
     size_t attrOffset = sizeof(JSTaggedType);
     for (int i = 0; i < end; i++) {
-        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+        JSTaggedValue propKey(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) +
                                                        keyOffset));
-        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+        JSTaggedValue propValue(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) +
                                                          attrOffset));
         sp[i].key_ = propKey;
         sp[i].attr_ = propValue;
@@ -847,7 +847,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedVal
     obj->SetFlags(0);
     obj->SetWellKnownSymbol();
     obj->SetDescription(thread_, name);
-    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, name.GetTaggedValue()));
     return obj;
 }
 
@@ -859,7 +859,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbol(const JSHandle<JSTaggedValue>
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetFlags(0);
     obj->SetDescription(thread_, name);
-    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, name.GetTaggedValue()));
     return obj;
 }
 
@@ -871,7 +871,7 @@ JSHandle<JSSymbol> ObjectFactory::NewSConstantPrivateSymbol()
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
-    obj->SetHashField(SymbolTable::Hash(obj.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, obj.GetTaggedValue()));
     obj->SetPrivate();
     return obj;
 }

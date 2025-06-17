@@ -90,7 +90,7 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (EcmaStringAccessor::CanBeCompressed(&codePointValue, 1)) {
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            return singleCharTable->GetStringFromSingleCharTable(codePointValue);
+            return singleCharTable->GetStringFromSingleCharTable(thread, codePointValue);
         }
         JSHandle<EcmaString> strHandle = factory->NewFromUtf16Literal(&codePointValue, 1);
         return strHandle.GetTaggedValue();
@@ -194,7 +194,7 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         EcmaString *nextSeg = *JSTaggedValue::ToString(thread, elementString);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        u16str += EcmaStringAccessor(nextSeg).ToU16String();
+        u16str += EcmaStringAccessor(nextSeg).ToU16String(thread);
         if (EcmaStringAccessor(nextSeg).IsUtf16()) {
             canBeCompress = false;
         }
@@ -204,7 +204,7 @@ JSTaggedValue BuiltinsString::Raw(EcmaRuntimeCallInfo *argv)
         if (argsI <= argc) {
             EcmaString *nextSub = *JSTaggedValue::ToString(thread, GetCallArg(argv, argsI));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            u16str += EcmaStringAccessor(nextSub).ToU16String();
+            u16str += EcmaStringAccessor(nextSub).ToU16String(thread);
             if (EcmaStringAccessor(nextSub).IsUtf16()) {
                 canBeCompress = false;
             }
@@ -248,10 +248,10 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     if (pos < 0 || pos >= thisLen) {
         return factory->GetEmptyString().GetTaggedValue();
     }
-    uint16_t res = EcmaStringAccessor(thisFlat).Get<false>(pos);
+    uint16_t res = EcmaStringAccessor(thisFlat).Get<false>(thread, pos);
     if (EcmaStringAccessor::CanBeCompressed(&res, 1)) {
         JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-        return singleCharTable->GetStringFromSingleCharTable(res);
+        return singleCharTable->GetStringFromSingleCharTable(thread, res);
     }
     return factory->NewFromUtf16Literal(&res, 1).GetTaggedValue();
 }
@@ -287,7 +287,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     if (pos < 0 || pos >= thisLen) {
         return GetTaggedDouble(base::NAN_VALUE);
     }
-    uint16_t ret = EcmaStringAccessor(thisFlat).Get<false>(pos);
+    uint16_t ret = EcmaStringAccessor(thisFlat).Get<false>(thread, pos);
     return GetTaggedInt(ret);
 }
 
@@ -312,12 +312,12 @@ JSTaggedValue BuiltinsString::CodePointAt(EcmaRuntimeCallInfo *argv)
     if (pos < 0 || pos >= thisLen) {
         return JSTaggedValue::Undefined();
     }
-    uint16_t first = EcmaStringAccessor(thisFlat).Get<false>(pos);
+    uint16_t first = EcmaStringAccessor(thisFlat).Get<false>(thread, pos);
     if (first < common::utf_helper::DECODE_LEAD_LOW || first > common::utf_helper::DECODE_LEAD_HIGH ||
         pos + 1 == thisLen) {
         return GetTaggedInt(first);
     }
-    uint16_t second = EcmaStringAccessor(thisFlat).Get<false>(pos + 1);
+    uint16_t second = EcmaStringAccessor(thisFlat).Get<false>(thread, pos + 1);
     if (second < common::utf_helper::DECODE_TRAIL_LOW || second > common::utf_helper::DECODE_TRAIL_HIGH) {
         return GetTaggedInt(first);
     }
@@ -559,8 +559,8 @@ JSTaggedValue BuiltinsString::DoLocaleCompare(JSThread *thread,
         LOG_ECMA(ERROR) << "BuiltinsString::LocaleCompare:collator is nullptr";
     }
     ASSERT(collator != nullptr);
-    auto result = collator->Compare(EcmaStringAccessor(thisHandle).ToStdString(),
-        EcmaStringAccessor(thatHandle).ToStdString());
+    auto result = collator->Compare(EcmaStringAccessor(thisHandle).ToStdString(thread),
+        EcmaStringAccessor(thatHandle).ToStdString(thread));
     return JSTaggedValue(result);
 #endif
 #endif
@@ -587,7 +587,7 @@ JSTaggedValue BuiltinsString::LocaleCompareGC(JSThread *thread,
         icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
         ASSERT(icuCollator != nullptr);
     } else {
-        icuCollator = initCollator->GetIcuCollator();
+        icuCollator = initCollator->GetIcuCollator(thread);
     }
     JSTaggedValue result = JSCollator::CompareStrings(thread, icuCollator, thisHandle, thatHandle, csOption);
     return result;
@@ -740,7 +740,7 @@ JSTaggedValue BuiltinsString::IsWellFormed(EcmaRuntimeCallInfo *argv)
     uint32_t position = 0;
     while (position < size) {
         // i.Let first be the code unit at index position within string.
-        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint16_t first = EcmaStringAccessor(string).Get(thread, position);
         uint32_t cp = first - CHAR16_LETTER_NULL;
         uint8_t codeUnitCount = 0;
         bool isUnpairedSurrogate = false;
@@ -756,7 +756,7 @@ JSTaggedValue BuiltinsString::IsWellFormed(EcmaRuntimeCallInfo *argv)
             isUnpairedSurrogate = true;
         } else {
             // iv. Let second be the code unit at index position + 1 within string.
-            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            uint16_t second = EcmaStringAccessor(string).Get(thread, position + 1);
             // v. If second is not a trailing surrogate, then
             //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
             if (!IsUTF16LowSurrogate(second)) {
@@ -813,7 +813,7 @@ JSTaggedValue BuiltinsString::ToWellFormed(EcmaRuntimeCallInfo *argv)
     //     d. Set k to k + cp.[[CodeUnitCount]].
     while (position < size) {
         // i.Let first be the code unit at index position within string.
-        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint16_t first = EcmaStringAccessor(string).Get(thread, position);
         uint32_t cp = first - CHAR16_LETTER_NULL;
         uint8_t codeUnitCount = 0;
         bool isUnpairedSurrogate = false;
@@ -829,7 +829,7 @@ JSTaggedValue BuiltinsString::ToWellFormed(EcmaRuntimeCallInfo *argv)
             isUnpairedSurrogate = true;
         } else {
             // iv. Let second be the code unit at index position + 1 within string.
-            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            uint16_t second = EcmaStringAccessor(string).Get(thread, position + 1);
             // v. If second is not a trailing surrogate, then
             //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
             if (!IsUTF16LowSurrogate(second)) {
@@ -931,7 +931,7 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
         THROW_RANGE_ERROR_AND_RETURN(thread, "compare not equal", JSTaggedValue::Exception());
     }
 
-    std::u16string u16strThis = EcmaStringAccessor(thisHandle).ToU16String();
+    std::u16string u16strThis = EcmaStringAccessor(thisHandle).ToU16String(thread);
     const char16_t *constChar16tData = u16strThis.data();
     icu::UnicodeString src(constChar16tData, u16strThis.size());
     icu::UnicodeString res;
@@ -1000,12 +1000,12 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     if (UNLIKELY(g_isEnableCMCGC)) {
         for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
             EcmaStringAccessor::ReadData<RBMode::FAST_CMC_RB>(
-                result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+                thread, result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
         }
     } else {
         for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
             EcmaStringAccessor::ReadData<RBMode::FAST_NO_RB>(
-                result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+                thread, result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
         }
     }
     return JSTaggedValue(result);
@@ -1032,8 +1032,8 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
         JSHandle<RegExpExecResultCache> cacheTable(env->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
-        JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
-        JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
+        JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource(thread));
+        JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags(thread));
         bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, searchTag.GetTaggedValue());
         if (isFastPath) {
             uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
@@ -1054,7 +1054,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     }
 
     if (searchTag->IsJSRegExp() && !env->GetRegExpReplaceDetector()) {
-        JSTaggedValue proto = JSObject::GetPrototype(JSHandle<JSObject>(searchTag));
+        JSTaggedValue proto = JSObject::GetPrototype(thread, JSHandle<JSObject>(searchTag));
         if (proto == env->GetTaggedRegExpPrototype()) {
             return BuiltinsRegExp::ReplaceInternal(thread, searchTag, thisTag, replaceTag);
         }
@@ -1282,9 +1282,10 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
 }
 
 // Handle $& - match case
-void ProcessDollarAmpersand(std::u16string &stringBuilder, const JSHandle<EcmaString> &matched, bool &canBeCompress)
+void ProcessDollarAmpersand(EcmaVM *ecmaVm, std::u16string &stringBuilder, const JSHandle<EcmaString> &matched,
+                            bool &canBeCompress)
 {
-    stringBuilder += EcmaStringAccessor(matched).ToU16String();
+    stringBuilder += EcmaStringAccessor(matched).ToU16String(ecmaVm->GetJSThread());
     if (EcmaStringAccessor(matched).IsUtf16()) {
         canBeCompress = false;
     }
@@ -1296,7 +1297,7 @@ void ProcessDollarBacktick(EcmaVM *ecmaVm, std::u16string &stringBuilder, const 
 {
     if (position > 0) {
         EcmaString *prefix = EcmaStringAccessor::FastSubString(ecmaVm, srcString, 0, position);
-        stringBuilder += EcmaStringAccessor(prefix).ToU16String();
+        stringBuilder += EcmaStringAccessor(prefix).ToU16String(ecmaVm->GetJSThread());
         if (EcmaStringAccessor(prefix).IsUtf16()) {
             canBeCompress = false;
         }
@@ -1310,25 +1311,25 @@ void ProcessDollarSingleQuote(EcmaVM *ecmaVm, std::u16string &stringBuilder, con
     int32_t srcLength = static_cast<int32_t>(EcmaStringAccessor(srcString).GetLength());
     if (tailPos < srcLength) {
         EcmaString *suffix = EcmaStringAccessor::FastSubString(ecmaVm, srcString, tailPos, srcLength - tailPos);
-        stringBuilder += EcmaStringAccessor(suffix).ToU16String();
+        stringBuilder += EcmaStringAccessor(suffix).ToU16String(ecmaVm->GetJSThread());
         if (EcmaStringAccessor(suffix).IsUtf16()) {
             canBeCompress = false;
         }
     }
 }
 
-std::pair<int32_t, bool> ProcessDigitCapture(const JSHandle<EcmaString> &replacementFlat, uint32_t peekIndex,
-                                             uint32_t replaceLength, const JSHandle<TaggedArray> &captureList,
-                                             std::u16string &stringBuilder)
+std::pair<int32_t, bool> ProcessDigitCapture(JSThread *thread, const JSHandle<EcmaString> &replacementFlat,
+    uint32_t peekIndex, uint32_t replaceLength, const JSHandle<TaggedArray> &captureList,
+    std::u16string &stringBuilder)
 {
     uint32_t capturesLength = captureList->GetLength();
-    uint16_t peek = EcmaStringAccessor(replacementFlat).Get(peekIndex);
+    uint16_t peek = EcmaStringAccessor(replacementFlat).Get(thread, peekIndex);
     uint32_t scaledIndex = peek - '0';
     int32_t advance = 1;
     bool canBeCompress = true;
 
     if (peekIndex + 1 < replaceLength) {
-        uint16_t nextPeek = EcmaStringAccessor(replacementFlat).Get(peekIndex + 1);
+        uint16_t nextPeek = EcmaStringAccessor(replacementFlat).Get(thread, peekIndex + 1);
         if (nextPeek >= '0' && nextPeek <= '9') {
             constexpr uint32_t TEN_BASE = 10;
             uint32_t newScaledIndex = scaledIndex * TEN_BASE + (nextPeek - '0');
@@ -1344,10 +1345,10 @@ std::pair<int32_t, bool> ProcessDigitCapture(const JSHandle<EcmaString> &replace
         return {peekIndex, canBeCompress};  // No change in compressibility, just return the next index.
     }
 
-    JSTaggedValue capturesVal(captureList->Get(scaledIndex - 1));
+    JSTaggedValue capturesVal(captureList->Get(thread, scaledIndex - 1));
     if (!capturesVal.IsUndefined()) {
         EcmaString *captureString = EcmaString::Cast(capturesVal.GetTaggedObject());
-        stringBuilder += EcmaStringAccessor(captureString).ToU16String();
+        stringBuilder += EcmaStringAccessor(captureString).ToU16String(thread);
         if (EcmaStringAccessor(captureString).IsUtf16()) {
             canBeCompress = false;
         }
@@ -1381,7 +1382,7 @@ std::pair<int32_t, bool> ProcessNamedCaptures(JSThread *thread, const JSHandle<E
         return {pos + 1, canBeCompress};
     }
     JSHandle<EcmaString> captureName = JSTaggedValue::ToString(thread, capture);
-    stringBuilder += EcmaStringAccessor(captureName).ToU16String();
+    stringBuilder += EcmaStringAccessor(captureName).ToU16String(thread);
     if (EcmaStringAccessor(captureName).IsUtf16()) {
         canBeCompress = false;
     }
@@ -1409,7 +1410,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
     std::u16string stringBuilder;
     bool canBeCompress = true;
     if (nextDollarIndex > 0) {
-        stringBuilder = EcmaStringAccessor(replacementFlat).ToU16String(nextDollarIndex);
+        stringBuilder = EcmaStringAccessor(replacementFlat).ToU16String(thread, nextDollarIndex);
         if (EcmaStringAccessor(replacementFlat).IsUtf16()) {
             canBeCompress = false;
         }
@@ -1426,14 +1427,14 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
                    factory->NewFromUtf16LiteralNotCompress(uint16tData, stringBuilder.length()).GetTaggedValue();
         }
         int continueFromIndex = -1;
-        uint16_t peek = EcmaStringAccessor(replacementFlat).Get(peekIndex);
+        uint16_t peek = EcmaStringAccessor(replacementFlat).Get(thread, peekIndex);
         switch (peek) {
             case '$':  // $$
                 stringBuilder += '$';
                 continueFromIndex = peekIndex + 1;
                 break;
             case '&':  // $& - match
-                ProcessDollarAmpersand(stringBuilder, matched, canBeCompress);
+                ProcessDollarAmpersand(ecmaVm, stringBuilder, matched, canBeCompress);
                 continueFromIndex = peekIndex + 1;
                 break;
             case '`':  // $` - prefix
@@ -1456,7 +1457,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
             case '8':
             case '9': {
                 auto result =
-                    ProcessDigitCapture(replacementFlat, peekIndex, replaceLength, captureList, stringBuilder);
+                    ProcessDigitCapture(thread, replacementFlat, peekIndex, replaceLength, captureList, stringBuilder);
                 continueFromIndex = result.first;
                 canBeCompress = result.second && canBeCompress;  // 保留canBeCompress的值，只在需要时更新为false
                 break;
@@ -1478,7 +1479,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
             if (continueFromIndex < replaceLength) {
                 EcmaString *nextAppend = EcmaStringAccessor::FastSubString(ecmaVm, replacementFlat, continueFromIndex,
                                                                            replaceLength - continueFromIndex);
-                stringBuilder += EcmaStringAccessor(nextAppend).ToU16String();
+                stringBuilder += EcmaStringAccessor(nextAppend).ToU16String(thread);
                 if (EcmaStringAccessor(nextAppend).IsUtf16()) {
                     canBeCompress = false;
                 }
@@ -1493,7 +1494,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
         if (nextDollarIndex > continueFromIndex) {
             EcmaString *nextAppend = EcmaStringAccessor::FastSubString(
                 ecmaVm, replacementFlat, continueFromIndex, nextDollarIndex - continueFromIndex);
-            stringBuilder += EcmaStringAccessor(nextAppend).ToU16String();
+            stringBuilder += EcmaStringAccessor(nextAppend).ToU16String(thread);
             if (EcmaStringAccessor(nextAppend).IsUtf16()) {
                 canBeCompress = false;
             }
@@ -1920,12 +1921,12 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
     // Else, Let requestedLocale be DefaultLocale().
     JSHandle<EcmaString> requestedLocale = intl::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
-        requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
+        requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(thread, 0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    intl::LocaleHelper::ParsedLocale noExtensionsLocale = intl::LocaleHelper::HandleLocale(requestedLocale);
+    intl::LocaleHelper::ParsedLocale noExtensionsLocale = intl::LocaleHelper::HandleLocale(thread, requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
@@ -1981,12 +1982,12 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
     // Else, Let requestedLocale be DefaultLocale().
     JSHandle<EcmaString> requestedLocale = intl::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
-        requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
+        requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(thread, 0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    intl::LocaleHelper::ParsedLocale noExtensionsLocale = intl::LocaleHelper::HandleLocale(requestedLocale);
+    intl::LocaleHelper::ParsedLocale noExtensionsLocale = intl::LocaleHelper::HandleLocale(thread, requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
@@ -2259,7 +2260,7 @@ JSTaggedValue BuiltinsString::ThisStringValue(JSThread *thread, JSTaggedValue va
     if (value.IsECMAObject()) {
         auto jshclass = value.GetTaggedObject()->GetClass();
         if (jshclass->GetObjectType() == JSType::JS_PRIMITIVE_REF) {
-            JSTaggedValue primitive = JSPrimitiveRef::Cast(value.GetTaggedObject())->GetValue();
+            JSTaggedValue primitive = JSPrimitiveRef::Cast(value.GetTaggedObject())->GetValue(thread);
             if (primitive.IsString()) {
                 return primitive;
             }
@@ -2293,12 +2294,12 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
     } else {
         JSHandle<EcmaString> filler = JSTaggedValue::ToString(thread, fillString);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        stringBuilder = EcmaStringAccessor(filler).ToU16String();
+        stringBuilder = EcmaStringAccessor(filler).ToU16String(thread);
     }
     if (stringBuilder.size() == 0) {
         return thisHandle.GetTaggedValue();
     }
-    std::u16string u16strSearch = EcmaStringAccessor(thisHandle).ToU16String();
+    std::u16string u16strSearch = EcmaStringAccessor(thisHandle).ToU16String(thread);
     int64_t fillLen = intMaxLength - stringLength;
     int64_t len = static_cast<int64_t>(stringBuilder.length());
     if (static_cast<size_t>(intMaxLength) >= BaseString::MAX_STRING_LENGTH) {
@@ -2334,14 +2335,14 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<EcmaString> iteratedString(str);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements(thread));
     uint32_t totalElements = EcmaStringAccessor(iteratedString).GetLength();
     JSHandle<TaggedArray> elements = (oldElements->GetLength() < totalElements) ?
         factory->ExtendArray(oldElements, totalElements) : oldElements;
     uint32_t index = 0;
     newArrayHandle->SetElements(thread, elements);
     while (index < totalElements) {
-        uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(thread, index);
         JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
         ElementAccessor::Set(thread, newArrayHandle, index, newStr, true);
         index++;
@@ -2369,7 +2370,7 @@ JSTaggedValue BuiltinsString::StringToSList(JSThread *thread, JSHandle<EcmaStrin
     JSHandle<JSObject> newSharedArrayHandle(thread, newSharedArray);
     JSHandle<EcmaString> iteratedString(str);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> oldElements(thread, newSharedArrayHandle->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, newSharedArrayHandle->GetElements(thread));
     uint32_t totalElements = EcmaStringAccessor(iteratedString).GetLength();
     JSHandle<TaggedArray> elements =
         (oldElements->GetLength() < totalElements)
@@ -2378,7 +2379,7 @@ JSTaggedValue BuiltinsString::StringToSList(JSThread *thread, JSHandle<EcmaStrin
     uint32_t index = 0;
     newSharedArrayHandle->SetElements(thread, elements);
     while (index < totalElements) {
-        uint16_t c = EcmaStringAccessor(iteratedString).Get(index);
+        uint16_t c = EcmaStringAccessor(iteratedString).Get(thread, index);
         JSHandle<EcmaString> newStr = factory->NewFromUtf16Literal(&c, 1);
         ElementAccessor::Set(thread, newSharedArrayHandle, index, newStr, true);
         index++;
@@ -2403,11 +2404,11 @@ JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
     const JSHandle<StringSplitResultCache> &cache, const JSHandle<EcmaString> &thisString,
     const JSHandle<EcmaString> &pattern)
 {
-    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode(thread);
     uint32_t entry = hash & (CACHE_SIZE - 1);
     uint32_t index = entry * ENTRY_SIZE;
-    JSTaggedValue cacheThis = cache->Get(index + STRING_INDEX);
-    JSTaggedValue cachePattern = cache->Get(index + PATTERN_INDEX);
+    JSTaggedValue cacheThis = cache->Get(thread, index + STRING_INDEX);
+    JSTaggedValue cachePattern = cache->Get(thread, index + PATTERN_INDEX);
     if (!cacheThis.IsString() || !cachePattern.IsString()) {
         return JSTaggedValue::Undefined();
     }
@@ -2416,7 +2417,7 @@ JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
 
     if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), thisString, cacheStringHandle) &&
         EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), pattern, cachePatternHandle)) {
-        return cache->Get(index + ARRAY_INDEX);
+        return cache->Get(thread, index + ARRAY_INDEX);
     }
     return JSTaggedValue::Undefined();
 }
@@ -2430,9 +2431,9 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newElements(factory->NewCOWTaggedArray(arrayLength));
     for (uint32_t i = 0; i < arrayLength; i++) {
-        newElements->Set(thread, i, resultArray->Get(i));
+        newElements->Set(thread, i, resultArray->Get(thread, i));
     }
-    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode(thread);
     uint32_t entry = hash & (CACHE_SIZE - 1);
     uint32_t index = entry * ENTRY_SIZE;
 
@@ -2467,16 +2468,16 @@ JSTaggedValue StringToListResultCache::FindCachedResult(const JSThread *thread,
     if (EcmaStringAccessor(thisString).GetLength() > MAX_STRING_LENGTH) {
         return JSTaggedValue::Undefined();
     }
-    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode(thread);
     uint32_t entry = hash & (CACHE_SIZE - 1);
     uint32_t index = entry * ENTRY_SIZE;
-    JSHandle<JSTaggedValue> cacheThis(thread, cache->Get(index + STRING_INDEX));
+    JSHandle<JSTaggedValue> cacheThis(thread, cache->Get(thread, index + STRING_INDEX));
     if (!cacheThis->IsString()) {
         return JSTaggedValue::Undefined();
     }
     JSHandle<EcmaString> cacheStr(cacheThis);
     if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), thisString, cacheStr)) {
-        return cache->Get(index + ARRAY_INDEX);
+        return cache->Get(thread, index + ARRAY_INDEX);
     }
     return JSTaggedValue::Undefined();
 }
@@ -2501,9 +2502,9 @@ void StringToListResultCache::SetCachedResult(const JSThread *thread, const JSHa
         newElements = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(arrayLength));
     }
     for (uint32_t i = 0; i < arrayLength; i++) {
-        newElements->Set(thread, i, resultArray->Get(i));
+        newElements->Set(thread, i, resultArray->Get(thread, i));
     }
-    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
+    uint32_t hash = EcmaStringAccessor(thisString).GetHashcode(thread);
     uint32_t entry = hash & (CACHE_SIZE - 1);
     uint32_t index = entry * ENTRY_SIZE;
     cache->Set(thread, index + STRING_INDEX, thisString);

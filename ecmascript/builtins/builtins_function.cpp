@@ -64,13 +64,13 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
 {
     if (arrayObj->IsStableJSArguments(thread)) {
         JSHandle<JSArguments> argList = JSHandle<JSArguments>::Cast(arrayObj);
-        TaggedArray *elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
+        TaggedArray *elements = TaggedArray::Cast(argList->GetElements(thread).GetTaggedObject());
         auto env = thread->GetEcmaVM()->GetGlobalEnv();
         if (argList->GetClass() != env->GetArgumentsClass().GetObject<JSHClass>()) {
             return std::make_pair(nullptr, 0);
         }
         auto result = argList->GetPropertyInlinedPropsWithSize<
-            JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>();
+            JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>(thread);
         if (!result.IsInt()) {
             return std::make_pair(nullptr, 0);
         }
@@ -80,9 +80,9 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
     } else if (arrayObj->IsStableJSArray(thread)) {
         JSHandle<JSArray> argList = JSHandle<JSArray>::Cast(arrayObj);
         TaggedArray *elements = nullptr;
-        if (argList->GetElements().IsMutantTaggedArray()) {
+        if (argList->GetElements(thread).IsMutantTaggedArray()) {
             JSHandle<JSObject> obj(arrayObj);
-            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
+            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(thread, obj));
             JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
                                                 NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
             for (int i = 0; i < elementsLength; ++i) {
@@ -91,7 +91,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
             }
             elements = *newElements;
         } else {
-            elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
+            elements = TaggedArray::Cast(argList->GetElements(thread).GetTaggedObject());
         }
         size_t length = argList->GetArrayLength();
         if (elements->GetLength() == 0 && length != 0) {
@@ -212,7 +212,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBindInternal(JSThread *thread, 
         JSHandle<JSObject> obj(thread, target.GetTaggedValue());
         uint32_t numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
         if (JSFunction::LENGTH_INLINE_PROPERTY_INDEX < numberOfInlinedProps) {
-            lengthProperty = obj->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+            lengthProperty = obj->GetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
         }
     }
     if (lengthProperty.IsHole()) {
@@ -266,7 +266,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBindInternal(JSThread *thread, 
         JSHandle<JSObject> obj(thread, target.GetTaggedValue());
         uint32_t numberOfInlinedProps = obj->GetJSHClass()->GetInlinedProperties();
         if (JSFunction::NAME_INLINE_PROPERTY_INDEX < numberOfInlinedProps) {
-            nameProperty = obj->GetPropertyInlinedProps(JSFunction::NAME_INLINE_PROPERTY_INDEX);
+            nameProperty = obj->GetPropertyInlinedProps(thread, JSFunction::NAME_INLINE_PROPERTY_INDEX);
         }
     }
     if (nameProperty.IsHole()) {
@@ -345,7 +345,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
             return GetTaggedString(thread, str.c_str());
         } else {
             JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(thisValue);
-            JSHandle<JSTaggedValue> methodHandle(thread, func->GetMethod());
+            JSHandle<JSTaggedValue> methodHandle(thread, func->GetMethod(thread));
             method = JSHandle<Method>::Cast(methodHandle);
         }
         if (method->IsNativeWithCallField()) {
@@ -353,14 +353,14 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
             JSHandle<JSTaggedValue> name = JSObject::GetProperty(thread, thisValue, nameKey).GetValue();
             JSHandle<EcmaString> methodName = JSTaggedValue::ToString(thread, name);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            std::string nameStr = EcmaStringAccessor(methodName).ToStdString();
+            std::string nameStr = EcmaStringAccessor(methodName).ToStdString(thread);
             std::string startStr = "function ";
             std::string endStr = "() { [native code] }";
             startStr.append(nameStr).append(endStr);
             return GetTaggedString(thread, startStr.c_str());
         }
         DebugInfoExtractor *debugExtractor =
-                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile(thread));
         const std::string &sourceCode = debugExtractor->GetSourceCode(method->GetMethodId());
         if (!sourceCode.empty()) {
             return GetTaggedString(thread, sourceCode.c_str());

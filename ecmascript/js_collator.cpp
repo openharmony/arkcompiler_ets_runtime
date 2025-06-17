@@ -89,7 +89,7 @@ void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &co
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuCollator != nullptr);
-    JSTaggedValue data = collator->GetIcuField();
+    JSTaggedValue data = collator->GetIcuField(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuCollator);
@@ -149,7 +149,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     std::string collationStr;
     if (!collation->IsUndefined()) {
         JSHandle<EcmaString> collationEcmaStr = JSHandle<EcmaString>::Cast(collation);
-        collationStr = intl::LocaleHelper::ConvertToStdString(collationEcmaStr);
+        collationStr = intl::LocaleHelper::ConvertToStdString(thread, collationEcmaStr);
         if (!JSLocale::IsWellAlphaNumList(collationStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid collation", collator);
         }
@@ -332,7 +332,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
 
     if (forIcuCache) {
         std::string cacheEntry =
-            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
         ecmaVm->GetIntlCache().SetIcuFormatterToCache(IcuFormatterType::COLLATOR,
             cacheEntry, icuCollator.release(), JSCollator::FreeIcuCollator);
     } else {
@@ -345,7 +345,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
 
 icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSTaggedValue &locales)
 {
-    std::string cacheEntry = locales.IsUndefined() ? "" : EcmaStringAccessor(locales).ToStdString();
+    std::string cacheEntry = locales.IsUndefined() ? "" : EcmaStringAccessor(locales).ToStdString(thread);
     void *cachedCollator =
         thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(IcuFormatterType::COLLATOR, cacheEntry);
     if (cachedCollator != nullptr) {
@@ -449,7 +449,7 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
 
     // [[Locale]]
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
-    JSHandle<JSTaggedValue> locale(thread, collator->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, collator->GetLocale(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
 
@@ -469,9 +469,9 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
                                  ignorePunctuationValue);
 
     // [[Collation]]
-    JSMutableHandle<JSTaggedValue> collationValue(thread, collator->GetCollation());
+    JSMutableHandle<JSTaggedValue> collationValue(thread, collator->GetCollation(thread));
     UErrorCode status = U_ZERO_ERROR;
-    icu::Collator *icuCollator = collator->GetIcuCollator();
+    icu::Collator *icuCollator = collator->GetIcuCollator(thread);
     icu::Locale icu_locale(icuCollator->getLocale(ULOC_VALID_LOCALE, status));
     std::string collation_value =
         icu_locale.getUnicodeKeywordValue<std::string>("co", status);
@@ -522,7 +522,7 @@ CompareStringsOption JSCollator::CompareStringsOptionFor(JSThread* thread,
     }
 
     JSHandle<EcmaString> localesString = JSHandle<EcmaString>::Cast(locales);
-    CString localesStr = ConvertToString(*localesString, StringConvertedUsage::LOGICOPERATION);
+    CString localesStr = ConvertToString(thread, *localesString, StringConvertedUsage::LOGICOPERATION);
     for (const char *fastLocale : FAST_LOCALE) {
         if (strcmp(fastLocale, localesStr.c_str()) == 0) {
             return CompareStringsOption::TRY_FAST_PATH;
@@ -631,41 +631,43 @@ bool FastCompareFlatString(const T1* lhs, const T2* rhs, int length, FastCompare
     return true;
 }
 
-bool FastCompareStringFlatContent(EcmaString* string1, EcmaString* string2,
+bool FastCompareStringFlatContent(JSThread *thread,
+                                  EcmaString* string1, EcmaString* string2,
                                   int length, FastCompareStringsData& fastCompareData)
 {
     EcmaStringAccessor string1Acc(string1);
     EcmaStringAccessor string2Acc(string2);
     if (string1Acc.IsUtf8()) {
-        auto l = EcmaStringAccessor::GetNonTreeUtf8Data(string1);
+        auto l = EcmaStringAccessor::GetNonTreeUtf8Data(thread, string1);
         if (string2Acc.IsUtf8()) {
-            auto r = EcmaStringAccessor::GetNonTreeUtf8Data(string2);
+            auto r = EcmaStringAccessor::GetNonTreeUtf8Data(thread, string2);
             return FastCompareFlatString(l, r, length, fastCompareData);
         } else {
-            auto r = EcmaStringAccessor::GetNonTreeUtf16Data(string2);
+            auto r = EcmaStringAccessor::GetNonTreeUtf16Data(thread, string2);
             return FastCompareFlatString(l, r, length, fastCompareData);
         }
     } else {
-        auto l = EcmaStringAccessor::GetNonTreeUtf16Data(string1);
+        auto l = EcmaStringAccessor::GetNonTreeUtf16Data(thread, string1);
         if (string2Acc.IsUtf8()) {
-            auto r = EcmaStringAccessor::GetNonTreeUtf8Data(string2);
+            auto r = EcmaStringAccessor::GetNonTreeUtf8Data(thread, string2);
             return FastCompareFlatString(l, r, length, fastCompareData);
         } else {
-            auto r = EcmaStringAccessor::GetNonTreeUtf16Data(string2);
+            auto r = EcmaStringAccessor::GetNonTreeUtf16Data(thread, string2);
             return FastCompareFlatString(l, r, length, fastCompareData);
         }
     }
     UNREACHABLE();
 }
 
-bool CharIsAsciiOrOutOfBounds(EcmaString* string, int stringLength, int index)
+bool CharIsAsciiOrOutOfBounds(JSThread *thread, EcmaString* string, int stringLength, int index)
 {
-    return index >= stringLength || EcmaStringAccessor::IsASCIICharacter(EcmaStringAccessor(string).Get<false>(index));
+    return index >= stringLength ||
+           EcmaStringAccessor::IsASCIICharacter(EcmaStringAccessor(string).Get<false>(thread, index));
 }
 
-bool CharCanFastCompareOrOutOfBounds(EcmaString* string, int stringLength, int index)
+bool CharCanFastCompareOrOutOfBounds(JSThread *thread, EcmaString* string, int stringLength, int index)
 {
-    return index >= stringLength || CanFastCompare(EcmaStringAccessor(string).Get<false>(index));
+    return index >= stringLength || CanFastCompare(EcmaStringAccessor(string).Get<false>(thread, index));
 }
 
 // Pseudo-code for simplified multi-pass algorithm is:
@@ -678,7 +680,8 @@ bool CharCanFastCompareOrOutOfBounds(EcmaString* string, int stringLength, int i
 //     5. If all equal, return equal.
 //     6. Once some chars cannot be fastcompared, use icu.
 
-std::optional<UCollationResult> TryFastCompareStrings(EcmaString* string1, EcmaString* string2,
+std::optional<UCollationResult> TryFastCompareStrings(JSThread *thread,
+                                                      EcmaString* string1, EcmaString* string2,
                                                       int& processedUntilOut)
 {
     processedUntilOut = 0;
@@ -688,13 +691,13 @@ std::optional<UCollationResult> TryFastCompareStrings(EcmaString* string1, EcmaS
     int commonLength = std::min(length1, length2);
 
     FastCompareStringsData fastCompareData;
-    if (!FastCompareStringFlatContent(string1, string2, commonLength, fastCompareData)) {
+    if (!FastCompareStringFlatContent(thread, string1, string2, commonLength, fastCompareData)) {
         return fastCompareData.FastCompareFailed(processedUntilOut);
     }
     // The result is only valid if the last processed character is not followed
     // by a unicode combining character.
-    if (!CharIsAsciiOrOutOfBounds(string1, length1, fastCompareData.processedUntil + 1) ||
-        !CharIsAsciiOrOutOfBounds(string2, length2, fastCompareData.processedUntil + 1)) {
+    if (!CharIsAsciiOrOutOfBounds(thread, string1, length1, fastCompareData.processedUntil + 1) ||
+        !CharIsAsciiOrOutOfBounds(thread, string2, length2, fastCompareData.processedUntil + 1)) {
         return fastCompareData.FastCompareFailed(processedUntilOut);
     }
     if (fastCompareData.l1Result != UCollationResult::UCOL_EQUAL) {
@@ -705,8 +708,8 @@ std::optional<UCollationResult> TryFastCompareStrings(EcmaString* string1, EcmaS
     if (lengthResult != UCollationResult::UCOL_EQUAL) {
         // Strings of different lengths may still compare as equal if the longer
         // string has a fully ignored suffix, e.g. "a" vs. "a\u{1}".
-        if (!CharCanFastCompareOrOutOfBounds(string1, length1, commonLength) ||
-            !CharCanFastCompareOrOutOfBounds(string2, length2, commonLength)) {
+        if (!CharCanFastCompareOrOutOfBounds(thread, string1, length1, commonLength) ||
+            !CharCanFastCompareOrOutOfBounds(thread, string2, length2, commonLength)) {
             return fastCompareData.FastCompareFailed(processedUntilOut);
         }
         return lengthResult;
@@ -717,17 +720,18 @@ std::optional<UCollationResult> TryFastCompareStrings(EcmaString* string1, EcmaS
 } // namespace
 
 //StringPiece is similar to std::string_view
-icu::StringPiece ToICUStringPiece(EcmaString* string, int offset = 0)
+icu::StringPiece ToICUStringPiece(JSThread *thread, EcmaString* string, int offset = 0)
 {
     EcmaStringAccessor stringAcc(string);
     ASSERT(stringAcc.IsUtf8());
     ASSERT(!stringAcc.IsTreeString());
-    return icu::StringPiece(reinterpret_cast<const char*>(EcmaStringAccessor::GetNonTreeUtf8Data(string)) + offset,
+    return icu::StringPiece(reinterpret_cast<const char *>(EcmaStringAccessor::GetNonTreeUtf8Data(thread, string)) +
+                                offset,
                             static_cast<int>(stringAcc.GetLength()) - offset);
 }
 
 // Convert to a UTF16 string and partially convert to ICUUnicodeString
-icu::UnicodeString ToICUUnicodeString(EcmaString* string, int offset = 0)
+icu::UnicodeString ToICUUnicodeString(JSThread *thread, EcmaString* string, int offset = 0)
 {
     EcmaStringAccessor stringAcc(string);
     ASSERT(!stringAcc.IsTreeString());
@@ -739,18 +743,21 @@ icu::UnicodeString ToICUUnicodeString(EcmaString* string, int offset = 0)
             // short string on stack
             UChar shortStringBuffer[shortStringLength];
             // utf8 is within ascii, std::copy_n from utf8 to utf16 is OK
-            std::copy_n(EcmaStringAccessor::GetNonTreeUtf8Data(string) + offset, partialLength, shortStringBuffer);
+            std::copy_n(EcmaStringAccessor::GetNonTreeUtf8Data(thread, string) + offset, partialLength,
+                        shortStringBuffer);
             return icu::UnicodeString(shortStringBuffer, partialLength);
         }
         CVector<uint16_t> ucharBuffer(partialLength);
-        std::copy_n(EcmaStringAccessor::GetNonTreeUtf8Data(string) + offset, partialLength, ucharBuffer.begin());
+        std::copy_n(EcmaStringAccessor::GetNonTreeUtf8Data(thread, string) + offset, partialLength,
+                    ucharBuffer.begin());
         return icu::UnicodeString(ucharBuffer.data(), partialLength);
     } else {
-        return icu::UnicodeString(EcmaStringAccessor::GetNonTreeUtf16Data(string) + offset, partialLength);
+        return icu::UnicodeString(EcmaStringAccessor::GetNonTreeUtf16Data(thread, string) + offset, partialLength);
     }
 }
 
-JSTaggedValue JSCollator::SlowCompareStrings(const icu::Collator *icuCollator,
+JSTaggedValue JSCollator::SlowCompareStrings(JSThread *thread,
+                                             const icu::Collator *icuCollator,
                                              EcmaString* flatString1,
                                              EcmaString* flatString2,
                                              int processedUntil)
@@ -758,9 +765,9 @@ JSTaggedValue JSCollator::SlowCompareStrings(const icu::Collator *icuCollator,
     UCollationResult result;
     UErrorCode status = U_ZERO_ERROR;
     if (EcmaStringAccessor(flatString1).IsUtf8() && EcmaStringAccessor(flatString2).IsUtf8()) {
-        auto string1Piece = ToICUStringPiece(flatString1, processedUntil);
+        auto string1Piece = ToICUStringPiece(thread, flatString1, processedUntil);
         if (!string1Piece.empty()) {
-            auto string2Piece = ToICUStringPiece(flatString2, processedUntil);
+            auto string2Piece = ToICUStringPiece(thread, flatString2, processedUntil);
             if (!string2Piece.empty()) {
                 result = icuCollator->compareUTF8(string1Piece, string2Piece, status);
                 return JSTaggedValue(result);
@@ -768,8 +775,8 @@ JSTaggedValue JSCollator::SlowCompareStrings(const icu::Collator *icuCollator,
         }
     }
 
-    auto uString1 = ToICUUnicodeString(flatString1, processedUntil);
-    auto uString2 = ToICUUnicodeString(flatString2, processedUntil);
+    auto uString1 = ToICUUnicodeString(thread, flatString1, processedUntil);
+    auto uString2 = ToICUUnicodeString(thread, flatString2, processedUntil);
     result = icuCollator->compare(uString1, uString2, status);
     ASSERT(U_SUCCESS(status));
     return JSTaggedValue(result);
@@ -790,12 +797,12 @@ JSTaggedValue JSCollator::CompareStrings(JSThread *thread, const icu::Collator *
 
     int processedUntil = 0;
     if (csOption == CompareStringsOption::TRY_FAST_PATH) {
-        auto maybeResult = TryFastCompareStrings(*flatString1, *flatString2, processedUntil);
+        auto maybeResult = TryFastCompareStrings(thread, *flatString1, *flatString2, processedUntil);
         if (maybeResult.has_value()) {
             return JSTaggedValue(maybeResult.value());
         }
     }
-    return SlowCompareStrings(icuCollator, *flatString1, *flatString2, processedUntil);
+    return SlowCompareStrings(thread, icuCollator, *flatString1, *flatString2, processedUntil);
 }
 
 JSTaggedValue JSCollator::FastCachedCompareStrings(JSThread *thread, JSHandle<JSTaggedValue> locales,
@@ -814,7 +821,7 @@ JSTaggedValue JSCollator::FastCachedCompareStrings(JSThread *thread, JSHandle<JS
 
     int processedUntil = 0;
     if (csOption == CompareStringsOption::TRY_FAST_PATH) {
-        auto maybeResult = TryFastCompareStrings(*flatString1, *flatString2, processedUntil);
+        auto maybeResult = TryFastCompareStrings(thread, *flatString1, *flatString2, processedUntil);
         if (maybeResult.has_value()) {
             return JSTaggedValue(maybeResult.value());
         }
@@ -822,7 +829,7 @@ JSTaggedValue JSCollator::FastCachedCompareStrings(JSThread *thread, JSHandle<JS
 
     auto icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
     if (icuCollator != nullptr) {
-        return SlowCompareStrings(icuCollator, *flatString1, *flatString2, processedUntil);
+        return SlowCompareStrings(thread, icuCollator, *flatString1, *flatString2, processedUntil);
     }
     return JSTaggedValue::Undefined();
 }

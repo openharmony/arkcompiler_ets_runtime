@@ -145,23 +145,23 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     }
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsJSFunction());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(1).IsJSFunction());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(3).IsJSFunction());
-    EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(2).GetTaggedObject());
-    EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(4).GetTaggedObject());
-    EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(5).GetTaggedObject());
-    EcmaString *str44 = reinterpret_cast<EcmaString *>(constpool1->Get(6).GetTaggedObject());
-    EcmaString *str55 = reinterpret_cast<EcmaString *>(constpool1->Get(7).GetTaggedObject());
-    EcmaString *str66 = reinterpret_cast<EcmaString *>(constpool1->Get(8).GetTaggedObject());
-    EcmaString *str77 = reinterpret_cast<EcmaString *>(constpool1->Get(9).GetTaggedObject());
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str33).ToCString().c_str(), "str11"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str44).ToCString().c_str(), "str333333333333"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str55).ToCString().c_str(), "str11str333333333333"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str66).ToCString().c_str(), "str11str333333333333"), 0);
-    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str77).ToCString().c_str(), "str44"), 0);
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 0).IsJSFunction());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 1).IsJSFunction());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 3).IsJSFunction());
+    EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 2).GetTaggedObject());
+    EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 4).GetTaggedObject());
+    EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 5).GetTaggedObject());
+    EcmaString *str44 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 6).GetTaggedObject());
+    EcmaString *str55 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 7).GetTaggedObject());
+    EcmaString *str66 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 8).GetTaggedObject());
+    EcmaString *str77 = reinterpret_cast<EcmaString *>(constpool1->Get(thread, 9).GetTaggedObject());
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString(thread).c_str(), "str11"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString(thread).c_str(), "str22"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str33).ToCString(thread).c_str(), "str11"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str44).ToCString(thread).c_str(), "str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str55).ToCString(thread).c_str(), "str11str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str66).ToCString(thread).c_str(), "str11str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str77).ToCString(thread).c_str(), "str44"), 0);
     std::remove(fileName.c_str());
 }
 
@@ -198,14 +198,14 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
     }
     EXPECT_EQ((*constpool)->GetSize(),
               constpool1->GetSize());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 0).IsTaggedArray());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 100).IsTaggedArray());
+    EXPECT_TRUE(constpool1->GetObjectFromCache(thread, 300).IsTaggedArray());
 
     if (!g_isEnableCMCGC) {
-        auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
+        auto obj1 = constpool1->GetObjectFromCache(thread, 0).GetTaggedObject();
         EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-        auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
+        auto obj2 = constpool1->GetObjectFromCache(thread, 100).GetTaggedObject();
         EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
     }
     std::remove(fileName.c_str());
@@ -249,12 +249,12 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
         auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
         constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     }
-    EXPECT_TRUE(constpool->GetObjectFromCache(0).IsTaggedArray());
-    EXPECT_TRUE(constpool->GetObjectFromCache(100).IsTaggedArray());
+    EXPECT_TRUE(constpool->GetObjectFromCache(thread, 0).IsTaggedArray());
+    EXPECT_TRUE(constpool->GetObjectFromCache(thread, 100).IsTaggedArray());
     if (!g_isEnableCMCGC) {
-        auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
+        auto obj1 = constpool->GetObjectFromCache(thread, 0).GetTaggedObject();
         EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
-        auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
+        auto obj2 = constpool->GetObjectFromCache(thread, 100).GetTaggedObject();
         EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
     }
     std::remove(fileName1.c_str());
@@ -357,10 +357,10 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
         auto lastRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetHugeObjectSpace()->GetCurrentRegion();
         array4 = reinterpret_cast<TaggedArray *>(lastRegion->GetBegin());
     }
-    EXPECT_TRUE(array4->Get(0).IsTaggedArray());
-    EXPECT_TRUE(array4->Get(1).IsJSFunction());
-    EXPECT_TRUE(array4->Get(2).IsJSFunction());
-    EXPECT_TRUE(array4->Get(3).IsJSFunction());
+    EXPECT_TRUE(array4->Get(thread, 0).IsTaggedArray());
+    EXPECT_TRUE(array4->Get(thread, 1).IsJSFunction());
+    EXPECT_TRUE(array4->Get(thread, 2).IsJSFunction());
+    EXPECT_TRUE(array4->Get(thread, 3).IsJSFunction());
     std::remove(fileName.c_str());
 }
 

@@ -140,12 +140,12 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
     return true;
 }
 
-bool MachineCode::SetData(const MachineCodeDesc& desc, JSHandle<Method>& method, size_t dataSize, RelocMap& relocInfo,
-                          JSThread* thread)
+bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize,
+                          RelocMap &relocInfo)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
-        return SetBaselineCodeData(desc, method, dataSize, relocInfo);
+        return SetBaselineCodeData(thread, desc, method, dataSize, relocInfo);
     }
 
     if (desc.isHugeObj) {
@@ -184,7 +184,7 @@ bool MachineCode::SetData(const MachineCodeDesc& desc, JSHandle<Method>& method,
 
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
-    CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    CString methodName = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
     LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
         ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) <<
@@ -197,7 +197,7 @@ bool MachineCode::SetData(const MachineCodeDesc& desc, JSHandle<Method>& method,
     return true;
 }
 
-bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
+bool MachineCode::SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &desc,
                                       JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -250,7 +250,7 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
 
     SetFuncAddr(reinterpret_cast<uintptr_t>(textStart));
 
-    CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    CString methodName = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
     LOG_BASELINEJIT(DEBUG) << "BaselineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSizeAlign  <<
         ", stackMap addr: 0, size: 0";

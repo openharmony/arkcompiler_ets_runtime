@@ -31,9 +31,9 @@ public:
                 bool transferWithNativeAreaAllocator = false);
     void Detach(JSThread *thread, bool transferWithNativeAreaAllocator = false, bool isSerialize = false);
 
-    bool IsDetach()
+    bool IsDetach(JSThread *thread)
     {
-        JSTaggedValue arrayBufferData = GetArrayBufferData();
+        JSTaggedValue arrayBufferData = GetArrayBufferData(thread);
         return arrayBufferData.IsNull();
     }
 

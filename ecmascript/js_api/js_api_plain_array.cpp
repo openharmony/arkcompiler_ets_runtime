@@ -26,10 +26,10 @@ using ErrorFlag = containers::ErrorFlag;
 void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj, JSHandle<JSTaggedValue> key,
                           JSHandle<JSTaggedValue> value)
 {
-    JSHandle<TaggedArray> keyArray(thread, obj->GetKeys());
-    JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
+    JSHandle<TaggedArray> keyArray(thread, obj->GetKeys(thread));
+    JSHandle<TaggedArray> valueArray(thread, obj->GetValues(thread));
     uint32_t size = obj->GetLength();
-    int32_t index = obj->BinarySearch(*keyArray, 0, size, key.GetTaggedValue().GetNumber());
+    int32_t index = obj->BinarySearch(thread, *keyArray, 0, size, key.GetTaggedValue().GetNumber());
     if (index >= 0) {
         keyArray->Set(thread, index, key);
         valueArray->Set(thread, index, value);
@@ -67,8 +67,8 @@ JSHandle<TaggedArray> JSAPIPlainArray::CreateSlot(const JSThread *thread, const 
 bool JSAPIPlainArray::AdjustForward(JSThread *thread, int32_t index, int32_t forwardSize)
 {
     uint32_t size = GetLength();
-    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *keys = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     AdjustPrimitiveArray(keys, index + forwardSize, index);
     AdjustArray(thread, values, index + forwardSize, index, false);
     size = size - static_cast<uint32_t>(forwardSize);
@@ -103,7 +103,7 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
     uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
-            JSTaggedValue value = srcArray->Get(idx);
+            JSTaggedValue value = srcArray->Get(thread, idx);
             srcArray->Set(thread, idx + 1, value);
             idx--;
             fromIndex++;
@@ -128,13 +128,14 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
     }
 }
 
-int32_t JSAPIPlainArray::BinarySearch(TaggedArray *array, int32_t fromIndex, int32_t toIndex, int32_t key)
+int32_t JSAPIPlainArray::BinarySearch(JSThread *thread, TaggedArray *array, int32_t fromIndex, int32_t toIndex,
+                                      int32_t key)
 {
     int32_t low = fromIndex;
     int32_t high = toIndex - 1;
     while (low <= high) {
         int32_t mid = static_cast<int32_t>(static_cast<uint32_t>(low + high) >> 1U);
-        int32_t midVal = static_cast<int32_t>(array->Get(mid).GetNumber());
+        int32_t midVal = static_cast<int32_t>(array->Get(thread, mid).GetNumber());
         if (midVal < key) {
             low = mid + 1;
         } else {
@@ -149,8 +150,8 @@ int32_t JSAPIPlainArray::BinarySearch(TaggedArray *array, int32_t fromIndex, int
 
 void JSAPIPlainArray::Clear(JSThread *thread)
 {
-    TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *keys = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     uint32_t size = GetLength();
     for (uint32_t index = 0; index < size; index++) {
         keys->Set(thread, index, JSTaggedValue::Hole());
@@ -196,13 +197,13 @@ JSTaggedValue JSAPIPlainArray::Set(JSThread *thread, const JSHandle<JSAPIPlainAr
 bool JSAPIPlainArray::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                                      const JSHandle<JSTaggedValue> &key)
 {
-    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
+    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys(thread).GetTaggedObject());
     uint32_t size = obj->GetLength();
     if (size == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
-    int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
+    int32_t index = obj->BinarySearch(thread, keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         ASSERT(size > 0);
         std::ostringstream oss;
@@ -212,14 +213,14 @@ bool JSAPIPlainArray::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIPlain
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    obj->Get(key.GetTaggedValue());
+    obj->Get(thread, key.GetTaggedValue());
     return true;
 }
 
 OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                                              const JSHandle<JSTaggedValue> &key)
 {
-    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
+    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys(thread).GetTaggedObject());
     uint32_t size = obj->GetLength();
     if (size == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -241,7 +242,7 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
     }
 
     int keyVal = indexKey->GetInt();
-    int32_t index = obj->BinarySearch(keyArray, 0, size, keyVal);
+    int32_t index = obj->BinarySearch(thread, keyArray, 0, size, keyVal);
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
         ASSERT(size > 0);
@@ -253,14 +254,14 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, obj->Get(JSTaggedValue(index)), PropertyMetaData(false));
+    return OperationResult(thread, obj->Get(thread, JSTaggedValue(index)), PropertyMetaData(false));
 }
 
 bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                                   const JSHandle<JSTaggedValue> &key,
                                   const JSHandle<JSTaggedValue> &value)
 {
-    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
+    TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys(thread).GetTaggedObject());
     uint32_t size = obj->GetLength();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
@@ -271,7 +272,7 @@ bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArr
     if (!indexKey->IsInt()) {
         return false;
     }
-    int32_t index = obj->BinarySearch(keyArray, 0, size, indexKey->GetInt());
+    int32_t index = obj->BinarySearch(thread, keyArray, 0, size, indexKey->GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }
@@ -282,15 +283,15 @@ bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArr
 
 JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj)
 {
-    JSHandle<TaggedArray> srckeys(thread, obj->GetKeys());
-    JSHandle<TaggedArray> srcvalues(thread, obj->GetValues());
+    JSHandle<TaggedArray> srckeys(thread, obj->GetKeys(thread));
+    JSHandle<TaggedArray> srcvalues(thread, obj->GetValues(thread));
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIPlainArray> newPlainArray = factory->NewJSAPIPlainArray(0);
 
     uint32_t length = obj->GetLength();
     newPlainArray->SetLength(length);
-    JSHandle<TaggedArray> srcKeyArray(thread, obj->GetKeys());
-    JSHandle<TaggedArray> srcValueArray(thread, obj->GetValues());
+    JSHandle<TaggedArray> srcKeyArray(thread, obj->GetKeys(thread));
+    JSHandle<TaggedArray> srcValueArray(thread, obj->GetValues(thread));
 
     JSHandle<TaggedArray> dstKeyArray = factory->NewAndCopyTaggedArray(srcKeyArray, length, length);
     JSHandle<TaggedArray> dstValueArray = factory->NewAndCopyTaggedArray(srcValueArray, length, length);
@@ -300,27 +301,27 @@ JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandl
     return newPlainArray;
 }
 
-bool JSAPIPlainArray::Has(const int32_t key)
+bool JSAPIPlainArray::Has(JSThread *thread, const int32_t key)
 {
     uint32_t size = GetLength();
-    TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    int32_t index = BinarySearch(keyArray, 0, size, key);
+    TaggedArray *keyArray = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    int32_t index = BinarySearch(thread, keyArray, 0, size, key);
     if (index < 0) {
         return false;
     }
     return true;
 }
 
-JSTaggedValue JSAPIPlainArray::Get(const JSTaggedValue key)
+JSTaggedValue JSAPIPlainArray::Get(JSThread *thread, const JSTaggedValue key)
 {
     uint32_t size = GetLength();
-    TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    int32_t index = BinarySearch(keyArray, 0, size, key.GetNumber());
+    TaggedArray *keyArray = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    int32_t index = BinarySearch(thread, keyArray, 0, size, key.GetNumber());
     if (index < 0) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    return values->Get(index);
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    return values->Get(thread, index);
 }
 
 JSHandle<JSTaggedValue> JSAPIPlainArray::GetIteratorObj(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
@@ -339,11 +340,11 @@ JSTaggedValue JSAPIPlainArray::ForEach(JSThread *thread, const JSHandle<JSTagged
     JSAPIPlainArray *plainarray = JSAPIPlainArray::Cast(thisHandle->GetTaggedObject());
     uint32_t length = plainarray->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    JSHandle<TaggedArray> keyArray(thread, plainarray->GetKeys());
-    JSHandle<TaggedArray> valueArray(thread, plainarray->GetValues());
+    JSHandle<TaggedArray> keyArray(thread, plainarray->GetKeys(thread));
+    JSHandle<TaggedArray> valueArray(thread, plainarray->GetValues(thread));
     for (uint32_t k = 0; k < length; k++) {
-        JSTaggedValue kValue = valueArray->Get(k);
-        JSTaggedValue key = keyArray->Get(k);
+        JSTaggedValue kValue = valueArray->Get(thread, k);
+        JSTaggedValue key = keyArray->Get(thread, k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFn, thisArg, undefined, 3);  // 3: three args
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
@@ -371,15 +372,15 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
         if (!valueHandle->IsUndefined() && !valueHandle->IsNull()) {
             JSHandle<EcmaString> valueStringHandle = JSTaggedValue::ToString(thread, valueHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            valueStr = EcmaStringAccessor(valueStringHandle).ToU16String();
+            valueStr = EcmaStringAccessor(valueStringHandle).ToU16String(thread);
         }
 
         std::u16string nextStr;
-        keyHandle.Update(plainarray->GetKeyAt(k));
+        keyHandle.Update(plainarray->GetKeyAt(thread, k));
         if (!keyHandle->IsUndefined() && !keyHandle->IsNull()) {
             JSHandle<EcmaString> keyStringHandle = JSTaggedValue::ToString(thread, keyHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            nextStr = EcmaStringAccessor(keyStringHandle).ToU16String();
+            nextStr = EcmaStringAccessor(keyStringHandle).ToU16String(thread);
         }
 
         nextStr.append(colonStr);
@@ -398,22 +399,22 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 
-JSTaggedValue JSAPIPlainArray::GetIndexOfKey(int32_t key)
+JSTaggedValue JSAPIPlainArray::GetIndexOfKey(JSThread *thread, int32_t key)
 {
     uint32_t size = GetLength();
-    TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    int32_t index = BinarySearch(keyArray, 0, size, key);
+    TaggedArray *keyArray = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    int32_t index = BinarySearch(thread, keyArray, 0, size, key);
     if (index < 0) {
         return JSTaggedValue(-1);
     }
     return JSTaggedValue(index);
 }
 
-JSTaggedValue JSAPIPlainArray::TryFastGetIndexOfValue(TaggedArray *values, JSTaggedValue value)
+JSTaggedValue JSAPIPlainArray::TryFastGetIndexOfValue(JSThread *thread, TaggedArray *values, JSTaggedValue value)
 {
     uint32_t size = GetLength();
     for (uint32_t i = 0; i < size; ++i) {
-        JSTaggedValue currVal = values->Get(i);
+        JSTaggedValue currVal = values->Get(thread, i);
         if (currVal.IsInt() && (currVal == value)) {
             return JSTaggedValue(i);
         }
@@ -421,15 +422,15 @@ JSTaggedValue JSAPIPlainArray::TryFastGetIndexOfValue(TaggedArray *values, JSTag
     return JSTaggedValue(-1);
 }
 
-JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSTaggedValue value)
+JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSThread *thread, JSTaggedValue value)
 {
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     if (value.IsInt()) {
-        return TryFastGetIndexOfValue(values, value);
+        return TryFastGetIndexOfValue(thread, values, value);
     } else {
         uint32_t size = GetLength();
         for (uint32_t i = 0; i < size; ++i) {
-            if (JSTaggedValue::SameValue(values->Get(i), value)) {
+            if (JSTaggedValue::SameValue(thread, values->Get(thread, i), value)) {
                 return JSTaggedValue(i);
             }
         }
@@ -443,14 +444,14 @@ bool JSAPIPlainArray::IsEmpty()
     return length == 0;
 }
 
-JSTaggedValue JSAPIPlainArray::GetKeyAt(int32_t index)
+JSTaggedValue JSAPIPlainArray::GetKeyAt(JSThread *thread, int32_t index)
 {
     uint32_t size = GetLength();
-    TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
+    TaggedArray *keyArray = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         return JSTaggedValue::Undefined();
     }
-    return keyArray->Get(index);
+    return keyArray->Get(thread, index);
 }
 
 JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
@@ -468,20 +469,20 @@ JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    return values->Get(index);
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    return values->Get(thread, index);
 }
 
 JSTaggedValue JSAPIPlainArray::Remove(JSThread *thread, JSTaggedValue key)
 {
     uint32_t size = GetLength();
-    TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    int32_t index = BinarySearch(keyArray, 0, size, key.GetNumber());
+    TaggedArray *keyArray = TaggedArray::Cast(GetKeys(thread).GetTaggedObject());
+    int32_t index = BinarySearch(thread, keyArray, 0, size, key.GetNumber());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    JSTaggedValue value = values->Get(index);
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    JSTaggedValue value = values->Get(thread, index);
     AdjustForward(thread, index, 1); // 1 means the length of array
     return value;
 }
@@ -493,8 +494,8 @@ JSTaggedValue JSAPIPlainArray::RemoveAt(JSThread *thread, JSTaggedValue index)
     if (seat < 0 || static_cast<uint32_t>(seat) >= size) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    JSTaggedValue value = values->Get(seat);
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    JSTaggedValue value = values->Get(thread, seat);
     AdjustForward(thread, seat, 1);
     return value;
 }
@@ -514,7 +515,7 @@ bool JSAPIPlainArray::SetValueAt(JSThread *thread, JSTaggedValue index, JSTagged
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     values->Set(thread, seat, value);
     return true;
 }

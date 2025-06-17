@@ -261,10 +261,11 @@ public:
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
 
-    static inline void SFieldTypeBitSet(const ObjectOperator &op, JSHandle<JSObject> &receiver, uint64_t *handler)
+    static inline void SFieldTypeBitSet(const JSThread *thread, const ObjectOperator &op,
+                                        JSHandle<JSObject> &receiver, uint64_t *handler)
     {
         SSharedBit::Set<uint64_t>(op.GetReceiver()->IsJSShared(), handler);
-        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
+        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties(thread).GetTaggedObject());
         if (!array->IsDictionaryMode()) {
             SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetSharedFieldType(), handler);
         } else {

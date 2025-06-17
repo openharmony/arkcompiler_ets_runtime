@@ -58,7 +58,7 @@ public:
         const JSHandle<JSTaggedValue>& value1, const JSHandle<JSTaggedValue>& value2);
     JSTaggedValue PUBLIC_API Set(JSThread* thread, const uint32_t index, JSTaggedValue value);
     JSTaggedValue Get(JSThread* thread, const uint32_t index);
-    bool Has(const JSTaggedValue& value) const;
+    bool Has(JSThread* thread, const JSTaggedValue& value) const;
     static bool Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector, const JSHandle<JSTaggedValue>& value,
         const JSHandle<JSTaggedValue>& value1, const JSHandle<JSTaggedValue>& value2);
 

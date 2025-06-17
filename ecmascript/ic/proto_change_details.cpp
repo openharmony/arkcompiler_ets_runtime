@@ -32,7 +32,7 @@ JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHan
         UNREACHABLE();
     }
     // if exist hole, use it.
-    uint32_t holeIndex = CheckHole(array);
+    uint32_t holeIndex = CheckHole(thread, array);
     if (holeIndex != TaggedArray::MAX_ARRAY_INDEX) {
         weakValue = JSTaggedValue(value.GetTaggedValue().CreateAndGetWeakRef());
         array->Set(thread, holeIndex, weakValue);
@@ -52,10 +52,10 @@ JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHan
     return JSHandle<ChangeListener>(newArray);
 }
 
-uint32_t ChangeListener::CheckHole(const JSHandle<ChangeListener> &array)
+uint32_t ChangeListener::CheckHole(const JSThread *thread, const JSHandle<ChangeListener> &array)
 {
     for (uint32_t i = 0; i < array->GetEnd(); i++) {
-        JSTaggedValue value = array->Get(i);
+        JSTaggedValue value = array->Get(thread, i);
         if (value.IsHole() || value.IsUndefined()) {
             return i;
         }
@@ -63,9 +63,9 @@ uint32_t ChangeListener::CheckHole(const JSHandle<ChangeListener> &array)
     return TaggedArray::MAX_ARRAY_INDEX;
 }
 
-JSTaggedValue ChangeListener::Get(uint32_t index)
+JSTaggedValue ChangeListener::Get(const JSThread *thread, uint32_t index)
 {
-    JSTaggedValue value = WeakVector::Get(index);
+    JSTaggedValue value = WeakVector::Get(thread, index);
     if (!value.IsHeapObject()) {
         return value;
     }

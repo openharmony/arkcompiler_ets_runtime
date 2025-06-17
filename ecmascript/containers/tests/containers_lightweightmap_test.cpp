@@ -126,7 +126,7 @@ HWTEST_F_L0(ContainersLightWeightMapTest, LightWeightMapConstructor)
     ASSERT_TRUE(result.IsJSAPILightWeightMap());
     JSHandle<JSAPILightWeightMap> mapHandle(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(mapHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
 
     // test PlainArrayConstructor exception

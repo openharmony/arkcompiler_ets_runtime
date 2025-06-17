@@ -34,9 +34,9 @@ public:
         Load,
         Store,
     };
-    JSTaggedValue Get(JSHClass *jsHclass, JSTaggedValue key)
+    JSTaggedValue Get(const JSThread *thread, JSHClass *jsHclass, JSTaggedValue key)
     {
-        int hash = PrimaryHash(jsHclass, key);
+        int hash = PrimaryHash(thread, jsHclass, key);
         PropertyKey &prop = primary_[hash];
         if ((prop.hclass_ == jsHclass) && (prop.key_ == key)) {
             return primary_[hash].results_;
@@ -181,12 +181,12 @@ private:
     ~MegaICCache() = default;
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    static inline int PrimaryHash(JSHClass *cls, JSTaggedValue key)
+    static inline int PrimaryHash(const JSThread *thread, JSHClass *cls, JSTaggedValue key)
     {
         uint32_t clsHash = static_cast<uint32_t>(
             reinterpret_cast<uintptr_t>(cls) ^
             (reinterpret_cast<uintptr_t>(cls) >> PRIMARY_LENGTH_BIT));
-        uint32_t keyHash = key.GetStringKeyHashCode();
+        uint32_t keyHash = key.GetStringKeyHashCode(thread);
         uint32_t hash = clsHash + keyHash;
         return static_cast<int>((hash) & PRIMARY_LENGTH_MASK);
     }

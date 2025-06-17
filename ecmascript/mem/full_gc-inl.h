@@ -59,16 +59,17 @@ void FullGCRunner::HandleMarkingSlot(ObjectSlot slot)
 template <class Callback>
 void FullGCRunner::VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t endAddr, Callback &&cb)
 {
+    JSThread *thread = heap_->GetJSThread();
     JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
     ASSERT(!hclass->IsAllTaggedProp());
     int index = 0;
-    LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+    LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
     ObjectSlot realEnd(start);
     realEnd += layout->GetPropertiesCapacity();
     ObjectSlot end(endAddr);
     end = end > realEnd ? realEnd : end;
     for (ObjectSlot slot(start); slot < end; slot++) {
-        PropertyAttributes attr = layout->GetAttr(index++);
+        PropertyAttributes attr = layout->GetAttr(thread, index++);
         if (attr.IsTaggedRep()) {
             cb(slot);
         }

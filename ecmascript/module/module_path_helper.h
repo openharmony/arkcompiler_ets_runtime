@@ -205,7 +205,7 @@ public:
     static CString ConcatNormalizedOhmurlWithData(const CVector<CString> &data, const CString &pkgName,
                                                   CString &entryPath);
     static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
-    static CString Utf8ConvertToString(JSTaggedValue str);
+    static CString Utf8ConvertToString(JSThread *thread, JSTaggedValue str);
 
     static CString ParseFileNameToVMAName(const CString &filename);
     static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, const CString &moduleName,

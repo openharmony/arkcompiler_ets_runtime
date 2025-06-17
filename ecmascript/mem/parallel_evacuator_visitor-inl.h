@@ -27,6 +27,7 @@ template<TriggerGCType gcType>
 void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
                                                           VisitObjectArea area)
 {
+    JSThread *thread = evacuator_->heap_->GetJSThread();
     Region *rootRegion = Region::ObjectAddressToRange(root);
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
@@ -34,12 +35,12 @@ void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, uint
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr(index++);
+            PropertyAttributes attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 UpdateSlot(slot, rootRegion);
             }
@@ -65,10 +66,16 @@ void SlotUpdateRangeVisitor<gcType>::UpdateSlot(ObjectSlot slot, Region *rootReg
     }
 }
 
-template<TriggerGCType gcType>
+template <TriggerGCType gcType>
 NewToOldEvacuationVisitor<gcType>::NewToOldEvacuationVisitor(Heap *heap, std::unordered_set<JSTaggedType> *set,
-    ParallelEvacuator *evacuator) : pgoEnabled_(heap->GetJSThread()->IsPGOProfilerEnable()),
-    pgoProfiler_(heap->GetEcmaVM()->GetPGOProfiler()), trackSet_(set), slotUpdateRangeVisitor_(evacuator) {}
+                                                             ParallelEvacuator *evacuator)
+    : pgoEnabled_(heap->GetJSThread()->IsPGOProfilerEnable()),
+      thread_(heap->GetJSThread()),
+      pgoProfiler_(heap->GetEcmaVM()->GetPGOProfiler()),
+      trackSet_(set),
+      slotUpdateRangeVisitor_(evacuator)
+{
+}
 
 template<TriggerGCType gcType>
 void NewToOldEvacuationVisitor<gcType>::operator()(void *mem)
@@ -85,7 +92,7 @@ template<TriggerGCType gcType>
 void NewToOldEvacuationVisitor<gcType>::UpdateTrackInfo(TaggedObject *header, JSHClass *klass)
 {
     if (klass->IsJSArray()) {
-        auto trackInfo = JSArray::Cast(header)->GetTrackInfo();
+        auto trackInfo = JSArray::Cast(header)->GetTrackInfo(thread_);
         trackSet_->emplace(trackInfo.GetRawData());
     }
 }

@@ -49,7 +49,7 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest001)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     RelocMap relocInfo;
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::BASELINE_CODE;
@@ -64,7 +64,7 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest004)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     RelocMap relocInfo;
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
@@ -85,7 +85,7 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest006)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     RelocMap relocInfo;
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
@@ -107,14 +107,14 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest006)
     desc.stackMapOrOffsetTableAddr = reinterpret_cast<uintptr_t>(src);
     desc.funcEntryDesAddr = reinterpret_cast<uintptr_t>(src2);
     desc.funcEntryDesSize = 100;
-    ASSERT_EQ(code->SetData(desc, method, 100, relocInfo, thread), true);
+    ASSERT_EQ(code->SetData(thread, desc, method, 100, relocInfo), true);
 }
 
 HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest007)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     MachineCodeDesc desc;
     RelocMap relocInfo;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
@@ -136,14 +136,14 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest007)
     desc.stackMapOrOffsetTableAddr = reinterpret_cast<uintptr_t>(src);
     desc.funcEntryDesAddr = reinterpret_cast<uintptr_t>(src2);
     desc.funcEntryDesSize = 100;
-    ASSERT_EQ(code->SetData(desc, method, -100, relocInfo, thread), true);
+    ASSERT_EQ(code->SetData(thread, desc, method, -100, relocInfo), true);
 }
 
 HWTEST_F_L0(MachineCodeTest, SetText001)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
     desc.instructionsSize = 100;
@@ -169,7 +169,7 @@ HWTEST_F_L0(MachineCodeTest, SetText002)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
     desc.instructionsSize = 100;
@@ -195,7 +195,7 @@ HWTEST_F_L0(MachineCodeTest, SetText003)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, func->GetMethod(thread));
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::FAST_JIT_CODE;
     desc.instructionsSize = 100;

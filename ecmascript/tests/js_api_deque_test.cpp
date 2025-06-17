@@ -55,17 +55,17 @@ HWTEST_F_L0(JSAPIDequeTest, InsertFrontAndGetFront)
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
     // test GetFront of empty deque
-    EXPECT_EQ(toor->GetFront(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->GetFront(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPIDeque::InsertFront(thread, toor, value);
-        EXPECT_EQ(toor->GetFront(), value.GetTaggedValue());
+        EXPECT_EQ(toor->GetFront(thread), value.GetTaggedValue());
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIDequeTest, InsertEndAndGetTail)
@@ -77,17 +77,17 @@ HWTEST_F_L0(JSAPIDequeTest, InsertEndAndGetTail)
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
     // test GetTail of empty deque
-    EXPECT_EQ(toor->GetTail(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->GetTail(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPIDeque::InsertEnd(thread, toor, value);
-        EXPECT_EQ(toor->GetTail(), value.GetTaggedValue());
+        EXPECT_EQ(toor->GetTail(thread), value.GetTaggedValue());
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIDequeTest, PopFirst)
@@ -109,7 +109,7 @@ HWTEST_F_L0(JSAPIDequeTest, PopFirst)
         EXPECT_EQ(toor->PopFirst(thread), value.GetTaggedValue());
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIDequeTest, PopLast)
@@ -131,7 +131,7 @@ HWTEST_F_L0(JSAPIDequeTest, PopLast)
         EXPECT_EQ(toor->PopLast(thread), value.GetTaggedValue());
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIDequeTest, GetOwnProperty)
@@ -232,8 +232,9 @@ HWTEST_F_L0(JSAPIDequeTest, OwnKeys)
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
     EXPECT_TRUE(keyArray->GetLength() == elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(keyArray->Get(i).GetTaggedObject())));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                        *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+                                                        EcmaString::Cast(keyArray->Get(thread, i).GetTaggedObject())));
     }
 }
 }  // namespace panda::test

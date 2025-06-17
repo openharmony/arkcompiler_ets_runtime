@@ -231,11 +231,11 @@ std::pair<JSHandle<ConstantPool>, JSHandle<ConstantPool>> PandaFileTranslator::P
             JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
             size_t elementsLen = elements->GetLength();
             for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
-                key.Update(elements->Get(i));
+                key.Update(elements->Get(thread, i));
                 if (key->IsHole()) {
                     break;
                 }
-                valueHandle.Update(elements->Get(i + 1));
+                valueHandle.Update(elements->Get(thread, i + 1));
                 JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
             }
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
@@ -303,11 +303,11 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
             size_t elementsLen = elements->GetLength();
             for (size_t i = 0; i < elementsLen; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
-                key.Update(elements->Get(i));
+                key.Update(elements->Get(thread, i));
                 if (key->IsHole()) {
                     break;
                 }
-                valueHandle.Update(elements->Get(i + 1));
+                valueHandle.Update(elements->Get(thread, i + 1));
                 JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
             }
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());

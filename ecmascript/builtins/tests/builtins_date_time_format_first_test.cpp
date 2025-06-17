@@ -128,7 +128,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_001)
 {
     double days = BuiltinsDateCreate(2020, 10, 1);
     auto resultStr = FormatCommon(thread, "en-US", days);
-    EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
+    EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", EcmaStringAccessor(resultStr).ToCString(thread).c_str());
 }
 
 // Format.Tostring(pt-BR)
@@ -136,7 +136,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_002)
 {
     double days = BuiltinsDateCreate(2020, 5, 11);
     auto resultStr = FormatCommon(thread, "pt-BR", days);
-    CString resStr = EcmaStringAccessor(resultStr).ToCString();
+    CString resStr = EcmaStringAccessor(resultStr).ToCString(thread);
     // the index of string "qui" is zero.
     EXPECT_TRUE(resStr.find("qui") == 0);
     // the index of string "11/06/2020 24:00:00" is not zero.
@@ -154,7 +154,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatToParts)
     auto result = AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6,
                                    AlgorithmType::ALGORITHM_FORMAT_TO_PARTS);  // 6: args length
     JSHandle<JSArray> resultHandle(thread, result);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 16U);  // sixteen formatters
 }
 
@@ -215,7 +215,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)
                                    AlgorithmType::ALGORITHM_FORMAT_RANGE_TO_PARTS);  // 8: args length
 
     JSHandle<JSArray> resultHandle(thread, result);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 39U);  // The number of characters of "Fri1/1/202124:00:00–Mon3/1/202124:00:00"
 }
 }  // namespace panda::test

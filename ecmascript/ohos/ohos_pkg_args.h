@@ -208,11 +208,11 @@ public:
             return false;
         }
         JSHandle<JSArray> valueHandle(jsThread, resultValue);
-        JSHandle<TaggedArray> elements(jsThread, valueHandle->GetElements());
+        JSHandle<TaggedArray> elements(jsThread, valueHandle->GetElements(jsThread));
         JSMutableHandle<JSTaggedValue> entry(jsThread, JSTaggedValue::Undefined());
         JSMutableHandle<JSObject> entryHandle(jsThread, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < elements->GetLength(); i++) {
-            entry.Update(elements->Get(i));
+            entry.Update(elements->Get(jsThread, i));
             if (entry->IsHole()) {
                 continue;
             }
@@ -254,14 +254,14 @@ public:
         JSMutableHandle<JSTaggedValue> key(jsThread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> value(jsThread, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < nameList->GetLength(); i++) {
-            key.Update(nameList->Get(i));
+            key.Update(nameList->Get(jsThread, i));
             value.Update(JSObject::GetProperty(jsThread, valueHandle, key).GetValue());
             if (!key->IsString() || !value->IsString()) {
                 LOG_COMPILER(ERROR) << "Pkg info parse from js object failed. key and value must be string type.";
                 return false;
             }
-            UpdateProperty(ConvertToString(*JSTaggedValue::ToString(jsThread, key)).c_str(),
-                           ConvertToString(*JSTaggedValue::ToString(jsThread, value)).c_str());
+            UpdateProperty(ConvertToString(jsThread, *JSTaggedValue::ToString(jsThread, key)).c_str(),
+                           ConvertToString(jsThread, *JSTaggedValue::ToString(jsThread, value)).c_str());
         }
         return Valid();
     }

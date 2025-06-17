@@ -76,12 +76,12 @@ void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(THREAD_ARG_PLACEHOLDER).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr(index++);
+            PropertyAttributes attr = layout->GetAttr(THREAD_ARG_PLACEHOLDER, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot, rootRegion);
             }

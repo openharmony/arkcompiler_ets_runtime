@@ -23,7 +23,7 @@ using BuiltinsPromise = builtins::BuiltinsPromise;
 JSTaggedValue AsyncGeneratorHelper::Next(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                          JSTaggedValue value)
 {
-    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
+    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
     genObject->SetResumeResult(thread, value);
     genObject->SetResumeMode(AsyncGeneratorResumeMode::NEXT);
 
@@ -34,8 +34,8 @@ JSTaggedValue AsyncGeneratorHelper::Next(JSThread *thread, const JSHandle<Genera
 JSTaggedValue AsyncGeneratorHelper::Throw(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                           const JSHandle<CompletionRecord> completionRecord)
 {
-    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
-    genObject->SetResumeResult(thread, completionRecord->GetValue());
+    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
+    genObject->SetResumeResult(thread, completionRecord->GetValue(thread));
     genObject->SetResumeMode(AsyncGeneratorResumeMode::THROW);
 
     EcmaInterpreter::GeneratorReEnterInterpreter(thread, genContext);
@@ -45,8 +45,8 @@ JSTaggedValue AsyncGeneratorHelper::Throw(JSThread *thread, const JSHandle<Gener
 JSTaggedValue AsyncGeneratorHelper::Return(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                            const JSHandle<CompletionRecord> completionRecord)
 {
-    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
-    genObject->SetResumeResult(thread, completionRecord->GetValue());
+    JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject(thread));
+    genObject->SetResumeResult(thread, completionRecord->GetValue(thread));
     genObject->SetResumeMode(AsyncGeneratorResumeMode::RETURN);
 
     EcmaInterpreter::GeneratorReEnterInterpreter(thread, genContext);

@@ -59,8 +59,8 @@ void JitTask::PrepareCompile()
     SustainingJSHandles();
     compilerTask_ = jit_->CreateJitCompilerTask(this);
 
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    JSTaggedValue constpool = method->GetConstantPool();
+    Method *method = Method::Cast(jsFunction_->GetMethod(hostThread_).GetTaggedObject());
+    JSTaggedValue constpool = method->GetConstantPool(hostThread_);
     if (!ConstantPool::CheckUnsharedConstpool(constpool)) {
         hostThread_->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
     }
@@ -92,7 +92,7 @@ void JitTask::Finalize()
 
 void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
 {
-    auto profile = jsFunction_->GetProfileTypeInfo();
+    auto profile = jsFunction_->GetProfileTypeInfo(hostThread_);
     if (profile.IsUndefined()) {
         LOG_JIT(DEBUG) << "[OSR] Empty profile for installing code:" << GetMethodName();
         return;
@@ -101,7 +101,7 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
     JSHandle<ProfileTypeInfo> profileInfoHandle =
         JSHandle<ProfileTypeInfo>::Cast(JSHandle<JSTaggedValue>(hostThread_, profile));
     uint32_t slotId = profileInfoHandle->GetIcSlotToOsrLength() - 1; // 1 : get last slot
-    auto profileData = profileInfoHandle->Get(slotId);
+    auto profileData = profileInfoHandle->Get(hostThread_, slotId);
     auto factory = hostThread_->GetEcmaVM()->GetFactory();
     if (!profileData.IsTaggedArray()) {
         const uint32_t initLen = 1;
@@ -117,7 +117,7 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(arr->GetLength() + 1);  // 1 : added for current codeObj
     uint32_t i = 0;
     for (; i < arr->GetLength(); i++) {
-        newArr->Set(hostThread_, i, arr->Get(i));
+        newArr->Set(hostThread_, i, arr->Get(hostThread_, i));
     }
     newArr->Set(hostThread_, i, codeObj.GetTaggedValue());
     profileInfoHandle->Set(hostThread_, slotId, newArr.GetTaggedValue());
@@ -217,7 +217,7 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
     }
 }
 
-void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
+void DumpJitCode(const JSThread *thread, JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
 {
     if (!ohos::JitTools::GetJitDumpObjEanble()) {
         return;
@@ -231,7 +231,7 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
         LOG_JIT(DEBUG) << "Fail to get machineCode on function addr: " << funcAddr;
     }
     jitDumpElf.AppendData(vec);
-    const char *filename =  method->GetMethodName();
+    const char *filename =  method->GetMethodName(thread);
     std::string fileName = std::string(filename);
     uintptr_t addr = machineCode->GetFuncAddr();
     fileName = fileName + "_" + std::to_string(addr) + "+" + std::to_string(len);
@@ -288,7 +288,7 @@ void JitTask::InstallCode()
         return;
     }
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
-    JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod().GetTaggedObject()));
+    JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod(hostThread_).GetTaggedObject()));
     size_t size = ComputePayLoadSize(codeDesc_);
     codeDesc_.isAsyncCompileMode = IsAsyncTask();
 
@@ -353,7 +353,7 @@ void JitTask::InstallCode()
 
     if (compilerTier_.IsFast()) {
         jsFunction_->SetJitCompilingFlag(false);
-        jsFunction_->SetJitHotnessCnt(0);
+        jsFunction_->SetJitHotnessCnt(hostThread_, 0);
     } else {
         ASSERT(compilerTier_.IsBaseLine());
         jsFunction_->SetBaselinejitCompilingFlag(false);
@@ -407,9 +407,9 @@ void JitTask::CloneProfileTypeInfo()
 {
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
 
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    Method *method = Method::Cast(jsFunction_->GetMethod(hostThread_).GetTaggedObject());
     uint32_t slotSize = method->GetSlotSize();
-    JSTaggedValue profileTypeInfoVal = jsFunction_->GetProfileTypeInfo();
+    JSTaggedValue profileTypeInfoVal = jsFunction_->GetProfileTypeInfo(hostThread_);
     JSHandle<ProfileTypeInfo> newProfileTypeInfo;
     ObjectFactory *factory = hostThread_->GetEcmaVM()->GetFactory();
     if (profileTypeInfoVal.IsUndefined() || slotSize == 0) {
@@ -420,7 +420,7 @@ void JitTask::CloneProfileTypeInfo()
             ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject()));
         newProfileTypeInfo = factory->NewProfileTypeInfo(slotSize);
         for (uint32_t i = 0; i < slotSize; i++) {
-            JSTaggedValue value = profileTypeInfo->Get(i);
+            JSTaggedValue value = profileTypeInfo->Get(hostThread_, i);
             newProfileTypeInfo->Set(hostThread_, i, value);
         }
     }

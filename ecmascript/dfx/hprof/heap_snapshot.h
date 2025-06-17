@@ -402,7 +402,7 @@ public:
     NO_COPY_SEMANTIC(EntryVisitor);
     EntryVisitor() = default;
     ~EntryVisitor() = default;
-    static CString ConvertKey(JSTaggedValue key);
+    static CString ConvertKey(JSThread *thread, JSTaggedValue key);
 };
 
 class HeapSnapshot {

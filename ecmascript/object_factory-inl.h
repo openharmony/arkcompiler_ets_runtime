@@ -153,7 +153,7 @@ void ObjectFactory::NewJSIntlIcuData(const JSHandle<T> &obj, const S &icu, const
 {
     S *icuPoint = vm_->GetNativeAreaAllocator()->New<S>(icu);
     ASSERT(icuPoint != nullptr);
-    JSTaggedValue data = obj->GetIcuField();
+    JSTaggedValue data = obj->GetIcuField(vm_->GetJSThread());
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread_, icuPoint);

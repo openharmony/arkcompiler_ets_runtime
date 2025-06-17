@@ -39,7 +39,7 @@ HWTEST_F_L0(JSListFormatTest, Set_Get_IcuListFormatter_001)
     icu::Locale icuLocale("en", "Latn", "US");
     icu::ListFormatter* icuFormatter = icu::ListFormatter::createInstance(icuLocale, status);
     JSListFormat::SetIcuListFormatter(thread, jsFormatter, icuFormatter, JSListFormat::FreeIcuListFormatter);
-    icu::ListFormatter *resFormatter = jsFormatter->GetIcuListFormatter();
+    icu::ListFormatter *resFormatter = jsFormatter->GetIcuListFormatter(thread);
     EXPECT_TRUE(resFormatter != nullptr);
 
     const int32_t itemNum = 3;
@@ -62,7 +62,7 @@ HWTEST_F_L0(JSListFormatTest, Set_Get_IcuListFormatter_002)
     icu::Locale icuLocale("zh", "Hans", "Cn");
     icu::ListFormatter* icuFormatter = icu::ListFormatter::createInstance(icuLocale, status);
     JSListFormat::SetIcuListFormatter(thread, jsFormatter, icuFormatter, JSListFormat::FreeIcuListFormatter);
-    icu::ListFormatter *resFormatter = jsFormatter->GetIcuListFormatter();
+    icu::ListFormatter *resFormatter = jsFormatter->GetIcuListFormatter(thread);
     EXPECT_TRUE(resFormatter != nullptr);
 
     const int32_t itemNum = 3;
@@ -135,7 +135,7 @@ HWTEST_F_L0(JSListFormatTest, InitializeListFormat)
     factory->NewJSIntlIcuData(locales, icuLocale, JSLocale::FreeIcuLocale);
     listFormatter = JSListFormat::InitializeListFormat(thread, listFormatter,
         JSHandle<JSTaggedValue>::Cast(locales), optionsVal);
-    icu::ListFormatter *resFormatter = listFormatter->GetIcuListFormatter();
+    icu::ListFormatter *resFormatter = listFormatter->GetIcuListFormatter(thread);
     EXPECT_TRUE(resFormatter != nullptr);
 
     const int32_t itemNum = 3;
@@ -185,7 +185,7 @@ HWTEST_F_L0(JSListFormatTest, FormatList_001)
     std::vector<std::string> strs{"Zero", "One", "Two"};
     JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
-    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "Zero, One, and Two");
+    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), "Zero, One, and Two");
 }
 
 HWTEST_F_L0(JSListFormatTest, FormatList_002)
@@ -201,7 +201,7 @@ HWTEST_F_L0(JSListFormatTest, FormatList_002)
     std::vector<std::string> strs{"Zero", "One", "Two"};
     JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
-    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "Zero One Two");
+    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), "Zero One Two");
 }
 
 HWTEST_F_L0(JSListFormatTest, FormatList_003)
@@ -216,7 +216,7 @@ HWTEST_F_L0(JSListFormatTest, FormatList_003)
     std::vector<std::string> strs{"苹果", "梨子", "桃"};
     JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
-    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "苹果、梨子或桃");
+    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), "苹果、梨子或桃");
 }
 
 std::string GetListPartStringTest(JSThread *thread, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> part)
@@ -224,7 +224,7 @@ std::string GetListPartStringTest(JSThread *thread, JSHandle<JSTaggedValue> key,
     JSHandle<JSObject> partObj = JSHandle<JSObject>::Cast(part);
     JSHandle<JSTaggedValue> partValue = JSObject::GetProperty(thread, partObj, key).GetValue();
     JSHandle<EcmaString> partEcmaStr = JSHandle<EcmaString>::Cast(partValue);
-    std::string partStr = intl::LocaleHelper::ConvertToStdString(partEcmaStr);
+    std::string partStr = intl::LocaleHelper::ConvertToStdString(thread, partEcmaStr);
     return partStr;
 }
 
@@ -240,7 +240,7 @@ HWTEST_F_L0(JSListFormatTest, FormatListToParts)
     std::vector<std::string> strs{"苹果", "梨子", "桃"};
     JSHandle<JSArray> valueArr = FormatCommon(thread, strs);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
-    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "苹果、梨子和桃");
+    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), "苹果、梨子和桃");
 
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
@@ -284,8 +284,8 @@ HWTEST_F_L0(JSListFormatTest, StringListFromIterable)
     auto resValue0 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(strValue), 0).GetValue();
     auto resValue1 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(strValue), 1).GetValue();
     auto resValue2 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(strValue), 2).GetValue();
-    EXPECT_STREQ(EcmaStringAccessor(resValue0.GetTaggedValue()).ToCString().c_str(), "one");
-    EXPECT_STREQ(EcmaStringAccessor(resValue1.GetTaggedValue()).ToCString().c_str(), "two");
-    EXPECT_STREQ(EcmaStringAccessor(resValue2.GetTaggedValue()).ToCString().c_str(), "three");
+    EXPECT_STREQ(EcmaStringAccessor(resValue0.GetTaggedValue()).ToCString(thread).c_str(), "one");
+    EXPECT_STREQ(EcmaStringAccessor(resValue1.GetTaggedValue()).ToCString(thread).c_str(), "two");
+    EXPECT_STREQ(EcmaStringAccessor(resValue2.GetTaggedValue()).ToCString(thread).c_str(), "three");
 }
 }  // namespace panda::test

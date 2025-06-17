@@ -280,34 +280,34 @@ HWTEST_F_L0(JSBigintTest, ToString_ToStdString)
     JSHandle<BigInt> bigint2 = BigIntHelper::SetBigInt(thread, bigintStdStr2, BigInt::DECIMAL);
 
     JSHandle<EcmaString> bigintEcmaStrBin1 = BigInt::ToString(thread, bigint1, BigInt::BINARY);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin1).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin1).ToCString(thread).c_str(),
         "111111111111111111111111111111111111111111111111111111");
     JSHandle<EcmaString> bigintEcmaStrOct1 = BigInt::ToString(thread, bigint1, BigInt::OCTAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct1).ToCString().c_str(), "777777777777777777");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct1).ToCString(thread).c_str(), "777777777777777777");
     JSHandle<EcmaString> bigintEcmaStrDec1 = BigInt::ToString(thread, bigint1, BigInt::DECIMAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec1).ToCString().c_str(), "18014398509481983");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec1).ToCString(thread).c_str(), "18014398509481983");
     JSHandle<EcmaString> bigintEcmaStrHex1 = BigInt::ToString(thread, bigint1, BigInt::HEXADECIMAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex1).ToCString().c_str(), "3fffffffffffff");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex1).ToCString(thread).c_str(), "3fffffffffffff");
 
     JSHandle<EcmaString> bigintEcmaStrBin2 = BigInt::ToString(thread, bigint2, BigInt::BINARY);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin2).ToCString(thread).c_str(),
         "1000100100010000100001111010010110001011011000001110010110001");
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrBin2).ToCString(thread).c_str(),
         (bigint2->ToStdString(BigInt::BINARY)).c_str());
 
     JSHandle<EcmaString> bigintEcmaStrOct2 = BigInt::ToString(thread, bigint2, BigInt::OCTAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct2).ToCString().c_str(), "104420417226133016261");
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct2).ToCString(thread).c_str(), "104420417226133016261");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrOct2).ToCString(thread).c_str(),
         (bigint2->ToStdString(BigInt::OCTAL)).c_str());
 
     JSHandle<EcmaString> bigintEcmaStrDec2 = BigInt::ToString(thread, bigint2, BigInt::DECIMAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec2).ToCString().c_str(), "1234567890987654321");
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec2).ToCString(thread).c_str(), "1234567890987654321");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrDec2).ToCString(thread).c_str(),
         (bigint2->ToStdString(BigInt::DECIMAL)).c_str());
 
     JSHandle<EcmaString> bigintEcmaStrHex2 = BigInt::ToString(thread, bigint2, BigInt::HEXADECIMAL);
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex2).ToCString().c_str(), "112210f4b16c1cb1");
-    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex2).ToCString(thread).c_str(), "112210f4b16c1cb1");
+    EXPECT_STREQ(EcmaStringAccessor(bigintEcmaStrHex2).ToCString(thread).c_str(),
         (bigint2->ToStdString(BigInt::HEXADECIMAL)).c_str());
 }
 

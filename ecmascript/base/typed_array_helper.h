@@ -95,7 +95,7 @@ public:
     inline static JSHandle<JSHClass> GetSharedNotOnHeapHclassFromType(
         JSThread *thread, const JSHandle<JSSharedTypedArray> &obj, const DataViewType arrayType);
     inline static uint32_t GetSizeFromType(const DataViewType arrayType);
-    inline static bool IsAccessorHasChanged(const JSHandle<JSTaggedValue> &obj);
+    inline static bool IsAccessorHasChanged(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static int32_t SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                const JSHandle<JSTaggedValue> &buffer, const JSHandle<JSTaggedValue> &firstValue,
                                const JSHandle<JSTaggedValue> &secondValue);

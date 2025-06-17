@@ -43,7 +43,7 @@ JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
     iter->Update(thread);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 4.Let m be O.[[IteratedMap]].
-    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
+    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap(thread));
 
     // 5.Let index be O.[[MapNextIndex]].
     int index = static_cast<int>(iter->GetNextIndex());
@@ -57,7 +57,7 @@ JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
 
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     while (index < totalElements) {
-        JSTaggedValue key = map->GetKey(index);
+        JSTaggedValue key = map->GetKey(thread, index);
         if (!key.IsHole()) {
             iter->SetNextIndex(index + 1);
             keyHandle.Update(key);
@@ -65,7 +65,7 @@ JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
             if (itemKind == IterationKind::KEY) {
                 return JSIterator::CreateIterResultObject(thread, keyHandle, false).GetTaggedValue();
             }
-            JSHandle<JSTaggedValue> value(thread, map->GetValue(index));
+            JSHandle<JSTaggedValue> value(thread, map->GetValue(thread, index));
             // Else if itemKind is value, let result be e.[[Value]].
             if (itemKind == IterationKind::VALUE) {
                 return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
@@ -88,20 +88,20 @@ JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
 void JSMapIterator::Update(const JSThread *thread)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue iteratedMap = GetIteratedMap();
+    JSTaggedValue iteratedMap = GetIteratedMap(thread);
     if (iteratedMap.IsUndefined()) {
         return;
     }
     LinkedHashMap *map = LinkedHashMap::Cast(iteratedMap.GetTaggedObject());
-    if (map->GetNextTable().IsHole()) {
+    if (map->GetNextTable(thread).IsHole()) {
         return;
     }
     int index = static_cast<int>(GetNextIndex());
-    JSTaggedValue nextTable = map->GetNextTable();
+    JSTaggedValue nextTable = map->GetNextTable(thread);
     while (!nextTable.IsHole()) {
-        index -= map->GetDeletedElementsAt(index);
+        index -= map->GetDeletedElementsAt(thread, index);
         map = LinkedHashMap::Cast(nextTable.GetTaggedObject());
-        nextTable = map->GetNextTable();
+        nextTable = map->GetNextTable(thread);
     }
     SetIteratedMap(thread, JSTaggedValue(map));
     SetNextIndex(index);
@@ -125,7 +125,7 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     JSHandle<JSMapIterator> iter(iterator);
-    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
+    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap(thread));
     if (iteratedMap->IsUndefined()) {
         return newArrayHandle.GetTaggedValue();
     }
@@ -138,14 +138,14 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, newArrayHandle->GetElements(thread));
     JSHandle<TaggedArray> elements = factory->ExtendArray(oldElements, totalElements);
     newArrayHandle->SetElements(thread, elements);
     while (index < totalElements) {
-        JSTaggedValue key = map->GetKey(index);
+        JSTaggedValue key = map->GetKey(thread, index);
         if (!key.IsHole()) {
             keyHandle.Update(key);
-            valueHandle.Update(map->GetValue(index));
+            valueHandle.Update(map->GetValue(thread, index));
             if (itemKind == IterationKind::KEY) {
                 ElementAccessor::Set(thread, newArrayHandle, k, keyHandle, true);
             } else if (itemKind == IterationKind::VALUE) {

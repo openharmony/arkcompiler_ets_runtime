@@ -97,10 +97,10 @@ HWTEST_F_L0(BuiltinsProxyTest, Revocable)
     bool pflag = false;
     bool rflag = false;
     for (uint32_t i = 0; i < keys->GetLength(); i++) {
-        if (JSTaggedValue::SameValue(keys->Get(i), proxyKey.GetTaggedValue())) {
+        if (JSTaggedValue::SameValue(thread, keys->Get(thread, i), proxyKey.GetTaggedValue())) {
             pflag = true;
         }
-        if (JSTaggedValue::SameValue(keys->Get(i), revokeKey.GetTaggedValue())) {
+        if (JSTaggedValue::SameValue(thread, keys->Get(thread, i), revokeKey.GetTaggedValue())) {
             rflag = true;
         }
     }

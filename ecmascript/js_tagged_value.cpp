@@ -105,7 +105,7 @@ JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, JSTaggedValue tagged)
             }
         }
         if (tagged.IsString()) {
-            return StringToNumber(tagged);
+            return StringToNumber(thread, tagged);
         }
     }
     if (tagged.IsECMAObject()) {
@@ -380,10 +380,10 @@ bool JSTaggedValue::IsInteger() const
     return true;
 }
 
-bool JSTaggedValue::IsJSCOWArray() const
+bool JSTaggedValue::IsJSCOWArray(const JSThread *thread) const
 {
     // Elements of JSArray are shared and properties are not yet.
-    return IsJSArray() && JSArray::Cast(GetTaggedObject())->GetElements().IsCOWArray();
+    return IsJSArray() && JSArray::Cast(GetTaggedObject())->GetElements(thread).IsCOWArray();
 }
 
 bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
@@ -707,8 +707,8 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
                                         const JSHandle<JSTaggedValue> &y)
 {
     if (x->IsDate() && y->IsDate()) {
-        double timeX = JSDate::Cast(x->GetTaggedObject())->GetTimeValue().GetDouble();
-        double timeY = JSDate::Cast(y->GetTaggedObject())->GetTimeValue().GetDouble();
+        double timeX = JSDate::Cast(x->GetTaggedObject())->GetTimeValue(thread).GetDouble();
+        double timeY = JSDate::Cast(y->GetTaggedObject())->GetTimeValue(thread).GetDouble();
         return StrictNumberCompare(timeX, timeY);
     }
     JSHandle<JSTaggedValue> primX(thread, ToPrimitive(thread, x));
@@ -895,7 +895,7 @@ std::string JSTaggedValue::ExceptionToString(JSThread *thread, const JSHandle<JS
         value = NativePointerToString(thread, tagged);
     }
 
-    return EcmaStringAccessor(value).ToStdString();
+    return EcmaStringAccessor(value).ToStdString(thread);
 }
 
 JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
@@ -974,7 +974,7 @@ JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const
         }
         JSHandle<JSTaggedValue> tmp(thread, ToNumber(thread, tagged));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (SameValue(ToString(thread, tmp).GetTaggedValue(), tagged.GetTaggedValue())) {
+        if (SameValue(thread, ToString(thread, tmp).GetTaggedValue(), tagged.GetTaggedValue())) {
             return tmp.GetTaggedValue();
         }
     }
@@ -1031,8 +1031,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
+        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString(thread);
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -1060,7 +1060,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(ToCString(key)).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -1088,8 +1088,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString();
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString();
+        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString(thread);
+        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -1330,10 +1330,10 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
     }
     if (obj->IsJSFunction() && proto->IsJSFunction()) {
         JSHandle<JSFunction> objFunc = JSHandle<JSFunction>::Cast(obj);
-        JSTaggedValue objProtoOrHClass(objFunc->GetProtoOrHClass());
-        if (objProtoOrHClass.IsJSHClass() && objFunc->IsDerivedConstructor()) {
+        JSTaggedValue objProtoOrHClass(objFunc->GetProtoOrHClass(thread));
+        if (objProtoOrHClass.IsJSHClass() && objFunc->IsDerivedConstructor(thread)) {
             JSHandle<JSHClass> cachedJSHClass = JSHandle<JSHClass>(thread, objProtoOrHClass);
-            objFunc->SetProtoOrHClass(thread, cachedJSHClass->GetPrototype());
+            objFunc->SetProtoOrHClass(thread, cachedJSHClass->GetPrototype(thread));
         }
     }
 
@@ -1349,7 +1349,7 @@ JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTag
     if (obj->IsJSProxy()) {
         return JSProxy::GetPrototype(thread, JSHandle<JSProxy>(obj));
     }
-    return JSObject::GetPrototype(JSHandle<JSObject>(obj));
+    return JSObject::GetPrototype(thread, JSHandle<JSObject>(obj));
 }
 
 bool JSTaggedValue::PreventExtensions(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
@@ -1479,7 +1479,7 @@ bool JSTaggedValue::CanBeHeldWeakly(JSThread *thread, const JSHandle<JSTaggedVal
     if (tagged->IsSymbol()) {
         JSTaggedValue symbolTable = thread->GetEcmaVM()->GetRegisterSymbols();
         auto *table = SymbolTable::Cast(symbolTable.GetTaggedObject());
-        JSTaggedValue key = table->FindSymbol(tagged.GetTaggedValue());
+        JSTaggedValue key = table->FindSymbol(thread, tagged.GetTaggedValue());
         if (key.IsUndefined()) {
             return true;
         }
@@ -1541,23 +1541,23 @@ JSHandle<JSTaggedValue> JSTaggedValue::ToPrototypeOrObj(JSThread *thread, const 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (obj->IsNumber()) {
         return JSHandle<JSTaggedValue>(thread,
-                                       env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype());
+                                       env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype(thread));
     }
     if (obj->IsBoolean()) {
         return JSHandle<JSTaggedValue>(thread,
-                                       env->GetBooleanFunction().GetObject<JSFunction>()->GetFunctionPrototype());
+                                       env->GetBooleanFunction().GetObject<JSFunction>()->GetFunctionPrototype(thread));
     }
     if (obj->IsString()) {
         return JSHandle<JSTaggedValue>(thread,
-                                       env->GetStringFunction().GetObject<JSFunction>()->GetFunctionPrototype());
+                                       env->GetStringFunction().GetObject<JSFunction>()->GetFunctionPrototype(thread));
     }
     if (obj->IsSymbol()) {
         return JSHandle<JSTaggedValue>(thread,
-                                       env->GetSymbolFunction().GetObject<JSFunction>()->GetFunctionPrototype());
+                                       env->GetSymbolFunction().GetObject<JSFunction>()->GetFunctionPrototype(thread));
     }
     if (obj->IsBigInt()) {
         return JSHandle<JSTaggedValue>(thread,
-                                       env->GetBigIntFunction().GetObject<JSFunction>()->GetFunctionPrototype());
+                                       env->GetBigIntFunction().GetObject<JSFunction>()->GetFunctionPrototype(thread));
     }
     return obj;
 }
@@ -1579,27 +1579,27 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
     JSType jsType = hclass->GetObjectType();
     switch (jsType) {
         case JSType::JS_API_ARRAY_LIST: {
-            return JSHandle<JSAPIArrayList>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIArrayList>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_QUEUE: {
-            return JSHandle<JSAPIQueue>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIQueue>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_PLAIN_ARRAY: {
             return JSObject::HasProperty(thread, JSHandle<JSObject>(obj), key);
         }
         case JSType::JS_API_DEQUE: {
-            return JSHandle<JSAPIDeque>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIDeque>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_STACK: {
-            return JSHandle<JSAPIStack>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIStack>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_LIST: {
             JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(obj);
-            return list->Has(key.GetTaggedValue());
+            return list->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_LINKED_LIST: {
             JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(obj);
-            return linkedList->Has(key.GetTaggedValue());
+            return linkedList->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_HASH_MAP:
         case JSType::JS_API_HASH_SET:
@@ -1610,10 +1610,10 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
             return JSObject::HasProperty(thread, JSHandle<JSObject>(obj), key);
         }
         case JSType::JS_API_VECTOR: {
-            return JSHandle<JSAPIVector>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIVector>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         case JSType::JS_API_BITVECTOR: {
-            return JSHandle<JSAPIBitVector>::Cast(obj)->Has(key.GetTaggedValue());
+            return JSHandle<JSAPIBitVector>::Cast(obj)->Has(thread, key.GetTaggedValue());
         }
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1753,7 +1753,7 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
     return false;
 }
 
-JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
+JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tagged)
 {
     EcmaStringAccessor strAccessor(tagged);
     size_t strLen = strAccessor.GetLength();
@@ -1761,7 +1761,7 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         return JSTaggedNumber(0);
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
-        common::IntegerCache* cache = nullptr;
+        common::IntegerCache *cache = nullptr;
 #if ENABLE_NEXT_OPTIMIZATION
         if ((strLen <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
             cache = common::IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
@@ -1780,7 +1780,7 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         }
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+    Span<const uint8_t> str = strAccessor.ToUtf8Span(thread, buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
@@ -1901,14 +1901,14 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
 void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (thread->GetEcmaVM()->GetJSOptions().EnableExceptionBacktrace()) {
-        DesensitizedDump(obj);
+        DesensitizedDump(thread, obj);
     }
 }
 
-void JSTaggedValue::DesensitizedDump(const JSHandle<JSTaggedValue> &obj)
+void JSTaggedValue::DesensitizedDump(const JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     std::ostringstream oss;
-    obj->Dump(oss, true);
+    obj->Dump(thread, oss, true);
     std::regex reg("0x[0-9a-fA-F]+");
     std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
     LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
@@ -1923,9 +1923,9 @@ JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValueSlow(JSThread *thread, 
     return JSHandle<JSTaggedValue>(thread, JSTaggedValue(flatStr));
 }
 
-uint32_t JSTaggedValue::GetStringKeyHashCode() const
+uint32_t JSTaggedValue::GetStringKeyHashCode(const JSThread *thread) const
 {
     ASSERT(IsString());
-    return EcmaStringAccessor(GetTaggedObject()).GetHashcode();
+    return EcmaStringAccessor(GetTaggedObject()).GetHashcode(thread);
 }
 }  // namespace panda::ecmascript

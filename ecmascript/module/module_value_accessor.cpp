@@ -33,7 +33,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueInner(JSThread *thread, int32_t
 
 JSTaggedValue ModuleValueAccessor::GetModuleValueInner(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
     }
@@ -51,7 +51,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueInner(JSThread *thread, int32_t
 JSTaggedValue ModuleValueAccessor::GetSendableModuleValueInner(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
 {
     ModuleManager* moduleManager = thread->GetModuleManager();
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetSendableModuleValueInner currentModule is undefined";
     }
@@ -82,7 +82,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuter(JSThread* thread, int32_t
 
 JSTaggedValue ModuleValueAccessor::GetModuleValueOuter(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     return GetModuleValueOuterInternal<false>(thread, index, currentModule);
 }
 
@@ -94,20 +94,20 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuter(JSThread* thread, int32_t
 
 JSTaggedValue ModuleValueAccessor::GetLazyModuleValueOuter(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     return GetModuleValueOuterInternal<true>(thread, index, currentModule);
 }
 
 JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuter(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     return GetSendableModuleValueOuterInternal<false>(thread, index, currentModule);
 }
 
 JSTaggedValue ModuleValueAccessor::GetLazySendableModuleValueOuter(JSThread* thread, int32_t index,
     JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     return GetSendableModuleValueOuterInternal<true>(thread, index, currentModule);
 }
 
@@ -119,7 +119,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespace(JSThread *thread, int32_t 
 
 JSTaggedValue ModuleValueAccessor::GetModuleNamespace(JSThread *thread, int32_t index, JSTaggedValue curFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(curFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(curFunc.GetTaggedObject())->GetModule(thread);
     return GetModuleNamespaceInternal(thread, index, currentModule);
 }
 JSTaggedValue ModuleValueAccessor::GetNativeOrCjsModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
@@ -134,7 +134,7 @@ JSTaggedValue ModuleValueAccessor::GetNativeOrCjsModuleValue(JSThread *thread, J
 {
     JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    if (UNLIKELY(JSTaggedValue::SameValue(
+    if (UNLIKELY(JSTaggedValue::SameValue(thread,
         bindingName, thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
         return exports.GetTaggedValue();
     }
@@ -153,14 +153,14 @@ void ModuleValueAccessor::StoreModuleValue(JSThread *thread, int32_t index, JSTa
 
 void ModuleValueAccessor::StoreModuleValue(JSThread *thread, int32_t index, JSTaggedValue value, JSTaggedValue jsFunc)
 {
-    JSHandle<SourceTextModule> currentModule(thread, JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule());
+    JSHandle<SourceTextModule> currentModule(thread, JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread));
     StoreModuleValueInternal(thread, currentModule, index, value);
 }
 JSTaggedValue ModuleValueAccessor::GetCurrentModule(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
     JSTaggedValue currentFunc = frameHandler.GetFunction();
-    JSTaggedValue module = JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue module = JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule(thread);
     if (SourceTextModule::IsSendableFunctionModule(module)) {
         CString recordNameStr = SourceTextModule::GetModuleName(module);
         return thread->GetModuleManager()->HostGetImportedModule(recordNameStr).GetTaggedValue();
@@ -184,12 +184,12 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal(JSThread *thread,
         UNREACHABLE();
     }
     JSHandle<SourceTextModule> currentModuleHdl(thread, curModule);
-    JSTaggedValue moduleEnvironment = currentModuleHdl->GetEnvironment();
+    JSTaggedValue moduleEnvironment = currentModuleHdl->GetEnvironment(thread);
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(thread, index);
     GetModuleValueFromBindingInfo info { thread, currentModuleHdl, resolvedBinding, index, false };
     if (resolvedBinding.IsResolvedIndexBinding()) {
         return GetModuleValueFromIndexBinding<isLazy>(info);
@@ -204,7 +204,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal(JSThread *thread,
         return GetModuleValueFromRecordBinding<isLazy>(info);
     }
     std::ostringstream oss;
-    curModule.Dump(oss);
+    curModule.Dump(thread, oss);
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
         << ", index: " << index << ", currentModule: " << oss.str();
     UNREACHABLE();
@@ -222,12 +222,12 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal(JSThread 
         UNREACHABLE();
     }
     JSHandle<SourceTextModule> module(thread, curModule.GetTaggedObject());
-    JSTaggedValue moduleEnvironment = module->GetEnvironment();
+    JSTaggedValue moduleEnvironment = module->GetEnvironment(thread);
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(thread, index);
     GetModuleValueFromBindingInfo info { thread, module, resolvedBinding, index, true };
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {
         return GetModuleValueFromRecordIndexBinding<isLazy>(info);
@@ -254,7 +254,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespaceInternal(JSThread *thread, 
         UNREACHABLE();
     }
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(curModule));
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
     JSHandle<SourceTextModule> requiredModule =
         SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
@@ -294,7 +294,7 @@ template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromIndexBinding(const GetModuleValueFromBindingInfo &info)
 {
     JSHandle<ResolvedIndexBinding> binding(info.thread, info.resolvedBinding);
-    JSMutableHandle<SourceTextModule> resolvedModule(info.thread, binding->GetModule());
+    JSMutableHandle<SourceTextModule> resolvedModule(info.thread, binding->GetModule(info.thread));
     if (!info.isSendable && info.thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
         const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
             info.thread->GetEcmaVM()->FindPatchModule(resolvedModule->GetEcmaModuleRecordNameString());
@@ -321,11 +321,11 @@ template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValueFromBindingInfo &info)
 {
     JSHandle<ResolvedBinding> binding(info.thread, info.resolvedBinding);
-    JSHandle<SourceTextModule> resolvedModule(info.thread, binding->GetModule());
+    JSHandle<SourceTextModule> resolvedModule(info.thread, binding->GetModule(info.thread));
     if (UNLIKELY(!SourceTextModule::IsNativeModule(resolvedModule->GetTypes()) &&
         !SourceTextModule::IsCjsModule(resolvedModule->GetTypes()))) {
         std::ostringstream oss;
-        info.module.GetTaggedValue().Dump(oss);
+        info.module.GetTaggedValue().Dump(info.thread, oss);
         LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
             << ", index: " << info.index << ", currentModule: " << oss.str();
     }
@@ -333,7 +333,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValu
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, false);
     return UpdateBindingAndGetModuleValue(info.thread, info.module, resolvedModule, info.index,
-        binding->GetBindingName());
+        binding->GetBindingName(info.thread));
 }
 
 template JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding<true>(const GetModuleValueFromBindingInfo &);
@@ -343,9 +343,9 @@ template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding(const GetModuleValueFromBindingInfo &info)
 {
     JSHandle<ResolvedRecordIndexBinding> binding(info.thread, info.resolvedBinding);
-    JSHandle<SourceTextModule> resolvedModule =
-        GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(info.thread, info.module, binding,
-            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
+    JSHandle<SourceTextModule> resolvedModule = GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(
+        info.thread, info.module, binding,
+        ModulePathHelper::Utf8ConvertToString(info.thread, binding->GetModuleRecord(info.thread)));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
     return GetModuleValue(info.thread, resolvedModule, binding->GetIndex());
@@ -360,12 +360,12 @@ template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding(const GetModuleValueFromBindingInfo &info)
 {
     JSHandle<ResolvedRecordBinding> binding(info.thread, info.resolvedBinding);
-    JSHandle<SourceTextModule> resolvedModule =
-        GetResolvedModule<isLazy, ResolvedRecordBinding>(info.thread, info.module, binding,
-            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
+    JSHandle<SourceTextModule> resolvedModule = GetResolvedModule<isLazy, ResolvedRecordBinding>(
+        info.thread, info.module, binding,
+        ModulePathHelper::Utf8ConvertToString(info.thread, binding->GetModuleRecord(info.thread)));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
-    return GetNativeOrCjsModuleValue(info.thread, resolvedModule, binding->GetBindingName());
+    return GetNativeOrCjsModuleValue(info.thread, resolvedModule, binding->GetBindingName(info.thread));
 }
 
 template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding<true>(
@@ -377,7 +377,7 @@ JSTaggedValue ModuleValueAccessor::UpdateBindingAndGetModuleValue(JSThread *thre
     JSHandle<SourceTextModule> requiredModule, int32_t index, JSTaggedValue bindingName)
 {
     // Get esm environment
-    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment());
+    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment(thread));
     ASSERT(!moduleEnvironment->IsUndefined());
     JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     // rebinding here
@@ -393,7 +393,7 @@ JSTaggedValue ModuleValueAccessor::UpdateBindingAndGetModuleValue(JSThread *thre
         CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
             module.GetTaggedValue()));
         CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
-            ModulePathHelper::Utf8ConvertToString(bindingName) +
+            ModulePathHelper::Utf8ConvertToString(thread, bindingName) +
             "' which imported by '" + recordStr + "'";
         THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
             thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception());
@@ -481,7 +481,7 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule(JSThread* thre
     }
     CString fileName;
     if constexpr (std::is_same<BindingType, ResolvedRecordIndexBinding>::value) {
-        fileName = ModulePathHelper::Utf8ConvertToString(binding->GetAbcFileName());
+        fileName = ModulePathHelper::Utf8ConvertToString(thread, binding->GetAbcFileName(thread));
     } else {
         fileName = module->GetEcmaModuleFilenameString();
     }
@@ -506,7 +506,7 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueInner(JSThread* threa
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueInner(JSThread* thread, JSTaggedValue key,
     JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
         UNREACHABLE();
@@ -523,7 +523,7 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueOuter(JSThread* threa
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueOuter(JSThread* thread, JSTaggedValue key,
     JSTaggedValue jsFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread);
     return GetModuleValueOuterInternal(thread, key, currentModule);
 }
 
@@ -536,7 +536,7 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleNamespace(JSThread* thread
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleNamespace(JSThread* thread, JSTaggedValue localName,
     JSTaggedValue curFunc)
 {
-    JSTaggedValue currentModule = JSFunction::Cast(curFunc.GetTaggedObject())->GetModule();
+    JSTaggedValue currentModule = JSFunction::Cast(curFunc.GetTaggedObject())->GetModule(thread);
     return GetModuleNamespaceInternal(thread, localName, currentModule);
 }
 void DeprecatedModuleValueAccessor::StoreModuleValue(JSThread* thread, JSTaggedValue key, JSTaggedValue value)
@@ -548,7 +548,7 @@ void DeprecatedModuleValueAccessor::StoreModuleValue(JSThread* thread, JSTaggedV
 void DeprecatedModuleValueAccessor::StoreModuleValue(JSThread* thread, JSTaggedValue key, JSTaggedValue value,
     JSTaggedValue jsFunc)
 {
-    JSHandle<SourceTextModule> currentModule(thread, JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule());
+    JSHandle<SourceTextModule> currentModule(thread, JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule(thread));
     StoreModuleValueInternal(thread, currentModule, key, value);
 }
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueOuterInternal(JSThread* thread, JSTaggedValue key,
@@ -558,18 +558,18 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueOuterInternal(JSThrea
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
-    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(curModule.GetTaggedObject())->GetEnvironment();
+    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(curModule.GetTaggedObject())->GetEnvironment(thread);
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
-    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(key);
+    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(thread, key);
     if (entry == -1) {
         return thread->GlobalConstants()->GetUndefined();
     }
-    JSTaggedValue resolvedBinding = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(entry);
+    JSTaggedValue resolvedBinding = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(thread, entry);
     ASSERT(resolvedBinding.IsResolvedBinding());
     ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
-    JSTaggedValue resolvedModule = binding->GetModule();
+    JSTaggedValue resolvedModule = binding->GetModule(thread);
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
@@ -577,7 +577,7 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueOuterInternal(JSThrea
         JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
         return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
     }
-    return module->GetModuleValue(thread, binding->GetBindingName(), false);
+    return module->GetModuleValue(thread, binding->GetBindingName(thread), false);
 }
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleNamespaceInternal(JSThread* thread, JSTaggedValue localName,
     JSTaggedValue curModule)
@@ -586,15 +586,15 @@ JSTaggedValue DeprecatedModuleValueAccessor::GetModuleNamespaceInternal(JSThread
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
         UNREACHABLE();
     }
-    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(curModule.GetTaggedObject())->GetEnvironment();
+    JSTaggedValue moduleEnvironment = SourceTextModule::Cast(curModule.GetTaggedObject())->GetEnvironment(thread);
     if (moduleEnvironment.IsUndefined()) {
         return thread->GlobalConstants()->GetUndefined();
     }
-    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(localName);
+    int entry = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->FindEntry(thread, localName);
     if (entry == -1) {
         return thread->GlobalConstants()->GetUndefined();
     }
-    JSTaggedValue moduleNamespace = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(entry);
+    JSTaggedValue moduleNamespace = NameDictionary::Cast(moduleEnvironment.GetTaggedObject())->GetValue(thread, entry);
     ASSERT(moduleNamespace.IsModuleNamespace());
     return moduleNamespace;
 }

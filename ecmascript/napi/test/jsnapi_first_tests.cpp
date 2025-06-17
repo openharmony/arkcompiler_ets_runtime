@@ -1164,15 +1164,15 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
     // new with Builtins::Map Prototype
     JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
     Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
-    JSHandle<JSTaggedValue> setPrototype(thread_, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> mapPrototype(thread_, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> setPrototype(thread_, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype(thread_));
+    JSHandle<JSTaggedValue> mapPrototype(thread_, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> mapPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, mapPrototype));
-    bool same = JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
+    bool same = JSTaggedValue::SameValue(thread_, setPrototype, mapPrototypeProto);
     // before inherit, map.Prototype.__proto__ should be different from set.Prototype
     ASSERT_FALSE(same);
     // before inherit, map.__proto__ should be different from set
     JSHandle<JSTaggedValue> mapProto(thread_, JSTaggedValue::GetPrototype(thread_, map));
-    bool same1 = JSTaggedValue::SameValue(set, mapProto);
+    bool same1 = JSTaggedValue::SameValue(thread_, set, mapProto);
     ASSERT_FALSE(same1);
 
     // Set property to Set Function
@@ -1189,12 +1189,12 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 
     mapLocal->Inherit(vm_, setLocal);
     JSHandle<JSTaggedValue> sonHandle = JSNApiHelper::ToJSHandle(mapLocal);
-    JSHandle<JSTaggedValue> sonPrototype(thread_, JSHandle<JSFunction>::Cast(sonHandle)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> sonPrototype(thread_, JSHandle<JSFunction>::Cast(sonHandle)->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> sonPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, sonPrototype));
-    bool same2 = JSTaggedValue::SameValue(setPrototype, sonPrototypeProto);
+    bool same2 = JSTaggedValue::SameValue(thread_, setPrototype, sonPrototypeProto);
     ASSERT_TRUE(same2);
     JSHandle<JSTaggedValue> sonProto(thread_, JSTaggedValue::GetPrototype(thread_, map));
-    bool same3 = JSTaggedValue::SameValue(set, sonProto);
+    bool same3 = JSTaggedValue::SameValue(thread_, set, sonProto);
     ASSERT_TRUE(same3);
 
     // son = new Son(), Son() inherit from Parent(), Test whether son.InstanceOf(Parent) is true
@@ -1204,17 +1204,17 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_001)
 
     // Test whether son Function can access to property of parent Function
     OperationResult res = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(sonHandle), defaultString);
-    bool same4 = JSTaggedValue::SameValue(defaultString, res.GetValue());
+    bool same4 = JSTaggedValue::SameValue(thread_, defaultString, res.GetValue());
     ASSERT_TRUE(same4);
     OperationResult res1 = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(sonHandle), property1String);
-    bool same5 = JSTaggedValue::SameValue(func, res1.GetValue());
+    bool same5 = JSTaggedValue::SameValue(thread_, func, res1.GetValue());
     ASSERT_TRUE(same5);
 
     // new with empty Function Constructor
     Local<FunctionRef> son1 = FunctionRef::New(vm_, FunctionCallback, nullptr);
     son1->Inherit(vm_, mapLocal);
     JSHandle<JSFunction> son1Handle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(son1));
-    ASSERT_TRUE(son1Handle->HasFunctionPrototype());
+    ASSERT_TRUE(son1Handle->HasFunctionPrototype(thread_));
 }
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_002)
@@ -1248,7 +1248,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_002)
     JSHandle<JSTaggedValue> sonMethod = JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>(sonObj), property1String);
     JSHandle<JSTaggedValue> fatherMethod =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>(fatherObj), property1String);
-    bool same = JSTaggedValue::SameValue(sonMethod, fatherMethod);
+    bool same = JSTaggedValue::SameValue(thread_, sonMethod, fatherMethod);
     ASSERT_TRUE(same);
 }
 
@@ -1271,7 +1271,7 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
     Local<FunctionRef> noProtoLocal = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(noProtoFunc));
 
     JSHandle<JSFunction> sonHandle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(noProtoLocal));
-    EXPECT_FALSE(sonHandle->HasFunctionPrototype());
+    EXPECT_FALSE(sonHandle->HasFunctionPrototype(thread_));
 
     JSHandle<JSTaggedValue> defaultString = thread_->GlobalConstants()->GetHandledDefaultString();
     PropertyDescriptor desc = PropertyDescriptor(thread_, defaultString);
@@ -1279,17 +1279,17 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_003)
 
     noProtoLocal->Inherit(vm_, protoLocal);
     JSHandle<JSFunction> son1Handle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(noProtoLocal));
-    EXPECT_TRUE(son1Handle->HasFunctionPrototype());
+    EXPECT_TRUE(son1Handle->HasFunctionPrototype(thread_));
 
     OperationResult res = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(son1Handle), defaultString);
-    EXPECT_EQ(JSTaggedValue::SameValue(defaultString, res.GetValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread_, defaultString, res.GetValue()), true);
 
     JSHandle<JSTaggedValue> propertyString(thread_, factory->NewFromASCII("property").GetTaggedValue());
     JSHandle<JSTaggedValue> func = env->GetArrayFunction();
     PropertyDescriptor desc1 = PropertyDescriptor(thread_, func);
     JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>::Cast(protoFunc), propertyString, desc1);
     OperationResult res1 = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(son1Handle), propertyString);
-    EXPECT_EQ(JSTaggedValue::SameValue(func, res1.GetValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread_, func, res1.GetValue()), true);
 }
 
 HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
@@ -1349,10 +1349,10 @@ HWTEST_F_L0(JSNApiTests, InheritPrototype_004)
 
     JSHandle<JSFunction> sonHandle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(noProtoLocal));
     OperationResult res = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(sonHandle), deleteString);
-    EXPECT_EQ(JSTaggedValue::SameValue(deleteMethod, res.GetValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread_, deleteMethod, res.GetValue()), true);
     // test if the property value changed after inherit
     OperationResult res1 = JSObject::GetProperty(thread_, JSHandle<JSObject>::Cast(sonHandle), addString);
-    EXPECT_EQ(JSTaggedValue::SameValue(defaultString, res1.GetValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread_, defaultString, res1.GetValue()), true);
 }
 
 HWTEST_F_L0(JSNApiTests, ClassFunction)
@@ -1363,11 +1363,11 @@ HWTEST_F_L0(JSNApiTests, ClassFunction)
     JSHandle<JSTaggedValue> clsObj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     ASSERT_TRUE(clsObj->IsClassConstructor());
 
-    JSTaggedValue accessor =
-        JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+    JSTaggedValue accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(
+        thread_, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(accessor.IsInternalAccessor());
 
-    accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    accessor = JSHandle<JSFunction>(clsObj)->GetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     ASSERT_TRUE(!accessor.IsUndefinedOrNull());
 }
 
@@ -1433,8 +1433,8 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(arrayLength);
     taggedArray->Set(thread_, 0, objVal1);
     taggedArray->Set(thread_, 1, canBeGcValue);
-    EXPECT_EQ(taggedArray->GetIdx(objVal1.GetTaggedValue()), 0U);
-    EXPECT_EQ(taggedArray->GetIdx(canBeGcValue), 1U);
+    EXPECT_EQ(taggedArray->GetIdx(thread_, objVal1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(thread_, canBeGcValue), 1U);
 
     // trigger gc
     JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
@@ -1444,8 +1444,8 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     gcType = JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC;
     JSNApi::TriggerGC(vm_, gcType);
 
-    EXPECT_EQ(taggedArray->GetIdx(objVal1.GetTaggedValue()), 0U);
-    EXPECT_EQ(taggedArray->GetIdx(canBeGcValue), TaggedArray::MAX_ARRAY_INDEX);
+    EXPECT_EQ(taggedArray->GetIdx(thread_, objVal1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(thread_, canBeGcValue), TaggedArray::MAX_ARRAY_INDEX);
     ASSERT_EQ("1", origin->ToString(vm_));
 
     vm_->SetEnableForceGC(true);
@@ -2233,21 +2233,21 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_New_GetFunctionPrototype)
     Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
     JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
     Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
-    JSHandle<JSTaggedValue> setPrototype(thread_, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> mapPrototype(thread_, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> setPrototype(thread_, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype(thread_));
+    JSHandle<JSTaggedValue> mapPrototype(thread_, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> mapPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, mapPrototype));
-    bool same = JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
+    bool same = JSTaggedValue::SameValue(thread_, setPrototype, mapPrototypeProto);
     ASSERT_FALSE(same);
     mapLocal->Inherit(vm_, setLocal);
     JSHandle<JSTaggedValue> sonHandle = JSNApiHelper::ToJSHandle(mapLocal);
-    JSHandle<JSTaggedValue> sonPrototype(thread_, JSHandle<JSFunction>::Cast(sonHandle)->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> sonPrototype(thread_, JSHandle<JSFunction>::Cast(sonHandle)->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> sonPrototypeProto(thread_, JSTaggedValue::GetPrototype(thread_, sonPrototype));
-    bool same2 = JSTaggedValue::SameValue(setPrototype, sonPrototypeProto);
+    bool same2 = JSTaggedValue::SameValue(thread_, setPrototype, sonPrototypeProto);
     ASSERT_TRUE(same2);
     Local<FunctionRef> son1 = FunctionRef::New(vm_, FunctionCallback, nullptr);
     son1->Inherit(vm_, mapLocal);
     JSHandle<JSFunction> son1Handle = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(son1));
-    ASSERT_TRUE(son1Handle->HasFunctionPrototype());
+    ASSERT_TRUE(son1Handle->HasFunctionPrototype(thread_));
 }
 
 /*

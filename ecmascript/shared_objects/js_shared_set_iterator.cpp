@@ -37,22 +37,22 @@ JSTaggedValue JSSharedSetIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     }
     JSHandle<JSSharedSetIterator> iter(thisObj);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
-    if (iter->GetIteratedSet().IsUndefined()) {
+    if (iter->GetIteratedSet(thread).IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
-    JSHandle<JSSharedSet> iteratedSet(thread, iter->GetIteratedSet());
+    JSHandle<JSSharedSet> iteratedSet(thread, iter->GetIteratedSet(thread));
     [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, JSHandle<JSTaggedValue>::Cast(iteratedSet));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSHandle<LinkedHashSet> set(thread, iteratedSet->GetLinkedSet());
+    JSHandle<LinkedHashSet> set(thread, iteratedSet->GetLinkedSet(thread));
 
     int index = static_cast<int>(iter->GetNextIndex());
     IterationKind itemKind = iter->GetIterationKind();
     int totalElements = set->NumberOfElements() + set->NumberOfDeletedElements();
 
     while (index < totalElements) {
-        if (!set->GetKey(index).IsHole()) {
+        if (!set->GetKey(thread, index).IsHole()) {
             iter->SetNextIndex(index + 1);
-            JSHandle<JSTaggedValue> key(thread, set->GetKey(index));
+            JSHandle<JSTaggedValue> key(thread, set->GetKey(thread, index));
             if (itemKind == IterationKind::VALUE || itemKind == IterationKind::KEY) {
                 return JSIterator::CreateIterResultObject(thread, key, false).GetTaggedValue();
             }

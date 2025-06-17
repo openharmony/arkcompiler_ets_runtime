@@ -40,18 +40,18 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPITreeSetIterator> iter(input);
     // Let it be [[IteratedSet]].
-    JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet());
+    JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet(thread));
 
     // If it is undefined, return undefinedIteratorResult.
     if (iteratedSet->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
-    JSHandle<TaggedTreeSet> set(thread, JSHandle<JSAPITreeSet>::Cast(iteratedSet)->GetTreeSet());
+    JSHandle<TaggedTreeSet> set(thread, JSHandle<JSAPITreeSet>::Cast(iteratedSet)->GetTreeSet(thread));
     uint32_t elements = static_cast<uint32_t>(set->NumberOfElements());
 
-    JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries());
-    if ((iter->GetEntries().IsHole()) || (elements != entries->GetLength())) {
+    JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries(thread));
+    if ((iter->GetEntries(thread).IsHole()) || (elements != entries->GetLength())) {
         entries.Update(TaggedTreeSet::GetArrayFromSet(thread, set).GetTaggedValue());
         iter->SetEntries(thread, entries);
     }
@@ -61,10 +61,10 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     if (index < elements) {
         IterationKind itemKind = IterationKind(iter->GetIterationKind());
 
-        int keyIndex = entries->Get(index).GetInt();
+        int keyIndex = entries->Get(thread, index).GetInt();
         iter->SetNextIndex(index + 1);
 
-        JSHandle<JSTaggedValue> key(thread, set->GetKey(keyIndex));
+        JSHandle<JSTaggedValue> key(thread, set->GetKey(thread, keyIndex));
         // If itemKind is key or value, let result be e.[[Key]].
         if (itemKind == IterationKind::VALUE || itemKind == IterationKind::KEY) {
             return JSIterator::CreateIterResultObject(thread, key, false).GetTaggedValue();
@@ -89,8 +89,8 @@ JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPITreeSet()) {
-        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeSet()) {
-            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget(thread).IsJSAPITreeSet()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");

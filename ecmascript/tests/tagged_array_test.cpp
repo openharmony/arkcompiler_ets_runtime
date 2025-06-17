@@ -42,7 +42,7 @@ HWTEST_F_L0(TaggedArrayTest, Create)
     EXPECT_TRUE(*taggedArray != nullptr);
     // every element of the taggedarray is JSTaggedValue::Hole()
     for (uint32_t i = 0; i < arrayLength; i++) {
-        EXPECT_TRUE(taggedArray->Get(i).IsHole());
+        EXPECT_TRUE(taggedArray->Get(thread, i).IsHole());
     }
 }
 
@@ -59,14 +59,14 @@ HWTEST_F_L0(TaggedArrayTest, SetAndGetIdx)
     taggedArray->Set(thread, 0, newObj1);
     taggedArray->Set(thread, 1, objValue);
 
-    EXPECT_EQ(taggedArray->GetIdx(newObj1.GetTaggedValue()), 0U);
-    EXPECT_EQ(taggedArray->GetIdx(objValue), 1U);
+    EXPECT_EQ(taggedArray->GetIdx(thread, newObj1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(thread, objValue), 1U);
     // trigger gc
     ecmaVM->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_EQ(taggedArray->GetIdx(newObj1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(thread, newObj1.GetTaggedValue()), 0U);
     if (!g_isEnableCMCGC) {
         // cmc gc may not evacuate tl region.
-        EXPECT_EQ(taggedArray->GetIdx(objValue), TaggedArray::MAX_ARRAY_INDEX);
+        EXPECT_EQ(taggedArray->GetIdx(thread, objValue), TaggedArray::MAX_ARRAY_INDEX);
     }
 }
 
@@ -90,9 +90,9 @@ HWTEST_F_L0(TaggedArrayTest, Append)
     // append two taggedarray
     JSHandle<TaggedArray> appendArray = TaggedArray::Append(thread, taggedArray1, taggedArray2);
     EXPECT_EQ(appendArray->GetLength(), arrayLength * 2);
-    EXPECT_EQ(appendArray->Get(0), newObj1.GetTaggedValue());
-    EXPECT_EQ(appendArray->Get(2), objValue); // 2: the second index
-    EXPECT_EQ(appendArray->Get(1), appendArray->Get(3)); // 3: the third index
+    EXPECT_EQ(appendArray->Get(thread, 0), newObj1.GetTaggedValue());
+    EXPECT_EQ(appendArray->Get(thread, 2), objValue); // 2: the second index
+    EXPECT_EQ(appendArray->Get(thread, 1), appendArray->Get(thread, 3)); // 3: the third index
     ecmaVM->SetEnableForceGC(true);  // turn on GC
 }
 
@@ -113,10 +113,10 @@ HWTEST_F_L0(TaggedArrayTest, AppendSkipHole)
     // append two taggedarray
     JSHandle<TaggedArray> appendArray = TaggedArray::AppendSkipHole(thread, taggedArray1, taggedArray2, twoArrayLength);
     EXPECT_EQ(appendArray->GetLength(), twoArrayLength);
-    EXPECT_EQ(appendArray->Get(0), appendArray->Get(1));
-    EXPECT_TRUE(appendArray->Get(2).IsUndefined()); // 2: the second index
-    EXPECT_TRUE(appendArray->Get(3).IsHole()); // 3: the third index
-    EXPECT_TRUE(appendArray->Get(4).IsHole()); // 4: the fourth index
+    EXPECT_EQ(appendArray->Get(thread, 0), appendArray->Get(thread, 1));
+    EXPECT_TRUE(appendArray->Get(thread, 2).IsUndefined()); // 2: the second index
+    EXPECT_TRUE(appendArray->Get(thread, 3).IsHole()); // 3: the third index
+    EXPECT_TRUE(appendArray->Get(thread, 4).IsHole()); // 4: the fourth index
 }
 
 HWTEST_F_L0(TaggedArrayTest, HasDuplicateEntry)
@@ -135,15 +135,15 @@ HWTEST_F_L0(TaggedArrayTest, HasDuplicateEntry)
         JSHandle<JSTaggedValue> arrayValue(thread, JSTaggedValue(i));
         taggedArray->Set(thread, i, arrayValue.GetTaggedValue());
     }
-    EXPECT_FALSE(taggedArray->HasDuplicateEntry());
+    EXPECT_FALSE(taggedArray->HasDuplicateEntry(thread));
     // set value that is the same as the thrid index
     taggedArray->Set(thread, 1, value3.GetTaggedValue());
-    EXPECT_TRUE(taggedArray->HasDuplicateEntry());
+    EXPECT_TRUE(taggedArray->HasDuplicateEntry(thread));
     // resert value in the second index
     taggedArray->Set(thread, 1, value1.GetTaggedValue());
     taggedArray->Set(thread, 5, newObj1);  // 5: the fifth index
     taggedArray->Set(thread, 6, newObj1.GetTaggedValue());  // 6: the sixth index
-    EXPECT_TRUE(taggedArray->HasDuplicateEntry());
+    EXPECT_TRUE(taggedArray->HasDuplicateEntry(thread));
 }
 
 HWTEST_F_L0(TaggedArrayTest, Trim)
@@ -169,7 +169,7 @@ HWTEST_F_L0(TaggedArrayTest, Trim)
     taggedArray->Trim(thread, newArrayLength);
     for (uint32_t i = 0; i < newArrayLength; i++) {
         JSHandle<JSTaggedValue> arrayValue(thread, JSTaggedValue(i));
-        EXPECT_EQ(taggedArray->Get(i), arrayValue.GetTaggedValue());
+        EXPECT_EQ(taggedArray->Get(thread, i), arrayValue.GetTaggedValue());
     }
     EXPECT_EQ(taggedArray->GetLength(), newArrayLength);
     EXPECT_EQ(JSObject::GetProperty(thread, TaggedArrayObj, indexValue).GetValue(), undefinedValue);

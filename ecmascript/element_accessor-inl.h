@@ -38,7 +38,7 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
         Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
     }
     
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     ASSERT(idx < elements->GetLength());
     if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();

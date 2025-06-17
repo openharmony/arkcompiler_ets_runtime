@@ -178,30 +178,30 @@ HWTEST_F_L0(JSArrayTest, COWArray)
     JSHandle<JSArray> cloneArray = factory->CloneArrayLiteral(array);
 
     for (int i = 0; i < 5; i++) {
-        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(i);
-        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(i);
+        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements(thread).GetTaggedObject())->Get(thread, i);
+        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements(thread).GetTaggedObject())->Get(thread, i);
         EXPECT_EQ(value1.GetRawData(), value2.GetRawData());
     }
 
 #if defined ENABLE_COW_ARRAY
     // Elements array is shared to use the same array.
-    EXPECT_EQ(cloneArray->GetElements().GetTaggedObject(), array->GetElements().GetTaggedObject());
+    EXPECT_EQ(cloneArray->GetElements(thread).GetTaggedObject(), array->GetElements(thread).GetTaggedObject());
 #endif
     JSHandle<JSTaggedValue> lengthKeyHandle(thread->GlobalConstants()->GetHandledLengthString());
 
     // Change the value and the elements will not be shared.
     JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(cloneArray), 0, lengthKeyHandle);
 
-    EXPECT_TRUE(TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(0) !=
-        TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(0));
+    EXPECT_TRUE(TaggedArray::Cast(cloneArray->GetElements(thread).GetTaggedObject())->Get(thread, 0) !=
+        TaggedArray::Cast(array->GetElements(thread).GetTaggedObject())->Get(thread, 0));
 
 #if defined ENABLE_COW_ARRAY
-    EXPECT_TRUE(cloneArray->GetElements().GetTaggedObject() != array->GetElements().GetTaggedObject());
+    EXPECT_TRUE(cloneArray->GetElements(thread).GetTaggedObject() != array->GetElements(thread).GetTaggedObject());
 #endif
 
     for (int i = 1; i < 5; i++) {
-        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(i);
-        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(i);
+        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements(thread).GetTaggedObject())->Get(thread, i);
+        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements(thread).GetTaggedObject())->Get(thread, i);
         EXPECT_EQ(value1.GetRawData(), value2.GetRawData());
     }
 }
@@ -229,7 +229,7 @@ HWTEST_F_L0(JSArrayTest, TrackInfo)
     auto floatHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(10.1));
     ASSERT_TRUE(JSHClass::TransitToElementsKind(thread, obj, floatHandle, ElementsKind::NONE));
     auto numberHClass = JSTaggedValue(thread->GetArrayInstanceHClass(ElementsKind::NUMBER, false));
-    ASSERT_EQ(trackInfo->GetCachedHClass(), numberHClass);
+    ASSERT_EQ(trackInfo->GetCachedHClass(thread), numberHClass);
     ASSERT_EQ(trackInfo->GetElementsKind(), ElementsKind::NUMBER);
 }
 }  // namespace panda::test

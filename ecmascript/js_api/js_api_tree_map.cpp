@@ -28,11 +28,11 @@ void JSAPITreeMap::Set(JSThread *thread, const JSHandle<JSAPITreeMap> &map, cons
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be not null. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject()));
 
     JSTaggedValue newMap = TaggedTreeMap::Set(thread, mapHandle, key, value);
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -41,39 +41,39 @@ void JSAPITreeMap::Set(JSThread *thread, const JSHandle<JSAPITreeMap> &map, cons
 
 JSTaggedValue JSAPITreeMap::Get(JSThread *thread, const JSHandle<JSAPITreeMap> &map, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject()));
     return TaggedTreeMap::Get(thread, mapHandle, key);
 }
 
-int JSAPITreeMap::GetSize() const
+int JSAPITreeMap::GetSize(const JSThread *thread) const
 {
-    return TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject())->NumberOfElements();
+    return TaggedTreeMap::Cast(GetTreeMap(thread).GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSAPITreeMap::GetKey(int entry) const
+JSTaggedValue JSAPITreeMap::GetKey(const JSThread *thread, int entry) const
 {
-    ASSERT_PRINT(entry < GetSize(), "entry must less than capacity");
-    JSTaggedValue key = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject())->GetKey(entry);
+    ASSERT_PRINT(entry < GetSize(thread), "entry must less than capacity");
+    JSTaggedValue key = TaggedTreeMap::Cast(GetTreeMap(thread).GetTaggedObject())->GetKey(thread, entry);
     return key.IsHole() ? JSTaggedValue::Undefined() : key;
 }
 
-JSTaggedValue JSAPITreeMap::GetValue(int entry) const
+JSTaggedValue JSAPITreeMap::GetValue(const JSThread *thread, int entry) const
 {
-    ASSERT_PRINT(entry < GetSize(), "entry must less than capacity");
-    JSTaggedValue value = TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject())->GetValue(entry);
+    ASSERT_PRINT(entry < GetSize(thread), "entry must less than capacity");
+    JSTaggedValue value = TaggedTreeMap::Cast(GetTreeMap(thread).GetTaggedObject())->GetValue(thread, entry);
     return value.IsHole() ? JSTaggedValue::Undefined() : value;
 }
 
 JSTaggedValue JSAPITreeMap::Delete(JSThread *thread, const JSHandle<JSAPITreeMap> &map,
                                    const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject()));
     int entry = TaggedTreeMap::FindEntry(thread, mapHandle, key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (entry < 0) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<JSTaggedValue> value(thread, mapHandle->GetValue(entry));
+    JSHandle<JSTaggedValue> value(thread, mapHandle->GetValue(thread, entry));
     JSTaggedValue newMap = TaggedTreeMap::Delete(thread, mapHandle, entry);
     map->SetTreeMap(thread, newMap);
     return value.GetTaggedValue();
@@ -81,23 +81,23 @@ JSTaggedValue JSAPITreeMap::Delete(JSThread *thread, const JSHandle<JSAPITreeMap
 
 bool JSAPITreeMap::HasKey(JSThread *thread, const JSHandle<JSAPITreeMap> &map, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject()));
     return TaggedTreeMap::FindEntry(thread, mapHandle, key) >= 0;
 }
 
 bool JSAPITreeMap::HasValue(JSThread *thread, const JSHandle<JSTaggedValue> &value) const
 {
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(GetTreeMap(thread).GetTaggedObject()));
     return mapHandle->HasValue(thread, value.GetTaggedValue());
 }
 
 void JSAPITreeMap::Clear(const JSThread *thread, const JSHandle<JSAPITreeMap> &map)
 {
-    int cap = map->GetSize();
+    int cap = map->GetSize(thread);
     if (cap == 0) {
         return;
     }
-    JSTaggedValue fn = TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject())->GetCompare();
+    JSTaggedValue fn = TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject())->GetCompare(thread);
     JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
     cap = std::max(cap, TaggedTreeMap::MIN_CAPACITY);
     JSTaggedValue internal = TaggedTreeMap::Create(thread, cap);
@@ -110,7 +110,7 @@ void JSAPITreeMap::Clear(const JSThread *thread, const JSHandle<JSAPITreeMap> &m
 bool JSAPITreeMap::Replace(JSThread *thread, const JSHandle<JSAPITreeMap> &map, const JSHandle<JSTaggedValue> &key,
                            const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
+    JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap(thread).GetTaggedObject()));
     int index = TaggedTreeMap::FindEntry(thread, mapHandle, key);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (index < 0) {

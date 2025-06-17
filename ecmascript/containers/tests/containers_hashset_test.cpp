@@ -110,7 +110,7 @@ HWTEST_F_L0(ContainersHashSetTest, HashSetConstructor)
     ASSERT_TRUE(result.IsJSAPIHashSet());
     JSHandle<JSAPIHashSet> setHandle(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(setHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
@@ -221,7 +221,7 @@ HWTEST_F_L0(ContainersHashSetTest, Remove)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue rValue = ContainersHashSet::Remove(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(rValue, JSTaggedValue::True()));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, rValue, JSTaggedValue::True()));
         EXPECT_EQ(tSet->GetSize(), NODE_NUMBERS * 2 - 2);
     }
 }

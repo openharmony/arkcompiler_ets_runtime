@@ -33,7 +33,7 @@ namespace kungfu {
 
 class FrameHandler {
 public:
-    explicit FrameHandler(const JSThread *thread);
+    explicit FrameHandler(JSThread *thread);
 
     ~FrameHandler() = default;
 
@@ -264,6 +264,11 @@ public:
     void IterateAssembleStack(RootVisitor &visitor);
     void IterateEcmaRuntimeCallInfo(RootVisitor &visitor);
 
+    JSThread *GetJSThread() const
+    {
+        return thread_;
+    }
+
 private:
     FrameType GetFrameType() const
     {
@@ -279,7 +284,7 @@ private:
     JSTaggedType *sp_ {nullptr};
     JSTaggedType *fp_ {nullptr};
     uintptr_t baselineNativePc_ {0}; // For baselineJit upFrame
-    const JSThread *thread_ {nullptr};
+    JSThread *thread_ {nullptr};
     const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 };
 

@@ -22,12 +22,12 @@ VTable::Tuple VTable::CreateTuple(const JSThread *thread, JSTaggedValue phc,
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *phcPoint = JSHClass::Cast(phc.GetTaggedObject());
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(phcPoint->GetLayout().GetTaggedObject());
-    JSHandle<JSTaggedValue> name(thread, layoutInfo->GetKey(propIndex));
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(phcPoint->GetLayout(thread).GetTaggedObject());
+    JSHandle<JSTaggedValue> name(thread, layoutInfo->GetKey(thread, propIndex));
 
     // get type
     JSTaggedValue typeVal;
-    PropertyAttributes attr = layoutInfo->GetAttr(propIndex);
+    PropertyAttributes attr = layoutInfo->GetAttr(thread, propIndex);
     if (attr.IsAccessor()) {
         typeVal = JSTaggedValue(VTable::TypeKind::ACCESSOR);
     } else {
@@ -50,7 +50,7 @@ VTable::Tuple VTable::GetTuple(const JSThread *thread, uint32_t tupleIdx) const
 {
     CVector<JSHandle<JSTaggedValue>> vec;
     for (uint32_t loc = 0; loc < ITEM_NUM; ++loc) {
-        JSTaggedValue val = Get(tupleIdx * TUPLE_SIZE + loc);
+        JSTaggedValue val = Get(thread, tupleIdx * TUPLE_SIZE + loc);
         vec.emplace_back(JSHandle<JSTaggedValue>(thread, val));
     }
     return Tuple(vec);
@@ -71,7 +71,7 @@ void VTable::Trim(const JSThread *thread, uint32_t newLength)
     TaggedArray::Trim(thread, newLength * VTable::TUPLE_SIZE);
 }
 
-int VTable::GetTupleIndexByName(JSTaggedValue name) const
+int VTable::GetTupleIndexByName(const JSThread *thread, JSTaggedValue name) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetNumberOfTuples();
@@ -83,7 +83,7 @@ int VTable::GetTupleIndexByName(JSTaggedValue name) const
     ASSERT_PRINT(EcmaStringAccessor(str).IsInternString(), "The name of the property is not an intern string");
 
     for (uint32_t index = 0; index < len; ++index) {
-        JSTaggedValue nameVal = GetTupleItem(index, VTable::TupleItem::NAME);
+        JSTaggedValue nameVal = GetTupleItem(thread, index, VTable::TupleItem::NAME);
         if (nameVal == name) {
             return index;
         }
@@ -92,9 +92,9 @@ int VTable::GetTupleIndexByName(JSTaggedValue name) const
     return -1;
 }
 
-bool VTable::Find(JSTaggedValue name) const
+bool VTable::Find(const JSThread *thread, JSTaggedValue name) const
 {
-    return GetTupleIndexByName(name) != -1;
+    return GetTupleIndexByName(thread, name) != -1;
 }
 
 JSHandle<VTable> VTable::Copy(const JSThread *thread, const JSHandle<VTable> &vtable)

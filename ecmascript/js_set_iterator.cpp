@@ -42,7 +42,7 @@ JSTaggedValue JSSetIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
     iter->Update(thread);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 4.Let s be O.[[IteratedSet]].
-    JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet());
+    JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet(thread));
 
     // 5.Let index be O.[[SetNextIndex]].
     int index = static_cast<int>(iter->GetNextIndex());
@@ -55,9 +55,9 @@ JSTaggedValue JSSetIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
     int totalElements = set->NumberOfElements() + set->NumberOfDeletedElements();
 
     while (index < totalElements) {
-        if (!set->GetKey(index).IsHole()) {
+        if (!set->GetKey(thread, index).IsHole()) {
             iter->SetNextIndex(index + 1);
-            JSHandle<JSTaggedValue> key(thread, set->GetKey(index));
+            JSHandle<JSTaggedValue> key(thread, set->GetKey(thread, index));
             // If itemKind is value
             if (itemKind == IterationKind::VALUE || itemKind == IterationKind::KEY) {
                 return JSIterator::CreateIterResultObject(thread, key, false).GetTaggedValue();
@@ -80,20 +80,20 @@ JSTaggedValue JSSetIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
 void JSSetIterator::Update(const JSThread *thread)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue iteratedSet = GetIteratedSet();
+    JSTaggedValue iteratedSet = GetIteratedSet(thread);
     if (iteratedSet.IsUndefined()) {
         return;
     }
     LinkedHashSet *set = LinkedHashSet::Cast(iteratedSet.GetTaggedObject());
-    if (set->GetNextTable().IsHole()) {
+    if (set->GetNextTable(thread).IsHole()) {
         return;
     }
     int index = static_cast<int>(GetNextIndex());
-    JSTaggedValue nextTable = set->GetNextTable();
+    JSTaggedValue nextTable = set->GetNextTable(thread);
     while (!nextTable.IsHole()) {
-        index -= set->GetDeletedElementsAt(index);
+        index -= set->GetDeletedElementsAt(thread, index);
         set = LinkedHashSet::Cast(nextTable.GetTaggedObject());
-        nextTable = set->GetNextTable();
+        nextTable = set->GetNextTable(thread);
     }
     SetIteratedSet(thread, JSTaggedValue(set));
     SetNextIndex(index);

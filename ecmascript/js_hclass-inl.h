@@ -32,7 +32,7 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
                               const JSHandle<JSTaggedValue> &key, PropertyAttributes attributes)
 {
     UpdateRootHClass(thread, parent, child);
-    JSTaggedValue transitions = parent->GetTransitions();
+    JSTaggedValue transitions = parent->GetTransitions(thread);
     if (transitions.IsUndefined()) {
         NotifyLeafHClassChanged(const_cast<JSThread *>(thread), parent);
         JSTaggedValue weakChild = JSTaggedValue(child.GetTaggedValue().CreateAndGetWeakRef());
@@ -45,10 +45,10 @@ void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
         if (cachedHClass->HasProps()) {
             uint32_t last = cachedHClass->LastPropIndex();
-            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout(thread).GetTaggedObject());
             auto metaData = JSHandle<JSTaggedValue>(thread,
-                JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
-            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
+                JSTaggedValue(layoutInfo->GetAttr(thread, last).GetPropertyMetaData()));
+            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(thread, last));
             auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
             dict.Update(TransitionsDictionary::Create(thread));
             transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass,
@@ -75,7 +75,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
 {
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     UpdateRootHClass(thread, parent, child);
-    JSTaggedValue transitions = parent->GetTransitions();
+    JSTaggedValue transitions = parent->GetTransitions(thread);
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());
     if (transitions.IsUndefined()) {
         NotifyLeafHClassChanged(const_cast<JSThread *>(thread), parent);
@@ -84,10 +84,10 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
         auto cachedHClass = JSHClass::Cast(transitions.GetTaggedWeakRef());
         if (cachedHClass->HasProps()) {
             uint32_t last = cachedHClass->LastPropIndex();
-            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+            LayoutInfo* layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout(thread).GetTaggedObject());
             auto metaData = JSHandle<JSTaggedValue>(thread,
-                JSTaggedValue(layoutInfo->GetAttr(last).GetPropertyMetaData()));
-            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(last));
+                JSTaggedValue(layoutInfo->GetAttr(thread, last).GetPropertyMetaData()));
+            auto lastKey = JSHandle<JSTaggedValue>(thread, layoutInfo->GetKey(thread, last));
             auto lastHClass = JSHandle<JSTaggedValue>(thread, cachedHClass);
             dict.Update(TransitionsDictionary::Create(thread));
             transitions = TransitionsDictionary::PutIfAbsent(thread, dict, lastKey, lastHClass,
@@ -101,11 +101,11 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
     parent->SetTransitions(thread, transitions);
 }
 
-inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData,
-                                           const Representation &rep)
+inline JSHClass *JSHClass::FindTransitions(const JSThread *thread, const JSTaggedValue &key,
+                                           const JSTaggedValue &metaData, const Representation &rep)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue transitions = GetTransitions();
+    JSTaggedValue transitions = GetTransitions(thread);
     if (transitions.IsUndefined()) {
         return nullptr;
     }
@@ -115,46 +115,47 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
             return nullptr;
         }
         int last = static_cast<int>(cachedHClass->LastPropIndex());
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
-        auto lastMetaData = layoutInfo->GetAttr(last).GetPropertyMetaData();
-        auto lastKey = layoutInfo->GetKey(last);
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout(thread).GetTaggedObject());
+        auto lastMetaData = layoutInfo->GetAttr(thread, last).GetPropertyMetaData();
+        auto lastKey = layoutInfo->GetKey(thread, last);
         if (lastMetaData == metaData.GetInt() && key == lastKey) {
-            return CheckHClassForRep(cachedHClass, rep);
+            return CheckHClassForRep(thread, cachedHClass, rep);
         }
         return nullptr;
     }
 
     ASSERT(transitions.IsTaggedArray());
     TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
-    auto entry = dict->FindEntry(key, metaData);
+    auto entry = dict->FindEntry(thread, key, metaData);
     if (entry == -1) {
         return nullptr;
     }
 
-    JSTaggedValue ret = dict->GetValue(entry);
+    JSTaggedValue ret = dict->GetValue(thread, entry);
     if (ret.IsUndefined()) {
         return nullptr;
     }
 
-    return CheckHClassForRep(JSHClass::Cast(ret.GetTaggedWeakRef()), rep);
+    return CheckHClassForRep(thread, JSHClass::Cast(ret.GetTaggedWeakRef()), rep);
 }
 
-inline JSHClass *JSHClass::FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto)
+inline JSHClass *JSHClass::FindProtoTransitions(const JSThread *thread, const JSTaggedValue &key,
+                                                const JSTaggedValue &proto)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue transitions = GetTransitions();
+    JSTaggedValue transitions = GetTransitions(thread);
     if (transitions.IsWeak() || !transitions.IsTaggedArray()) {
         ASSERT(transitions.IsUndefined() || transitions.IsWeak());
         return nullptr;
     }
     ASSERT(transitions.IsTaggedArray());
     TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
-    auto entry = dict->FindEntry(key, proto);
+    auto entry = dict->FindEntry(thread, key, proto);
     if (entry == -1) {
         return nullptr;
     }
 
-    JSTaggedValue ret = dict->GetValue(entry);
+    JSTaggedValue ret = dict->GetValue(thread, entry);
     if (ret.IsUndefined()) {
         return nullptr;
     }
@@ -167,7 +168,7 @@ inline void JSHClass::RestoreElementsKindToGeneric(JSHClass *newJsHClass)
     newJsHClass->SetElementsKind(ElementsKind::GENERIC);
 }
 
-inline JSHClass *JSHClass::CheckHClassForRep(JSHClass *hclass, const Representation &rep)
+inline JSHClass *JSHClass::CheckHClassForRep(const JSThread *thread, JSHClass *hclass, const Representation &rep)
 {
     if (!hclass->IsAOT()) {
         return hclass;
@@ -177,8 +178,8 @@ inline JSHClass *JSHClass::CheckHClassForRep(JSHClass *hclass, const Representat
     }
 
     int last = static_cast<int>(hclass->LastPropIndex());
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    auto lastRep = layoutInfo->GetAttr(last).GetRepresentation();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
+    auto lastRep = layoutInfo->GetAttr(thread, last).GetRepresentation();
     auto result = hclass;
     if (lastRep == Representation::INT) {
         if (rep != Representation::INT) {
@@ -196,8 +197,8 @@ inline void JSHClass::UpdatePropertyMetaData(const JSThread *thread, [[maybe_unu
                                              const PropertyAttributes &metaData)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(!GetLayout().IsNull());
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(GetLayout().GetTaggedObject());
+    ASSERT(!GetLayout(thread).IsNull());
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(GetLayout(thread).GetTaggedObject());
     ASSERT(layoutInfo->GetLength() != 0);
     uint32_t entry = metaData.GetOffset();
 
@@ -278,17 +279,17 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
     DISALLOW_GARBAGE_COLLECTION;
 
     // copy jshclass
-    SetPrototype(thread, jshclass->GetPrototype());
+    SetPrototype(thread, jshclass->GetPrototype(thread));
     SetBitField(jshclass->GetBitField());
     SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
     SetNumberOfProps(jshclass->NumberOfProps());
 }
 
-inline JSHClass *JSHClass::FindRootHClass(JSHClass *hclass)
+inline JSHClass *JSHClass::FindRootHClass(const JSThread *thread, JSHClass *hclass)
 {
     auto root = hclass;
     while (!ProfileType(root->GetProfileType()).IsRootType()) {
-        auto parent = root->GetParent();
+        auto parent = root->GetParent(thread);
         if (!parent.IsJSHClass()) {
             break;
         }
@@ -297,9 +298,9 @@ inline JSHClass *JSHClass::FindRootHClass(JSHClass *hclass)
     return root;
 }
 
-inline JSTaggedValue JSHClass::FindProtoHClass(JSHClass *hclass)
+inline JSTaggedValue JSHClass::FindProtoHClass(const JSThread *thread, JSHClass *hclass)
 {
-    auto proto = hclass->GetProto();
+    auto proto = hclass->GetProto(thread);
     if (proto.IsJSObject()) {
         auto prototypeObj = JSObject::Cast(proto);
         return JSTaggedValue(prototypeObj->GetClass());
@@ -307,13 +308,13 @@ inline JSTaggedValue JSHClass::FindProtoHClass(JSHClass *hclass)
     return JSTaggedValue::Undefined();
 }
 
-inline JSTaggedValue JSHClass::FindProtoRootHClass(JSHClass *hclass)
+inline JSTaggedValue JSHClass::FindProtoRootHClass(const JSThread *thread, JSHClass *hclass)
 {
-    auto proto = hclass->GetProto();
+    auto proto = hclass->GetProto(thread);
     if (proto.IsJSObject()) {
         auto prototypeObj = JSObject::Cast(proto);
         auto prototypeHClass = prototypeObj->GetClass();
-        return JSTaggedValue(JSHClass::FindRootHClass(prototypeHClass));
+        return JSTaggedValue(JSHClass::FindRootHClass(thread, prototypeHClass));
     }
     return JSTaggedValue::Undefined();
 }
@@ -329,26 +330,26 @@ inline void JSHClass::UpdateRootHClass(const JSThread *thread, const JSHandle<JS
 inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
     uint32_t propsNumber = hclass->NumberOfProps();
     int entry = layout->FindElementWithCache(thread, hclass, key, propsNumber);
     return entry;
 }
 
-inline void JSHClass::CompleteObjSizeTracking()
+inline void JSHClass::CompleteObjSizeTracking(const JSThread *thread)
 {
     if (!IsObjSizeTrackingInProgress()) {
         return;
     }
-    uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+    uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(thread, this);
     if (finalInObjPropsNum < GetInlinedProperties()) {
         // UpdateObjSize with finalInObjPropsNum
-        JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+        JSHClass::VisitTransitionAndUpdateObjSize(thread, this, finalInObjPropsNum);
     }
     SetConstructionCounter(0); // fini ObjSizeTracking
 }
 
-inline void JSHClass::ObjSizeTrackingStep()
+inline void JSHClass::ObjSizeTrackingStep(const JSThread *thread)
 {
     if (!IsObjSizeTrackingInProgress()) {
         return;
@@ -357,10 +358,10 @@ inline void JSHClass::ObjSizeTrackingStep()
     ASSERT(constructionCounter != 0);
     SetConstructionCounter(--constructionCounter);
     if (constructionCounter == 0) {
-        uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+        uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(thread, this);
         if (finalInObjPropsNum < GetInlinedProperties()) {
             // UpdateObjSize with finalInObjPropsNum
-            JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+            JSHClass::VisitTransitionAndUpdateObjSize(thread, this, finalInObjPropsNum);
         }
     }
 }
@@ -370,8 +371,8 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(jshclass->IsPrototype());
-    JSTaggedValue enumCache = jshclass->GetEnumCache();
-    JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
+    JSTaggedValue enumCache = jshclass->GetEnumCache(thread);
+    JSTaggedValue markerValue = jshclass->GetProtoChangeMarker(thread);
     // Used in for-in.
     if (enumCache.IsEnumCache()) {
         EnumCache::Cast(enumCache)->SetInvalidState(thread);
@@ -392,20 +393,21 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
 {
     DISALLOW_GARBAGE_COLLECTION;
     MarkProtoChanged<isForAot>(thread, jshclass);
-    JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
+    JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails(thread);
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
     }
-    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listenersValue =
+        ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener(thread);
     if (!listenersValue.IsTaggedArray()) {
         return;
     }
     ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
-        JSTaggedValue temp = listeners->Get(i);
+        JSTaggedValue temp = listeners->Get(thread, i);
         if (temp.IsJSHClass()) {
             NoticeThroughChain<isForAot>(thread,
-                JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
+                JSHandle<JSHClass>(thread, listeners->Get(thread, i).GetTaggedObject()), addedKey);
         }
     }
 }
@@ -424,7 +426,7 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
     newJsHClass->IncNumberOfProps();
 
     {
-        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
+        JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout(thread));
 
         if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
             layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
@@ -462,10 +464,10 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
                                                     const PropertyAttributes &attr, const Representation &rep,
                                                     bool specificInlinedProps, uint32_t specificNumInlinedProps)
 {
-    JSHClass *newClass = jshclass->FindTransitions(
+    JSHClass *newClass = jshclass->FindTransitions(thread,
         key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()), rep);
     if (newClass != nullptr) {
-        newClass->SetPrototype(thread, jshclass->GetPrototype());
+        newClass->SetPrototype(thread, jshclass->GetPrototype(thread));
         return JSHandle<JSHClass>(thread, newClass);
     }
 

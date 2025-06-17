@@ -87,16 +87,16 @@ public:
 
         BaseDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> retTrue = deserializer.ReadValue();
-        EXPECT_TRUE(JSTaggedValue::SameValue(jsTrue, retTrue)) << "Not same value for JS_TRUE";
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, jsTrue, retTrue)) << "Not same value for JS_TRUE";
         JSHandle<JSTaggedValue> retFalse = deserializer.ReadValue();
-        EXPECT_TRUE(JSTaggedValue::SameValue(jsFalse, retFalse)) << "Not same value for JS_FALSE";
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, jsFalse, retFalse)) << "Not same value for JS_FALSE";
         JSHandle<JSTaggedValue> retUndefined = deserializer.ReadValue();
         JSHandle<JSTaggedValue> retNull = deserializer.ReadValue();
         JSHandle<JSTaggedValue> retHole = deserializer.ReadValue();
 
-        EXPECT_TRUE(JSTaggedValue::SameValue(jsUndefined, retUndefined)) << "Not same value for JS_UNDEFINED";
-        EXPECT_TRUE(JSTaggedValue::SameValue(jsNull, retNull)) << "Not same value for JS_NULL";
-        EXPECT_TRUE(JSTaggedValue::SameValue(jsHole, retHole)) << "Not same value for JS_HOLE";
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, jsUndefined, retUndefined)) << "Not same value for JS_UNDEFINED";
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, jsNull, retNull)) << "Not same value for JS_NULL";
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, jsHole, retHole)) << "Not same value for JS_HOLE";
         Destroy();
     }
 
@@ -158,7 +158,7 @@ public:
         EXPECT_EQ(length, 4U); // 4 : test case
         double sum = 0.0;
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             double a = JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue()->GetNumber();
             sum += a;
         }
@@ -182,7 +182,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 10U);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
             EXPECT_TRUE(value->GetTaggedObject()->GetClass()->IsJSObject());
@@ -207,7 +207,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 1030U);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
             EXPECT_TRUE(value->IsInt());
@@ -237,7 +237,7 @@ public:
         size_t length = array->GetLength();
         EXPECT_EQ(length, 102400U); // 102400: array length
         for (uint32_t i = 0; i < length; i++) {
-            EXPECT_TRUE(array->Get(i).IsHole());
+            EXPECT_TRUE(array->Get(thread, i).IsHole());
         }
 
         Destroy();
@@ -289,7 +289,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 2U);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
             EXPECT_TRUE(value->IsJSError());
@@ -314,7 +314,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 7U); // 7 : test case
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
             EXPECT_TRUE(value->IsJSError());
@@ -338,7 +338,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 2U);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
             EXPECT_TRUE(value->GetTaggedObject()->GetClass()->IsBigInt());
@@ -371,7 +371,7 @@ public:
         JSHandle<TaggedArray> array = JSObject::GetOwnPropertyKeys(thread, retObj);
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 2U);
-        JSHandle<JSTaggedValue> key(thread, array->Get(0));
+        JSHandle<JSTaggedValue> key(thread, array->Get(thread, 0));
         JSHandle<JSTaggedValue> value =
             JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retObj), key).GetValue();
         EXPECT_TRUE(value->IsUndefined());
@@ -400,13 +400,13 @@ public:
         EXPECT_EQ(propertyLength, 2U); // 2 : test case
         int sum = 0;
         for (uint32_t i = 0; i < propertyLength; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             double a = JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retSet), key).GetValue()->GetNumber();
             sum += a;
         }
         EXPECT_EQ(sum, 16); // 16 : test case
 
-        EXPECT_EQ(retSet->GetSize(), 4);  // 4 : test case
+        EXPECT_EQ(retSet->GetSize(thread), 4);  // 4 : test case
         EXPECT_TRUE(retSet->Has(thread, value1.GetTaggedValue()));
         EXPECT_TRUE(retSet->Has(thread, value2.GetTaggedValue()));
         EXPECT_TRUE(retSet->Has(thread, value3.GetTaggedValue()));
@@ -430,7 +430,7 @@ public:
         EXPECT_EQ(propertyLength, 23U);  // 23 : test case
         int sum = 0;
         for (uint32_t i = 0; i < propertyLength; i++) {
-            JSHandle<JSTaggedValue> key(thread, keyArray->Get(i));
+            JSHandle<JSTaggedValue> key(thread, keyArray->Get(thread, i));
             double a = JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(retArray), key).GetValue()->GetNumber();
             sum += a;
         }
@@ -461,10 +461,10 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
-        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode(thread);
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode(thread);
         EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -473,10 +473,10 @@ public:
         Init();
         JSHandle<EcmaString> ecmaString = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
         JSHandle<EcmaString> ecmaString1 = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
-        auto ecmaStringCode1 = EcmaStringAccessor(ecmaString).GetHashcode();
-        auto ecmaString1Code = EcmaStringAccessor(ecmaString1).GetHashcode();
+        auto ecmaStringCode1 = EcmaStringAccessor(ecmaString).GetHashcode(thread);
+        auto ecmaString1Code = EcmaStringAccessor(ecmaString1).GetHashcode(thread);
         EXPECT_TRUE(ecmaStringCode1 == ecmaString1Code) << "Not same HashCode";
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *ecmaString1)) << "Not same EcmaString";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *ecmaString, *ecmaString1)) << "Not same EcmaString";
 
         BaseDeserializer deserializer(thread, data);
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
@@ -486,10 +486,10 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        auto ecmaStringCode2 = EcmaStringAccessor(ecmaString).GetHashcode();
-        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
+        auto ecmaStringCode2 = EcmaStringAccessor(ecmaString).GetHashcode(thread);
+        auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode(thread);
         EXPECT_TRUE(ecmaStringCode2 == resEcmaStringCode) << "Not same HashCode";
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
 
@@ -535,7 +535,7 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSDate fail";
         EXPECT_TRUE(res->IsDate()) << "[NotJSDate] Deserialize JSDate fail";
         JSHandle<JSDate> resDate = JSHandle<JSDate>(res);
-        EXPECT_TRUE(resDate->GetTimeValue() == JSTaggedValue(tm)) << "Not Same Time Value";
+        EXPECT_TRUE(resDate->GetTimeValue(thread) == JSTaggedValue(tm)) << "Not Same Time Value";
         Destroy();
     }
 
@@ -547,17 +547,17 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSMap fail";
         EXPECT_TRUE(res->IsJSMap()) << "[NotJSMap] Deserialize JSMap fail";
         JSHandle<JSMap> resMap = JSHandle<JSMap>::Cast(res);
-        EXPECT_TRUE(originMap->GetSize() == resMap->GetSize()) << "the map size Not equal";
-        uint32_t resSize = static_cast<uint32_t>(resMap->GetSize());
+        EXPECT_TRUE(originMap->GetSize(thread) == resMap->GetSize(thread)) << "the map size Not equal";
+        uint32_t resSize = static_cast<uint32_t>(resMap->GetSize(thread));
         for (uint32_t i = 0; i < resSize; i++) {
-            JSHandle<JSTaggedValue> resKey(thread, resMap->GetKey(i));
-            JSHandle<JSTaggedValue> resValue(thread, resMap->GetValue(i));
-            JSHandle<JSTaggedValue> key(thread, originMap->GetKey(i));
-            JSHandle<JSTaggedValue> value(thread, originMap->GetValue(i));
+            JSHandle<JSTaggedValue> resKey(thread, resMap->GetKey(thread, i));
+            JSHandle<JSTaggedValue> resValue(thread, resMap->GetValue(thread, i));
+            JSHandle<JSTaggedValue> key(thread, originMap->GetKey(thread, i));
+            JSHandle<JSTaggedValue> value(thread, originMap->GetValue(thread, i));
 
             JSHandle<EcmaString> resKeyStr = JSHandle<EcmaString>::Cast(resKey);
             JSHandle<EcmaString> keyStr = JSHandle<EcmaString>::Cast(key);
-            EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*resKeyStr, *keyStr)) << "Not same map key";
+            EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resKeyStr, *keyStr)) << "Not same map key";
             EXPECT_TRUE(JSTaggedValue::ToInt32(thread, resValue) == JSTaggedValue::ToInt32(thread, value))
                 << "Not same map value";
         }
@@ -574,7 +574,7 @@ public:
         JSHandle<JSArrayBuffer> resJSArrayBuffer = JSHandle<JSArrayBuffer>::Cast(res);
         int32_t resByteLength = static_cast<int32_t>(resJSArrayBuffer->GetArrayBufferByteLength());
         EXPECT_TRUE(resByteLength == byteLength) << "Not Same ByteLength";
-        JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData());
+        JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData(thread));
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
         ASSERT_NE(resBuffer, nullptr);
@@ -594,10 +594,10 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty());
         EXPECT_TRUE(res->IsJSObject());
-        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements();
+        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements(thread);
         EXPECT_TRUE(elements.IsTaggedArray());
         EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 10 * 1024); // 10 * 1024: array length
-        JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(0);
+        JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(thread, 0);
         EXPECT_TRUE(value.IsTaggedArray());
         uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
         EXPECT_EQ(length, 11 * 1024); // 11 * 1024: array length
@@ -611,11 +611,11 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty());
         EXPECT_TRUE(res->IsJSObject());
-        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements();
+        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements(thread);
         EXPECT_TRUE(elements.IsTaggedArray());
         EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 3 * 1024); // 3 * 1024: array length
         for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(i);
+            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(thread, i);
             EXPECT_TRUE(value.IsTaggedArray());
             uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
             EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
@@ -630,21 +630,21 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty());
         EXPECT_TRUE(res->IsJSObject());
-        JSTaggedValue properties = JSHandle<JSObject>(res)->GetProperties();
+        JSTaggedValue properties = JSHandle<JSObject>(res)->GetProperties(thread);
         EXPECT_TRUE(properties.IsTaggedArray());
         EXPECT_EQ(JSHandle<TaggedArray>(thread, properties)->GetLength(), 3 * 1024); // 3 * 1024: array length
         for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, properties)->Get(i);
+            JSTaggedValue value = JSHandle<TaggedArray>(thread, properties)->Get(thread, i);
             EXPECT_TRUE(value.IsTaggedArray());
             uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
             EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
         }
 
-        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements();
+        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements(thread);
         EXPECT_TRUE(elements.IsTaggedArray());
         EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 3 * 1024); // 3 * 1024: array length
         for (int i = 0; i < 5; i++) { // 5: array elements
-            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(i);
+            JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(thread, i);
             EXPECT_TRUE(value.IsTaggedArray());
             uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
             EXPECT_EQ(length, 3 * 1024); // 3 * 1024: array length
@@ -753,13 +753,13 @@ public:
 
         uint32_t resBufferSize = resJSRegexp->GetLength();
         EXPECT_TRUE(resBufferSize == bufferSize) << "Not Same Length";
-        JSHandle<JSTaggedValue> originalSource(thread, resJSRegexp->GetOriginalSource());
+        JSHandle<JSTaggedValue> originalSource(thread, resJSRegexp->GetOriginalSource(thread));
         EXPECT_TRUE(originalSource->IsString());
-        JSHandle<JSTaggedValue> originalFlags(thread, resJSRegexp->GetOriginalFlags());
+        JSHandle<JSTaggedValue> originalFlags(thread, resJSRegexp->GetOriginalFlags(thread));
         EXPECT_TRUE(originalFlags->IsString());
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalSource), *pattern));
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(originalFlags), *flags));
-        JSHandle<JSTaggedValue> resBufferData(thread, resJSRegexp->GetByteCodeBuffer());
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(originalSource), *pattern));
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(originalFlags), *flags));
+        JSHandle<JSTaggedValue> resBufferData(thread, resJSRegexp->GetByteCodeBuffer(thread));
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
         ASSERT_NE(resBuffer, nullptr);
@@ -781,15 +781,15 @@ public:
         EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSInt8Array] Deserialize TypedArray fail";
         JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
 
-        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName());
+        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName(thread));
         uint32_t byteLength = resJSInt8Array->GetByteLength();
         uint32_t byteOffset = resJSInt8Array->GetByteOffset();
         uint32_t arrayLength = resJSInt8Array->GetArrayLength();
         ContentType contentType = resJSInt8Array->GetContentType();
-        JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray());
+        JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray(thread));
 
         EXPECT_TRUE(typedArrayName->IsString());
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(typedArrayName),
                                                         *JSHandle<EcmaString>(originTypedArrayName)));
         EXPECT_EQ(byteLength, 10) << "Not Same ByteLength"; // 10: bufferLength
         EXPECT_EQ(byteOffset, 0) << "Not Same ByteOffset";
@@ -801,7 +801,7 @@ public:
         JSHandle<JSArrayBuffer> resJSArrayBuffer(viewedArrayBuffer);
         uint32_t resTaggedLength = resJSArrayBuffer->GetArrayBufferByteLength();
         EXPECT_EQ(resTaggedLength, 10) << "Not same viewedBuffer length"; // 10: bufferLength
-        JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData());
+        JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData(thread));
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
         for (uint32_t i = 0; i < resTaggedLength; i++) {
@@ -820,15 +820,15 @@ public:
         EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSInt8Array] Deserialize TypedArray fail";
         JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
 
-        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName());
+        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName(thread));
         uint32_t byteLength = resJSInt8Array->GetByteLength();
         uint32_t byteOffset = resJSInt8Array->GetByteOffset();
         uint32_t arrayLength = resJSInt8Array->GetArrayLength();
         ContentType contentType = resJSInt8Array->GetContentType();
-        JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray());
+        JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray(thread));
 
         EXPECT_TRUE(typedArrayName->IsString());
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(typedArrayName),
                                                         *JSHandle<EcmaString>(originTypedArrayName)));
         EXPECT_EQ(byteLength, 10) << "Not Same ByteLength"; // 10: bufferLength
         EXPECT_EQ(byteOffset, 0) << "Not Same ByteOffset";
@@ -863,7 +863,7 @@ public:
         uint32_t length = array->GetLength();
         EXPECT_EQ(length, 512U);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> key(thread, array->Get(i));
+            JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
             JSHandle<JSTaggedValue> value =
                 JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(sObj), key).GetValue();
             EXPECT_TRUE(value->IsInt());
@@ -882,10 +882,10 @@ public:
         JSHandle<JSSharedFunction> sFunc = JSHandle<JSSharedFunction>::Cast(res);
 
         EXPECT_TRUE(sFunc->IsCallable());
-        EXPECT_FALSE(sFunc->GetProtoOrHClass().IsHole());
-        EXPECT_TRUE(sFunc->GetLexicalEnv().IsTaggedArray());
-        EXPECT_TRUE(sFunc->GetHomeObject().IsJSSharedObject());
-        JSHandle<JSSharedObject> sObj(thread, sFunc->GetHomeObject());
+        EXPECT_FALSE(sFunc->GetProtoOrHClass(thread).IsHole());
+        EXPECT_TRUE(sFunc->GetLexicalEnv(thread).IsTaggedArray());
+        EXPECT_TRUE(sFunc->GetHomeObject(thread).IsJSSharedObject());
+        JSHandle<JSSharedObject> sObj(thread, sFunc->GetHomeObject(thread));
         Destroy();
     }
 
@@ -941,7 +941,7 @@ public:
 
         JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
         EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
-        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData(thread));
         EXPECT_TRUE(nativePtr->IsJSNativePointer()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer1 fail";
         JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(nativePtr);
         uintptr_t bufferAddr = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
@@ -962,7 +962,7 @@ public:
 
         JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
         EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
-        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData(thread));
         EXPECT_TRUE(nativePtr->IsJSNativePointer()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer2 fail";
         JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(nativePtr);
         uintptr_t bufferAddr = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
@@ -984,7 +984,7 @@ public:
 
         JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
         EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0);
-        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData(thread));
         EXPECT_TRUE(nativePtr->IsUndefined()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer3 fail";
         Destroy();
     }
@@ -1002,7 +1002,7 @@ public:
 
         JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
         EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
-        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData(thread));
         EXPECT_TRUE(reinterpret_cast<JSNativePointer *>(nativePtr->GetTaggedObject())->GetDeleter());
         Destroy();
     }
@@ -1073,28 +1073,28 @@ public:
         EXPECT_EQ(module->GetTypes(), ModuleTypes::ECMA_MODULE);
         EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
         // check request module
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-        EXPECT_TRUE(requestedModules->Get(0).IsSourceTextModule());
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
+        EXPECT_TRUE(requestedModules->Get(thread, 0).IsSourceTextModule());
         // check import entry
         ObjectFactory *factory = ecmaVm->GetFactory();
         JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8("val"));
-        JSHandle<TaggedArray> importArray(thread, module->GetImportEntries());
-        JSHandle<ImportEntry> importEntry(thread, importArray->Get(0));
+        JSHandle<TaggedArray> importArray(thread, module->GetImportEntries(thread));
+        JSHandle<ImportEntry> importEntry(thread, importArray->Get(thread, 0));
         EXPECT_EQ(importEntry->GetModuleRequestIndex(), 0);
-        EXPECT_EQ(importEntry->GetImportName(), val.GetTaggedValue());
-        EXPECT_EQ(importEntry->GetLocalName(), val.GetTaggedValue());
+        EXPECT_EQ(importEntry->GetImportName(thread), val.GetTaggedValue());
+        EXPECT_EQ(importEntry->GetLocalName(thread), val.GetTaggedValue());
         // check local export entry
-        JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
-        JSHandle<LocalExportEntry> localExportEntry(thread, localExportEntries->Get(0));
+        JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries(thread));
+        JSHandle<LocalExportEntry> localExportEntry(thread, localExportEntries->Get(thread, 0));
         EXPECT_EQ(localExportEntry->GetLocalIndex(), 0);
-        EXPECT_EQ(localExportEntry->GetExportName(), val.GetTaggedValue());
-        EXPECT_EQ(localExportEntry->GetLocalName(), val.GetTaggedValue());
+        EXPECT_EQ(localExportEntry->GetExportName(thread), val.GetTaggedValue());
+        EXPECT_EQ(localExportEntry->GetLocalName(thread), val.GetTaggedValue());
         // check indirect export entry
-        JSHandle<TaggedArray> indirectExportEntries(thread, module->GetIndirectExportEntries());
-        JSHandle<IndirectExportEntry> indirectExportEntry(thread, indirectExportEntries->Get(0));
+        JSHandle<TaggedArray> indirectExportEntries(thread, module->GetIndirectExportEntries(thread));
+        JSHandle<IndirectExportEntry> indirectExportEntry(thread, indirectExportEntries->Get(thread, 0));
         EXPECT_EQ(indirectExportEntry->GetModuleRequestIndex(), 0);
-        EXPECT_EQ(indirectExportEntry->GetExportName(), val.GetTaggedValue());
-        EXPECT_EQ(indirectExportEntry->GetImportName(), val.GetTaggedValue());
+        EXPECT_EQ(indirectExportEntry->GetExportName(thread), val.GetTaggedValue());
+        EXPECT_EQ(indirectExportEntry->GetImportName(thread), val.GetTaggedValue());
         // check empty lazy array
         EXPECT_FALSE(module->IsLazyImportModule(0));
 
@@ -1111,21 +1111,27 @@ public:
 
         EXPECT_FALSE(res.IsEmpty());
         JSHandle<TaggedArray> deserializedModules = JSHandle<TaggedArray>::Cast(res);
-        JSTaggedValue value = deserializedModules->Get(0);
+        JSTaggedValue value = deserializedModules->Get(thread, 0);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::UNINSTANTIATED);
-        value = deserializedModules->Get(1);
+        value = deserializedModules->Get(thread, 1);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::PREINSTANTIATING);
-        value = deserializedModules->Get(2);
+        constexpr uint32_t INDEX_2 = 2;
+        value = deserializedModules->Get(thread, INDEX_2);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATING);
-        value = deserializedModules->Get(3);
+        constexpr uint32_t INDEX_3 = 3;
+        value = deserializedModules->Get(thread, INDEX_3);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATED);
-        value = deserializedModules->Get(4);
+        constexpr uint32_t INDEX_4 = 4;
+        value = deserializedModules->Get(thread, INDEX_4);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATED);
-        value = deserializedModules->Get(5);
+        constexpr uint32_t INDEX_5 = 5;
+        value = deserializedModules->Get(thread, INDEX_5);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATED);
-        value = deserializedModules->Get(6);
+        constexpr uint32_t INDEX_6 = 6;
+        value = deserializedModules->Get(thread, INDEX_6);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATED);
-        value = deserializedModules->Get(7);
+        constexpr uint32_t INDEX_7 = 7;
+        value = deserializedModules->Get(thread, INDEX_7);
         EXPECT_EQ(SourceTextModule::Cast(value.GetTaggedObject())->GetStatus(), ModuleStatus::INSTANTIATED);
         Destroy();
     }
@@ -1164,31 +1170,31 @@ public:
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(res);
         EXPECT_EQ(module->GetEcmaModuleFilenameString(), "modules.abc");
         EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
-        JSHandle<TaggedArray> environmentArray(thread, module->GetEnvironment());
+        JSHandle<TaggedArray> environmentArray(thread, module->GetEnvironment(thread));
         // check sendable binding
         ObjectFactory *objectFactory = ecmaVm->GetFactory();
         JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8("sendable binding recordName");
         JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8("sendable binding baseFileNameHdl");
         ResolvedRecordIndexBinding *recordIndexBinding =
             ResolvedRecordIndexBinding::Cast(environmentArray->Get(thread, 0).GetTaggedObject());
-        EXPECT_EQ(recordIndexBinding->GetModuleRecord(), recordNameHdl.GetTaggedValue());
-        EXPECT_EQ(recordIndexBinding->GetAbcFileName(), baseFileNameHdl.GetTaggedValue());
+        EXPECT_EQ(recordIndexBinding->GetModuleRecord(thread), recordNameHdl.GetTaggedValue());
+        EXPECT_EQ(recordIndexBinding->GetAbcFileName(thread), baseFileNameHdl.GetTaggedValue());
         EXPECT_EQ(recordIndexBinding->GetIndex(), 0);
 
         JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
         ResolvedRecordBinding *nameBinding =
             ResolvedRecordBinding::Cast(environmentArray->Get(thread, 1).GetTaggedObject());
-        EXPECT_EQ(nameBinding->GetModuleRecord(), recordNameHdl.GetTaggedValue());
-        EXPECT_EQ(nameBinding->GetBindingName(), val.GetTaggedValue());
+        EXPECT_EQ(nameBinding->GetModuleRecord(thread), recordNameHdl.GetTaggedValue());
+        EXPECT_EQ(nameBinding->GetBindingName(thread), val.GetTaggedValue());
         // check normal binding
         ResolvedBinding *resolvedBinding =
             ResolvedBinding::Cast(environmentArray->Get(thread, 2).GetTaggedObject());
-        JSHandle<SourceTextModule> module1(thread, resolvedBinding->GetModule());
-        EXPECT_EQ(resolvedBinding->GetBindingName(), val.GetTaggedValue());
+        JSHandle<SourceTextModule> module1(thread, resolvedBinding->GetModule(thread));
+        EXPECT_EQ(resolvedBinding->GetBindingName(thread), val.GetTaggedValue());
 
         ResolvedIndexBinding *resolvedIndexBinding =
             ResolvedIndexBinding::Cast(environmentArray->Get(thread, 3).GetTaggedObject());
-        JSHandle<SourceTextModule> module2(thread, resolvedBinding->GetModule());
+        JSHandle<SourceTextModule> module2(thread, resolvedBinding->GetModule(thread));
         EXPECT_EQ(resolvedIndexBinding->GetIndex(), 0);
         EXPECT_EQ(module1, module2);
         EXPECT_EQ(module1->GetEcmaModuleFilenameString(), "modules1.abc");
@@ -2015,10 +2021,10 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithConcurrentFunction)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> concurrentFunction1 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     EXPECT_TRUE(concurrentFunction1->IsJSFunction());
-    EXPECT_TRUE(concurrentFunction1->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
+    EXPECT_TRUE(concurrentFunction1->GetFunctionKind(thread) == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
     JSHandle<JSFunction> concurrentFunction2 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     EXPECT_TRUE(concurrentFunction2->IsJSFunction());
-    EXPECT_TRUE(concurrentFunction2->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
+    EXPECT_TRUE(concurrentFunction2->GetFunctionKind(thread) == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("1"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("2"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("abc"));
@@ -2105,7 +2111,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
     t1.join();
     delete serializer;
     // test if detached
-    EXPECT_TRUE(arrBuf->IsDetach());
+    EXPECT_TRUE(arrBuf->IsDetach(thread));
 };
 
 // Test serialize JSArrayBuffer that not transfer
@@ -2140,7 +2146,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
     t1.join();
     delete serializer;
     // test if detached
-    EXPECT_FALSE(arrBuf->IsDetach());
+    EXPECT_FALSE(arrBuf->IsDetach(thread));
 };
 
 // Test serialize an empty JSArrayBuffer
@@ -2164,7 +2170,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer3)
     t1.join();
     delete serializer;
     // test if detached
-    EXPECT_FALSE(arrBuf->IsDetach());
+    EXPECT_FALSE(arrBuf->IsDetach(thread));
 };
 
 // Test serialize JSArrayBuffer with external native buffer that not transfer
@@ -2217,7 +2223,7 @@ HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer5)
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(res) << "serialize JSArrayBuffer with external pointer fail";
-    EXPECT_TRUE(arrBuf->IsDetach());
+    EXPECT_TRUE(arrBuf->IsDetach(thread));
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest5, jsDeserializerTest, data.release());
@@ -2270,7 +2276,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared2)
     int msgBufferLen = static_cast<int>(msg.length()) + 1;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArrayBuffer> jsArrayBuffer = factory->NewJSSharedArrayBuffer(msgBufferLen);
-    JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData());
+    JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData(thread));
     JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(BufferData);
     void *buffer = resNp->GetExternalPointer();
     if (memcpy_s(buffer, msgBufferLen, msg.c_str(), msgBufferLen) != EOK) {
@@ -2299,7 +2305,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSArrayBufferShared3)
     int msgBufferLen = static_cast<int>(msg.length()) + 1;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArrayBuffer> jsArrayBuffer = factory->NewJSSharedArrayBuffer(msgBufferLen);
-    JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData());
+    JSHandle<JSTaggedValue> BufferData(thread, jsArrayBuffer->GetArrayBufferData(thread));
     JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(BufferData);
     void *buffer = resNp->GetExternalPointer();
     if (memcpy_s(buffer, msgBufferLen, msg.c_str(), msgBufferLen) != EOK) {

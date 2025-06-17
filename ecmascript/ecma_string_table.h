@@ -180,10 +180,10 @@ public:
                                                        MemSpaceType type);
     EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                                        bool canBeCompress, MemSpaceType type);
-    EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
+    EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID);
 
-    bool CheckStringTableValidity();
+    bool CheckStringTableValidity(JSThread *thread);
 
     NO_COPY_SEMANTIC(EcmaStringTableImpl);
     NO_MOVE_SEMANTIC(EcmaStringTableImpl);
@@ -251,11 +251,11 @@ public:
                                                        MemSpaceType type);
     EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                                        bool canBeCompress, MemSpaceType type);
-    EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
+    EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
 
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
 
-    bool CheckStringTableValidity();
+    bool CheckStringTableValidity(JSThread *thread);
 
     EcmaStringTableCleaner *GetCleaner()
     {
@@ -415,7 +415,7 @@ private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
-    EcmaString *GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
+    EcmaString *GetStringThreadUnsafe(JSThread *thread, EcmaString *string, uint32_t hashcode) const;
     void InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode);
     EcmaString *AtomicGetOrInternStringImpl(JSThread *thread, const JSHandle<EcmaString> string, uint32_t hashcode);
     EcmaString *AtomicGetOrInternStringImplNoGC(JSThread *thread, EcmaString *string, uint32_t hashcode);
@@ -432,7 +432,7 @@ private:
     EcmaString *GetString(JSThread *thread, const uint16_t *utf16Data, uint32_t utf16Len, uint32_t hashcode);
 
     // This used only for SnapShot.
-    void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
+    void InsertStringToTableWithHashThreadUnsafe(JSThread *thread, EcmaString *string, uint32_t hashcode);
     /**
      *
      * These are some "incorrect" functions, which need to fix the call chain to be removed.
@@ -446,13 +446,14 @@ private:
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
     // This should only call in Debugger Signal, and need to fix and remove
-    EcmaString *GetStringThreadUnsafe(const JSHandle<EcmaString> firstString, const JSHandle<EcmaString> secondString,
-                                      uint32_t hashcode) const;
+    EcmaString *GetStringThreadUnsafe(JSThread *thread, const JSHandle<EcmaString> firstString,
+                                      const JSHandle<EcmaString> secondString, uint32_t hashcode) const;
     // This should only call in Debugger Signal or from JIT, and need to fix and remove
-    EcmaString *GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+    EcmaString *GetStringThreadUnsafe(JSThread *thread, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
                                       uint32_t hashcode) const;
     // This should only call in JIT Thread, and need to fix and remove
-    EcmaString *GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len, uint32_t hashcode) const;
+    EcmaString *GetStringThreadUnsafe(JSThread *thread, const uint16_t *utf16Data, uint32_t utf16Len,
+                                      uint32_t hashcode) const;
 
     struct Segment {
         CUnorderedMultiMap<uint32_t, EcmaString *> table_;
@@ -474,9 +475,9 @@ public:
         return reinterpret_cast<SingleCharTable*>(object);
     }
     static JSTaggedValue CreateSingleCharTable(JSThread *thread);
-    JSTaggedValue GetStringFromSingleCharTable(int32_t ch)
+    JSTaggedValue GetStringFromSingleCharTable(JSThread *thread, int32_t ch)
     {
-        return Get(ch);
+        return Get(thread, ch);
     }
 private:
     SingleCharTable() = default;

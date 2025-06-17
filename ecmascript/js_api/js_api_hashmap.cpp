@@ -28,7 +28,7 @@ JSTaggedValue JSAPIHashMap::IsEmpty()
 
 JSTaggedValue JSAPIHashMap::HasKey(JSThread *thread, JSTaggedValue key)
 {
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     int hash = TaggedNode::Hash(thread, key);
     return JSTaggedValue(!(hashArray->GetNode(thread, hash, key).IsHole()));
 }
@@ -36,20 +36,20 @@ JSTaggedValue JSAPIHashMap::HasKey(JSThread *thread, JSTaggedValue key)
 JSTaggedValue JSAPIHashMap::HasValue(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
                                      JSHandle<JSTaggedValue> value)
 {
-    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable(thread));
     uint32_t tabLength = hashArray->GetLength();
     JSTaggedValue taggedValue = value.GetTaggedValue();
     for (uint32_t index = 0; index < tabLength; index++) {
-        JSTaggedValue node = hashArray->Get(index);
+        JSTaggedValue node = hashArray->Get(thread, index);
         if (node.IsHole()) {
             continue;
         }
         if (node.IsLinkedNode()) {
-            if (HasValueLinkedNode(node, taggedValue)) {
+            if (HasValueLinkedNode(thread, node, taggedValue)) {
                 return JSTaggedValue::True();
             }
         } else {
-            if (HasValueRBTreeNode(node, taggedValue)) {
+            if (HasValueRBTreeNode(thread, node, taggedValue)) {
                 return JSTaggedValue::True();
             }
         }
@@ -57,32 +57,32 @@ JSTaggedValue JSAPIHashMap::HasValue(JSThread *thread, JSHandle<JSAPIHashMap> ha
     return JSTaggedValue::False();
 }
 
-bool JSAPIHashMap::HasValueLinkedNode(JSTaggedValue node, JSTaggedValue value)
+bool JSAPIHashMap::HasValueLinkedNode(JSThread *thread, JSTaggedValue node, JSTaggedValue value)
 {
     ASSERT(node.IsLinkedNode());
     while (!node.IsHole()) {
         LinkedNode *p = LinkedNode::Cast(node.GetTaggedObject());
-        if (JSTaggedValue::SameValue(p->GetValue(), value)) {
+        if (JSTaggedValue::SameValue(thread, p->GetValue(thread), value)) {
             return true;
         }
-        node = p->GetNext();
+        node = p->GetNext(thread);
     }
     return false;
 }
 
-bool JSAPIHashMap::HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value)
+bool JSAPIHashMap::HasValueRBTreeNode(JSThread *thread, JSTaggedValue node, JSTaggedValue value)
 {
     ASSERT(node.IsRBTreeNode());
     RBTreeNode *p = RBTreeNode::Cast(node.GetTaggedObject());
-    if (JSTaggedValue::SameValue(p->GetValue(), value)) {
+    if (JSTaggedValue::SameValue(thread, p->GetValue(thread), value)) {
         return true;
     }
-    JSTaggedValue left = p->GetLeft();
-    if (!left.IsHole() && HasValueRBTreeNode(left, value)) {
+    JSTaggedValue left = p->GetLeft(thread);
+    if (!left.IsHole() && HasValueRBTreeNode(thread, left, value)) {
         return true;
     }
-    JSTaggedValue right = p->GetRight();
-    if (!right.IsHole() && HasValueRBTreeNode(right, value)) {
+    JSTaggedValue right = p->GetRight(thread);
+    if (!right.IsHole() && HasValueRBTreeNode(thread, right, value)) {
         return true;
     }
     return false;
@@ -90,7 +90,7 @@ bool JSAPIHashMap::HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value)
 
 bool JSAPIHashMap::Replace(JSThread *thread, JSTaggedValue key, JSTaggedValue newValue)
 {
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue nodeVa = hashArray->GetNode(thread, hash, key);
     if (nodeVa.IsHole()) {
@@ -110,11 +110,11 @@ void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
     if (key.GetTaggedValue().IsUndefined()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         CString errorMsg =
-            "The type of \"key\" must be Key of JS. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be Key of JS. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable(thread));
     int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
     JSTaggedValue setValue = TaggedHashArray::SetVal(thread, hashArray, hash, key, value);
     uint32_t nodeNum = hashMap->GetSize();
@@ -130,25 +130,25 @@ void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
 
 JSTaggedValue JSAPIHashMap::Get(JSThread *thread, JSTaggedValue key)
 {
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     int hash = TaggedNode::Hash(thread, key);
     JSTaggedValue node = hashArray->GetNode(thread, hash, key);
     if (node.IsHole()) {
         return JSTaggedValue::Undefined();
     } else if (node.IsRBTreeNode()) {
-        return RBTreeNode::Cast(node.GetTaggedObject())->GetValue();
+        return RBTreeNode::Cast(node.GetTaggedObject())->GetValue(thread);
     } else {
-        return LinkedNode::Cast(node.GetTaggedObject())->GetValue();
+        return LinkedNode::Cast(node.GetTaggedObject())->GetValue(thread);
     }
 }
 
 void JSAPIHashMap::SetAll(JSThread *thread, JSHandle<JSAPIHashMap> dst, JSHandle<JSAPIHashMap> src)
 {
-    JSHandle<TaggedHashArray> hashArray(thread, src->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, src->GetTable(thread));
     uint32_t srcTabLength = hashArray->GetLength();
     JSMutableHandle<JSTaggedValue> node(thread, JSTaggedValue::Hole());
     for (uint32_t index = 0; index < srcTabLength; index++) {
-        node.Update(hashArray->Get(index));
+        node.Update(hashArray->Get(thread, index));
         if (node->IsHole()) {
             continue;
         }
@@ -164,28 +164,28 @@ void JSAPIHashMap::SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> has
 {
     ASSERT(node.GetTaggedValue().IsLinkedNode());
     while (!node.GetTaggedValue().IsHole()) {
-        if (!hashMap->Replace(thread, node->GetKey(), node->GetValue())) {
-            JSHandle<JSTaggedValue> key(thread, node->GetKey());
-            JSHandle<JSTaggedValue> value(thread, node->GetValue());
+        if (!hashMap->Replace(thread, node->GetKey(thread), node->GetValue(thread))) {
+            JSHandle<JSTaggedValue> key(thread, node->GetKey(thread));
+            JSHandle<JSTaggedValue> value(thread, node->GetValue(thread));
             Set(thread, hashMap, key, value);
         }
-        node.Update(node->GetNext());
+        node.Update(node->GetNext(thread));
     }
 }
 
 void JSAPIHashMap::SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSHandle<RBTreeNode> node)
 {
     ASSERT(node.GetTaggedValue().IsRBTreeNode());
-    JSMutableHandle<JSTaggedValue> key(thread, node->GetKey());
-    JSMutableHandle<JSTaggedValue> value(thread, node->GetValue());
+    JSMutableHandle<JSTaggedValue> key(thread, node->GetKey(thread));
+    JSMutableHandle<JSTaggedValue> value(thread, node->GetValue(thread));
     if (!hashMap->Replace(thread, key.GetTaggedValue(), value.GetTaggedValue())) {
         Set(thread, hashMap, key, value);
     }
-    JSMutableHandle<RBTreeNode> left(thread, node->GetLeft());
+    JSMutableHandle<RBTreeNode> left(thread, node->GetLeft(thread));
     if (!left.GetTaggedValue().IsHole()) {
         SetAllRBTreeNode(thread, hashMap, left);
     }
-    JSMutableHandle<RBTreeNode> right(thread, node->GetRight());
+    JSMutableHandle<RBTreeNode> right(thread, node->GetRight(thread));
     if (!right.GetTaggedValue().IsHole()) {
         SetAllRBTreeNode(thread, hashMap, right);
     }
@@ -193,7 +193,7 @@ void JSAPIHashMap::SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> has
 
 void JSAPIHashMap::Clear(JSThread *thread)
 {
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     uint32_t nodeLength = GetSize();
     if (nodeLength > 0) {
         hashArray->Clear(thread);
@@ -207,7 +207,7 @@ JSTaggedValue JSAPIHashMap::Remove(JSThread *thread, JSHandle<JSAPIHashMap> hash
         return JSTaggedValue::Undefined();
     }
 
-    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable(thread));
     uint32_t nodeNum = hashMap->GetSize();
     if (nodeNum == 0) {
         return JSTaggedValue::Undefined();
@@ -223,7 +223,7 @@ JSTaggedValue JSAPIHashMap::Remove(JSThread *thread, JSHandle<JSAPIHashMap> hash
                  "TaggedHashArray length must greater than or equal to the default minimum value");
 
     uint32_t index = (length - 1) & hash;
-    JSTaggedValue rootVa = hashArray->Get(index);
+    JSTaggedValue rootVa = hashArray->Get(thread, index);
     if (rootVa.IsRBTreeNode()) {
         uint32_t numTreeNode = RBTreeNode::Count(rootVa);
         if (numTreeNode < TaggedHashArray::UNTREEIFY_THRESHOLD) {

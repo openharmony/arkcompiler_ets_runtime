@@ -73,7 +73,7 @@ HWTEST_F_L0(TemplateStringTest, GetTemplateObject)
     // call "GetTemplateObject" function
     JSHandle<JSTaggedValue> templateObject = TemplateString::GetTemplateObject(thread, templateLiteral);
     // find jsArray in templateMap
-    int resultEntry = templateMap->FindEntry(jsArrayObj.GetTaggedValue());
+    int resultEntry = templateMap->FindEntry(thread, jsArrayObj.GetTaggedValue());
     EXPECT_NE(resultEntry, -1);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -87,6 +87,7 @@ HWTEST_F_L0(TemplateStringTest, GetTemplateObject)
     TestHelper::TearDownFrame(thread, prev);
 
     EXPECT_TRUE(result.IsString());
-    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *testString));
+    EXPECT_TRUE(
+        EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()), *testString));
 }
 }  // namespace panda::test

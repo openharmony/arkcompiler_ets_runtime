@@ -39,7 +39,7 @@ JSHandle<Derived> TaggedTree<Derived>::Create(const JSThread *thread, int number
 template<typename Derived>
 void TaggedTree<Derived>::InsertRebalance(const JSThread *thread, int index)
 {
-    while (IsValidIndex(index) && GetColor(GetParent(index)) == TreeColor::RED) {
+    while (IsValidIndex(thread, index) && GetColor(GetParent(index)) == TreeColor::RED) {
         if (IsLeft(GetParent(index))) {
             int bro = GetLeftBrother(GetParent(index));
             if (GetColor(bro)) {
@@ -311,7 +311,7 @@ template<typename Derived>
 int TaggedTree<Derived>::FindEntry(JSThread *thread, const JSHandle<Derived> &tree, const JSHandle<JSTaggedValue> &key)
 {
     int parentIndex = tree->GetRootEntries();
-    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(parentIndex));
+    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(thread, parentIndex));
     ComparisonResult res;
     while (!parentKey->IsHole()) {
         res = EntryCompare(thread, key, parentKey, tree);
@@ -331,7 +331,7 @@ int TaggedTree<Derived>::FindEntry(JSThread *thread, const JSHandle<Derived> &tr
             }
             parentIndex = child.GetInt();
         }
-        parentKey.Update(tree->GetKey(parentIndex));
+        parentKey.Update(tree->GetKey(thread, parentIndex));
     }
     return -1;
 }
@@ -340,7 +340,7 @@ template<typename Derived>
 ComparisonResult TaggedTree<Derived>::EntryCompare(JSThread *thread, const JSHandle<JSTaggedValue> valueX,
     const JSHandle<JSTaggedValue> valueY, JSHandle<Derived> tree)
 {
-    JSTaggedValue fn = tree->GetCompare();
+    JSTaggedValue fn = tree->GetCompare(thread);
     if (fn.IsHole()) {
         return OrdinayEntryCompare(thread, valueX, valueY);
     }
@@ -418,7 +418,7 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
                                               const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
     ASSERT(IsKey(key.GetTaggedValue()));
-    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetRootKey());
+    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetRootKey(thread));
     if (parentKey->IsHole()) {
         tree->SetRoot(thread, 0, key.GetTaggedValue(), value.GetTaggedValue());
         tree->SetNumberOfElements(thread, tree->NumberOfElements() + 1);
@@ -447,7 +447,7 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
             }
             parentIndex = child.GetInt();
         }
-        parentKey.Update(newTree->GetKey(parentIndex));
+        parentKey.Update(newTree->GetKey(thread, parentIndex));
     }
 
     uint32_t entry = newTree->NumberOfElements() + newTree->NumberOfDeletedElements();
@@ -475,7 +475,7 @@ JSHandle<Derived> TaggedTree<Derived>::GrowCapacity(const JSThread *thread, JSHa
     JSHandle<Derived> newTree = AdjustTaggedTree(thread, tree, length);
     // 20 : version isolation at api20
     if (thread->GetEcmaVM()->GetVMAPIVersion() >= 20) {
-        JSTaggedValue fn = tree->GetCompare();
+        JSTaggedValue fn = tree->GetCompare(thread);
         if (!fn.IsUndefined() && !fn.IsNull()) {
             newTree->SetCompare(thread, fn);
         }
@@ -489,7 +489,7 @@ JSTaggedValue TaggedTree<Derived>::GetLowerKey(JSThread *thread, const JSHandle<
                                                const JSHandle<JSTaggedValue> &key)
 {
     int parentIndex = tree->GetRootEntries();
-    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(parentIndex));
+    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(thread, parentIndex));
     int resultIndex = -1;
     ComparisonResult res;
     while (parentIndex >= 0) {
@@ -501,9 +501,9 @@ JSTaggedValue TaggedTree<Derived>::GetLowerKey(JSThread *thread, const JSHandle<
         } else {
             parentIndex = tree->GetLeftChildIndex(parentIndex);
         }
-        parentKey.Update(tree->GetKey(parentIndex));
+        parentKey.Update(tree->GetKey(thread, parentIndex));
     }
-    JSTaggedValue lowerKey = tree->GetKey(resultIndex);
+    JSTaggedValue lowerKey = tree->GetKey(thread, resultIndex);
     return tree->Transform(lowerKey);
 }
 
@@ -512,7 +512,7 @@ JSTaggedValue TaggedTree<Derived>::GetHigherKey(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &key)
 {
     int parentIndex = tree->GetRootEntries();
-    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(parentIndex));
+    JSMutableHandle<JSTaggedValue> parentKey(thread, tree->GetKey(thread, parentIndex));
     int resultIndex = -1;
     ComparisonResult res;
     while (parentIndex >= 0) {
@@ -524,9 +524,9 @@ JSTaggedValue TaggedTree<Derived>::GetHigherKey(JSThread *thread, const JSHandle
         } else {
             parentIndex = tree->GetRightChildIndex(parentIndex);
         }
-        parentKey.Update(tree->GetKey(parentIndex));
+        parentKey.Update(tree->GetKey(thread, parentIndex));
     }
-    JSTaggedValue lowerKey = tree->GetKey(resultIndex);
+    JSTaggedValue lowerKey = tree->GetKey(thread, resultIndex);
     return tree->Transform(lowerKey);
 }
 
@@ -544,7 +544,7 @@ JSHandle<Derived> TaggedTree<Derived>::Shrink(const JSThread *thread, const JSHa
 
     int length = ELEMENTS_START_INDEX + static_cast<int>(newCapacity) * (Derived::ENTRY_SIZE);
     JSHandle<Derived> newTree = AdjustTaggedTree(thread, tree, length);
-    JSTaggedValue fn = tree->GetCompare();
+    JSTaggedValue fn = tree->GetCompare(thread);
     JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
     if (!compareFn->IsUndefined() && !compareFn->IsNull()) {
         newTree->SetCompare(thread, compareFn.GetTaggedValue());
@@ -587,7 +587,7 @@ bool TaggedTreeMap::HasValue([[maybe_unused]] const JSThread *thread, JSTaggedVa
     entries.push(root);
     while (!entries.empty()) {
         int parent = entries.front();
-        if (JSTaggedValue::SameValue(GetValue(parent), value)) {
+        if (JSTaggedValue::SameValue(thread, GetValue(thread, parent), value)) {
             return true;
         }
         int left = GetLeftChildIndex(parent);
@@ -610,8 +610,8 @@ JSTaggedValue TaggedTreeMap::SetAll(JSThread *thread, JSHandle<TaggedTreeMap> &d
     JSHandle<TaggedTreeMap> map = dst;
     while (!entries.empty()) {
         int parent = entries.front();
-        map = Insert(thread, map, JSHandle<JSTaggedValue>(thread, src->GetKey(parent)),
-                           JSHandle<JSTaggedValue>(thread, src->GetValue(parent)));
+        map = Insert(thread, map, JSHandle<JSTaggedValue>(thread, src->GetKey(thread, parent)),
+                     JSHandle<JSTaggedValue>(thread, src->GetValue(thread, parent)));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         int left = src->GetLeftChildIndex(parent);
         if (left >= 0) {

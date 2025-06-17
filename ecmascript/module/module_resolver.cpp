@@ -80,7 +80,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
                                                                            const JSHandle<JSTaggedValue> &moduleRequest,
                                                                            const ExecuteTypes &executeType)
 {
-    CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
+    CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(thread, moduleRequest.GetTaggedValue());
     ReplaceModuleThroughFeature(thread, moduleRequestName);
 
     CString baseFilename{};
@@ -126,7 +126,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     const ExecuteTypes &executeType)
 {
     auto moduleManager = thread->GetModuleManager();
-    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
+    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(thread, moduleRequest.GetTaggedValue());
     if (moduleManager->IsLocalModuleLoaded(moduleRequestStr)) {
         return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr));
     }

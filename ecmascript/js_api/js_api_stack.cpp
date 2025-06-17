@@ -41,16 +41,16 @@ JSTaggedValue JSAPIStack::Push(JSThread *thread, const JSHandle<JSAPIStack> &sta
     return value.GetTaggedValue();
 }
 
-JSTaggedValue JSAPIStack::Peek()
+JSTaggedValue JSAPIStack::Peek(JSThread *thread)
 {
     int top = this->GetTop();
     if (top == -1) {
         return JSTaggedValue::Undefined();
     }
 
-    TaggedArray *elements = TaggedArray::Cast(this->GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(this->GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    return elements->Get(top);
+    return elements->Get(thread, top);
 }
 
 JSTaggedValue JSAPIStack::Pop(JSThread *thread)
@@ -59,21 +59,21 @@ JSTaggedValue JSAPIStack::Pop(JSThread *thread)
     if (top == -1) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<TaggedArray> elements(thread, TaggedArray::Cast(this->GetElements().GetTaggedObject()));
+    JSHandle<TaggedArray> elements(thread, TaggedArray::Cast(this->GetElements(thread).GetTaggedObject()));
     ASSERT(!elements->IsDictionaryMode());
-    JSTaggedValue ret = elements->Get(top);
+    JSTaggedValue ret = elements->Get(thread, top);
     elements->Set(thread, top, JSTaggedValue::Hole());
     this->SetTop(--top);
     return ret;
 }
 
-int JSAPIStack::Search(const JSHandle<JSTaggedValue> &value)
+int JSAPIStack::Search(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     int top = this->GetTop();
-    TaggedArray *elements = TaggedArray::Cast(this->GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(this->GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
     for (int i = 0; i <= top; i++) {
-        if (value.GetTaggedValue() == elements->Get(i)) {
+        if (value.GetTaggedValue() == elements->Get(thread, i)) {
             return i;
         }
     }
@@ -83,7 +83,7 @@ int JSAPIStack::Search(const JSHandle<JSTaggedValue> &value)
 JSHandle<TaggedArray> JSAPIStack::GrowCapacity(const JSThread *thread, const JSHandle<JSAPIStack> &obj,
                                                uint32_t capacity)
 {
-    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements(thread));
     uint32_t oldLength = oldElements->GetLength();
     if (capacity < oldLength) {
         return oldElements;
@@ -97,11 +97,11 @@ JSHandle<TaggedArray> JSAPIStack::GrowCapacity(const JSThread *thread, const JSH
 }
 
 
-JSTaggedValue JSAPIStack::Get(const uint32_t index)
+JSTaggedValue JSAPIStack::Get(JSThread *thread, const uint32_t index)
 {
     ASSERT(static_cast<int>(index) <= GetTop());
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
-    return elements->Get(index);
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
+    return elements->Get(thread, index);
 }
 
 JSTaggedValue JSAPIStack::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
@@ -110,21 +110,21 @@ JSTaggedValue JSAPIStack::Set(JSThread *thread, const uint32_t index, JSTaggedVa
     if (index >= length) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     elements->Set(thread, index, value);
     return JSTaggedValue::Undefined();
 }
 
-bool JSAPIStack::Has(JSTaggedValue value) const
+bool JSAPIStack::Has(JSThread *thread, JSTaggedValue value) const
 {
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     int top = static_cast<int>(GetTop());
     if (top == -1) {
         return false;
     }
 
     for (int i = 0; i < top + 1; i++) {
-        if (JSTaggedValue::SameValue(elements->Get(i), value)) {
+        if (JSTaggedValue::SameValue(thread, elements->Get(thread, i), value)) {
             return true;
         }
     }
@@ -145,12 +145,12 @@ bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &ob
                                 const JSHandle<JSTaggedValue> &key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
-            + ConvertToString(*result);
+            + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
@@ -169,7 +169,7 @@ bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &ob
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    obj->Get(index);
+    obj->Get(thread, index);
     return true;
 }
 
@@ -207,7 +207,7 @@ OperationResult JSAPIStack::GetProperty(JSThread *thread, const JSHandle<JSAPISt
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, obj->Get(index), PropertyMetaData(false));
+    return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
 }
 
 bool JSAPIStack::SetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,

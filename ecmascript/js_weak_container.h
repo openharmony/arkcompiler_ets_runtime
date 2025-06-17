@@ -36,11 +36,11 @@ public:
 
     JSTaggedValue Get(JSThread *thread, JSTaggedValue key) const;
 
-    int GetSize() const;
+    int GetSize(const JSThread *thread) const;
 
-    JSTaggedValue GetKey(int entry) const;
+    JSTaggedValue GetKey(const JSThread *thread, int entry) const;
 
-    JSTaggedValue GetValue(int entry) const;
+    JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, SIZE)
@@ -62,9 +62,9 @@ public:
 
     bool Has(JSThread *thread, JSTaggedValue value) const;
 
-    int GetSize() const;
+    int GetSize(const JSThread *thread) const;
 
-    JSTaggedValue GetValue(int entry) const;
+    JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
     static constexpr size_t LINKED_SET_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedSet, LINKED_SET_OFFSET, SIZE)

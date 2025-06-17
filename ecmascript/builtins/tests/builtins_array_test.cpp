@@ -811,7 +811,7 @@ HWTEST_F_L0(BuiltinsArrayTest, ForEach)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
         JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
         TestHelper::TearDownFrame(thread, prev);                                                                    \
-        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(thread, result, JSTaggedValue(expected)));                           \
     } while (false)
 
 #define ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(method, target, expected, arg0)                                         \
@@ -824,7 +824,7 @@ HWTEST_F_L0(BuiltinsArrayTest, ForEach)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
         JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
         TestHelper::TearDownFrame(thread, prev);                                                                    \
-        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(thread, result, JSTaggedValue(expected)));                           \
     } while (false)
 
 #define ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(method, target, expected, arg0, arg1)                                   \
@@ -838,7 +838,7 @@ HWTEST_F_L0(BuiltinsArrayTest, ForEach)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
         JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
         TestHelper::TearDownFrame(thread, prev);                                                                    \
-        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(thread, result, JSTaggedValue(expected)));                           \
     } while (false)
 
 // 22.1.3.11 Array.IndexOf(searchElement [ , fromIndex ])

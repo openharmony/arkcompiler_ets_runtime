@@ -129,7 +129,7 @@ public:
     static JSTaggedValue UTC(EcmaRuntimeCallInfo *argv);
 
     // 20.4.4.10
-    JSTaggedValue GetTime() const;
+    JSTaggedValue GetTime(const JSThread *thread) const;
 
     // 20.4.4.19
     JSTaggedValue GetUTCSeconds();
@@ -151,7 +151,7 @@ public:
     JSTaggedValue ToUTCString(JSThread *thread) const;
 
     // 20.4.4.44
-    JSTaggedValue ValueOf() const;
+    JSTaggedValue ValueOf(const JSThread *thread) const;
 
     JSTaggedValue SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const;
     double GetDateValue(JSThread *thread, double timeMs, uint8_t code, bool isLocal) const;

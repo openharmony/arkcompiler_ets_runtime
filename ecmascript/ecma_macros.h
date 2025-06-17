@@ -56,7 +56,7 @@
 /* Note: We can't statically decide the element type is a primitive or heap object, especially for */
 /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GET_VALUE(addr, offset) Barriers::GetTaggedValue((addr), (offset))
+#define GET_VALUE(thread, addr, offset) Barriers::GetTaggedValue((thread), (addr), (offset))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_VALUE_WITH_BARRIER(thread, addr, offset, value)                          \
@@ -87,12 +87,12 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, needCheck, check)                                 \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
-    JSTaggedValue Get##name() const                                                                           \
+    JSTaggedValue Get##name(const JSThread *thread) const                                                     \
     {                                                                                                         \
         FIELD_ACCESS_CHECK(needCheck, name, check);                                                           \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        return JSTaggedValue(Barriers::GetTaggedValue(this, offset));                                         \
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset));                                 \
     }                                                                                                         \
     template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
@@ -131,9 +131,9 @@
 #define ACCESSORS_WITH_RB_MODE(name, offset, endOffset)                                                       \
     ACCESSORS(name, offset, endOffset)                                                                        \
     template <RBMode mode = RBMode::DEFAULT_RB>                                                               \
-    JSTaggedValue Get##name() const                                                                           \
+    JSTaggedValue Get##name(const JSThread *thread) const                                                     \
     {                                                                                                         \
-        return JSTaggedValue(Barriers::GetTaggedValue<mode>(this, offset));                                   \
+        return JSTaggedValue(Barriers::GetTaggedValue<mode>(thread, this, offset));                           \
     }                                                                                                         \
 
 #define ACCESSORS_DCHECK(name, offset, endOffset, check)                                                      \
@@ -156,13 +156,13 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_SYNCHRONIZED_WITH_DCHECK_BASE(name, offset, endOffset, needCheck, check)                            \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                                   \
-    JSTaggedValue Get##name() const                                                                                   \
+    JSTaggedValue Get##name(const JSThread *thread) const                                                             \
     {                                                                                                                 \
         FIELD_ACCESS_CHECK(needCheck, name, check);                                                                   \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */         \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */         \
         /*       Synchronized means it will restrain the store and load in atomic.                         */         \
-        return JSTaggedValue(Barriers::GetTaggedValueAtomic(this, offset));                                           \
+        return JSTaggedValue(Barriers::GetTaggedValueAtomic(thread, this, offset));                                   \
     }                                                                                                                 \
     template<typename T>                                                                                              \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                         \
@@ -200,7 +200,7 @@
     inline type Get##name() const                                                                                      \
     {                                                                                                                  \
         FIELD_ACCESS_CHECK(needCheck, name, check);                                                                    \
-        return Barriers::GetValue<type>(this, offset);                                                                 \
+        return Barriers::GetPrimitive<type>(this, offset);                                                             \
     }
 
 #define ACCESSORS_FIXED_SIZE_FIELD(name, type, sizeType, offset, endOffset)                                            \
@@ -370,7 +370,7 @@
         if (!msg->IsDate()) {                                                                     \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
         }                                                                                         \
-        if (std::isnan(JSDate::Cast(msg->GetTaggedObject())->GetTimeValue().GetDouble())) {       \
+        if (std::isnan(JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread).GetDouble())) { \
             THROW_RANGE_ERROR_AND_RETURN(thread, "range error", JSTaggedValue::Exception());      \
         }                                                                                         \
         return JSDate::Cast(msg->GetTaggedObject())->name(thread);                                \
@@ -387,26 +387,26 @@
         if (!msg->IsDate()) {                                                                                      \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());                  \
         }                                                                                                          \
-        if (std::isnan(JSDate::Cast(msg->GetTaggedObject())->GetTimeValue().GetDouble())) {                        \
+        if (std::isnan(JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread).GetDouble())) {                  \
             return thread->GetEcmaVM()->GetFactory()->NewFromASCII("Invalid Date").GetTaggedValue();               \
         }                                                                                                          \
         return JSDate::Cast(msg->GetTaggedObject())->name(thread);                                                 \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GET_DATE_VALUE(name, code, isLocal)                                                                 \
-    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                                    \
-    {                                                                                                       \
-        ASSERT(argv);                                                                                       \
-        JSThread *thread = argv->GetThread();                                                               \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                               \
-        JSHandle<JSTaggedValue> msg = GetThis(argv);                                                        \
-        if (!msg->IsDate()) {                                                                               \
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());           \
-        }                                                                                                   \
-        JSHandle<JSDate> jsDate(msg);                                                                       \
-        double result = jsDate->GetDateValue(thread, jsDate->GetTimeValue().GetDouble(), code, isLocal);    \
-        return GetTaggedDouble(result);                                                                     \
+#define GET_DATE_VALUE(name, code, isLocal)                                                                    \
+    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                                       \
+    {                                                                                                          \
+        ASSERT(argv);                                                                                          \
+        JSThread *thread = argv->GetThread();                                                                  \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                  \
+        JSHandle<JSTaggedValue> msg = GetThis(argv);                                                           \
+        if (!msg->IsDate()) {                                                                                  \
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());              \
+        }                                                                                                      \
+        JSHandle<JSDate> jsDate(msg);                                                                          \
+        double result = jsDate->GetDateValue(thread, jsDate->GetTimeValue(thread).GetDouble(), code, isLocal); \
+        return GetTaggedDouble(result);                                                                        \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -537,20 +537,20 @@
         if ((value).GetTaggedValue().IsCompletionRecord()) {                                       \
             JSHandle<CompletionRecord> record = JSHandle<CompletionRecord>::Cast(value);           \
             if (record->IsThrow()) {                                                               \
-                JSHandle<JSTaggedValue> reject(thread, (capability)->GetReject());                 \
+                JSHandle<JSTaggedValue> reject(thread, (capability)->GetReject(thread));           \
                 JSHandle<JSTaggedValue> undefine = globalConst->GetHandledUndefined();             \
                 EcmaRuntimeCallInfo *info =                                                        \
                     EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefine, undefine, 1);    \
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());             \
-                info->SetCallArg(record->GetValue());                                              \
+                info->SetCallArg(record->GetValue(thread));                                        \
                 JSTaggedValue res = JSFunction::Call(info);                                        \
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, res);                                    \
-                return (capability)->GetPromise();                                                 \
+                return (capability)->GetPromise(thread);                                           \
             }                                                                                      \
         }                                                                                          \
         if ((thread)->HasPendingException()) {                                                     \
             (thread)->ClearException();                                                            \
-            JSHandle<JSTaggedValue> reject(thread, (capability)->GetReject());                     \
+            JSHandle<JSTaggedValue> reject(thread, (capability)->GetReject(thread));               \
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();                \
             EcmaRuntimeCallInfo *info =                                                            \
                 EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);      \
@@ -558,7 +558,7 @@
             info->SetCallArg(value.GetTaggedValue());                                              \
             JSTaggedValue res = JSFunction::Call(info);                                            \
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, res);                                        \
-            return (capability)->GetPromise();                                                     \
+            return (capability)->GetPromise(thread);                                               \
         }                                                                                          \
     } while (false)
 
@@ -583,13 +583,13 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DECL_DUMP()                                  \
-    void Dump(std::ostream &os) const DUMP_API_ATTR; \
-    void Dump() const DUMP_API_ATTR                  \
-    {                                                \
-        Dump(std::cout);                             \
-    }                                                \
-    void DumpForSnapshot(std::vector<Reference> &vec) const;
+#define DECL_DUMP()                                                          \
+    void Dump(const JSThread *thread, std::ostream &os) const DUMP_API_ATTR; \
+    void Dump(const JSThread *thread) const DUMP_API_ATTR                    \
+    {                                                                        \
+        Dump(thread, std::cout);                                             \
+    }                                                                        \
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
 
 #endif  // defined(__cplusplus)
 

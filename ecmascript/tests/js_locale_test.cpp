@@ -57,7 +57,7 @@ HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
         arrayData->Set(thread, i, languageStr);
     }
     // construct a JSIntlIterator object
-    JSIntlIterator jsIntlIterator(arrayData, arrayDataLength);
+    JSIntlIterator jsIntlIterator(thread, arrayData, arrayDataLength);
     EXPECT_TRUE(jsIntlIterator.hasNext());
     // call "next" function to traverse the container
     for (uint32_t i = 0; i < arrayDataLength; i++) {
@@ -104,7 +104,7 @@ HWTEST_F_L0(JSLocaleTest, GetIcuField)
     factory->NewJSIntlIcuData(locale, icuLocale, JSLocale::FreeIcuLocale);
 
     // call "GetIcuLocale" function Get IcuField
-    icu::Locale *result = locale->GetIcuLocale();
+    icu::Locale *result = locale->GetIcuLocale(thread);
     EXPECT_STREQ(result->getBaseName(), "zh_Hans_CN");
 }
 
@@ -147,7 +147,7 @@ HWTEST_F_L0(JSLocaleTest, PutElement)
 
     int index = 1;
     JSHandle<JSObject> recordObj = JSLocale::PutElement(thread, index, jsArray, fieldTypeString, value);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
               JSObject::GetProperty(thread, recordObj, typeString).GetValue(), fieldTypeString), true);
     EXPECT_EQ(JSObject::GetProperty(thread, recordObj, valueString).GetValue()->GetInt(), 11);
 
@@ -186,22 +186,22 @@ HWTEST_F_L0(JSLocaleTest, GetNumberFieldType)
     JSTaggedValue x(0.0f / 0.0f); // Nan
     JSHandle<JSTaggedValue> nanString = globalConst->GetHandledNanString();
     JSHandle<JSTaggedValue> fieldTypeString = JSLocale::GetNumberFieldType(thread, x, fieldId);
-    EXPECT_EQ(JSTaggedValue::SameValue(fieldTypeString, nanString), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, fieldTypeString, nanString), true);
 
     JSTaggedValue y(-10); // integer(sign bit)
     JSHandle<JSTaggedValue> integerString = globalConst->GetHandledIntegerString();
     fieldTypeString = JSLocale::GetNumberFieldType(thread, y, fieldId);
-    EXPECT_EQ(JSTaggedValue::SameValue(fieldTypeString, integerString), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, fieldTypeString, integerString), true);
 
     fieldId = 10; // UNUM_SIGN_FIELD
     JSHandle<JSTaggedValue> minusSignString = globalConst->GetHandledMinusSignString();
     fieldTypeString = JSLocale::GetNumberFieldType(thread, y, fieldId);
-    EXPECT_EQ(JSTaggedValue::SameValue(fieldTypeString, minusSignString), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, fieldTypeString, minusSignString), true);
 
     JSTaggedValue z(10); // no sign bit
     JSHandle<JSTaggedValue> plusSignString = globalConst->GetHandledPlusSignString();
     fieldTypeString = JSLocale::GetNumberFieldType(thread, z, fieldId);
-    EXPECT_EQ(JSTaggedValue::SameValue(fieldTypeString, plusSignString), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, fieldTypeString, plusSignString), true);
 }
 
 /**
@@ -284,9 +284,9 @@ HWTEST_F_L0(JSLocaleTest, SetNumberFormatDigitOptions_Significant)
 
     JSLocale::SetNumberFormatDigitOptions(thread, jsNumberFormat, JSHandle<JSTaggedValue>(optionsObj),
                                                    1, 1, NotationOption::COMPACT);
-    EXPECT_EQ(jsNumberFormat->GetMinimumSignificantDigits().GetInt(), 11);
-    EXPECT_EQ(jsNumberFormat->GetMaximumSignificantDigits().GetInt(), 12);
-    EXPECT_EQ(jsNumberFormat->GetMinimumIntegerDigits().GetInt(), 10);
+    EXPECT_EQ(jsNumberFormat->GetMinimumSignificantDigits(thread).GetInt(), 11);
+    EXPECT_EQ(jsNumberFormat->GetMaximumSignificantDigits(thread).GetInt(), 12);
+    EXPECT_EQ(jsNumberFormat->GetMinimumIntegerDigits(thread).GetInt(), 10);
     EXPECT_EQ(jsNumberFormat->GetRoundingType(), RoundingType::SIGNIFICANTDIGITS);
 }
 
@@ -307,9 +307,9 @@ HWTEST_F_L0(JSLocaleTest, SetNumberFormatDigitOptions_Fraction)
 
     JSLocale::SetNumberFormatDigitOptions(thread, jsPluralRules, JSHandle<JSTaggedValue>(optionsObj),
                                                   10, 13, NotationOption::EXCEPTION);
-    EXPECT_EQ(jsPluralRules->GetMinimumFractionDigits().GetInt(), 10);
-    EXPECT_EQ(jsPluralRules->GetMaximumFractionDigits().GetInt(), 13);
-    EXPECT_EQ(jsPluralRules->GetMinimumIntegerDigits().GetInt(), 10);
+    EXPECT_EQ(jsPluralRules->GetMinimumFractionDigits(thread).GetInt(), 10);
+    EXPECT_EQ(jsPluralRules->GetMaximumFractionDigits(thread).GetInt(), 13);
+    EXPECT_EQ(jsPluralRules->GetMinimumIntegerDigits(thread).GetInt(), 10);
     EXPECT_EQ(jsPluralRules->GetRoundingType(), RoundingType::FRACTIONDIGITS);
 }
 
@@ -491,10 +491,10 @@ HWTEST_F_L0(JSLocaleTest, GetOption)
 
     JSHandle<JSTaggedValue> optionValue =
         JSLocale::GetOption(thread, optionsObj, languageProperty, OptionType::STRING, arrayValue, fallback);
-    EXPECT_EQ(JSTaggedValue::SameValue(optionValue, languageValue), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, optionValue, languageValue), true);
 
     optionValue = JSLocale::GetOption(thread, optionsObj, regionProperty, OptionType::STRING, arrayValue, fallback);
-    EXPECT_EQ(JSTaggedValue::SameValue(optionValue, fallback), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, optionValue, fallback), true);
 }
 
 /**

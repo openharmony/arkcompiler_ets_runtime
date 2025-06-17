@@ -54,8 +54,8 @@ JSTaggedValue ContainersStack::IsEmpty(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The isEmpty method cannot be bound");
@@ -77,8 +77,8 @@ JSTaggedValue ContainersStack::Push(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The push method cannot be bound");
@@ -100,8 +100,8 @@ JSTaggedValue ContainersStack::Peek(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The peek method cannot be bound");
@@ -110,7 +110,7 @@ JSTaggedValue ContainersStack::Peek(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
-    JSTaggedValue jsValue = stack->Peek();
+    JSTaggedValue jsValue = stack->Peek(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return jsValue;
 }
@@ -124,8 +124,8 @@ JSTaggedValue ContainersStack::Locate(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The locate method cannot be bound");
@@ -135,7 +135,7 @@ JSTaggedValue ContainersStack::Locate(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
-    int num = stack->Search(value);
+    int num = stack->Search(thread, value);
     return JSTaggedValue(num);
 }
 
@@ -148,8 +148,8 @@ JSTaggedValue ContainersStack::Pop(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The pop method cannot be bound");
@@ -171,8 +171,8 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIStack()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIStack()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIStack()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The forEach method cannot be bound");
@@ -189,7 +189,7 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -199,7 +199,7 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
     uint32_t k = 0;
     uint32_t actLen = static_cast<uint32_t>(len + 1);
     while (k < actLen) {
-        JSTaggedValue kValue = stack->Get(k);
+        JSTaggedValue kValue = stack->Get(thread, k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, 3); // 3:three args
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -220,8 +220,8 @@ JSTaggedValue ContainersStack::Iterator(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");
@@ -241,8 +241,8 @@ JSTaggedValue ContainersStack::GetLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIStack()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIStack()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLength method cannot be bound");

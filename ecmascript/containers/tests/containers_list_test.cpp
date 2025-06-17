@@ -156,9 +156,9 @@ HWTEST_F_L0(ContainersListTest, ListConstructor)
     ASSERT_TRUE(result.IsJSAPIList());
     JSHandle<JSAPIList> list(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(list));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
-    int size = list->Length();
+    int size = list->Length(thread);
     ASSERT_EQ(size, 0);
 
     // test ListConstructor exception
@@ -181,7 +181,7 @@ HWTEST_F_L0(ContainersListTest, InsertAndGet)
         JSTaggedValue result = ContainersList::Insert(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     {
@@ -225,7 +225,7 @@ HWTEST_F_L0(ContainersListTest, Remove)
         JSTaggedValue result = ContainersList::Insert(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     {
@@ -238,7 +238,7 @@ HWTEST_F_L0(ContainersListTest, Remove)
         JSTaggedValue rvalue = ContainersList::Remove(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(rvalue, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(NODE_NUMBERS - 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(NODE_NUMBERS - 1));
     }
 
     {
@@ -251,7 +251,7 @@ HWTEST_F_L0(ContainersListTest, Remove)
         JSTaggedValue rvalue = ContainersList::RemoveByIndex(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(rvalue, JSTaggedValue(6));
-        EXPECT_EQ(list->Length(), static_cast<int>(NODE_NUMBERS - 2));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(NODE_NUMBERS - 2));
     }
 }
 
@@ -263,14 +263,14 @@ HWTEST_F_L0(ContainersListTest, Equal)
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         result = ListAdd(list, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
     // Equal
     JSHandle<JSAPIList> list1 = CreateJSAPIList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         result = ListAdd(list1, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list1->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list1->Length(thread), static_cast<int>(i + 1));
     }
     result = ListEqual(list, list1);
     EXPECT_EQ(result, JSTaggedValue::True());
@@ -281,7 +281,7 @@ HWTEST_F_L0(ContainersListTest, Equal)
         result = ListAdd(list2, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list2->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list2->Length(thread), static_cast<int>(i + 1));
     }
     result = ListEqual(list, list2);
     EXPECT_EQ(result, JSTaggedValue::False());
@@ -295,7 +295,7 @@ HWTEST_F_L0(ContainersListTest, Equal)
             result = ListAdd(list3, JSTaggedValue(i));
         }
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list3->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list3->Length(thread), static_cast<int>(i + 1));
     }
     result = ListEqual(list, list2);
     EXPECT_EQ(result, JSTaggedValue::False());
@@ -315,7 +315,7 @@ HWTEST_F_L0(ContainersListTest, GetSubList)
         JSTaggedValue result = ContainersList::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     {
@@ -327,7 +327,7 @@ HWTEST_F_L0(ContainersListTest, GetSubList)
         [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
         JSTaggedValue newList = ContainersList::GetSubList(callInfo1);
         TestHelper::TearDownFrame(thread, prev1);
-        EXPECT_EQ(list->Length(), 10);
+        EXPECT_EQ(list->Length(thread), 10);
         for (uint32_t i = 0; i < 3; i++) {
             auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
             callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -359,7 +359,7 @@ HWTEST_F_L0(ContainersListTest, ConvertToArray)
         oldArray->Set(thread, i, JSTaggedValue(i));
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -370,11 +370,11 @@ HWTEST_F_L0(ContainersListTest, ConvertToArray)
     JSTaggedValue newArray = ContainersList::ConvertToArray(callInfo);
     TestHelper::TearDownFrame(thread, prev);
     JSTaggedValue newArrayValue =
-        JSTaggedValue::ToObject(thread, JSHandle<JSTaggedValue>(thread, newArray))->GetElements();
+        JSTaggedValue::ToObject(thread, JSHandle<JSTaggedValue>(thread, newArray))->GetElements(thread);
     JSHandle<TaggedArray> newArrayHandle(thread, newArrayValue);
 
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        EXPECT_EQ(newArrayHandle->Get(i), oldArray->Get(i));
+        EXPECT_EQ(newArrayHandle->Get(thread, i), oldArray->Get(thread, i));
     }
 }
 
@@ -392,7 +392,7 @@ HWTEST_F_L0(ContainersListTest, Clear)
         JSTaggedValue result = ContainersList::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     {
@@ -403,7 +403,7 @@ HWTEST_F_L0(ContainersListTest, Clear)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersList::Clear(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(list->Length(), 0);
+        EXPECT_EQ(list->Length(thread), 0);
     }
 }
 
@@ -422,7 +422,7 @@ HWTEST_F_L0(ContainersListTest, Values)
         JSTaggedValue result = ContainersList::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
 
     auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -461,7 +461,7 @@ HWTEST_F_L0(ContainersListTest, ForEach)
         JSTaggedValue result = ContainersList::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
+        EXPECT_EQ(list->Length(thread), static_cast<int>(i + 1));
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIList> dlist = CreateJSAPIList();

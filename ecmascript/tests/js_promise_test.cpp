@@ -41,8 +41,8 @@ HWTEST_F_L0(JSPromiseTest, CreateResolvingFunctions)
     JSHandle<JSPromise> jsPromise =
         JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(promiseFunc), promiseFunc));
     JSHandle<ResolvingFunctionsRecord> reactions = JSPromise::CreateResolvingFunctions(thread, jsPromise);
-    JSHandle<JSTaggedValue> resolve(thread, reactions->GetResolveFunction());
-    JSHandle<JSTaggedValue> reject(thread, reactions->GetRejectFunction());
+    JSHandle<JSTaggedValue> resolve(thread, reactions->GetResolveFunction(thread));
+    JSHandle<JSTaggedValue> reject(thread, reactions->GetRejectFunction(thread));
     EXPECT_EQ(resolve->IsCallable(), true);
     EXPECT_EQ(reject->IsCallable(), true);
 }
@@ -54,18 +54,18 @@ HWTEST_F_L0(JSPromiseTest, NewPromiseCapability)
     JSHandle<JSTaggedValue> promise = env->GetPromiseFunction();
 
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promise);
-    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(newPromise->GetPromiseState(), PromiseState::PENDING);
 
-    JSHandle<JSPromiseReactionsFunction> resolve(thread, capbility->GetResolve());
-    JSHandle<JSPromiseReactionsFunction> reject(thread, capbility->GetReject());
+    JSHandle<JSPromiseReactionsFunction> resolve(thread, capbility->GetResolve(thread));
+    JSHandle<JSPromiseReactionsFunction> reject(thread, capbility->GetReject(thread));
     EXPECT_EQ(resolve.GetTaggedValue().IsCallable(), true);
     EXPECT_EQ(resolve.GetTaggedValue().IsCallable(), true);
 
-    JSHandle<JSPromise> resolvedPromise(thread, resolve->GetPromise());
-    JSHandle<JSPromise> rejectedPromise(thread, reject->GetPromise());
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), resolvedPromise.GetTaggedValue()), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), rejectedPromise.GetTaggedValue()), true);
+    JSHandle<JSPromise> resolvedPromise(thread, resolve->GetPromise(thread));
+    JSHandle<JSPromise> rejectedPromise(thread, reject->GetPromise(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, newPromise.GetTaggedValue(), resolvedPromise.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, newPromise.GetTaggedValue(), rejectedPromise.GetTaggedValue()), true);
 }
 
 HWTEST_F_L0(JSPromiseTest, FullFillPromise)
@@ -74,17 +74,17 @@ HWTEST_F_L0(JSPromiseTest, FullFillPromise)
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
     JSHandle<JSTaggedValue> promise = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promise);
-    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(newPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(newPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(newPromise->GetPromiseResult(thread).IsUndefined(), true);
 
-    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
     info->SetCallArg(JSTaggedValue(33));
     JSFunction::Call(info);
     EXPECT_EQ(newPromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise->GetPromiseResult(), JSTaggedValue(33)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, newPromise->GetPromiseResult(thread), JSTaggedValue(33)), true);
 }
 
 HWTEST_F_L0(JSPromiseTest, RejectPromise)
@@ -93,16 +93,16 @@ HWTEST_F_L0(JSPromiseTest, RejectPromise)
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
     JSHandle<JSTaggedValue> promise = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promise);
-    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> newPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(newPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(newPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(newPromise->GetPromiseResult(thread).IsUndefined(), true);
 
-    JSHandle<JSTaggedValue> reject(thread, capbility->GetReject());
+    JSHandle<JSTaggedValue> reject(thread, capbility->GetReject(thread));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
     info->SetCallArg(JSTaggedValue(44));
     JSFunction::Call(info);
     EXPECT_EQ(newPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise->GetPromiseResult(), JSTaggedValue(44)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, newPromise->GetPromiseResult(thread), JSTaggedValue(44)), true);
 }
 }  // namespace panda::test

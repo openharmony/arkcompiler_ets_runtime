@@ -272,7 +272,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
         }                                                                       \
         funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget(thread)));  \
         newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 
@@ -298,7 +298,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
         }                                                                       \
         funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
-        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget()));        \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget(thread)));  \
         newSp = sp - InterpretedFrame::NumOfMembers();                          \
     } while (false)
 

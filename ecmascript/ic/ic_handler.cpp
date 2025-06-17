@@ -26,7 +26,7 @@ void UpdateHandlerKind(const JSThread *thread, const ObjectOperator &op, uint64_
         JSHandle<JSTaggedValue> key = op.GetKey();
         EcmaString *proKey = key->IsString() ? EcmaString::Cast(key->GetTaggedObject()) : nullptr;
         if (proKey != nullptr &&
-            EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
+            EcmaStringAccessor::StringsAreEqual(thread, proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
             HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::STRING_LENGTH, &handler);
         } else {
             HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::STRING, &handler);
@@ -106,7 +106,7 @@ JSHandle<JSTaggedValue> StoreHandler::StoreProperty(const JSThread *thread, cons
 {
     uint64_t handler = 0;
     JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
-    SFieldTypeBitSet(op, receiver, &handler);
+    SFieldTypeBitSet(thread, op, receiver, &handler);
     if (op.IsElement()) {
         SOutOfBoundsBit::Set<uint64_t>(op.GetElementOutOfBounds(), &handler);
         return StoreElement(thread, op.GetReceiver(), handler);
@@ -169,14 +169,14 @@ JSHandle<JSTaggedValue> PrototypeHandler::LoadPrototype(const JSThread *thread, 
     if (op.IsAccessorDescriptor()) {
         JSTaggedValue result = op.GetValue();
         if (result.IsPropertyBox()) {
-            result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
+            result = PropertyBox::Cast(result.GetTaggedObject())->GetValue(thread);
         }
         AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
         if (!accessor->IsInternal()) {
-            JSTaggedValue getter = accessor->GetGetter();
+            JSTaggedValue getter = accessor->GetGetter(thread);
             if (!getter.IsUndefined()) {
                 JSHandle<JSFunction> func(thread, getter);
-                uint32_t methodOffset = Method::Cast(func->GetMethod())->GetMethodId().GetOffset();
+                uint32_t methodOffset = Method::Cast(func->GetMethod(thread))->GetMethodId().GetOffset();
                 handler->SetAccessorMethodId(methodOffset);
                 handler->SetAccessorJSFunction(thread, getter);
             }
@@ -198,14 +198,14 @@ JSHandle<JSTaggedValue> PrototypeHandler::StorePrototype(const JSThread *thread,
     if (op.IsAccessorDescriptor()) {
         JSTaggedValue result = op.GetValue();
         if (result.IsPropertyBox()) {
-            result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
+            result = PropertyBox::Cast(result.GetTaggedObject())->GetValue(thread);
         }
         AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
-        if (!accessor->IsInternal() && accessor->HasSetter()) {
-            JSTaggedValue setter = accessor->GetSetter();
+        if (!accessor->IsInternal() && accessor->HasSetter(thread)) {
+            JSTaggedValue setter = accessor->GetSetter(thread);
             JSHandle<JSFunction> func(thread, setter);
             handler->SetAccessorMethodId(
-                Method::Cast(func->GetMethod())->GetMethodId().GetOffset());
+                Method::Cast(func->GetMethod(thread))->GetMethodId().GetOffset());
             handler->SetAccessorJSFunction(thread, setter);
         }
     }

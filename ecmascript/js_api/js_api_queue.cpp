@@ -21,7 +21,7 @@ using ContainerError = containers::ContainerError;
 using ErrorFlag = containers::ErrorFlag;
 void JSAPIQueue::Add(JSThread *thread, const JSHandle<JSAPIQueue> &queue, const JSHandle<JSTaggedValue> &value)
 {
-    uint32_t length = queue->GetLength().GetArrayLength();
+    uint32_t length = queue->GetLength(thread).GetArrayLength();
     JSHandle<TaggedArray> elements = GrowCapacity(thread, queue, length + 1);
 
     ASSERT(!elements->IsDictionaryMode());
@@ -41,7 +41,7 @@ JSHandle<TaggedArray> JSAPIQueue::GrowCapacity(const JSThread *thread, const JSH
     JSHandle<TaggedArray> newElements;
     uint32_t front = obj->GetFront();
     uint32_t tail = obj->GetTail();
-    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements(thread));
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldLength = oldElements->GetLength();
     uint32_t newCapacity = 0;
@@ -65,29 +65,29 @@ JSHandle<TaggedArray> JSAPIQueue::GrowCapacity(const JSThread *thread, const JSH
 
 JSTaggedValue JSAPIQueue::GetFirst(JSThread *thread, const JSHandle<JSAPIQueue> &queue)
 {
-    if (queue->GetLength().GetArrayLength() < 1) {
+    if (queue->GetLength(thread).GetArrayLength() < 1) {
         return JSTaggedValue::Undefined();
     }
 
     uint32_t index = queue->GetFront();
 
-    JSHandle<TaggedArray> elements(thread, queue->GetElements());
+    JSHandle<TaggedArray> elements(thread, queue->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
-    return elements->Get(index);
+    return elements->Get(thread, index);
 }
 
 JSTaggedValue JSAPIQueue::Pop(JSThread *thread, const JSHandle<JSAPIQueue> &queue)
 {
-    uint32_t length = queue->GetLength().GetArrayLength();
+    uint32_t length = queue->GetLength(thread).GetArrayLength();
     if (length < 1) {
         return JSTaggedValue::Undefined();
     }
 
-    JSHandle<TaggedArray> elements(thread, queue->GetElements());
+    JSHandle<TaggedArray> elements(thread, queue->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
     uint32_t front = queue->GetFront();
 
-    JSTaggedValue value = elements->Get(front);
+    JSTaggedValue value = elements->Get(thread, front);
     queue->SetLength(thread, JSTaggedValue(length - 1));
     uint32_t elementsSize = elements->GetLength();
     ASSERT(elementsSize != 0);
@@ -99,7 +99,7 @@ JSTaggedValue JSAPIQueue::Pop(JSThread *thread, const JSHandle<JSAPIQueue> &queu
 
 JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 {
-    uint32_t length = GetSize();
+    uint32_t length = GetSize(thread);
     if (index >= length) {
         ASSERT(length > 0);
         std::ostringstream oss;
@@ -109,43 +109,43 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t front = GetCurrentFront();
     ASSERT(capacity != 0);
     uint32_t curIndex = (front + index) % capacity;
-    return elements->Get(curIndex);
+    return elements->Get(thread, curIndex);
 }
 
 JSTaggedValue JSAPIQueue::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    if (GetLength().GetArrayLength() == 0) {
+    if (GetLength(thread).GetArrayLength() == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (index < 0 || index >= GetLength().GetArrayLength()) {
+    if (index < 0 || index >= GetLength(thread).GetArrayLength()) {
         std::ostringstream oss;
         oss << "The value of \"Set property index\" is out of range. It must be >= 0 && <= "
-            << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
+            << (GetLength(thread).GetArrayLength() - 1) << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     elements->Set(thread, index, value);
     return JSTaggedValue::Undefined();
 }
 
-bool JSAPIQueue::Has(JSTaggedValue value) const
+bool JSAPIQueue::Has(const JSThread *thread, JSTaggedValue value) const
 {
     uint32_t begin = GetCurrentFront();
     uint32_t end = GetCurrentTail();
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
 
     uint32_t index = begin;
     while (index != end) {
-        if (JSTaggedValue::SameValue(elements->Get(index), value)) {
+        if (JSTaggedValue::SameValue(thread, elements->Get(thread, index), value)) {
             return true;
         }
         ASSERT(capacity != 0);
@@ -156,9 +156,9 @@ bool JSAPIQueue::Has(JSTaggedValue value) const
 
 JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
 {
-    uint32_t length = obj->GetLength().GetArrayLength();
+    uint32_t length = obj->GetLength(thread).GetArrayLength();
 
-    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements(thread));
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
     uint32_t front = obj->GetFront();
@@ -174,9 +174,9 @@ JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPI
 
 JSHandle<TaggedArray> JSAPIQueue::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
 {
-    uint32_t length = obj->GetLength().GetArrayLength();
+    uint32_t length = obj->GetLength(thread).GetArrayLength();
 
-    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements(thread));
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
@@ -195,17 +195,17 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
                                 const JSHandle<JSTaggedValue> &key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
-            + ConvertToString(*result);
+            + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    uint32_t length = obj->GetLength().GetArrayLength();
+    uint32_t length = obj->GetLength(thread).GetArrayLength();
     if (length == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
@@ -227,7 +227,7 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
 OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                                         const JSHandle<JSTaggedValue> &key)
 {
-    int32_t length = static_cast<int32_t>(obj->GetSize());
+    int32_t length = static_cast<int32_t>(obj->GetSize(thread));
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
         // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
@@ -259,7 +259,7 @@ bool JSAPIQueue::SetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                              const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value)
 {
-    uint32_t length = obj->GetSize();
+    uint32_t length = obj->GetSize(thread);
     double index = key->GetNumber();
     if (index < 0 || static_cast<uint32_t>(index) >= length) {
         return false;
@@ -274,7 +274,7 @@ uint32_t JSAPIQueue::GetArrayLength(JSThread *thread, const JSHandle<JSAPIQueue>
 {
     uint32_t begin = queue->GetCurrentFront();
     uint32_t end = queue->GetCurrentTail();
-    JSHandle<TaggedArray> elements(thread, queue->GetElements());
+    JSHandle<TaggedArray> elements(thread, queue->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
     uint32_t elementsSize = elements->GetLength();
     ASSERT(elementsSize != 0);
@@ -282,10 +282,10 @@ uint32_t JSAPIQueue::GetArrayLength(JSThread *thread, const JSHandle<JSAPIQueue>
     return length;
 }
 
-uint32_t JSAPIQueue::GetNextPosition(uint32_t current)
+uint32_t JSAPIQueue::GetNextPosition(JSThread *thread, uint32_t current)
 {
     uint32_t next = 0;
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t elementsSize = elements->GetLength();
     ASSERT(elementsSize != 0);
     next = (current + 1) % elementsSize;

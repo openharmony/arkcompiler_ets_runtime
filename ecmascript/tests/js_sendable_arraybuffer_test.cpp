@@ -100,10 +100,10 @@ HWTEST_F_L0(JsSendableArrayBufferTest, AttachTest001)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue);
     ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
-    ASSERT_EQ(arrBuf->GetArrayBufferData().GetRawData(), taggedValue.GetRawData());
+    ASSERT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), taggedValue.GetRawData());
 }
 
 /**
@@ -119,10 +119,10 @@ HWTEST_F_L0(JsSendableArrayBufferTest, AttachTest002)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue, true);
     ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
-    ASSERT_EQ(arrBuf->GetArrayBufferData().GetRawData(), taggedValue.GetRawData());
+    ASSERT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), taggedValue.GetRawData());
 }
 
 /**
@@ -138,15 +138,15 @@ HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest001)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue);
     ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
-    ASSERT_EQ(arrBuf->GetArrayBufferData().GetRawData(), taggedValue.GetRawData());
+    ASSERT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), taggedValue.GetRawData());
 
     arrBuf->Detach(thread);
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
-    EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(), JSTaggedValue::Null().GetRawData());
-    EXPECT_TRUE(arrBuf->IsDetach());
+    EXPECT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), JSTaggedValue::Null().GetRawData());
+    EXPECT_TRUE(arrBuf->IsDetach(thread));
 }
 
 /**
@@ -162,15 +162,15 @@ HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest002)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue, true);
     ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
-    ASSERT_EQ(arrBuf->GetArrayBufferData().GetRawData(), taggedValue.GetRawData());
+    ASSERT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), taggedValue.GetRawData());
 
     arrBuf->Detach(thread, true);
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
-    EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(), JSTaggedValue::Null().GetRawData());
-    EXPECT_TRUE(arrBuf->IsDetach());
+    EXPECT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), JSTaggedValue::Null().GetRawData());
+    EXPECT_TRUE(arrBuf->IsDetach(thread));
 }
 
 /**
@@ -186,7 +186,7 @@ HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest003)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue);
 
     arrBuf->Detach(thread);
@@ -202,7 +202,7 @@ HWTEST_F_L0(JsSendableArrayBufferTest, AttachTest003)
     size_t length = 5;
     const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
     factory->NewJSSendableArrayBufferData(arrBuf, 5);
-    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData(thread);
     arrBuf->Attach(thread, length + 1, taggedValue, false);
     ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
 }

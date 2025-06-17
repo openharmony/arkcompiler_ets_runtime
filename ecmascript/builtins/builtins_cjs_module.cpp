@@ -66,7 +66,7 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
         UNREACHABLE();
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));
-    CString requestNameStr = ModulePathHelper::Utf8ConvertToString(requestName.GetTaggedValue());
+    CString requestNameStr = ModulePathHelper::Utf8ConvertToString(thread, requestName.GetTaggedValue());
     CString filename = ResolveFilenameFromNative(thread, dirname, requestNameStr);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> filenameHdl = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(filename));

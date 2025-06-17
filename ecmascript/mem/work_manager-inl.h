@@ -164,6 +164,11 @@ TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
     return allocator_;
 }
 
+JSThread *WorkNodeHolder::GetJSThread() const
+{
+    return heap_->GetJSThread();
+}
+
 WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
     : spaceChunk_(allocator), workSpace_(0), spaceStart_(0), spaceEnd_(0)
 {

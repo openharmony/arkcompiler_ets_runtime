@@ -23,7 +23,7 @@ JSTaggedValue ConstantPool::GetClassLiteralFromCache(JSThread *thread, JSHandle<
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // Do not use cache when sendable for get wrong obj from cache,
     // shall be fix or refactor during shared object implements
-    JSTaggedValue val = constpool->GetObjectFromCache(literal);
+    JSTaggedValue val = constpool->GetObjectFromCache(thread, literal);
     JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
 
     // For AOT
@@ -76,7 +76,7 @@ JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedV
     bool allowAlloc)
 {
     const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-    auto val = taggedPool->Get(index);
+    auto val = taggedPool->Get(thread, index);
     if (!allowAlloc && val.IsHole()) {
         return JSTaggedValue::Undefined();
     }
@@ -96,12 +96,12 @@ JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedV
 JSTaggedValue ConstantPool::GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
 {
     const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-    auto val = taggedPool->Get(index);
+    auto val = taggedPool->Get(thread, index);
     if (val.IsHole()) {
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
             JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
-            return taggedPool->Get(index);
+            return taggedPool->Get(thread, index);
         }
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -135,8 +135,9 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     if (constpool->IsHole()) {
         return;
     }
+    JSThread *thread = vm->GetJSThread();
     JSHandle<ConstantPool> pool(constpool);
-    auto aotHCInfo = pool->GetAotHClassInfo();
+    auto aotHCInfo = pool->GetAotHClassInfo(thread);
     if (!aotHCInfo.IsTaggedArray()) {
         return;
     }
@@ -144,7 +145,7 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     if (aotHCInfoArray->GetLength() <= 0) {
         return;
     }
-    auto last = aotHCInfoArray->Get(aotHCInfoArray->GetLength() - 1);
+    auto last = aotHCInfoArray->Get(thread, aotHCInfoArray->GetLength() - 1);
     if (!last.IsTaggedArray()) {
         return;
     }
@@ -152,10 +153,9 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     auto curCached = vm->GetGlobalEnv()->GetObjectLiteralHClassCache();
     auto length = snapshotCachedArray->GetLength();
     auto prototype = vm->GetGlobalEnv()->GetObjectFunctionPrototype();
-    JSThread *thread = vm->GetJSThread();
     if (curCached->IsHole()) {
         for (uint32_t i = 0; i < length; i++) {
-            auto newValue = snapshotCachedArray->Get(i);
+            auto newValue = snapshotCachedArray->Get(thread, i);
             if (newValue.IsJSHClass()) {
                 JSHClass::Cast(newValue.GetTaggedObject())->SetPrototype(thread, prototype);
             }
@@ -165,11 +165,11 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     }
     auto curCachedArray = TaggedArray::Cast(curCached.GetTaggedValue());
     for (uint32_t i = 0; i < length; i++) {
-        auto newValue = snapshotCachedArray->Get(i);
+        auto newValue = snapshotCachedArray->Get(thread, i);
         if (newValue.IsHole()) {
             continue;
         }
-        auto curValue = curCachedArray->Get(i);
+        auto curValue = curCachedArray->Get(thread, i);
         // If already merged, stop to merge.
         if (curValue.IsJSHClass() && JSHClass::Cast(curValue.GetTaggedObject())->IsAOT()) {
             break;
@@ -179,10 +179,10 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
     }
 }
 
-JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t index)
+JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t index, JSThread *thread)
 {
     const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-    auto val = taggedPool->GetObjectFromCache(index);
+    auto val = taggedPool->GetObjectFromCache(thread, index);
     JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
     if (IsLoadingAOTMethodInfo(jsPandaFile, val)) {
@@ -201,7 +201,7 @@ bool ConstantPool::IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
 JSTaggedValue ConstantPool::GetIhcFromAOTLiteralInfo(JSTaggedValue constpool, uint32_t index)
 {
     ASSERT(constpool.IsConstantPool());
-    auto val = ConstantPool::Cast(constpool.GetTaggedObject())->Get(index);
+    auto val = ConstantPool::Cast(constpool.GetTaggedObject())->GetPrimitive(index);
     if (val.IsHeapObject() && val.IsAOTLiteralInfo()) {
         return AOTLiteralInfo::Cast(val.GetTaggedObject())->GetIhc();
     }
@@ -210,9 +210,10 @@ JSTaggedValue ConstantPool::GetIhcFromAOTLiteralInfo(JSTaggedValue constpool, ui
 void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, JSHandle<ConstantPool> aiCP,
                                                  JSHandle<ConstantPool> sharedCP, JSHandle<ConstantPool> unsharedCP)
 {
+    JSThread *thread = vm->GetJSThread();
     uint32_t constpoolLen = aiCP->GetCacheLength();
     auto aiCPLength = aiCP->GetLength();
-    JSMutableHandle<JSTaggedValue> valHandle(vm->GetJSThread(), JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valHandle(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < constpoolLen; i++) {
         // We need preserve unshared constantPool index and shared constantPool id instead of fetching from ai.
         // Because framework abc's ai does not contain those infos.
@@ -220,8 +221,7 @@ void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, JSHandle<ConstantPo
             i == (aiCPLength - ConstantPool::SHARED_CONSTPOOL_ID)) {
             continue;
         }
-        JSThread *thread = vm->GetJSThread();
-        JSTaggedValue val = aiCP->GetObjectFromCache(i);
+        JSTaggedValue val = aiCP->GetObjectFromCache(thread, i);
         valHandle.Update(val);
         if (IsAotMethodLiteralInfo(valHandle.GetTaggedValue())) {
             JSHandle<AOTLiteralInfo> value(thread, val);

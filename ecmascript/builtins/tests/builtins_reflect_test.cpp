@@ -137,7 +137,7 @@ HWTEST_F_L0(BuiltinsReflectTest, ReflectConstruct)
     JSHandle<JSPrimitiveRef> refResult = JSHandle<JSPrimitiveRef>::Cast(taggedResult);
     JSHandle<EcmaString> ruler = factory->NewFromASCII("ReflectConstruct");
     ASSERT_EQ(EcmaStringAccessor::Compare(instance,
-        JSHandle<EcmaString>(thread, EcmaString::Cast(refResult->GetValue())), ruler), 0);
+        JSHandle<EcmaString>(thread, EcmaString::Cast(refResult->GetValue(thread))), ruler), 0);
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -315,7 +315,7 @@ HWTEST_F_L0(BuiltinsReflectTest, ReflectGetPrototypeOf)
     JSTaggedValue result = BuiltinsReflect::ReflectGetPrototypeOf(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsECMAObject());
     JSHandle<JSTaggedValue> resultObj(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(result.GetRawData())));
-    ASSERT_EQ(JSTaggedValue::SameValue(resultObj.GetTaggedValue(), proto.GetTaggedValue()), true);
+    ASSERT_EQ(JSTaggedValue::SameValue(thread, resultObj.GetTaggedValue(), proto.GetTaggedValue()), true);
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -490,8 +490,8 @@ HWTEST_F_L0(BuiltinsReflectTest, ReflectSetPrototypeOf)
     JSTaggedValue result = BuiltinsReflect::ReflectSetPrototypeOf(ecmaRuntimeCallInfo);
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
-    JSHandle<JSTaggedValue> resultObj(thread, target->GetJSHClass()->GetPrototype());
-    ASSERT_EQ(JSTaggedValue::SameValue(resultObj.GetTaggedValue(), proto.GetTaggedValue()), true);
+    JSHandle<JSTaggedValue> resultObj(thread, target->GetJSHClass()->GetPrototype(thread));
+    ASSERT_EQ(JSTaggedValue::SameValue(thread, resultObj.GetTaggedValue(), proto.GetTaggedValue()), true);
     TestHelper::TearDownFrame(thread, prev);
 }
 }  // namespace panda::test

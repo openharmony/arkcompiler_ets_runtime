@@ -88,7 +88,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     }
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
     // 3. Let exports be O.[[Exports]].
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     // 4. If P is not an element of exports, return undefined.
     if (exports->IsUndefined()) {
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
@@ -100,7 +100,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
     }
     // 5. Let m be O.[[Module]].
-    JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule());
+    JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule(thread));
     // 6. Let binding be ! m.ResolveExport(P, « »).
     ResolvedMultiMap resolvedMap;
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolvedMap);
@@ -111,7 +111,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     if (binding->IsNull() || binding->IsString()) { // LCOV_EXCL_BR_LINE
         CString requestMod = ModulePathHelper::ReformatPath(mm->GetEcmaModuleFilenameString());
         LOG_FULL(FATAL) << "Module: '" << requestMod << SourceTextModule::GetResolveErrorReason(binding) <<
-            ConvertToString(key.GetTaggedValue()) << ".";
+            ConvertToString(thread, key.GetTaggedValue()) << ".";
     }
     JSTaggedValue result;
     // 8. Let targetModule be binding.[[Module]].
@@ -119,7 +119,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     switch (type) {
         case JSType::RESOLVEDBINDING_RECORD: {
             JSHandle<ResolvedBinding> resolvedBind = JSHandle<ResolvedBinding>::Cast(binding);
-            JSTaggedValue targetModule = resolvedBind->GetModule();
+            JSTaggedValue targetModule = resolvedBind->GetModule(thread);
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
@@ -129,17 +129,18 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             }
             ModuleTypes moduleType = module->GetTypes();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
-                result = ModuleValueAccessor::GetNativeOrCjsModuleValue(thread, module, resolvedBind->GetBindingName());
+                result = ModuleValueAccessor::GetNativeOrCjsModuleValue(thread, module,
+                    resolvedBind->GetBindingName(thread));
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {
-                result = module->GetModuleValue(thread, resolvedBind->GetBindingName(), true);
+                result = module->GetModuleValue(thread, resolvedBind->GetBindingName(thread), true);
             }
             break;
         }
         case JSType::RESOLVEDINDEXBINDING_RECORD: {
             JSHandle<ResolvedIndexBinding> resolvedBind = JSHandle<ResolvedIndexBinding>::Cast(binding);
-            JSTaggedValue targetModule = resolvedBind->GetModule();
+            JSTaggedValue targetModule = resolvedBind->GetModule(thread);
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
@@ -174,7 +175,7 @@ JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const J
     ASSERT(obj->IsModuleNamespace());
     // 1. Let exports be a copy of O.[[Exports]].
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     JSHandle<TaggedArray> exportsArray = JSArray::ToTaggedArray(thread, exports);
     if (!ModuleNamespace::ValidateKeysAvailable(thread, moduleNamespace, exportsArray)) {
         return exportsArray;
@@ -193,7 +194,7 @@ JSHandle<TaggedArray> ModuleNamespace::OwnEnumPropertyKeys(JSThread *thread, con
     ASSERT(obj->IsModuleNamespace());
     // 1. Let exports be a copy of O.[[Exports]].
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     JSHandle<TaggedArray> exportsArray = JSArray::ToTaggedArray(thread, exports);
     if (!ModuleNamespace::ValidateKeysAvailable(thread, moduleNamespace, exportsArray)) {
         return exportsArray;
@@ -251,7 +252,7 @@ bool ModuleNamespace::DefineOwnProperty(JSThread *thread,
     if (desc.HasValue()) {
         JSHandle<JSTaggedValue> descValue = desc.GetValue();
         JSHandle<JSTaggedValue> currentValue = current.GetValue();
-        return JSTaggedValue::SameValue(descValue, currentValue);
+        return JSTaggedValue::SameValue(thread, descValue, currentValue);
     }
 
     // 9. Return true.
@@ -268,7 +269,7 @@ bool ModuleNamespace::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue
     }
     // 2. Let exports be O.[[Exports]].
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     // 3. If P is an element of exports, return true.
     if (exports->IsUndefined()) {
         return false;
@@ -298,7 +299,7 @@ bool ModuleNamespace::GetOwnProperty(JSThread *thread, const JSHandle<JSTaggedVa
     }
     // 2. Let exports be O.[[Exports]].
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     // 3. If P is not an element of exports, return undefined.
     if (exports->IsUndefined()) {
         return false;
@@ -339,7 +340,7 @@ bool ModuleNamespace::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedVa
     }
     // 3. Let exports be O.[[Exports]].
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
     // 4. If P is an element of exports, return false.
     if (exports->IsUndefined()) {
         return true;
@@ -354,10 +355,10 @@ bool ModuleNamespace::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedVa
 bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<ModuleNamespace> &moduleNamespace,
                                             const JSHandle<TaggedArray> &exports)
 {
-    JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule());
+    JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule(thread));
     uint32_t exportsLength = exports->GetLength();
     for (uint32_t idx = 0; idx < exportsLength; idx++) {
-        JSHandle<JSTaggedValue> key(thread, exports->Get(idx));
+        JSHandle<JSTaggedValue> key(thread, exports->Get(thread, idx));
         ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolvedMap);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -365,12 +366,12 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Mod
         ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
         JSTaggedValue targetModule = JSTaggedValue::Undefined();
         if (binding->IsResolvedBinding()) {
-            targetModule = JSHandle<ResolvedBinding>::Cast(binding)->GetModule();
+            targetModule = JSHandle<ResolvedBinding>::Cast(binding)->GetModule(thread);
         } else if (binding->IsResolvedIndexBinding()) {
-            targetModule = JSHandle<ResolvedIndexBinding>::Cast(binding)->GetModule();
+            targetModule = JSHandle<ResolvedIndexBinding>::Cast(binding)->GetModule(thread);
         }
         ASSERT(!targetModule.IsUndefined());
-        JSTaggedValue dictionary = SourceTextModule::Cast(targetModule.GetTaggedObject())->GetNameDictionary();
+        JSTaggedValue dictionary = SourceTextModule::Cast(targetModule.GetTaggedObject())->GetNameDictionary(thread);
         if (dictionary.IsUndefined()) {
             THROW_REFERENCE_ERROR_AND_RETURN(thread, "module environment is undefined", false);
         }
@@ -383,7 +384,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    JSHandle<SourceTextModule> module(thread, nameSpace->GetModule());
+    JSHandle<SourceTextModule> module(thread, nameSpace->GetModule(thread));
     CString moduleStr = SourceTextModule::GetModuleName(module.GetTaggedValue());
     int srcLength = strlen(moduleStr.c_str()) + 1;
     auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
@@ -393,7 +394,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
     }
     char *tmpData = reinterpret_cast<char *>(moduleNameData);
     tmpData[srcLength - 1] = '\0';
-    ASSERT(nameSpace->GetDeregisterProcession().IsUndefined());
+    ASSERT(nameSpace->GetDeregisterProcession(thread).IsUndefined());
     JSHandle<JSNativePointer> registerPointer = factory->NewJSNativePointer(
         reinterpret_cast<void *>(moduleNameData), callback, reinterpret_cast<void *>(thread), false, srcLength);
     nameSpace->SetDeregisterProcession(thread, registerPointer.GetTaggedValue());

@@ -75,7 +75,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_001)
     auto result = FormatCommon(thread, jSListFormat, listValue.GetTaggedValue());
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("M, o, t, o, r, c, y, c, l and e", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("M, o, t, o, r, c, y, c, l and e", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 void DefineOwnPropertyCommonTest(JSThread* thread, JSHandle<JSObject>& obj, std::vector<JSHandle<JSTaggedValue>>& vals)
@@ -117,7 +117,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_002)
     JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("conjunction")); // the default value
     std::vector<std::string> listVal{"Motorcycle", "Bus", "Car"};
     JSHandle<EcmaString> handleEcmaStr = CommonTest(thread, locale, typeValue, listVal);
-    EXPECT_STREQ("Motorcycle, Bus and Car", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("Motorcycle, Bus and Car", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Format(["Motorcycle", "Bus", "Car" ], type(disjunction))
@@ -128,7 +128,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_003)
     JSHandle<JSTaggedValue> typeValue(factory->NewFromASCII("disjunction")); // the default value
     std::vector<std::string> listVal{"Motorcycle", "Bus", "Car"};
     JSHandle<EcmaString> handleEcmaStr = CommonTest(thread, locale, typeValue, listVal);
-    EXPECT_STREQ("Motorcycle, Bus or Car", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("Motorcycle, Bus or Car", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Format(["中文英文" ], type(disjunction))
@@ -140,7 +140,7 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_004)
 
     std::vector<std::string> listVal{"中文英文"};
     JSHandle<EcmaString> handleEcmaStr = CommonTest(thread, locale, typeValue, listVal);
-    EXPECT_STREQ("中文英文", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("中文英文", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Format(["中文", "英文", "韩文" ], type(conjunction))
@@ -152,6 +152,6 @@ HWTEST_F_L0(BuiltinsListFormatTest, Format_005)
 
     std::vector<std::string> listVal{"中文", "英文", "韩文" };
     JSHandle<EcmaString> handleEcmaStr = CommonTest(thread, locale, typeValue, listVal);
-    EXPECT_STREQ("中文、英文和韩文", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("中文、英文和韩文", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 }  // namespace panda::test

@@ -26,9 +26,9 @@
 namespace panda::ecmascript::pgo {
 class PGOTypeGenerator {
 public:
-    static ProfileType GenerateProfileType(JSTaggedType child, ProfileType rootType)
+    static ProfileType GenerateProfileType(const JSThread *thread, JSTaggedType child, ProfileType rootType)
     {
-        std::pair<bool, CString> result = JSHClass::DumpToString(child);
+        std::pair<bool, CString> result = JSHClass::DumpToString(thread, child);
         uint32_t traceId = ComputeHashCode(result.second);
         if (result.first) {
             return ProfileType(rootType.GetAbcId(), traceId, ProfileType::Kind::InvalidId);

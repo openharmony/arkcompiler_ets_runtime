@@ -46,7 +46,7 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     ASSERT_FALSE(hclass->IsConstructor());
     ASSERT_FALSE(hclass->IsCallable());
     ASSERT_TRUE(hclass->IsJSSharedObject());
-    ASSERT_TRUE(hclass->GetProto().IsNull());
+    ASSERT_TRUE(hclass->GetProto(thread).IsNull());
 
     // SharedObject
     PropertyDescriptor desc(thread);
@@ -61,7 +61,7 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     ASSERT_TRUE(ctorHClass->IsJSSharedFunction());
 
     // SharedFunction.prototype
-    auto proto = ctorHClass->GetProto();
+    auto proto = ctorHClass->GetProto(thread);
     ASSERT_EQ(proto, env->GetSFunctionPrototype().GetTaggedValue());
     ASSERT_TRUE(proto.IsJSSharedFunction());
     JSHClass *protoHClass = proto.GetTaggedObject()->GetClass();
@@ -70,7 +70,7 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
     ASSERT_TRUE(protoHClass->IsCallable());
 
     // SharedObject.prototype
-    auto sObjProto = protoHClass->GetProto();
+    auto sObjProto = protoHClass->GetProto(thread);
     ASSERT_EQ(sObjProto, sharedObjectPrototype.GetTaggedValue());
     ASSERT_TRUE(sObjProto.IsJSSharedObject());
     JSHClass *sObjProtoHClass = sObjProto.GetTaggedObject()->GetClass();
@@ -132,7 +132,7 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SendableMethod)
     JSHandle<Method> method = factory->NewSMethod(methodLiteral);
     method->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
     JSHandle<JSFunction> func = factory->NewJSSendableFunction(method);
-    ASSERT_TRUE(Method::Cast(func->GetMethod())->IsSendableMethod());
+    ASSERT_TRUE(Method::Cast(func->GetMethod(thread))->IsSendableMethod());
 
     uint32_t methodOffset1 = 101;
     MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(methodOffset1));
@@ -140,6 +140,6 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SendableMethod)
     method1->SetIsSendable(true);
     JSHandle<JSFunction> func1 = factory->NewSFunctionByHClass(
         method1, JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto()));
-    ASSERT_TRUE(Method::Cast(func1->GetMethod())->IsSendableMethod());
+    ASSERT_TRUE(Method::Cast(func1->GetMethod(thread))->IsSendableMethod());
 }
 }  // namespace panda::test

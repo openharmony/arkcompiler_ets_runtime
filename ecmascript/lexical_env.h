@@ -42,14 +42,14 @@ public:
         Set(thread, PARENT_ENV_INDEX, value);
     }
 
-    JSTaggedValue GetParentEnv() const
+    JSTaggedValue GetParentEnv(const JSThread *thread) const
     {
-        return Get(PARENT_ENV_INDEX);
+        return Get(thread, PARENT_ENV_INDEX);
     }
 
-    JSTaggedValue GetProperties(uint32_t index) const
+    JSTaggedValue GetProperties(const JSThread *thread, uint32_t index) const
     {
-        return Get(index + RESERVED_ENV_LENGTH);
+        return Get(thread, index + RESERVED_ENV_LENGTH);
     }
 
     void SetProperties(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -57,9 +57,9 @@ public:
         Set(thread, index + RESERVED_ENV_LENGTH, value);
     }
 
-    JSTaggedValue GetScopeInfo() const
+    JSTaggedValue GetScopeInfo(const JSThread *thread) const
     {
-        return Get(SCOPE_INFO_INDEX);
+        return Get(thread, SCOPE_INFO_INDEX);
     }
 
     void SetScopeInfo(JSThread *thread, JSTaggedValue value)
@@ -92,9 +92,9 @@ public:
         Set(thread, CONSTRUCTOR_INDEX, value);
     }
 
-    JSTaggedValue GetConstructor() const
+    JSTaggedValue GetConstructor(const JSThread *thread) const
     {
-        return Get(CONSTRUCTOR_INDEX);
+        return Get(thread, CONSTRUCTOR_INDEX);
     }
 
     DECL_DUMP()

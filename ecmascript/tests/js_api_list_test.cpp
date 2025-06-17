@@ -57,7 +57,7 @@ HWTEST_F_L0(JSAPIListTest, AddHasAndIsEmpty)
 
     JSHandle<JSAPIList> toor(thread, CreateList());
 
-    EXPECT_TRUE(toor->IsEmpty());
+    EXPECT_TRUE(toor->IsEmpty(thread));
 
     std::string myValue("myvalue");
     for (int i = 0; i < NODE_NUMBERS; i++) {
@@ -65,11 +65,11 @@ HWTEST_F_L0(JSAPIListTest, AddHasAndIsEmpty)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPIList::Add(thread, toor, value);
     }
-    EXPECT_EQ(toor->Length(), NODE_NUMBERS);
-    EXPECT_FALSE(toor->IsEmpty());
+    EXPECT_EQ(toor->Length(thread), NODE_NUMBERS);
+    EXPECT_FALSE(toor->IsEmpty(thread));
 
     EcmaTestCommon::ListAddHasCommon(thread, toor, value, myValue, NODE_NUMBERS);
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIListTest, InsertAndGetLastAndGetFirst)
@@ -92,15 +92,15 @@ HWTEST_F_L0(JSAPIListTest, Remove)
 
     value.Update(JSTaggedValue(4));
     EXPECT_EQ(JSAPIList::RemoveByIndex(thread, toor, 4), value.GetTaggedValue());
-    EXPECT_EQ(toor->Has(value.GetTaggedValue()), false);
-    EXPECT_EQ(toor->Length(), 19);
+    EXPECT_EQ(toor->Has(thread, value.GetTaggedValue()), false);
+    EXPECT_EQ(toor->Length(thread), 19);
 
     value.Update(JSTaggedValue(8));
     EXPECT_EQ(toor->Remove(thread, value.GetTaggedValue()), JSTaggedValue::True());
-    EXPECT_EQ(toor->Has(value.GetTaggedValue()), false);
-    EXPECT_EQ(toor->Length(), 18);
+    EXPECT_EQ(toor->Has(thread, value.GetTaggedValue()), false);
+    EXPECT_EQ(toor->Length(thread), 18);
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIListTest, Clear)
@@ -114,8 +114,8 @@ HWTEST_F_L0(JSAPIListTest, Clear)
 
     list->Clear(thread);
 
-    EXPECT_EQ(list->Length(), 0);
-    EXPECT_TRUE(list->GetFirst().IsUndefined());
+    EXPECT_EQ(list->Length(thread), 0);
+    EXPECT_TRUE(list->GetFirst(thread).IsUndefined());
 }
 
 HWTEST_F_L0(JSAPIListTest, Set)
@@ -132,7 +132,7 @@ HWTEST_F_L0(JSAPIListTest, Set)
 
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i + 1));
-        JSTaggedValue gValue = toor->Get(i);
+        JSTaggedValue gValue = toor->Get(thread, i);
         EXPECT_EQ(gValue, value.GetTaggedValue());
     }
 }
@@ -230,7 +230,7 @@ HWTEST_F_L0(JSAPIListTest, GetSubList)
 
     // throw error test
     uint32_t smallIndex = -1;
-    uint32_t bigIndex = List->Length() + 10;
+    uint32_t bigIndex = List->Length(thread) + 10;
     uint32_t zeroIndex = 0;
 
     // fromIndex < 0
@@ -266,8 +266,9 @@ HWTEST_F_L0(JSAPIListTest, OwnKeys)
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
     EXPECT_TRUE(keyArray->GetLength() == elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(keyArray->Get(i).GetTaggedObject())));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                        *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+                                                        EcmaString::Cast(keyArray->Get(thread, i).GetTaggedObject())));
     }
 }
 }  // namespace panda::test

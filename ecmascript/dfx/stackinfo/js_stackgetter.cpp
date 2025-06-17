@@ -62,10 +62,10 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
     if (method->IsNativeWithCallField()) {
         FrameIterator itNext(it.GetSp(), it.GetThread());
         itNext.Advance<GCVisitedFlag::IGNORED>();
-        GetNativeMethodCallPos(itNext, codeEntry);
+        GetNativeMethodCallPos(itNext, vm, codeEntry);
         GetNativeStack(vm, it, codeEntry.functionName, sizeof(codeEntry.functionName), isCpuProfiler);
     } else {
-        const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+        const JSPandaFile *jsPandaFile = method->GetJSPandaFile(vm->GetJSThread());
         if (jsPandaFile == nullptr) {
             return false;
         }
@@ -136,9 +136,9 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     // it not allow thread check here, if enable thread check, it maybe deadlock in IsInThreadPool
     JSThread *thread = vm->GetJSThreadNoCheck();
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     JSHandle<JSTaggedValue> func(thread, function);
@@ -146,7 +146,7 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
     std::string methodNameStr;
     if (funcNameValue->IsString()) {
         JSHandle<EcmaString> methodName(funcNameValue);
-        methodNameStr = EcmaStringAccessor(methodName).ToStdString();
+        methodNameStr = EcmaStringAccessor(methodName).ToStdString(thread);
     }
     // napi method
     if (isCpuProfiler && function->IsCallNapi() && extraInfoValue.CheckIsJSNativePointer()) {
@@ -200,8 +200,8 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
             return RunningState::NAPI;
         }
         if (isNative) {
-            return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
-                                                                                     RunningState::BUILTIN;
+            return function->GetNativeFunctionExtraInfo(thread).CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+                RunningState::BUILTIN;
         }
         if (it.IsFastJitFunctionFrame()) {
             return RunningState::JIT;
@@ -211,8 +211,8 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
         }
         if (thread->IsAsmInterpreter()) {
             // For Methods that is compiled in AOT but deoptimized at runtime, we mark it as AINT-D
-            Method *method = Method::Cast(function->GetMethod());
-            MethodLiteral *methodLiteral = method->GetMethodLiteral();
+            Method *method = Method::Cast(function->GetMethod(thread));
+            MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
             if (methodLiteral != nullptr && MethodLiteral::IsAotWithCallField(methodLiteral->GetCallField())) {
                 return RunningState::AINT_D;
             }
@@ -234,28 +234,29 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
         return RunningState::NAPI;
     }
     if (isNative) {
-        return function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
-                                                                                 RunningState::BUILTIN;
+        return function->GetNativeFunctionExtraInfo(thread).CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
+            RunningState::BUILTIN;
     }
 
     return RunningState::OTHER;
 }
 
-void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry)
+void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, const EcmaVM *vm, FrameInfoTemp &codeEntry)
 {
+    JSThread *thread = vm->GetJSThread();
     auto nextMethod = it.CheckAndGetMethod();
     if (nextMethod == nullptr) {
         return ;
     }
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(thread);
+    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile(thread) != nullptr) {
         DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile(thread));
         if (debugExtractor == nullptr) {
             return;
         }
-        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral();
+        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral(thread);
         if (methodLiteral == nullptr) {
             return;
         }
@@ -292,10 +293,11 @@ void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &cod
     }
 }
 
-void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it)
+void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it, const EcmaVM *vm)
 {
+    JSThread *thread = vm->GetJSThread();
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(thread);
     if (method->IsNativeWithCallField()) {
         if (extraInfoValue.CheckIsJSNativePointer()) {
             JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
@@ -304,11 +306,12 @@ void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it
         return function->GetNativePointer();
     }
 
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     return reinterpret_cast<void *>(methodLiteral);
 }
-void JsStackGetter::GetCallLineNumber(const FrameIterator &it, int &LineNumber)
+void JsStackGetter::GetCallLineNumber(const FrameIterator &it, const EcmaVM *vm, int &LineNumber)
 {
+    JSThread *thread = vm->GetJSThread();
     FrameIterator itNext(it.GetSp(), it.GetThread());
     itNext.Advance<GCVisitedFlag::IGNORED>();
     auto nextMethod = itNext.CheckAndGetMethod();
@@ -316,14 +319,14 @@ void JsStackGetter::GetCallLineNumber(const FrameIterator &it, int &LineNumber)
         return ;
     }
     JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(thread);
+    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile(thread) != nullptr) {
         DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile(thread));
         if (debugExtractor == nullptr) {
             return;
         }
-        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral();
+        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral(thread);
         if (methodLiteral == nullptr) {
             return;
         }

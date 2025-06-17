@@ -92,11 +92,11 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_001)
     cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
     cellRecord->SetHeldValue(thread, heldValue);
     JSHandle<JSTaggedValue> cell(cellRecord);
-    JSHandle<CellRecordVector> expectNoUnregister(thread, finaRegObj->GetNoUnregister());
+    JSHandle<CellRecordVector> expectNoUnregister(thread, finaRegObj->GetNoUnregister(thread));
     expectNoUnregister = CellRecordVector::Append(thread, expectNoUnregister, cell);
 
     JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
-    JSHandle<JSTaggedValue> noUnregister(thread, finaRegObj->GetNoUnregister());
+    JSHandle<JSTaggedValue> noUnregister(thread, finaRegObj->GetNoUnregister(thread));
     JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
     EXPECT_EQ(finRegLists.GetTaggedValue().GetRawData(),
         JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue().GetRawData());
@@ -129,11 +129,11 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_002)
     JSHandle<CellRecordVector> array = JSHandle<CellRecordVector>(CellRecordVector::Create(thread));
     array = CellRecordVector::Append(thread, array, cell);
     JSHandle<JSTaggedValue> arrayValue(array);
-    JSHandle<LinkedHashMap> expectMaybeUnregister(thread, finaRegObj->GetMaybeUnregister());
+    JSHandle<LinkedHashMap> expectMaybeUnregister(thread, finaRegObj->GetMaybeUnregister(thread));
     expectMaybeUnregister = LinkedHashMap::SetWeakRef(thread, expectMaybeUnregister, unregisterToken, arrayValue);
 
     JSFinalizationRegistry::Register(thread, target, heldValue, unregisterToken, finaRegObj);
-    JSHandle<JSTaggedValue> maybeUnregister(thread, finaRegObj->GetMaybeUnregister());
+    JSHandle<JSTaggedValue> maybeUnregister(thread, finaRegObj->GetMaybeUnregister(thread));
     EXPECT_EQ(expectMaybeUnregister.GetTaggedValue().GetRawData(), maybeUnregister.GetTaggedValue().GetRawData());
 
     JSHandle<JSTaggedValue> finRegLists(thread, vm->GetFinRegLists());
@@ -166,7 +166,7 @@ static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister =
             cellRecord->SetToWeakRefTarget(thread, target.GetTaggedValue());
             cellRecord->SetHeldValue(thread, heldValue);
             JSHandle<JSTaggedValue> cell(cellRecord);
-            JSHandle<CellRecordVector> noUnregister(thread, finaRegObj->GetNoUnregister());
+            JSHandle<CellRecordVector> noUnregister(thread, finaRegObj->GetNoUnregister(thread));
             noUnregister = CellRecordVector::Append(thread, noUnregister, cell);
             finaRegObj->SetNoUnregister(thread, noUnregister);
             JSFinalizationRegistry::AddFinRegLists(thread, finaRegObj);

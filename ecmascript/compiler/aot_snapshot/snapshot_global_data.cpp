@@ -25,8 +25,8 @@ JSHandle<ConstantPool> ReviseData::GetConstantPoolFromSnapshotData(JSThread *thr
 {
     JSHandle<TaggedArray> data(thread, globalData->GetData());
     auto cpArrayOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID);
-    JSHandle<TaggedArray> cpArr(thread, data->Get(dataIdx + cpArrayOffset));
-    return JSHandle<ConstantPool>(thread, cpArr->Get(cpArrayIdx));
+    JSHandle<TaggedArray> cpArr(thread, data->Get(thread, dataIdx + cpArrayOffset));
+    return JSHandle<ConstantPool>(thread, cpArr->Get(thread, cpArrayIdx));
 }
 
 void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
@@ -36,7 +36,7 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
         JSHandle<ConstantPool> newCP = GetConstantPoolFromSnapshotData(thread, globalData,
                                                                        item.dataIdx_, item.cpArrayIdx_);
 
-        JSTaggedValue val = newCP->GetObjectFromCache(item.constpoolIdx_);
+        JSTaggedValue val = newCP->GetObjectFromCache(thread, item.constpoolIdx_);
         if (val.IsHole()) {
             continue;
         }
@@ -60,7 +60,7 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
         AOTLiteralInfo *aotLiteralInfo = AOTLiteralInfo::Cast(val.GetTaggedObject());
         uint32_t aotLiteralInfoLen = aotLiteralInfo->GetCacheLength();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
-            JSTaggedValue methodOffsetVal = aotLiteralInfo->GetObjectFromCache(i);
+            JSTaggedValue methodOffsetVal = aotLiteralInfo->GetObjectFromCache(thread, i);
             if (methodOffsetVal.GetInt() == static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE)) {
                 continue;
             }

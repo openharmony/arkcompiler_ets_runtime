@@ -37,7 +37,7 @@ JSTaggedValue JSAPILightWeightMapIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightMapIterator> iter(input);
-    JSHandle<JSTaggedValue> oldlightWeightMap(thread, iter->GetIteratedLightWeightMap());
+    JSHandle<JSTaggedValue> oldlightWeightMap(thread, iter->GetIteratedLightWeightMap(thread));
     JSHandle<JSAPILightWeightMap> lightWeightMap(oldlightWeightMap);
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (oldlightWeightMap->IsUndefined()) {
@@ -77,8 +77,8 @@ JSHandle<JSTaggedValue> JSAPILightWeightMapIterator::CreateLightWeightMapIterato
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPILightWeightMap()) {
-        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPILightWeightMap()) {
-            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget(thread).IsJSAPILightWeightMap()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");

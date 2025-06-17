@@ -97,7 +97,7 @@ JSTaggedValue BuiltinsCollator::Compare(EcmaRuntimeCallInfo *argv)
     //    c. Set collator.[[BoundCompare]] to F.
     // 4. Return collator.[[BoundCompare]].
     JSHandle<JSCollator> collator = JSHandle<JSCollator>::Cast(thisValue);
-    JSHandle<JSTaggedValue> boundCompare(thread, collator->GetBoundCompare());
+    JSHandle<JSTaggedValue> boundCompare(thread, collator->GetBoundCompare(thread));
     if (boundCompare->IsUndefined()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSIntlBoundFunction> intlBoundFunc = factory->NewJSIntlBoundFunction(
@@ -105,7 +105,7 @@ JSTaggedValue BuiltinsCollator::Compare(EcmaRuntimeCallInfo *argv)
         intlBoundFunc->SetCollator(thread, collator);
         collator->SetBoundCompare(thread, intlBoundFunc);
     }
-    return collator->GetBoundCompare();
+    return collator->GetBoundCompare(thread);
 }
 
 // 11.3.3.1 Collator Compare Functions
@@ -119,7 +119,7 @@ JSTaggedValue BuiltinsCollator::AnonymousCollator(EcmaRuntimeCallInfo *argv)
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(GetConstructor(argv));
 
     // 1. Let collator be F.[[Collator]].
-    JSHandle<JSTaggedValue> collator(thread, intlBoundFunc->GetCollator());
+    JSHandle<JSTaggedValue> collator(thread, intlBoundFunc->GetCollator(thread));
 
     // 2. Assert: Type(collator) is Object and collator has an [[InitializedCollator]] internal slot.
     ASSERT_PRINT(collator->IsJSObject() && collator->IsJSCollator(), "collator is not object or JSCollator");
@@ -137,7 +137,7 @@ JSTaggedValue BuiltinsCollator::AnonymousCollator(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> yValue = JSTaggedValue::ToString(thread, y);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     // 7. Return CompareStrings(collator, X, Y).
-    icu::Collator *icuCollator = (JSHandle<JSCollator>::Cast(collator))->GetIcuCollator();
+    icu::Collator *icuCollator = (JSHandle<JSCollator>::Cast(collator))->GetIcuCollator(thread);
     return JSCollator::CompareStrings(thread, icuCollator, xValue, yValue);
 }
 

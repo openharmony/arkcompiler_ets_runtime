@@ -156,17 +156,17 @@ HWTEST_F_L0(EcmaDumpTest, Dump)
     std::ostringstream os;
 
     JSTaggedValue value1(100);
-    value1.Dump(os);
+    value1.Dump(thread, os);
 
     JSTaggedValue value2(100.0);
-    JSTaggedValue(value2.GetRawData()).Dump(os);
+    JSTaggedValue(value2.GetRawData()).Dump(thread, os);
 
-    JSTaggedValue::Undefined().Dump(os);
+    JSTaggedValue::Undefined().Dump(thread, os);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    env.GetTaggedValue().Dump(os);
+    env.GetTaggedValue().Dump(thread, os);
 
     JSHandle<JSFunction> objFunc(env->GetObjectFunction());
-    objFunc.GetTaggedValue().Dump(os);
+    objFunc.GetTaggedValue().Dump(thread, os);
 }
 #endif  // #ifndef NDEBUG
 
@@ -362,7 +362,7 @@ static JSHandle<JSAPIArrayList> NewJSAPIArrayList(JSThread *thread, ObjectFactor
     JSHandle<JSHClass> arrayListClass =
         factory->NewEcmaHClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
     JSHandle<JSAPIArrayList> jsArrayList = JSHandle<JSAPIArrayList>::Cast(factory->NewJSObjectWithInit(arrayListClass));
-    jsArrayList->SetLength(thread, JSTaggedValue(0));
+    jsArrayList->SetLength(0);
     return jsArrayList;
 }
 
@@ -469,9 +469,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
 
 #define DUMP_FOR_HANDLE(dumpHandle)                                                     \
     do {                                                                                \
-        JSTaggedValue dumpValue = (dumpHandle).GetTaggedValue();                         \
-        dumpValue.Dump(os);                                                             \
-        dumpValue.DumpForSnapshot(snapshotVector);                                      \
+        JSTaggedValue dumpValue = (dumpHandle).GetTaggedValue();                        \
+        dumpValue.Dump(thread, os);                                                     \
+        dumpValue.DumpForSnapshot(thread, snapshotVector);                              \
         /* Testing runtime stubs: */                                                    \
         JSTaggedType dumpRawData = dumpValue.GetRawData();                              \
         uintptr_t hintStr = reinterpret_cast<uintptr_t>("Testing with: " #dumpHandle);  \
@@ -989,7 +989,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::FUNCTION_TEMPLATE: {
-                auto method = JSFunction::Cast(globalEnv->GetTaggedObjectFunction())->GetMethod();
+                auto method = JSFunction::Cast(globalEnv->GetTaggedObjectFunction())->GetMethod(thread);
                 JSHandle<Method> methodHandle(thread, method);
                 JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
                 JSHandle<FunctionTemplate> funcTemp = factory->NewFunctionTemplate(methodHandle, handleUndefined, 0);

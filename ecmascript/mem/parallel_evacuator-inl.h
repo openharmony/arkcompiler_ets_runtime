@@ -257,6 +257,7 @@ ParallelEvacuator::SetObjectFieldRSetVisitor::SetObjectFieldRSetVisitor(Parallel
 void ParallelEvacuator::SetObjectFieldRSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
     uintptr_t endAddr, VisitObjectArea area)
 {
+    JSThread *thread = evacuator_->heap_->GetJSThread();
     Region *rootRegion = Region::ObjectAddressToRange(root);
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
@@ -264,13 +265,13 @@ void ParallelEvacuator::SetObjectFieldRSetVisitor::VisitObjectRangeImpl(BaseObje
         JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        TaggedObject *dst = hclass->GetLayout(thread).GetTaggedObject();
         LayoutInfo *layout = LayoutInfo::UncheckCast(dst);
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            auto attr = layout->GetAttr(index++);
+            auto attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 evacuator_->SetObjectRSet(slot, rootRegion);
             }

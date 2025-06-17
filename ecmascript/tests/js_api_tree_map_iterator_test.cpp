@@ -98,8 +98,9 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, SetIteratedMap)
         JSAPITreeMap::Set(thread, jsTreeMap, key, value);
     }
     treeMapIterator->SetIteratedMap(thread, jsTreeMap.GetTaggedValue());
-    JSHandle<JSAPITreeMap> treeMapTo(thread, JSAPITreeMap::Cast(treeMapIterator->GetIteratedMap().GetTaggedObject()));
-    EXPECT_EQ(treeMapTo->GetSize(), static_cast<int>(DEFAULT_LENGTH));
+    JSHandle<JSAPITreeMap> treeMapTo(thread,
+                                     JSAPITreeMap::Cast(treeMapIterator->GetIteratedMap(thread).GetTaggedObject()));
+    EXPECT_EQ(treeMapTo->GetSize(thread), static_cast<int>(DEFAULT_LENGTH));
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         std::string ikey = mapKey + std::to_string(i);
         std::string ivalue = mapValue + std::to_string(i + 2U);
@@ -195,7 +196,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_Next)
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKey = mapKey + std::to_string(i);
         keyValue[0].Update(factory->NewFromStdString(resultKey).GetTaggedValue());
-        EXPECT_EQ(JSTaggedValue::SameValue(
+        EXPECT_EQ(JSTaggedValue::SameValue(thread,
             JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), keyValue[0]), true);
         EXPECT_EQ(treeMapKeyIterator->GetNextIndex(), (i + 1U));
     }
@@ -229,7 +230,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, VALUE_Next)
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKey = mapValue + std::to_string(i + 1U);
         keyValue[1].Update(factory->NewFromStdString(resultKey).GetTaggedValue()); // 1 : value index
-        EXPECT_EQ(JSTaggedValue::SameValue(
+        EXPECT_EQ(JSTaggedValue::SameValue(thread,
             JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), keyValue[1]), true); // 1 : value index
         EXPECT_EQ(treeMapKeyIterator->GetNextIndex(), (i + 1U));
     }
@@ -272,7 +273,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_AND_VALUE_Next)
         JSHandle<JSTaggedValue> keyValueArr(JSObject::GetProperty(thread, resultObj, valueStr).GetValue());
         for (int index = 0; index < 2; index++) {
             JSHandle<JSTaggedValue> indexValue(thread, JSTaggedValue(index));
-            EXPECT_EQ(JSTaggedValue::SameValue(
+            EXPECT_EQ(JSTaggedValue::SameValue(thread,
                 JSObject::GetProperty(thread, keyValueArr, indexValue).GetValue(), value), true);
             resultKeyAndValue = mapValue + std::to_string(i + 2U);
             value.Update(factory->NewFromStdString(resultKeyAndValue).GetTaggedValue());

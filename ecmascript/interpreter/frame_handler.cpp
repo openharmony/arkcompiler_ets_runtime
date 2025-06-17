@@ -20,7 +20,7 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
-FrameHandler::FrameHandler(const JSThread *thread)
+FrameHandler::FrameHandler(JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
     AdvanceToJSFrame();
@@ -146,7 +146,7 @@ uint32_t FrameHandler::GetBytecodeOffset() const
         reinterpret_cast<void*>(curNativePc);
         JSHandle<JSTaggedValue> funcVal = JSHandle<JSTaggedValue>(thread_, GetFunction());
         JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(funcVal);
-        uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(func, curNativePc);
+        uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(thread_, func, curNativePc);
         return curBytecodePcOfst;
     }
 }
@@ -155,13 +155,13 @@ Method *FrameHandler::GetMethod() const
 {
     ASSERT(IsJSFrame());
     auto function = GetFunction();
-    return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+    return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget(thread_);
 }
 
 const JSPandaFile* FrameHandler::GetJSPandaFile() const
 {
     auto method = GetMethod();
-    return method->GetJSPandaFile();
+    return method->GetJSPandaFile(thread_);
 }
 
 std::string FrameHandler::GetFileName() const
@@ -192,7 +192,7 @@ Method *FrameHandler::CheckAndGetMethod() const
     ASSERT(IsJSFrame());
     auto function = GetFunction();
     if (function.IsJSFunctionBase() || function.IsJSProxy()) {
-        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget(thread_);
     }
     return nullptr;
 }
@@ -288,7 +288,7 @@ ConstantPool *FrameHandler::GetConstpool() const
 {
     ASSERT(IsInterpretedFrame());
     auto method = GetMethod();
-    JSTaggedValue constpool = method->GetConstantPool();
+    JSTaggedValue constpool = method->GetConstantPool(thread_);
     return ConstantPool::Cast(constpool.GetTaggedObject());
 }
 
@@ -311,7 +311,7 @@ void FrameHandler::DumpStack(std::ostream &os) const
     FrameHandler frameHandler(thread_);
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         os << "[" << i++
-        << "]:" << frameHandler.GetMethod()->ParseFunctionName()
+        << "]:" << frameHandler.GetMethod()->ParseFunctionName(thread_)
         << "\n";
     }
 }

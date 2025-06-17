@@ -245,7 +245,7 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
     // get and parse stackinfo.
     JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
     JSHandle<EcmaString> stack(JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue());
-    CString stackInfo = ConvertToString(*stack);
+    CString stackInfo = ConvertToString(thread, *stack);
     CUnorderedSet<CString> methodNames = ParseStackInfo(stackInfo);
 
     // check whether the methodNames contains a patch method name.

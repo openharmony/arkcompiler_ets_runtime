@@ -44,7 +44,7 @@ Method *FrameIterator::CheckAndGetMethod() const
 {
     auto function = GetFunction();
     if (function.CheckIsJSFunctionBase() || function.CheckIsJSProxy()) {
-        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget(thread_);
     }
     return nullptr;
 }
@@ -556,7 +556,8 @@ uint32_t FrameIterator::GetBaselineBytecodeOffset() const
     auto *frame = this->GetFrame<AsmInterpretedFrame>();
     JSHandle<JSTaggedValue> funcVal = JSHandle<JSTaggedValue>(thread_, frame->function);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(funcVal);
-    uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(func, baselineNativePc_);
+    uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(
+        const_cast<JSThread*>(thread_), func, baselineNativePc_);
     return curBytecodePcOfst;
 }
 
@@ -572,7 +573,7 @@ uint32_t FrameIterator::GetBytecodeOffset() const
                 // for baselinejit
                 return GetBaselineBytecodeOffset();
             } else {
-                Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+                Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget(thread_);
                 auto offset = pc - method->GetBytecodeArray();
                 return static_cast<uint32_t>(offset);
             }
@@ -580,7 +581,7 @@ uint32_t FrameIterator::GetBytecodeOffset() const
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME: {
             auto *frame = this->GetFrame<InterpretedFrame>();
-            Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+            Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget(thread_);
             auto offset = frame->GetPc() - method->GetBytecodeArray();
             return static_cast<uint32_t>(offset);
         }
@@ -611,7 +612,7 @@ void FrameIterator::GetStackTraceInfos(std::vector<std::pair<JSTaggedType, uint3
             if (UNLIKELY(needBaselineSpecialHandling)) {
                 offset = pcOffset;
             } else {
-                Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+                Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget(thread_);
                 offset = frame->GetPc() - method->GetBytecodeArray();
             }
             stackTraceInfos.push_back(std::make_pair(frame->function.GetRawData(), static_cast<uint32_t>(offset)));
@@ -620,7 +621,7 @@ void FrameIterator::GetStackTraceInfos(std::vector<std::pair<JSTaggedType, uint3
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME: {
             auto *frame = this->GetFrame<InterpretedFrame>();
-            Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+            Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget(thread_);
             auto offset = frame->GetPc() - method->GetBytecodeArray();
             stackTraceInfos.push_back(std::make_pair(frame->function.GetRawData(), static_cast<uint32_t>(offset)));
             break;

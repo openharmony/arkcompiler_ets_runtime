@@ -62,13 +62,13 @@ int TimSort::CountRunAndMakeAscending(JSThread *thread, JSHandle<TaggedArray> &a
         return 1;
     }
     int runLength = 2;
-    JSMutableHandle<JSTaggedValue> runHiValue(thread, array->Get(runHi));
-    JSMutableHandle<JSTaggedValue> previousValue(thread, array->Get(runHi - 1));
+    JSMutableHandle<JSTaggedValue> runHiValue(thread, array->Get(thread, runHi));
+    JSMutableHandle<JSTaggedValue> previousValue(thread, array->Get(thread, runHi - 1));
     double order = ArrayHelper::SortCompare(thread, fn, runHiValue, previousValue);
     bool isDescending = order < 0 ? true : false;
     previousValue.Update(runHiValue.GetTaggedValue());
     for (int i = runHi + 1; i < hi; i++) {
-        runHiValue.Update(array->Get(i));
+        runHiValue.Update(array->Get(thread, i));
         order = ArrayHelper::SortCompare(thread, fn, runHiValue, previousValue);
         if (isDescending) {
             if (order >= 0) break;
@@ -91,8 +91,8 @@ void TimSort::ReverseRange(JSThread *thread, JSHandle<TaggedArray> &array, int f
     JSMutableHandle<JSTaggedValue> elementLow(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> elementHigh(thread, JSTaggedValue::Undefined());
     while (low < high) {
-        elementLow.Update(array->Get(low));
-        elementHigh.Update(array->Get(high));
+        elementLow.Update(array->Get(thread, low));
+        elementHigh.Update(array->Get(thread, high));
         array->Set(thread, low++, elementHigh);
         array->Set(thread, high--, elementLow);
     }
@@ -111,11 +111,11 @@ void TimSort::BinarySort(JSThread *thread, JSHandle<TaggedArray> &array,
     for (; start < hi; start++) {
         int left = lo;
         int right = start;
-        pivotVal.Update(array->Get(right));
+        pivotVal.Update(array->Get(thread, right));
         ASSERT(left <= right);
         while (left < right) {
             int mid = (left + right) >> 1;
-            midVal.Update(array->Get(mid));
+            midVal.Update(array->Get(thread, mid));
             if (ArrayHelper::SortCompare(thread, fn, pivotVal, midVal) < 0) {
                 right = mid;
             } else {
@@ -125,7 +125,7 @@ void TimSort::BinarySort(JSThread *thread, JSHandle<TaggedArray> &array,
         ASSERT(left == right);
 
         for (int p = start; p > left; --p) {
-            tmpVal.Update(array->Get(p - 1));
+            tmpVal.Update(array->Get(thread, p - 1));
             array->Set(thread, p, tmpVal);
         }
         array->Set(thread, left, pivotVal);
@@ -182,7 +182,7 @@ void TimSort::MergeAt(int i)
     }
     pending_.pop_back();
 
-    JSHandle<JSTaggedValue> key1(thread_, elements_->Get(base2));
+    JSHandle<JSTaggedValue> key1(thread_, elements_->Get(thread_, base2));
     int k = GallopRight(elements_, key1, base1, len1, 0);
     ASSERT(k >= 0);
     base1 += k;
@@ -190,7 +190,7 @@ void TimSort::MergeAt(int i)
     if (len1 == 0) {
         return;
     }
-    JSHandle<JSTaggedValue> key2(thread_, elements_->Get(base1 + len1 - 1));
+    JSHandle<JSTaggedValue> key2(thread_, elements_->Get(thread_, base1 + len1 - 1));
     len2 = GallopLeft(elements_, key2, base2, len2, len2 - 1);
     ASSERT(len2 >= 0);
     if (len2 == 0) {
@@ -210,14 +210,14 @@ int TimSort::GallopLeft(JSHandle<TaggedArray> &array,
     ASSERT(len > 0 && hint >= 0 && hint < len);
     int lastOfs = 0;
     int ofs = 1;
-    JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(base + hint));
+    JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(thread_, base + hint));
     JSMutableHandle<JSTaggedValue> offsetElement(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mElement(thread_, JSTaggedValue::Undefined());
     double order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
     if (order > 0) {
         int maxOfs = len - hint;
         while (ofs < maxOfs) {
-            offsetElement.Update(array->Get(base + hint + ofs));
+            offsetElement.Update(array->Get(thread_, base + hint + ofs));
             order = ArrayHelper::SortCompare(thread_, fn_, key, offsetElement);
             if (order <= 0) break;
 
@@ -235,7 +235,7 @@ int TimSort::GallopLeft(JSHandle<TaggedArray> &array,
     } else {
         int maxOfs = hint + 1;
         while (ofs < maxOfs) {
-            offsetElement.Update(array->Get(base + hint - ofs));
+            offsetElement.Update(array->Get(thread_, base + hint - ofs));
             order = ArrayHelper::SortCompare(thread_, fn_, key, offsetElement);
             if (order > 0) break;
 
@@ -256,7 +256,7 @@ int TimSort::GallopLeft(JSHandle<TaggedArray> &array,
     lastOfs++;
     while (lastOfs < ofs) {
         int m = lastOfs + ((ofs - lastOfs) >> 1);
-        mElement.Update(array->Get(base + m));
+        mElement.Update(array->Get(thread_, base + m));
         if (ArrayHelper::SortCompare(thread_, fn_, key, mElement) > 0) {
             lastOfs = m + 1;
         } else {
@@ -273,14 +273,14 @@ int TimSort::GallopRight(JSHandle<TaggedArray> &array,
     ASSERT(len > 0 && hint >= 0 && hint < len);
     int lastOfs = 0;
     int ofs = 1;
-    JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(base + hint));
+    JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(thread_, base + hint));
     JSMutableHandle<JSTaggedValue> offsetElement(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mElement(thread_, JSTaggedValue::Undefined());
     double order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
     if (order < 0) {
         int maxOfs = hint + 1;
         while (ofs < maxOfs) {
-            offsetElement.Update(array->Get(base + hint - ofs));
+            offsetElement.Update(array->Get(thread_, base + hint - ofs));
             order = ArrayHelper::SortCompare(thread_, fn_, key, offsetElement);
             if (order >= 0) break;
 
@@ -299,7 +299,7 @@ int TimSort::GallopRight(JSHandle<TaggedArray> &array,
     } else {
         int maxOfs = len - hint;
         while (ofs < maxOfs) {
-            offsetElement.Update(array->Get(base + hint + ofs));
+            offsetElement.Update(array->Get(thread_, base + hint + ofs));
             order = ArrayHelper::SortCompare(thread_, fn_, key, offsetElement);
             if (order < 0) break;
 
@@ -319,7 +319,7 @@ int TimSort::GallopRight(JSHandle<TaggedArray> &array,
     lastOfs++;
     while (lastOfs < ofs) {
         int m = lastOfs + ((ofs - lastOfs) >> 1);
-        mElement.Update(array->Get(base + m));
+        mElement.Update(array->Get(thread_, base + m));
         if (ArrayHelper::SortCompare(thread_, fn_, key, mElement) < 0) {
             ofs = m;
         } else {
@@ -345,7 +345,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
     int dest = base1;
     this->CopyArray(workArray, base1, tmpArray, cursor1, len1);
 
-    tmpElement.Update(workArray->Get(cursor2++));
+    tmpElement.Update(workArray->Get(thread_, cursor2++));
     workArray->Set(thread_, dest++, tmpElement);
 
     if (--len2 == 0) {
@@ -354,7 +354,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
     }
     if (len1 == 1) {
         this->CopyArray(workArray, cursor2, workArray, dest, len2);
-        tmpElement.Update(tmpArray->Get(cursor1));
+        tmpElement.Update(tmpArray->Get(thread_, cursor1));
         workArray->Set(thread_, dest + len2, tmpElement);
         return;
     }
@@ -364,11 +364,11 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
         int count2 = 0;
         do {
             ASSERT(len1 > 1 && len2 > 0);
-            cmp1Element.Update(workArray->Get(cursor2));
-            cmp2Element.Update(tmpArray->Get(cursor1));
+            cmp1Element.Update(workArray->Get(thread_, cursor2));
+            cmp2Element.Update(tmpArray->Get(thread_, cursor1));
 
             if (ArrayHelper::SortCompare(thread_, fn_, cmp1Element, cmp2Element) < 0) {
-                tmpElement.Update(workArray->Get(cursor2++));
+                tmpElement.Update(workArray->Get(thread_, cursor2++));
                 workArray->Set(thread_, dest++, tmpElement);
                 count2++;
                 count1 = 0;
@@ -376,7 +376,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             } else {
-                tmpElement.Update(tmpArray->Get(cursor1++));
+                tmpElement.Update(tmpArray->Get(thread_, cursor1++));
                 workArray->Set(thread_, dest++, tmpElement);
                 count1++;
                 count2 = 0;
@@ -388,7 +388,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
 
         do {
             ASSERT(len1 > 1 && len2 > 0);
-            JSHandle<JSTaggedValue> cursorVal(thread_, workArray->Get(cursor2));
+            JSHandle<JSTaggedValue> cursorVal(thread_, workArray->Get(thread_, cursor2));
             count1 = GallopRight(tmpArray, cursorVal, cursor1, len1, 0);
             if (count1 != 0) {
                 this->CopyArray(tmpArray, cursor1, workArray, dest, count1);
@@ -399,12 +399,12 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             }
-            tmpElement.Update(workArray->Get(cursor2++));
+            tmpElement.Update(workArray->Get(thread_, cursor2++));
             workArray->Set(thread_, dest++, tmpElement);
             if (--len2 == 0) {
                 goto epilogue;
             }
-            JSHandle<JSTaggedValue> cursorVal2(thread_, tmpArray->Get(cursor1));
+            JSHandle<JSTaggedValue> cursorVal2(thread_, tmpArray->Get(thread_, cursor1));
             count2 = GallopLeft(workArray, cursorVal2, cursor2, len2, 0);
             if (count2 != 0) {
                 this->CopyArray(workArray, cursor2, workArray, dest, count2);
@@ -415,7 +415,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             }
-            tmpElement.Update(tmpArray->Get(cursor1++));
+            tmpElement.Update(tmpArray->Get(thread_, cursor1++));
             workArray->Set(thread_, dest++, tmpElement);
             if (--len1 == 1) {
                 goto epilogue;
@@ -435,7 +435,7 @@ void TimSort::MergeLo(int base1, int len1, int base2, int len2)
     if (len1 == 1) {
         ASSERT(len2 > 0);
         this->CopyArray(workArray, cursor2, workArray, dest, len2);
-        tmpElement.Update(tmpArray->Get(cursor1));
+        tmpElement.Update(tmpArray->Get(thread_, cursor1));
         workArray->Set(thread_, dest + len2, tmpElement);
     } else {
         ASSERT(len1 != 0);
@@ -458,7 +458,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
     int cursor2 =  len2 - 1;
     int dest = base2 + len2 - 1;
 
-    tmpElement.Update(workArray->Get(cursor1--));
+    tmpElement.Update(workArray->Get(thread_, cursor1--));
     workArray->Set(thread_, dest--, tmpElement);
 
     if (--len1 == 0) {
@@ -469,7 +469,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
         dest -= len1;
         cursor1 -= len1;
         this->CopyArray(workArray, cursor1 + 1, workArray, dest + 1, len1);
-        tmpElement.Update(tmpArray->Get(cursor2));
+        tmpElement.Update(tmpArray->Get(thread_, cursor2));
         workArray->Set(thread_, dest, tmpElement);
         return;
     }
@@ -479,11 +479,11 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
         int count2 = 0;
         do {
             ASSERT(len1 > 0 && len2 > 1);
-            cmp1Element.Update(workArray->Get(cursor1));
-            cmp2Element.Update(tmpArray->Get(cursor2));
+            cmp1Element.Update(workArray->Get(thread_, cursor1));
+            cmp2Element.Update(tmpArray->Get(thread_, cursor2));
 
             if (ArrayHelper::SortCompare(thread_, fn_, cmp2Element, cmp1Element) < 0) {
-                tmpElement.Update(workArray->Get(cursor1--));
+                tmpElement.Update(workArray->Get(thread_, cursor1--));
                 workArray->Set(thread_, dest--, tmpElement);
                 count1++;
                 count2 = 0;
@@ -491,7 +491,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             } else {
-                tmpElement.Update(tmpArray->Get(cursor2--));
+                tmpElement.Update(tmpArray->Get(thread_, cursor2--));
                 workArray->Set(thread_, dest--, tmpElement);
                 count2++;
                 count1 = 0;
@@ -503,7 +503,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
 
         do {
             ASSERT(len1 > 0 && len2 > 1);
-            JSHandle<JSTaggedValue> cursorVal(thread_, tmpArray->Get(cursor2));
+            JSHandle<JSTaggedValue> cursorVal(thread_, tmpArray->Get(thread_, cursor2));
             count1 = len1 - GallopRight(workArray, cursorVal, base1, len1, len1 - 1);
             if (count1 != 0) {
                 dest -= count1;
@@ -514,12 +514,12 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             }
-            tmpElement.Update(tmpArray->Get(cursor2--));
+            tmpElement.Update(tmpArray->Get(thread_, cursor2--));
             workArray->Set(thread_, dest--, tmpElement);
             if (--len2 == 1) {
                 goto epilogue;
             }
-            JSHandle<JSTaggedValue> cursorVal2(thread_, workArray->Get(cursor1));
+            JSHandle<JSTaggedValue> cursorVal2(thread_, workArray->Get(thread_, cursor1));
             count2 = len2 - GallopLeft(tmpArray, cursorVal2, 0, len2, len2 - 1);
             if (count2 != 0) {
                 dest -= count2;
@@ -530,7 +530,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
                     goto epilogue;
                 }
             }
-            tmpElement.Update(workArray->Get(cursor1--));
+            tmpElement.Update(workArray->Get(thread_, cursor1--));
             workArray->Set(thread_, dest--, tmpElement);
             if (--len1 == 0) {
                 goto epilogue;
@@ -552,7 +552,7 @@ void TimSort::MergeHi(int base1, int len1, int base2, int len2)
         dest -= len1;
         cursor1 -= len1;
         this->CopyArray(workArray, cursor1 + 1, workArray, dest + 1, len1);
-        tmpElement.Update(tmpArray->Get(cursor2));
+        tmpElement.Update(tmpArray->Get(thread_, cursor2));
         workArray->Set(thread_, dest, tmpElement);
     } else {
         ASSERT(len2 != 0);
@@ -574,14 +574,14 @@ void TimSort::CopyArray(JSHandle<TaggedArray> &src, int srcPos,
         int srcIdx = srcPos + length - 1;
         int dstIdx = dstPos + length - 1;
         while (srcIdx >= srcPos) {
-            dst->Set(thread_, dstIdx--, src->Get(srcIdx--));
+            dst->Set(thread_, dstIdx--, src->Get(thread_, srcIdx--));
         }
     } else {
         int srcIdx = srcPos;
         int dstIdx = dstPos;
         int to = srcPos + length;
         while (srcIdx < to) {
-            dst->Set(thread_, dstIdx++, src->Get(srcIdx++));
+            dst->Set(thread_, dstIdx++, src->Get(thread_, srcIdx++));
         }
     }
 }

@@ -490,11 +490,12 @@ public:
         PropertyAttributes &attr);
     static void PUBLIC_API MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass, JSHClass *newJsHClass);
 
-    static void UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr);
-    static JSHClass *FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr);
-    static void VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr);
-    static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
-    static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
+    static void UpdateFieldType(const JSThread *thread, JSHClass *hclass, const PropertyAttributes &attr);
+    static JSHClass *FindFieldOwnHClass(const JSThread *thread, JSHClass *hclass, const PropertyAttributes &attr);
+    static void VisitAndUpdateLayout(const JSThread *thread, JSHClass *ownHClass, const PropertyAttributes &attr);
+    static void VisitTransitionAndUpdateObjSize(const JSThread *thread, JSHClass *ownHClass,
+                                                uint32_t finalInObjPropsNum);
+    static uint32_t VisitTransitionAndFindMaxNumOfProps(const JSThread *thread, JSHClass *ownHClass);
 
     static void NotifyHClassNotPrototypeChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
     static void NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass);
@@ -804,9 +805,9 @@ public:
         return (IsSpecialContainer() || IsModuleNamespace() || IsBigInt64Array());
     }
 
-    inline bool HasDependentInfos() const
+    inline bool HasDependentInfos(const JSThread *thread) const
     {
-        return GetDependentInfos() != JSTaggedValue::Undefined();
+        return GetDependentInfos(thread) != JSTaggedValue::Undefined();
     }
 
     inline bool IsJSTypedArray() const
@@ -2066,13 +2067,13 @@ public:
         SetConstructionCounter(SLACK_TRACKING_COUNT);
     }
 
-    inline void CompleteObjSizeTracking();
+    inline void CompleteObjSizeTracking(const JSThread *thread);
 
-    inline void ObjSizeTrackingStep();
+    inline void ObjSizeTrackingStep(const JSThread *thread);
 
-    inline static JSHClass *FindRootHClass(JSHClass *hclass);
-    inline static JSTaggedValue FindProtoHClass(JSHClass *hclass);
-    inline static JSTaggedValue FindProtoRootHClass(JSHClass *hclass);
+    inline static JSHClass *FindRootHClass(const JSThread *thread, JSHClass *hclass);
+    inline static JSTaggedValue FindProtoHClass(const JSThread *thread, JSHClass *hclass);
+    inline static JSTaggedValue FindProtoRootHClass(const JSThread *thread, JSHClass *hclass);
     inline static void UpdateRootHClass(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                         const JSHandle<JSHClass> &child);
 
@@ -2119,15 +2120,16 @@ public:
     static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<GlobalEnv> &env,
                                        const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
-    inline JSTaggedValue GetPrototype() const
+    inline JSTaggedValue GetPrototype(const JSThread *thread) const
     {
-        return GetProto();
+        return GetProto(thread);
     }
 
-    inline JSHClass *FindTransitions(const JSTaggedValue &key,
+    inline JSHClass *FindTransitions(const JSThread *thread,
+                                     const JSTaggedValue &key,
                                      const JSTaggedValue &metaData,
                                      const Representation &rep);
-    inline JSHClass *CheckHClassForRep(JSHClass *hclass, const Representation &rep);
+    inline JSHClass *CheckHClassForRep(const JSThread *thread, JSHClass *hclass, const Representation &rep);
 
     DECL_DUMP()
 
@@ -2143,17 +2145,18 @@ public:
     static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
                                                        const JSHandle<JSHClass>& parent,
                                                        const HClassLayoutDesc* desc);
-    static bool DumpRootHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
-    static bool DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
-    static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* rootDesc);
-    static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
-    static std::pair<bool, CString> DumpToString(JSTaggedType hclassVal);
+    static bool DumpRootHClassByPGO(const JSThread *thread, const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool DumpChildHClassByPGO(const JSThread *thread, const JSHClass* hclass, HClassLayoutDesc* desc);
+    static bool UpdateRootLayoutDescByPGO(const JSThread* thread, const JSHClass* hclass, HClassLayoutDesc* rootDesc);
+    static bool UpdateChildLayoutDescByPGO(const JSThread* thread, const JSHClass* hclass, HClassLayoutDesc* childDesc);
+    static std::pair<bool, CString> DumpToString(const JSThread *thread, JSTaggedType hclassVal);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE_OFFSET);
-    inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
-    inline bool HasTransitions() const
+    inline JSHClass *FindProtoTransitions(const JSThread *thread, const JSTaggedValue &key,
+        const JSTaggedValue &proto);
+    inline bool HasTransitions(const JSThread *thread) const
     {
-        return !GetTransitions().IsUndefined();
+        return !GetTransitions(thread).IsUndefined();
     }
 
     static JSHandle<JSHClass> CreateSHClass(JSThread *thread,

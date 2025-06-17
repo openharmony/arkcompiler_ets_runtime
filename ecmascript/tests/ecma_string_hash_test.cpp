@@ -41,10 +41,11 @@ public:
     }
 
     static uint32_t ComputeConcatHash(
+        const JSThread *thread,
         const JSHandle<EcmaString> &firstString,
         const JSHandle<EcmaString> &secondString)
     {
-        return EcmaString::CalculateConcatHashCode(firstString, secondString);
+        return EcmaString::CalculateConcatHashCode(thread, firstString, secondString);
     }
 };
 #if ENABLE_NEXT_OPTIMIZATION
@@ -121,7 +122,7 @@ HWTEST_F_L0(EcmaStringHashTest, CalculateConcatHashCode)
 
     std::string totalString = firstData + secondData;
     uint32_t totalHash = ComputeHashOpt(reinterpret_cast<uint8_t*>(totalString.data()), totalString.size(), 0);
-    uint32_t concatHash = ComputeConcatHash(firstString, secondString);
+    uint32_t concatHash = ComputeConcatHash(thread, firstString, secondString);
     EXPECT_EQ(totalHash, concatHash);
 }
 #endif

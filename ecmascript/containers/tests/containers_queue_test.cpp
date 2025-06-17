@@ -112,7 +112,7 @@ HWTEST_F_L0(ContainersQueueTest, QueueConstructor)
     ASSERT_TRUE(result.IsJSAPIQueue());
     JSHandle<JSAPIQueue> queue(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(queue));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
 
     // test QueueConstructor exception

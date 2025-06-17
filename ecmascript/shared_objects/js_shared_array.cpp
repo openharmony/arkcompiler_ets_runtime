@@ -136,7 +136,7 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
     if (isSArray) {
         // Let C be Get(originalArray, "constructor").
         auto *hclass = originalArray->GetJSHClass();
-        JSTaggedValue proto = hclass->GetPrototype();
+        JSTaggedValue proto = hclass->GetPrototype(thread);
         if (hclass->IsJSSharedArray() && !hclass->HasConstructor() && proto.IsJSSharedArray()) {
             return JSSharedArray::ArrayCreate(thread, length).GetTaggedValue();
         }
@@ -155,7 +155,7 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
             if (*realmC != *env) {
                 JSTaggedValue realmArrayConstructor = realmC->GetSharedArrayFunction().GetTaggedValue();
                 // If SameValue(C, realmC.[[intrinsics]].[[%Array%]]) is true, let C be undefined.
-                if (JSTaggedValue::SameValue(constructor.GetTaggedValue(), realmArrayConstructor)) {
+                if (JSTaggedValue::SameValue(thread, constructor.GetTaggedValue(), realmArrayConstructor)) {
                     return JSSharedArray::ArrayCreate(thread, length).GetTaggedValue();
                 }
             }
@@ -212,7 +212,7 @@ JSHandle<TaggedArray> JSSharedArray::SetCapacity(const JSThread *thread, const J
 void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                                 bool isNew)
 {
-    TaggedArray *element = TaggedArray::Cast(array->GetElements().GetTaggedObject());
+    TaggedArray *element = TaggedArray::Cast(array->GetElements(thread).GetTaggedObject());
 
     if (element->IsDictionaryMode()) { // LCOV_EXCL_START
         THROW_TYPE_ERROR(thread, "SendableArray don't support dictionary mode.");
@@ -319,7 +319,7 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    if (sCheckMode == SCheckMode::CHECK && !(JSSharedArray::Cast(*array)->IsKeyInRange(key))) {
+    if (sCheckMode == SCheckMode::CHECK && !(JSSharedArray::Cast(*array)->IsKeyInRange(thread, key))) {
         auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
                                                                "Key out of length.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
@@ -479,7 +479,7 @@ JSTaggedValue JSSharedArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
     //     b. Set j to j + 1.
     JSMutableHandle<JSTaggedValue> item(thread, JSTaggedValue::Undefined());
     while (j < itemCount) {
-        item.Update(sortedList->Get(j));
+        item.Update(sortedList->Get(thread, j));
         JSSharedArray::FastSetPropertyByValue(thread, obj, j, item);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ++j;
@@ -527,7 +527,7 @@ bool JSSharedArray::IncludeInSortedValue(JSThread *thread, const JSHandle<JSTagg
 
 void JSSharedArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedArray> obj)
 {
-    JSHandle<TaggedArray> arr(thread, obj->GetElements());
+    JSHandle<TaggedArray> arr(thread, obj->GetElements(thread));
     // Check whether array is shared in the nonmovable space before set properties and elements.
     // If true, then really copy array in the semi space.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -536,7 +536,7 @@ void JSSharedArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedA
             JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
         obj->SetElements(thread, newArray.GetTaggedValue());
     }
-    JSHandle<TaggedArray> prop(thread, obj->GetProperties());
+    JSHandle<TaggedArray> prop(thread, obj->GetProperties(thread));
     if (prop.GetTaggedValue().IsCOWArray()) {
         auto newProps = factory->CopyArray(prop, prop->GetLength(), prop->GetLength(),
             JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
@@ -546,7 +546,7 @@ void JSSharedArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedA
 
 void JSSharedArray::DeleteInElementMode(const JSThread *thread, JSHandle<JSSharedArray> &obj)
 {
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
+    JSHandle<TaggedArray> elements(thread, obj->GetElements(thread));
     ASSERT(!obj->GetJSHClass()->IsDictionaryElement());
     uint32_t length = elements->GetLength();
     // fixme(hzzhouzebin) Optimize Delete later.

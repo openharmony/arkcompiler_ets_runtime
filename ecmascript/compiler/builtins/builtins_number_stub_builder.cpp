@@ -40,7 +40,7 @@ void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label 
         BRANCH(IsString(glue_, msg), &stringObj, slowPath);
         Bind(&stringObj);
         {
-            *result = CallNGCRuntime(glue_, RTSTUB_ID(NumberHelperStringToDouble), { msg });
+            *result = CallNGCRuntime(glue_, RTSTUB_ID(NumberHelperStringToDouble), { glue_, msg });
             Jump(exit);
         }
     }
@@ -74,7 +74,7 @@ void BuiltinsNumberStubBuilder::ParseInt(Variable *result, Label *exit, Label *s
     }
     Bind(&radixIsSpecialInt);
     {
-        *result = CallNGCRuntime(glue_, RTSTUB_ID(StringToNumber), { msg, *radix });
+        *result = CallNGCRuntime(glue_, RTSTUB_ID(StringToNumber), { glue_, msg, *radix });
         Jump(exit);
     }
 }

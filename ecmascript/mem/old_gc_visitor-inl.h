@@ -77,18 +77,19 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
     ObjectSlot startSlot(start);
     ObjectSlot endSlot(end);
     auto root = TaggedObject::Cast(rootObject);
+    JSThread *thread = workNodeHolder_->GetJSThread();
     Region *rootRegion = Region::ObjectAddressToRange(root);
     bool rootNeedEvacuate = rootRegion->InYoungSpaceOrCSet();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
         ObjectSlot realEnd(start);
         realEnd += layout->GetPropertiesCapacity();
         endSlot = endSlot > realEnd ? realEnd : endSlot;
         for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
-            PropertyAttributes attr = layout->GetAttr(index++);
+            PropertyAttributes attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot, rootRegion, rootNeedEvacuate);
             }

@@ -37,7 +37,7 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIArrayListIterator> iter(input);
-    JSHandle<JSTaggedValue> arrayList(thread, iter->GetIteratedArrayList());
+    JSHandle<JSTaggedValue> arrayList(thread, iter->GetIteratedArrayList(thread));
 
     if (arrayList->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -48,7 +48,7 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t length = 0;
 
     if (arrayList->IsJSAPIArrayList()) {
-        length = JSHandle<JSAPIArrayList>(arrayList)->GetLength().GetArrayLength();
+        length = JSHandle<JSAPIArrayList>(arrayList)->GetLength();
     }
 
     if (index >= length) {

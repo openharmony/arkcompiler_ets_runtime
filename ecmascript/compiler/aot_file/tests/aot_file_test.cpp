@@ -521,7 +521,7 @@ HWTEST_F_L0(AOTFileTest, getAbsolutePathTest)
         // Use testAbcPath_ as the absolute path
         JSTaggedValue absVal = thread->GetEcmaVM()->GetFactory()->NewFromASCII(testAbcPath_.c_str()).GetTaggedValue();
         JSTaggedValue result = manager->GetAbsolutePath(thread, absVal);
-        CString resStr = ConvertToString(result);
+        CString resStr = ConvertToString(thread, result);
         ASSERT_EQ(std::string(resStr.c_str()), testAbcPath_);
     }
     JSNApi::DestroyJSVM(vm);

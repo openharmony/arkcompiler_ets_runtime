@@ -29,7 +29,7 @@ void JSSegments::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegments
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuBreakIterator != nullptr);
-    JSTaggedValue data = segments->GetIcuField();
+    JSTaggedValue data = segments->GetIcuField(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuBreakIterator);
@@ -46,7 +46,7 @@ void JSSegments::SetUString(JSThread *thread, const JSHandle<JSSegments> &segmen
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuUnicodeString != nullptr);
-    JSTaggedValue data = segments->GetUnicodeString();
+    JSTaggedValue data = segments->GetUnicodeString(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuUnicodeString);
@@ -59,7 +59,7 @@ void JSSegments::SetUString(JSThread *thread, const JSHandle<JSSegments> &segmen
 void SetTextToBreakIterator(JSThread *thread, const JSHandle<JSSegments> &segments,
                             JSHandle<EcmaString> text, icu::BreakIterator* breakIterator)
 {
-    std::u16string u16str = EcmaStringAccessor(text).ToU16String();
+    std::u16string u16str = EcmaStringAccessor(text).ToU16String(thread);
     icu::UnicodeString src(u16str.data(), u16str.size());
     icu::UnicodeString* uText = static_cast<icu::UnicodeString*>(src.clone());
     breakIterator->setText(*uText);
@@ -77,7 +77,7 @@ JSHandle<JSSegments> JSSegments::CreateSegmentsObject(JSThread *thread,
     JSHandle<JSFunction> segmentsCtor(env->GetSegmentsFunction());
     JSHandle<JSSegments> segments(factory->NewJSObjectByConstructor(segmentsCtor));
     // 3. Set segments.[[SegmentsSegmenter]] to segmenter.
-    icu::BreakIterator* icuBreakIterator = segmenter->GetIcuBreakIterator()->clone();
+    icu::BreakIterator* icuBreakIterator = segmenter->GetIcuBreakIterator(thread)->clone();
     SetIcuBreakIterator(thread, segments, icuBreakIterator, JSSegments::FreeIcuBreakIterator);
     segments->SetGranularity(segmenter->GetGranularity());
     // 4. Set segments.[[SegmentsString]] to string.
@@ -88,7 +88,7 @@ JSHandle<JSSegments> JSSegments::CreateSegmentsObject(JSThread *thread,
 
 JSTaggedValue JSSegments::Containing(JSThread *thread, const JSHandle<JSSegments> &segments, double index)
 {
-    icu::UnicodeString* unicodeString = segments->GetUString();
+    icu::UnicodeString* unicodeString = segments->GetUString(thread);
     // 5. Let len be the length of string.
     int32_t len = unicodeString->length();
     // 7. If n < 0 or n ≥ len, return undefined.
@@ -98,14 +98,14 @@ JSTaggedValue JSSegments::Containing(JSThread *thread, const JSHandle<JSSegments
     int32_t n = static_cast<int32_t>(index);
     // n may point to the surrogate tail- adjust it back to the lead.
     n = unicodeString->getChar32Start(n);
-    icu::BreakIterator* breakIterator = segments->GetIcuBreakIterator();
+    icu::BreakIterator* breakIterator = segments->GetIcuBreakIterator(thread);
     // 8. Let startIndex be ! FindBoundary(segmenter, string, n, before).
     int32_t startIndex = breakIterator->isBoundary(n) ? n : breakIterator->preceding(n);
     // 9. Let endIndex be ! FindBoundary(segmenter, string, n, after).
     int32_t endIndex = breakIterator->following(n);
     // 10. Return ! CreateSegmentDataObject(segmenter, string, startIndex, endIndex).
     return CreateSegmentDataObject(thread, segments->GetGranularity(), breakIterator,
-                                   JSHandle<EcmaString>(thread, segments->GetSegmentsString()),
+                                   JSHandle<EcmaString>(thread, segments->GetSegmentsString(thread)),
                                    *unicodeString, startIndex, endIndex).GetTaggedValue();
 }
 

@@ -781,22 +781,23 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
         return true;
     }
     auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+    JSThread *thread = jitCompilationEnv->GetJSThread();
     JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
     if (!calleeFunc) {
         return false;
     }
     auto calleeMethodHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(calleeFunc));
-    auto calleeMethod = Method::Cast(calleeFunc->GetMethod());
+    auto calleeMethod = Method::Cast(calleeFunc->GetMethod(thread));
     ASSERT(calleeMethod->GetMethodId().GetOffset() == methodOffset);
-    auto profileTIVal = calleeFunc->GetProfileTypeInfo();
+    auto profileTIVal = calleeFunc->GetProfileTypeInfo(thread);
     if (profileTIVal.IsUndefined()) {
         return false;
     }
     auto profileTypeInfo = ProfileTypeInfo::Cast(profileTIVal.GetTaggedObject());
 
-    auto calleeLiteral = calleeMethod->GetMethodLiteral();
-    auto calleeFile = calleeMethod->GetJSPandaFile();
-    auto calleeAbcId = PGOProfiler::GetMethodAbcId(calleeFunc);
+    auto calleeLiteral = calleeMethod->GetMethodLiteral(thread);
+    auto calleeFile = calleeMethod->GetJSPandaFile(thread);
+    auto calleeAbcId = PGOProfiler::GetMethodAbcId(thread, calleeFunc);
     auto calleeCodeSize = calleeLiteral->GetCodeSize(calleeFile, calleeMethod->GetMethodId());
     compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
         compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),

@@ -53,9 +53,9 @@ protected:
             JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
             EXPECT_EQ(result, value.GetTaggedValue());
             if (search) {
-                EXPECT_EQ(toor->Search(value), static_cast<int>(i));
+                EXPECT_EQ(toor->Search(thread, value), static_cast<int>(i));
             } else {
-                EXPECT_EQ(toor->Peek(), value.GetTaggedValue());
+                EXPECT_EQ(toor->Peek(thread), value.GetTaggedValue());
                 EXPECT_EQ(toor->Empty(), false);
             }
         }
@@ -78,7 +78,7 @@ HWTEST_F_L0(JSAPIStackTest, PushAndPeek)
     JSHandle<JSAPIStack> toor(thread, CreateStack());
 
     // test Peek empty
-    EXPECT_EQ(toor->Peek(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->Peek(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -86,11 +86,11 @@ HWTEST_F_L0(JSAPIStackTest, PushAndPeek)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
         EXPECT_EQ(result, value.GetTaggedValue());
-        EXPECT_EQ(toor->Peek(), value.GetTaggedValue());
+        EXPECT_EQ(toor->Peek(thread), value.GetTaggedValue());
     }
     EXPECT_EQ(static_cast<uint32_t>(toor->GetTop() + 1), NODE_NUMBERS);
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIStackTest, Pop)
@@ -110,7 +110,7 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSTaggedValue result = JSAPIStack::Push(thread, toor, value);
         EXPECT_EQ(result, value.GetTaggedValue());
-        EXPECT_EQ(toor->Peek(), value.GetTaggedValue());
+        EXPECT_EQ(toor->Peek(thread), value.GetTaggedValue());
     }
 
     for (uint32_t i = NODE_NUMBERS; i >= 1; i--) {
@@ -120,7 +120,7 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
         EXPECT_EQ(gValue, value.GetTaggedValue());
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIStackTest, Empty)
@@ -141,7 +141,7 @@ HWTEST_F_L0(JSAPIStackTest, Empty)
         }
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIStackTest, Search)
@@ -152,9 +152,9 @@ HWTEST_F_L0(JSAPIStackTest, Search)
     std::string myValue("myvalue");
     auto toor = SearchAndEmptyCommon(value, myValue, NODE_NUMBERS, true);
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
-    EXPECT_EQ(toor->Search(value), -1);
+    EXPECT_EQ(toor->Search(thread, value), -1);
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIStackTest, GetOwnProperty)
@@ -261,7 +261,7 @@ HWTEST_F_L0(JSAPIStackTest, Has)
     JSHandle<JSAPIStack> toor(thread, CreateStack());
 
     // test Has empty
-    EXPECT_FALSE(toor->Has(JSTaggedValue(0)));
+    EXPECT_FALSE(toor->Has(thread, JSTaggedValue(0)));
 
     uint32_t elementsNums = 8;
     for (uint32_t i = 0; i < elementsNums; i++) {
@@ -269,9 +269,9 @@ HWTEST_F_L0(JSAPIStackTest, Has)
         JSAPIStack::Push(thread, toor, value);
     }
     for (uint32_t i = 0; i < elementsNums; i++) {
-        EXPECT_TRUE(toor->Has(JSTaggedValue(i)));
+        EXPECT_TRUE(toor->Has(thread, JSTaggedValue(i)));
     }
-    EXPECT_FALSE(toor->Has(JSTaggedValue(elementsNums)));
+    EXPECT_FALSE(toor->Has(thread, JSTaggedValue(elementsNums)));
 }
 
 /**
@@ -292,8 +292,9 @@ HWTEST_F_L0(JSAPIStackTest, OwnKeys)
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
     EXPECT_TRUE(keyArray->GetLength() == elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(keyArray->Get(i).GetTaggedObject())));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                        *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+                                                        EcmaString::Cast(keyArray->Get(thread, i).GetTaggedObject())));
     }
 }
 }  // namespace panda::test

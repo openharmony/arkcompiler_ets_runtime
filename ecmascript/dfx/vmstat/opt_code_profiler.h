@@ -185,7 +185,7 @@ public:
 
     ~OptCodeProfiler();
 
-    void Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpcode opcode, Mode mode);
+    void Update(JSThread *thread, JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpcode opcode, Mode mode);
 
     void PrintAndReset();
 

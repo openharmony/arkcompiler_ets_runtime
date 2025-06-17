@@ -22,7 +22,7 @@ using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILinkedList::Insert(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                       const JSHandle<JSTaggedValue> &value, const int index)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (index < 0 || index > nodeLength) {
         std::ostringstream oss;
@@ -38,7 +38,7 @@ JSTaggedValue JSAPILinkedList::Insert(JSThread *thread, const JSHandle<JSAPILink
 
 void JSAPILinkedList::Clear(JSThread *thread)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
     if (doubleList->NumberOfNodes() > 0) {
         doubleList->Clear(thread);
     }
@@ -46,7 +46,7 @@ void JSAPILinkedList::Clear(JSThread *thread)
 
 JSHandle<JSAPILinkedList> JSAPILinkedList::Clone(JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSTaggedValue doubleListTaggedValue = list->GetDoubleList();
+    JSTaggedValue doubleListTaggedValue = list->GetDoubleList(thread);
     JSHandle<TaggedDoubleList> srcDoubleList(thread, doubleListTaggedValue);
     JSHandle<TaggedArray> srcTaggedArray(thread, doubleListTaggedValue);
     ASSERT(!srcDoubleList->IsDictionaryMode());
@@ -64,7 +64,7 @@ JSHandle<JSAPILinkedList> JSAPILinkedList::Clone(JSThread *thread, const JSHandl
 
 JSTaggedValue JSAPILinkedList::RemoveFirst(JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
@@ -75,7 +75,7 @@ JSTaggedValue JSAPILinkedList::RemoveFirst(JSThread *thread, const JSHandle<JSAP
 
 JSTaggedValue JSAPILinkedList::RemoveLast(JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
@@ -86,7 +86,7 @@ JSTaggedValue JSAPILinkedList::RemoveLast(JSThread *thread, const JSHandle<JSAPI
 
 JSTaggedValue JSAPILinkedList::RemoveByIndex(JSThread *thread, JSHandle<JSAPILinkedList> &list, const int index)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -105,7 +105,7 @@ JSTaggedValue JSAPILinkedList::RemoveByIndex(JSThread *thread, JSHandle<JSAPILin
 
 JSTaggedValue JSAPILinkedList::Remove(JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
     int nodeLength = doubleList->Length();
     if (nodeLength < 0) {
         return JSTaggedValue::False();
@@ -116,7 +116,7 @@ JSTaggedValue JSAPILinkedList::Remove(JSThread *thread, const JSTaggedValue &ele
 JSTaggedValue JSAPILinkedList::RemoveFirstFound(JSThread *thread, JSHandle<JSAPILinkedList> &list,
                                                 const JSTaggedValue &element)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
@@ -128,7 +128,7 @@ JSTaggedValue JSAPILinkedList::RemoveFirstFound(JSThread *thread, JSHandle<JSAPI
 JSTaggedValue JSAPILinkedList::RemoveLastFound(JSThread *thread, JSHandle<JSAPILinkedList> &list,
                                                const JSTaggedValue &element)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength < 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
@@ -139,7 +139,7 @@ JSTaggedValue JSAPILinkedList::RemoveLastFound(JSThread *thread, JSHandle<JSAPIL
 
 void JSAPILinkedList::Add(JSThread *thread, const JSHandle<JSAPILinkedList> &list, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     JSTaggedValue newLinkedList = TaggedDoubleList::Add(thread, doubleList, value);
     list->SetDoubleList(thread, newLinkedList);
 }
@@ -147,23 +147,23 @@ void JSAPILinkedList::Add(JSThread *thread, const JSHandle<JSAPILinkedList> &lis
 void JSAPILinkedList::AddFirst(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     JSTaggedValue newLinkedList = TaggedDoubleList::AddFirst(thread, doubleList, value);
     list->SetDoubleList(thread, newLinkedList);
 }
 
-JSTaggedValue JSAPILinkedList::GetFirst()
+JSTaggedValue JSAPILinkedList::GetFirst(const JSThread *thread)
 {
-    JSTaggedValue res = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject())->GetFirst();
+    JSTaggedValue res = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject())->GetFirst(thread);
     if (res.IsHole()) {
         return JSTaggedValue::Undefined();
     }
     return res;
 }
 
-JSTaggedValue JSAPILinkedList::GetLast()
+JSTaggedValue JSAPILinkedList::GetLast(const JSThread *thread)
 {
-    JSTaggedValue res = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject())->GetLast();
+    JSTaggedValue res = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject())->GetLast(thread);
     if (res.IsHole()) {
         return JSTaggedValue::Undefined();
     }
@@ -173,7 +173,7 @@ JSTaggedValue JSAPILinkedList::GetLast()
 JSTaggedValue JSAPILinkedList::Set(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                    const int index, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -191,43 +191,43 @@ JSTaggedValue JSAPILinkedList::Set(JSThread *thread, const JSHandle<JSAPILinkedL
     return value.GetTaggedValue();
 }
 
-bool JSAPILinkedList::Has(const JSTaggedValue &element)
+bool JSAPILinkedList::Has(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
-    return doubleList->Has(element);
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
+    return doubleList->Has(thread, element);
 }
 
-JSTaggedValue JSAPILinkedList::Get(const int index)
+JSTaggedValue JSAPILinkedList::Get(const JSThread *thread, const int index)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
     int nodeLength = doubleList->Length();
     if (index < 0 || index >= nodeLength) {
         return JSTaggedValue::Undefined();
     }
-    return doubleList->Get(index);
+    return doubleList->Get(thread, index);
 }
 
-JSTaggedValue JSAPILinkedList::GetIndexOf(const JSTaggedValue &element)
+JSTaggedValue JSAPILinkedList::GetIndexOf(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
-    return JSTaggedValue(doubleList->GetIndexOf(element));
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
+    return JSTaggedValue(doubleList->GetIndexOf(thread, element));
 }
 
-JSTaggedValue JSAPILinkedList::GetLastIndexOf(const JSTaggedValue &element)
+JSTaggedValue JSAPILinkedList::GetLastIndexOf(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
-    return JSTaggedValue(doubleList->GetLastIndexOf(element));
+    TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject());
+    return JSTaggedValue(doubleList->GetLastIndexOf(thread, element));
 }
 
 JSTaggedValue JSAPILinkedList::ConvertToArray(const JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     return TaggedDoubleList::ConvertToArray(thread, doubleList);
 }
 
 JSHandle<TaggedArray> JSAPILinkedList::OwnKeys(JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList().GetTaggedObject());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread).GetTaggedObject());
     return TaggedDoubleList::OwnKeys(thread, doubleList);
 }
 
@@ -235,16 +235,16 @@ bool JSAPILinkedList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinke
                                      const JSHandle<JSTaggedValue> &key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
-            + ConvertToString(*result);
+            + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     uint32_t length = static_cast<uint32_t>(doubleList->Length());
     if (length == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -259,14 +259,14 @@ bool JSAPILinkedList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinke
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    list->Get(index);
+    list->Get(thread, index);
     return true;
 }
 
 OperationResult JSAPILinkedList::GetProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                              const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
@@ -292,14 +292,14 @@ OperationResult JSAPILinkedList::GetProperty(JSThread *thread, const JSHandle<JS
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, doubleList->Get(index), PropertyMetaData(false));
+    return OperationResult(thread, doubleList->Get(thread, index), PropertyMetaData(false));
 }
 
 bool JSAPILinkedList::SetProperty(JSThread *thread, const JSHandle<JSAPILinkedList> &obj,
                                   const JSHandle<JSTaggedValue> &key,
                                   const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, obj->GetDoubleList());
+    JSHandle<TaggedDoubleList> doubleList(thread, obj->GetDoubleList(thread));
     int nodeLength = doubleList->Length();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {

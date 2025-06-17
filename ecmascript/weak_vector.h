@@ -68,10 +68,10 @@ public:
         return TaggedArray::GetLength();
     }
 
-    inline JSTaggedValue Get(uint32_t index) const
+    inline JSTaggedValue Get(const JSThread *thread, uint32_t index) const
     {
         ASSERT(index < GetCapacity());
-        return TaggedArray::Get(VectorToArrayIndex(index));
+        return TaggedArray::Get(thread, VectorToArrayIndex(index));
     }
 
     inline void Set(const JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -81,11 +81,11 @@ public:
     }
 
     template <class Callback>
-    void Iterate(const Callback &cb)
+    void Iterate(const JSThread *thread, const Callback &cb)
     {
         uint32_t end = GetEnd();
         for (uint32_t index = 0; index < end; ++index) {
-            cb(Get(index));
+            cb(Get(thread, index));
         }
     }
 
@@ -106,7 +106,7 @@ private:
 
     static JSTaggedValue GetStoreVal(const JSHandle<JSTaggedValue> &value, ElementType type);
 
-    static uint32_t CheckHole(const JSHandle<WeakVector> &vec);
+    static uint32_t CheckHole(const JSThread *thread, const JSHandle<WeakVector> &vec);
 
     static JSHandle<WeakVector> AppendToFullVec(const JSThread *thread, const JSHandle<WeakVector> &vec,
                                                 const JSHandle<JSTaggedValue> &value, ElementType type);

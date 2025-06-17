@@ -2258,15 +2258,15 @@ public:
         return index_;
     }
 
-    bool CanOptimize() const
+    bool CanOptimize(JSThread *thread) const
     {
         JSTaggedValue obj = GetObject();
         if (obj.IsUndefined()) {
             return false;
         }
         JSObject *jsObj = JSObject::Cast(obj);
-        TaggedArray *properties = TaggedArray::Cast(jsObj->GetProperties());
-        TaggedArray *elements = TaggedArray::Cast(jsObj->GetElements());
+        TaggedArray *properties = TaggedArray::Cast(jsObj->GetProperties(thread));
+        TaggedArray *elements = TaggedArray::Cast(jsObj->GetElements(thread));
         return properties->GetLength() == 0 && elements->GetLength() == 0;
     }
 

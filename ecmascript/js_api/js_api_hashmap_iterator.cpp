@@ -36,17 +36,17 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIHashMapIterator> iter = JSHandle<JSAPIHashMapIterator>::Cast(input);
-    JSHandle<JSTaggedValue> iteratedHashMap(thread, iter->GetIteratedHashMap());
+    JSHandle<JSTaggedValue> iteratedHashMap(thread, iter->GetIteratedHashMap(thread));
     // If m is undefined, return undefinedIteratorResult.
     if (iteratedHashMap->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
-    JSHandle<TaggedHashArray> tableArr(thread, JSHandle<JSAPIHashMap>::Cast(iteratedHashMap)->GetTable());
+    JSHandle<TaggedHashArray> tableArr(thread, JSHandle<JSAPIHashMap>::Cast(iteratedHashMap)->GetTable(thread));
     uint32_t tableLength = tableArr->GetLength();
     uint32_t index = iter->GetNextIndex();
 
-    JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue());
+    JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue(thread));
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<TaggedNode> currentNode(thread, JSTaggedValue::Undefined());
@@ -58,12 +58,12 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
             iter->SetNextIndex(++index);
             continue;
         }
-        JSTaggedValue key = currentNode->GetKey();
+        JSTaggedValue key = currentNode->GetKey(thread);
         keyHandle.Update(key);
         if (itemKind == IterationKind::KEY) {
             return JSIterator::CreateIterResultObject(thread, keyHandle, false).GetTaggedValue();
         }
-        valueHandle.Update(currentNode->GetValue());
+        valueHandle.Update(currentNode->GetValue(thread));
         if (itemKind == IterationKind::VALUE) {
             return JSIterator::CreateIterResultObject(thread, valueHandle, false).GetTaggedValue();
         }

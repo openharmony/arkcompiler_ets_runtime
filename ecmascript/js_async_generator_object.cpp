@@ -38,7 +38,7 @@ void JSAsyncGeneratorObject::AsyncGeneratorValidate(JSThread *thread, const JSHa
     JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, gen);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
-    if (!JSTaggedValue::SameValue(generator->GetGeneratorBrand(), val)) {
+    if (!JSTaggedValue::SameValue(thread, generator->GetGeneratorBrand(thread), val)) {
         THROW_TYPE_ERROR(thread, "Results are not equal");
     }
 }
@@ -50,20 +50,20 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     // 1. Assert: generator is an AsyncGenerator instance.
     ASSERT(generator->IsAsyncGeneratorObject());
     // 2. Let queue be generator.[[AsyncGeneratorQueue]].
-    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue(thread));
     // 3. Assert: queue is not an empty List.
-    ASSERT(!(queue->Empty()));
+    ASSERT(!(queue->Empty(thread)));
     // 4. Let next be the first element of queue.
-    JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+    JSHandle<AsyncGeneratorRequest> next(thread, queue->Front(thread));
     // 5. Remove the first element from queue.
     queue->Pop(thread);
     // 6. Let promiseCapability be next.[[Capability]].
-    JSHandle<PromiseCapability> capability(thread, next->GetCapability());
+    JSHandle<PromiseCapability> capability(thread, next->GetCapability(thread));
     // 7. Let iteratorResult be ! CreateIterResultObject(value, done).
     JSHandle<JSObject> iteratorResult = JSIterator::CreateIterResultObject(thread, value, done);
     // 8. Perform ! Call(promiseCapability.[[Resolve]], undefined, « iteratorResult »).
     JSHandle<JSTaggedValue> its = JSHandle<JSTaggedValue>::Cast(iteratorResult);
-    JSHandle<JSTaggedValue> resolve(thread, capability->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capability->GetResolve(thread));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1, StackCheck::NO);
@@ -89,18 +89,18 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorReject(JSThread *thread,
    // 1. Assert: generator is an AsyncGenerator instance.
     ASSERT(generator->IsAsyncGeneratorObject());
     // 2. Let queue be generator.[[AsyncGeneratorQueue]].
-    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue(thread));
     // 3. Assert: queue is not an empty List.
-    ASSERT(!(queue->Empty()));
+    ASSERT(!(queue->Empty(thread)));
     // 4. Let next be the first element of queue.
-    JSHandle<JSTaggedValue> val(thread, queue->Front());
+    JSHandle<JSTaggedValue> val(thread, queue->Front(thread));
     JSHandle<AsyncGeneratorRequest> next = JSHandle<AsyncGeneratorRequest>::Cast(val);
     // 5. Remove the first element from queue.
     queue->Pop(thread);
     // 6. Let promiseCapability be next.[[Capability]].
-    JSHandle<PromiseCapability> capability(thread, next->GetCapability());
+    JSHandle<PromiseCapability> capability(thread, next->GetCapability(thread));
     // 7. Perform ! Call(promiseCapability.[[Reject]], undefined, ? exception ?).
-    JSHandle<JSTaggedValue> reject(thread, capability->GetReject());
+    JSHandle<JSTaggedValue> reject(thread, capability->GetReject(thread));
     const GlobalEnvConstants *constants = thread->GlobalConstants();
     const JSHandle<JSTaggedValue> thisArg = constants->GetHandledUndefined();
     const JSHandle<JSTaggedValue> undefined = constants->GetHandledUndefined();
@@ -130,17 +130,17 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
         return JSTaggedValue::Undefined();
     }
     // 5. Let queue be generator.[[AsyncGeneratorQueue]].
-    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue(thread));
     // 6. If queue is an empty List, return undefined.
-    if (queue->Empty()) {
+    if (queue->Empty(thread)) {
         return JSTaggedValue::Undefined();
     }
     // 7. Let next be the value of the first element of queue.
-    JSHandle<AsyncGeneratorRequest> next(thread, queue->Front());
+    JSHandle<AsyncGeneratorRequest> next(thread, queue->Front(thread));
     // 8. Assert: next is an AsyncGeneratorRequest record.
     ASSERT(next->GetClass()->IsAsyncGeneratorRequest());
     // 9. Let completion be next.[[Completion]].
-    JSTaggedValue rcd = next->GetCompletion();
+    JSTaggedValue rcd = next->GetCompletion(thread);
     JSHandle<CompletionRecord> completion(thread, rcd);
     CompletionRecordType type = completion->GetType();
     // 10. If completion is an abrupt completion, then
@@ -160,7 +160,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 generator->SetAsyncGeneratorState(JSAsyncGeneratorState::AWAITING_RETURN);
                 // 2. Let promise be ? PromiseResolve(%Promise%, completion.[[Value]]).
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-                JSHandle<JSTaggedValue> val(thread, completion->GetValue());
+                JSHandle<JSTaggedValue> val(thread, completion->GetValue(thread));
                 JSTaggedValue promise = PromiseResolve(thread,
                                                        JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()), val);
                 JSHandle<JSPromise> handPromise(thread, promise);
@@ -197,7 +197,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 // 1. Assert: completion.[[Type]] is throw.
                 ASSERT(completion->GetType() == CompletionRecordType::THROW);
                 // 2. Perform ! AsyncGeneratorReject(generator, completion.[[Value]]).
-                JSHandle<JSTaggedValue> comVal(thread, completion->GetValue());
+                JSHandle<JSTaggedValue> comVal(thread, completion->GetValue(thread));
                 AsyncGeneratorReject(thread, generator, comVal);
                 // 3. Return undefined.
                 return JSTaggedValue::Undefined();
@@ -212,7 +212,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
     ASSERT((state == JSAsyncGeneratorState::SUSPENDED_START) ||
            (state == JSAsyncGeneratorState::SUSPENDED_YIELD));
     // 13. Let genContext be generator.[[AsyncGeneratorContext]].
-    JSTaggedValue val = generator->GetGeneratorContext();
+    JSTaggedValue val = generator->GetGeneratorContext(thread);
 
     JSHandle<GeneratorContext> genContext(thread, val);
     // 14. Let callerContext be the running execution context.
@@ -228,7 +228,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
     generator->SetAsyncGeneratorState(JSAsyncGeneratorState::EXECUTING);
 
     if (completion->GetType() == CompletionRecordType::NORMAL) {
-        AsyncGeneratorHelper::Next(thread, genContext, completion->GetValue());
+        AsyncGeneratorHelper::Next(thread, genContext, completion->GetValue(thread));
     }
     if (completion->GetType() == CompletionRecordType::RETURN) {
         AsyncGeneratorHelper::Return(thread, genContext, completion);
@@ -259,7 +259,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
         // b. Perform ! Call(promiseCapability.[[Reject]], undefined, « badGeneratorError »).
         const GlobalEnvConstants *constants = thread->GlobalConstants();
         JSHandle<JSTaggedValue> rstErr = JSHandle<JSTaggedValue>::Cast(resolutionError);
-        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
+        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject(thread));
         JSHandle<JSTaggedValue> thisArg = constants->GetHandledUndefined();
         JSHandle<JSTaggedValue> undefined = constants->GetHandledUndefined();
         EcmaRuntimeCallInfo* info =
@@ -270,14 +270,14 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // c. Return promiseCapability.[[Promise]].
-        JSHandle<JSObject> promise(thread, pcap->GetPromise());
+        JSHandle<JSObject> promise(thread, pcap->GetPromise(thread));
         return promise.GetTaggedValue();
     }
     // 4. Let queue be generator.[[AsyncGeneratorQueue]].
     JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, gen);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
-    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
+    JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue(thread));
     // 5. Let request be AsyncGeneratorRequest { [[Completion]]: completion, [[Capability]]: promiseCapability }.
     ObjectFactory *fty = thread->GetEcmaVM()->GetFactory();
     JSHandle<AsyncGeneratorRequest> asyncGeneratorRst = fty->NewAsyncGeneratorRequest();
@@ -297,7 +297,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
         AsyncGeneratorResumeNext(thread, generator);
     }
     // 9. Return promiseCapability.[[Promise]].
-    JSHandle<JSObject> promise(thread, pcap->GetPromise());
+    JSHandle<JSObject> promise(thread, pcap->GetPromise(thread));
     return promise.GetTaggedValue();
 }
 
@@ -310,13 +310,13 @@ JSTaggedValue JSAsyncGeneratorObject::PromiseResolve(JSThread *thread, const JSH
         JSHandle<JSTaggedValue> ctorKey(globalConst->GetHandledConstructorString());
         JSHandle<JSTaggedValue> ctorValue = JSObject::GetProperty(thread, value, ctorKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (JSTaggedValue::SameValue(ctorValue.GetTaggedValue(), promise.GetTaggedValue())) {
+        if (JSTaggedValue::SameValue(thread, ctorValue.GetTaggedValue(), promise.GetTaggedValue())) {
             return value.GetTaggedValue();
         }
     }
     JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promise);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> resolve(thread, promiseCapability->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, promiseCapability->GetResolve(thread));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     JSHandle<JSTaggedValue> thisArg = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
@@ -326,7 +326,7 @@ JSTaggedValue JSAsyncGeneratorObject::PromiseResolve(JSThread *thread, const JSH
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSPromise> promiseObj(thread, promiseCapability->GetPromise());
+    JSHandle<JSPromise> promiseObj(thread, promiseCapability->GetPromise(thread));
     return promiseObj.GetTaggedValue();
 }
 
@@ -336,7 +336,7 @@ JSTaggedValue JSAsyncGeneratorObject::ProcessorFulfilledFunc(EcmaRuntimeCallInfo
     JSThread *thread = argv->GetThread();
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> asyncResNextRtnPro =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(base::BuiltinsBase::GetConstructor(argv));
-    JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject());
+    JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject(thread));
 
     // 2. Set F.[[Generator]].[[AsyncGeneratorState]] to completed.
     asyncGen->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
@@ -352,7 +352,7 @@ JSTaggedValue JSAsyncGeneratorObject::ProcessorRejectedFunc(EcmaRuntimeCallInfo 
     JSThread *thread = argv->GetThread();
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> asyncResNextRtnPro =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(base::BuiltinsBase::GetConstructor(argv));
-    JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject());
+    JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject(thread));
     // 2. Set F.[[Generator]].[[AsyncGeneratorState]] to completed.
     asyncGen->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
     // 3. Return ! AsyncGeneratorReject(F.[[Generator]], reason).

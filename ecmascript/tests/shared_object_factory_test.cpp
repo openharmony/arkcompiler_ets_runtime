@@ -51,8 +51,8 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSImportEntryTest001)
     JSHandle<ImportEntry> entry = factory->NewSImportEntry(requestIndex,
                                                            JSHandle<JSTaggedValue>::Cast(importName),
                                                            JSHandle<JSTaggedValue>::Cast(localName));
-    ASSERT_EQ(entry->GetImportName().GetRawData(), JSHandle<JSTaggedValue>::Cast(importName)->GetRawData());
-    ASSERT_EQ(entry->GetLocalName().GetRawData(), JSHandle<JSTaggedValue>::Cast(localName)->GetRawData());
+    ASSERT_EQ(entry->GetImportName(thread).GetRawData(), JSHandle<JSTaggedValue>::Cast(importName)->GetRawData());
+    ASSERT_EQ(entry->GetLocalName(thread).GetRawData(), JSHandle<JSTaggedValue>::Cast(localName)->GetRawData());
     ASSERT_EQ(entry->GetModuleRequestIndex(), 1);
 }
 
@@ -62,9 +62,9 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSLocalExportEntryTest001)
     JSHandle<LocalExportEntry> entry =
         factory->NewSLocalExportEntry(JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName")),
                                       JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("localName")), 1);
-    ASSERT_EQ(entry->GetExportName().GetRawData(),
+    ASSERT_EQ(entry->GetExportName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName"))->GetRawData());
-    ASSERT_EQ(entry->GetLocalName().GetRawData(),
+    ASSERT_EQ(entry->GetLocalName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("localName"))->GetRawData());
 }
 
@@ -74,9 +74,9 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSIndirectExportEntryTest001)
     JSHandle<IndirectExportEntry> entry = factory->NewSIndirectExportEntry(
         JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName")), 0,
         JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("importName")));
-    ASSERT_EQ(entry->GetExportName().GetRawData(),
+    ASSERT_EQ(entry->GetExportName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName"))->GetRawData());
-    ASSERT_EQ(entry->GetImportName().GetRawData(),
+    ASSERT_EQ(entry->GetImportName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("importName"))->GetRawData());
     ASSERT_EQ(entry->GetModuleRequestIndex(), 0);
 }
@@ -93,7 +93,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedIndexBindingRecordTest001)
 {
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<ResolvedIndexBinding> record = factory->NewSResolvedIndexBindingRecord();
-    ASSERT_NE(record->GetModule().GetRawData(), JSTaggedValue::Exception().GetRawData());
+    ASSERT_NE(record->GetModule(thread).GetRawData(), JSTaggedValue::Exception().GetRawData());
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedIndexBindingRecordTest002)
@@ -102,7 +102,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedIndexBindingRecordTest002)
     JSHandle<JSTaggedValue> undefinedValue = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<SourceTextModule> ecmaModule(undefinedValue);
     JSHandle<ResolvedIndexBinding> record = factory->NewSResolvedIndexBindingRecord(ecmaModule, 2);
-    ASSERT_NE(record->GetModule().GetRawData(), JSTaggedValue::Exception().GetRawData());
+    ASSERT_NE(record->GetModule(thread).GetRawData(), JSTaggedValue::Exception().GetRawData());
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest001)
@@ -110,7 +110,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest001)
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<ResolvedRecordBinding> record = factory->NewSResolvedRecordBindingRecord();
     JSHandle<JSTaggedValue> undefinedValue = thread->GlobalConstants()->GetHandledUndefined();
-    ASSERT_EQ(record->GetBindingName().GetRawData(), undefinedValue->GetRawData());
+    ASSERT_EQ(record->GetBindingName(thread).GetRawData(), undefinedValue->GetRawData());
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest002)
@@ -119,7 +119,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedBindingRecordTest002)
     JSHandle<ResolvedRecordBinding> record = factory->NewSResolvedRecordBindingRecord(
         factory->NewFromASCII("moduleRecord"),
         JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("bindName")));
-    ASSERT_EQ(record->GetBindingName().GetRawData(),
+    ASSERT_EQ(record->GetBindingName(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("bindName"))->GetRawData());
 }
 
@@ -130,11 +130,11 @@ HWTEST_F_L0(SharedObjectFactoryTest, CopySArrayTest001)
     JSHandle<TaggedArray> result = factory->CopySArray(array, 5, 10);
     for (size_t i = 0; i < 5; i++)
     {
-        ASSERT_EQ(array->Get(i).GetRawData(), result->Get(i).GetRawData());
+        ASSERT_EQ(array->Get(thread, i).GetRawData(), result->Get(thread, i).GetRawData());
     }
     for (size_t i = 5; i < 10; i++)
     {
-        ASSERT_EQ(result->Get(i).GetRawData(), JSTaggedValue::Hole().GetRawData());
+        ASSERT_EQ(result->Get(thread, i).GetRawData(), JSTaggedValue::Hole().GetRawData());
     }
 }
 
@@ -145,7 +145,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, CopySArrayTest002)
     JSHandle<TaggedArray> result = factory->CopySArray(array, 10, 5);
     for (size_t i = 0; i < 5; i++)
     {
-        ASSERT_EQ(array->Get(i).GetRawData(), result->Get(i).GetRawData());
+        ASSERT_EQ(array->Get(thread, i).GetRawData(), result->Get(thread, i).GetRawData());
     }
 }
 
@@ -162,7 +162,7 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSClassInfoExtractorTest001)
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<ClassInfoExtractor> info =
         factory->NewSClassInfoExtractor(JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("method")));
-    ASSERT_EQ(info->GetConstructorMethod().GetRawData(),
+    ASSERT_EQ(info->GetConstructorMethod(thread).GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("method"))->GetRawData());
 }
 } // namespace panda::test

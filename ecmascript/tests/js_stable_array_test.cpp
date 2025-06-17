@@ -129,7 +129,7 @@ HWTEST_F_L0(JSStableArrayTest, Pop)
         EXPECT_EQ(handleArr->GetArrayLength(), static_cast<uint32_t>(lengthArr - i));
         if (i != 5) {
             EXPECT_EQ(handleTagArr->GetLength(), static_cast<uint32_t>(lengthArr));
-            EXPECT_EQ(handleTagArr->Get(lengthArr - i), JSTaggedValue::Hole());
+            EXPECT_EQ(handleTagArr->Get(thread, lengthArr - i), JSTaggedValue::Hole());
         } else {
             EXPECT_EQ(handleTagArr->GetLength(), static_cast<uint32_t>(lengthArr - i));
         }
@@ -191,14 +191,14 @@ HWTEST_F_L0(JSStableArrayTest, Splice)
     // Check the JSArray(in-out-parameter) changed through calling the Splice function.
     EXPECT_EQ(handleArr->GetArrayLength(), lengthArr - actualDeleteCount + countInsert);
     for (int32_t i = 0; i < offsetStartInsert; i++) {
-        EXPECT_EQ(handleTagArr->Get(i).GetNumber(), i * 10);
+        EXPECT_EQ(handleTagArr->Get(thread, i).GetNumber(), i * 10);
     }
-    EXPECT_EQ(handleTagArr->Get(offsetStartInsert).GetNumber(),
+    EXPECT_EQ(handleTagArr->Get(thread, offsetStartInsert).GetNumber(),
               handleTagValInsertElement1.GetTaggedValue().GetNumber());
-    EXPECT_EQ(handleTagArr->Get(offsetStartInsert + 1).GetNumber(),
+    EXPECT_EQ(handleTagArr->Get(thread, offsetStartInsert + 1).GetNumber(),
               handleTagValInsertElement2.GetTaggedValue().GetNumber());
     for (int32_t i = offsetStartInsert + countInsert; i < lengthArr - actualDeleteCount + countInsert; i++) {
-        EXPECT_EQ(handleTagArr->Get(i).GetNumber(), (i + actualDeleteCount - countInsert) * 10);
+        EXPECT_EQ(handleTagArr->Get(thread, i).GetNumber(), (i + actualDeleteCount - countInsert) * 10);
     }
 }
 
@@ -229,10 +229,10 @@ HWTEST_F_L0(JSStableArrayTest, Shift)
         EXPECT_EQ(JSStableArray::Shift(handleArr, ecmaRuntimeCallInfo), JSTaggedValue(i * 10));
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(handleArr->GetArrayLength(), static_cast<uint32_t>(lengthArr - (i + 1)));
-        EXPECT_EQ(handleTagArr->Get(0), JSTaggedValue((i + 1) * 10));
+        EXPECT_EQ(handleTagArr->Get(thread, 0), JSTaggedValue((i + 1) * 10));
         if (i != 4) {
             EXPECT_EQ(handleTagArr->GetLength(), static_cast<uint32_t>(lengthArr));
-            EXPECT_EQ(handleTagArr->Get(lengthArr - (i + 1)), JSTaggedValue::Hole());
+            EXPECT_EQ(handleTagArr->Get(thread, lengthArr - (i + 1)), JSTaggedValue::Hole());
             continue;
         }
         EXPECT_EQ(handleTagArr->GetLength(), static_cast<uint32_t>(lengthArr - (i + 1)));
@@ -266,7 +266,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_UndefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0,1,2,3,4,5,6,7,8,9");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(), "0,1,2,3,4,5,6,7,8,9");
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
@@ -298,7 +298,8 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_UndefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "abc,abc,abc,abc,abc,abc,abc,abc,abc,abc");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
+        "abc,abc,abc,abc,abc,abc,abc,abc,abc,abc");
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
@@ -329,7 +330,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_DefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0^1^2^3^4^5^6^7^8^9");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(), "0^1^2^3^4^5^6^7^8^9");
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
@@ -364,7 +365,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
         "a <> a <> a <> a <> a <> a <> a <> a <> a <> a");
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
@@ -391,7 +392,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_ManyTiny)
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     // 256 x a
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -400,7 +401,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_ManyTiny)
     sep = ",";
     handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet2(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet2).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet2).ToCString(thread).c_str(),
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
@@ -435,7 +436,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
     }
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -467,7 +468,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString2)
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
@@ -510,7 +511,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString3)
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
                  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,"
                  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,"
@@ -539,7 +540,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Stack)
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     // 32 x a
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a");
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
@@ -565,7 +566,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Stack1)
     // sep is Undefined
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
@@ -593,7 +594,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Vector)
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     // 128 x a
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
                  "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
@@ -622,7 +623,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Vector1)
     }
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -781,7 +782,7 @@ HWTEST_F_L0(JSStableArrayTest, With)
                                                   JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_666)));
     JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
-    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
+    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements(thread).GetTaggedObject()));
     for (uint32_t i = 0; i < ARRAY_LENGTH_4; ++i) {
         JSHandle<JSObject> arrObjHandle(handleArr);
         EXPECT_EQ(ElementAccessor::Get(thread, arrObjHandle, i).GetNumber(), i);

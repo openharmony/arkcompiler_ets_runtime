@@ -99,11 +99,11 @@ HWTEST_F_L0(GCTest, NewToOldPromotionYoungGCTest)
     EXPECT_TRUE(testCase.regionNewToNew_->InYoungSpace());
     EXPECT_TRUE(testCase.regionNewToOld_->InOldSpace());
     EXPECT_FALSE(testCase.regionNewToOld_->InNewToOldSet());
-    EXPECT_TRUE(testCase.newToNewArray_->Get(0).IsUndefined());
-    EXPECT_TRUE(testCase.newArray_->Get(0).IsUndefined());
-    EXPECT_TRUE(testCase.oldArray_->Get(0).IsUndefined());
+    EXPECT_TRUE(testCase.newToNewArray_->Get(thread, 0).IsUndefined());
+    EXPECT_TRUE(testCase.newArray_->Get(thread, 0).IsUndefined());
+    EXPECT_TRUE(testCase.oldArray_->Get(thread, 0).IsUndefined());
     EXPECT_EQ(*reinterpret_cast<JSTaggedType*>(testCase.weakGlobal_), JSTaggedValueInternals::VALUE_UNDEFINED);
-    JSTaggedType newToOldArrayFromArray = testCase.newToNewArray_->Get(1).GetRawData();
+    JSTaggedType newToOldArrayFromArray = testCase.newToNewArray_->Get(thread, 1).GetRawData();
     JSTaggedType newToOldArray = testCase.newToOldArray_.GetTaggedValue().GetRawData();
     EXPECT_EQ(newToOldArrayFromArray, newToOldArray);
     heap->GetOldSpace()->EnumerateRegions([](Region *region) {
@@ -124,11 +124,11 @@ HWTEST_F_L0(GCTest, NewToOldPromotionOldGCTest)
     EXPECT_TRUE(testCase.regionNewToNew_->InYoungSpace());
     EXPECT_TRUE(testCase.regionNewToOld_->InOldSpace());
     EXPECT_FALSE(testCase.regionNewToOld_->InNewToOldSet());
-    EXPECT_TRUE(testCase.newToNewArray_->Get(0).IsUndefined());
-    EXPECT_TRUE(testCase.newArray_->Get(0).IsUndefined());
-    EXPECT_TRUE(testCase.oldArray_->Get(0).IsUndefined());
+    EXPECT_TRUE(testCase.newToNewArray_->Get(thread, 0).IsUndefined());
+    EXPECT_TRUE(testCase.newArray_->Get(thread, 0).IsUndefined());
+    EXPECT_TRUE(testCase.oldArray_->Get(thread, 0).IsUndefined());
     EXPECT_EQ(*reinterpret_cast<JSTaggedType*>(testCase.weakGlobal_), JSTaggedValueInternals::VALUE_UNDEFINED);
-    JSTaggedType newToOldArrayFromArray = testCase.newToNewArray_->Get(1).GetRawData();
+    JSTaggedType newToOldArrayFromArray = testCase.newToNewArray_->Get(thread, 1).GetRawData();
     JSTaggedType newToOldArray = testCase.newToOldArray_.GetTaggedValue().GetRawData();
     EXPECT_EQ(newToOldArrayFromArray, newToOldArray);
     heap->GetOldSpace()->EnumerateRegions([](Region *region) {

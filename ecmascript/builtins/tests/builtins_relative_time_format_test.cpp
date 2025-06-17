@@ -104,7 +104,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_001)
     auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("tomorrow", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("tomorrow", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // format(0, auto)
@@ -121,7 +121,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_002)
     auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("today", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("today", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // format(-1, auto)
@@ -139,7 +139,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_003)
     auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("yesterday", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("yesterday", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // format(-1, always)
@@ -157,7 +157,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_004)
     auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("1 day ago", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("1 day ago", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // format(1, always)
@@ -174,7 +174,7 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, Format_005)
     auto result = FormatCommon(thread, jsPluralRules, numberValue, unitValue);
 
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("in 1 day", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("in 1 day", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, FormatToParts)
@@ -225,15 +225,15 @@ HWTEST_F_L0(BuiltinsRelativeTimeFormatTest, ResolvedOptions)
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
     // judge whether the properties of the object are the same as those of jsrelativetimeformat tag
     JSHandle<JSTaggedValue> localeKey = globalConst->GetHandledLocaleString();
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), locale), true);
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleValue(factory->NewFromASCII("long"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, styleKey).GetValue(), styleValue), true);
     JSHandle<JSTaggedValue> numberingSystemKey = globalConst->GetHandledNumberingSystemString();
     JSHandle<JSTaggedValue> numberingSystemValue(factory->NewFromASCII("latn"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, numberingSystemKey).GetValue(), numberingSystemValue), true);
 }
 } // namespace panda::test

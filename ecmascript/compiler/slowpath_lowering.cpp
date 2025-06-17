@@ -2997,7 +2997,7 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
         return false;
     }
 
-    auto method = ConstantPool::GetMethodFromCache(constPool, methodIdValue);
+    auto method = ConstantPool::GetMethodFromCache(constPool, methodIdValue, compilationEnv_->GetJSThread());
     if (!method.IsMethod()) {
         return false;
     }
@@ -3009,7 +3009,7 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
 
     auto jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
     auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(acc_.TryGetMethodOffset(gate));
-    auto profileTypeInfo = func->GetProfileTypeInfo();
+    auto profileTypeInfo = func->GetProfileTypeInfo(compilationEnv_->GetJSThread());
     if (profileTypeInfo.IsUndefined()) {
         return false;
     }

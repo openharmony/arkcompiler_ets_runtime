@@ -53,11 +53,11 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, ResolvedOptions)
     // judge whether the properties of the object are the same as those of jsdatetimeformat tag
     JSHandle<JSTaggedValue> localeKey = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> localeValue(factory->NewFromASCII("de"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), localeValue), true);
     JSHandle<JSTaggedValue> timeZone = globalConst->GetHandledTimeZoneString();
     JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("UTC"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, timeZone).GetValue(), timeZoneValue), true);
 }
 
@@ -79,11 +79,11 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_001)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
 
-    JSHandle<EcmaString> resultStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(resultStr).ToCString().c_str());
+    JSHandle<EcmaString> resultStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(resultStr).ToCString(thread).c_str());
 }
 
 // SupportedLocalesOf("look up")
@@ -111,11 +111,11 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_002)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
 
-    JSHandle<EcmaString> resultStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de", EcmaStringAccessor(resultStr).ToCString().c_str());
+    JSHandle<EcmaString> resultStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("id-u-co-pinyin-de", EcmaStringAccessor(resultStr).ToCString(thread).c_str());
 }
 
 static JSTaggedValue JSDateTime(JSThread *thread, JSTaggedValue &formatResult)
@@ -220,7 +220,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_001)
     constexpr int americaNewYork = -300;
     constexpr int sysDefaultTimezone = -180; // america_argentina_Buenos_Aires
     constexpr int utc = 0;
-    auto cstr = EcmaStringAccessor(resultStr).ToCString();
+    auto cstr = EcmaStringAccessor(resultStr).ToCString(thread);
     if (TimeOffset() == utc) {
         if (cstr.find("GMT") != std::string::npos) {
             EXPECT_STREQ("10/08/22, 12:00:00 AM GMT", cstr.c_str());
@@ -307,7 +307,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_002)
     auto formatResult = JSDateTimeFormatForObject(thread, constructorResult);
     auto dtResult = JSDateTime(thread, formatResult);
     JSHandle<EcmaString> resultStr(thread, dtResult);
-    EXPECT_STREQ("2022年10月8日 UTC 上午12:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
+    EXPECT_STREQ("2022年10月8日 UTC 上午12:00:00", EcmaStringAccessor(resultStr).ToCString(thread).c_str());
 }
 
 // DateTimeFormat_003
@@ -329,7 +329,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_003)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, result);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 16U);
 }
 
@@ -356,6 +356,6 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_004)
     auto constructorResult = JSDateTimeFormatConstructor(thread, optionsObj, localesString);
     JSHandle<EcmaString> resultStr =
         JSDateTimeFormat::FormatDateTime(thread, JSHandle<JSDateTimeFormat>(thread, constructorResult), 0.0);
-    EXPECT_STREQ("1970年1月1日星期四 协调世界时 00:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
+    EXPECT_STREQ("1970年1月1日星期四 协调世界时 00:00:00", EcmaStringAccessor(resultStr).ToCString(thread).c_str());
 }
 } // namespace panda::test

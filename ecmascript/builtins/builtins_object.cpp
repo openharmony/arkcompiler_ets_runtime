@@ -64,7 +64,7 @@ JSTaggedValue BuiltinsObject::AssignTaggedValue(JSThread *thread, const JSHandle
     uint32_t keysLen = keys->GetLength();
     for (uint32_t j = 0; j < keysLen; j++) {
         PropertyDescriptor desc(thread);
-        key.Update(keys->Get(j));
+        key.Update(keys->Get(thread, j));
         bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(from), key, desc);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -129,7 +129,7 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
             uint32_t keysLen = keys->GetLength();
             for (uint32_t j = 0; j < keysLen; j++) {
                 PropertyDescriptor desc(thread);
-                key.Update(keys->Get(j));
+                key.Update(keys->Get(thread, j));
                 bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(from), key, desc);
                 // ReturnIfAbrupt(desc)
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -199,7 +199,7 @@ JSTaggedValue BuiltinsObject::ObjectDefineProperties(JSThread *thread, const JSH
     std::vector<PropertyDescriptor> desArr;
     for (uint32_t i = 0; i < length; i++) {
         PropertyDescriptor propDesc(thread);
-        JSHandle<JSTaggedValue> handleKey(thread, handleKeys->Get(i));
+        JSHandle<JSTaggedValue> handleKey(thread, handleKeys->Get(thread, i));
 
         bool success = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(props), handleKey, propDesc);
         // ReturnIfAbrupt(propDesc)
@@ -423,7 +423,7 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyDescriptors(EcmaRuntimeCallInfo *arg
     uint32_t length = ownKeys->GetLength();
     JSMutableHandle<JSTaggedValue> handleKey(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < length; ++i) {
-        handleKey.Update(ownKeys->Get(i));
+        handleKey.Update(ownKeys->Get(thread, i));
         PropertyDescriptor desc(thread);
         JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(handle), handleKey, desc);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -466,7 +466,7 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyKeys(JSThread *thread, const JSHandl
     switch (type) {
         case KeyType::STRING_TYPE: {
             for (uint32_t i = 0; i < length; i++) {
-                JSTaggedValue key = handleKeys->Get(i);
+                JSTaggedValue key = handleKeys->Get(thread, i);
                 if (key.IsString()) {
                     nameList->Set(thread, copyLength, key);
                     copyLength++;
@@ -476,7 +476,7 @@ JSTaggedValue BuiltinsObject::GetOwnPropertyKeys(JSThread *thread, const JSHandl
         }
         case KeyType::SYMBOL_TYPE: {
             for (uint32_t i = 0; i < length; i++) {
-                JSTaggedValue key = handleKeys->Get(i);
+                JSTaggedValue key = handleKeys->Get(thread, i);
                 if (key.IsSymbol()) {
                     nameList->Set(thread, copyLength, key);
                     copyLength++;
@@ -549,7 +549,7 @@ JSTaggedValue BuiltinsObject::Is(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Object, Is);
 
     // 1.Return SameValue(value1, value2).
-    bool result = JSTaggedValue::SameValue(GetCallArg(argv, 0), GetCallArg(argv, 1));
+    bool result = JSTaggedValue::SameValue(argv->GetThread(), GetCallArg(argv, 0), GetCallArg(argv, 1));
     return GetTaggedBoolean(result);
 }
 
@@ -833,7 +833,7 @@ JSTaggedValue BuiltinsObject::IsPrototypeOf(EcmaRuntimeCallInfo *argv)
         msgValueHandle.Update(JSTaggedValue::GetPrototype(thread, msgValueHandle));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-        if (JSTaggedValue::SameValue(object.GetTaggedValue(), msgValueHandle.GetTaggedValue())) {
+        if (JSTaggedValue::SameValue(thread, object.GetTaggedValue(), msgValueHandle.GetTaggedValue())) {
             return GetTaggedBoolean(true);
         }
     }
@@ -910,12 +910,12 @@ JSTaggedValue BuiltinsObject::GetBuiltinObjectToString(JSThread *thread, const J
     } else if (object->IsJSPrimitiveRef()) {
         // 7. Else, if O is an exotic String object, return "[object String]".
         JSPrimitiveRef *primitiveRef = JSPrimitiveRef::Cast(*object);
-        if (primitiveRef->IsString()) {
+        if (primitiveRef->IsString(thread)) {
             return thread->GlobalConstants()->GetStringToString();
-        } else if (primitiveRef->IsBoolean()) {
+        } else if (primitiveRef->IsBoolean(thread)) {
             // 11. Else, if O has a [[BooleanData]] internal slot, return "[object Boolean]".
             return thread->GlobalConstants()->GetBooleanToString();
-        } else if (primitiveRef->IsNumber()) {
+        } else if (primitiveRef->IsNumber(thread)) {
             // 12. Else, if O has a [[NumberData]] internal slot, return "[object Number]".
             return thread->GlobalConstants()->GetNumberToString();
         }

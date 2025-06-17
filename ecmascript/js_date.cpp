@@ -240,7 +240,7 @@ int64_t JSDate::GetLocalOffsetInMin(const JSThread *thread, int64_t timeMs, bool
     if (!isLocal) {
         return 0;
     }
-    double localOffset = this->GetLocalOffset().GetDouble();
+    double localOffset = this->GetLocalOffset(thread).GetDouble();
     if (localOffset == MAX_DOUBLE) {
         localOffset = static_cast<double>(GetLocalOffsetFromOS(timeMs, isLocal));
         SetLocalOffset(thread, JSTaggedValue(localOffset));
@@ -496,7 +496,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
         return JSTaggedValue(base::NAN_VALUE);
     }
     int len = static_cast<int>(strAccessor.GetLength());
-    auto data = reinterpret_cast<const char *>(strAccessor.GetUtf8DataFlat(*ecmaStr, tmpBuf));
+    auto data = reinterpret_cast<const char *>(strAccessor.GetUtf8DataFlat(thread, *ecmaStr, tmpBuf));
     return GetTimeFromString(data, len);
 }
 
@@ -586,9 +586,9 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
 }
 
 // 20.4.4.10
-JSTaggedValue JSDate::GetTime() const
+JSTaggedValue JSDate::GetTime(const JSThread *thread) const
 {
-    return GetTimeValue();
+    return GetTimeValue(thread);
 }
 
 // static
@@ -640,7 +640,7 @@ void JSDate::AppendStrToTargetLength(const CString &str, int length, CString &ta
 
 bool JSDate::GetThisDateValues(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const
 {
-    double timeMs = this->GetTimeValue().GetDouble();
+    double timeMs = this->GetTimeValue(thread).GetDouble();
     if (std::isnan(timeMs)) {
         return false;
     }
@@ -750,7 +750,7 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime {""};
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue().GetDouble()), true);
+    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue(thread).GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
     } else {
@@ -789,7 +789,7 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime {""};
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue().GetDouble()), true);
+    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue(thread).GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
     } else {
@@ -840,9 +840,9 @@ JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
 }
 
 // 20.4.4.44
-JSTaggedValue JSDate::ValueOf() const
+JSTaggedValue JSDate::ValueOf(const JSThread *thread) const
 {
-    return this->GetTimeValue();
+    return this->GetTimeValue(thread);
 }
 
 // static
@@ -884,8 +884,9 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
         count = argc;
     }
 
+    JSThread *thread = argv->GetThread();
     // get date values.
-    double timeMs = this->GetTimeValue().GetDouble();
+    double timeMs = this->GetTimeValue(thread).GetDouble();
     std::array<int64_t, DATE_LENGTH> date = {0};
     bool isSelectLocal = isLocal;
     // setUTCFullYear, setFullYear
@@ -893,7 +894,6 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
         timeMs = 0.0;
         isSelectLocal = false;
     }
-    JSThread *thread = argv->GetThread();
     if (!std::isnan(timeMs)) {
         GetDateValues(thread, timeMs, &date, isSelectLocal);
     }

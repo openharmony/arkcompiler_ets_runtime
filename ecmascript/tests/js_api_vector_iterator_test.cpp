@@ -77,7 +77,8 @@ HWTEST_F_L0(JSAPIVectorIteratorTest, SetIteratedVector)
         JSAPIVector::Add(thread, jsVector, value);
     }
     vectorIterator->SetIteratedVector(thread, jsVector.GetTaggedValue());
-    JSHandle<JSAPIVector> VectorTo(thread, JSAPIVector::Cast(vectorIterator->GetIteratedVector().GetTaggedObject()));
+    JSHandle<JSAPIVector> VectorTo(thread,
+        JSAPIVector::Cast(vectorIterator->GetIteratedVector(thread).GetTaggedObject()));
     EXPECT_EQ(VectorTo->GetSize(), static_cast<int>(DEFAULT_LENGTH));
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         std::string ivalue = vectorValue + std::to_string(i);
@@ -143,11 +144,11 @@ HWTEST_F_L0(JSAPIVectorIteratorTest, Next)
         std::string resultValue = vectorValue + std::to_string(i);
         if (i <= DEFAULT_LENGTH - 1U) {
             value.Update(factory->NewFromStdString(resultValue).GetTaggedValue());
-            EXPECT_EQ(JSTaggedValue::SameValue(
+            EXPECT_EQ(JSTaggedValue::SameValue(thread,
             JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), value), true);
         }
         else {
-            EXPECT_TRUE(vectorIterator->GetIteratedVector().IsUndefined());
+            EXPECT_TRUE(vectorIterator->GetIteratedVector(thread).IsUndefined());
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsUndefined());
         }
     }

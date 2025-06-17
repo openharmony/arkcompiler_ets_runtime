@@ -25,7 +25,7 @@ namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
-    auto profileData = profileTypeInfo_->GetIcSlot(slotId_);
+    auto profileData = profileTypeInfo_->GetIcSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
@@ -46,7 +46,7 @@ void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHa
                                             uint32_t index, JSTaggedValue profileData,
                                             JSHandle<JSTaggedValue> keyForMegaIC, MegaICCache::MegaICKind kind) const
 {
-    ASSERT(profileTypeInfo_->GetIcSlot(index + 1).IsHole());
+    ASSERT(profileTypeInfo_->GetIcSlot(thread_, index + 1).IsHole());
     JSHandle<TaggedArray> arr(thread_, profileData);
     const uint32_t step = 2;
     uint32_t newLen = arr->GetLength() + step;
@@ -69,11 +69,11 @@ void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHa
 
         uint32_t i = 0;
         for (; i < arr->GetLength(); i += step) {
-            if (arr->Get(i) == JSTaggedValue::Undefined()) {
+            if (arr->Get(thread_, i) == JSTaggedValue::Undefined()) {
                 continue;
             }
-            cache->Set(JSHClass::Cast(arr->Get(i).GetWeakReferentUnChecked()), keyForMegaIC.GetTaggedValue(),
-                       arr->Get(i + 1), thread_);
+            cache->Set(JSHClass::Cast(arr->Get(thread_, i).GetWeakReferentUnChecked()), keyForMegaIC.GetTaggedValue(),
+                       arr->Get(thread_, i + 1), thread_);
         }
         profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1,
                                                keyForMegaIC.GetTaggedValue());
@@ -84,8 +84,8 @@ void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHa
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
     uint32_t i = 0;
     for (; i < arr->GetLength(); i += step) {
-        newArr->Set(thread_, i, arr->Get(i));
-        newArr->Set(thread_, i + 1, arr->Get(i + 1));
+        newArr->Set(thread_, i, arr->Get(thread_, i));
+        newArr->Set(thread_, i + 1, arr->Get(thread_, i + 1));
     }
     newArr->Set(thread_, i, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, i + 1, handler.GetTaggedValue());
@@ -102,7 +102,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
         profileTypeInfo_->SetIcSlot(thread_, index, handler.GetTaggedValue());
         return;
     }
-    auto profileData = profileTypeInfo_->GetIcSlot(slotId_);
+    auto profileData = profileTypeInfo_->GetIcSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     if (profileData.IsUndefined()) {
         profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, GetWeakRef(hclass.GetTaggedValue()),
@@ -117,8 +117,8 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
     auto factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(POLY_CASE_NUM);
     uint32_t arrIndex = 0;
-    newArr->Set(thread_, arrIndex++, profileTypeInfo_->GetIcSlot(index));
-    newArr->Set(thread_, arrIndex++, profileTypeInfo_->GetIcSlot(index + 1));
+    newArr->Set(thread_, arrIndex++, profileTypeInfo_->GetIcSlot(thread_, index));
+    newArr->Set(thread_, arrIndex++, profileTypeInfo_->GetIcSlot(thread_, index + 1));
     newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex, handler.GetTaggedValue());
 
@@ -133,7 +133,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
         AddGlobalHandlerKey(key, handler);
         return;
     }
-    auto profileData = profileTypeInfo_->GetIcSlot(slotId_);
+    auto profileData = profileTypeInfo_->GetIcSlot(thread_, slotId_);
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
@@ -150,7 +150,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
         profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, JSTaggedValue::Hole(), index + 1, JSTaggedValue::Hole());
         return;
     }
-    JSTaggedValue patchValue = profileTypeInfo_->GetIcSlot(index + 1);
+    JSTaggedValue patchValue = profileTypeInfo_->GetIcSlot(thread_, index + 1);
     ASSERT(patchValue.IsTaggedArray());
     JSHandle<TaggedArray> arr(thread_, patchValue);
     const uint32_t step = 2;
@@ -166,8 +166,8 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
         newArr->Set(thread_, 0, GetWeakRef(hclass.GetTaggedValue()));
         newArr->Set(thread_, 1, handler.GetTaggedValue());
         for (uint32_t i = 0; i < arr->GetLength(); i += step) {
-            newArr->Set(thread_, i + step, arr->Get(i));
-            newArr->Set(thread_, i + step + 1, arr->Get(i + 1));
+            newArr->Set(thread_, i + step, arr->Get(thread_, i));
+            newArr->Set(thread_, i + step + 1, arr->Get(thread_, i + 1));
         }
         profileTypeInfo_->SetIcSlot(thread_, index + 1, newArr.GetTaggedValue());
         return;
@@ -176,8 +176,8 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
     auto factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(POLY_CASE_NUM);
     uint32_t arrIndex = 0;
-    newArr->Set(thread_, arrIndex++, arr->Get(0));
-    newArr->Set(thread_, arrIndex++, arr->Get(1));
+    newArr->Set(thread_, arrIndex++, arr->Get(thread_, 0));
+    newArr->Set(thread_, arrIndex++, arr->Get(thread_, 1));
     newArr->Set(thread_, arrIndex++, GetWeakRef(hclass.GetTaggedValue()));
     newArr->Set(thread_, arrIndex++, handler.GetTaggedValue());
 
@@ -189,7 +189,7 @@ void ProfileTypeAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHan
     ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     auto index = slotId_;
     const uint8_t step = 2;  // key and value pair
-    JSTaggedValue indexVal = profileTypeInfo_->GetIcSlot(index);
+    JSTaggedValue indexVal = profileTypeInfo_->GetIcSlot(thread_, index);
     if (indexVal.IsUndefined()) {
         auto factory = thread_->GetEcmaVM()->GetFactory();
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(step);
@@ -211,8 +211,8 @@ void ProfileTypeAccessor::AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHan
     newArr->Set(thread_, 1, handler.GetTaggedValue());
 
     for (uint32_t i = 0; i < arr->GetLength(); i += step) {
-        newArr->Set(thread_, i + step, arr->Get(i));
-        newArr->Set(thread_, i + step + 1, arr->Get(i + 1));
+        newArr->Set(thread_, i + step, arr->Get(thread_, i));
+        newArr->Set(thread_, i + step + 1, arr->Get(thread_, i + 1));
     }
     profileTypeInfo_->SetIcSlot(thread_, index, newArr.GetTaggedValue());
 }
@@ -248,7 +248,7 @@ void ProfileTypeAccessor::SetAsMega() const
 
 void ProfileTypeAccessor::SetAsMegaIfUndefined() const
 {
-    if (profileTypeInfo_->GetIcSlot(slotId_).IsUndefined()) {
+    if (profileTypeInfo_->GetIcSlot(thread_, slotId_).IsUndefined()) {
         SetAsMega();
     }
 }
@@ -317,7 +317,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetMegaState() const
     if (IsGlobalIC(kind_)) {
         return ICState::MEGA;
     }
-    auto profileDataSecond = profileTypeInfo_->Get(slotId_ + 1);
+    auto profileDataSecond = profileTypeInfo_->Get(thread_, slotId_ + 1);
     if (profileDataSecond.IsString()) {
         return ICState::IC_MEGA;
     } else {
@@ -327,7 +327,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetMegaState() const
 
 ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
 {
-    auto profileData = profileTypeInfo_->GetIcSlot(slotId_);
+    auto profileData = profileTypeInfo_->GetIcSlot(thread_, slotId_);
     if (profileData.IsUndefined()) {
         return ICState::UNINIT;
     }
@@ -353,7 +353,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
                 TaggedArray *array = TaggedArray::Cast(profileData.GetTaggedObject());
                 return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
             }
-            profileData = profileTypeInfo_->GetIcSlot(slotId_ + 1);
+            profileData = profileTypeInfo_->GetIcSlot(thread_, slotId_ + 1);
             TaggedArray *array = TaggedArray::Cast(profileData.GetTaggedObject());
             return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
         }

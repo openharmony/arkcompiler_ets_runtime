@@ -1750,11 +1750,12 @@ DEF_CALL_SIGNATURE(ResumeRspAndRollback)
 
 DEF_CALL_SIGNATURE(JSHClassFindProtoTransitions)
 {
-    // 3 : 3 input parameters
-    CallSignature bigIntSameValueZero("JSHClassFindProtoTransitions", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature bigIntSameValueZero("JSHClassFindProtoTransitions", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = bigIntSameValueZero;
-    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+    std::array<VariableType, 4> params = { // 4 : 4 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
@@ -1766,11 +1767,12 @@ DEF_CALL_SIGNATURE(JSHClassFindProtoTransitions)
 
 DEF_CALL_SIGNATURE(FinishObjSizeTracking)
 {
-    // 1 : 1 input parameters
-    CallSignature finishObjSizeTracking("FinishObjSizeTracking", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature finishObjSizeTracking("FinishObjSizeTracking", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = finishObjSizeTracking;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -1780,11 +1782,12 @@ DEF_CALL_SIGNATURE(FinishObjSizeTracking)
 
 DEF_CALL_SIGNATURE(NumberHelperStringToDouble)
 {
-    // 1 : 1 input parameters
-    CallSignature bigIntSameValueZero("NumberHelperStringToDouble", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature bigIntSameValueZero("NumberHelperStringToDouble", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = bigIntSameValueZero;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -1885,11 +1888,12 @@ DEF_CALL_SIGNATURE(FastArraySortString)
 
 DEF_CALL_SIGNATURE(StringToNumber)
 {
-    // 4 : 4 input parameters
-    CallSignature stringToNumber("StringToDoubleWithRadix", 0, 2,
+    // 3 : 3 input parameters
+    CallSignature stringToNumber("StringToDoubleWithRadix", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = stringToNumber;
-    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::INT32(),
     };
@@ -1977,11 +1981,14 @@ DEF_CALL_SIGNATURE(StringGetEnd)
 
 DEF_CALL_SIGNATURE(ReverseTypedArray)
 {
-    CallSignature reverseTypedArray("ReverseTypedArray", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature reverseTypedArray("ReverseTypedArray", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = reverseTypedArray;
-    std::array<VariableType, 1> params = {
+    constexpr size_t PARAMCOUNT = 2;
+    std::array<VariableType, PARAMCOUNT> params = {
         VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
@@ -2008,11 +2015,14 @@ DEF_CALL_SIGNATURE(ReverseArray)
 
 DEF_CALL_SIGNATURE(SortTypedArray)
 {
-    CallSignature sortTypedArray("SortTypedArray", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature sortTypedArray("SortTypedArray", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = sortTypedArray;
-    std::array<VariableType, 1> params = {
+    constexpr size_t PARAMCOUNT = 2;
+    std::array<VariableType, PARAMCOUNT> params = {
         VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
@@ -2660,11 +2670,12 @@ DEF_CALL_SIGNATURE(CallDateNow)
 
 DEF_CALL_SIGNATURE(UpdateFieldType)
 {
-    // 2 : 2 input parameters
-    CallSignature index("UpdateFieldType", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    // 3 : 3 input parameters
+    CallSignature index("UpdateFieldType", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT64(),
     };

@@ -46,7 +46,7 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternFlattenString_EmptyString)
     table.GetOrInternFlattenString(thread->GetThreadHolder(), handleCreator_, emptyEcmaStrHandle->ToBaseString());
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
     common::BaseString* emptyEcmaStr = table.TryGetInternString(emptyEcmaStrHandle);
-    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(emptyEcmaStr)).ToCString().c_str(), "");
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(emptyEcmaStr)).ToCString(thread).c_str(), "");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(emptyEcmaStr)).IsInternString());
 }
 
@@ -68,7 +68,7 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf8Data)
 
     common::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_, utf8Data,
                                                                 sizeof(utf8Data), true);
-    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString().c_str(), "hello");
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString(thread).c_str(), "hello");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).IsInternString());
 }
 
@@ -91,7 +91,7 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf16Data)
 
     common::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_, utf16Data,
                                                                 sizeof(utf16Data) / sizeof(uint16_t), false);
-    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString().c_str(), "编码解码");
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString(thread).c_str(), "编码解码");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).IsInternString());
 }
 
@@ -114,7 +114,7 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternStringFromCompressedSubString_SubStr
 
     common::BaseString* internStr = table.GetOrInternStringFromCompressedSubString(
         thread->GetThreadHolder(), handleCreator_, originalStr, offset, utf8Len);
-    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).ToCString(thread).c_str(),
                  "0x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).IsInternString());
 }

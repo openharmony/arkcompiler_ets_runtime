@@ -83,19 +83,19 @@ CString ConvertToString(T sp)
     return res;
 }
 
-CString ConvertToString(JSTaggedValue key)
+CString ConvertToString(const JSThread *thread, JSTaggedValue key)
 {
     ASSERT(key.IsStringOrSymbol());
     if (key.IsString()) {
-        return ConvertToString(EcmaString::ConstCast(key.GetTaggedObject()));
+        return ConvertToString(thread, EcmaString::ConstCast(key.GetTaggedObject()));
     }
 
-    ecmascript::JSTaggedValue desc = JSSymbol::Cast(key.GetTaggedObject())->GetDescription();
+    ecmascript::JSTaggedValue desc = JSSymbol::Cast(key.GetTaggedObject())->GetDescription(thread);
     if (desc.IsUndefined()) {
         return CString("Symbol()");
     }
 
-    return ConvertToString(EcmaString::ConstCast(desc.GetTaggedObject()));
+    return ConvertToString(thread, EcmaString::ConstCast(desc.GetTaggedObject()));
 }
 
 // NB! the following function need additional mem allocation, don't use when unnecessary!
@@ -109,12 +109,12 @@ CString ConvertToString(const std::string &str)
     return res;
 }
 
-CString ConvertToString(const EcmaString *s, StringConvertedUsage usage, bool cesu8)
+CString ConvertToString(const JSThread *thread, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
 {
     if (s == nullptr) {
         return CString("");
     }
-    return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage, cesu8);
+    return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(thread, usage, cesu8);
 }
 
 std::string ConvertToStdString(const CString &str)
@@ -253,30 +253,30 @@ void ConvertNumberToCStringAndAppend(DstType &str, JSTaggedValue num)
 template void ConvertNumberToCStringAndAppend<CString>(CString &str, JSTaggedValue num);
 template void ConvertNumberToCStringAndAppend<C16String>(C16String &str, JSTaggedValue num);
 
-void ConvertQuotedAndAppendToCString(CString &str, const EcmaString *s)
+void ConvertQuotedAndAppendToCString(const JSThread *thread, CString &str, const EcmaString *s)
 {
     ASSERT(s != nullptr);
 
     uint32_t strLen = EcmaStringAccessor(const_cast<EcmaString *>(s)).GetLength();
     CVector<uint8_t> buf;
-    const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(s, buf);
+    const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(thread, s, buf);
     const Span<const uint8_t> dataSpan(data, strLen);
     base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
 }
 
-void ConvertQuotedAndAppendToC16String(C16String &str, const EcmaString *s)
+void ConvertQuotedAndAppendToC16String(const JSThread *thread, C16String &str, const EcmaString *s)
 {
     ASSERT(s != nullptr);
 
     uint32_t strLen = EcmaStringAccessor(const_cast<EcmaString *>(s)).GetLength();
     if (EcmaStringAccessor(const_cast<EcmaString *>(s)).IsUtf8()) {
         CVector<uint8_t> buf;
-        const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(s, buf);
+        const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(thread, s, buf);
         const Span<const uint8_t> dataSpan(data, strLen);
         base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
     } else {
         CVector<uint16_t> buf;
-        const uint16_t *data = EcmaStringAccessor::GetUtf16DataFlat(s, buf);
+        const uint16_t *data = EcmaStringAccessor::GetUtf16DataFlat(thread, s, buf);
         const Span<const uint16_t> dataSpan(data, strLen);
         base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
     }

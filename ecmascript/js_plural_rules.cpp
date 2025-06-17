@@ -22,10 +22,10 @@
 namespace panda::ecmascript {
 constexpr int32_t STRING_SEPARATOR_LENGTH = 4;
 
-icu::number::LocalizedNumberFormatter *JSPluralRules::GetIcuNumberFormatter() const
+icu::number::LocalizedNumberFormatter *JSPluralRules::GetIcuNumberFormatter(JSThread *thread) const
 {
-    ASSERT(GetIcuNF().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetIcuNF().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetIcuNF(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetIcuNF(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::number::LocalizedNumberFormatter *>(result);
 }
 
@@ -50,7 +50,7 @@ void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPlu
     icu::number::LocalizedNumberFormatter *icuPointer =
         ecmaVm->GetNativeAreaAllocator()->New<icu::number::LocalizedNumberFormatter>(icuNF);
     ASSERT(icuPointer != nullptr);
-    JSTaggedValue data = pluralRules->GetIcuNF();
+    JSTaggedValue data = pluralRules->GetIcuNF(thread);
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuPointer);
@@ -60,10 +60,10 @@ void JSPluralRules::SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPlu
     pluralRules->SetIcuNF(thread, pointer.GetTaggedValue());
 }
 
-icu::PluralRules *JSPluralRules::GetIcuPluralRules() const
+icu::PluralRules *JSPluralRules::GetIcuPluralRules(JSThread *thread) const
 {
-    ASSERT(GetIcuPR().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetIcuPR().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetIcuPR(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetIcuPR(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::PluralRules *>(result);
 }
 
@@ -88,7 +88,7 @@ void JSPluralRules::SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralR
 
     icu::PluralRules *icuPointer = ecmaVm->GetNativeAreaAllocator()->New<icu::PluralRules>(icuPR);
     ASSERT(icuPointer != nullptr);
-    JSTaggedValue data = pluralRules->GetIcuPR();
+    JSTaggedValue data = pluralRules->GetIcuPR(thread);
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuPointer);
@@ -248,7 +248,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
     JSLocale::SetNumberFormatDigitOptions(thread, pluralRules, JSHandle<JSTaggedValue>::Cast(prOptions), MNFD_DEFAULT,
                                           MXFD_DEFAULT, NotationOption::STANDARD);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPluralRules, thread);
-    icuNumberFormatter = JSNumberFormat::SetICUFormatterDigitOptions(icuNumberFormatter, pluralRules);
+    icuNumberFormatter = JSNumberFormat::SetICUFormatterDigitOptions(thread, icuNumberFormatter, pluralRules);
 
     // Set pluralRules.[[IcuPluralRules]] to icuPluralRules
     SetIcuPluralRules(thread, pluralRules, *icuPluralRules, JSPluralRules::FreeIcuPluralRules);
@@ -289,8 +289,8 @@ JSHandle<EcmaString> FormatNumericToString(JSThread *thread, const icu::number::
 JSHandle<EcmaString> JSPluralRules::ResolvePlural(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
                                                   double n)
 {
-    icu::PluralRules *icuPluralRules = pluralRules->GetIcuPluralRules();
-    icu::number::LocalizedNumberFormatter *icuFormatter = pluralRules->GetIcuNumberFormatter();
+    icu::PluralRules *icuPluralRules = pluralRules->GetIcuPluralRules(thread);
+    icu::number::LocalizedNumberFormatter *icuFormatter = pluralRules->GetIcuNumberFormatter(thread);
     if (icuPluralRules == nullptr || icuFormatter == nullptr) {
         return JSHandle<EcmaString>(thread, JSTaggedValue::Undefined());
     }
@@ -309,7 +309,7 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
 
     // [[Locale]]
     JSHandle<JSTaggedValue> property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledLocaleString());
-    JSHandle<EcmaString> locale(thread, pluralRules->GetLocale());
+    JSHandle<EcmaString> locale(thread, pluralRules->GetLocale(thread));
     PropertyDescriptor localeDesc(thread, JSHandle<JSTaggedValue>::Cast(locale), true, true, true);
     JSObject::DefineOwnProperty(thread, options, property, localeDesc);
 
@@ -326,7 +326,7 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
 
     // [[MinimumIntegerDigits]]
     property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledMinimumIntegerDigitsString());
-    JSHandle<JSTaggedValue> minimumIntegerDigits(thread, pluralRules->GetMinimumIntegerDigits());
+    JSHandle<JSTaggedValue> minimumIntegerDigits(thread, pluralRules->GetMinimumIntegerDigits(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumIntegerDigits);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
@@ -334,23 +334,23 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
     if (roundingType == RoundingType::SIGNIFICANTDIGITS) {
         // [[MinimumSignificantDigits]]
         property = globalConst->GetHandledMinimumSignificantDigitsString();
-        JSHandle<JSTaggedValue> minimumSignificantDigits(thread, pluralRules->GetMinimumSignificantDigits());
+        JSHandle<JSTaggedValue> minimumSignificantDigits(thread, pluralRules->GetMinimumSignificantDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumSignificantDigits]]
         property = globalConst->GetHandledMaximumSignificantDigitsString();
-        JSHandle<JSTaggedValue> maximumSignificantDigits(thread, pluralRules->GetMaximumSignificantDigits());
+        JSHandle<JSTaggedValue> maximumSignificantDigits(thread, pluralRules->GetMaximumSignificantDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
     } else {
         // [[MinimumFractionDigits]]
         property = globalConst->GetHandledMinimumFractionDigitsString();
-        JSHandle<JSTaggedValue> minimumFractionDigits(thread, pluralRules->GetMinimumFractionDigits());
+        JSHandle<JSTaggedValue> minimumFractionDigits(thread, pluralRules->GetMinimumFractionDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumFractionDigits]]
         property = globalConst->GetHandledMaximumFractionDigitsString();
-        JSHandle<JSTaggedValue> maximumFractionDigits(thread, pluralRules->GetMaximumFractionDigits());
+        JSHandle<JSTaggedValue> maximumFractionDigits(thread, pluralRules->GetMaximumFractionDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
@@ -360,7 +360,7 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
     // from the the list "zero", "one", "two", "few", "many" and "other",
     // that are relevant for the locale whose localization is specified in LDML Language Plural Rules.
     UErrorCode status = U_ZERO_ERROR;
-    icu::PluralRules *icuPluralRules = pluralRules->GetIcuPluralRules();
+    icu::PluralRules *icuPluralRules = pluralRules->GetIcuPluralRules(thread);
     ASSERT(icuPluralRules != nullptr);
     std::unique_ptr<icu::StringEnumeration> categories(icuPluralRules->getKeywords(status));
     int32_t count = categories->count(status);

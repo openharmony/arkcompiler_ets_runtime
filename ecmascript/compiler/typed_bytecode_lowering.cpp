@@ -2207,9 +2207,9 @@ void TypedBytecodeLowering::ConvertCallTargetCheckToHeapConstantCheckAndLowerCal
     auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
     JSHandle<JSTaggedValue> heapObject = jitCompilationEnv->GetHeapConstantHandle(heapConstantIndex);
     JSHandle<JSFunction> jsFunc = JSHandle<JSFunction>::Cast(heapObject);
-    Method *calleeMethod = Method::Cast(jsFunc->GetMethod());
-    ASSERT(calleeMethod->GetMethodLiteral() != nullptr);
-    if (calleeMethod->GetMethodLiteral()->IsFastCall()) {
+    Method *calleeMethod = Method::Cast(jsFunc->GetMethod(compilationEnv_->GetJSThread()));
+    ASSERT(calleeMethod->GetMethodLiteral(compilationEnv_->GetJSThread()) != nullptr);
+    if (calleeMethod->GetMethodLiteral(compilationEnv_->GetJSThread())->IsFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {
         LowerCall(gate, func, args, isNoGC);
@@ -2725,7 +2725,7 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     }
 
     BuiltinIndex& builtin = BuiltinIndex::GetInstance();
-    auto index = builtin.GetBuiltinIndex(key);
+    auto index = builtin.GetBuiltinIndex(compilationEnv_->GetJSThread(), key);
     if (index != builtin.NOT_FOUND) {
         AddProfiling(gate);
         GateRef result = builder_.LoadBuiltinObject(index);
@@ -2787,7 +2787,7 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
     JSHandle<JSFunction> objectFunc(compilationEnv_->GetGlobalEnv()->GetObjectFunction());
-    JSTaggedValue protoOrHClass = objectFunc->GetProtoOrHClass();
+    JSTaggedValue protoOrHClass = objectFunc->GetProtoOrHClass(compilationEnv_->GetJSThread());
     JSHClass *objectHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t objectSize = objectHC->GetObjectSize();
 
@@ -2823,7 +2823,8 @@ void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
 void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 {
     CreateObjWithBufferTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, recordName_, chunk_);
-    if (!tacc.CanOptimize()) {
+    JSThread *thread = compilationEnv_->GetJSThread();
+    if (!tacc.CanOptimize(thread)) {
         return;
     }
     JSTaggedValue hclassVal = tacc.GetHClass();
@@ -2838,12 +2839,12 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     }
     JSObject *objhandle = JSObject::Cast(obj);
     std::vector<uint64_t> inlinedProps;
-    auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
+    auto layout = LayoutInfo::Cast(newClass->GetLayout(thread).GetTaggedObject());
     uint32_t numOfProps = newClass->NumberOfProps();
     uint32_t numInlinedProps = newClass->GetInlinedProperties();
     for (uint32_t i = 0; i < numOfProps; i++) {
-        auto attr = layout->GetAttr(i);
-        JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
+        auto attr = layout->GetAttr(thread, i);
+        JSTaggedValue value = objhandle->GetPropertyInlinedProps(thread, i);
         if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
             value.IsNumber() || value.IsBoolean() || value.IsException()) {
             auto converted = JSObject::ConvertValueWithRep(attr, value);
@@ -2865,7 +2866,7 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     valueIn.emplace_back(builder_.Int64(JSTaggedValue(newClass).GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
     for (uint32_t i = 0; i < numOfProps; i++) {
-        auto attr = layout->GetAttr(i);
+        auto attr = layout->GetAttr(thread, i);
         GateRef prop;
         if (attr.IsIntRep()) {
             prop = builder_.Int32(inlinedProps.at(i));

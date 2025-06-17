@@ -81,14 +81,14 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet)
         JSMap::Set(thread, map, key, value);
         EXPECT_TRUE(map->Has(thread, key.GetTaggedValue()));
     }
-    EXPECT_EQ(map->GetSize(), 40);
+    EXPECT_EQ(map->GetSize(thread), 40);
     // whether jsMap has delete key
     keyArray[3] = '1' + 8;
     JSHandle<JSTaggedValue> deleteKey(factory->NewFromASCII(keyArray));
-    EXPECT_EQ(map->GetValue(8), JSTaggedValue(8));
+    EXPECT_EQ(map->GetValue(thread, 8), JSTaggedValue(8));
     JSMap::Delete(thread, map, deleteKey);
     EXPECT_FALSE(map->Has(thread, deleteKey.GetTaggedValue()));
-    EXPECT_EQ(map->GetSize(), 39);
+    EXPECT_EQ(map->GetSize(thread), 39);
 }
 
 HWTEST_F_L0(JSMapTest, DeleteAndGet2)
@@ -113,7 +113,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
     JSHandle<JSTaggedValue> deletefunc = thread->GetGlobalEnv()->GetMapDelete();
 
     for (int i = 0; i < 10; i++) {
-        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(thread, i));
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
         ecmaRuntimeCallInfo->SetFunction(setfunc.GetTaggedValue());
@@ -123,12 +123,12 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         JSFunction::Call(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(thread, key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     for (int i = 0; i < 10; i++) {
-        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(thread, i));
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         ecmaRuntimeCallInfo->SetFunction(getfunc.GetTaggedValue());
         ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
@@ -138,12 +138,12 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         EXPECT_TRUE(res.GetInt() == i);
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(thread, key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     for (int i = 0; i < 10; i++) {
-        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(thread, i));
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         ecmaRuntimeCallInfo->SetFunction(deletefunc.GetTaggedValue());
         ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
@@ -153,7 +153,7 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         EXPECT_TRUE(res.IsTrue());
         TestHelper::TearDownFrame(thread, prev);
         JSTaggedValue hashField =
-            JSTaggedValue(Barriers::GetTaggedValue(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+            JSTaggedValue(Barriers::GetTaggedValue(thread, key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
         EXPECT_TRUE(hashField.IsTaggedArray());
     }
 }

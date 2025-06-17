@@ -30,7 +30,7 @@ JSTaggedValue JSIterator::IteratorCloseAndReturn(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> result = JSIterator::IteratorClose(thread, iter, record);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (result->IsCompletionRecord()) {
-        return CompletionRecord::Cast(result->GetTaggedObject())->GetValue();
+        return CompletionRecord::Cast(result->GetTaggedObject())->GetValue(thread);
     }
     return result.GetTaggedValue();
 }
@@ -156,8 +156,8 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 2.Let result be Invoke(iterator, "next", «‍value»).
-    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator());
-    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod());
+    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator(thread));
+    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod(thread));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iterator, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
@@ -177,8 +177,8 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 2.Let result be Invoke(iterator, "next", «‍value»).
-    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator());
-    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod());
+    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator(thread));
+    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod(thread));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iterator, undefined, 0);
     JSTaggedValue ret = JSFunction::Call(info);

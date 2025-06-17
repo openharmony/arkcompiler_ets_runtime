@@ -334,7 +334,7 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
 // PGOSampleType
 void JITProfiler::ConvertOpType(uint32_t slotId, long bcOffset)
 {
-    JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue slotValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (slotValue.IsInt()) {
         auto type = slotValue.GetInt();
         UpdatePGOType(bcOffset, chunk_->New<PGOSampleType>(type));
@@ -343,7 +343,7 @@ void JITProfiler::ConvertOpType(uint32_t slotId, long bcOffset)
 
 void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
 {
-    JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue slotValue = profileTypeInfo_->Get(mainThread_, slotId);
     ProfileType::Kind kind;
     int calleeMethodId = 0;
     ApEntityId calleeAbcId = 0;
@@ -357,8 +357,9 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
         kind = ProfileType::Kind::BuiltinFunctionId;
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
-        Method *calleeMethod = Method::Cast(callee->GetMethod());
-        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(), calleeMethod->GetJSPandaFile());
+        Method *calleeMethod = Method::Cast(callee->GetMethod(mainThread_));
+        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(mainThread_),
+                                       calleeMethod->GetJSPandaFile(mainThread_));
         calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         if (compilationEnv_->SupportHeapConstant() &&
             calleeMethod->GetFunctionKind() != FunctionKind::ARROW_FUNCTION &&
@@ -366,13 +367,13 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
             auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
             JSHandle<JSTaggedValue> calleeHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(callee));
             auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
-            if (calleeMethod->GetMethodLiteral()->IsTypedCall() && callee->IsCompiledCode()) {
+            if (calleeMethod->GetMethodLiteral(mainThread_)->IsTypedCall() && callee->IsCompiledCode()) {
                 jitCompilationEnv->RecordCallMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
             } else {
                 jitCompilationEnv->RecordOnlyInlineMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
             }
         }
-        calleeAbcId = PGOProfiler::GetMethodAbcId(callee);
+        calleeAbcId = PGOProfiler::GetMethodAbcId(mainThread_, callee);
         static_cast<JitCompilationEnv *>(compilationEnv_)
             ->UpdateFuncSlotIdMap(calleeMethodId, methodId_.GetOffset(), slotId);
         kind = ProfileType::Kind::MethodId;
@@ -385,7 +386,7 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
 
 void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
 {
-    JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue slotValue = profileTypeInfo_->Get(mainThread_, slotId);
     int ctorMethodId = 0;
     JSHClass* hclass = nullptr;
     if (slotValue.IsInt()) {
@@ -396,8 +397,9 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
         }
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
-        Method *calleeMethod = Method::Cast(callee->GetMethod());
-        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(), calleeMethod->GetJSPandaFile());
+        Method *calleeMethod = Method::Cast(callee->GetMethod(mainThread_));
+        compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(mainThread_),
+                                       calleeMethod->GetJSPandaFile(mainThread_));
         ctorMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         if (compilationEnv_->SupportHeapConstant()) {
             auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
@@ -405,7 +407,7 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
             auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
             jitCompilationEnv->RecordCtorMethodId2HeapConstantIndex(ctorMethodId, heapConstantIndex);
         }
-        JSTaggedValue protoOrHClass = callee->GetProtoOrHClass();
+        JSTaggedValue protoOrHClass = callee->GetProtoOrHClass(mainThread_);
         if (protoOrHClass.IsJSHClass()) {
             hclass = JSHClass::Cast(protoOrHClass.GetTaggedObject());
         } else {
@@ -431,7 +433,7 @@ void JITProfiler::ConvertGetIterator(uint32_t slotId, long bcOffset)
     if (mainThread_->GetEnableLazyBuiltins()) {
         return;
     }
-    JSTaggedValue value = profileTypeInfo_->Get(slotId);
+    JSTaggedValue value = profileTypeInfo_->Get(mainThread_, slotId);
     if (!value.IsInt()) {
         return;
     }
@@ -444,7 +446,7 @@ void JITProfiler::ConvertGetIterator(uint32_t slotId, long bcOffset)
 
 void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_unused]]int32_t traceId)
 {
-    JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue slotValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!slotValue.IsHeapObject()) {
         return;
     }
@@ -458,7 +460,7 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_un
         }
     } else if (slotValue.IsTrackInfoObject()) {
         TrackInfo *trackInfo = TrackInfo::Cast(slotValue.GetTaggedObject());
-        auto hclass = JSHClass::Cast(trackInfo->GetCachedHClass().GetTaggedObject());
+        auto hclass = JSHClass::Cast(trackInfo->GetCachedHClass(mainThread_).GetTaggedObject());
         PGODefineOpType* objDefType = chunk_->New<PGODefineOpType>(ProfileType::CreateJITType(), hclass);
         ptManager_->RecordAndGetHclassIndexForJIT(hclass);
         auto elementsKind = trackInfo->GetElementsKind();
@@ -472,9 +474,9 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_un
 void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type)
 {
     ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
-    JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
-        JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+        JSTaggedValue secondValue = profileTypeInfo_->Get(mainThread_, slotId + 1);
         if (firstValue.IsHole() && secondValue.IsString()) {
             // Mega state
             AddObjectInfoWithMega(bcOffset);
@@ -484,7 +486,7 @@ void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type
     if (firstValue.IsWeak()) {
         TaggedObject *object = firstValue.GetWeakReferentUnChecked();
         if (object->GetClass()->IsHClass()) {
-            JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+            JSTaggedValue secondValue = profileTypeInfo_->Get(mainThread_, slotId + 1);
             JSHClass *hclass = JSHClass::Cast(object);
             ConvertICByNameWithHandler(abcId_, bcOffset, hclass, secondValue, type, slotId + 1);
         }
@@ -534,7 +536,7 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
                                                  JSTaggedValue &secondValue, uint32_t slotId, JSTaggedValue name)
 {
     auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = prototypeHandler->GetProtoCell();
+    auto cellValue = prototypeHandler->GetProtoCell(mainThread_);
     if (cellValue.IsUndefined()) {
         return;
     }
@@ -542,9 +544,9 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     if (cell->GetHasChanged()) {
         return;
     }
-    JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
+    JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo(mainThread_);
     auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
-    auto accessor = prototypeHandler->GetAccessorJSFunction();
+    auto accessor = prototypeHandler->GetAccessorJSFunction(mainThread_);
     if (!handlerInfoVal.IsInt()) {
         return;
     }
@@ -552,11 +554,11 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     if (HandlerBase::IsNonExist(handlerInfo)) {
         return;
     }
-    auto holder = prototypeHandler->GetHolder();
+    auto holder = prototypeHandler->GetHolder(mainThread_);
     auto holderHClass = holder.GetTaggedObject()->GetClass();
     if (accessor.IsJSFunction()) {
         auto accessorFunction = JSFunction::Cast(accessor);
-        auto methodId = Method::Cast(accessorFunction->GetMethod())->GetMethodId().GetOffset();
+        auto methodId = Method::Cast(accessorFunction->GetMethod(mainThread_))->GetMethodId().GetOffset();
         ASSERT(accessorMethodId == methodId);
         accessorMethodId = methodId;
         static_cast<JitCompilationEnv *>(compilationEnv_)
@@ -598,7 +600,7 @@ void JITProfiler::HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
                                           JSHClass *hclass, JSTaggedValue &secondValue)
 {
     auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
-    auto transitionHClassVal = transitionHandler->GetTransitionHClass();
+    auto transitionHClassVal = transitionHandler->GetTransitionHClass(mainThread_);
     if (transitionHClassVal.IsJSHClass()) {
         auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
         AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
@@ -609,13 +611,13 @@ void JITProfiler::HandleTransWithProtoHandler(ApEntityId &abcId, int32_t &bcOffs
                                               JSHClass *hclass, JSTaggedValue &secondValue)
 {
     auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = transWithProtoHandler->GetProtoCell();
+    auto cellValue = transWithProtoHandler->GetProtoCell(mainThread_);
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
         return;
     }
-    auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
+    auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass(mainThread_);
     if (transitionHClassVal.IsJSHClass()) {
         auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
         AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
@@ -626,7 +628,7 @@ void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &b
                                                    JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId)
 {
     auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = prototypeHandler->GetProtoCell();
+    auto cellValue = prototypeHandler->GetProtoCell(mainThread_);
     if (cellValue.IsUndefined()) {
         return;
     }
@@ -634,13 +636,13 @@ void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &b
     if (cell->GetHasChanged()) {
         return;
     }
-    auto holder = prototypeHandler->GetHolder();
+    auto holder = prototypeHandler->GetHolder(mainThread_);
     auto holderHClass = holder.GetTaggedObject()->GetClass();
     auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
-    auto accessor = prototypeHandler->GetAccessorJSFunction();
+    auto accessor = prototypeHandler->GetAccessorJSFunction(mainThread_);
     if (accessor.IsJSFunction()) {
         auto accessorFunction = JSFunction::Cast(accessor);
-        auto methodId = Method::Cast(accessorFunction->GetMethod())->GetMethodId().GetOffset();
+        auto methodId = Method::Cast(accessorFunction->GetMethod(mainThread_))->GetMethodId().GetOffset();
         ASSERT(accessorMethodId == methodId);
         accessorMethodId = methodId;
         static_cast<JitCompilationEnv *>(compilationEnv_)
@@ -653,13 +655,13 @@ void JITProfiler::HandleStoreAOTHandler(ApEntityId &abcId, int32_t &bcOffset,
                                         JSHClass *hclass, JSTaggedValue &secondValue)
 {
     StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = storeAOTHandler->GetProtoCell();
+    auto cellValue = storeAOTHandler->GetProtoCell(mainThread_);
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
         return;
     }
-    auto holder = storeAOTHandler->GetHolder();
+    auto holder = storeAOTHandler->GetHolder(mainThread_);
     auto holderHClass = holder.GetTaggedObject()->GetClass();
     AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass);
 }
@@ -674,8 +676,8 @@ void JITProfiler::ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JS
     auto array = TaggedArray::Cast(cacheValue);
     uint32_t length = array->GetLength();
     for (uint32_t i = 0; i < length; i += 2) { // 2 means one ic, two slot
-        auto result = array->Get(i);
-        auto handler = array->Get(i + 1);
+        auto result = array->Get(mainThread_, i);
+        auto handler = array->Get(mainThread_, i + 1);
         if (!result.IsHeapObject() || !result.IsWeak()) {
             continue;
         }
@@ -691,7 +693,7 @@ void JITProfiler::ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JS
 void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type)
 {
     ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
-    JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
             // Mega state
@@ -702,7 +704,7 @@ void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType typ
     if (firstValue.IsWeak()) {
         TaggedObject *object = firstValue.GetWeakReferentUnChecked();
         if (object->GetClass()->IsHClass()) {
-            JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+            JSTaggedValue secondValue = profileTypeInfo_->Get(mainThread_, slotId + 1);
             JSHClass *hclass = JSHClass::Cast(object);
             ConvertICByValueWithHandler(abcId_, bcOffset, hclass, secondValue, type, slotId);
         }
@@ -710,7 +712,7 @@ void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType typ
     }
     // Check key
     if ((firstValue.IsString() || firstValue.IsSymbol())) {
-        JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+        JSTaggedValue secondValue = profileTypeInfo_->Get(mainThread_, slotId + 1);
         ConvertICByValueWithPoly(abcId_, bcOffset, firstValue, secondValue, type, slotId);
         return;
     }
@@ -776,11 +778,11 @@ void JITProfiler::HandleTransition(ApEntityId &abcId, int32_t &bcOffset,
                                    JSHClass *hclass, JSTaggedValue &secondValue)
 {
     auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
-    auto transitionHClassVal = transitionHandler->GetTransitionHClass();
+    auto transitionHClassVal = transitionHandler->GetTransitionHClass(mainThread_);
     if (!transitionHClassVal.IsJSHClass()) {
         return ;
     }
-    auto handlerInfoValue = transitionHandler->GetHandlerInfo();
+    auto handlerInfoValue = transitionHandler->GetHandlerInfo(mainThread_);
     auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
     if (handlerInfoValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
@@ -797,11 +799,11 @@ void JITProfiler::HandleTransWithProto(ApEntityId &abcId, int32_t &bcOffset,
                                        JSHClass *hclass, JSTaggedValue &secondValue)
 {
     auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
-    auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
+    auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass(mainThread_);
     if (!transitionHClassVal.IsJSHClass()) {
         return ;
     }
-    auto handlerInfoValue = transWithProtoHandler->GetHandlerInfo();
+    auto handlerInfoValue = transWithProtoHandler->GetHandlerInfo(mainThread_);
     auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
     if (handlerInfoValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
@@ -818,7 +820,7 @@ void JITProfiler::HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
                                          JSHClass *hclass, JSTaggedValue &secondValue)
 {
     PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = prototypeHandler->GetProtoCell();
+    auto cellValue = prototypeHandler->GetProtoCell(mainThread_);
     if (!cellValue.IsProtoChangeMarker()) {
         return;
     }
@@ -827,7 +829,7 @@ void JITProfiler::HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
     if (cell->GetHasChanged()) {
         return;
     }
-    JSTaggedValue handlerInfoValue = prototypeHandler->GetHandlerInfo();
+    JSTaggedValue handlerInfoValue = prototypeHandler->GetHandlerInfo(mainThread_);
     if (handlerInfoValue.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
@@ -836,7 +838,7 @@ void JITProfiler::HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
             return;
         }
     }
-    auto holder = prototypeHandler->GetHolder();
+    auto holder = prototypeHandler->GetHolder(mainThread_);
     auto holderHClass = holder.GetTaggedObject()->GetClass();
     AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass);
 }
@@ -856,8 +858,8 @@ void JITProfiler::ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset,
     auto array = TaggedArray::Cast(cacheValue);
     uint32_t length = array->GetLength();
     for (uint32_t i = 0; i < length; i += 2) { // 2 means one ic, two slot
-        auto result = array->Get(i);
-        auto handler = array->Get(i + 1);
+        auto result = array->Get(mainThread_, i);
+        auto handler = array->Get(mainThread_, i + 1);
         if (!result.IsHeapObject() || !result.IsWeak()) {
             continue;
         }
@@ -878,7 +880,7 @@ void JITProfiler::ConvertExternalModuleVar(uint32_t index, uint32_t bcOffset)
     if (jsfunc == nullptr) {
         return;
     }
-    if (!ModuleManager::CheckModuleValueOutterResolved(index, jsfunc)) {
+    if (!ModuleManager::CheckModuleValueOutterResolved(mainThread_, index, jsfunc)) {
         return;
     }
 
@@ -887,7 +889,7 @@ void JITProfiler::ConvertExternalModuleVar(uint32_t index, uint32_t bcOffset)
 
 void JITProfiler::ConvertInstanceof(int32_t bcOffset, uint32_t slotId)
 {
-    JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
+    JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
             // Mega state
@@ -921,11 +923,11 @@ void JITProfiler::ConvertTryldGlobalByName(uint32_t bcOffset, uint32_t slotId)
     if (!jitCompilationEnv->SupportHeapConstant()) {
         return;
     }
-    JSTaggedValue handler = profileTypeInfo_->Get(slotId);
+    JSTaggedValue handler = profileTypeInfo_->Get(mainThread_, slotId);
     if (handler.IsHeapObject()) {
         ASSERT(handler.IsPropertyBox());
         PropertyBox *cell = PropertyBox::Cast(handler.GetTaggedObject());
-        if (cell->IsInvalid() || cell->GetValue().IsAccessorData()) {
+        if (cell->IsInvalid(mainThread_) || cell->GetValue(mainThread_).IsAccessorData()) {
             return;
         }
         JSHandle<JSTaggedValue> boxHandle = jitCompilationEnv->NewJSHandle(handler);
@@ -951,15 +953,16 @@ JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
                 return JSTaggedValue(currHC);
             }
         } else {
-            TaggedArray *array = TaggedArray::Cast(JSObject::Cast(currObj)->GetProperties().GetTaggedObject());
+            TaggedArray *array =
+                TaggedArray::Cast(JSObject::Cast(currObj)->GetProperties(mainThread_).GetTaggedObject());
             ASSERT(array->IsDictionaryMode());
             NameDictionary *dict = NameDictionary::Cast(array);
-            int entry = dict->FindEntry(key);
+            int entry = dict->FindEntry(mainThread_, key);
             if (entry != -1) {
                 return JSTaggedValue(currHC);
             }
         }
-        auto proto = currHC->GetProto();
+        auto proto = currHC->GetProto(mainThread_);
         if (!proto.IsHeapObject()) {
             return JSTaggedValue::Undefined();
         }
@@ -1005,7 +1008,7 @@ bool JITProfiler::AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *re
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
     // case: obj = Object.create(null) => LowerProtoChangeMarkerCheck Crash
-    if (receiver->GetPrototype().IsNull()) {
+    if (receiver->GetPrototype(mainThread_).IsNull()) {
         return false;
     }
     return AddTranstionObjectInfo(bcOffset, receiver, hold, holdTra, accessor, primitiveType, name);
@@ -1185,12 +1188,12 @@ bool JITProfiler::IsIncompleteProfileTypeInfo()
     // We may receive an incomplete profile typeinfo. During the execution of a larger function, when the upper part of
     // the function is executed, profiltypeinfo has not yet been created. When profiltypeinfo is created and Jit is
     // triggered, the first half of profiltypeinfo becomes empty.
-    return profileTypeInfo_->Get(0).IsUndefined();
+    return profileTypeInfo_->Get(mainThread_, 0).IsUndefined();
 }
 
 bool JITProfiler::SlotValueIsUndefined(uint32_t slotId)
 {
-    return profileTypeInfo_->Get(slotId).IsUndefined();
+    return profileTypeInfo_->Get(mainThread_, slotId).IsUndefined();
 }
 
 void JITProfiler::UpdateBcOffsetBool(uint32_t offset, uint32_t slotId)

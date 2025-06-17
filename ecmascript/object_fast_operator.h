@@ -109,7 +109,7 @@ public:
 
     static inline JSTaggedValue FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
-    static inline JSTaggedValue FastParseDate(const EcmaString *str);
+    static inline JSTaggedValue FastParseDate(const JSThread *thread, const EcmaString *str);
 
     static inline PropertyAttributes AddPropertyByName(JSThread *thread, JSHandle<JSObject> objHandle,
                                                        JSHandle<JSTaggedValue> keyHandle,
@@ -119,7 +119,7 @@ public:
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
 
-    static inline int64_t TryToElementsIndex(JSTaggedValue key);
+    static inline int64_t TryToElementsIndex(JSThread *thread, JSTaggedValue key);
 private:
     static inline JSTaggedValue CallSetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue value,
                                            JSTaggedValue accessorValue);
@@ -139,7 +139,7 @@ private:
 
     static inline bool IsJSProxy(JSType jsType);
 
-    static inline bool TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *output);
+    static inline bool TryStringOrSymbolToIndex(JSThread *thread, JSTaggedValue key, uint32_t *output);
 
     static inline JSTaggedValue FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                                          JSTaggedValue key, JSType jsType);

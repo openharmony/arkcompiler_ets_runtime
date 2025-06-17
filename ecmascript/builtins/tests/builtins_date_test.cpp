@@ -652,7 +652,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToDateString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result.GetRawData()), *expect_value));
 }
 
@@ -665,7 +665,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOString)
     std::vector<JSTaggedValue> args{};
     auto result1 = DateAlgorithm(thread, jsDate.GetTaggedValue(), args, 4, AlgorithmType::ALGORITHM_TO_ISO_STRING);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
@@ -679,7 +679,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToISOStringMinus)
     std::vector<JSTaggedValue> args{};
     auto result1 = DateAlgorithm(thread, jsDate.GetTaggedValue(), args, 4, AlgorithmType::ALGORITHM_TO_ISO_STRING);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
@@ -699,7 +699,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToJSON)
     JSTaggedValue result1 = BuiltinsDate::ToJSON(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 
     // number double infinite
@@ -727,15 +727,15 @@ HWTEST_F_L0(BuiltinsDateTest, ToJSONMinus)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToJSON(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
-CString GetLocalTime(JSHandle<JSDate>& jsDate)
+CString GetLocalTime(JSThread *thread, JSHandle<JSDate>& jsDate)
 {
     CString localTime;
     int localMin = 0;
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue().GetDouble()), true);
+    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue(thread).GetDouble()), true);
     if (localMin >= 0) {
         localTime += PLUS;
     } else if (localMin < 0) {
@@ -756,9 +756,9 @@ void ToStringCommon(JSThread* thread, CString& str1, CString& str2, CString& str
     
     ASSERT_TRUE(result1.IsString());
     JSHandle<EcmaString> result1_val(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
-    CString str = str1 + GetLocalTime(jsDate);
+    CString str = str1 + GetLocalTime(thread, jsDate);
     JSHandle<EcmaString> str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result1_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *result1_val, *str_handle));
 
     JSHandle<JSDate> js_date1 = JSDateCreateTest(thread);
     SetAll1(thread, js_date1);
@@ -766,18 +766,18 @@ void ToStringCommon(JSThread* thread, CString& str1, CString& str2, CString& str
     JSTaggedValue result2 = DateAlgorithm(thread, js_date1.GetTaggedValue(), argTags, 4, type);
     ASSERT_TRUE(result2.IsString());
     JSHandle<EcmaString> result2_val(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
-    str = str2 + GetLocalTime(js_date1);
+    str = str2 + GetLocalTime(thread, js_date1);
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result2_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *result2_val, *str_handle));
 
     JSHandle<JSDate> js_date2 = JSDateCreateTest(thread);
     SetAll2(thread, js_date2);
     JSTaggedValue result3 = DateAlgorithm(thread, js_date2.GetTaggedValue(), argTags, 4, type);
     ASSERT_TRUE(result3.IsString());
     JSHandle<EcmaString> result3_val(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
-    str = str3 + GetLocalTime(js_date2);
+    str = str3 + GetLocalTime(thread, js_date2);
     str_handle = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*result3_val, *str_handle));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *result3_val, *str_handle));
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToString)
@@ -809,7 +809,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToUTCString)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToUTCString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
@@ -826,7 +826,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToUTCStringMinus)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsDate::ToUTCString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
         reinterpret_cast<EcmaString *>(result1.GetRawData()), *expect_value));
 }
 
@@ -996,7 +996,7 @@ HWTEST_F_L0(BuiltinsDateTest, DateConstructor)
     ASSERT_TRUE(result9.IsObject());
     JSHandle<JSTaggedValue> result10(thread, result9);
     JSHandle<JSDate> dateResult1 = JSHandle<JSDate>::Cast(result10);
-    ASSERT_EQ(dateResult1->GetTimeValue(), JSTaggedValue(static_cast<double>(base::NAN_VALUE)));
+    ASSERT_EQ(dateResult1->GetTimeValue(thread), JSTaggedValue(static_cast<double>(base::NAN_VALUE)));
 
     // case7: length > 1, infinite number
     auto ecmaRuntimeCallInfo12 = TestHelper::CreateEcmaRuntimeCallInfo(thread, jsDate.GetTaggedValue(), 8);
@@ -1011,7 +1011,7 @@ HWTEST_F_L0(BuiltinsDateTest, DateConstructor)
     ASSERT_TRUE(result11.IsObject());
     JSHandle<JSTaggedValue> result12(thread, result11);
     JSHandle<JSDate> dateResult2 = JSHandle<JSDate>::Cast(result12);
-    ASSERT_EQ(dateResult2->GetTimeValue(), JSTaggedValue(static_cast<double>(base::NAN_VALUE)));
+    ASSERT_EQ(dateResult2->GetTimeValue(thread), JSTaggedValue(static_cast<double>(base::NAN_VALUE)));
 
     // case8: length > 1
     auto ecmaRuntimeCallInfo13 = TestHelper::CreateEcmaRuntimeCallInfo(thread, jsDate.GetTaggedValue(), 8);

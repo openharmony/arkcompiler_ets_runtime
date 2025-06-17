@@ -110,7 +110,8 @@ protected:
     JSHandle<JSTaggedValue> GetSJsonPrototype()
     {
         JSHandle<JSFunction> sObjFunction(thread_->GetEcmaVM()->GetGlobalEnv()->GetSObjectFunction());
-        JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_, sObjFunction->GetFunctionPrototype());
+        JSHandle<JSTaggedValue> jsonPrototype = JSHandle<JSTaggedValue>(thread_,
+            sObjFunction->GetFunctionPrototype(thread_));
         return jsonPrototype;
     }
 

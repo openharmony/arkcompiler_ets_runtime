@@ -55,32 +55,33 @@ public:
 
     static constexpr size_t ENUM_CACHE_OWN_OFFSET = TaggedObjectSize();
     
-    static bool CheckSelfAndProtoEnumCache(JSTaggedValue enumCacheOwn, JSTaggedValue enumCacheProto)
+    static bool CheckSelfAndProtoEnumCache(const JSThread *thread, JSTaggedValue enumCacheOwn,
+        JSTaggedValue enumCacheProto)
     {
         if (!enumCacheOwn.IsEnumCache() || !enumCacheProto.IsEnumCache()) {
             return false;
         }
-        auto keyOwn =  EnumCache::Cast(enumCacheOwn.GetTaggedObject())->GetProtoChainInfoEnumCache();
-        auto keyProto = EnumCache::Cast(enumCacheProto.GetTaggedObject())->GetEnumCacheAll();
+        auto keyOwn =  EnumCache::Cast(enumCacheOwn.GetTaggedObject())->GetProtoChainInfoEnumCache(thread);
+        auto keyProto = EnumCache::Cast(enumCacheProto.GetTaggedObject())->GetEnumCacheAll(thread);
         if (keyOwn != keyProto || keyOwn == JSTaggedValue::Null()) {
             return false;
         }
         return true;
     }
 
-    inline bool IsEnumCacheAllValid() const
+    inline bool IsEnumCacheAllValid(const JSThread *thread) const
     {
-        return GetEnumCacheAll() != JSTaggedValue::Null();
+        return GetEnumCacheAll(thread) != JSTaggedValue::Null();
     }
 
-    inline bool IsEnumCacheOwnValid() const
+    inline bool IsEnumCacheOwnValid(const JSThread *thread) const
     {
-        return GetEnumCacheOwn() != JSTaggedValue::Null();
+        return GetEnumCacheOwn(thread) != JSTaggedValue::Null();
     }
 
-    inline bool IsEnumCacheProtoInfoUndefined() const
+    inline bool IsEnumCacheProtoInfoUndefined(const JSThread *thread) const
     {
-        return GetProtoChainInfoEnumCache() == JSTaggedValue::Undefined();
+        return GetProtoChainInfoEnumCache(thread) == JSTaggedValue::Undefined();
     }
 
     inline void SetInvalidState(const JSThread *thread)

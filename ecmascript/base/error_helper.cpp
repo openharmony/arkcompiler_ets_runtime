@@ -154,7 +154,7 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     if (!message->IsUndefined()) {
         JSHandle<EcmaString> handleStr = JSTaggedValue::ToString(thread, message);
         if (errorType != ErrorType::OOM_ERROR) {
-            LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString();
+            LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(handleStr).ToCString(thread);
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> msgKey = globalConst->GetHandledMessageString();
@@ -246,7 +246,7 @@ CString ErrorHelper::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedVal
         thread->ClearException();
         errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
     }
-    return ConvertToString(*errStr);
+    return ConvertToString(thread, *errStr);
 }
 
 JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
@@ -259,7 +259,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 
         auto function = frameHandler.GetFunction();
         if (function.IsJSFunctionBase() || function.IsJSProxy()) {
-            Method *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+            Method *method = ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget(thread);
             if (!method->IsNativeWithCallField()) {
                 return JSHandle<JSTaggedValue>(thread, function);
             }

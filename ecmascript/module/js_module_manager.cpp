@@ -36,35 +36,36 @@ JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle
     return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
 }
 
-bool ModuleManager::CheckModuleValueOutterResolved(int32_t index, JSFunction *jsFunc)
+bool ModuleManager::CheckModuleValueOutterResolved(JSThread *thread, int32_t index, JSFunction *jsFunc)
 {
     // check module resolved, if resolved, load var from module directly for jit compiled code.
     ASSERT(jsFunc != nullptr);
-    JSTaggedValue currentModule = jsFunc->GetModule();
+    JSTaggedValue currentModule = jsFunc->GetModule(thread);
     if (!currentModule.IsSourceTextModule()) {
         return false;
     }
     if (SourceTextModule::IsSendableFunctionModule(currentModule)) {
         return false;
     }
-    JSTaggedValue moduleEnv = reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment();
+    JSTaggedValue moduleEnv =
+        reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment(thread);
     if (!moduleEnv.IsTaggedArray()) {
         return false;
     }
-
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnv.GetTaggedObject())->Get(index);
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnv.GetTaggedObject())->Get(thread, index);
     if (!resolvedBinding.IsResolvedIndexBinding()) {
         return false;
     }
 
     ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-    SourceTextModule *resolvedModule = reinterpret_cast<SourceTextModule*>(binding->GetModule().GetTaggedObject());
+    SourceTextModule *resolvedModule = reinterpret_cast<SourceTextModule*>(
+        binding->GetModule(thread).GetTaggedObject());
     ModuleTypes moduleType = resolvedModule->GetTypes();
     if (moduleType != ModuleTypes::ECMA_MODULE) {
         return false;
     }
 
-    JSTaggedValue resolvedModuleDict = resolvedModule->GetNameDictionary();
+    JSTaggedValue resolvedModuleDict = resolvedModule->GetNameDictionary(thread);
     if (!resolvedModuleDict.IsTaggedArray()) {
         return false;
     }
@@ -81,21 +82,21 @@ JSTaggedValue ModuleManager::GetExternalModuleVarFastPathForJIT(JSThread *thread
         return JSTaggedValue::Hole();
     }
 
-    JSTaggedValue currentModule = jsFunc->GetModule();
+    JSTaggedValue currentModule = jsFunc->GetModule(thread);
     ASSERT(currentModule.IsSourceTextModule());
     JSTaggedValue moduleEnvironment =
-        reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment();
+        reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment(thread);
     ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(thread, index);
     ASSERT(resolvedBinding.IsResolvedIndexBinding());
     ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-    JSTaggedValue resolvedModule = binding->GetModule();
+    JSTaggedValue resolvedModule = binding->GetModule(thread);
     int32_t bindingIndex = binding->GetIndex();
     ASSERT(resolvedModule.IsSourceTextModule());
     JSTaggedValue dictionary =
-        reinterpret_cast<SourceTextModule*>(resolvedModule.GetTaggedObject())->GetNameDictionary();
+        reinterpret_cast<SourceTextModule*>(resolvedModule.GetTaggedObject())->GetNameDictionary(thread);
     TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
-    return array->Get(bindingIndex);
+    return array->Get(thread, bindingIndex);
 }
 
 JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &referencing)
@@ -215,11 +216,11 @@ void ModuleManager::Iterate(RootVisitor &v)
     }
 }
 
-CString ModuleManager::GetRecordName(JSTaggedValue module)
+CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue module)
 {
     CString entry = "";
     if (module.IsString()) {
-        entry = ModulePathHelper::Utf8ConvertToString(module);
+        entry = ModulePathHelper::Utf8ConvertToString(const_cast<JSThread*>(thread), module);
     }
     if (module.IsSourceTextModule()) {
         SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
@@ -235,7 +236,7 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
                                         const CString &key)
 {
     JSThread *thread = vm->GetJSThread();
-    if (ecmaModule->GetLocalExportEntries().IsUndefined()) {
+    if (ecmaModule->GetLocalExportEntries(thread).IsUndefined()) {
         CString msg = "No export named '" + key;
         if (!ecmaModule->GetEcmaModuleRecordNameString().empty()) {
             msg += "' which exported by '" + ecmaModule->GetEcmaModuleRecordNameString() + "'";
@@ -247,15 +248,15 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
                                                   StackCheck::NO).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, 0);
     }
-    JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries());
+    JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries(thread));
     size_t exportEntriesLen = localExportEntries->GetLength();
     // 0: There's only one export value "default"
     int index = 0;
     JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
     if (exportEntriesLen > 1) { // 1:  The number of export objects exceeds 1
         for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-            ee.Update(localExportEntries->Get(idx));
-            if (EcmaStringAccessor(ee->GetExportName()).Utf8ConvertToString() == key) {
+            ee.Update(localExportEntries->Get(thread, idx));
+            if (EcmaStringAccessor(ee->GetExportName(thread)).Utf8ConvertToString(thread) == key) {
                 ASSERT(idx <= static_cast<size_t>(INT_MAX));
                 index = static_cast<int>(ee->GetLocalIndex());
                 break;

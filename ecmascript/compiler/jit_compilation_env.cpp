@@ -28,14 +28,14 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm,
     if (hostThread_ != nullptr && jsVm->GetPTManager() != nullptr) {
         ptManager_ = jsVm->GetPTManager();
     }
-    JSTaggedValue funcEnv = jsFunction_->GetLexicalEnv();
-    globalEnv_ = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv();
+    JSTaggedValue funcEnv = jsFunction_->GetLexicalEnv(thread_);
+    globalEnv_ = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread_);
     ASSERT(globalEnv_.IsJSGlobalEnv());
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
-    methodLiteral_ = method->GetMethodLiteral();
+    Method *method = Method::Cast(jsFunction->GetMethod(thread_).GetTaggedObject());
+    jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile(thread_));
+    methodLiteral_ = method->GetMethodLiteral(thread_);
     pcStart_ = method->GetBytecodeArray();
-    abcId_ = PGOProfiler::GetMethodAbcId(*jsFunction);
+    abcId_ = PGOProfiler::GetMethodAbcId(thread_, *jsFunction);
     if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
         methodLiteral_->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     }
@@ -76,8 +76,8 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
     [[maybe_unused]] panda_file::File::EntityId id) const
 {
     ASSERT(thread_->IsInRunningState());
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    JSTaggedValue constpool = method->GetConstantPool();
+    Method *method = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
+    JSTaggedValue constpool = method->GetConstantPool(thread_);
     [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
     ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
     ASSERT(method->GetMethodId() == id);
@@ -88,8 +88,8 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
     [[maybe_unused]] int32_t index) const
 {
     ASSERT(thread_->IsInRunningState());
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    JSTaggedValue constpool = method->GetConstantPool();
+    Method *method = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
+    JSTaggedValue constpool = method->GetConstantPool(thread_);
     [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
     ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
     ASSERT(taggedPool->GetSharedConstpoolId().GetInt() == index);
@@ -109,8 +109,8 @@ JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] 
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] JSTaggedValue sharedConstpool) const
 {
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    [[maybe_unused]] JSTaggedValue constpool = method->GetConstantPool();
+    Method *method = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
+    [[maybe_unused]] JSTaggedValue constpool = method->GetConstantPool(thread_);
     ASSERT(constpool == sharedConstpool);
     uint32_t methodOffset = method->GetMethodId().GetOffset();
     return FindOrCreateUnsharedConstpool(methodOffset);
@@ -127,15 +127,15 @@ JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] 
 {
     ASSERT(thread_->IsInRunningState());
     JSTaggedValue constpool;
-    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    Method *currMethod = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
     if (methodOffset != currMethod->GetMethodId().GetOffset()) {
         auto calleeFunc = GetJsFunctionByMethodOffset(methodOffset);
         if (!calleeFunc) {
             return JSTaggedValue::Undefined();
         }
-        constpool = Method::Cast(calleeFunc->GetMethod())->GetConstantPool();
+        constpool = Method::Cast(calleeFunc->GetMethod(thread_))->GetConstantPool(thread_);
     } else {
-        constpool = currMethod->GetConstantPool();
+        constpool = currMethod->GetConstantPool(thread_);
     }
     return constpool;
 }
@@ -143,18 +143,18 @@ JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] 
 JSTaggedValue JitCompilationEnv::GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const
 {
     ASSERT(thread_->IsInRunningState());
-    return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(constpool, index, entry);
+    return ConstantPool::GetLiteralFromCacheNoScope<ConstPoolType::ARRAY_LITERAL>(thread_, constpool, index, entry);
 }
 
 JSTaggedValue JitCompilationEnv::GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const
 {
     ASSERT(thread_->IsInRunningState());
-    return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(constpool, index, entry);
+    return ConstantPool::GetLiteralFromCacheNoScope<ConstPoolType::OBJECT_LITERAL>(thread_, constpool, index, entry);
 }
 
 JSTaggedValue JitCompilationEnv::GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const
 {
-    return ConstantPool::GetMethodFromCache(constpool, index);
+    return ConstantPool::GetMethodFromCache(constpool, index, thread_);
 }
 
 panda_file::File::EntityId JitCompilationEnv::GetIdFromCache(JSTaggedValue constpool, uint32_t index) const
@@ -190,7 +190,7 @@ JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] cons
 JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset) const
 {
     ASSERT(thread_->IsInRunningState());
-    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    Method *currMethod = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
     auto currMethodOffset = currMethod->GetMethodId().GetOffset();
     if (methodOffset == currMethodOffset) {
         return *jsFunction_;
@@ -209,15 +209,15 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
     for (int i = static_cast<int>(funcSlotChain.size()) - 1; i >= 0; --i) {
         uint32_t slotId = funcSlotChain[i].first;
         uint32_t callerOffset = funcSlotChain[i].second;
-        if (Method::Cast(currFunc->GetMethod())->GetMethodId().GetOffset() != callerOffset) {
+        if (Method::Cast(currFunc->GetMethod(thread_))->GetMethodId().GetOffset() != callerOffset) {
             return nullptr;
         }
-        auto slotValue = currFuncPTI->Get(slotId);
+        auto slotValue = currFuncPTI->Get(thread_, slotId);
         if (slotValue.IsJSFunction()) {
-            currFunc = JSFunction::Cast(currFuncPTI->Get(slotId).GetTaggedObject());
+            currFunc = JSFunction::Cast(currFuncPTI->Get(thread_, slotId).GetTaggedObject());
         } else if (slotValue.IsPrototypeHandler()) {
             auto prototypeHandler = PrototypeHandler::Cast(slotValue.GetTaggedObject());
-            auto accessorFunction = prototypeHandler->GetAccessorJSFunction();
+            auto accessorFunction = prototypeHandler->GetAccessorJSFunction(thread_);
             if (!accessorFunction.IsJSFunction()) {
                 return nullptr;
             }
@@ -225,13 +225,13 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
         } else {
             return nullptr;
         }
-        auto profileTypeInfoVal = currFunc->GetProfileTypeInfo();
+        auto profileTypeInfoVal = currFunc->GetProfileTypeInfo(thread_);
         if (profileTypeInfoVal.IsUndefined()) {
             return nullptr;
         }
         currFuncPTI = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
     }
-    if (Method::Cast(currFunc->GetMethod())->GetMethodId().GetOffset() != methodOffset) {
+    if (Method::Cast(currFunc->GetMethod(thread_))->GetMethodId().GetOffset() != methodOffset) {
         return nullptr;
     }
     return currFunc;

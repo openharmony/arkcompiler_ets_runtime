@@ -153,7 +153,7 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeHelper(JSThread *thread, JSHandl
             bool isExist = false;
             uint32_t seenLen = seen->GetLength();
             for (uint32_t i = 0; i < seenLen; i++) {
-                if (JSTaggedValue::SameValue(seen->Get(thread, i), tag.GetTaggedValue())) {
+                if (JSTaggedValue::SameValue(thread, seen->Get(thread, i), tag.GetTaggedValue())) {
                     isExist = true;
                 }
             }
@@ -173,7 +173,7 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeHelper(JSThread *thread, JSHandl
 JSHandle<EcmaString> LocaleHelper::CanonicalizeUnicodeLocaleId(JSThread *thread, const JSHandle<EcmaString> &locale)
 {
     [[maybe_unused]] ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    if (!IsStructurallyValidLanguageTag(locale)) {
+    if (!IsStructurallyValidLanguageTag(thread, locale)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
 
@@ -181,7 +181,7 @@ JSHandle<EcmaString> LocaleHelper::CanonicalizeUnicodeLocaleId(JSThread *thread,
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
 
-    std::string localeCStr = ConvertToStdString(locale);
+    std::string localeCStr = ConvertToStdString(thread, locale);
     std::transform(localeCStr.begin(), localeCStr.end(), localeCStr.begin(), AsciiAlphaToLower);
     UErrorCode status = U_ZERO_ERROR;
     icu::Locale formalLocale;
@@ -262,9 +262,9 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
 }
 
 // 6.2.2 IsStructurallyValidLanguageTag( locale )
-bool LocaleHelper::IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &tag)
+bool LocaleHelper::IsStructurallyValidLanguageTag(JSThread *thread, const JSHandle<EcmaString> &tag)
 {
-    std::string tagCollection = ConvertToStdString(tag);
+    std::string tagCollection = ConvertToStdString(thread, tag);
     std::vector<std::string> containers;
     std::string substring;
     std::set<std::string> uniqueSubtags;
@@ -290,9 +290,9 @@ bool LocaleHelper::IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &ta
     return result;
 }
 
-std::string LocaleHelper::ConvertToStdString(const JSHandle<EcmaString> &ecmaStr)
+std::string LocaleHelper::ConvertToStdString(const JSThread *thread, const JSHandle<EcmaString> &ecmaStr)
 {
-    return std::string(ConvertToString(*ecmaStr, StringConvertedUsage::LOGICOPERATION));
+    return std::string(ConvertToString(thread, *ecmaStr, StringConvertedUsage::LOGICOPERATION));
 }
 
 bool LocaleHelper::DealwithLanguageTag(const std::vector<std::string> &containers, size_t &address)
@@ -382,9 +382,9 @@ void LocaleHelper::HandleLocaleExtension(size_t &start, size_t &extensionEnd, co
     }
 }
 
-LocaleHelper::ParsedLocale LocaleHelper::HandleLocale(const JSHandle<EcmaString> &localeString)
+LocaleHelper::ParsedLocale LocaleHelper::HandleLocale(JSThread *thread, const JSHandle<EcmaString> &localeString)
 {
-    return LocaleHelper::HandleLocale(ConvertToStdString(localeString));
+    return LocaleHelper::HandleLocale(ConvertToStdString(thread, localeString));
 }
 
 LocaleHelper::ParsedLocale LocaleHelper::HandleLocale(const std::string &localeString)
@@ -429,7 +429,7 @@ std::vector<std::string> LocaleHelper::GetAvailableLocales(JSThread *thread, con
     UErrorCode status = U_ZERO_ERROR;
     auto globalConst = thread->GlobalConstants();
     JSHandle<EcmaString> specialValue = JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsPosixString());
-    std::string specialString = ConvertToStdString(specialValue);
+    std::string specialString = ConvertToStdString(thread, specialValue);
     UEnumeration *uenum = nullptr;
     {
         ThreadNativeScope nativeScope(thread);

@@ -44,7 +44,7 @@ void DependentInfos::TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction>
     }
     JSTaggedValue funcName = JSFunction::NameGetter(thread, JSHandle<JSObject>::Cast(func));
     std::string funNameS = "Lazy Deoptimization occurred on";
-    funNameS += " function: \"" + EcmaStringAccessor(funcName).ToStdString() + "\"";
+    funNameS += " function: \"" + EcmaStringAccessor(funcName).ToStdString(thread) + "\"";
     LOG_TRACE(INFO) << funNameS;
     // Get the lowbit of collection.
     uint32_t value = (static_cast<uint32_t>(collection) & (-static_cast<uint32_t>(collection)));
@@ -73,18 +73,18 @@ void DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos> dependen
     for (uint32_t i = 0; i < dependentInfos->GetEnd(); i += SLOT_PER_ENTRY) {
         DependentStateCollection depCollection =
             static_cast<DependentStateCollection>(
-                dependentInfos->Get(i + COLLECTION_SLOT_OFFSET).GetInt());
+                dependentInfos->GetPrimitive(i + COLLECTION_SLOT_OFFSET).GetInt());
         if (!CheckCollectionEffect(depCollection, collection)) {
             continue;
         }
-        JSTaggedValue rawValue = dependentInfos->Get(i + FUNCTION_SLOT_OFFSET).GetWeakRawValue();
+        JSTaggedValue rawValue = dependentInfos->Get(thread, i + FUNCTION_SLOT_OFFSET).GetWeakRawValue();
         if (!rawValue.IsHeapObject()) {
             continue;
         }
         JSHandle<JSFunction> func(thread, rawValue);
         if (func->IsCompiledCode()) {
             hasDeoptMethod = true;
-            JSHandle<Method> method(thread, func->GetMethod());
+            JSHandle<Method> method(thread, func->GetMethod(thread));
             // When lazy deopt happened, the deopt method cannot call as jit any more.
             Deoptimizier::ClearCompiledCodeStatusWhenDeopt(thread,
                                                            func.GetObject<JSFunction>(),

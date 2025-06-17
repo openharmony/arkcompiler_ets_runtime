@@ -55,8 +55,8 @@ JSTaggedValue ContainersPlainArray::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The add method cannot be bound");
@@ -72,7 +72,7 @@ JSTaggedValue ContainersPlainArray::Add(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -88,8 +88,8 @@ JSTaggedValue ContainersPlainArray::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The clear method cannot be bound");
@@ -109,8 +109,8 @@ JSTaggedValue ContainersPlainArray::Clone(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The clone method cannot be bound");
@@ -130,8 +130,8 @@ JSTaggedValue ContainersPlainArray::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The has method cannot be bound");
@@ -146,13 +146,13 @@ JSTaggedValue ContainersPlainArray::Has(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     int32_t key = value->GetNumber();
-    bool result = array->Has(key);
+    bool result = array->Has(thread, key);
     return JSTaggedValue(result);
 }
 
@@ -164,8 +164,8 @@ JSTaggedValue ContainersPlainArray::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The get method cannot be bound");
@@ -180,12 +180,12 @@ JSTaggedValue ContainersPlainArray::Get(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
-    JSTaggedValue value = array->Get(key.GetTaggedValue());
+    JSTaggedValue value = array->Get(thread, key.GetTaggedValue());
 
     return value;
 }
@@ -198,8 +198,8 @@ JSTaggedValue ContainersPlainArray::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");
@@ -218,8 +218,8 @@ JSTaggedValue ContainersPlainArray::ForEach(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, ForEach);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIPlainArray()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIPlainArray()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIPlainArray()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The forEach method cannot be bound");
@@ -231,7 +231,7 @@ JSTaggedValue ContainersPlainArray::ForEach(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -246,8 +246,8 @@ JSTaggedValue ContainersPlainArray::ToString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, ToString);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The toString method cannot be bound");
@@ -265,8 +265,8 @@ JSTaggedValue ContainersPlainArray::GetIndexOfKey(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetIndexOfKey);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getIndexOfKey method cannot be bound");
@@ -281,13 +281,13 @@ JSTaggedValue ContainersPlainArray::GetIndexOfKey(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     int32_t key = value->GetNumber();
-    JSTaggedValue result = array->GetIndexOfKey(key);
+    JSTaggedValue result = array->GetIndexOfKey(thread, key);
     return result;
 }
 
@@ -298,8 +298,8 @@ JSTaggedValue ContainersPlainArray::GetIndexOfValue(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetIndexOfValue);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getIndexOfValue method cannot be bound");
@@ -308,7 +308,7 @@ JSTaggedValue ContainersPlainArray::GetIndexOfValue(EcmaRuntimeCallInfo *argv)
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    JSTaggedValue jsValue = array->GetIndexOfValue(value.GetTaggedValue());
+    JSTaggedValue jsValue = array->GetIndexOfValue(thread, value.GetTaggedValue());
     return jsValue;
 }
 
@@ -319,8 +319,8 @@ JSTaggedValue ContainersPlainArray::IsEmpty(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, IsEmpty);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The isEmpty method cannot be bound");
@@ -339,8 +339,8 @@ JSTaggedValue ContainersPlainArray::GetKeyAt(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetKeyAt);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getKeyAt method cannot be bound");
@@ -355,13 +355,13 @@ JSTaggedValue ContainersPlainArray::GetKeyAt(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     int32_t index = value->GetNumber();
-    JSTaggedValue result = array->GetKeyAt(index);
+    JSTaggedValue result = array->GetKeyAt(thread, index);
     return result;
 }
 
@@ -372,8 +372,8 @@ JSTaggedValue ContainersPlainArray::Remove(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, Remove);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The remove method cannot be bound");
@@ -388,7 +388,7 @@ JSTaggedValue ContainersPlainArray::Remove(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -404,8 +404,8 @@ JSTaggedValue ContainersPlainArray::RemoveAt(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, RemoveAt);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The removeAt method cannot be bound");
@@ -420,7 +420,7 @@ JSTaggedValue ContainersPlainArray::RemoveAt(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -436,8 +436,8 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, RemoveRangeFrom);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The removeRangeFrom method cannot be bound");
@@ -456,7 +456,7 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, valueIndex.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -464,7 +464,7 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, valueSize.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"size\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"size\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -483,8 +483,8 @@ JSTaggedValue ContainersPlainArray::SetValueAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The setValueAt method cannot be bound");
@@ -500,7 +500,7 @@ JSTaggedValue ContainersPlainArray::SetValueAt(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -517,8 +517,8 @@ JSTaggedValue ContainersPlainArray::GetValueAt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getValueAt method cannot be bound");
@@ -533,7 +533,7 @@ JSTaggedValue ContainersPlainArray::GetValueAt(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, idx.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -550,8 +550,8 @@ JSTaggedValue ContainersPlainArray::GetSize(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, PlainArray, GetSize);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIPlainArray()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIPlainArray()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIPlainArray()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLength method cannot be bound");

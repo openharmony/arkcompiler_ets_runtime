@@ -969,7 +969,7 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)
         if (i + 1 > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
             EXPECT_TRUE(propCount == 0);
             EXPECT_TRUE(obj->GetJSHClass()->IsDictionaryMode());
-            JSHandle<NameDictionary> dict(thread_, obj->GetProperties());
+            JSHandle<NameDictionary> dict(thread_, obj->GetProperties(thread_));
             EXPECT_TRUE(dict->EntriesCount() == i + 1);
         } else {
             EXPECT_TRUE(propCount == i + 1);
@@ -1051,7 +1051,7 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithNamedProperties)
         if (i + 1 > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
             EXPECT_TRUE(propCount == 0);
             EXPECT_TRUE(obj->GetJSHClass()->IsDictionaryMode());
-            JSHandle<NameDictionary> dict(thread_, obj->GetProperties());
+            JSHandle<NameDictionary> dict(thread_, obj->GetProperties(thread_));
             EXPECT_TRUE(dict->EntriesCount() == i + 1);
         } else {
             EXPECT_TRUE(propCount == i + 1);
@@ -1717,12 +1717,12 @@ HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
         weakRefArray->Set(thread_, 1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
     }
     vm_->CollectGarbage(TriggerGCType::FULL_GC);
-    EXPECT_TRUE(!weakRefArray->Get(0).IsUndefined());
-    EXPECT_TRUE(weakRefArray->Get(1).IsUndefined());
+    EXPECT_TRUE(!weakRefArray->Get(thread_, 0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread_, 1).IsUndefined());
 
     JSNApiDisposeXRefGlobalHandleAddr(vm_, xRefArrayAddress);
     vm_->CollectGarbage(TriggerGCType::FULL_GC);
     vm_->SetEnableForceGC(true);
-    EXPECT_TRUE(weakRefArray->Get(0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread_, 0).IsUndefined());
 }
 } // namespace panda::test

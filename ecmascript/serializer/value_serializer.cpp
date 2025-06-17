@@ -256,7 +256,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         }
         case JSType::JS_ARRAY: {
             JSArray *array = reinterpret_cast<JSArray *>(object);
-            trackInfo = array->GetTrackInfo();
+            trackInfo = array->GetTrackInfo(thread_);
             array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             break;
         }
@@ -266,7 +266,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             break;
         }
         case JSType::JS_OBJECT: {
-            hashfield = Barriers::GetTaggedValue(object, JSObject::HASH_OFFSET);
+            hashfield = Barriers::GetTaggedValue(thread_, object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
             break;
         }
@@ -383,7 +383,7 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
 {
     ASSERT(object->GetClass()->IsArrayBuffer());
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
-    if (arrayBuffer->IsDetach()) {
+    if (arrayBuffer->IsDetach(thread_)) {
         std::string errorMessage = "Serialize don't support detached array buffer";
         PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
@@ -414,7 +414,7 @@ bool ValueSerializer::SerializeJSArrayBufferPrologue(TaggedObject *object)
             data_->WriteEncodeFlag(EncodeFlag::ARRAY_BUFFER);
             data_->WriteUint32(arrayLength);
             JSNativePointer *np =
-                reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+                reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData(thread_).GetTaggedObject());
             data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), arrayLength);
             return false;
         } else {
@@ -430,7 +430,7 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
     ASSERT(object->GetClass()->IsSharedArrayBuffer());
     JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
     bool transfer = transferDataSet_.find(ToUintPtr(object)) != transferDataSet_.end();
-    if (arrayBuffer->IsDetach() || transfer) {
+    if (arrayBuffer->IsDetach(thread_) || transfer) {
         std::string errorMessage =  "Serialize don't support detached or transfer shared array buffer";
         PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
@@ -438,7 +438,8 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
     }
     size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
     if (arrayLength > 0) {
-        JSNativePointer *np = reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+        JSNativePointer *np =
+            reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData(thread_).GetTaggedObject());
         void *buffer = np->GetExternalPointer();
         if (JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength)) {
             std::string errorMessage =  "Serialize can't find buffer from shared memory pool";
@@ -455,7 +456,7 @@ void ValueSerializer::SerializeJSSendableArrayBufferPrologue(TaggedObject *objec
 {
     ASSERT(object->GetClass()->IsSendableArrayBuffer());
     JSSendableArrayBuffer *arrayBuffer = reinterpret_cast<JSSendableArrayBuffer *>(object);
-    if (arrayBuffer->IsDetach()) {
+    if (arrayBuffer->IsDetach(thread_)) {
         std::string errorMessage =  "Serialize don't support serialize detached sendable array buffer";
         PrintAndRecordErrorMessage(errorMessage);
         notSupport_ = true;
@@ -473,7 +474,7 @@ void ValueSerializer::SerializeJSSendableArrayBufferPrologue(TaggedObject *objec
         data_->WriteEncodeFlag(EncodeFlag::SENDABLE_ARRAY_BUFFER);
         data_->WriteUint32(arrayLength);
         JSNativePointer *np =
-            reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+            reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData(thread_).GetTaggedObject());
         data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), arrayLength);
     }
 }
@@ -490,8 +491,7 @@ void ValueSerializer::SerializeJSRegExpPrologue(JSRegExp *jsRegExp)
 
     data_->WriteEncodeFlag(EncodeFlag::JS_REG_EXP);
     data_->WriteUint32(bufferSize);
-    JSNativePointer *np =
-        reinterpret_cast<JSNativePointer *>(jsRegExp->GetByteCodeBuffer().GetTaggedObject());
+    JSNativePointer *np = reinterpret_cast<JSNativePointer *>(jsRegExp->GetByteCodeBuffer(thread_).GetTaggedObject());
     data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), bufferSize);
 }
 
@@ -571,7 +571,7 @@ bool ValueSerializer::SerializeModuleCNativeObjects(TaggedObject *object)
 
     bool *lazyArray = module->GetLazyImportStatusArray();
     // ModuleRequests size is equal to lazy array size.
-    JSTaggedValue requests = module->GetModuleRequests();
+    JSTaggedValue requests = module->GetModuleRequests(thread_);
     data_->WriteEncodeFlag(EncodeFlag::MODULE_LAZY_ARRAY);
     if (lazyArray && requests.IsTaggedArray()) {
         JSHandle<TaggedArray> moduleRequests(thread_, requests);

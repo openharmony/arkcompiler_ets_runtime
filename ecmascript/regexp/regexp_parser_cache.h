@@ -30,14 +30,16 @@ public:
     static constexpr size_t CACHE_SIZE = 128;
 
     bool IsInCache(EcmaString *pattern, const uint32_t flags);
-    std::pair<JSTaggedValue, size_t> GetCache(EcmaString *pattern, const uint32_t flags,
+    std::pair<JSTaggedValue, size_t> GetCache(const JSThread *thread,
+                                              EcmaString *pattern, const uint32_t flags,
                                               CVector<CString> &groupName);
-    void SetCache(EcmaString *pattern, const uint32_t flags, const JSTaggedValue codeBuffer,
+    void SetCache(const JSThread *thread,
+                  EcmaString *pattern, const uint32_t flags, const JSTaggedValue codeBuffer,
                   const size_t bufferSize, CVector<CString> groupName);
     void Clear();
 
 private:
-    size_t GetHash(EcmaString *pattern, const uint32_t flags);
+    size_t GetHash(const JSThread *thread, EcmaString *pattern, const uint32_t flags);
 
     struct ParserKey {
         EcmaString *pattern_ {nullptr};

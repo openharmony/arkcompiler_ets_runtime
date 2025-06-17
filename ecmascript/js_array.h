@@ -45,7 +45,8 @@ public:
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                const JSHandle<JSTaggedValue> &newTarget,
                                                ArrayMode mode = ArrayMode::UNDEFINED);
-    static JSTaggedValue GetConstructorOrSpeciesInlinedProp(JSTaggedValue object, uint32_t inlinePropIndex);
+    static JSTaggedValue GetConstructorOrSpeciesInlinedProp(JSThread *thread, JSTaggedValue object,
+                                                            uint32_t inlinePropIndex);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                             JSTaggedNumber length);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
@@ -76,9 +77,9 @@ public:
         SetLength(length);
     }
 
-    inline uint32_t GetHintLength() const
+    inline uint32_t GetHintLength(const JSThread *thread) const
     {
-        auto trackInfo = GetTrackInfo();
+        auto trackInfo = GetTrackInfo(thread);
         if (trackInfo.IsInt()) {
             int hint = trackInfo.GetInt();
             return hint > 0 ? hint : 0;

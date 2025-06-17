@@ -54,7 +54,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, DecodeURIComponent)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result);
-    EXPECT_STREQ("123", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("123", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsGlobalTest, EncodeURIComponent)
@@ -69,7 +69,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, EncodeURIComponent)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result);
-    EXPECT_STREQ("123", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("123", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsGlobalTest, PrintEntrypointAndPrintString)
@@ -114,7 +114,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Escape)
     TestHelper::TearDownFrame(thread, prev1);
     EXPECT_TRUE(result1.IsString());
     JSHandle<EcmaString> ecmaStrHandle1(thread, result1);
-    EXPECT_STREQ("%3F%21%3D%28%29%23%25%26", EcmaStringAccessor(ecmaStrHandle1).ToCString().c_str()); // NOLINT
+    EXPECT_STREQ("%3F%21%3D%28%29%23%25%26", EcmaStringAccessor(ecmaStrHandle1).ToCString(thread).c_str()); // NOLINT
 
     JSHandle<EcmaString> str2 = factory->NewFromASCII("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F");
     auto ecmaRuntimeCallInfo2 =
@@ -129,7 +129,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Escape)
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle2(thread, result2);
     EXPECT_STREQ("%25u%25u0%25u9%25ua%25uF%25u00%25u09%25u0f%25u0F%25u000%25u00a%25u00F", // NOLINT special value
-        EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
+        EcmaStringAccessor(ecmaStrHandle2).ToCString(thread).c_str());
 
     JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello World!");
     std::vector<JSTaggedValue> args{str3.GetTaggedValue()};
@@ -140,7 +140,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Escape)
     TestHelper::TearDownFrame(thread, prev3);
     EXPECT_TRUE(result3.IsString());
     JSHandle<EcmaString> ecmaStrHandle3(thread, result3);
-    EXPECT_STREQ("Hello%20World%21", EcmaStringAccessor(ecmaStrHandle3).ToCString().c_str());
+    EXPECT_STREQ("Hello%20World%21", EcmaStringAccessor(ecmaStrHandle3).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
@@ -158,7 +158,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
     TestHelper::TearDownFrame(thread, prev1);
     EXPECT_TRUE(result1.IsString());
     JSHandle<EcmaString> ecmaStrHandle1(thread, result1);
-    EXPECT_STREQ("", EcmaStringAccessor(ecmaStrHandle1).ToCString().c_str());
+    EXPECT_STREQ("", EcmaStringAccessor(ecmaStrHandle1).ToCString(thread).c_str());
 
     JSHandle<EcmaString> str2 = factory->NewFromASCII("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F");
     auto ecmaRuntimeCallInfo2 =
@@ -173,7 +173,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle2(thread, result2);
     EXPECT_STREQ("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F",
-        EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
+        EcmaStringAccessor(ecmaStrHandle2).ToCString(thread).c_str());
 
     JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello%20World%21");
     std::vector<JSTaggedValue> args{str3.GetTaggedValue()};
@@ -184,7 +184,7 @@ HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
     TestHelper::TearDownFrame(thread, prev3);
     EXPECT_TRUE(result3.IsString());
     JSHandle<EcmaString> ecmaStrHandle3(thread, result3);
-    EXPECT_STREQ("Hello%2520World%2521", EcmaStringAccessor(ecmaStrHandle3).ToCString().c_str());
+    EXPECT_STREQ("Hello%2520World%2521", EcmaStringAccessor(ecmaStrHandle3).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsGlobalTest, isSendable_0)

@@ -37,20 +37,20 @@ public:
         PrintErrorMessage(thread, module);
         auto &options = const_cast<EcmaVM *>(thread->GetEcmaVM())->GetJSOptions();
         if (options.EnableModuleException()) {
-            THROW_NEW_ERROR_AND_RETURN(thread, module->GetException());
+            THROW_NEW_ERROR_AND_RETURN(thread, module->GetException(thread));
         }
     }
 
     static void PrintErrorMessage(JSThread *thread, JSHandle<SourceTextModule> module)
     {
-        JSHandle<JSTaggedValue> exceptionInfo(thread, module->GetException());
+        JSHandle<JSTaggedValue> exceptionInfo(thread, module->GetException(thread));
         if (exceptionInfo->IsJSError()) {
             base::ErrorHelper::PrintJSErrorInfo(thread, exceptionInfo);
             return;
         }
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, exceptionInfo);
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        CString message = ConvertToString(*str);
+        CString message = ConvertToString(thread, *str);
         LOG_ECMA(ERROR) << "Error occurs:" << message;
     }
 };

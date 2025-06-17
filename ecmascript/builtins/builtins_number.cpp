@@ -165,7 +165,7 @@ JSTaggedValue BuiltinsNumber::ParseFloat(EcmaRuntimeCallInfo *argv)
     // 2. ReturnIfAbrupt(inputString).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
+    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(thread, buf);
     // 4. If neither trimmedString nor any prefix of trimmedString satisfies the syntax of a StrDecimalLiteral
     // (see 7.1.3.1), return NaN.
     if (NumberHelper::IsEmptyString(str.begin(), str.end())) {
@@ -196,7 +196,7 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
-    return NumberHelper::StringToNumber(*numberString, radix);
+    return NumberHelper::StringToNumber(thread, *numberString, radix);
 }
 
 // prototype
@@ -438,7 +438,7 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     if (radix == base::DECIMAL) {
         JSHandle<NumberToStringResultCache> cacheTable(thread->GetGlobalEnv()->GetNumberToStringResultCache());
         int entry = cacheTable->GetNumberHash(value);
-        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(entry, value);
+        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(thread, entry, value);
         if (cacheResult != JSTaggedValue::Undefined()) {
             return cacheResult;
         }
@@ -491,7 +491,7 @@ JSTaggedNumber BuiltinsNumber::ThisNumberValue(JSThread *thread, EcmaRuntimeCall
         return JSTaggedNumber(value.GetTaggedValue());
     }
     if (value->IsJSPrimitiveRef()) {
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue(thread);
         if (primitive.IsNumber()) {
             return JSTaggedNumber(primitive);
         }
@@ -508,12 +508,12 @@ JSTaggedValue NumberToStringResultCache::CreateCacheTable(const JSThread *thread
     return JSTaggedValue(table);
 }
 
-JSTaggedValue NumberToStringResultCache::FindCachedResult(int entry, JSTaggedValue &target)
+JSTaggedValue NumberToStringResultCache::FindCachedResult(const JSThread *thread, int entry, JSTaggedValue &target)
 {
     uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
-    JSTaggedValue entryNumber = Get(index + NUMBER_INDEX);
+    JSTaggedValue entryNumber = Get(thread, index + NUMBER_INDEX);
     if (entryNumber == target) {
-        return Get(index + RESULT_INDEX);
+        return Get(thread, index + RESULT_INDEX);
     }
     return JSTaggedValue::Undefined();
 }

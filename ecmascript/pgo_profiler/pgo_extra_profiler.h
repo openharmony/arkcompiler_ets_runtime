@@ -34,14 +34,14 @@ public:
 
     DECL_VISIT_OBJECT(RECEIVER_OBJECT_OFFSET, LAST_OFFSET);
 
-    JSHClass* GetReceiverHClass() const
+    JSHClass* GetReceiverHClass(const JSThread *thread) const
     {
-        return GetReceiverObject().GetHeapObject()->GetClass();
+        return GetReceiverObject(thread).GetHeapObject()->GetClass();
     }
 
-    JSHClass* GetHolderHClass() const
+    JSHClass* GetHolderHClass(const JSThread *thread) const
     {
-        return GetHolderObject().GetTaggedObject()->GetClass();
+        return GetHolderObject(thread).GetTaggedObject()->GetClass();
     }
 
     void SetReceiver(const JSThread *thread, JSTaggedValue value)
@@ -54,14 +54,14 @@ public:
         SetHolderObject(thread, value);
     }
 
-    JSTaggedValue GetReceiver() const
+    JSTaggedValue GetReceiver(const JSThread *thread) const
     {
-        return GetReceiverObject();
+        return GetReceiverObject(thread);
     }
 
-    JSTaggedValue GetHolder() const
+    JSTaggedValue GetHolder(const JSThread *thread) const
     {
-        return GetHolderObject();
+        return GetHolderObject(thread);
     }
 
     void Clear(const JSThread *thread)
@@ -80,14 +80,15 @@ public:
         SetHolderObject(thread, JSTaggedValue::Hole());
     }
 
-    bool operator==(const ExtraProfileTypeInfo& other) const
+    bool EuqalTo(JSThread *thread, const ExtraProfileTypeInfo& other) const
     {
-        return GetReceiverObject() == other.GetReceiverObject() && GetHolderObject() == other.GetHolderObject();
+        return GetReceiverObject(thread) == other.GetReceiverObject(thread) &&
+               GetHolderObject(thread) == other.GetHolderObject(thread);
     }
 
-    bool IsValid() const
+    bool IsValid(JSThread *thread) const
     {
-        return !GetReceiverObject().IsHole() && !GetReceiverObject().IsUndefined();
+        return !GetReceiverObject(thread).IsHole() && !GetReceiverObject(thread).IsUndefined();
     }
 
     DECL_DUMP()

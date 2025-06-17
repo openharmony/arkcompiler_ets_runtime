@@ -46,7 +46,7 @@ HWTEST_F_L0(NativePointerTest, Print)
     jsFunction->SetMethod(thread, target.GetTaggedValue());
 
     // run cpp methed 'Print'
-    ASSERT_EQ(Method::Cast(target.GetTaggedValue().GetTaggedObject()), jsFunction->GetCallTarget());
+    ASSERT_EQ(Method::Cast(target.GetTaggedValue().GetTaggedObject()), jsFunction->GetCallTarget(thread));
 }
 
 HWTEST_F_L0(NativePointerTest, ToString)
@@ -64,6 +64,6 @@ HWTEST_F_L0(NativePointerTest, ToString)
         factory->NewJSNativePointer(formBuffer, nullptr, reinterpret_cast<void *>(data));
     expected << "[External: " << std::hex << formBuffer << "]";
     EcmaStringAccessor actual = EcmaStringAccessor(fromNativePointer->ToString(thread));
-    EXPECT_EQ(actual.ToCString().c_str(), expected.str());
+    EXPECT_EQ(actual.ToCString(thread).c_str(), expected.str());
 }
 }  // namespace panda::test

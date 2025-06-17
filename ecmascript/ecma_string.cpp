@@ -159,10 +159,10 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
     ASSERT((start + length) <= src->GetLength());
     if (length == 1) {
         JSThread *thread = vm->GetJSThread();
-        uint16_t res = EcmaStringAccessor(src).Get<false>(start);
+        uint16_t res = EcmaStringAccessor(src).Get<false>(thread, start);
         if (EcmaStringAccessor::CanBeCompressed(&res, 1)) {
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            return EcmaString::Cast(singleCharTable->GetStringFromSingleCharTable(res).GetTaggedObject());
+            return EcmaString::Cast(singleCharTable->GetStringFromSingleCharTable(thread, res).GetTaggedObject());
         }
     }
     if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_STRING_LENGTH) {
@@ -397,10 +397,10 @@ int32_t EcmaString::LastIndexOf(const EcmaVM *vm,
     }
 }
 
-std::u16string EcmaString::ToU16String(uint32_t len)
+std::u16string EcmaString::ToU16String(const JSThread *thread, uint32_t len)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return ToBaseString()->ToU16String(std::move(readBarrier), len);
 }
@@ -423,7 +423,7 @@ uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t siz
 #endif
 
 // static
-uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstString,
+uint32_t EcmaString::CalculateConcatHashCode(const JSThread *thread, const JSHandle<EcmaString> &firstString,
                                              const JSHandle<EcmaString> &secondString)
 {
     bool isFirstStringUtf8 = EcmaStringAccessor(firstString).IsUtf8();
@@ -435,26 +435,26 @@ uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstSt
     CVector<uint16_t> bufFirstUint16;
     CVector<uint16_t> bufSecondUint16;
     if (isFirstStringUtf8 && isSecondStringUtf8) {
-        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(firstStr, bufFirstUint8);
-        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(secondStr, bufSecondUint8);
+        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(thread, firstStr, bufFirstUint8);
+        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(thread, secondStr, bufSecondUint8);
         return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
                                            dataSecond, secondStr->GetLength());
     }
     if (!isFirstStringUtf8 && isSecondStringUtf8) {
-        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(firstStr, bufFirstUint16);
-        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(secondStr, bufSecondUint8);
+        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(thread, firstStr, bufFirstUint16);
+        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(thread, secondStr, bufSecondUint8);
         return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
                                            dataSecond, secondStr->GetLength());
     }
     if (isFirstStringUtf8 && !isSecondStringUtf8) {
-        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(firstStr, bufFirstUint8);
-        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(secondStr, bufSecondUint16);
+        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(thread, firstStr, bufFirstUint8);
+        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(thread, secondStr, bufSecondUint16);
         return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
                                            dataSecond, secondStr->GetLength());
     }
     {
-        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(firstStr, bufFirstUint16);
-        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(secondStr, bufSecondUint16);
+        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(thread, firstStr, bufFirstUint16);
+        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(thread, secondStr, bufSecondUint16);
         return  CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
                                             dataSecond, secondStr->GetLength());
     }
@@ -478,19 +478,19 @@ bool EcmaString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
     return BaseString::CanBeCompressed(utf16Data, utf16Len);
 }
 
-bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)
+bool EcmaString::EqualToSplicedString(const JSThread *thread, const EcmaString *str1, const EcmaString *str2)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return ToBaseString()->EqualToSplicedString(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
 }
 
 /* static */
-bool EcmaString::StringsAreEqualDiffUtfEncoding(EcmaString *left, EcmaString *right)
+bool EcmaString::StringsAreEqualDiffUtfEncoding(const JSThread *thread, EcmaString *left, EcmaString *right)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::StringsAreEqualDiffUtfEncoding(std::move(readBarrier), left->ToBaseString(),
                                                       right->ToBaseString());
@@ -551,21 +551,22 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
 }
 
 /* static */
-bool EcmaString::StringIsEqualUint8Data(const EcmaString* str1, const uint8_t* dataAddr, uint32_t dataLen,
-                                        bool canBeCompressToUtf8)
+bool EcmaString::StringIsEqualUint8Data(const JSThread *thread, const EcmaString *str1, const uint8_t *dataAddr,
+                                        uint32_t dataLen, bool canBeCompressToUtf8)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::StringIsEqualUint8Data(std::move(readBarrier), str1->ToBaseString(), dataAddr, dataLen,
                                               canBeCompressToUtf8);
 }
 
 /* static */
-bool EcmaString::StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)
+bool EcmaString::StringsAreEqualUtf16(const JSThread *thread, const EcmaString *str1, const uint16_t *utf16Data,
+                                      uint32_t utf16Len)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::StringsAreEqualUtf16(std::move(readBarrier), str1->ToBaseString(), utf16Data, utf16Len);
 }
@@ -583,10 +584,10 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
 }
 
 // hashSeed only be used when computing two separate strings merged hashcode.
-uint32_t EcmaString::ComputeRawHashcode() const
+uint32_t EcmaString::ComputeRawHashcode(const JSThread *thread) const
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return ToBaseString()->ComputeRawHashcode(std::move(readBarrier));
 }
@@ -603,7 +604,7 @@ uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t le
     return BaseString::ComputeHashcodeUtf16(utf16Data, length);
 }
 
-bool EcmaString::ToElementIndex(uint32_t *index)
+bool EcmaString::ToElementIndex(const JSThread *thread, uint32_t *index)
 {
     uint32_t len = GetLength();
     if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {  // NOLINTNEXTLINEreadability-magic-numbers)
@@ -614,7 +615,7 @@ bool EcmaString::ToElementIndex(uint32_t *index)
     }
 
     CVector<uint8_t> buf;
-    const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, this, buf);
     constexpr uint64_t maxValue = std::numeric_limits<uint32_t>::max() - 1;
     if (NumberHelper::StringToUint<uint32_t, uint8_t>(std::basic_string_view(data, GetLength()), *index, maxValue)) {
         return true;
@@ -622,7 +623,7 @@ bool EcmaString::ToElementIndex(uint32_t *index)
     return false;
 }
 
-bool EcmaString::ToInt(int32_t *index, bool *negative)
+bool EcmaString::ToInt(const JSThread *thread, int32_t *index, bool *negative)
 {
     uint32_t len = GetLength();
     if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {  // NOLINTNEXTLINEreadability-magic-numbers)
@@ -632,7 +633,7 @@ bool EcmaString::ToInt(int32_t *index, bool *negative)
         return false;
     }
     CVector<uint8_t> buf;
-    const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, this, buf);
     uint32_t c = data[0];
     uint32_t loopStart = 0;
     uint64_t n = 0;
@@ -671,7 +672,7 @@ bool EcmaString::ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, cons
     return true;
 }
 
-bool EcmaString::ToTypedArrayIndex(uint32_t *index)
+bool EcmaString::ToTypedArrayIndex(const JSThread *thread, uint32_t *index)
 {
     uint32_t len = GetLength();
     if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {
@@ -682,7 +683,7 @@ bool EcmaString::ToTypedArrayIndex(uint32_t *index)
     }
 
     CVector<uint8_t> buf;
-    const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, this, buf);
     uint32_t c = data[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     uint64_t n = 0;
     if (c == '0') {
@@ -878,14 +879,14 @@ EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString>
     EcmaString *result = nullptr;
     if (string->IsUtf8()) {
         result = CreateLineStringWithSpaceType(vm, length, true, type);
-        WriteToFlat<uint8_t>(*string, result->GetDataUtf8Writable(), length);
+        WriteToFlat<uint8_t>(thread, *string, result->GetDataUtf8Writable(), length);
     } else {
         result = CreateLineStringWithSpaceType(vm, length, false, type);
-        WriteToFlat<uint16_t>(*string, result->GetDataUtf16Writable(), length);
+        WriteToFlat<uint16_t>(thread, *string, result->GetDataUtf16Writable(), length);
     }
     if (string->IsTreeString()) {
         JSHandle<TreeEcmaString> tree(string);
-        ASSERT(EcmaString::Cast(tree->GetSecond())->GetLength() != 0);
+        ASSERT(EcmaString::Cast(tree->GetSecond(thread))->GetLength() != 0);
         tree->SetFirst(thread, JSTaggedValue(result));
         tree->SetSecond(thread, JSTaggedValue(*vm->GetFactory()->GetEmptyString()));
     }
@@ -898,11 +899,12 @@ EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &st
     if (!s->IsTreeString()) {
         return s;
     }
+    JSThread *thread = vm->GetJSThread();
     JSHandle<TreeEcmaString> tree = JSHandle<TreeEcmaString>::Cast(string);
-    if (!tree->IsFlat()) {
+    if (!tree->IsFlat(thread)) {
         return SlowFlatten(vm, string, type);
     }
-    return EcmaString::Cast(tree->GetFirst());
+    return EcmaString::Cast(tree->GetFirst(thread));
 }
 
 FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
@@ -913,15 +915,16 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
     if (s->IsLineString()) {
         return FlatStringInfo(s, startIndex, s->GetLength());
     }
+    JSThread *thread = vm->GetJSThread();
     if (string->IsTreeString()) {
         JSHandle<TreeEcmaString> tree = JSHandle<TreeEcmaString>::Cast(string);
-        if (!tree->IsFlat()) {
+        if (!tree->IsFlat(thread)) {
             s = SlowFlatten(vm, string, type);
         } else {
-            s = EcmaString::Cast(tree->GetFirst());
+            s = EcmaString::Cast(tree->GetFirst(thread));
         }
     } else if (string->IsSlicedString()) {
-        s = EcmaString::Cast(SlicedEcmaString::Cast(*string)->GetParent());
+        s = EcmaString::Cast(SlicedEcmaString::Cast(*string)->GetParent(thread));
         startIndex = SlicedEcmaString::Cast(*string)->GetStartIndex();
     }
     return FlatStringInfo(s, startIndex, string->GetLength());
@@ -935,17 +938,18 @@ EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *str
     }
     if (string->IsTreeString()) {
         TreeEcmaString *tree = TreeEcmaString::Cast(string);
-        if (tree->IsFlat()) {
-            string = EcmaString::Cast(tree->GetFirst());
+        JSThread *thread = vm->GetJSThread();
+        if (tree->IsFlat(thread)) {
+            string = EcmaString::Cast(tree->GetFirst(thread));
         } else {
             uint32_t length = tree->GetLength();
             EcmaString *result = nullptr;
             if (tree->IsUtf8()) {
                 result = CreateLineStringNoGC(vm, length, true);
-                WriteToFlat<uint8_t>(tree, result->GetDataUtf8Writable(), length);
+                WriteToFlat<uint8_t>(thread, tree, result->GetDataUtf8Writable(), length);
             } else {
                 result = CreateLineStringNoGC(vm, length, false);
-                WriteToFlat<uint16_t>(tree, result->GetDataUtf16Writable(), length);
+                WriteToFlat<uint16_t>(thread, tree, result->GetDataUtf16Writable(), length);
             }
             tree->SetFirst(vm->GetJSThread(), JSTaggedValue(result));
             tree->SetSecond(vm->GetJSThread(), JSTaggedValue(*vm->GetFactory()->GetEmptyString()));
@@ -954,47 +958,48 @@ EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *str
     } else if (string->IsSlicedString()) {
         SlicedEcmaString *str = SlicedEcmaString::Cast(string);
         uint32_t length = str->GetLength();
+        JSThread *thread = vm->GetJSThread();
         EcmaString *result = nullptr;
         if (str->IsUtf8()) {
             result = CreateLineStringNoGC(vm, length, true);
-            WriteToFlat<uint8_t>(str, result->GetDataUtf8Writable(), length);
+            WriteToFlat<uint8_t>(thread, str, result->GetDataUtf8Writable(), length);
         } else {
             result = CreateLineStringNoGC(vm, length, false);
-            WriteToFlat<uint16_t>(str, result->GetDataUtf16Writable(), length);
+            WriteToFlat<uint16_t>(thread, str, result->GetDataUtf16Writable(), length);
         }
         return result;
     }
     return string;
 }
 
-const uint8_t *EcmaString::GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf)
+const uint8_t *EcmaString::GetUtf8DataFlat(const JSThread *thread, const EcmaString *src, CVector<uint8_t> &buf)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::GetUtf8DataFlat(std::move(readBarrier), src->ToBaseString(), buf);
 }
 
-const uint8_t *EcmaString::GetNonTreeUtf8Data(const EcmaString *src)
+const uint8_t *EcmaString::GetNonTreeUtf8Data(const JSThread *thread, const EcmaString *src)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::GetNonTreeUtf8Data(std::move(readBarrier), src->ToBaseString());
 }
 
-const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
+const uint16_t *EcmaString::GetUtf16DataFlat(const JSThread *thread, const EcmaString *src, CVector<uint16_t> &buf)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::GetUtf16DataFlat(std::move(readBarrier), src->ToBaseString(), buf);
 }
 
-const uint16_t *EcmaString::GetNonTreeUtf16Data(const EcmaString *src)
+const uint16_t *EcmaString::GetNonTreeUtf16Data(const JSThread *thread, const EcmaString *src)
 {
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return BaseString::GetNonTreeUtf16Data(std::move(readBarrier), src->ToBaseString());
 }
@@ -1030,14 +1035,14 @@ EcmaStringAccessor::EcmaStringAccessor(const JSHandle<EcmaString> &strHandle)
 {
 }
 
-std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
+std::string EcmaStringAccessor::ToStdString(const JSThread *thread, StringConvertedUsage usage)
 {
     if (string_ == nullptr) {
         return "";
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+    Span<const uint8_t> sp = string_->ToUtf8Span(thread, buf, modify);
 #if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1050,7 +1055,7 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
 #endif
 }
 
-CString EcmaStringAccessor::Utf8ConvertToString()
+CString EcmaStringAccessor::Utf8ConvertToString(const JSThread *thread)
 {
     if (string_ == nullptr) {
         return CString("");
@@ -1061,14 +1066,14 @@ CString EcmaStringAccessor::Utf8ConvertToString()
             return base::StringHelper::Utf8ToCString(GetDataUtf8(), GetLength());
         }
         CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, string_, buf);
         return base::StringHelper::Utf8ToCString(data, GetLength());
     } else {
-        return ToCString();
+        return ToCString(thread);
     }
 }
 
-std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
+std::string EcmaStringAccessor::DebuggerToStdString(const JSThread *thread, StringConvertedUsage usage)
 {
     if (string_ == nullptr) {
         return "";
@@ -1076,7 +1081,7 @@ std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
 
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->DebuggerToUtf8Span(buf, modify);
+    Span<const uint8_t> sp = string_->DebuggerToUtf8Span(thread, buf, modify);
 #if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1089,14 +1094,14 @@ std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
 #endif
 }
 
-CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
+CString EcmaStringAccessor::ToCString(const JSThread *thread, StringConvertedUsage usage, bool cesu8)
 {
     if (string_ == nullptr) {
         return "";
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    Span<const uint8_t> sp = string_->ToUtf8Span(thread, buf, modify, cesu8);
 #if ENABLE_NEXT_OPTIMIZATION
     return CString(reinterpret_cast<const char*>(sp.data()), sp.size());
 #else
@@ -1110,7 +1115,7 @@ CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
 }
 
 #if ENABLE_NEXT_OPTIMIZATION
-void EcmaStringAccessor::AppendToCString(CString &str)
+void EcmaStringAccessor::AppendToCString(const JSThread *thread, CString &str)
 {
     if (string_ == nullptr) {
         return;
@@ -1118,11 +1123,11 @@ void EcmaStringAccessor::AppendToCString(CString &str)
 
     size_t strLen = GetLength();
     CVector<uint8_t> buf;
-    const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, string_, buf);
     str.append(reinterpret_cast<const char *>(data), strLen);
 }
 
-void EcmaStringAccessor::AppendToC16String(C16String &str)
+void EcmaStringAccessor::AppendToC16String(const JSThread *thread, C16String &str)
 {
     if (string_ == nullptr) {
         return;
@@ -1131,12 +1136,12 @@ void EcmaStringAccessor::AppendToC16String(C16String &str)
     // In real world, space is usually utf8.
     if LIKELY(string_->IsUtf8()) {
         CVector<uint8_t> buf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, string_, buf);
         // only ascii codes, no need to convert to UTF-16, just append.
         AppendString(str, reinterpret_cast<const char*>(data), GetLength());
     } else {
         CVector<uint16_t> buf;
-        const uint16_t *data = EcmaString::GetUtf16DataFlat(string_, buf);
+        const uint16_t *data = EcmaString::GetUtf16DataFlat(thread, string_, buf);
         str.append(reinterpret_cast<const char16_t *>(data), GetLength());
     }
 }

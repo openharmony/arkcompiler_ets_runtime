@@ -175,15 +175,15 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDateValue_001)
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newKey);
     }
     EXPECT_TRUE(objectOperator1.UpdateDataValue(handleObject, handleValue, false));
-    auto *resultElements =TaggedArray::Cast(handleObject->GetElements().GetTaggedObject());
-    EXPECT_EQ(resultElements->Get(objectOperator1.GetIndex()).GetInt(), 4);
+    auto *resultElements =TaggedArray::Cast(handleObject->GetElements(thread).GetTaggedObject());
+    EXPECT_EQ(resultElements->Get(thread, objectOperator1.GetIndex()).GetInt(), 4);
 
     // object is DictionaryMode
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), handleKey3, handleKey);
     JSObject::DeleteProperty(thread, handleObject, handleKey3);
     EXPECT_TRUE(objectOperator1.UpdateDataValue(handleObject, handleValue1, false));
-    auto *resultDict = NumberDictionary::Cast(handleObject->GetElements().GetTaggedObject());
-    EXPECT_EQ(resultDict->GetValue(objectOperator1.GetIndex()).GetInt(), 5);
+    auto *resultDict = NumberDictionary::Cast(handleObject->GetElements(thread).GetTaggedObject());
+    EXPECT_EQ(resultDict->GetValue(thread, objectOperator1.GetIndex()).GetInt(), 5);
 
     // object value is InternalAccessor
     JSHandle<AccessorData> handleAccessorData = factory->NewInternalAccessor(
@@ -206,7 +206,7 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_002)
     JSHandle<JSTaggedValue> globalObj = env->GetJSGlobalObject();
     JSHandle<JSObject> handleGlobalObject(globalObj);
 
-    JSMutableHandle<GlobalDictionary> holderDict(thread, handleGlobalObject->GetProperties());
+    JSMutableHandle<GlobalDictionary> holderDict(thread, handleGlobalObject->GetProperties(thread));
     JSHandle<GlobalDictionary> handleDict = GlobalDictionary::Create(thread, 4); // numberofElements = 4
     holderDict.Update(handleDict.GetTaggedValue());
     JSHandle<PropertyBox> cellHandle = factory->NewPropertyBox(handleKey);
@@ -215,14 +215,14 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_002)
         GlobalDictionary::PutIfAbsent(thread, holderDict, handleKey,
                                       JSHandle<JSTaggedValue>(cellHandle), PropertyAttributes(4));
     handleGlobalObject->SetProperties(thread, handleProperties.GetTaggedValue()); // Set Properties
-    int keyEntry = handleProperties->FindEntry(handleKey.GetTaggedValue());
+    int keyEntry = handleProperties->FindEntry(thread, handleKey.GetTaggedValue());
 
     ObjectOperator objectOperator(thread, handleGlobalObject, handleKey);
     objectOperator.SetIndex(keyEntry);
     EXPECT_TRUE(objectOperator.UpdateDataValue(handleGlobalObject, handleValue, false));
-    auto *resultDict = GlobalDictionary::Cast(handleGlobalObject->GetProperties().GetTaggedObject());
-    PropertyBox *resultCell = resultDict->GetBox(objectOperator.GetIndex());
-    EXPECT_EQ(resultCell->GetValue().GetInt(), 100);
+    auto *resultDict = GlobalDictionary::Cast(handleGlobalObject->GetProperties(thread).GetTaggedObject());
+    PropertyBox *resultCell = resultDict->GetBox(thread, objectOperator.GetIndex());
+    EXPECT_EQ(resultCell->GetValue(thread).GetInt(), 100);
 }
 
 HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_003)
@@ -252,13 +252,13 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_003)
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), newKey, newValue);
     }
     EXPECT_TRUE(objectOperator.UpdateDataValue(handleObject, handleValue1, false));
-    EXPECT_EQ(handleObject->GetPropertyInlinedProps(objectOperator.GetIndex()).GetInt(), 3);
+    EXPECT_EQ(handleObject->GetPropertyInlinedProps(thread, objectOperator.GetIndex()).GetInt(), 3);
 
     // object is DictionaryMode
     JSObject::DeleteProperty(thread, handleObject, handleKey2);
     EXPECT_TRUE(objectOperator.UpdateDataValue(handleObject, handleValue, false));
-    TaggedArray *resultElements2 = TaggedArray::Cast(handleObject->GetProperties().GetTaggedObject());
+    TaggedArray *resultElements2 = TaggedArray::Cast(handleObject->GetProperties(thread).GetTaggedObject());
     auto *resultDict = NumberDictionary::Cast(resultElements2);
-    EXPECT_EQ(resultDict->GetValue(objectOperator.GetIndex()).GetInt(), 4);
+    EXPECT_EQ(resultDict->GetValue(thread, objectOperator.GetIndex()).GetInt(), 4);
 }
 } // namespace panda::test

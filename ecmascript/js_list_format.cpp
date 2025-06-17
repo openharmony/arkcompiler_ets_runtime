@@ -23,10 +23,10 @@
 
 
 namespace panda::ecmascript {
-icu::ListFormatter *JSListFormat::GetIcuListFormatter() const
+icu::ListFormatter *JSListFormat::GetIcuListFormatter(JSThread *thread) const
 {
-    ASSERT(GetIcuLF().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetIcuLF().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetIcuLF(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetIcuLF(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::ListFormatter *>(result);
 }
 
@@ -46,7 +46,7 @@ void JSListFormat::SetIcuListFormatter(JSThread *thread, const JSHandle<JSListFo
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     ASSERT(icuListFormatter != nullptr);
-    JSTaggedValue data = listFormat->GetIcuLF();
+    JSTaggedValue data = listFormat->GetIcuLF(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuListFormatter);
@@ -260,7 +260,7 @@ namespace {
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, listArray, k);
             ASSERT(kValue->IsString());
             JSHandle<EcmaString> kValueString = JSTaggedValue::ToString(thread, kValue);
-            std::string stdString = intl::LocaleHelper::ConvertToStdString(kValueString);
+            std::string stdString = intl::LocaleHelper::ConvertToStdString(thread, kValueString);
             icu::StringPiece sp(stdString);
             icu::UnicodeString uString = icu::UnicodeString::fromUTF8(sp);
             result.push_back(uString);
@@ -271,7 +271,7 @@ namespace {
     icu::FormattedList GetIcuFormatted(JSThread *thread, const JSHandle<JSListFormat> &listFormat,
                                        const JSHandle<JSArray> &listArray)
     {
-        icu::ListFormatter *icuListFormat = listFormat->GetIcuListFormatter();
+        icu::ListFormatter *icuListFormat = listFormat->GetIcuListFormatter(thread);
         ASSERT(icuListFormat != nullptr);
         std::vector<icu::UnicodeString> usArray = ToUnicodeStringArray(thread, listArray);
         UErrorCode status = U_ZERO_ERROR;
@@ -399,7 +399,7 @@ void JSListFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSListFormat
 
     // [[Locale]]
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
-    JSHandle<JSTaggedValue> locale(thread, listFormat->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, listFormat->GetLocale(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 

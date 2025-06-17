@@ -731,7 +731,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
     if (g_isEnableCMCGC) {
-        base::GCHelper::CopyCallTarget((void*)args[0]);
+        base::GCHelper::CopyCallTarget(thread_, (void *)args[0]);
     }
     auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),
                                                              actualNumArgs,
@@ -1125,7 +1125,8 @@ bool EcmaVM::LoadAOTFiles(const std::string& aotFileName,
 
 void EcmaVM::LoadProtoTransitionTable(JSTaggedValue constpool)
 {
-    JSTaggedValue protoTransitionTable = ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo();
+    JSTaggedValue protoTransitionTable =
+        ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo(thread_);
     functionProtoTransitionTable_->UpdateProtoTransitionTable(
         thread_, JSHandle<PointerToIndexDictionary>(thread_, protoTransitionTable));
 }
@@ -1316,7 +1317,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
             result = JSHandle<JSTaggedValue>::Cast(factory_->GetJSError(
                 ErrorType::ERROR, "Can't return Promise in pending state", StackCheck::NO)).GetTaggedValue();
         } else {
-            result = promise->GetPromiseResult();
+            result = promise->GetPromiseResult(thread_);
         }
 
         if (status != PromiseState::FULFILLED) {
@@ -1337,7 +1338,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
 
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
     if (UNLIKELY(taskInfo == nullptr)) {
-        JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
+        JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo(thread_);
         if (!extraInfoValue.IsJSNativePointer()) {
             LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
             return;
@@ -1578,8 +1579,8 @@ bool EcmaVM::HasPendingJob() const
     if (UNLIKELY(thread_->HasTerminated())) {
         return false;
     }
-    TaggedQueue* promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue().GetTaggedObject());
-    return !promiseQueue->Empty();
+    TaggedQueue *promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue(thread_).GetTaggedObject());
+    return !promiseQueue->Empty(thread_);
 }
 
 bool EcmaVM::ExecutePromisePendingJob()
@@ -2005,7 +2006,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
         jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
-    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction(thread_));
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeType);
 
     CheckHasPendingException(thread_);
@@ -2018,10 +2019,10 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypointForHotReload(
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
 
-    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction(thread_));
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeType);
 
-    JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
+    JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule(thread_));
     // avoid GC problems.
     GlobalHandleCollection gloalHandleCollection(thread_);
     JSHandle<JSTaggedValue> moduleRecordHandle =
@@ -2031,7 +2032,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypointForHotReload(
 
     // print exception information
     if (thread_->HasPendingException() &&
-        Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
+        Method::Cast(func->GetMethod(thread_))->GetMethodName(thread_) != JSPandaFile::PATCH_FUNCTION_NAME_0) {
         return Unexpected(false);
     }
     return result;
@@ -2049,9 +2050,9 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     if (jsPandaFile->IsBundlePack()) {
         ModulePathHelper::ResolveCurrentPath(dirNameStr, fileNameStr, jsPandaFile);
     } else {
-        JSTaggedValue funcFileName = func->GetModule();
+        JSTaggedValue funcFileName = func->GetModule(thread_);
         ASSERT(funcFileName.IsString());
-        fileNameStr = ModulePathHelper::Utf8ConvertToString(funcFileName);
+        fileNameStr = ModulePathHelper::Utf8ConvertToString(thread_, funcFileName);
         dirNameStr = PathHelper::ResolveDirPath(fileNameStr);
     }
     JSHandle<JSTaggedValue> fileName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(fileNameStr));

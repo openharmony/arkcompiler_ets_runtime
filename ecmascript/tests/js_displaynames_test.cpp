@@ -49,11 +49,11 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
     EXPECT_TRUE(iculocaledisplaynames != nullptr);
     JSDisplayNames::SetIcuLocaleDisplayNames(
         thread, displayNames, iculocaledisplaynames, JSDisplayNames::FreeIcuLocaleDisplayNames);
-    icu::LocaleDisplayNames *resultIculocaledisplaynames = displayNames->GetIcuLocaleDisplayNames();
+    icu::LocaleDisplayNames *resultIculocaledisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
     EXPECT_TRUE(iculocaledisplaynames == resultIculocaledisplaynames);
     JSHandle<EcmaString> localeStr =
         intl::LocaleHelper::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
-    EXPECT_STREQ(EcmaStringAccessor(localeStr).ToCString().c_str(), "en");
+    EXPECT_STREQ(EcmaStringAccessor(localeStr).ToCString(thread).c_str(), "en");
 }
 
 /**
@@ -70,7 +70,7 @@ HWTEST_F_L0(JSDisplayNamesTest, GetAvailableLocales)
     EXPECT_NE(localeLen, 0U);
 
     for (uint32_t i = 0; i < localeLen; i++) {
-        EXPECT_FALSE(displayLocale->Get(i).IsHole());
+        EXPECT_FALSE(displayLocale->Get(thread, i).IsHole());
     }
 }
 
@@ -127,12 +127,12 @@ HWTEST_F_L0(JSDisplayNamesTest, InitializeDisplayNames)
     SetOptionProperties(thread, displayOptions, displayOptionsProperty);
     // options is not empty
     JSDisplayNames::InitializeDisplayNames(thread, displayNames, localeStr, JSHandle<JSTaggedValue>(displayOptions));
-    JSHandle<EcmaString> setlocale(thread, displayNames->GetLocale());
+    JSHandle<EcmaString> setlocale(thread, displayNames->GetLocale(thread));
     EXPECT_EQ(displayNames->GetStyle(), StyOption::SHORT);
     EXPECT_EQ(displayNames->GetType(), TypednsOption::SCRIPT);
     EXPECT_EQ(displayNames->GetFallback(), FallbackOption::NONE);
-    EXPECT_STREQ(EcmaStringAccessor(setlocale).ToCString().c_str(), "en-US");
-    EXPECT_TRUE(displayNames->GetIcuLocaleDisplayNames() != nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(setlocale).ToCString(thread).c_str(), "en-US");
+    EXPECT_TRUE(displayNames->GetIcuLocaleDisplayNames(thread) != nullptr);
 }
 
 /**
@@ -166,19 +166,19 @@ HWTEST_F_L0(JSDisplayNamesTest, CanonicalCodeForDisplayNames)
     JSHandle<EcmaString> code = factory->NewFromASCII("Kana");
     JSHandle<EcmaString> resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "片假名");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString(thread).c_str(), "片假名");
     // CanonicalCode for languege
     code = factory->NewFromASCII("fr");
     initDisplayNames->SetType(TypednsOption::LANGUAGE);
     resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "法文");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString(thread).c_str(), "法文");
     // CanonicalCode for region
     code = factory->NewFromASCII("US");
     initDisplayNames->SetType(TypednsOption::REGION);
     resultDisplay =
         JSDisplayNames::CanonicalCodeForDisplayNames(thread, initDisplayNames, initDisplayNames->GetType(), code);
-    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString().c_str(), "美國");
+    EXPECT_STREQ(EcmaStringAccessor(resultDisplay).ToCString(thread).c_str(), "美國");
 }
 
 /**
@@ -218,13 +218,13 @@ HWTEST_F_L0(JSDisplayNamesTest, ResolvedOptions)
         JSDisplayNames::InitializeDisplayNames(thread, displayNames, locale, JSHandle<JSTaggedValue>(displayOptions));
 
     JSDisplayNames::ResolvedOptions(thread, initDisplayNames, displayOptions);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, displayOptions, styleKey).GetValue(), styleValue), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, displayOptions, localeKey).GetValue(), locale), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, displayOptions, fallBackKey).GetValue(), fallBackValue), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, displayOptions, typeKey).GetValue(), typeValue), true);
 }
 }  // namespace panda::test

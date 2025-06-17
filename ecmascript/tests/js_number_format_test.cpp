@@ -46,7 +46,7 @@ HWTEST_F_L0(JSNumberFormatTest, GetIcuCallTarget)
         icu::number::NumberFormatter::withLocale(icuLocale).roundingMode(UNUM_ROUND_HALFUP);
     // Set IcuCallTarget
     factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);
-    icu::number::LocalizedNumberFormatter *resultIcuNumberFormatter = numberFormat->GetIcuCallTarget();
+    icu::number::LocalizedNumberFormatter *resultIcuNumberFormatter = numberFormat->GetIcuCallTarget(thread);
     EXPECT_TRUE(resultIcuNumberFormatter != nullptr);
     // Use IcuCallTarget format Int
     int64_t value = -123456;
@@ -54,7 +54,7 @@ HWTEST_F_L0(JSNumberFormatTest, GetIcuCallTarget)
     icu::number::FormattedNumber formattedNumber = resultIcuNumberFormatter->formatInt(value, status);
     icu::UnicodeString result = formattedNumber.toString(status);
     JSHandle<EcmaString> stringValue = intl::LocaleHelper::UStringToString(thread, result);
-    EXPECT_STREQ("-123,456", EcmaStringAccessor(stringValue).ToCString().c_str());
+    EXPECT_STREQ("-123,456", EcmaStringAccessor(stringValue).ToCString(thread).c_str());
 }
 
 /**
@@ -78,24 +78,24 @@ HWTEST_F_L0(JSNumberFormatTest, InitializeNumberFormat)
     JSHandle<JSTaggedValue> undefinedOptions(thread, JSTaggedValue::Undefined());
     JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, undefinedOptions);
     // Initialize attribute comparison
-    EXPECT_TRUE(numberFormat->GetNumberingSystem().IsUndefined());
-    JSHandle<EcmaString> localeStr(thread, numberFormat->GetLocale().GetTaggedObject());
-    EXPECT_STREQ("zh-Hans-CN", EcmaStringAccessor(localeStr).ToCString().c_str());
+    EXPECT_TRUE(numberFormat->GetNumberingSystem(thread).IsUndefined());
+    JSHandle<EcmaString> localeStr(thread, numberFormat->GetLocale(thread).GetTaggedObject());
+    EXPECT_STREQ("zh-Hans-CN", EcmaStringAccessor(localeStr).ToCString(thread).c_str());
     EXPECT_EQ(NotationOption::STANDARD, numberFormat->GetNotation());
     EXPECT_EQ(CompactDisplayOption::SHORT, numberFormat->GetCompactDisplay());
     EXPECT_EQ(SignDisplayOption::AUTO, numberFormat->GetSignDisplay());
     EXPECT_EQ(CurrencyDisplayOption::SYMBOL, numberFormat->GetCurrencyDisplay());
     EXPECT_EQ(CurrencySignOption::STANDARD, numberFormat->GetCurrencySign());
     EXPECT_EQ(UnitDisplayOption::SHORT, numberFormat->GetUnitDisplay());
-    EXPECT_EQ(numberFormat->GetMinimumIntegerDigits().GetInt(), 1); // 1 : 1 default minimum integer
-    EXPECT_EQ(numberFormat->GetMinimumFractionDigits().GetInt(), 0); // 0 : 0 default minimum fraction
-    EXPECT_EQ(numberFormat->GetMaximumFractionDigits().GetInt(), 3); // 1 : 1 default maximum fraction
-    EXPECT_EQ(numberFormat->GetMinimumSignificantDigits().GetInt(), 0); // 0 : 0 default minimum sigfraction
-    EXPECT_EQ(numberFormat->GetMaximumSignificantDigits().GetInt(), 0); // 0 : 0 default maximum sigfraction
-    EXPECT_TRUE(numberFormat->GetUseGrouping().IsTrue());
-    EXPECT_TRUE(numberFormat->GetBoundFormat().IsUndefined());
-    EXPECT_TRUE(numberFormat->GetUnit().IsUndefined());
-    EXPECT_TRUE(numberFormat->GetCurrency().IsUndefined());
+    EXPECT_EQ(numberFormat->GetMinimumIntegerDigits(thread).GetInt(), 1); // 1 : 1 default minimum integer
+    EXPECT_EQ(numberFormat->GetMinimumFractionDigits(thread).GetInt(), 0); // 0 : 0 default minimum fraction
+    EXPECT_EQ(numberFormat->GetMaximumFractionDigits(thread).GetInt(), 3); // 1 : 1 default maximum fraction
+    EXPECT_EQ(numberFormat->GetMinimumSignificantDigits(thread).GetInt(), 0); // 0 : 0 default minimum sigfraction
+    EXPECT_EQ(numberFormat->GetMaximumSignificantDigits(thread).GetInt(), 0); // 0 : 0 default maximum sigfraction
+    EXPECT_TRUE(numberFormat->GetUseGrouping(thread).IsTrue());
+    EXPECT_TRUE(numberFormat->GetBoundFormat(thread).IsUndefined());
+    EXPECT_TRUE(numberFormat->GetUnit(thread).IsUndefined());
+    EXPECT_TRUE(numberFormat->GetCurrency(thread).IsUndefined());
 }
 
 /**
@@ -153,7 +153,7 @@ HWTEST_F_L0(JSNumberFormatTest, FormatNumeric)
         JSNumberFormat::FormatNumeric(thread, numberFormat, jsBigInt.GetTaggedValue());
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult.GetTaggedValue());
-    EXPECT_STREQ("123,456,789", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("123,456,789", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -183,7 +183,7 @@ HWTEST_F_L0(JSNumberFormatTest, UnwrapNumberFormat)
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(disPlayNamesHandle), disPlayNamesHandle));
     // object has no Instance
     JSHandle<JSTaggedValue> unwrapNumberFormat1 = JSNumberFormat::UnwrapNumberFormat(thread, numberFormat);
-    EXPECT_TRUE(JSTaggedValue::SameValue(numberFormat, unwrapNumberFormat1));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, numberFormat, unwrapNumberFormat1));
     // object has Instance
     JSHandle<JSTaggedValue> unwrapNumberFormat2 = JSNumberFormat::UnwrapNumberFormat(thread, disPlayNamesObj);
     EXPECT_TRUE(unwrapNumberFormat2->IsUndefined());

@@ -68,11 +68,11 @@ HWTEST_F_L0(JSAPIQueueIteratorTest, Next)
         if (i <= DEFAULT_LENGTH - 1U) {
             value.Update(factory->NewFromStdString(resultValue).GetTaggedValue());
             EXPECT_EQ(queueIterator->GetNextIndex(), i + 1U);
-            EXPECT_EQ(JSTaggedValue::SameValue(
+            EXPECT_EQ(JSTaggedValue::SameValue(thread,
             JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), value), true);
         }
         else {
-            EXPECT_TRUE(queueIterator->GetIteratedQueue().IsUndefined());
+            EXPECT_TRUE(queueIterator->GetIteratedQueue(thread).IsUndefined());
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsUndefined());
         }
     }
@@ -148,10 +148,10 @@ HWTEST_F_L0(JSAPIQueueIteratorTest, SetIteratedQueue)
         JSAPIQueue::Add(thread, jsQueue2, value);
     }
     JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue1);
-    EXPECT_EQ(queueIterator->GetIteratedQueue(), jsQueue1.GetTaggedValue());
+    EXPECT_EQ(queueIterator->GetIteratedQueue(thread), jsQueue1.GetTaggedValue());
 
     queueIterator->SetIteratedQueue(thread, jsQueue2.GetTaggedValue());
-    EXPECT_EQ(queueIterator->GetIteratedQueue(), jsQueue2.GetTaggedValue());
+    EXPECT_EQ(queueIterator->GetIteratedQueue(thread), jsQueue2.GetTaggedValue());
 }
 
 /**

@@ -47,18 +47,18 @@ public:
     static JSTaggedValue PUBLIC_API Set(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj,
                                         const uint32_t index, JSTaggedValue value);
     JSTaggedValue RemoveAt(JSThread *thread, JSTaggedValue index);
-    JSTaggedValue GetIndexOfKey(int32_t key);
-    JSTaggedValue GetIndexOfValue(JSTaggedValue value);
-    JSTaggedValue GetKeyAt(int32_t index);
+    JSTaggedValue GetIndexOfKey(JSThread *thread, int32_t key);
+    JSTaggedValue GetIndexOfValue(JSThread *thread, JSTaggedValue value);
+    JSTaggedValue GetKeyAt(JSThread *thread, int32_t index);
     JSTaggedValue GetValueAt(JSThread *thread, int32_t index);
-    JSTaggedValue Get(const JSTaggedValue key);
+    JSTaggedValue Get(JSThread *thread, const JSTaggedValue key);
     JSTaggedValue Remove(JSThread *thread, JSTaggedValue key);
     JSTaggedValue RemoveRangeFrom(JSThread *thread, int32_t index, int32_t batchSize);
     bool SetValueAt(JSThread *thread, JSTaggedValue index, JSTaggedValue value);
-    bool Has(const int32_t key);
+    bool Has(JSThread *thread, const int32_t key);
     bool IsEmpty();
     bool AdjustForward(JSThread *thread, int32_t index, int32_t forwardSize);
-    int32_t BinarySearch(TaggedArray *array, int32_t fromIndex, int32_t toIndex, int32_t key);
+    int32_t BinarySearch(JSThread *thread, TaggedArray *array, int32_t fromIndex, int32_t toIndex, int32_t key);
     void Clear(JSThread *thread);
     void AdjustArray(JSThread *thread, TaggedArray *srcArray, int32_t fromIndex, int32_t toIndex,
                      bool direction);
@@ -82,7 +82,7 @@ private:
         return newCapacity > DEFAULT_CAPACITY_LENGTH ? newCapacity : DEFAULT_CAPACITY_LENGTH;
     }
 
-    JSTaggedValue TryFastGetIndexOfValue(TaggedArray *values, JSTaggedValue value);
+    JSTaggedValue TryFastGetIndexOfValue(JSThread *thread, TaggedArray *values, JSTaggedValue value);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_API_JS_API_PLAIN_ARRAY_H

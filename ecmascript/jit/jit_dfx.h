@@ -62,8 +62,8 @@ public:
 
     std::ostream &GetLogFileStream();
 
-    void DumpBytecodeInst(Method *method);
-    void TraceJitCode(Method *method, bool isEntry);
+    void DumpBytecodeInst(JSThread *thread, Method *method);
+    void TraceJitCode(JSThread *thread, Method *method, bool isEntry);
 
     void SetBundleName(CString bundleName)
     {

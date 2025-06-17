@@ -229,7 +229,7 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue source = regExp->GetOriginalSource();
+    JSTaggedValue source = regExp->GetOriginalSource(thread);
     if (!source.IsString()) {
         auto constants = thread->GlobalConstants();
         return JSNApiHelper::ToLocal<StringRef>(constants->GetHandledEmptyString());
@@ -241,9 +241,10 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
 std::string RegExpRef::GetOriginalFlags([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
-    JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
+    JSTaggedValue regExpFlags = regExp->GetOriginalFlags(thread);
     uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
     std::string strFlags = "";
     if (regExpFlagsInt & RegExpParser::FLAG_GLOBAL) {
@@ -274,7 +275,7 @@ Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_GLOBAL;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -286,7 +287,7 @@ Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_IGNORECASE;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -298,7 +299,7 @@ Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_MULTILINE;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -310,7 +311,7 @@ Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_DOTALL;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -322,7 +323,7 @@ Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_UTF16;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -334,7 +335,7 @@ Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(regExp, FATAL);
-    JSTaggedValue flags = regExp->GetOriginalFlags();
+    JSTaggedValue flags = regExp->GetOriginalFlags(thread);
     bool result = flags.GetInt() & RegExpParser::FLAG_STICKY;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
     return jsValue;
@@ -366,8 +367,8 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorFunction(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsGenerator, FATAL);
-    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
-    JSTaggedValue jsTagValue = generatorContext->GetMethod();
+    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext(thread));
+    JSTaggedValue jsTagValue = generatorContext->GetMethod(thread);
     return JSNApiHelper::ToLocal<GeneratorFunctionRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 }
 
@@ -377,8 +378,8 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsGenerator, FATAL);
-    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
-    JSTaggedValue jsTagValue = generatorContext->GetAcc();
+    JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext(thread));
+    JSTaggedValue jsTagValue = generatorContext->GetAcc(thread);
     return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 }
 
@@ -389,7 +390,7 @@ Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsCollator, FATAL);
-    JSTaggedValue jsTagValue = jsCollator->GetBoundCompare();
+    JSTaggedValue jsTagValue = jsCollator->GetBoundCompare(thread);
     return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler intl";
@@ -404,7 +405,7 @@ Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsDateTimeFormat, FATAL);
-    JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat();
+    JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat(thread);
     return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler intl";
@@ -419,7 +420,7 @@ Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsNumberFormat, FATAL);
-    JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat();
+    JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat(thread);
     return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler intl";
@@ -439,7 +440,7 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     }
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
     JSHandle<JSFunctionBase> function(constructor);
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo(thread);
     if (!extraInfoValue.IsJSNativePointer()) {
         return JSTaggedValue::False();
     }

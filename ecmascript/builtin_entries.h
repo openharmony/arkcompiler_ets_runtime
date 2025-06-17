@@ -126,9 +126,9 @@ public:
         return instance;
     }
 
-    size_t GetBuiltinBoxOffset(JSTaggedValue key) const
+    size_t GetBuiltinBoxOffset(const JSThread *thread, JSTaggedValue key) const
     {
-        auto index = GetBuiltinIndex(key);
+        auto index = GetBuiltinIndex(thread, key);
         ASSERT(index != NOT_FOUND);
         return sizeof(JSTaggedValue) * (index * 2); // 2 is size of BuiltinEntries
     }
@@ -138,10 +138,10 @@ public:
         return sizeof(JSTaggedValue) * (index * 2); // 2 is size of BuiltinEntries
     }
 
-    size_t GetBuiltinIndex(JSTaggedValue key) const
+    size_t GetBuiltinIndex(const JSThread *thread, JSTaggedValue key) const
     {
         auto ecmaString = EcmaString::Cast(key.GetTaggedObject());
-        auto str = std::string(ConvertToString(ecmaString));
+        auto str = std::string(ConvertToString(thread, ecmaString));
         return GetBuiltinIndex(str);
     }
 

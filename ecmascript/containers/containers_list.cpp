@@ -56,8 +56,8 @@ JSTaggedValue ContainersList::Add(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The add method cannot be bound");
@@ -79,8 +79,8 @@ JSTaggedValue ContainersList::Insert(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The insert method cannot be bound");
@@ -96,7 +96,7 @@ JSTaggedValue ContainersList::Insert(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -114,8 +114,8 @@ JSTaggedValue ContainersList::GetFirst(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getFirst method cannot be bound");
@@ -123,7 +123,7 @@ JSTaggedValue ContainersList::GetFirst(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
-    return jSAPIList->GetFirst();
+    return jSAPIList->GetFirst(thread);
 }
 
 JSTaggedValue ContainersList::GetLast(EcmaRuntimeCallInfo *argv)
@@ -134,8 +134,8 @@ JSTaggedValue ContainersList::GetLast(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLast method cannot be bound");
@@ -143,7 +143,7 @@ JSTaggedValue ContainersList::GetLast(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
-    return jSAPIList->GetLast();
+    return jSAPIList->GetLast(thread);
 }
 
 JSTaggedValue ContainersList::Has(EcmaRuntimeCallInfo *argv)
@@ -154,8 +154,8 @@ JSTaggedValue ContainersList::Has(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The has method cannot be bound");
@@ -164,7 +164,7 @@ JSTaggedValue ContainersList::Has(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
-    return GetTaggedBoolean(jSAPIList->Has(element.GetTaggedValue()));
+    return GetTaggedBoolean(jSAPIList->Has(thread, element.GetTaggedValue()));
 }
 
 JSTaggedValue ContainersList::IsEmpty(EcmaRuntimeCallInfo *argv)
@@ -175,8 +175,8 @@ JSTaggedValue ContainersList::IsEmpty(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The isEmpty method cannot be bound");
@@ -184,7 +184,7 @@ JSTaggedValue ContainersList::IsEmpty(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
-    return GetTaggedBoolean(jSAPIList->IsEmpty());
+    return GetTaggedBoolean(jSAPIList->IsEmpty(thread));
 }
 
 JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
@@ -195,8 +195,8 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The get method cannot be bound");
@@ -212,11 +212,11 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    return jsAPIList->Get(index->GetInt());
+    return jsAPIList->Get(thread, index->GetInt());
 }
 
 JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
@@ -227,8 +227,8 @@ JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getIndexOf method cannot be bound");
@@ -237,7 +237,7 @@ JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
-    return jsAPIList->GetIndexOf(element.GetTaggedValue());
+    return jsAPIList->GetIndexOf(thread, element.GetTaggedValue());
 }
 
 JSTaggedValue ContainersList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
@@ -248,8 +248,8 @@ JSTaggedValue ContainersList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLastIndexOf method cannot be bound");
@@ -258,7 +258,7 @@ JSTaggedValue ContainersList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
-    return jsAPIList->GetLastIndexOf(element.GetTaggedValue());
+    return jsAPIList->GetLastIndexOf(thread, element.GetTaggedValue());
 }
 
 JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
@@ -269,8 +269,8 @@ JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The set method cannot be bound");
@@ -286,7 +286,7 @@ JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -305,8 +305,8 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     // get and check List object
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIList()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIList()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIList()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The forEach method cannot be bound");
@@ -320,7 +320,7 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -328,8 +328,8 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     // If thisArgHandle was supplied, let T be thisArgHandle; else let T be undefined.
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(thisHandle);
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
-    uint32_t length = list->Length();
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
+    uint32_t length = list->Length(thread);
 
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t index = 0;
@@ -337,7 +337,7 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     int valueNode = TaggedSingleList::ELEMENTS_START_INDEX;
     while (index < length) {
         valueNode = singleList->GetNextDataIndex(valueNode);
-        JSTaggedValue value = singleList->GetElement(valueNode);
+        JSTaggedValue value = singleList->GetElement(thread, valueNode);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -357,8 +357,8 @@ JSTaggedValue ContainersList::Clear(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The clear method cannot be bound");
@@ -378,8 +378,8 @@ JSTaggedValue ContainersList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The removeByIndex method cannot be bound");
@@ -394,7 +394,7 @@ JSTaggedValue ContainersList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -412,8 +412,8 @@ JSTaggedValue ContainersList::Remove(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The remove method cannot be bound");
@@ -432,8 +432,8 @@ JSTaggedValue ContainersList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, List, ReplaceAllElements);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     if (!thisHandle->IsJSAPIList()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIList()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIList()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The replaceAllElements method cannot be bound");
@@ -445,7 +445,7 @@ JSTaggedValue ContainersList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -461,8 +461,8 @@ JSTaggedValue ContainersList::Equal(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The equal method cannot be bound");
@@ -472,8 +472,8 @@ JSTaggedValue ContainersList::Equal(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     if (!obj->IsJSAPIList()) {
-        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPIList()) {
-            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget(thread).IsJSAPIList()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget(thread));
         } else {
             return JSTaggedValue::False();
         }
@@ -490,8 +490,8 @@ JSTaggedValue ContainersList::Sort(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The sort method cannot be bound");
@@ -503,7 +503,7 @@ JSTaggedValue ContainersList::Sort(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(*result);
+            "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -529,8 +529,8 @@ JSTaggedValue ContainersList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The convertToArray method cannot be bound");
@@ -549,8 +549,8 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getSubList method cannot be bound");
@@ -567,7 +567,7 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, fromIndex.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"fromIndex\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"fromIndex\" must be number. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -583,7 +583,7 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, toIndex.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"toIndex\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"toIndex\" must be number. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -602,8 +602,8 @@ JSTaggedValue ContainersList::Length(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIList()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIList()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIList()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The getLength method cannot be bound");
@@ -611,6 +611,6 @@ JSTaggedValue ContainersList::Length(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
-    return JSTaggedValue(jsAPIList->Length());
+    return JSTaggedValue(jsAPIList->Length(thread));
 }
 }  // namespace panda::ecmascript::containers

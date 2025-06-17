@@ -58,9 +58,9 @@ public:
         return GetClass()->IsInternalAccessor();
     }
 
-    inline bool HasSetter() const
+    inline bool HasSetter(const JSThread *thread) const
     {
-        auto setter = GetSetter();
+        auto setter = GetSetter(thread);
         // When the raw data is 0, means the InternalAccessor's setter is nullptr.
         return !(setter.IsUndefined() || setter.GetRawData() == 0U);
     }

@@ -140,7 +140,7 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_001)
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
     EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
-    EXPECT_EQ(jsTypedArray->GetTypedArrayName().GetRawData(), constructorName.GetTaggedValue().GetRawData());
+    EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
     EXPECT_EQ(jsTypedArray->GetByteLength(), 0U);
     EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
     EXPECT_EQ(jsTypedArray->GetArrayLength(), 0U);
@@ -161,7 +161,7 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_002)
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
     EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
-    EXPECT_EQ(jsTypedArray->GetTypedArrayName().GetRawData(), constructorName.GetTaggedValue().GetRawData());
+    EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
     EXPECT_EQ(jsTypedArray->GetByteLength(), 256U);
     EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
     EXPECT_EQ(jsTypedArray->GetArrayLength(), 256U);
@@ -201,7 +201,7 @@ HWTEST_F_L0(TypedArrayHelperTest, TypedArrayCreate)
     JSTaggedType args[1] = {JSTaggedValue(lenVal).GetRawData()};
     JSHandle<JSObject> newArrObj = TypedArrayHelper::TypedArrayCreate(thread, constructor, 1, args); // 1 : one arg
     uint32_t len = JSHandle<JSTypedArray>::Cast(newArrObj)->GetArrayLength();
-    JSHandle<JSTaggedValue> type(thread, JSHandle<JSTypedArray>::Cast(newArrObj)->GetTypedArrayName());
+    JSHandle<JSTaggedValue> type(thread, JSHandle<JSTypedArray>::Cast(newArrObj)->GetTypedArrayName(thread));
     EXPECT_EQ(len, 256U);
     EXPECT_EQ(type.GetTaggedValue().GetRawData(), constructorName.GetTaggedValue().GetRawData());
 }
@@ -211,7 +211,7 @@ HWTEST_F_L0(TypedArrayHelperTest, ValidateTypedArray)
     JSHandle<JSTaggedValue> uint32Array;
     CreateArrayList(thread, uint32Array);
     JSHandle<JSTaggedValue> buffer(thread, TypedArrayHelper::ValidateTypedArray(thread, uint32Array));
-    JSTaggedValue result = JSHandle<JSTypedArray>::Cast(uint32Array)->GetViewedArrayBufferOrByteArray();
+    JSTaggedValue result = JSHandle<JSTypedArray>::Cast(uint32Array)->GetViewedArrayBufferOrByteArray(thread);
     EXPECT_EQ(buffer.GetTaggedValue().GetRawData(), result.GetRawData());
 }
 
@@ -398,7 +398,7 @@ HWTEST_F_L0(TypedArrayHelperTest, SortCompare)
     JSHandle<JSTaggedValue> uint32Array;
     CreateArrayList(thread, uint32Array);
     JSHandle<JSTaggedValue> buffer(thread, TypedArrayHelper::ValidateTypedArray(thread, uint32Array));
-    EXPECT_FALSE(builtins::BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue()));
+    EXPECT_FALSE(builtins::BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer.GetTaggedValue()));
 
     JSHandle<JSTaggedValue> callbackfnHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> nan(thread, JSTaggedValue(base::NAN_VALUE));
@@ -451,7 +451,7 @@ HWTEST_F_L0(TypedArrayHelperTest, FastCreateTypedArray) {
         } else {
             EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
         }
-        EXPECT_EQ(jsTypedArray->GetTypedArrayName().GetRawData(), constructorName.GetTaggedValue().GetRawData());
+        EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
         EXPECT_EQ(jsTypedArray->GetByteLength(), 0U);
         EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
         EXPECT_EQ(jsTypedArray->GetArrayLength(), 0U);

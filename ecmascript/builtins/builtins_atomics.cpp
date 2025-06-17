@@ -271,7 +271,7 @@ JSTaggedValue BuiltinsAtomics::Notify(EcmaRuntimeCallInfo *argv)
     if (!arrayBuffer->IsSharedArrayBuffer()) {
         return JSTaggedValue(0);
     }
-    return JSTaggedValue(Signal(arrayBuffer, indexedPosition, c));
+    return JSTaggedValue(Signal(thread, arrayBuffer, indexedPosition, c));
 }
 
 template<typename callbackfun>
@@ -292,7 +292,7 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWrite(JSThread *thread, const JSH
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Let arrayTypeName be typedArray.[[TypedArrayName]].
     JSHandle<JSTaggedValue> arrayTypeName(thread,
-                                          JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName());
+        JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName(thread));
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. NOTE: The above check is not redundant with the check in ValidateIntegerTypedArray because the call to
@@ -312,43 +312,43 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWriteCase(JSThread *thread, JSTag
     BUILTINS_API_TRACE(thread, Atomics, AtomicReadModifyWriteCase);
     JSHandle<JSTaggedValue> arrBufHadle(thread, arrBuf);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
-    void *pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+    void *pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     uint32_t size = argv->GetArgsNumber();
     switch (type) {
         case DataViewType::UINT8: {
             uint8_t tag = JSTaggedValue::ToInt8(thread, value);
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithUint8(thread, size, block, indexedPosition, argv, op, tag);
         }
         case DataViewType::INT8:{
             int8_t tag = JSTaggedValue::ToInt8(thread, value);
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithInt8(thread, size, block, indexedPosition, argv, op, tag);
         }
         case DataViewType::UINT16: {
             uint16_t tag = JSTaggedValue::ToInt16(thread, value);
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithUint16(thread, size, block, indexedPosition, argv, op, tag);
         }
         case DataViewType::INT16: {
             int16_t tag = JSTaggedValue::ToInt16(thread, value);
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithInt16(thread, size, block, indexedPosition, argv, op, tag);
         }
         case DataViewType::UINT32: {
             uint32_t tag = JSTaggedValue::ToUint32(thread, value);
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithUint32(thread, size, block, indexedPosition, argv, op, tag);
         }
         case DataViewType::INT32: {
             int32_t tag = static_cast<int32_t>(JSTaggedValue::ToUint32(thread, value));
-            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBufHadle.GetTaggedValue());
+            pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrBufHadle.GetTaggedValue());
             block = reinterpret_cast<uint8_t *>(pointer);
             return HandleWithInt32(thread, size, block, indexedPosition, argv, op, tag);
         }
@@ -571,7 +571,7 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
 {
     BUILTINS_API_TRACE(thread, Atomics, DoWait);
     MutexGuard lockGuard(g_mutex);
-    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
+    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
     WaiterListNode *node = thread->GetEcmaVM()->GetWaiterListNode();
     node->date_ = buffer;
@@ -617,9 +617,10 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
     return res;
 }
 
-uint32_t BuiltinsAtomics::Signal(JSHandle<JSTaggedValue> &arrayBuffer, const size_t &index, double wakeCount)
+uint32_t BuiltinsAtomics::Signal(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
+                                 const size_t &index, double wakeCount)
 {
-    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
+    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
     MutexGuard lockGuard(g_mutex);
     auto &locationListMap = g_waitLists->locationListMap_;

@@ -213,7 +213,7 @@ public:
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t PUBLIC_API DoubleInRangeInt32(double d);
     static int32_t PUBLIC_API SaturateTruncDoubleToInt32(double d);
-    static JSTaggedValue StringToNumber(EcmaString *string, int32_t radix);
+    static JSTaggedValue StringToNumber(JSThread *thread, EcmaString *string, int32_t radix);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     template <typename DstType>

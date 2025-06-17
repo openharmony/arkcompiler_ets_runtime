@@ -310,7 +310,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode);
+    bool AddMethod(const JSThread *thread, Chunk *chunk, Method *jsMethod, SampleMode mode);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
@@ -501,17 +501,17 @@ public:
     void InitSections();
 
     // If it is a new method, return true.
-    bool AddMethod(ProfileType recordProfileType, Method *jsMethod, SampleMode mode);
+    bool AddMethod(const JSThread *thread, ProfileType recordProfileType, Method *jsMethod, SampleMode mode);
     bool AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset, PGODefineOpType type);
 
     bool AddRwUseInfo(ProfileType rootType);
-    bool AddRootLayout(JSTaggedType hclass, ProfileType rootType);
-    bool UpdateTransitionLayout(
+    bool AddRootLayout(const JSThread *thread, JSTaggedType hclass, ProfileType rootType);
+    bool UpdateTransitionLayout(const JSThread *thread,
         ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
-    bool UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType);
+    bool UpdateLayout(const JSThread *thread, ProfileType rootType, JSTaggedType hclass, ProfileType curType);
     void AddRootPtType(ProfileType rootType, ProfileType ptType);
     bool IsDumped(ProfileType rootType, ProfileType curType) const;
 

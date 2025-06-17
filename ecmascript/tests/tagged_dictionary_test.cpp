@@ -82,15 +82,15 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_addKeyAndValue)
     EXPECT_EQ(dict->EntriesCount(), 1);
 
     // test find() and lookup()
-    int entry1 = dict->FindEntry(key1.GetTaggedValue());
-    EXPECT_EQ(key1.GetTaggedValue(), JSTaggedValue(dict->GetKey(entry1).GetRawData()));
-    EXPECT_EQ(value1.GetTaggedValue(), JSTaggedValue(dict->GetValue(entry1).GetRawData()));
+    int entry1 = dict->FindEntry(thread, key1.GetTaggedValue());
+    EXPECT_EQ(key1.GetTaggedValue(), JSTaggedValue(dict->GetKey(thread, entry1).GetRawData()));
+    EXPECT_EQ(value1.GetTaggedValue(), JSTaggedValue(dict->GetValue(thread, entry1).GetRawData()));
 
     JSHandle<NameDictionary> dict2(NameDictionary::PutIfAbsent(thread, dictHandle, key2, value2, metaData2));
     EXPECT_EQ(dict2->EntriesCount(), 2);
     // test remove()
     dict = NameDictionary::Remove(thread, dictHandle, entry1);
-    EXPECT_EQ(-1, dict->FindEntry(key1.GetTaggedValue()));
+    EXPECT_EQ(-1, dict->FindEntry(thread, key1.GetTaggedValue()));
     EXPECT_EQ(dict->EntriesCount(), 1);
 }
 
@@ -158,7 +158,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_ShrinkCapacity)
     keyArray[6] = 0;
     JSHandle<JSTaggedValue> arrayHandle(
         thread, stringTable->GetOrInternString(instance, keyArray, utf::Mutf8Size(keyArray), true));
-    int entry = dictHandle->FindEntry(arrayHandle.GetTaggedValue());
+    int entry = dictHandle->FindEntry(thread, arrayHandle.GetTaggedValue());
     EXPECT_NE(entry, -1);
 
     JSHandle<NameDictionary> newDict1 = NameDictionary::Remove(thread, dictHandle, entry);
@@ -213,15 +213,15 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_addKeyAndValue)
     EXPECT_EQ(dict->EntriesCount(), 1);
 
     // test find() and lookup()
-    int entry1 = dict->FindEntry(key1.GetTaggedValue());
-    EXPECT_EQ(key1.GetTaggedValue(), JSTaggedValue(dict->GetKey(entry1).GetRawData()));
-    EXPECT_EQ(value1.GetTaggedValue(), JSTaggedValue(dict->GetValue(entry1).GetRawData()));
+    int entry1 = dict->FindEntry(thread, key1.GetTaggedValue());
+    EXPECT_EQ(key1.GetTaggedValue(), JSTaggedValue(dict->GetKey(thread, entry1).GetRawData()));
+    EXPECT_EQ(value1.GetTaggedValue(), JSTaggedValue(dict->GetValue(thread, entry1).GetRawData()));
 
     JSHandle<NumberDictionary> dict2 = NumberDictionary::PutIfAbsent(thread, dictHandle, key2, value2, metaData2);
     EXPECT_EQ(dict2->EntriesCount(), 2);
     // test remove()
     dict = NumberDictionary::Remove(thread, dictHandle, entry1);
-    EXPECT_EQ(-1, dict->FindEntry(key1.GetTaggedValue()));
+    EXPECT_EQ(-1, dict->FindEntry(thread, key1.GetTaggedValue()));
     EXPECT_EQ(dict->EntriesCount(), 1);
 }
 
@@ -254,9 +254,9 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_GetAllKey)
     for (int i = 1; i < keyNumbers; i++) {
         JSHandle<JSTaggedValue> numberKey(thread, JSTaggedValue(i-1));
         JSHandle<EcmaString> stringKey(JSTaggedValue::ToString(thread, numberKey));
-        EXPECT_EQ(storeKeyArray->Get(i), stringKey.GetTaggedValue());
+        EXPECT_EQ(storeKeyArray->Get(thread, i), stringKey.GetTaggedValue());
     }
-    EXPECT_TRUE(storeKeyArray->Get(0).IsHole());
+    EXPECT_TRUE(storeKeyArray->Get(thread, 0).IsHole());
 }
 
 /**
@@ -309,7 +309,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_ShrinkCapacity)
     }
 
     JSHandle<JSTaggedValue> arrayHandle(thread, JSTaggedValue(9));
-    int entry = dictHandle->FindEntry(arrayHandle.GetTaggedValue());
+    int entry = dictHandle->FindEntry(thread, arrayHandle.GetTaggedValue());
     EXPECT_NE(entry, -1);
 
     JSHandle<NumberDictionary> newDict1 = NumberDictionary::Remove(thread, dictHandle, entry);
@@ -331,10 +331,10 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_IsMatch)
     JSTaggedValue numberKey2(1);
     bool result = false;
     // key must be integer
-    result = NumberDictionary::IsMatch(numberKey1, numberKey2);
+    result = NumberDictionary::IsMatch(thread, numberKey1, numberKey2);
     EXPECT_TRUE(!result);
 
-    result = NumberDictionary::IsMatch(numberKey1, numberKey1);
+    result = NumberDictionary::IsMatch(thread, numberKey1, numberKey1);
     EXPECT_TRUE(result);
 }
 }  // namespace panda::test

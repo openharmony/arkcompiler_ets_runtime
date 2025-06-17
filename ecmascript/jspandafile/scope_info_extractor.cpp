@@ -27,9 +27,9 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     Method *method = FrameHandler(thread).GetMethod();
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile(thread);
     ASSERT(jsPandaFile != nullptr);
-    JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
+    JSHandle<ConstantPool> constpool(thread, method->GetConstantPool(thread));
 
     JSHandle<TaggedArray> elementsLiteral;
     if (jsPandaFile->IsNewVersion()) {
@@ -48,10 +48,10 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 
     size_t length = elementsLiteral->GetLength();
     for (size_t i = 1; i < length; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
-        JSTaggedValue val = elementsLiteral->Get(i);
+        JSTaggedValue val = elementsLiteral->Get(thread, i);
         ASSERT(val.IsString());
-        CString name = ConvertToString(EcmaString::Cast(val.GetTaggedObject()));
-        int32_t slot = elementsLiteral->Get(i + 1).GetInt();
+        CString name = ConvertToString(thread, EcmaString::Cast(val.GetTaggedObject()));
+        int32_t slot = elementsLiteral->Get(thread, i + 1).GetInt();
         scopeDebugInfo->scopeInfo.emplace(name, slot);
     }
 

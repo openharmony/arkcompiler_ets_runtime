@@ -169,13 +169,13 @@ void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject 
         JSHClass *hclass = TaggedObject::Cast(root)->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        TaggedObject *dst = hclass->GetLayout(THREAD_ARG_PLACEHOLDER).GetTaggedObject();
         LayoutInfo *layout = LayoutInfo::UncheckCast(dst);
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            auto attr = layout->GetAttr(index++);
+            auto attr = layout->GetAttr(THREAD_ARG_PLACEHOLDER, index++);
             if (attr.IsTaggedRep()) {
                 evacuator_->UpdateCrossRegionRSet(slot, rootRegion);
             }

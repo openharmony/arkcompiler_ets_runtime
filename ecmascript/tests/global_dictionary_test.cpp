@@ -37,8 +37,8 @@ HWTEST_F_L0(GlobalDictionaryTest, IsMatch)
     JSHandle<EcmaString> globalKey = factory->NewFromASCII("key");
     JSTaggedValue globalOtherKey = globalKey.GetTaggedValue();
 
-    EXPECT_EQ(GlobalDictionary::IsMatch(globalKey.GetTaggedValue(), globalOtherKey), true);
-    EXPECT_EQ(GlobalDictionary::IsMatch(globalKey.GetTaggedValue(), JSTaggedValue::Undefined()), false);
+    EXPECT_EQ(GlobalDictionary::IsMatch(thread, globalKey.GetTaggedValue(), globalOtherKey), true);
+    EXPECT_EQ(GlobalDictionary::IsMatch(thread, globalKey.GetTaggedValue(), JSTaggedValue::Undefined()), false);
 }
 
 /**
@@ -55,13 +55,14 @@ HWTEST_F_L0(GlobalDictionaryTest, Hash)
     uint8_t utf8ArrayName[4] = {0, 2, 5}; // The last element is "\0"
     uint32_t utf8ArrayNameLen = sizeof(utf8ArrayName) - 1;
     JSHandle<EcmaString> nameStringUtf8Obj = factory->NewFromUtf8(utf8ArrayName, utf8ArrayNameLen);
-    EXPECT_EQ(GlobalDictionary::Hash(nameStringUtf8Obj.GetTaggedValue()), 67); // 67 = (0 << 5 - 0 + 2) << 5 - 2 + 5
+    // 67 = (0 << 5 - 0 + 2) << 5 - 2 + 5
+    EXPECT_EQ(GlobalDictionary::Hash(thread, nameStringUtf8Obj.GetTaggedValue()), 67);
     // test obj is string(uint16_t)
     uint16_t utf16ArrayName[] = {0x1, 0x2, 0x1};
     uint32_t utf16ArrayNameLen = sizeof(utf16ArrayName) / sizeof(utf16ArrayName[0]);
     JSHandle<EcmaString> nameStringUtf16Obj = factory->NewFromUtf16(utf16ArrayName, utf16ArrayNameLen);
     // 1024 = (1 << 5 - 0 + 1) << 5 - 1 + 1
-    EXPECT_EQ(GlobalDictionary::Hash(nameStringUtf16Obj.GetTaggedValue()), 1024);
+    EXPECT_EQ(GlobalDictionary::Hash(thread, nameStringUtf16Obj.GetTaggedValue()), 1024);
 }
 
 /**
@@ -89,13 +90,13 @@ HWTEST_F_L0(GlobalDictionaryTest, GetBoxAndValue)
     JSHandle<GlobalDictionary> newDict =
         handleDict->PutIfAbsent(thread, handleDict, globalKey1, propertyBox1, attribute);
 
-    EXPECT_TRUE(handleDict->GetBox(0) != nullptr);
-    EXPECT_EQ(handleDict->GetValue(0).GetInt(), 123);
+    EXPECT_TRUE(handleDict->GetBox(thread, 0) != nullptr);
+    EXPECT_EQ(handleDict->GetValue(thread, 0).GetInt(), 123);
 
-    EXPECT_TRUE(newDict->GetBox(0) != nullptr);
-    EXPECT_EQ(newDict->GetValue(0).GetInt(), 123);
-    EXPECT_TRUE(newDict->GetBox(1) != nullptr);
-    EXPECT_EQ(newDict->GetValue(1).GetInt(), 100);
+    EXPECT_TRUE(newDict->GetBox(thread, 0) != nullptr);
+    EXPECT_EQ(newDict->GetValue(thread, 0).GetInt(), 123);
+    EXPECT_TRUE(newDict->GetBox(thread, 1) != nullptr);
+    EXPECT_EQ(newDict->GetValue(thread, 1).GetInt(), 100);
 }
 
 /**
@@ -113,7 +114,7 @@ HWTEST_F_L0(GlobalDictionaryTest, GetAttributes)
     // set attributes call SetAttributes function
     for (int i = 0; i < numberofElements; i++) {
         handleDict->SetAttributes(thread, i, PropertyAttributes(i));
-        EXPECT_EQ(handleDict->GetAttributes(i).GetPropertyMetaData(), i);
+        EXPECT_EQ(handleDict->GetAttributes(thread, i).GetPropertyMetaData(), i);
     }
 }
 
@@ -138,9 +139,9 @@ HWTEST_F_L0(GlobalDictionaryTest, ClearEntry)
                                         handleValue.GetTaggedValue(), PropertyAttributes(i));
     }
     // check attributes in three
-    EXPECT_EQ(handleDict->GetAttributes(3).GetPropertyMetaData(), 3);
+    EXPECT_EQ(handleDict->GetAttributes(thread, 3).GetPropertyMetaData(), 3);
     handleDict->ClearEntry(thread, 3);
-    EXPECT_EQ(handleDict->GetAttributes(3).GetPropertyMetaData(), 0);
+    EXPECT_EQ(handleDict->GetAttributes(thread, 3).GetPropertyMetaData(), 0);
 }
 
 /**
@@ -165,8 +166,8 @@ HWTEST_F_L0(GlobalDictionaryTest, UpdateValueAndAttributes)
                                         propertyBox.GetTaggedValue(), PropertyAttributes(i));
     }
     // check attributes in five
-    EXPECT_EQ(handleDict->GetAttributes(5).GetPropertyMetaData(), 5);
-    EXPECT_EQ(handleDict->GetValue(5).GetInt(), 5);
+    EXPECT_EQ(handleDict->GetAttributes(thread, 5).GetPropertyMetaData(), 5);
+    EXPECT_EQ(handleDict->GetValue(thread, 5).GetInt(), 5);
     // Update value and attributes
     for (int i = 0; i < numberofElements; i++) {
         JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(static_cast<int>(i + 1)));
@@ -175,8 +176,8 @@ HWTEST_F_L0(GlobalDictionaryTest, UpdateValueAndAttributes)
                                              PropertyAttributes(static_cast<int>(i + 1)));
     }
     // check attributes in five
-    EXPECT_EQ(handleDict->GetAttributes(5).GetPropertyMetaData(), 6);
-    EXPECT_EQ(handleDict->GetValue(5).GetInt(), 6);
+    EXPECT_EQ(handleDict->GetAttributes(thread, 5).GetPropertyMetaData(), 6);
+    EXPECT_EQ(handleDict->GetValue(thread, 5).GetInt(), 6);
 }
 
 /**
@@ -211,13 +212,13 @@ HWTEST_F_L0(GlobalDictionaryTest, GetAllKeys)
     dictHandle->GetAllKeys(thread, offset, *keyArray);
     // Skip the first seven positions
     for (uint32_t i = 0; i < offset; i++) {
-        EXPECT_TRUE(keyArray->Get(i).IsHole());
+        EXPECT_TRUE(keyArray->Get(thread, i).IsHole());
     }
     // check key name
-    JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(offset));
-    JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(arraySize - 1));
-    EXPECT_EQ(nameKey[0], EcmaStringAccessor(resultFirstKey).ToCString().c_str());
-    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString().c_str());
+    JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(thread, offset));
+    JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(thread, arraySize - 1));
+    EXPECT_EQ(nameKey[0], EcmaStringAccessor(resultFirstKey).ToCString(thread).c_str());
+    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString(thread).c_str());
 }
 
 /**
@@ -258,10 +259,10 @@ HWTEST_F_L0(GlobalDictionaryTest, GetEnumAllKeys)
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);
     dictHandle->GetEnumAllKeys(thread, offset, *keyArray, &keys);
     EXPECT_EQ(keys, 8U);
-    JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(offset));
-    JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(offset + keys - 1U));
-    EXPECT_EQ(nameKey[1], EcmaStringAccessor(resultFirstKey).ToCString().c_str());
-    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString().c_str());
+    JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(thread, offset));
+    JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(thread, offset + keys - 1U));
+    EXPECT_EQ(nameKey[1], EcmaStringAccessor(resultFirstKey).ToCString(thread).c_str());
+    EXPECT_EQ(nameKey[15], EcmaStringAccessor(resultLastKey).ToCString(thread).c_str());
 }
 
 /**
@@ -313,8 +314,8 @@ HWTEST_F_L0(GlobalDictionaryTest, InvalidatePropertyBox)
     // calling InvalidatePropertyBox function to Invalidate the PropertyBox
     PropertyAttributes newAttr(10);
     GlobalDictionary::InvalidatePropertyBox(thread, handleDict, invalidatedPosition);
-    EXPECT_EQ(handleDict->GetAttributes(invalidatedPosition).GetBoxType(), PropertyBoxType::MUTABLE);
-    EXPECT_EQ(handleDict->GetAttributes(invalidatedSet).GetDictionaryOrder(), invalidatedPosition);
-    EXPECT_EQ(handleDict->GetValue(invalidatedPosition).GetInt(), invalidatedPosition);
+    EXPECT_EQ(handleDict->GetAttributes(thread, invalidatedPosition).GetBoxType(), PropertyBoxType::MUTABLE);
+    EXPECT_EQ(handleDict->GetAttributes(thread, invalidatedSet).GetDictionaryOrder(), invalidatedPosition);
+    EXPECT_EQ(handleDict->GetValue(thread, invalidatedPosition).GetInt(), invalidatedPosition);
 }
 }  // namespace panda::test

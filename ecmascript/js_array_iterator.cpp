@@ -41,7 +41,7 @@ JSTaggedValue JSArrayIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedV
     }
     JSHandle<JSArrayIterator> iter(thisObj);
     // 4.Let a be O.[[IteratedArrayLike]].
-    JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
+    JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray(thread));
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     // 5.If a is undefined, return CreateIterResultObject(undefined, true).
     if (array->IsUndefined()) {

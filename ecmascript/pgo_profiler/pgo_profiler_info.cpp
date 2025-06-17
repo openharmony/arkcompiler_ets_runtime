@@ -189,7 +189,7 @@ uint32_t PGOMethodInfo::CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_
     return checksum;
 }
 
-bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode)
+bool PGOMethodInfoMap::AddMethod(const JSThread *thread, Chunk *chunk, Method *jsMethod, SampleMode mode)
 {
     PGOMethodId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
@@ -199,7 +199,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
         info->SetSampleMode(mode);
         return false;
     } else {
-        CString methodName = jsMethod->GetMethodName();
+        CString methodName = jsMethod->GetMethodName(thread);
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
         void *infoAddr = chunk->Allocate(size);
@@ -210,8 +210,8 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
         auto info = new (infoAddr) PGOMethodInfo(methodId, 0, mode, methodName.c_str());
         info->IncreaseCount();
         methodInfos_.emplace(methodId, info);
-        auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(), jsMethod->GetBytecodeArray(),
-                                                    jsMethod->GetCodeSize());
+        auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(thread), jsMethod->GetBytecodeArray(),
+                                                    jsMethod->GetCodeSize(thread));
         methodsChecksum_.emplace(methodId, checksum);
         return true;
     }
@@ -644,12 +644,13 @@ PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(ProfileType recordProfi
     }
 }
 
-bool PGORecordDetailInfos::AddMethod(ProfileType recordProfileType, Method *jsMethod, SampleMode mode)
+bool PGORecordDetailInfos::AddMethod(const JSThread *thread, ProfileType recordProfileType, Method *jsMethod,
+    SampleMode mode)
 {
     auto curMethodInfos = GetMethodInfoMap(recordProfileType);
     ASSERT(curMethodInfos != nullptr);
     ASSERT(jsMethod != nullptr);
-    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode);
+    return curMethodInfos->AddMethod(thread, chunk_.get(), jsMethod, mode);
 }
 
 bool PGORecordDetailInfos::AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset,
@@ -694,14 +695,14 @@ bool PGORecordDetailInfos::AddDefine(
     return true;
 }
 
-bool PGORecordDetailInfos::AddRootLayout(JSTaggedType hclass, ProfileType rootType)
+bool PGORecordDetailInfos::AddRootLayout(const JSThread *thread, JSTaggedType hclass, ProfileType rootType)
 {
     PGOHClassTreeDesc descInfo(rootType);
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter != hclassTreeDescInfos_.end()) {
-        return const_cast<PGOHClassTreeDesc &>(*iter).DumpForRoot(hclass, rootType);
+        return const_cast<PGOHClassTreeDesc &>(*iter).DumpForRoot(thread, hclass, rootType);
     } else {
-        if (!descInfo.DumpForRoot(hclass, rootType)) {
+        if (!descInfo.DumpForRoot(thread, hclass, rootType)) {
             return false;
         }
         hclassTreeDescInfos_.emplace(descInfo);
@@ -709,14 +710,15 @@ bool PGORecordDetailInfos::AddRootLayout(JSTaggedType hclass, ProfileType rootTy
     return true;
 }
 
-bool PGORecordDetailInfos::UpdateLayout(ProfileType rootType, JSTaggedType hclass, ProfileType curType)
+bool PGORecordDetailInfos::UpdateLayout(const JSThread *thread,
+    ProfileType rootType, JSTaggedType hclass, ProfileType curType)
 {
     PGOHClassTreeDesc descInfo(rootType);
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter != hclassTreeDescInfos_.end()) {
-        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateLayout(hclass, curType);
+        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateLayout(thread, hclass, curType);
     } else {
-        if (!descInfo.UpdateLayout(hclass, curType)) {
+        if (!descInfo.UpdateLayout(thread, hclass, curType)) {
             return false;
         }
         hclassTreeDescInfos_.emplace(descInfo);
@@ -725,15 +727,16 @@ bool PGORecordDetailInfos::UpdateLayout(ProfileType rootType, JSTaggedType hclas
     return true;
 }
 
-bool PGORecordDetailInfos::UpdateTransitionLayout(
+bool PGORecordDetailInfos::UpdateTransitionLayout(const JSThread *thread,
     ProfileType rootType, JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType)
 {
     PGOHClassTreeDesc descInfo(rootType);
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter != hclassTreeDescInfos_.end()) {
-        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateForTransition(parent, parentType, child, childType);
+        return const_cast<PGOHClassTreeDesc &>(*iter).UpdateForTransition(thread, parent, parentType,
+                                                                          child, childType);
     } else {
-        if (!descInfo.UpdateForTransition(parent, parentType, child, childType)) {
+        if (!descInfo.UpdateForTransition(thread, parent, parentType, child, childType)) {
             return false;
         }
         hclassTreeDescInfos_.emplace(descInfo);

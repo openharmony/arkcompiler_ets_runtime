@@ -72,11 +72,11 @@ HWTEST_F_L0(WeakRefOldGCTest, ArrayNonMovable)
     JSTaggedValue value(newObj2);
     value.CreateWeakRef();
     array->Set(thread, 1, value);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(value, array->Get(1));
+    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+    EXPECT_EQ(value, array->Get(thread, 1));
     vm->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-    EXPECT_EQ(JSTaggedValue::Undefined(), array->Get(1));
+    EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+    EXPECT_EQ(JSTaggedValue::Undefined(), array->Get(thread, 1));
 }
 
 HWTEST_F_L0(WeakRefOldGCTest, ArrayUndefined)
@@ -95,9 +95,9 @@ HWTEST_F_L0(WeakRefOldGCTest, ObjectUndefined)
     JSTaggedValue array(ArrayTestCreate(thread));
     array.CreateWeakRef();
     newObj1->SetElements(thread, array);
-    EXPECT_EQ(newObj1->GetElements(), array);
+    EXPECT_EQ(newObj1->GetElements(thread), array);
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_EQ(newObj1->GetElements(), JSTaggedValue::Undefined());
+    EXPECT_EQ(newObj1->GetElements(thread), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(WeakRefOldGCTest, ObjectKeep)
@@ -107,11 +107,11 @@ HWTEST_F_L0(WeakRefOldGCTest, ObjectKeep)
     JSTaggedValue value = array.GetTaggedValue();
     value.CreateWeakRef();
     newObj1->SetElements(thread, value);
-    EXPECT_EQ(newObj1->GetElements(), value);
+    EXPECT_EQ(newObj1->GetElements(thread), value);
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::OLD_GC);
     value = array.GetTaggedValue();
     value.CreateWeakRef();
-    EXPECT_EQ(newObj1->GetElements(), value);
+    EXPECT_EQ(newObj1->GetElements(thread), value);
 }
 
 HWTEST_F_L0(WeakRefOldGCTest, WeakRefTest)
@@ -180,7 +180,7 @@ HWTEST_F_L0(WeakRefOldGCTest, WeakRefTest)
     }
     for (auto it : srcArrayHandleRecord) {
         for (uint32_t i = 0; i < 40; i++) {
-            EXPECT_TRUE(it->Get(i) != JSTaggedValue::Undefined());
+            EXPECT_TRUE(it->Get(thread, i) != JSTaggedValue::Undefined());
         }
     }
 }

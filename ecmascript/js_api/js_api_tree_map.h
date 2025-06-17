@@ -47,11 +47,11 @@ public:
     static bool Replace(JSThread *thread, const JSHandle<JSAPITreeMap> &map, const JSHandle<JSTaggedValue> &key,
                         const JSHandle<JSTaggedValue> &value);
 
-    int GetSize() const;
+    int GetSize(const JSThread *thread) const;
 
-    JSTaggedValue GetKey(int entry) const;
+    JSTaggedValue GetKey(const JSThread *thread, int entry) const;
 
-    JSTaggedValue GetValue(int entry) const;
+    JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
     static constexpr size_t TREE_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(TreeMap, TREE_MAP_OFFSET, SIZE)

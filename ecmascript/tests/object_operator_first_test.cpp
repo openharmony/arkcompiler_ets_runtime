@@ -285,10 +285,10 @@ HWTEST_F_L0(ObjectOperatorTest, handleKey)
     ObjectOperator objectOperator6(thread, handleKey6);
 
     JSHandle<EcmaString> handleEcmaStrTo1(objectOperator1.GetKey());
-    EXPECT_STREQ("-1", EcmaStringAccessor(handleEcmaStrTo1).ToCString().c_str());
+    EXPECT_STREQ("-1", EcmaStringAccessor(handleEcmaStrTo1).ToCString(thread).c_str());
 
     JSHandle<EcmaString> handleEcmaStrTo2(objectOperator2.GetKey());
-    EXPECT_STREQ("-1.11", EcmaStringAccessor(handleEcmaStrTo2).ToCString().c_str());
+    EXPECT_STREQ("-1.11", EcmaStringAccessor(handleEcmaStrTo2).ToCString(thread).c_str());
 
     EcmaString *str1 = EcmaString::Cast(objectOperator3.GetKey()->GetTaggedObject());
     EXPECT_TRUE(EcmaStringAccessor(str1).IsInternString());
@@ -299,7 +299,7 @@ HWTEST_F_L0(ObjectOperatorTest, handleKey)
     EXPECT_TRUE(EcmaStringAccessor(str2).IsInternString());
 
     JSHandle<EcmaString> handleEcmaStrTo3(objectOperator6.GetKey());
-    EXPECT_STREQ("1.11", EcmaStringAccessor(handleEcmaStrTo3).ToCString().c_str());
+    EXPECT_STREQ("1.11", EcmaStringAccessor(handleEcmaStrTo3).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(ObjectOperatorTest, FastGetValue)
@@ -391,7 +391,7 @@ HWTEST_F_L0(ObjectOperatorTest, ReLookupPropertyInReceiver_002)
     EXPECT_EQ(objectOperator1.GetAttr().GetPropertyMetaData(), 0);
     EXPECT_FALSE(objectOperator1.IsFastMode());
     // Receiver is JSGlobalObject(properties)
-    JSMutableHandle<GlobalDictionary> receiverDict(thread, handleReceiver->GetProperties());
+    JSMutableHandle<GlobalDictionary> receiverDict(thread, handleReceiver->GetProperties(thread));
     JSHandle<GlobalDictionary> handleDict = GlobalDictionary::Create(thread, 4); // numberofElements = 4
     receiverDict.Update(handleDict.GetTaggedValue());
     JSHandle<PropertyBox> cellHandle = factory->NewPropertyBox(handleKey);
@@ -399,7 +399,7 @@ HWTEST_F_L0(ObjectOperatorTest, ReLookupPropertyInReceiver_002)
     JSHandle<GlobalDictionary> handleProperties =
         GlobalDictionary::PutIfAbsent(thread, receiverDict, handleKey, JSHandle<JSTaggedValue>(cellHandle), handleAttr);
     handleReceiver->SetProperties(thread, handleProperties.GetTaggedValue());
-    int keyEntry = handleProperties->FindEntry(handleKey.GetTaggedValue());
+    int keyEntry = handleProperties->FindEntry(thread, handleKey.GetTaggedValue());
     ObjectOperator objectOperator2(thread, handleHolder, JSHandle<JSTaggedValue>(handleReceiver), handleKey);
     objectOperator2.ReLookupPropertyInReceiver();
     EXPECT_EQ(objectOperator2.GetIndex(), static_cast<uint32_t>(keyEntry));

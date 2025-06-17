@@ -58,9 +58,9 @@ JSTaggedValue BuiltinsSegments::GetSegmentIterator(EcmaRuntimeCallInfo *argv)
     JSHandle<JSSegments> segments = JSHandle<JSSegments>::Cast(thisValue);
     // 3. Let segmenter be segments.[[SegmentsSegmenter]].
     // 4. Let string be segments.[[SegmentsString]].
-    JSHandle<EcmaString> string(thread, segments->GetSegmentsString());
+    JSHandle<EcmaString> string(thread, segments->GetSegmentsString(thread));
     // 5. Return ! CreateSegmentIterator(segmenter, string).
-    return JSSegmentIterator::CreateSegmentIterator(thread, segments->GetIcuBreakIterator(), string,
+    return JSSegmentIterator::CreateSegmentIterator(thread, segments->GetIcuBreakIterator(thread), string,
                                                     segments->GetGranularity()).GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

@@ -194,14 +194,14 @@ JSTaggedValue BuiltinsSharedSet::ForEach(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "callback is not callable", JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
-    JSMutableHandle<LinkedHashSet> hashSet(thread, set->GetLinkedSet());
+    JSMutableHandle<LinkedHashSet> hashSet(thread, set->GetLinkedSet(thread));
     const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // Repeat for each e that is an element of entries, in original insertion order
     while (index < totalElements) {
-        JSHandle<JSTaggedValue> key(thread, hashSet->GetKey(index++));
+        JSHandle<JSTaggedValue> key(thread, hashSet->GetKey(thread, index++));
         if (!key->IsHole()) {
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(
                 thread, func, thisArg, undefined, argsLength);

@@ -56,7 +56,7 @@ protected:
             key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
             JSAPITreeSet::Add(thread, tset, key);
         }
-        EXPECT_EQ(tset->GetSize(), nums);
+        EXPECT_EQ(tset->GetSize(thread), nums);
         return tset;
     }
 };
@@ -117,7 +117,7 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetDeleteAndHas)
         bool success = JSAPITreeSet::Delete(thread, tset, key);
         EXPECT_EQ(success, true);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - REMOVE_SIZE);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - REMOVE_SIZE);
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -149,7 +149,7 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetClear)
     auto tset = TestCommon(key, myKey, NODE_NUMBERS);
 
     JSAPITreeSet::Clear(thread, tset);
-    EXPECT_EQ(tset->GetSize(), 0);
+    EXPECT_EQ(tset->GetSize(thread), 0);
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
@@ -181,13 +181,13 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetPop)
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
         JSAPITreeSet::Add(thread, tset, key);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
 
     // test popFirst
     std::string fkey = myKey + std::to_string(0);
     key.Update(factory->NewFromStdString(fkey).GetTaggedValue());
     JSTaggedValue fvalue = JSAPITreeSet::PopFirst(thread, tset);
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - 1);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - 1);
     EXPECT_EQ(fvalue, key.GetTaggedValue());
     bool has = JSAPITreeSet::Has(thread, tset, key);
     EXPECT_EQ(has, false);
@@ -196,7 +196,7 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetPop)
     std::string lkey = myKey + std::to_string(NODE_NUMBERS - 1);
     key.Update(factory->NewFromStdString(lkey).GetTaggedValue());
     JSTaggedValue lvalue = JSAPITreeSet::PopLast(thread, tset);
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - 2);
     EXPECT_EQ(lvalue, key.GetTaggedValue());
     has = JSAPITreeSet::Has(thread, tset, key);
     EXPECT_EQ(has, false);
@@ -272,12 +272,12 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetGetKey)
         key.Update(JSTaggedValue(i));
         JSAPITreeSet::Add(thread, tset, key);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
 
     // test GetKey
     for (int i = 0; i < NODE_NUMBERS; i++) {
-        EXPECT_EQ(tset->GetKey(i), JSTaggedValue(i));
+        EXPECT_EQ(tset->GetKey(thread, i), JSTaggedValue(i));
     }
-    EXPECT_EQ(tset->GetKey(-1), JSTaggedValue::Undefined());
+    EXPECT_EQ(tset->GetKey(thread, -1), JSTaggedValue::Undefined());
 }
 }  // namespace panda::test

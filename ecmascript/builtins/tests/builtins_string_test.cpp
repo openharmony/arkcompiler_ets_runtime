@@ -162,7 +162,7 @@ HWTEST_F_L0(BuiltinsStringTest, StringConstructor1)
     JSHandle<JSPrimitiveRef> ref(thread, JSPrimitiveRef::Cast(value.GetTaggedObject()));
     JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
     ASSERT_EQ(EcmaStringAccessor::Compare(instance,
-        JSHandle<EcmaString>(thread, EcmaString::Cast(ref->GetValue())), test), 0);
+        JSHandle<EcmaString>(thread, EcmaString::Cast(ref->GetValue(thread))), test), 0);
 }
 
 // String.fromCharCode(65, 66, 67)
@@ -528,7 +528,7 @@ HWTEST_F_L0(BuiltinsStringTest, toLowerCase1)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromASCII("abc");
-    ASSERT_TRUE(JSTaggedValue::SameValue(resultHandle.GetTaggedValue(), test.GetTaggedValue()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, resultHandle.GetTaggedValue(), test.GetTaggedValue()));
 }
 
 // "abc".toUpperCase()
@@ -926,7 +926,8 @@ HWTEST_F_L0(BuiltinsStringTest, Raw)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsString::Raw(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *test));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()),
+        *test));
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Replace)
@@ -941,7 +942,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()),
+        *expected));
 
     JSHandle<EcmaString> replaceStr1 = factory->NewFromASCII("abc$$");
     JSHandle<EcmaString> expected1 = factory->NewFromASCII("Twas the night before abc$...");
@@ -951,7 +953,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> resultString1(thread, result1);
     ASSERT_TRUE(result1.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString1, *expected1));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString1, *expected1));
 
     JSHandle<EcmaString> replaceStr2 = factory->NewFromASCII("abc$$dd");
     JSHandle<EcmaString> expected2 = factory->NewFromASCII("Twas the night before abc$dd...");
@@ -961,7 +963,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> resultString2(thread, result2);
     ASSERT_TRUE(result2.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString2, *expected2));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString2, *expected2));
 
     JSHandle<EcmaString> replaceStr3 = factory->NewFromASCII("abc$&dd");
     JSHandle<EcmaString> expected3 = factory->NewFromASCII("Twas the night before abcXmasdd...");
@@ -971,7 +973,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> resultString3(thread, result3);
     ASSERT_TRUE(result3.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString3, *expected3));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString3, *expected3));
 
     JSHandle<EcmaString> replaceStr4 = factory->NewFromASCII("abc$`dd");
     JSHandle<EcmaString> expected4 =
@@ -982,7 +984,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> resultString4(thread, result4);
     ASSERT_TRUE(result4.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString4, *expected4));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString4, *expected4));
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Replace2)
@@ -997,7 +999,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()),
+        *expected));
 
     JSHandle<EcmaString> replaceStr2 = factory->NewFromASCII("abc$`dd$\'$ff");
     JSHandle<EcmaString> expected2 =
@@ -1009,7 +1012,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
 
     JSHandle<EcmaString> resultString2(thread, result2);
     ASSERT_TRUE(result2.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString2, *expected2));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString2, *expected2));
 
     JSHandle<EcmaString> replaceStr3 = factory->NewFromASCII("abc$`dd$\'$");
     JSHandle<EcmaString> expected3 =
@@ -1020,7 +1023,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
 
     JSHandle<EcmaString> resultString3(thread, result3);
     ASSERT_TRUE(result3.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString3, *expected3));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString3, *expected3));
 
     JSHandle<EcmaString> replaceStr4 = factory->NewFromASCII("abc$`dd$$");
     JSHandle<EcmaString> expected4 =
@@ -1031,7 +1034,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
 
     ASSERT_TRUE(result4.IsString());
     JSHandle<EcmaString> resultString4(thread, result4);
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*resultString4, *expected4));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *resultString4, *expected4));
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Replace3)
@@ -1047,7 +1050,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace3)
     auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()),
+        *expected));
 }
 
 HWTEST_F_L0(BuiltinsStringTest, Replace4)
@@ -1071,7 +1075,8 @@ HWTEST_F_L0(BuiltinsStringTest, Replace4)
     auto result = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
+    ASSERT_TRUE(
+        EcmaStringAccessor::StringsAreEqual(thread, reinterpret_cast<EcmaString *>(result.GetRawData()), *expected));
 }
 
 void SplitCommon(JSThread *thread, std::vector<JSHandle<EcmaString>> expecteds, JSHandle<JSArray> &resultArray)
@@ -1082,7 +1087,7 @@ void SplitCommon(JSThread *thread, std::vector<JSHandle<EcmaString>> expecteds, 
             JSObject::GetProperty(thread, resultObj,
                                   JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))))
                 .GetValue());
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*str, *expecteds[i]));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *str, *expecteds[i]));
     }
 }
 

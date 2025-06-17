@@ -36,7 +36,7 @@ public:
     JSTaggedValue Get(JSThread *thread, const uint32_t index);
 
     JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
-    bool Has(JSTaggedValue value) const;
+    bool Has(const JSThread *thread, JSTaggedValue value) const;
 
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj);
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj);
@@ -47,9 +47,9 @@ public:
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
 
-    inline uint32_t GetSize() const
+    inline uint32_t GetSize(const JSThread *thread) const
     {
-        return GetLength().GetArrayLength();
+        return GetLength(thread).GetArrayLength();
     }
 
     inline uint32_t GetCurrentFront() const
@@ -73,7 +73,7 @@ public:
 
     static uint32_t GetArrayLength(JSThread *thread, const JSHandle<JSAPIQueue> &queue);
 
-    uint32_t GetNextPosition(uint32_t currentPosition);
+    uint32_t GetNextPosition(JSThread *thread, uint32_t currentPosition);
 
 private:
     inline static uint32_t ComputeCapacity(uint32_t oldCapacity)

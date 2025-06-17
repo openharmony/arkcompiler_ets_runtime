@@ -36,7 +36,7 @@ JSTaggedValue JSAPIPlainArrayIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIPlainArrayIterator> iter(input);
-    JSHandle<JSTaggedValue> plainArray(thread, iter->GetIteratedPlainArray());
+    JSHandle<JSTaggedValue> plainArray(thread, iter->GetIteratedPlainArray(thread));
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     if (plainArray->IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
@@ -52,11 +52,11 @@ JSTaggedValue JSAPIPlainArrayIterator::Next(EcmaRuntimeCallInfo *argv)
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
-    JSHandle<TaggedArray> valueArray(thread, TaggedArray::Cast(apiPlainArray->GetValues().GetTaggedObject()));
-    JSHandle<JSTaggedValue> value(thread, valueArray->Get(index));
+    JSHandle<TaggedArray> valueArray(thread, TaggedArray::Cast(apiPlainArray->GetValues(thread).GetTaggedObject()));
+    JSHandle<JSTaggedValue> value(thread, valueArray->Get(thread, index));
     JSHandle<TaggedArray> keyArray(thread, TaggedArray::
-                                   Cast(JSHandle<JSAPIPlainArray>(plainArray)->GetKeys().GetTaggedObject()));
-    JSHandle<JSTaggedValue> keyHandle(thread, keyArray->Get(index));
+                                   Cast(JSHandle<JSAPIPlainArray>(plainArray)->GetKeys(thread).GetTaggedObject()));
+    JSHandle<JSTaggedValue> keyHandle(thread, keyArray->Get(thread, index));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> array(factory->NewTaggedArray(2)); // 2 means the length of array
     array->Set(thread, 0, keyHandle);

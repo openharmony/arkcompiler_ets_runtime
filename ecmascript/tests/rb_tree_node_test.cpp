@@ -47,7 +47,7 @@ public:
             JSHandle<JSTaggedValue> value(thread, factory->NewFromStdString(iValue).GetTaggedValue());
             int hash = TaggedNode::Hash(thread, factory->NewFromStdString(iKey).GetTaggedValue());
             rootNode = RBTreeNode::Set(thread, rootNode, hash, key, value);
-            rootNode->SetIsRed(thread, JSTaggedValue(false));
+            rootNode->SetIsRed(false);
         }
     }
 
@@ -63,7 +63,7 @@ public:
             int hash = TaggedNode::Hash(thread, key.GetTaggedValue());
             JSHandle<JSTaggedValue> rootNodeVa(thread, rootNode.GetTaggedValue());
             JSTaggedValue gValue = RBTreeNode::GetTreeNode(thread, rootNodeVa, hash, key);
-            JSTaggedValue resValue = RBTreeNode::Cast(gValue.GetTaggedObject())->GetValue();
+            JSTaggedValue resValue = RBTreeNode::Cast(gValue.GetTaggedObject())->GetValue(thread);
             EXPECT_EQ(resValue, value.GetTaggedValue());
         }
     }
@@ -142,24 +142,24 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeDivide)
                                   TaggedHashArray::Create(thread, TaggedHashArray::DEFAULT_INITIAL_CAPACITY * 2));
     JSHandle<JSTaggedValue> rootNodeVa = JSHandle<JSTaggedValue>::Cast(rootNode);
     RBTreeNode::Divide(thread, newTab, rootNodeVa, 0, TaggedHashArray::DEFAULT_INITIAL_CAPACITY);
-    JSTaggedValue loNode = newTab->Get(0);
+    JSTaggedValue loNode = newTab->Get(thread, 0);
     uint32_t loCount = 0;
     uint32_t hiCount = 0;
     if (loNode.IsLinkedNode()) {
         for (JSHandle<LinkedNode> node = JSHandle<LinkedNode>(thread, loNode);
             !node.GetTaggedValue().IsHole();
-            node = JSHandle<LinkedNode>(thread, node->GetNext())) {
+            node = JSHandle<LinkedNode>(thread, node->GetNext(thread))) {
             loCount++;
         }
     } else {
         JSHandle<RBTreeNode> node = JSHandle<RBTreeNode>(thread, loNode);
         loCount = node->GetCount();
     }
-    JSTaggedValue hiNode = newTab->Get(TaggedHashArray::DEFAULT_INITIAL_CAPACITY);
+    JSTaggedValue hiNode = newTab->Get(thread, TaggedHashArray::DEFAULT_INITIAL_CAPACITY);
     if (hiNode.IsLinkedNode()) {
         for (JSHandle<LinkedNode> node = JSHandle<LinkedNode>(thread, hiNode);
             !node.GetTaggedValue().IsHole();
-            node = JSHandle<LinkedNode>(thread, node->GetNext())) {
+            node = JSHandle<LinkedNode>(thread, node->GetNext(thread))) {
             hiCount++;
         }
     } else {
@@ -181,7 +181,7 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeUntreeify)
     JSHandle<LinkedNode> head = RBTreeNode::Detreeing(thread, rootNode);
 
     uint32_t count = 0;
-    for (; !head.GetTaggedValue().IsHole(); head = JSHandle<LinkedNode>(thread, head->GetNext())) {
+    for (; !head.GetTaggedValue().IsHole(); head = JSHandle<LinkedNode>(thread, head->GetNext(thread))) {
         count++;
     }
 
@@ -199,11 +199,11 @@ HWTEST_F_L0(RBTreeNodeTest, RBTreeNodeCompare)
     JSHandle<JSTaggedValue> b(thread, factory->NewFromStdString(value2).GetTaggedValue());
     JSHandle<JSTaggedValue> c(thread, factory->NewFromStdString(value3).GetTaggedValue());
     JSHandle<JSTaggedValue> d(thread, factory->NewFromStdString(value4).GetTaggedValue());
-    int rvalue = RBTreeNode::Compare(12345, a.GetTaggedValue(), 12345, b.GetTaggedValue());
+    int rvalue = RBTreeNode::Compare(thread, 12345, a.GetTaggedValue(), 12345, b.GetTaggedValue());
     EXPECT_TRUE(rvalue != 0);
-    rvalue = RBTreeNode::Compare(54321, a.GetTaggedValue(), 54321, c.GetTaggedValue());
+    rvalue = RBTreeNode::Compare(thread, 54321, a.GetTaggedValue(), 54321, c.GetTaggedValue());
     EXPECT_EQ(rvalue, 0);
-    rvalue = RBTreeNode::Compare(3373707, d.GetTaggedValue(), 3373707, JSTaggedValue(38754584));
+    rvalue = RBTreeNode::Compare(thread, 3373707, d.GetTaggedValue(), 3373707, JSTaggedValue(38754584));
     EXPECT_EQ(rvalue, 1);
 }
 }

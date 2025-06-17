@@ -52,8 +52,8 @@ JSTaggedValue ContainersVector::Add(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -74,8 +74,8 @@ JSTaggedValue ContainersVector::Insert(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -101,8 +101,8 @@ JSTaggedValue ContainersVector::SetLength(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -128,13 +128,13 @@ JSTaggedValue ContainersVector::GetCapacity(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
     }
-    uint32_t capacity = JSHandle<JSAPIVector>::Cast(self)->GetCapacity();
+    uint32_t capacity = JSHandle<JSAPIVector>::Cast(self)->GetCapacity(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return JSTaggedValue(capacity);
@@ -149,8 +149,8 @@ JSTaggedValue ContainersVector::IncreaseCapacityTo(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -176,8 +176,8 @@ JSTaggedValue ContainersVector::Get(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -202,8 +202,8 @@ JSTaggedValue ContainersVector::GetIndexOf(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -224,8 +224,8 @@ JSTaggedValue ContainersVector::GetIndexFrom(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -252,8 +252,8 @@ JSTaggedValue ContainersVector::IsEmpty(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -272,13 +272,13 @@ JSTaggedValue ContainersVector::GetLastElement(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
     }
-    JSTaggedValue value = JSHandle<JSAPIVector>::Cast(self)->GetLastElement();
+    JSTaggedValue value = JSHandle<JSAPIVector>::Cast(self)->GetLastElement(thread);
 
     return value;
 }
@@ -292,8 +292,8 @@ JSTaggedValue ContainersVector::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -314,8 +314,8 @@ JSTaggedValue ContainersVector::GetLastIndexFrom(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -342,8 +342,8 @@ JSTaggedValue ContainersVector::Remove(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -364,8 +364,8 @@ JSTaggedValue ContainersVector::RemoveByIndex(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -389,8 +389,8 @@ JSTaggedValue ContainersVector::RemoveByRange(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -417,8 +417,8 @@ JSTaggedValue ContainersVector::Set(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -449,8 +449,8 @@ JSTaggedValue ContainersVector::SubVector(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -476,8 +476,8 @@ JSTaggedValue ContainersVector::ToString(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -497,8 +497,8 @@ JSTaggedValue ContainersVector::GetSize(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -518,8 +518,8 @@ JSTaggedValue ContainersVector::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv); // JSAPIVector
 
     if (!thisHandle->IsJSAPIVector()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIVector()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIVector()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -544,8 +544,8 @@ JSTaggedValue ContainersVector::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     // Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv); // JSAPIVector
     if (!thisHandle->IsJSAPIVector()) {
-        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIVector()) {
-            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
+        if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread).IsJSAPIVector()) {
+            thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -570,8 +570,8 @@ JSTaggedValue ContainersVector::TrimToCurrentLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -590,8 +590,8 @@ JSTaggedValue ContainersVector::Clear(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -611,8 +611,8 @@ JSTaggedValue ContainersVector::Clone(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -630,15 +630,15 @@ JSTaggedValue ContainersVector::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
     }
 
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    bool isHas = JSHandle<JSAPIVector>::Cast(self)->Has(value.GetTaggedValue());
+    bool isHas = JSHandle<JSAPIVector>::Cast(self)->Has(thread, value.GetTaggedValue());
     return GetTaggedBoolean(isHas);
 }
 
@@ -651,8 +651,8 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -663,11 +663,11 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(self);
-    JSHandle<TaggedArray> vectorElements(thread, vector->GetElements());
+    JSHandle<TaggedArray> vectorElements(thread, vector->GetElements(thread));
     uint32_t vectorLength = static_cast<uint32_t>(vector->GetSize());
 
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(arg0);
-    JSHandle<TaggedArray> arrayElements(thread, array->GetElements());
+    JSHandle<TaggedArray> arrayElements(thread, array->GetElements(thread));
     uint32_t arrayLength = array->GetArrayLength();
     if (vectorLength <= arrayLength) {
         TaggedArray::CopyTaggedArrayElement(thread, vectorElements, arrayElements, vectorLength);
@@ -694,8 +694,8 @@ JSTaggedValue ContainersVector::ConvertToArray(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -708,7 +708,7 @@ JSTaggedValue ContainersVector::ConvertToArray(EcmaRuntimeCallInfo *argv)
     uint32_t length = vector->GetSize();
     array->SetArrayLength(thread, length);
 
-    JSHandle<TaggedArray> srcElements(thread, vector->GetElements());
+    JSHandle<TaggedArray> srcElements(thread, vector->GetElements(thread));
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
 
     array->SetElements(thread, dstElements);
@@ -724,14 +724,14 @@ JSTaggedValue ContainersVector::GetFirstElement(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
     }
 
-    JSTaggedValue firstElement = JSAPIVector::GetFirstElement(JSHandle<JSAPIVector>::Cast(self));
+    JSTaggedValue firstElement = JSAPIVector::GetFirstElement(thread, JSHandle<JSAPIVector>::Cast(self));
     return firstElement;
 }
 
@@ -744,8 +744,8 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
@@ -755,17 +755,17 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
     auto obj = JSHandle<JSAPIVector>::Cast(self);
     uint32_t length = static_cast<uint32_t>(obj->GetSize());
     JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
-    elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements()), length);
+    elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements(thread)), length);
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 1; i < length; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
-        presentValue.Update(elements->Get(i));
+        presentValue.Update(elements->Get(thread, i));
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(elements->Get(middleIndex));
+            middleValue.Update(elements->Get(thread, middleIndex));
             double compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
@@ -777,7 +777,7 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
 
         if (endIndex < i) {
             for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(elements->Get(j - 1));
+                previousValue.Update(elements->Get(thread, j - 1));
                 elements->Set(thread, j, previousValue.GetTaggedValue());
             }
             elements->Set(thread, endIndex, presentValue.GetTaggedValue());
@@ -798,8 +798,8 @@ JSTaggedValue ContainersVector::GetIteratorObj(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }

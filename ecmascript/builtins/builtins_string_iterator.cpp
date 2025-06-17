@@ -41,7 +41,7 @@ JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JS
         THROW_TYPE_ERROR_AND_RETURN(thread, "is not StringIterator", JSTaggedValue::Exception());
     }
     // 4. Let s be the value of the [[IteratedString]] internal slot of O.
-    JSHandle<JSTaggedValue> string(thread, thisValue.GetObject<JSStringIterator>()->GetIteratedString());
+    JSHandle<JSTaggedValue> string(thread, thisValue.GetObject<JSStringIterator>()->GetIteratedString(thread));
     // 5. If s is undefined, return CreateIterResultObject(undefined, true).
     if (string->IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, string, true).GetTaggedValue();
@@ -61,7 +61,7 @@ JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JS
     }
 
     // 9. Let first be the code unit value at index position in s.
-    uint16_t first = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(position);
+    uint16_t first = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(thread, position);
     JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
     uint32_t resultSize = 1;
     // 10. If first < 0xD800 or first > 0xDBFF or position+1 = len, let resultString be the string consisting of the
@@ -71,7 +71,7 @@ JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JS
         first > common::utf_helper::DECODE_LEAD_HIGH) {
         if (EcmaStringAccessor::CanBeCompressed(&first, 1)) {
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            result.Update(singleCharTable->GetStringFromSingleCharTable(first));
+            result.Update(singleCharTable->GetStringFromSingleCharTable(thread, first));
         } else {
             std::vector<uint16_t> resultString {first, 0x0};
             result.Update(factory->NewFromUtf16(resultString.data(), 1).GetTaggedValue());
@@ -82,7 +82,7 @@ JSTaggedValue BuiltinsStringIterator::NextInternal(JSThread *thread, JSHandle<JS
         // b. If second < 0xDC00 or second > 0xDFFF, let resultString be the string consisting of the single code unit
         // first.
         // c. Else, let resultString be the string consisting of the code unit first followed by the code unit second.
-        uint16_t second = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(position + 1);
+        uint16_t second = EcmaStringAccessor(string.GetObject<EcmaString>()).Get<false>(thread, position + 1);
         if (second < common::utf_helper::DECODE_TRAIL_LOW || second > common::utf_helper::DECODE_TRAIL_HIGH) {
             std::vector<uint16_t> resultString {first, 0x0};
             result.Update(factory->NewFromUtf16NotCompress(resultString.data(), 1).GetTaggedValue());

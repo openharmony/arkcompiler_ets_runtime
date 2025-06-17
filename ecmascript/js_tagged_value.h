@@ -434,13 +434,13 @@ public:
     static JSTaggedNumber ToLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedValue CanonicalNumericIndexString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber ToIndex(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
-    static JSTaggedNumber StringToDouble(JSTaggedValue tagged);
-    static JSTaggedNumber StringToNumber(JSTaggedValue tagged);
+    static JSTaggedNumber StringToDouble(JSThread *thread, JSTaggedValue tagged);
+    static JSTaggedNumber StringToNumber(JSThread *thread, JSTaggedValue tagged);
 
     static bool ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, uint32_t *output);
-    static bool ToElementIndex(JSTaggedValue key, uint32_t *output);
-    static bool StringToElementIndex(JSTaggedValue key, uint32_t *output);
-    static bool IsPureString(JSTaggedValue key);
+    static bool ToElementIndex(JSThread *thread, JSTaggedValue key, uint32_t *output);
+    static bool StringToElementIndex(JSThread *thread, JSTaggedValue key, uint32_t *output);
+    static bool IsPureString(JSThread *thread, JSTaggedValue key);
     uint32_t GetArrayLength() const;
 
     // ecma6 7.2 Testing and Comparison Operations
@@ -454,15 +454,17 @@ public:
     static bool IsPropertyKey(const JSHandle<JSTaggedValue> &key);
     static JSHandle<JSTaggedValue> RequireObjectCoercible(JSThread *thread, const JSHandle<JSTaggedValue> &tagged,
                                                           const char *message = "RequireObjectCoercible throw Error");
-    static bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);
-    static bool SameValue(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle);
-    static bool SameValueString(const JSTaggedValue &x, const JSTaggedValue &y);
-    static bool SameValueString(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle);
-    static bool SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y);
+    static bool SameValue(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y);
+    static bool SameValue(const JSThread *thread, const JSHandle<JSTaggedValue> &xHandle,
+                          const JSHandle<JSTaggedValue> &yHandle);
+    static bool SameValueString(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y);
+    static bool SameValueString(const JSThread *thread, const JSHandle<JSTaggedValue> &xHandle,
+                                const JSHandle<JSTaggedValue> &yHandle);
+    static bool SameValueZero(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y);
     static bool Less(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool StrictEqual(const JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
-    static bool StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y);
+    static bool StrictEqual(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValueNumberic(const JSTaggedValue &x, const JSTaggedValue &y);
 
     // ES6 7.4 Operations on Iterator Objects
@@ -488,8 +490,8 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
                             bool mayThrow = false);
-    static bool DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                               const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
+    static bool DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
+                               SCheckMode sCheckMode = SCheckMode::CHECK);
     static bool DeletePropertyOrThrow(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                       const JSHandle<JSTaggedValue> &key);
     static bool DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -561,7 +563,7 @@ public:
     bool IsMutantTaggedArray() const;
     bool IsJSArray() const;
     bool IsJSSharedArray() const;
-    bool PUBLIC_API IsJSCOWArray() const;
+    bool PUBLIC_API IsJSCOWArray(const JSThread *thread) const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
     bool IsTypedArray() const;
@@ -750,9 +752,9 @@ public:
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;
-    bool IsEnumCacheAllValid() const;
-    bool IsEnumCacheOwnValid() const;
-    bool IsEnumCacheProtoInfoUndefined() const;
+    bool IsEnumCacheAllValid(const JSThread *thread) const;
+    bool IsEnumCacheOwnValid(const JSThread *thread) const;
+    bool IsEnumCacheProtoInfoUndefined(const JSThread *thread) const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
@@ -763,25 +765,25 @@ public:
     static bool StrictNumberEquals(double x, double y);
     static bool StrictIntEquals(int x, int y);
     template <RBMode mode = RBMode::DEFAULT_RB>
-    static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
+    static bool StringCompare(const JSThread *thread, EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
-    inline uint32_t GetKeyHashCode() const;
-    uint32_t GetStringKeyHashCode() const;
+    inline uint32_t GetKeyHashCode(const JSThread *thread) const;
+    uint32_t GetStringKeyHashCode(const JSThread *thread) const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static JSTaggedValue TryCastDoubleToInt32(double d);
 
-    void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
+    void DumpTaggedValue(const JSThread *thread, std::ostream &os) const DUMP_API_ATTR;
     void DumpTaggedValueType(std::ostream &os) const DUMP_API_ATTR;
-    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
-    void DumpHeapObjAddress(std::ostream &os) const DUMP_API_ATTR;
-    void D() const DUMP_API_ATTR;
-    void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
-    static void DesensitizedDump(const JSHandle<JSTaggedValue> &obj);
-    static void DV(JSTaggedType val) DUMP_API_ATTR;
+    void Dump(const JSThread *thread, std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void DumpHeapObjAddress(const JSThread *thread, std::ostream &os) const DUMP_API_ATTR;
+    void D(const JSThread *thread) const DUMP_API_ATTR;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec, bool isVmMode = true) const;
+    static void DesensitizedDump(const JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static void DV(const JSThread *thread, JSTaggedType val) DUMP_API_ATTR;
     friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
     {
-        value.Dump(os);
+        value.Dump(THREAD_ARG_PLACEHOLDER, os);  // Dump() will handle nullptr as current thread
         return os;
     }
 
@@ -791,7 +793,7 @@ private:
     inline double ExtractNumber() const;
 
     void DumpSpecialValue(std::ostream &os) const;
-    void DumpHeapObjectType(std::ostream &os) const;
+    void DumpHeapObjectType(const JSThread *thread, std::ostream &os) const;
 
     // non ECMA standard jsapis
     static bool HasContainerProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

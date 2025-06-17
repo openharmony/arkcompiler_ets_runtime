@@ -18,21 +18,21 @@
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
-std::string Method::ParseFunctionName() const
+std::string Method::ParseFunctionName(const JSThread *thread) const
 {
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
     return MethodLiteral::ParseFunctionName(jsPandaFile, GetMethodId());
 }
 
-std::pair<std::string_view, bool> Method::ParseFunctionNameView() const
+std::pair<std::string_view, bool> Method::ParseFunctionNameView(const JSThread *thread) const
 {
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
     return MethodLiteral::ParseFunctionNameView(jsPandaFile, GetMethodId());
 }
 
-const char *Method::GetMethodName() const
+const char *Method::GetMethodName(const JSThread *thread) const
 {
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
     return MethodLiteral::GetMethodName(jsPandaFile, GetMethodId());
 }
 
@@ -41,21 +41,21 @@ const char *Method::GetMethodName(const JSPandaFile *file) const
     return MethodLiteral::GetMethodName(file, GetMethodId());
 }
 
-const CString Method::GetRecordNameStr() const
+const CString Method::GetRecordNameStr(const JSThread *thread) const
 {
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
     return MethodLiteral::GetRecordName(jsPandaFile, GetMethodId());
 }
 
-uint32_t Method::GetCodeSize() const
+uint32_t Method::GetCodeSize(const JSThread *thread) const
 {
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
     return MethodLiteral::GetCodeSize(jsPandaFile, GetMethodId());
 }
 
-const JSPandaFile *Method::GetJSPandaFile() const
+const JSPandaFile *Method::GetJSPandaFile(const JSThread *thread) const
 {
-    JSTaggedValue constpool = GetConstantPool();
+    JSTaggedValue constpool = GetConstantPool(thread);
     if (constpool.IsUndefined()) {
         return nullptr;
     }
@@ -64,11 +64,11 @@ const JSPandaFile *Method::GetJSPandaFile() const
     return taggedPool->GetJSPandaFile();
 }
 
-MethodLiteral *Method::GetMethodLiteral() const
+MethodLiteral *Method::GetMethodLiteral(const JSThread *thread) const
 {
     if (IsAotWithCallField() || IsDeoptimized()) {
         ASSERT(!IsNativeWithCallField());
-        const JSPandaFile *jsPandaFile = GetJSPandaFile();
+        const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
         ASSERT(jsPandaFile != nullptr);
         return jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     }
@@ -80,11 +80,11 @@ bool Method::IsDeoptimized() const
     return GetDeoptType() != kungfu::DeoptType::NONE;
 }
 
-uint32_t Method::FindCatchBlock(uint32_t pc) const
+uint32_t Method::FindCatchBlock(const JSThread *thread, uint32_t pc) const
 {
     ASSERT(!IsNativeWithCallField());
-    ASSERT(GetJSPandaFile() != nullptr);
-    auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    ASSERT(GetJSPandaFile(thread) != nullptr);
+    auto *pandaFile = GetJSPandaFile(thread)->GetPandaFile();
     ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
@@ -102,10 +102,10 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
     return pcOffset;
 }
 
-bool Method::HasCatchBlock() const
+bool Method::HasCatchBlock(const JSThread *thread) const
 {
-    ASSERT(GetJSPandaFile() != nullptr);
-    auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    ASSERT(GetJSPandaFile(thread) != nullptr);
+    auto *pandaFile = GetJSPandaFile(thread)->GetPandaFile();
     ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());

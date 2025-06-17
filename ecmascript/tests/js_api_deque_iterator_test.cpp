@@ -69,7 +69,7 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, Next)
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsString());
         }
         else {
-            EXPECT_TRUE(dequeIterator->GetIteratedDeque().IsUndefined());
+            EXPECT_TRUE(dequeIterator->GetIteratedDeque(thread).IsUndefined());
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsUndefined());
         }
     }
@@ -144,10 +144,10 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, SetIteratedDeque)
         JSAPIDeque::InsertFront(thread, jsDeque2, value);
     }
     JSHandle<JSAPIDequeIterator> dequeIterator = factory->NewJSAPIDequeIterator(jsDeque1);
-    EXPECT_EQ(dequeIterator->GetIteratedDeque(), jsDeque1.GetTaggedValue());
+    EXPECT_EQ(dequeIterator->GetIteratedDeque(thread), jsDeque1.GetTaggedValue());
 
     dequeIterator->SetIteratedDeque(thread, jsDeque2.GetTaggedValue());
-    EXPECT_EQ(dequeIterator->GetIteratedDeque(), jsDeque2.GetTaggedValue());
+    EXPECT_EQ(dequeIterator->GetIteratedDeque(thread), jsDeque2.GetTaggedValue());
 }
 
 /**

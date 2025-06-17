@@ -28,7 +28,7 @@ JSTaggedValue RegExpGlobalResult::GetCapture(JSThread *thread)
 {
     JSHandle<JSTaggedValue> table = JSHandle<JSTaggedValue>(thread, RegExpExecResultCache::GetGlobalTable(thread));
     JSHandle<RegExpGlobalResult> globalTable = JSHandle<RegExpGlobalResult>::Cast(table);
-    JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
+    JSTaggedValue res = globalTable->Get(thread, CAPTURE_START_INDEX + N - 1);
     int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
     if (res.IsHole() && (N < captureNum)) {
         int startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
@@ -38,7 +38,7 @@ JSTaggedValue RegExpGlobalResult::GetCapture(JSThread *thread)
             res = JSTaggedValue::Undefined();
         } else {
             res = JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-                JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())),
+                JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString(thread))),
                 static_cast<uint32_t>(startIndex), static_cast<uint32_t>(len)));
         }
         globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
@@ -57,19 +57,19 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
                                                       bool isIntermediateResult)
 {
     JSHandle<JSRegExp> regexpObj(regexp);
-    JSTaggedValue pattern = regexpObj->GetOriginalSource<mode>();
-    JSTaggedValue flags = regexpObj->GetOriginalFlags<mode>();
+    JSTaggedValue pattern = regexpObj->GetOriginalSource<mode>(thread);
+    JSTaggedValue flags = regexpObj->GetOriginalFlags<mode>(thread);
     JSTaggedValue inputValue = input.GetTaggedValue();
     JSTaggedValue extendValue = extend.GetTaggedValue();
     if (!pattern.IsString() || !flags.IsInt() || !input->IsString() || !lastIndexInput.IsInt()) {
         return JSTaggedValue::Undefined();
     }
-    uint32_t hash = pattern.GetKeyHashCode() + static_cast<uint32_t>(flags.GetInt()) +
-                    input->GetKeyHashCode() + static_cast<uint32_t>(lastIndexInput.GetInt());
+    uint32_t hash = pattern.GetKeyHashCode(thread) + static_cast<uint32_t>(flags.GetInt()) +
+                    input->GetKeyHashCode(thread) + static_cast<uint32_t>(lastIndexInput.GetInt());
     uint32_t entry = hash & static_cast<uint32_t>(GetCacheLength() - 1);
-    if (!Match<mode>(entry, pattern, flags, inputValue, lastIndexInput, extendValue, type)) {
+    if (!Match<mode>(thread, entry, pattern, flags, inputValue, lastIndexInput, extendValue, type)) {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(GetCacheLength() - 1);
-        if (!Match<mode>(entry2, pattern, flags, inputValue, lastIndexInput, extendValue, type)) {
+        if (!Match<mode>(thread, entry2, pattern, flags, inputValue, lastIndexInput, extendValue, type)) {
             return JSTaggedValue::Undefined();
         }
         entry = entry2;
@@ -78,32 +78,32 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
         static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     // update cached value if input value is changed
-    JSTaggedValue cachedStr = Get<mode>(index + INPUT_STRING_INDEX);
+    JSTaggedValue cachedStr = Get<mode>(thread, index + INPUT_STRING_INDEX);
     if (!cachedStr.IsUndefined() && cachedStr != inputValue) {
         Set(thread, index + INPUT_STRING_INDEX, inputValue);
     }
     JSTaggedValue result;
     switch (type) {
         case REPLACE_TYPE:
-            result = Get<mode>(index + RESULT_REPLACE_INDEX);
+            result = Get<mode>(thread, index + RESULT_REPLACE_INDEX);
             break;
         case SPLIT_TYPE:
-            result = Get<mode>(index + RESULT_SPLIT_INDEX);
+            result = Get<mode>(thread, index + RESULT_SPLIT_INDEX);
             break;
         case MATCH_TYPE:
-            result = Get<mode>(index + RESULT_MATCH_INDEX);
+            result = Get<mode>(thread, index + RESULT_MATCH_INDEX);
             break;
         case EXEC_TYPE:
-            result = Get<mode>(index + RESULT_EXEC_INDEX);
+            result = Get<mode>(thread, index + RESULT_EXEC_INDEX);
             break;
         case INTERMEDIATE_REPLACE_TYPE:
-            result = Get<mode>(index + RESULT_INTERMEDIATE_REPLACE_INDEX);
+            result = Get<mode>(thread, index + RESULT_INTERMEDIATE_REPLACE_INDEX);
             break;
         case TEST_TYPE:
-            result = Get<mode>(index + RESULT_TEST_INDEX);
+            result = Get<mode>(thread, index + RESULT_TEST_INDEX);
             break;
         case SEARCH_TYPE:
-            result = Get<mode>(index + RESULT_SEARCH_INDEX);
+            result = Get<mode>(thread, index + RESULT_SEARCH_INDEX);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -115,7 +115,7 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
     SetNeedUpdateGlobal(thread, true);
     SetHitCount(thread, GetHitCount() + 1);
     if (type != SEARCH_TYPE && type != SPLIT_TYPE) {
-        BuiltinsRegExp::SetLastIndex(thread, regexp, Get<mode>(index + LAST_INDEX_INDEX), true);
+        BuiltinsRegExp::SetLastIndex(thread, regexp, Get<mode>(thread, index + LAST_INDEX_INDEX), true);
     }
     if (!isIntermediateResult && result.IsJSArray()) {
         JSHandle<JSArray> resultHandle(thread, JSArray::Cast(result));
@@ -126,39 +126,40 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
 }
 
 template <RBMode mode>
-bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedValue &flags, JSTaggedValue &input,
-                                  JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type)
+bool RegExpExecResultCache::Match(JSThread *thread, int entry, JSTaggedValue &pattern, JSTaggedValue &flags,
+                                  JSTaggedValue &input, JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend,
+                                  CacheType type)
 {
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
             static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
 
-    JSTaggedValue typeKey = Get<mode>(index + RESULT_REPLACE_INDEX + type);
+    JSTaggedValue typeKey = Get<mode>(thread, index + RESULT_REPLACE_INDEX + type);
     if (typeKey.IsUndefined()) {
         return false;
     }
 
-    JSTaggedValue keyPattern = Get<mode>(index + PATTERN_INDEX);
+    JSTaggedValue keyPattern = Get<mode>(thread, index + PATTERN_INDEX);
     if (keyPattern.IsUndefined()) {
         return false;
     }
 
     uint8_t flagsBits = static_cast<uint8_t>(flags.GetInt());
-    JSTaggedValue keyFlags = Get<mode>(index + FLAG_INDEX);
+    JSTaggedValue keyFlags = Get<mode>(thread, index + FLAG_INDEX);
     uint8_t keyFlagsBits = static_cast<uint8_t>(keyFlags.GetInt());
     if (flagsBits != keyFlagsBits) {
         return false;
     }
 
     uint32_t lastIndexInputInt = static_cast<uint32_t>(lastIndexInputValue.GetInt());
-    JSTaggedValue keyLastIndexInput = Get<mode>(index + LAST_INDEX_INPUT_INDEX);
+    JSTaggedValue keyLastIndexInput = Get<mode>(thread, index + LAST_INDEX_INPUT_INDEX);
     uint32_t keyLastIndexInputInt = static_cast<uint32_t>(keyLastIndexInput.GetInt());
     if (lastIndexInputInt != keyLastIndexInputInt) {
         return false;
     }
 
-    JSTaggedValue keyInput = Get<mode>(index + INPUT_STRING_INDEX);
-    JSTaggedValue keyExtend = Get<mode>(index + EXTEND_INDEX);
+    JSTaggedValue keyInput = Get<mode>(thread, index + INPUT_STRING_INDEX);
+    JSTaggedValue keyExtend = Get<mode>(thread, index + EXTEND_INDEX);
     EcmaString *patternStr = EcmaString::Cast(pattern.GetTaggedObject());
     EcmaString *inputStr = EcmaString::Cast(input.GetTaggedObject());
     EcmaString *keyPatternStr = EcmaString::Cast(keyPattern.GetTaggedObject());
@@ -167,15 +168,15 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
     if (extend.IsString() && keyExtend.IsString()) {
         EcmaString *extendStr = EcmaString::Cast(extend.GetTaggedObject());
         EcmaString *keyExtendStr = EcmaString::Cast(keyExtend.GetTaggedObject());
-        extendEqual = EcmaStringAccessor::StringsAreEqual<mode>(extendStr, keyExtendStr);
+        extendEqual = EcmaStringAccessor::StringsAreEqual<mode>(thread, extendStr, keyExtendStr);
     } else if (extend.IsUndefined() && keyExtend.IsUndefined()) {
         extendEqual = true;
     } else {
         return false;
     }
     return extendEqual &&
-           EcmaStringAccessor::StringsAreEqual<mode>(patternStr, keyPatternStr) &&
-           EcmaStringAccessor::StringsAreEqual<mode>(inputStr, keyInputStr);
+           EcmaStringAccessor::StringsAreEqual<mode>(thread, patternStr, keyPatternStr) &&
+           EcmaStringAccessor::StringsAreEqual<mode>(thread, inputStr, keyInputStr);
 }
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_INL_H

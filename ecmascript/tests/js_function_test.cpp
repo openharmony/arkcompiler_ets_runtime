@@ -47,11 +47,11 @@ HWTEST_F_L0(JSFunctionTest, Create)
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
     JSHandle<JSFunction> funHandle = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env);
     EXPECT_TRUE(*funHandle != nullptr);
-    EXPECT_EQ(funHandle->GetProtoOrHClass(), JSTaggedValue::Hole());
+    EXPECT_EQ(funHandle->GetProtoOrHClass(thread), JSTaggedValue::Hole());
 
     JSHandle<LexicalEnv> lexicalEnv = thread->GetEcmaVM()->GetFactory()->NewLexicalEnv(0);
     funHandle->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
-    EXPECT_EQ(funHandle->GetLexicalEnv(), lexicalEnv.GetTaggedValue());
+    EXPECT_EQ(funHandle->GetLexicalEnv(thread), lexicalEnv.GetTaggedValue());
     EXPECT_TRUE(*lexicalEnv != nullptr);
 }
 HWTEST_F_L0(JSFunctionTest, MakeConstructor)
@@ -79,7 +79,7 @@ HWTEST_F_L0(JSFunctionTest, MakeConstructor)
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), constructorKey).GetValue().GetTaggedValue();
     EXPECT_EQ(constructor, funcHandle.GetTaggedValue());
     EXPECT_EQ(proto, obj.GetTaggedValue());
-    EXPECT_EQ(func->GetFunctionKind(), FunctionKind::BASE_CONSTRUCTOR);
+    EXPECT_EQ(func->GetFunctionKind(thread), FunctionKind::BASE_CONSTRUCTOR);
 }
 
 HWTEST_F_L0(JSFunctionTest, OrdinaryHasInstance)
@@ -143,6 +143,6 @@ HWTEST_F_L0(JSFunctionTest, SetSymbolFunctionName)
     JSHandle<JSTaggedValue> functionName =
         JSFunctionBase::GetFunctionName(thread, JSHandle<JSFunctionBase>(jsFunction));
     EXPECT_TRUE(functionName->IsString());
-    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*(JSHandle<EcmaString>(functionName)), *name));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *(JSHandle<EcmaString>(functionName)), *name));
 }
 }  // namespace panda::test

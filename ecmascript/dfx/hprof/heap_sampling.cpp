@@ -102,7 +102,7 @@ void HeapSampling::GetStack()
             } else {
                 methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false);
             }
-            void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
+            void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it, vm_);
             if (methodIdentifier == nullptr) {
                 continue;
             }

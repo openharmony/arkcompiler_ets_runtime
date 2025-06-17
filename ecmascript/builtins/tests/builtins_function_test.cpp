@@ -182,11 +182,11 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind)
 
     JSHandle<JSBoundFunction> resultFunc(thread, reinterpret_cast<TaggedObject *>(result.GetRawData()));
     // test BoundTarget
-    ASSERT_EQ(resultFunc->GetBoundTarget(), target.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundTarget(thread), target.GetTaggedValue());
     // test BoundThis
-    ASSERT_EQ(resultFunc->GetBoundThis(), thisArg.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundThis(thread), thisArg.GetTaggedValue());
     // test BoundArguments
-    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments());
+    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments(thread));
     ASSERT_EQ(array->GetLength(), 0U);
     // test name property
     auto globalConst = thread->GlobalConstants();
@@ -225,14 +225,14 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind1)
 
     JSHandle<JSBoundFunction> resultFunc(thread, reinterpret_cast<TaggedObject *>(result.GetRawData()));
     // test BoundTarget
-    ASSERT_EQ(resultFunc->GetBoundTarget(), target.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundTarget(thread), target.GetTaggedValue());
     // test BoundThis
-    ASSERT_EQ(resultFunc->GetBoundThis(), thisArg.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundThis(thread), thisArg.GetTaggedValue());
     // test BoundArguments
-    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments());
+    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments(thread));
     ASSERT_EQ(array->GetLength(), 2U);
-    JSTaggedValue elem = array->Get(0);
-    JSTaggedValue elem1 = array->Get(1);
+    JSTaggedValue elem = array->Get(thread, 0);
+    JSTaggedValue elem1 = array->Get(thread, 1);
     ASSERT_EQ(elem.GetRawData(), JSTaggedValue(123).GetRawData());
 
     ASSERT_EQ(elem1.GetRawData(), str.GetTaggedType());
@@ -274,15 +274,15 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind2)
 
     JSHandle<JSBoundFunction> resultFunc(thread, reinterpret_cast<TaggedObject *>(result.GetRawData()));
     // test BoundThis
-    ASSERT_EQ(resultFunc->GetBoundThis(), thisArg.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundThis(thread), thisArg.GetTaggedValue());
 
     // test BoundTarget
-    ASSERT_EQ(resultFunc->GetBoundTarget(), target.GetTaggedValue());
+    ASSERT_EQ(resultFunc->GetBoundTarget(thread), target.GetTaggedValue());
     // test BoundArguments
-    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments());
+    JSHandle<TaggedArray> array(thread, resultFunc->GetBoundArguments(thread));
     ASSERT_EQ(array->GetLength(), 2U);
-    JSTaggedValue elem = array->Get(0);
-    JSTaggedValue elem1 = array->Get(1);
+    JSTaggedValue elem = array->Get(thread, 0);
+    JSTaggedValue elem1 = array->Get(thread, 1);
     ASSERT_EQ(elem.GetRawData(), JSTaggedValue(123).GetRawData());
 
     ASSERT_TRUE(elem1.IsString());

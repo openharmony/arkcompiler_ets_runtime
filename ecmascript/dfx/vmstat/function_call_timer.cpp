@@ -35,13 +35,13 @@ void FunctionCallTimer::StartCount(size_t id, bool isAot)
     calleeTimer->Start(calleeStat, callerTimer);
 }
 
-void FunctionCallTimer::StopCount(Method *method)
+void FunctionCallTimer::StopCount(const JSThread *thread, Method *method)
 {
     size_t id = method->GetMethodId().GetOffset();
     auto callee = &callTimer_[id];
     if (callee != currentTimer_) {
         LOG_ECMA(INFO) << "EndCallTimer and StartCallTimer have different functions. Current function: "
-                       << GetFullName(method) << "has been skipped";
+                       << GetFullName(thread, method) << "has been skipped";
         return;
     }
 
@@ -49,27 +49,27 @@ void FunctionCallTimer::StopCount(Method *method)
     currentTimer_ = callerTimer;
 }
 
-CString FunctionCallTimer::GetFullName(Method *method)
+CString FunctionCallTimer::GetFullName(const JSThread *thread, Method *method)
 {
-    CString funcName(method->GetMethodName());
-    CString recordName = method->GetRecordNameStr();
+    CString funcName(method->GetMethodName(thread));
+    CString recordName = method->GetRecordNameStr(thread);
     CString fullName = funcName + "@" + recordName;
     return fullName;
 }
 
-void FunctionCallTimer::InitialStatAndTimer(Method *method, size_t methodId, bool isAot)
+void FunctionCallTimer::InitialStatAndTimer(const JSThread *thread, Method *method, size_t methodId, bool isAot)
 {
     if (isAot) {
         auto iter = aotCallStat_.find(methodId);
         if (iter == aotCallStat_.end()) {
-            CString funcName = GetFullName(method);
+            CString funcName = GetFullName(thread, method);
             FunctionCallStat stat(funcName, isAot);
             aotCallStat_[methodId] = stat;
         }
     } else {
         auto iter = intCallStat_.find(methodId);
         if (iter == intCallStat_.end()) {
-            CString funcName = GetFullName(method);
+            CString funcName = GetFullName(thread, method);
             FunctionCallStat stat(funcName, isAot);
             intCallStat_[methodId] = stat;
         }

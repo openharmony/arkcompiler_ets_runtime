@@ -69,12 +69,12 @@ void SharedFullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject,
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(THREAD_ARG_PLACEHOLDER).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr(index++);
+            PropertyAttributes attr = layout->GetAttr(THREAD_ARG_PLACEHOLDER, index++);
             if (attr.IsTaggedRep()) {
                 marker_->MarkValue(threadId_, slot);
             }

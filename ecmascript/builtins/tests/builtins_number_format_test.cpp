@@ -103,7 +103,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_001)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("3,500", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("3,500", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 // format currency
@@ -134,7 +134,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_002)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("($3,500.00)", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("($3,500.00)", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 // format percent
@@ -159,7 +159,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_003)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("+55%", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("+55%", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 // format unit
@@ -184,7 +184,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_004)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("3,500 L", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("3,500 L", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 // format notation
@@ -205,7 +205,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_005)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("9.9亿", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("9.9亿", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 static JSTaggedValue NumberFormatCreateTest(JSThread *thread, JSHandle<JSObject> &options,
@@ -249,7 +249,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, FormatToParts)
     // format currency
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("3.500,00 €", EcmaStringAccessor(resultEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("3.500,00 €", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -261,7 +261,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, FormatToParts)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, result);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 10U); // "3","." ,"5" ,"0" ,"0" ,"," ,"0" ,0" ," " ,"€"
 }
 
@@ -296,9 +296,9 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, ResolvedOptions)
     JSHandle<JSTaggedValue> resultObj =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
     // judge whether the properties of the object are the same as those of jsnumberformat tag
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, styleKey).GetValue(), styleValue), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, currencyKey).GetValue(), currencyValue), true);
 }
 }

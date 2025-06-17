@@ -65,7 +65,7 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapSetAndGet)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPITreeMap::Set(thread, tmap, key, value);
     }
-    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tmap->GetSize(thread), NODE_NUMBERS);
 
     // test Set exception
     key.Update(JSTaggedValue::Hole());
@@ -103,14 +103,14 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapDeleteAndHas)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPITreeMap::Set(thread, tmap, key, value);
     }
-    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tmap->GetSize(thread), NODE_NUMBERS);
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
         std::string ikey = myKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
         [[maybe_unused]] JSTaggedValue dvalue = JSAPITreeMap::Delete(thread, tmap, key);
     }
-    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS - REMOVE_SIZE);
+    EXPECT_EQ(tmap->GetSize(thread), NODE_NUMBERS - REMOVE_SIZE);
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -157,7 +157,7 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPITreeMap::Set(thread, tmap, key, value);
     }
-    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tmap->GetSize(thread), NODE_NUMBERS);
 
     for (int i = 0; i < NODE_NUMBERS / 2; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -208,7 +208,7 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
     }
 
     JSAPITreeMap::Clear(thread, tmap);
-    EXPECT_EQ(tmap->GetSize(), 0);
+    EXPECT_EQ(tmap->GetSize(thread), 0);
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         std::string ivalue = myValue + std::to_string(i);
@@ -305,17 +305,17 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapGetKeyAndGetValue)
         }
         JSAPITreeMap::Set(thread, tmap, key, value);
     }
-    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tmap->GetSize(thread), NODE_NUMBERS);
 
     // test GetKey and GetValue
     for (int i = 0; i < NODE_NUMBERS; i++) {
-        EXPECT_EQ(tmap->GetKey(i), JSTaggedValue(i));
+        EXPECT_EQ(tmap->GetKey(thread, i), JSTaggedValue(i));
         if (i == NODE_NUMBERS / 2) {
-            EXPECT_EQ(tmap->GetValue(i), JSTaggedValue::Undefined());
+            EXPECT_EQ(tmap->GetValue(thread, i), JSTaggedValue::Undefined());
         } else {
-            EXPECT_EQ(tmap->GetValue(i), JSTaggedValue(i));
+            EXPECT_EQ(tmap->GetValue(thread, i), JSTaggedValue(i));
         }
     }
-    EXPECT_EQ(tmap->GetKey(-1), JSTaggedValue::Undefined());
+    EXPECT_EQ(tmap->GetKey(thread, -1), JSTaggedValue::Undefined());
 }
 }  // namespace panda::test

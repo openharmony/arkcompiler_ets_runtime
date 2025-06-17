@@ -41,10 +41,10 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, InitializeRelativeTimeFormat)
     JSHandle<JSTaggedValue> undefinedOptions(thread, JSTaggedValue::Undefined());
     JSRelativeTimeFormat::InitializeRelativeTimeFormat(thread, relativeTimeFormat, locales, undefinedOptions);
     // Initialize attribute comparison
-    JSHandle<EcmaString> numberingSystemStr(thread, relativeTimeFormat->GetNumberingSystem().GetTaggedObject());
-    EXPECT_STREQ("latn", EcmaStringAccessor(numberingSystemStr).ToCString().c_str());
-    JSHandle<EcmaString> localeStr(thread, relativeTimeFormat->GetLocale().GetTaggedObject());
-    EXPECT_STREQ("en", EcmaStringAccessor(localeStr).ToCString().c_str());
+    JSHandle<EcmaString> numberingSystemStr(thread, relativeTimeFormat->GetNumberingSystem(thread).GetTaggedObject());
+    EXPECT_STREQ("latn", EcmaStringAccessor(numberingSystemStr).ToCString(thread).c_str());
+    JSHandle<EcmaString> localeStr(thread, relativeTimeFormat->GetLocale(thread).GetTaggedObject());
+    EXPECT_STREQ("en", EcmaStringAccessor(localeStr).ToCString(thread).c_str());
     EXPECT_EQ(NumericOption::ALWAYS, relativeTimeFormat->GetNumeric());
     EXPECT_EQ(RelativeStyleOption::LONG, relativeTimeFormat->GetStyle());
 }
@@ -69,11 +69,11 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, GetIcuRTFFormatter)
     // Set Icu RelativeDateTimeFormatter to Icu Field
     factory->NewJSIntlIcuData(relativeTimeFormat, rtfFormatter, JSRelativeTimeFormat::FreeIcuRTFFormatter);
     // Get Icu Field
-    icu::RelativeDateTimeFormatter *resultRelativeDateTimeFormatter = relativeTimeFormat->GetIcuRTFFormatter();
+    icu::RelativeDateTimeFormatter *resultRelativeDateTimeFormatter = relativeTimeFormat->GetIcuRTFFormatter(thread);
     icu::UnicodeString result2 =
         resultRelativeDateTimeFormatter->formatNumericToValue(value, UDAT_REL_UNIT_YEAR, status).toString(status);
     JSHandle<EcmaString> stringValue2 = intl::LocaleHelper::UStringToString(thread, result2);
-    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*stringValue1, *stringValue2), true);
+    EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(thread, *stringValue1, *stringValue2), true);
 }
 
 HWTEST_F_L0(JSRelativeTimeFormatTest, UnwrapRelativeTimeFormat)
@@ -97,7 +97,7 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, UnwrapRelativeTimeFormat)
     // object has no Instance
     JSHandle<JSTaggedValue> unwrapNumberFormat1 =
         JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, relativeTimeFormat);
-    EXPECT_TRUE(JSTaggedValue::SameValue(relativeTimeFormat, unwrapNumberFormat1));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, relativeTimeFormat, unwrapNumberFormat1));
     // object has Instance
     JSHandle<JSTaggedValue> unwrapNumberFormat2 =
         JSRelativeTimeFormat::UnwrapRelativeTimeFormat(thread, disPlayNamesObj);

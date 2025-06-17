@@ -88,7 +88,7 @@ public:
     void ChangeTaskPoolState(bool inBackground);
 
     // dfx for jit warmup compile
-    static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
+    static void CountInterpExecFuncs(JSThread *jsThread, JSHandle<JSFunction> &jsFunction);
 
     bool IsAppJit() const
     {

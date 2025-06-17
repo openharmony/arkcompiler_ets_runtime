@@ -28,7 +28,7 @@ void JSSegmenter::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSSegment
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuBreakIterator != nullptr);
-    JSTaggedValue data = segmenter->GetIcuField();
+    JSTaggedValue data = segmenter->GetIcuField(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuBreakIterator);
@@ -171,7 +171,7 @@ void JSSegmenter::ResolvedOptions(JSThread *thread, const JSHandle<JSSegmenter> 
 
     // [[Locale]]
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
-    JSHandle<JSTaggedValue> locale(thread, segmenter->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, segmenter->GetLocale(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 

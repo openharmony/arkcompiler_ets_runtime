@@ -30,8 +30,8 @@ bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightS
 {
     CheckAndCopyValues(thread, obj);
     uint32_t hashCode = obj->Hash(thread, value.GetTaggedValue());
-    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes());
-    JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
+    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes(thread));
+    JSHandle<TaggedArray> valueArray(thread, obj->GetValues(thread));
     int32_t size = static_cast<int32_t>(obj->GetLength());
     int32_t index = obj->GetHashIndex(thread, value, size);
     if (index >= 0) {
@@ -58,10 +58,10 @@ bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightS
     return true;
 }
 
-JSTaggedValue JSAPILightWeightSet::Get(const uint32_t index)
+JSTaggedValue JSAPILightWeightSet::Get(const JSThread *thread, const uint32_t index)
 {
-    TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
-    return valueArray->Get(index);
+    TaggedArray *valueArray = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    return valueArray->Get(thread, index);
 }
 
 JSHandle<TaggedArray> JSAPILightWeightSet::CreateSlot(const JSThread *thread, const uint32_t capacity)
@@ -78,25 +78,25 @@ JSHandle<TaggedArray> JSAPILightWeightSet::CreateSlot(const JSThread *thread, co
 int32_t JSAPILightWeightSet::GetHashIndex(const JSThread *thread, const JSHandle<JSTaggedValue> &value, int32_t size)
 {
     uint32_t hashCode = Hash(thread, value.GetTaggedValue());
-    int32_t index = BinarySearchHashes(hashCode, size);
+    int32_t index = BinarySearchHashes(thread, hashCode, size);
     if (index < 0) {
         return index;
     }
-    TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
-    if (index < size && (JSTaggedValue::SameValue(valueArray->Get(index), value.GetTaggedValue()))) {
+    TaggedArray *valueArray = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    if (index < size && (JSTaggedValue::SameValue(thread, valueArray->Get(thread, index), value.GetTaggedValue()))) {
         return index;
     }
-    TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
+    TaggedArray *hashArray = TaggedArray::Cast(GetHashes(thread).GetTaggedObject());
     int32_t right = index;
-    while (right < size && (hashArray->Get(right).GetNumber() == hashCode)) {
-        if (JSTaggedValue::SameValue(valueArray->Get(right), value.GetTaggedValue())) {
+    while (right < size && (hashArray->Get(thread, right).GetNumber() == hashCode)) {
+        if (JSTaggedValue::SameValue(thread, valueArray->Get(thread, right), value.GetTaggedValue())) {
             return right;
         }
         right++;
     }
     int32_t left = index - 1;
-    while (left >= 0 && ((hashArray->Get(left).GetNumber() == hashCode))) {
-        if (JSTaggedValue::SameValue(valueArray->Get(left), value.GetTaggedValue())) {
+    while (left >= 0 && ((hashArray->Get(thread, left).GetNumber() == hashCode))) {
+        if (JSTaggedValue::SameValue(thread, valueArray->Get(thread, left), value.GetTaggedValue())) {
             return left;
         }
         left--;
@@ -104,14 +104,14 @@ int32_t JSAPILightWeightSet::GetHashIndex(const JSThread *thread, const JSHandle
     return -right;
 }
 
-int32_t JSAPILightWeightSet::BinarySearchHashes(uint32_t hash, int32_t size)
+int32_t JSAPILightWeightSet::BinarySearchHashes(const JSThread *thread, uint32_t hash, int32_t size)
 {
     int32_t low = 0;
     int32_t high = size - 1;
-    TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
+    TaggedArray *hashArray = TaggedArray::Cast(GetHashes(thread).GetTaggedObject());
     while (low <= high) {
         int32_t mid = (low + high) >> 1U;
-        uint32_t midVal = (uint32_t)(hashArray->Get(static_cast<uint32_t>(mid)).GetNumber());
+        uint32_t midVal = (uint32_t)(hashArray->Get(thread, static_cast<uint32_t>(mid)).GetNumber());
         if (midVal < hash) {
             low = mid + 1;
         } else {
@@ -134,7 +134,7 @@ bool JSAPILightWeightSet::AddAll(JSThread *thread, const JSHandle<JSAPILightWeig
     obj->EnsureCapacity(thread, obj, size + srcSize);
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < srcSize; i++) {
-        element.Update(srcLightWeightSet->GetValueAt(i));
+        element.Update(srcLightWeightSet->GetValueAt(thread, i));
         changed |= JSAPILightWeightSet::Add(thread, obj, element);
     }
     return changed;
@@ -143,7 +143,7 @@ bool JSAPILightWeightSet::AddAll(JSThread *thread, const JSHandle<JSAPILightWeig
 void JSAPILightWeightSet::EnsureCapacity(const JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                                          uint32_t minimumCapacity)
 {
-    TaggedArray *hashes = TaggedArray::Cast(obj->GetValues().GetTaggedObject());
+    TaggedArray *hashes = TaggedArray::Cast(obj->GetValues(thread).GetTaggedObject());
     uint32_t capacity = hashes->GetLength();
     uint32_t newCapacity = capacity;
     if (capacity > minimumCapacity) {
@@ -159,8 +159,8 @@ void JSAPILightWeightSet::EnsureCapacity(const JSThread *thread, const JSHandle<
 void JSAPILightWeightSet::SizeCopy(const JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                                    uint32_t capacity, uint32_t newCapacity)
 {
-    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes());
-    JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
+    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes(thread));
+    JSHandle<TaggedArray> valueArray(thread, obj->GetValues(thread));
     hashArray = thread->GetEcmaVM()->GetFactory()->CopyArray(hashArray, capacity, newCapacity);
     valueArray = thread->GetEcmaVM()->GetFactory()->CopyArray(valueArray, capacity, newCapacity);
 
@@ -173,43 +173,43 @@ bool JSAPILightWeightSet::IsEmpty()
     return GetLength() == 0;
 }
 
-JSTaggedValue JSAPILightWeightSet::GetValueAt(int32_t index)
+JSTaggedValue JSAPILightWeightSet::GetValueAt(const JSThread *thread, int32_t index)
 {
     int32_t size = static_cast<int32_t>(GetLength());
     if (index < 0 || index >= size) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    return values->Get(index);
+    TaggedArray *values = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
+    return values->Get(thread, index);
 }
 
-JSTaggedValue JSAPILightWeightSet::GetHashAt(int32_t index)
+JSTaggedValue JSAPILightWeightSet::GetHashAt(const JSThread *thread, int32_t index)
 {
     int32_t size = static_cast<int32_t>(GetLength());
     if (index < 0 || index >= size) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *values = TaggedArray::Cast(GetHashes().GetTaggedObject());
-    return values->Get(index);
+    TaggedArray *values = TaggedArray::Cast(GetHashes(thread).GetTaggedObject());
+    return values->Get(thread, index);
 }
 
-bool JSAPILightWeightSet::HasAll(const JSHandle<JSTaggedValue> &value)
+bool JSAPILightWeightSet::HasAll(const JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     bool result = false;
     uint32_t relocate = 0;
     JSAPILightWeightSet *lightweightSet = JSAPILightWeightSet::Cast(value.GetTaggedValue().GetTaggedObject());
     uint32_t size = GetLength();
     uint32_t destSize = lightweightSet->GetLength();
-    TaggedArray *hashes = TaggedArray::Cast(GetHashes().GetTaggedObject());
-    TaggedArray *destHashes = TaggedArray::Cast(lightweightSet->GetHashes().GetTaggedObject());
+    TaggedArray *hashes = TaggedArray::Cast(GetHashes(thread).GetTaggedObject());
+    TaggedArray *destHashes = TaggedArray::Cast(lightweightSet->GetHashes(thread).GetTaggedObject());
     if (destSize > size) {
         return result;
     }
     for (uint32_t i = 0; i < destSize; i++) {
-        uint32_t destHashCode = destHashes->Get(i).GetNumber();
+        uint32_t destHashCode = destHashes->Get(thread, i).GetNumber();
         result = false;
         for (uint32_t j = relocate; j < size; j++) {
-            uint32_t hashCode = hashes->Get(j).GetNumber();
+            uint32_t hashCode = hashes->Get(thread, j).GetNumber();
             if (destHashCode == hashCode) {
                 result = true;
                 relocate = j + 1;
@@ -233,10 +233,10 @@ bool JSAPILightWeightSet::Has(const JSThread *thread, const JSHandle<JSTaggedVal
     return true;
 }
 
-bool JSAPILightWeightSet::HasHash(const JSHandle<JSTaggedValue> &hashCode)
+bool JSAPILightWeightSet::HasHash(const JSThread *thread, const JSHandle<JSTaggedValue> &hashCode)
 {
     uint32_t size = GetLength();
-    int32_t index = BinarySearchHashes(hashCode.GetTaggedValue().GetNumber(), size);
+    int32_t index = BinarySearchHashes(thread, hashCode.GetTaggedValue().GetNumber(), size);
     if (index < 0) {
         return false;
     }
@@ -247,17 +247,17 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
                                 const JSHandle<JSTaggedValue> &value)
 {
     bool result = false;
-    JSHandle<TaggedArray> destHashes(thread, obj->GetValues());
+    JSHandle<TaggedArray> destHashes(thread, obj->GetValues(thread));
     uint32_t destSize = obj->GetLength();
     uint32_t srcSize = 0;
-    JSMutableHandle<TaggedArray> srcHashes(thread, obj->GetHashes());
+    JSMutableHandle<TaggedArray> srcHashes(thread, obj->GetHashes(thread));
     if (value.GetTaggedValue().IsJSAPILightWeightSet()) {
         JSAPILightWeightSet *srcLightWeightSet = JSAPILightWeightSet::Cast(value.GetTaggedValue().GetTaggedObject());
         srcSize = srcLightWeightSet->GetLength();
         if (srcSize == 0 || destSize == 0) {
             return false;
         }
-        srcHashes.Update(srcLightWeightSet->GetHashes());
+        srcHashes.Update(srcLightWeightSet->GetHashes(thread));
     }
     if (value.GetTaggedValue().IsJSArray()) {
         srcHashes.Update(JSArray::ToTaggedArray(thread, value));
@@ -270,14 +270,15 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
         return false;
     }
     for (uint32_t i = 0; i < destSize; i++) {
-        JSTaggedValue compareValue = destHashes->Get(i);
-        JSTaggedValue values = srcHashes->Get(i);
+        JSTaggedValue compareValue = destHashes->Get(thread, i);
+        JSTaggedValue values = srcHashes->Get(thread, i);
         if (compareValue.IsNumber() && values.IsNumber()) {
             result = JSTaggedValue::SameValueNumberic(compareValue, values);
         }
         if (compareValue.IsString() && values.IsString()) {
             result =
-                JSTaggedValue::StringCompare(EcmaString::Cast(compareValue.GetTaggedObject()),
+                JSTaggedValue::StringCompare(thread,
+                                             EcmaString::Cast(compareValue.GetTaggedObject()),
                                              EcmaString::Cast(values.GetTaggedObject()));
         }
         if (!result) {
@@ -290,7 +291,7 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
 void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                                              int32_t minCapacity)
 {
-    uint32_t capacity = TaggedArray::Cast(obj->GetValues().GetTaggedObject())->GetLength();
+    uint32_t capacity = TaggedArray::Cast(obj->GetValues(thread).GetTaggedObject())->GetLength();
     int32_t intCapacity = static_cast<int32_t>(capacity);
     if (minCapacity <= 0 || intCapacity >= minCapacity) {
         std::ostringstream oss;
@@ -299,7 +300,7 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes());
+    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes(thread));
     JSHandle<TaggedArray> newElements =
         thread->GetEcmaVM()->GetFactory()->NewAndCopyTaggedArray(hashArray,
                                                                  static_cast<uint32_t>(minCapacity), capacity);
@@ -324,7 +325,7 @@ JSTaggedValue JSAPILightWeightSet::ForEach(JSThread *thread, const JSHandle<JSTa
     uint32_t length = lightweightset->GetSize();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < length; k++) {
-        JSTaggedValue kValue = lightweightset->GetValueAt(k);
+        JSTaggedValue kValue = lightweightset->GetValueAt(thread, k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFn, thisArg, undefined, 3); // 3:three args
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
@@ -348,12 +349,12 @@ int32_t JSAPILightWeightSet::GetIndexOf(const JSThread *thread, JSHandle<JSTagge
 JSTaggedValue JSAPILightWeightSet::Remove(JSThread *thread, JSHandle<JSTaggedValue> &value)
 {
     uint32_t size = GetLength();
-    TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *valueArray = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     int32_t index = GetHashIndex(thread, value, size);
     if (index < 0) {
         return JSTaggedValue::Undefined();
     }
-    JSTaggedValue result = valueArray->Get(index);
+    JSTaggedValue result = valueArray->Get(thread, index);
     RemoveAt(thread, index);
     return result;
 }
@@ -364,8 +365,8 @@ bool JSAPILightWeightSet::RemoveAt(JSThread *thread, int32_t index)
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }
-    JSHandle<TaggedArray> valueArray(thread, GetValues());
-    JSHandle<TaggedArray> hashArray(thread, GetHashes());
+    JSHandle<TaggedArray> valueArray(thread, GetValues(thread));
+    JSHandle<TaggedArray> hashArray(thread, GetHashes(thread));
     RemoveValue(thread, hashArray, static_cast<uint32_t>(index), true);
     RemoveValue(thread, valueArray, static_cast<uint32_t>(index));
     SetLength(size - 1);
@@ -387,7 +388,7 @@ void JSAPILightWeightSet::AdjustArray(JSThread *thread, JSHandle<TaggedArray> sr
     uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
-            JSTaggedValue value = srcArray->Get(idx);
+            JSTaggedValue value = srcArray->Get(thread, idx);
             srcArray->Set(thread, idx + 1, value);
             idx--;
             fromIndex++;
@@ -396,7 +397,7 @@ void JSAPILightWeightSet::AdjustArray(JSThread *thread, JSHandle<TaggedArray> sr
         uint32_t moveSize = size - fromIndex;
         for (uint32_t i = 0; i < moveSize; i++) {
             if ((fromIndex + i) < size) {
-                JSTaggedValue value = srcArray->Get(fromIndex + i);
+                JSTaggedValue value = srcArray->Get(thread, fromIndex + i);
                 srcArray->Set(thread, toIndex + i, value);
             } else {
                 srcArray->Set(thread, toIndex + i, JSTaggedValue::Hole());
@@ -411,16 +412,16 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
     std::u16string sepStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(",");
 
     uint32_t length = obj->GetSize();
-    JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
+    JSHandle<TaggedArray> valueArray(thread, obj->GetValues(thread));
     std::u16string concatStr;
     JSMutableHandle<JSTaggedValue> values(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < length; k++) {
         std::u16string nextStr;
-        values.Update(valueArray->Get(k));
+        values.Update(valueArray->Get(thread, k));
         if (!values->IsUndefined() && !values->IsNull()) {
             JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, values);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
+            nextStr = EcmaStringAccessor(nextStringHandle).ToU16String(thread);
         }
         if (k > 0) {
             concatStr.append(sepStr);
@@ -437,8 +438,8 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
 
 void JSAPILightWeightSet::Clear(JSThread *thread)
 {
-    TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
-    TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
+    TaggedArray *hashArray = TaggedArray::Cast(GetHashes(thread).GetTaggedObject());
+    TaggedArray *valueArray = TaggedArray::Cast(GetValues(thread).GetTaggedObject());
     uint32_t size = GetLength();
     for (uint32_t index = 0; index < size; index++) {
         hashArray->Set(thread, index, JSTaggedValue::Hole());
@@ -458,10 +459,10 @@ uint32_t JSAPILightWeightSet::Hash(const JSThread *thread, JSTaggedValue key)
     }
     if (key.IsString()) {
         auto keyString = EcmaString::Cast(key.GetTaggedObject());
-        return EcmaStringAccessor(keyString).GetHashcode();
+        return EcmaStringAccessor(keyString).GetHashcode(thread);
     }
     if (key.IsECMAObject()) {
-        uint32_t hash = static_cast<uint32_t>(ECMAObject::Cast(key.GetTaggedObject())->GetHash());
+        uint32_t hash = static_cast<uint32_t>(ECMAObject::Cast(key.GetTaggedObject())->GetHash(thread));
         if (hash == 0) {
             hash = static_cast<uint32_t>(base::RandomGenerator::GenerateIdentityHash());
             JSHandle<ECMAObject> ecmaObj(thread, key);
@@ -479,7 +480,7 @@ uint32_t JSAPILightWeightSet::Hash(const JSThread *thread, JSTaggedValue key)
 
 void JSAPILightWeightSet::CheckAndCopyValues(const JSThread *thread, JSHandle<JSAPILightWeightSet> obj)
 {
-    JSHandle<TaggedArray> values(thread, obj->GetValues());
+    JSHandle<TaggedArray> values(thread, obj->GetValues(thread));
     // Check whether array is shared in the nonmovable space before set properties and elements.
     // If true, then really copy array in the semi space.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

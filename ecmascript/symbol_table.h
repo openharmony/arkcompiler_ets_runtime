@@ -47,7 +47,7 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static inline bool IsMatch(const JSTaggedValue &name, const JSTaggedValue &other)
+    static inline bool IsMatch(const JSThread *thread, const JSTaggedValue &name, const JSTaggedValue &other)
     {
         if (name.IsHole() || name.IsUndefined()) {
             return false;
@@ -55,14 +55,14 @@ public:
 
         auto *nameString = static_cast<EcmaString *>(name.GetTaggedObject());
         auto *otherString = static_cast<EcmaString *>(other.GetTaggedObject());
-        return EcmaStringAccessor::StringsAreEqual(nameString, otherString);
+        return EcmaStringAccessor::StringsAreEqual(thread, nameString, otherString);
     }
-    static inline uint32_t Hash(const JSTaggedValue &obj)
+    static inline uint32_t Hash(const JSThread *thread, const JSTaggedValue &obj)
     {
         if (obj.IsHeapObject()) {
             if (obj.IsString()) {
                 auto *nameString = static_cast<EcmaString *>(obj.GetTaggedObject());
-                return EcmaStringAccessor(nameString).GetHashcode();
+                return EcmaStringAccessor(nameString).GetHashcode(thread);
             }
             return JSSymbol::ComputeHash();
         }
@@ -76,32 +76,33 @@ public:
         return HashTable::Create(thread, numberOfElements);
     }
 
-    inline bool ContainsKey(const JSTaggedValue &key)
+    inline bool ContainsKey(const JSThread *thread, const JSTaggedValue &key)
     {
-        int entry = FindEntry(key);
+        int entry = FindEntry(thread, key);
         return entry != -1;
     }
 
-    inline JSTaggedValue GetSymbol(const JSTaggedValue &key)
+    inline JSTaggedValue GetSymbol(const JSThread *thread, const JSTaggedValue &key)
     {
-        int entry = FindEntry(key);
+        int entry = FindEntry(thread, key);
         ASSERT(entry != -1);
-        return GetValue(entry);
+        return GetValue(thread, entry);
     }
 
-    inline JSTaggedValue FindSymbol(const JSTaggedValue &value)
+    inline JSTaggedValue FindSymbol(JSThread *thread, const JSTaggedValue &value)
     {
         JSSymbol *symbol = JSSymbol::Cast(value.GetTaggedObject());
-        JSTaggedValue des = symbol->GetDescription();
+        JSTaggedValue des = symbol->GetDescription(thread);
         if (!des.IsUndefined()) {
-            if (ContainsKey(des)) {
+            if (ContainsKey(thread, des)) {
                 return des;
             }
         }
         return JSTaggedValue::Undefined();
     }
-    static int ComputeCompactSize([[maybe_unused]] const JSHandle<SymbolTable> &table, int computeHashTableSize,
-        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    static int ComputeCompactSize([[maybe_unused]] const JSThread *thread,
+                                  [[maybe_unused]] const JSHandle<SymbolTable> &table, int computeHashTableSize,
+                                  [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
     {
         return computeHashTableSize;
     }

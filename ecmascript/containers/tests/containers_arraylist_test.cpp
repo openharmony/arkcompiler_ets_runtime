@@ -61,13 +61,14 @@ public:
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
         {
+            JSThread *thread = argv->GetThread();
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> arrayList = GetCallArg(argv, 1);
             if (!arrayList->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIArrayList::Cast(arrayList.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    JSTaggedValue result = elements->Get(value->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    JSTaggedValue result = elements->Get(thread, value->GetInt());
                     EXPECT_EQ(result, value.GetTaggedValue());
                 }
             }
@@ -175,10 +176,10 @@ HWTEST_F_L0(ContainersArrayListTest, ArrayListConstructor)
 
     ASSERT_TRUE(result.IsJSAPIArrayList());
     JSHandle<JSAPIArrayList> arrayList(thread, result);
-    JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(arrayList));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(arrayList));
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
-    int length = arrayList->GetLength().GetInt();
+    int length = arrayList->GetLength();
     ASSERT_EQ(length, 0);   // 0 means the value
 
     // test ArrayListConstructor exception
@@ -256,7 +257,8 @@ HWTEST_F_L0(ContainersArrayListTest, SubArrayList)
     // success
     {
         JSTaggedValue newArrayList = ArrayListSubArrayList(arrayList, JSTaggedValue(1), JSTaggedValue(3));
-        JSHandle<TaggedArray> elements(thread, JSAPIArrayList::Cast(newArrayList.GetTaggedObject())->GetElements());
+        JSHandle<TaggedArray> elements(thread,
+            JSAPIArrayList::Cast(newArrayList.GetTaggedObject())->GetElements(thread));
         EXPECT_EQ(elements->GetLength(), static_cast<uint32_t>(2)); // length = 3 - 1
         EXPECT_EQ(elements->Get(thread, 0), JSTaggedValue(1));
         EXPECT_EQ(elements->Get(thread, 1), JSTaggedValue(2));

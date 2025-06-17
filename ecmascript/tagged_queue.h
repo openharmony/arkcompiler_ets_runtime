@@ -32,15 +32,15 @@ public:
 
     inline JSTaggedValue Pop(JSThread *thread)
     {
-        if (Empty()) {
+        if (Empty(thread)) {
             return JSTaggedValue::Hole();
         }
 
-        uint32_t start = GetStart().GetArrayLength();
-        JSTaggedValue value = Get(start);
+        uint32_t start = GetStart(thread).GetArrayLength();
+        JSTaggedValue value = Get(thread, start);
         Set(thread, start, JSTaggedValue::Hole());
 
-        uint32_t capacity = GetCapacity().GetArrayLength();
+        uint32_t capacity = GetCapacity(thread).GetArrayLength();
         ASSERT(capacity != 0);
         SetStart(thread, JSTaggedValue((start + 1) % capacity));
         return value;
@@ -49,7 +49,7 @@ public:
     static TaggedQueue *Push(const JSThread *thread, const JSHandle<TaggedQueue> &queue,
                              const JSHandle<JSTaggedValue> &value)
     {
-        uint32_t capacity = queue->GetCapacity().GetArrayLength();
+        uint32_t capacity = queue->GetCapacity(thread).GetArrayLength();
         if (capacity == 0) {
             // If there is no capacity, directly create a queue whose capacity is MIN_CAPACITY. Add elements.
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -61,9 +61,9 @@ public:
             return *newQueue;
         }
 
-        uint32_t start = queue->GetStart().GetArrayLength();
-        uint32_t end = queue->GetEnd().GetArrayLength();
-        uint32_t size = queue->Size();
+        uint32_t start = queue->GetStart(thread).GetArrayLength();
+        uint32_t end = queue->GetEnd(thread).GetArrayLength();
+        uint32_t size = queue->Size(thread);
         if ((end + 1) % capacity == start) {
             // The original queue is full and needs to be expanded.
             if (capacity == MAX_QUEUE_INDEX) {
@@ -77,7 +77,7 @@ public:
             JSHandle<TaggedQueue> newQueue = factory->NewTaggedQueue(newCapacity);
             uint32_t newEnd = 0;
             for (uint32_t i = start; newEnd < size; i = (i + 1) % capacity) {
-                newQueue->Set(thread, newEnd, queue->Get(i));
+                newQueue->Set(thread, newEnd, queue->Get(thread, i));
                 newEnd++;
             }
 
@@ -96,49 +96,49 @@ public:
     static inline void PushFixedQueue(const JSThread *thread, const JSHandle<TaggedQueue> &queue,
                                       const JSHandle<JSTaggedValue> &value)
     {
-        uint32_t end = queue->GetEnd().GetArrayLength();
-        uint32_t capacity = queue->GetCapacity().GetArrayLength();
+        uint32_t end = queue->GetEnd(thread).GetArrayLength();
+        uint32_t capacity = queue->GetCapacity(thread).GetArrayLength();
         ASSERT(capacity != 0);
         queue->Set(thread, end, value.GetTaggedValue());
         queue->SetEnd(thread, JSTaggedValue((end + 1) % capacity));
     }
 
-    inline bool Empty()
+    inline bool Empty(const JSThread *thread)
     {
-        return GetStart() == GetEnd();
+        return GetStart(thread) == GetEnd(thread);
     }
 
-    inline JSTaggedValue Front()
+    inline JSTaggedValue Front(const JSThread *thread)
     {
-        if (Empty()) {
+        if (Empty(thread)) {
             return JSTaggedValue::Hole();
         }
-        uint32_t start = GetStart().GetArrayLength();
-        return JSTaggedValue(Get(start));
+        uint32_t start = GetStart(thread).GetArrayLength();
+        return JSTaggedValue(Get(thread, start));
     }
 
-    inline JSTaggedValue Back()
+    inline JSTaggedValue Back(const JSThread *thread)
     {
-        if (Empty()) {
+        if (Empty(thread)) {
             return JSTaggedValue::Hole();
         }
-        return JSTaggedValue(Get(GetEnd().GetArrayLength() - 1));
+        return JSTaggedValue(Get(thread, GetEnd(thread).GetArrayLength() - 1));
     }
 
-    inline uint32_t Size()
+    inline uint32_t Size(const JSThread *thread)
     {
-        uint32_t capacity = GetCapacity().GetArrayLength();
+        uint32_t capacity = GetCapacity(thread).GetArrayLength();
         if (capacity == 0) {
             return 0;
         }
-        uint32_t end = GetEnd().GetArrayLength();
-        uint32_t start = GetStart().GetArrayLength();
+        uint32_t end = GetEnd(thread).GetArrayLength();
+        uint32_t start = GetStart(thread).GetArrayLength();
         return (end - start + capacity) % capacity;
     }
 
-    inline JSTaggedValue Get(uint32_t index) const
+    inline JSTaggedValue Get(const JSThread *thread, uint32_t index) const
     {
-        return TaggedArray::Get(QueueToArrayIndex(index));
+        return TaggedArray::Get(thread, QueueToArrayIndex(index));
     }
 
     inline void Set(const JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -166,9 +166,9 @@ private:
         TaggedArray::Set(thread, CAPACITY_INDEX, capacity);
     }
 
-    inline JSTaggedValue GetCapacity() const
+    inline JSTaggedValue GetCapacity(const JSThread *thread) const
     {
-        return TaggedArray::Get(CAPACITY_INDEX);
+        return TaggedArray::Get(thread, CAPACITY_INDEX);
     }
 
     inline void SetStart(const JSThread *thread, JSTaggedValue start)
@@ -176,9 +176,9 @@ private:
         TaggedArray::Set(thread, START_INDEX, start);
     }
 
-    inline JSTaggedValue GetStart() const
+    inline JSTaggedValue GetStart(const JSThread *thread) const
     {
-        return TaggedArray::Get(START_INDEX);
+        return TaggedArray::Get(thread, START_INDEX);
     }
 
     inline void SetEnd(const JSThread *thread, JSTaggedValue end)
@@ -186,9 +186,9 @@ private:
         TaggedArray::Set(thread, END_INDEX, end);
     }
 
-    inline JSTaggedValue GetEnd() const
+    inline JSTaggedValue GetEnd(const JSThread *thread) const
     {
-        return TaggedArray::Get(END_INDEX);
+        return TaggedArray::Get(thread, END_INDEX);
     }
 
     static inline TaggedQueue *Create(JSThread *thread, uint32_t capacity,

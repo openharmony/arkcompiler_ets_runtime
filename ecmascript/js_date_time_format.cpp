@@ -96,10 +96,10 @@ const std::map<std::string, HourCycleOption> TO_HOUR_CYCLE_MAP = {
 const std::set<std::string> RELEVANT_EXTENSION_KEYS = {"nu", "ca", "hc"};
 }
 
-icu::Locale *JSDateTimeFormat::GetIcuLocale() const
+icu::Locale *JSDateTimeFormat::GetIcuLocale(const JSThread *thread) const
 {
-    ASSERT(GetLocaleIcu().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetLocaleIcu().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetLocaleIcu(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetLocaleIcu(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::Locale *>(result);
 }
 
@@ -111,7 +111,7 @@ void JSDateTimeFormat::SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat>
     ObjectFactory *factory = ecmaVm->GetFactory();
     icu::Locale *icuPointer = ecmaVm->GetNativeAreaAllocator()->New<icu::Locale>(icuLocale);
     ASSERT(icuPointer != nullptr);
-    JSTaggedValue data = obj->GetLocaleIcu();
+    JSTaggedValue data = obj->GetLocaleIcu(thread);
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuPointer);
@@ -133,10 +133,10 @@ void JSDateTimeFormat::FreeIcuLocale([[maybe_unused]] void *env, void *pointer, 
     }
 }
 
-icu::SimpleDateFormat *JSDateTimeFormat::GetIcuSimpleDateFormat() const
+icu::SimpleDateFormat *JSDateTimeFormat::GetIcuSimpleDateFormat(const JSThread *thread) const
 {
-    ASSERT(GetSimpleDateTimeFormatIcu().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetSimpleDateTimeFormatIcu().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetSimpleDateTimeFormatIcu(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetSimpleDateTimeFormatIcu(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::SimpleDateFormat *>(result);
 }
 
@@ -149,7 +149,7 @@ void JSDateTimeFormat::SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateT
     icu::SimpleDateFormat *icuPointer =
         ecmaVm->GetNativeAreaAllocator()->New<icu::SimpleDateFormat>(icuSimpleDateTimeFormat);
     ASSERT(icuPointer != nullptr);
-    JSTaggedValue data = obj->GetSimpleDateTimeFormatIcu();
+    JSTaggedValue data = obj->GetSimpleDateTimeFormatIcu(thread);
     if (data.IsHeapObject() && data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuPointer);
@@ -367,7 +367,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::string calendarStr;
     if (!calendar->IsUndefined()) {
         JSHandle<EcmaString> calendarEcmaStr = JSHandle<EcmaString>::Cast(calendar);
-        calendarStr = intl::LocaleHelper::ConvertToStdString(calendarEcmaStr);
+        calendarStr = intl::LocaleHelper::ConvertToStdString(thread, calendarEcmaStr);
         if (!JSLocale::IsNormativeCalendar(calendarStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid calendar", dateTimeFormat);
         }
@@ -386,7 +386,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::string nsStr;
     if (!numberingSystem->IsUndefined()) {
         JSHandle<EcmaString> nsEcmaStr = JSHandle<EcmaString>::Cast(numberingSystem);
-        nsStr = intl::LocaleHelper::ConvertToStdString(nsEcmaStr);
+        nsStr = intl::LocaleHelper::ConvertToStdString(thread, nsEcmaStr);
         if (!JSLocale::IsNormativeNumberingSystem(nsStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", dateTimeFormat);
         }
@@ -456,7 +456,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     if (!operationResult.GetValue()->IsUndefined()) {
         JSHandle<EcmaString> timezone = JSTaggedValue::ToString(thread, operationResult.GetValue());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
-        icuTimeZone = ConstructTimeZone(intl::LocaleHelper::ConvertToStdString(timezone));
+        icuTimeZone = ConstructTimeZone(intl::LocaleHelper::ConvertToStdString(thread, timezone));
         if (icuTimeZone == nullptr) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid timeZone", dateTimeFormat);
         }
@@ -493,7 +493,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     // d. If hour12 is not undefined, then
     if (!hour12->IsUndefined()) {
         // i. If hour12 is true, then
-        if (JSTaggedValue::SameValue(hour12.GetTaggedValue(), JSTaggedValue::True())) {
+        if (JSTaggedValue::SameValue(thread, hour12.GetTaggedValue(), JSTaggedValue::True())) {
             // 1. If hcDefault is "h11" or "h23", then
             if (hcDefault == HourCycleOption::H11 || hcDefault == HourCycleOption::H23) {
                 // a. Set hc to "h11".
@@ -635,7 +635,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     simpleDateFormatIcu->adoptCalendar(calendarPtr.release());
     if (type != IcuCacheType::NOT_CACHE) {
         std::string cacheEntry =
-            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
         auto& intlCache = ecmaVm->GetIntlCache();
         switch (type) {
             case IcuCacheType::DEFAULT:
@@ -684,7 +684,8 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *
                                                                       const JSHandle<JSTaggedValue> &locales,
                                                                       IcuFormatterType type)
 {
-    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    std::string cacheEntry =
+        locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
     void *cachedSimpleDateFormat = thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(type, cacheEntry);
     if (cachedSimpleDateFormat != nullptr) {
         return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
@@ -847,7 +848,7 @@ void JSDateTimeFormat::ToDateTimeSkeleton(JSThread *thread, const std::vector<st
         uint32_t len = array->GetLength();
         for (uint32_t i = 0; i < len; i++) {
             key.Update(array->Get(thread, i));
-            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString(thread);
             auto it = std::find(options.begin(), options.end(), result);
             if (it != options.end()) {
                 needDefaults = false;
@@ -872,7 +873,7 @@ void JSDateTimeFormat::ToDateTimeSkeleton(JSThread *thread, const std::vector<st
         uint32_t len = array->GetLength();
         for (uint32_t i = 0; i < len; i++) {
             key.Update(array->Get(thread, i));
-            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+            std::string result = EcmaStringAccessor(key.GetTaggedValue()).ToStdString(thread);
             auto it = std::find(options.begin(), options.end(), result);
             if (it != options.end()) {
                 needDefaults = false;
@@ -914,7 +915,7 @@ void JSDateTimeFormat::ToDateTimeSkeleton(JSThread *thread, const std::vector<st
 JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
                                                       const JSHandle<JSDateTimeFormat> &dateTimeFormat, double x)
 {
-    icu::SimpleDateFormat *simpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat();
+    icu::SimpleDateFormat *simpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat(thread);
     JSHandle<EcmaString> res = FormatDateTime(thread, simpleDateFormat, x);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
     return res;
@@ -946,7 +947,7 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
 JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
                                                           const JSHandle<JSDateTimeFormat> &dateTimeFormat, double x)
 {
-    icu::SimpleDateFormat *simpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat();
+    icu::SimpleDateFormat *simpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat(thread);
     ASSERT(simpleDateFormat != nullptr);
     UErrorCode status = U_ZERO_ERROR;
     icu::FieldPositionIterator fieldPositionIter;
@@ -1025,7 +1026,7 @@ JSHandle<JSTaggedValue> JSDateTimeFormat::UnwrapDateTimeFormat(JSThread *thread,
     bool isInstanceOf = JSFunction::OrdinaryHasInstance(thread, env->GetDateTimeFormatFunction(), dateTimeFormat);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, dateTimeFormat);
     if (!dateTimeFormat->IsJSDateTimeFormat() && isInstanceOf) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
         OperationResult operationResult = JSTaggedValue::GetProperty(thread, dateTimeFormat, key);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, dateTimeFormat);
         return operationResult.GetValue();
@@ -1115,17 +1116,17 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     // 5. For each row of Table 8, except the header row, in table order, do
     //    Let p be the Property value of the current row.
     // [[Locale]]
-    JSHandle<JSTaggedValue> locale(thread, dateTimeFormat->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, dateTimeFormat->GetLocale(thread));
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[Calendar]]
-    JSMutableHandle<JSTaggedValue> calendarValue(thread, dateTimeFormat->GetCalendar());
-    icu::SimpleDateFormat *icuSimpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat();
+    JSMutableHandle<JSTaggedValue> calendarValue(thread, dateTimeFormat->GetCalendar(thread));
+    icu::SimpleDateFormat *icuSimpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat(thread);
     const icu::Calendar *calendar = icuSimpleDateFormat->getCalendar();
     std::string icuCalendar = calendar->getType();
     if (icuCalendar == "gregorian") {
-        if (dateTimeFormat->GetIso8601().IsTrue()) {
+        if (dateTimeFormat->GetIso8601(thread).IsTrue()) {
             calendarValue.Update(globalConst->GetHandledIso8601String().GetTaggedValue());
         } else {
             calendarValue.Update(globalConst->GetHandledGregoryString().GetTaggedValue());
@@ -1139,7 +1140,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     JSObject::CreateDataPropertyOrThrow(thread, options, property, calendarValue);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[NumberingSystem]]
-    JSHandle<JSTaggedValue> numberingSystem(thread, dateTimeFormat->GetNumberingSystem());
+    JSHandle<JSTaggedValue> numberingSystem(thread, dateTimeFormat->GetNumberingSystem(thread));
     if (numberingSystem->IsUndefined()) {
         numberingSystem = globalConst->GetHandledLatnString();
     }
@@ -1147,7 +1148,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     JSObject::CreateDataPropertyOrThrow(thread, options, property, numberingSystem);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[TimeZone]]
-    JSMutableHandle<JSTaggedValue> timezoneValue(thread, dateTimeFormat->GetTimeZone());
+    JSMutableHandle<JSTaggedValue> timezoneValue(thread, dateTimeFormat->GetTimeZone(thread));
     const icu::TimeZone &icuTZ = calendar->getTimeZone();
     icu::UnicodeString timezone;
     icuTZ.getID(timezone);
@@ -1235,7 +1236,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
 icu::FormattedDateInterval JSDateTimeFormat::ConstructDTFRange(JSThread *thread, const JSHandle<JSDateTimeFormat> &dtf,
                                                                double x, double y)
 {
-    std::unique_ptr<icu::DateIntervalFormat> dateIntervalFormat(ConstructDateIntervalFormat(dtf));
+    std::unique_ptr<icu::DateIntervalFormat> dateIntervalFormat(ConstructDateIntervalFormat(thread, dtf));
     if (dateIntervalFormat == nullptr) {
         icu::FormattedDateInterval emptyValue;
         THROW_TYPE_ERROR_AND_RETURN(thread, "create dateIntervalFormat failed", emptyValue);
@@ -1797,10 +1798,10 @@ JSHandle<JSTaggedValue> JSDateTimeFormat::ConvertFieldIdToDateType(JSThread *thr
 }
 
 std::unique_ptr<icu::DateIntervalFormat> JSDateTimeFormat::ConstructDateIntervalFormat(
-    const JSHandle<JSDateTimeFormat> &dtf)
+    const JSThread *thread, const JSHandle<JSDateTimeFormat> &dtf)
 {
-    icu::SimpleDateFormat *icuSimpleDateFormat = dtf->GetIcuSimpleDateFormat();
-    icu::Locale locale = *(dtf->GetIcuLocale());
+    icu::SimpleDateFormat *icuSimpleDateFormat = dtf->GetIcuSimpleDateFormat(thread);
+    icu::Locale locale = *(dtf->GetIcuLocale(thread));
     std::string hcString = ToHourCycleString(dtf->GetHourCycle());
     UErrorCode status = U_ZERO_ERROR;
     // Sets the Unicode value for a Unicode keyword.

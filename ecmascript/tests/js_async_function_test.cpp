@@ -38,17 +38,19 @@ HWTEST_F_L0(JSAsyncFunctionTest, SetAsyncContext)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAsyncFuncObject> asyncFuncObj = factory->NewJSAsyncFuncObject();
-    JSHandle<JSTaggedValue> asyncFuncObjVal(thread, asyncFuncObj->GetGeneratorContext());
+    JSHandle<JSTaggedValue> asyncFuncObjVal(thread, asyncFuncObj->GetGeneratorContext(thread));
 
     JSHandle<JSAsyncAwaitStatusFunction> fulFunc =
         factory->NewJSAsyncAwaitStatusFunction(MethodIndex::BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_FULFILLED);
     fulFunc->SetAsyncContext(thread, asyncFuncObjVal);
-    EXPECT_EQ(JSTaggedValue::SameValue(fulFunc->GetAsyncContext(), asyncFuncObjVal.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, fulFunc->GetAsyncContext(thread), asyncFuncObjVal.GetTaggedValue()),
+              true);
 
     JSHandle<JSAsyncAwaitStatusFunction> rejFunc =
         factory->NewJSAsyncAwaitStatusFunction(MethodIndex::BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_REJECTED);
-    rejFunc->SetAsyncContext(thread, asyncFuncObj->GetGeneratorContext());
-    EXPECT_EQ(JSTaggedValue::SameValue(rejFunc->GetAsyncContext(), asyncFuncObjVal.GetTaggedValue()), true);
+    rejFunc->SetAsyncContext(thread, asyncFuncObj->GetGeneratorContext(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejFunc->GetAsyncContext(thread), asyncFuncObjVal.GetTaggedValue()),
+              true);
 }
 
 /**
@@ -69,8 +71,8 @@ HWTEST_F_L0(JSAsyncFunctionTest, AsyncFunctionAwait)
 
     // check AsyncPromise queue and queue cannot execute
     auto microJobQueue = thread->GetEcmaVM()->GetMicroJobQueue();
-    EXPECT_FALSE(microJobQueue->GetPromiseJobQueue().IsUndefined());
+    EXPECT_FALSE(microJobQueue->GetPromiseJobQueue(thread).IsUndefined());
     // promiese is undefined.
-    EXPECT_TRUE(asyncFuncObj->GetPromise().IsUndefined());
+    EXPECT_TRUE(asyncFuncObj->GetPromise(thread).IsUndefined());
 }
 }  // namespace panda::test

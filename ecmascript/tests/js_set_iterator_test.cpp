@@ -55,7 +55,8 @@ HWTEST_F_L0(JSSetIteratorTest, CreateSetIterator)
 
     EXPECT_EQ(setIteratorValue1->IsJSSetIterator(), true);
     JSHandle<JSSetIterator> setIterator1(setIteratorValue1);
-    EXPECT_EQ(JSTaggedValue::SameValue(setIterator1->GetIteratedSet(), jsSet->GetLinkedSet()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, setIterator1->GetIteratedSet(thread), jsSet->GetLinkedSet(thread)),
+              true);
     EXPECT_EQ(setIterator1->GetNextIndex(), 0U);
     EXPECT_EQ(setIterator1->GetIterationKind(), IterationKind::KEY);
 
@@ -64,7 +65,8 @@ HWTEST_F_L0(JSSetIteratorTest, CreateSetIterator)
 
     EXPECT_EQ(setIteratorValue2->IsJSSetIterator(), true);
     JSHandle<JSSetIterator> setIterator2(setIteratorValue2);
-    EXPECT_EQ(JSTaggedValue::SameValue(setIterator2->GetIteratedSet(), jsSet->GetLinkedSet()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, setIterator2->GetIteratedSet(thread), jsSet->GetLinkedSet(thread)),
+              true);
     EXPECT_EQ(setIterator2->GetNextIndex(), 0U);
     EXPECT_EQ(setIterator2->GetIterationKind(), IterationKind::VALUE);
 }
@@ -91,14 +93,14 @@ HWTEST_F_L0(JSSetIteratorTest, Update)
     JSSet::Add(thread, jsSet2, keyHandle2);
     JSSet::Add(thread, jsSet2, keyHandle3);
 
-    JSHandle<LinkedHashSet> setHandle1(thread, LinkedHashSet::Cast(jsSet1->GetLinkedSet().GetTaggedObject()));
-    JSHandle<LinkedHashSet> setHandle2(thread, LinkedHashSet::Cast(jsSet2->GetLinkedSet().GetTaggedObject()));
+    JSHandle<LinkedHashSet> setHandle1(thread, LinkedHashSet::Cast(jsSet1->GetLinkedSet(thread).GetTaggedObject()));
+    JSHandle<LinkedHashSet> setHandle2(thread, LinkedHashSet::Cast(jsSet2->GetLinkedSet(thread).GetTaggedObject()));
     setHandle1->Rehash(thread, *setHandle2);
     // create SetIterator with jsSet1
     JSHandle<JSSetIterator> setIterator = factory->NewJSSetIterator(jsSet1, IterationKind::KEY);
     // update SetIterator
     setIterator->Update(thread);
-    LinkedHashSet *resultSet = LinkedHashSet::Cast(setIterator->GetIteratedSet().GetTaggedObject());
+    LinkedHashSet *resultSet = LinkedHashSet::Cast(setIterator->GetIteratedSet(thread).GetTaggedObject());
     EXPECT_TRUE(resultSet->Has(thread, keyHandle1.GetTaggedValue()));
     EXPECT_TRUE(resultSet->Has(thread, keyHandle2.GetTaggedValue()));
     EXPECT_TRUE(resultSet->Has(thread, keyHandle3.GetTaggedValue()));

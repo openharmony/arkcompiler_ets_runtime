@@ -214,7 +214,7 @@ JSTaggedValue BuiltinsBigInt::ThisBigIntValue(EcmaRuntimeCallInfo *argv)
     }
     // 2. If Type(value) is Object and value has a [[BigIntData]] internal slot, then
     if (value->IsJSPrimitiveRef()) {
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue(thread);
         // a. Assert: Type(value.[[BigIntData]]) is BigInt.
         if (primitive.IsBigInt()) {
             // b. Return value.[[BigIntData]].

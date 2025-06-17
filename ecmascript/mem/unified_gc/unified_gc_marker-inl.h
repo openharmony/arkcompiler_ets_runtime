@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_INL_H
 #define ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_INL_H
 
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
 #include "ecmascript/layout_info.h"
@@ -79,12 +80,13 @@ void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        JSThread *thread = workNodeHolder_->GetJSThread();
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr(index++);
+            PropertyAttributes attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
             }
@@ -133,7 +135,7 @@ inline void UnifiedGCMarker::HandleJSXRefObject(TaggedObject *object)
     JSTaggedValue value(object);
     if (value.IsJSXRefObject()) {
         auto stsVMInterface = heap_->GetEcmaVM()->GetCrossVMOperator()->GetSTSVMInterface();
-        stsVMInterface->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(0));
+        stsVMInterface->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(heap_->GetJSThread(), 0));
     }
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE

@@ -66,10 +66,10 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_001)
     EcmaStringAccessor evalErrorStrAcc(JSHandle<EcmaString>::Cast(evalError));
     EcmaStringAccessor typeErrorStrAcc(JSHandle<EcmaString>::Cast(typeError));
     EcmaStringAccessor rangeErrorStrAcc(JSHandle<EcmaString>::Cast(rangeError));
-    EXPECT_STREQ(errorStrAcc.ToCString().c_str(), "Error");
-    EXPECT_STREQ(evalErrorStrAcc.ToCString().c_str(), "EvalError");
-    EXPECT_STREQ(typeErrorStrAcc.ToCString().c_str(), "TypeError");
-    EXPECT_STREQ(rangeErrorStrAcc.ToCString().c_str(), "RangeError");
+    EXPECT_STREQ(errorStrAcc.ToCString(thread).c_str(), "Error");
+    EXPECT_STREQ(evalErrorStrAcc.ToCString(thread).c_str(), "EvalError");
+    EXPECT_STREQ(typeErrorStrAcc.ToCString(thread).c_str(), "TypeError");
+    EXPECT_STREQ(rangeErrorStrAcc.ToCString(thread).c_str(), "RangeError");
 }
 
 HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_002)
@@ -133,11 +133,11 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonToString_002)
     EcmaStringAccessor syntaxErrorStrAcc(JSHandle<EcmaString>::Cast(syntaxError));
     EcmaStringAccessor referenceErrorStrAcc(JSHandle<EcmaString>::Cast(referenceError));
     EcmaStringAccessor aggregateErrorStrAcc(JSHandle<EcmaString>::Cast(aggregateError));
-    EXPECT_STREQ(uriErrorStrAcc.ToCString().c_str(), "URIError");
-    EXPECT_STREQ(oomErrorStrAcc.ToCString().c_str(), "OutOfMemoryError");
-    EXPECT_STREQ(syntaxErrorStrAcc.ToCString().c_str(), "SyntaxError");
-    EXPECT_STREQ(referenceErrorStrAcc.ToCString().c_str(), "ReferenceError");
-    EXPECT_STREQ(aggregateErrorStrAcc.ToCString().c_str(), "AggregateError");
+    EXPECT_STREQ(uriErrorStrAcc.ToCString(thread).c_str(), "URIError");
+    EXPECT_STREQ(oomErrorStrAcc.ToCString(thread).c_str(), "OutOfMemoryError");
+    EXPECT_STREQ(syntaxErrorStrAcc.ToCString(thread).c_str(), "SyntaxError");
+    EXPECT_STREQ(referenceErrorStrAcc.ToCString(thread).c_str(), "ReferenceError");
+    EXPECT_STREQ(aggregateErrorStrAcc.ToCString(thread).c_str(), "AggregateError");
 }
 
 HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_001)
@@ -161,9 +161,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_001)
     TestHelper::TearDownFrame(thread, prev1);
     JSHandle<JSTaggedValue> errorMsgValue(JSObject::GetProperty(thread, errorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> errorNameValue(JSObject::GetProperty(thread, errorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorMsgValue)).ToCString(thread).c_str(),
                  "You have an Error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorNameValue)).ToCString().c_str(), "Error");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorNameValue)).ToCString(thread).c_str(), "Error");
 
     JSHandle<JSTaggedValue> evalErrorMsg(factory->NewFromASCII("You have an eval error!"));
     EcmaRuntimeCallInfo *argv2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*evalError), 6);
@@ -175,9 +175,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_001)
     TestHelper::TearDownFrame(thread, prev2);
     JSHandle<JSTaggedValue> evalMsgValue(JSObject::GetProperty(thread, evalErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> evalNameValue(JSObject::GetProperty(thread, evalErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(evalMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(evalMsgValue)).ToCString(thread).c_str(),
                  "You have an eval error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(evalNameValue)).ToCString().c_str(), "EvalError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(evalNameValue)).ToCString(thread).c_str(), "EvalError");
 
     JSHandle<JSTaggedValue> typeErrorMsg(factory->NewFromASCII("You have a type error!"));
     EcmaRuntimeCallInfo *argv3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*typeError), 6);
@@ -189,9 +189,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_001)
     TestHelper::TearDownFrame(thread, prev3);
     JSHandle<JSTaggedValue> typeMsgValue(JSObject::GetProperty(thread, typeErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> typeNameValue(JSObject::GetProperty(thread, typeErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeMsgValue)).ToCString(thread).c_str(),
                  "You have a type error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString().c_str(), "TypeError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString(thread).c_str(), "TypeError");
 }
 
 HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_002)
@@ -216,9 +216,10 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_002)
     TestHelper::TearDownFrame(thread, prev1);
     JSHandle<JSTaggedValue> rangeMsgValue(JSObject::GetProperty(thread, rangeErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> rangeNameValue(JSObject::GetProperty(thread, rangeErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(rangeMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(rangeMsgValue)).ToCString(thread).c_str(),
                  "You have an range error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(rangeNameValue)).ToCString().c_str(), "RangeError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(rangeNameValue)).ToCString(thread).c_str(),
+                 "RangeError");
 
     JSHandle<JSTaggedValue> uriErrorMsg(factory->NewFromASCII("You have an uri error!"));
     EcmaRuntimeCallInfo *argv2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*uriError), 6);
@@ -230,9 +231,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_002)
     TestHelper::TearDownFrame(thread, prev2);
     JSHandle<JSTaggedValue> uriMsgValue(JSObject::GetProperty(thread, uriErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> uriNameValue(JSObject::GetProperty(thread, uriErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(uriMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(uriMsgValue)).ToCString(thread).c_str(),
                  "You have an uri error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(uriNameValue)).ToCString().c_str(), "URIError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(uriNameValue)).ToCString(thread).c_str(), "URIError");
 
     JSHandle<JSTaggedValue> oomErrorMsg(factory->NewFromASCII("You have an out of memory error!"));
     EcmaRuntimeCallInfo *argv3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*oomError), 6);
@@ -244,9 +245,10 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_002)
     TestHelper::TearDownFrame(thread, prev3);
     JSHandle<JSTaggedValue> oomMsgValue(JSObject::GetProperty(thread, oomErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> oomNameValue(JSObject::GetProperty(thread, oomErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(oomMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(oomMsgValue)).ToCString(thread).c_str(),
                  "You have an out of memory error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(oomNameValue)).ToCString().c_str(), "OutOfMemoryError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(oomNameValue)).ToCString(thread).c_str(),
+                 "OutOfMemoryError");
 }
 
 HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_003)
@@ -271,9 +273,10 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_003)
     TestHelper::TearDownFrame(thread, prev1);
     JSHandle<JSTaggedValue> syntaxMsgValue(JSObject::GetProperty(thread, syntaxErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> syntaxNameValue(JSObject::GetProperty(thread, syntaxErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(syntaxMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(syntaxMsgValue)).ToCString(thread).c_str(),
                  "You have an syntax error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(syntaxNameValue)).ToCString().c_str(), "SyntaxError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(syntaxNameValue)).ToCString(thread).c_str(),
+                                    "SyntaxError");
 
     JSHandle<JSTaggedValue> referenceErrorMsg(factory->NewFromASCII("You have an reference error!"));
     EcmaRuntimeCallInfo *argv2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*referenceError), 6);
@@ -287,9 +290,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_003)
     JSHandle<JSTaggedValue> referenceMsgValue(JSObject::GetProperty(thread, referenceErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> referenceNameValue(
         JSObject::GetProperty(thread, referenceErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(referenceMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(referenceMsgValue)).ToCString(thread).c_str(),
                  "You have an reference error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(referenceNameValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(referenceNameValue)).ToCString(thread).c_str(),
                  "ReferenceError");
 
     JSHandle<JSTaggedValue> aggregateErrorMsg(factory->NewFromASCII("You have an aggregate error!"));
@@ -304,9 +307,9 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_003)
     JSHandle<JSTaggedValue> aggregateMsgValue(JSObject::GetProperty(thread, aggregateErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> aggregateNameValue(
         JSObject::GetProperty(thread, aggregateErrorResult, nameKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(aggregateMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(aggregateMsgValue)).ToCString(thread).c_str(),
                  "You have an aggregate error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(aggregateNameValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(aggregateNameValue)).ToCString(thread).c_str(),
                  "AggregateError");
 }
 
@@ -338,10 +341,11 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_004)
     JSHandle<JSTaggedValue> errorMsgValue(JSObject::GetProperty(thread, errorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> errorNameValue(JSObject::GetProperty(thread, errorResult, nameKey).GetValue());
     JSHandle<JSTaggedValue> errorCauseValue(JSObject::GetProperty(thread, errorResult, causeKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorMsgValue)).ToCString(thread).c_str(),
                  "You have an Error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorNameValue)).ToCString().c_str(), "Error");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorCauseValue)).ToCString().c_str(), "error cause");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorNameValue)).ToCString(thread).c_str(), "Error");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorCauseValue)).ToCString(thread).c_str(),
+                 "error cause");
 
     JSHandle<JSTaggedValue> typeErrorMsg(factory->NewFromASCII("You have a type error!"));
     EcmaRuntimeCallInfo *argv2 =
@@ -356,9 +360,10 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_004)
     JSHandle<JSTaggedValue> typeMsgValue(JSObject::GetProperty(thread, typeErrorResult, msgKey).GetValue());
     JSHandle<JSTaggedValue> typeNameValue(JSObject::GetProperty(thread, typeErrorResult, nameKey).GetValue());
     JSHandle<JSTaggedValue> typeCauseValue(JSObject::GetProperty(thread, typeErrorResult, causeKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeMsgValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeMsgValue)).ToCString(thread).c_str(),
                  "You have a type error!");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString().c_str(), "TypeError");
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeCauseValue)).ToCString().c_str(), "error cause");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString(thread).c_str(), "TypeError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeCauseValue)).ToCString(thread).c_str(),
+                 "error cause");
 }
 }  // namespace panda::test

@@ -174,13 +174,13 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_001)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleValue, handleReplacer1, handleGap);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("false", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("false", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 
     JsonStringifier stringifier2(thread);
     JSHandle<JSTaggedValue> resultString2 = stringifier2.Stringify(handleValue, handleReplacer2, handleGap);
     EXPECT_TRUE(resultString2->IsString());
     JSHandle<EcmaString> handleEcmaStr2(resultString2);
-    EXPECT_STREQ("10.12", EcmaStringAccessor(handleEcmaStr2).ToCString().c_str());
+    EXPECT_STREQ("10.12", EcmaStringAccessor(handleEcmaStr2).ToCString(thread).c_str());
 }
 
 /**
@@ -204,7 +204,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_002)
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
     EXPECT_STREQ("{\n          \"z\": 1,\n          \"x\": 3.6,\n          \"y\": \"abc\"\n}",
-                                                     EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+                                                     EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -271,7 +271,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_004)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{\ntttt\"z\": 1,\ntttt\"x\": 3.6\n}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{\ntttt\"z\": 1,\ntttt\"x\": 3.6\n}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -294,7 +294,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_005)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{\"z\":1,\"x\":3.6,\"y\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{\"z\":1,\"x\":3.6,\"y\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -336,7 +336,8 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_006)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[\ntttt\"json\",\ntttt100,\ntttt\"abc\"\n]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("[\ntttt\"json\",\ntttt100,\ntttt\"abc\"\n]",
+                 EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -375,7 +376,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_007)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[1,3.6,\"abc\"]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("[1,3.6,\"abc\"]", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -404,7 +405,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_008)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("\"\\\"\\\\\\b\\f\\n\\r\\t\"", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("\"\\\"\\\\\\b\\f\\n\\r\\t\"", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 static void* Detach(void *param1, void *param2, void *hint, void *detachData)
@@ -462,7 +463,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_009)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleValue, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{\"key1\":{},\"key2\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{\"key1\":{},\"key2\":\"abc\"}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_010)
@@ -476,7 +477,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_010)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleMap, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSSharedMap> sharedMap1 = CreateSharedMap(thread);
@@ -495,7 +496,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_010)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("{\"key1\":\"abc\",\"key2\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("{\"key1\":\"abc\",\"key2\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_011)
@@ -509,7 +510,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_011)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleMap, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSMap> jsMap1 = CreateJSMap(thread);
@@ -528,7 +529,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_011)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("{\"key1\":\"abc\",\"key2\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("{\"key1\":\"abc\",\"key2\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_012)
@@ -542,7 +543,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_012)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleSet, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSSharedSet> sharedSet1 = CreateJSSharedSet(thread);
@@ -559,7 +560,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_012)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("[\"abc\",\"val\"]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("[\"abc\",\"val\"]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_013)
@@ -573,7 +574,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_013)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleSet, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSSet> jsSet1 = CreateJSSet(thread);
@@ -590,7 +591,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_013)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("[\"abc\",\"val\"]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("[\"abc\",\"val\"]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_014)
@@ -604,7 +605,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_014)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleMap, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("{}", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSAPIHashMap> hashMap1(thread, CreateHashMap(thread));
@@ -623,7 +624,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_014)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STRNE("{}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STRNE("{}", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_015)
@@ -637,7 +638,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_015)
     JSHandle<JSTaggedValue> resultString = stringifier.Stringify(handleSet, handleReplacer, handleGap);
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> handleEcmaStr(resultString);
-    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("[]", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 
     JsonStringifier stringifier1(thread, TransformType::SENDABLE);
     JSHandle<JSAPIHashSet> hashSet1(thread, CreateHashSet(thread));
@@ -654,7 +655,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_015)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STRNE("[]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STRNE("[]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_016)
@@ -680,7 +681,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_016)
     JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("{\"key2\":\"val\",\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("{\"key2\":\"val\",\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_017)
@@ -703,7 +704,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_017)
     JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("[\"val\",\"abc\"]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("[\"val\",\"abc\"]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_018)
@@ -729,7 +730,8 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_018)
     JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("{\"key1\":\"abc\",\"undefined\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("{\"key1\":\"abc\",\"undefined\":\"val\"}",
+                 EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_019)
@@ -753,7 +755,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_019)
     JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("[\"abc\",\"val\",null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("[\"abc\",\"val\",null]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_020)
@@ -776,7 +778,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_020)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleMap1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("{\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("{\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(JsonStringifierTest, Stringify_021)
@@ -793,7 +795,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_021)
     JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleSet1, handleReplacer1, handleGap1);
     EXPECT_TRUE(resultString1->IsString());
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
-    EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+    EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
 #if ENABLE_NEXT_OPTIMIZATION

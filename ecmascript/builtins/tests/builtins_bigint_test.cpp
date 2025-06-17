@@ -208,7 +208,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToLocaleString_002)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("123.456.789.123.456.789,00 €", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("123.456.789.123.456.789,00 €", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 // 17.ToStirng()
@@ -226,7 +226,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_001)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("17", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("17", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 // -0.ToStirng()
@@ -244,7 +244,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_002)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("0", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("0", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 // -10.ToStirng(2)
@@ -263,7 +263,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_003)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("-1010", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("-1010", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 // 254.ToStirng(16)
@@ -282,7 +282,7 @@ HWTEST_F_L0(BuiltinsBigIntTest, ToString_004)
 
     EXPECT_TRUE(result2.IsString());
     JSHandle<EcmaString> ecmaStrHandle(thread, result2);
-    EXPECT_STREQ("fe", EcmaStringAccessor(ecmaStrHandle).ToCString().c_str());
+    EXPECT_STREQ("fe", EcmaStringAccessor(ecmaStrHandle).ToCString(thread).c_str());
 }
 
 // BigInt.ValueOf

@@ -49,6 +49,7 @@ public:
 
 private:
     bool pgoEnabled_ {false};
+    JSThread *thread_ {nullptr};
     std::shared_ptr<PGOProfiler> pgoProfiler_;
     std::unordered_set<JSTaggedType> *trackSet_ {nullptr};
     SlotUpdateRangeVisitor<gcType> slotUpdateRangeVisitor_;

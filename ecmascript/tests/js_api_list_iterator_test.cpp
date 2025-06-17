@@ -62,7 +62,7 @@ HWTEST_F_L0(JSAPIListIteratorTest, NextCreateListIterator)
     JSHandle<JSAPIListIterator> listIterator(
         thread, JSAPIListIterator::CreateListIterator(thread, taggedValueHandle).GetTaggedValue());
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    uint32_t capacity = static_cast<uint32_t>(list->Length());
+    uint32_t capacity = static_cast<uint32_t>(list->Length(thread));
     for (uint32_t i = 0; i < capacity; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -78,7 +78,7 @@ HWTEST_F_L0(JSAPIListIteratorTest, NextCreateListIterator)
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue(i));
         } else {
-            EXPECT_EQ(listIterator->GetIteratedList(), JSTaggedValue::Undefined());
+            EXPECT_EQ(listIterator->GetIteratedList(thread), JSTaggedValue::Undefined());
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue::Undefined());
         }

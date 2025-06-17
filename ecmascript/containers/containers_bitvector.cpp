@@ -43,7 +43,8 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
     if (!length->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, length);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"length\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"length\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -71,8 +72,8 @@ JSTaggedValue ContainersBitVector::Push(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, "The push method cannot be bound");
@@ -92,8 +93,8 @@ JSTaggedValue ContainersBitVector::Pop(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, "The pop method cannot be bound");
@@ -113,8 +114,8 @@ JSTaggedValue ContainersBitVector::Has(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, BIND_ERROR, "The has method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -127,14 +128,16 @@ JSTaggedValue ContainersBitVector::Has(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -153,8 +156,8 @@ JSTaggedValue ContainersBitVector::SetBitsByRange(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The setBitsByRange method cannot be bound");
@@ -168,14 +171,16 @@ JSTaggedValue ContainersBitVector::SetBitsByRange(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -193,8 +198,8 @@ JSTaggedValue ContainersBitVector::GetBitsByRange(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The getBitsByRange method cannot be bound");
@@ -207,14 +212,16 @@ JSTaggedValue ContainersBitVector::GetBitsByRange(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -231,8 +238,8 @@ JSTaggedValue ContainersBitVector::Resize(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The resize method cannot be bound");
@@ -243,7 +250,8 @@ JSTaggedValue ContainersBitVector::Resize(EcmaRuntimeCallInfo* argv)
     if (!size->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, size);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"size\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"size\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -260,8 +268,8 @@ JSTaggedValue ContainersBitVector::SetAllBits(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, "The setAllBits method cannot be bound");
@@ -283,8 +291,8 @@ JSTaggedValue ContainersBitVector::GetBitCountByRange(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The getBitCountByRange method cannot be bound");
@@ -298,14 +306,16 @@ JSTaggedValue ContainersBitVector::GetBitCountByRange(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -322,8 +332,8 @@ JSTaggedValue ContainersBitVector::GetIndexOf(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The getIndexOf method cannot be bound");
@@ -337,14 +347,16 @@ JSTaggedValue ContainersBitVector::GetIndexOf(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -362,8 +374,8 @@ JSTaggedValue ContainersBitVector::GetLastIndexOf(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The getLastIndexOf method cannot be bound");
@@ -377,14 +389,16 @@ JSTaggedValue ContainersBitVector::GetLastIndexOf(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -401,8 +415,8 @@ JSTaggedValue ContainersBitVector::FlipBitByIndex(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The flipBitByIndex method cannot be bound");
@@ -413,7 +427,8 @@ JSTaggedValue ContainersBitVector::FlipBitByIndex(EcmaRuntimeCallInfo* argv)
     if (!value->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"index\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"index\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -432,8 +447,8 @@ JSTaggedValue ContainersBitVector::FlipBitsByRange(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, BIND_ERROR, "The flipBitsByRange method cannot be bound");
@@ -445,14 +460,16 @@ JSTaggedValue ContainersBitVector::FlipBitsByRange(EcmaRuntimeCallInfo* argv)
     if (!startIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"fromIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (!endIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"toIndex\" must be integer. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -470,8 +487,8 @@ JSTaggedValue ContainersBitVector::GetSize(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error =
                 ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR, "The getSize method cannot be bound");
@@ -492,8 +509,8 @@ JSTaggedValue ContainersBitVector::GetIteratorObj(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIBitVector()) {
-        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIBitVector()) {
-            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIBitVector()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(
                 thread, ErrorFlag::BIND_ERROR, "The Symbol.iterator method cannot be bound");

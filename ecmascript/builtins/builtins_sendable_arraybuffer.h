@@ -48,7 +48,7 @@ public:
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
     // 24.1.1.2 IsDetachedBuffer(arrayBuffer)
 
-    static bool IsDetachedBuffer(JSTaggedValue arrayBuffer);
+    static bool IsDetachedBuffer(JSThread *thread, JSTaggedValue arrayBuffer);
     // 24.1.1.4 CloneArrayBuffer( srcBuffer, srcByteOffset [, cloneConstructor] )
     static JSTaggedValue CloneArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &srcBuffer,
                                           uint32_t srcByteOffset, JSHandle<JSTaggedValue> constructor);
@@ -81,7 +81,7 @@ public:
         return Span<const std::pair<std::string_view, bool>>(ARRAYBUFFER_FUNCTION_PROPERTIES);
     }
 
-    static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
+    static void *GetDataPointFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id) \
     BuiltinFunctionEntry::Create(name, BuiltinsSendableArrayBuffer::func, length, BUILTINS_STUB_ID(id)),

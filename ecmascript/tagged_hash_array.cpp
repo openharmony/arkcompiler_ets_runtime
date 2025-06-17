@@ -35,7 +35,7 @@ JSTaggedValue TaggedHashArray::GetNode(JSThread *thread, int hash, JSTaggedValue
 {
     uint32_t nodeLength = GetLength();
     ASSERT(nodeLength > 0);
-    JSTaggedValue nodeValue = Get(((nodeLength - 1) & hash));
+    JSTaggedValue nodeValue = Get(thread, ((nodeLength - 1) & hash));
     JSTaggedValue hashValue = JSTaggedValue(hash);
     if (nodeValue.IsHole()) {
         return JSTaggedValue::Hole();
@@ -48,10 +48,11 @@ JSTaggedValue TaggedHashArray::GetNode(JSThread *thread, int hash, JSTaggedValue
         JSTaggedValue nextNodeVa = nodeValue;
         while (!nextNodeVa.IsHole()) {
             LinkedNode *nextNode = LinkedNode::Cast(nextNodeVa.GetTaggedObject());
-            if (nextNode->GetHash() == hashValue && JSTaggedValue::SameValue(key, nextNode->GetKey())) {
+            if (nextNode->GetHash(thread) == hashValue &&
+                JSTaggedValue::SameValue(thread, key, nextNode->GetKey(thread))) {
                 return nextNodeVa;
             }
-            nextNodeVa = nextNode->GetNext();
+            nextNodeVa = nextNode->GetNext(thread);
         }
     }
     return JSTaggedValue::Hole();
@@ -67,9 +68,9 @@ JSHandle<LinkedNode> TaggedHashArray::NewLinkedNode(JSThread *thread, int hash, 
 
 JSHandle<LinkedNode> TaggedHashArray::CreateLinkedNodeFrom(JSThread *thread, JSHandle<RBTreeNode> treeNode)
 {
-    JSHandle<JSTaggedValue> key(thread, treeNode->GetKey());
-    JSHandle<JSTaggedValue> value(thread, treeNode->GetValue());
-    return NewLinkedNode(thread, treeNode->GetHash().GetInt(), key, value);
+    JSHandle<JSTaggedValue> key(thread, treeNode->GetKey(thread));
+    JSHandle<JSTaggedValue> value(thread, treeNode->GetValue(thread));
+    return NewLinkedNode(thread, treeNode->GetHash(thread).GetInt(), key, value);
 }
 
 JSHandle<RBTreeNode> TaggedHashArray::NewTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
@@ -81,9 +82,9 @@ JSHandle<RBTreeNode> TaggedHashArray::NewTreeNode(JSThread *thread, int hash, JS
 
 JSHandle<RBTreeNode> TaggedHashArray::CreateTreeNodeFrom(JSThread *thread, JSHandle<LinkedNode> linkedNode)
 {
-    JSHandle<JSTaggedValue> key(thread, linkedNode->GetKey());
-    JSHandle<JSTaggedValue> value(thread, linkedNode->GetValue());
-    return NewTreeNode(thread, linkedNode->GetHash().GetInt(), key, value);
+    JSHandle<JSTaggedValue> key(thread, linkedNode->GetKey(thread));
+    JSHandle<JSTaggedValue> value(thread, linkedNode->GetValue(thread));
+    return NewTreeNode(thread, linkedNode->GetHash(thread).GetInt(), key, value);
 }
 
 void TaggedHashArray::TreeingBin(JSThread *thread, const JSHandle<TaggedHashArray> &tab, int hash)
@@ -91,7 +92,7 @@ void TaggedHashArray::TreeingBin(JSThread *thread, const JSHandle<TaggedHashArra
     uint32_t length = tab->GetLength();
     ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
-    JSTaggedValue nodeVa = tab->Get(index);
+    JSTaggedValue nodeVa = tab->Get(thread, index);
     if (!nodeVa.IsHole()) {
         JSHandle<LinkedNode> node(thread, nodeVa);
         JSHandle<RBTreeNode> root = LinkedNode::Treeing(thread, node);
@@ -111,15 +112,15 @@ JSHandle<TaggedHashArray> TaggedHashArray::Resize(JSThread *thread, const JSHand
     JSHandle<TaggedHashArray> newTab(thread, newTabValue);
     JSMutableHandle<JSTaggedValue> oldValue(thread, JSTaggedValue::Undefined());
     for (uint32_t j = 0; j < oldCapacity; ++j) {
-        oldValue.Update(oldTab->Get(j));
+        oldValue.Update(oldTab->Get(thread, j));
         if (oldValue->IsHole()) {
             continue;
         } else if (oldValue->IsRBTreeNode()) {
             RBTreeNode::Divide(thread, newTab, oldValue, j, oldCapacity);
         } else if (oldValue->IsLinkedNode()) {
             LinkedNode *node = LinkedNode::Cast(oldValue.GetTaggedValue().GetTaggedObject());
-            if (node->GetNext().IsHole()) {
-                int newhash = (node->GetHash().GetInt()) & (newCapacity - 1);
+            if (node->GetNext(thread).IsHole()) {
+                int newhash = (node->GetHash(thread).GetInt()) & (newCapacity - 1);
                 newTab->Set(thread, newhash, JSTaggedValue(node));
             } else { // preserve order
                 NodeDisperse(thread, newTab, oldValue.GetTaggedValue(), j, oldCapacity);
@@ -138,8 +139,8 @@ void TaggedHashArray::NodeDisperse(JSThread *thread, const JSHandle<TaggedHashAr
     JSTaggedValue hiTail = JSTaggedValue::Hole();
     JSTaggedValue next = JSTaggedValue::Hole();
     do {
-        next = LinkedNode::Cast(nodeVa.GetTaggedObject())->GetNext();
-        if (((LinkedNode::Cast(nodeVa.GetTaggedObject())->GetHash().GetInt()) & oldCapacity) == 0) {
+        next = LinkedNode::Cast(nodeVa.GetTaggedObject())->GetNext(thread);
+        if (((LinkedNode::Cast(nodeVa.GetTaggedObject())->GetHash(thread).GetInt()) & oldCapacity) == 0) {
             if (loTail.IsHole()) {
                 loHead = nodeVa;
             } else {
@@ -172,7 +173,7 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
     uint32_t length = table->GetLength();
     ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
-    JSHandle<JSTaggedValue> node(thread, table->Get(index));
+    JSHandle<JSTaggedValue> node(thread, table->Get(thread, index));
     if (node->IsHole()) {
         JSHandle<LinkedNode> newNode = TaggedHashArray::NewLinkedNode(thread, hash, key, value);
         table->Set(thread, index, newNode.GetTaggedValue());
@@ -184,13 +185,13 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         JSMutableHandle<JSTaggedValue> nextVal(thread, node.GetTaggedValue());
         do {
             root.Update(nextVal);
-            currentKey.Update(root->GetKey());
-            if (root->GetHash().GetInt() == hash && (!key->IsHole() &&
-                JSTaggedValue::SameValue(key.GetTaggedValue(), currentKey.GetTaggedValue()))) {
+            currentKey.Update(root->GetKey(thread));
+            if (root->GetHash(thread).GetInt() == hash && (!key->IsHole() &&
+                JSTaggedValue::SameValue(thread, key.GetTaggedValue(), currentKey.GetTaggedValue()))) {
                 root->SetValue(thread, value.GetTaggedValue());
                 return JSTaggedValue::Undefined();
             }
-            nextVal.Update(root->GetNext());
+            nextVal.Update(root->GetNext(thread));
             count++;
         } while (!nextVal->IsHole());
         JSHandle<LinkedNode> newNode = TaggedHashArray::NewLinkedNode(thread, hash, key, value);
@@ -203,7 +204,7 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
         JSHandle<RBTreeNode> root = JSHandle<RBTreeNode>::Cast(node);
         uint32_t curCount = root->GetCount();
         JSHandle<RBTreeNode> changeNode = RBTreeNode::Set(thread, root, hash, key, value);
-        changeNode->SetIsRed(thread, JSTaggedValue(false));
+        changeNode->SetIsRed(false);
         table->Set(thread, index, changeNode);
         uint32_t updateCount = changeNode->GetCount();
         if (curCount == updateCount) {
@@ -219,28 +220,30 @@ JSTaggedValue TaggedHashArray::RemoveNode(JSThread *thread, int hash, JSTaggedVa
     uint32_t length = GetLength();
     ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
-    JSTaggedValue node = Get(index);
+    JSTaggedValue node = Get(thread, index);
     if (node.IsHole()) {
         return JSTaggedValue::Hole();
     } else if (node.IsLinkedNode()) {
         LinkedNode *head = LinkedNode::Cast(node.GetTaggedObject());
-        JSTaggedValue newKey = head->GetKey();
-        if (head->GetHash().GetInt() == hash && (!key.IsHole() && JSTaggedValue::SameValue(key, newKey))) {
-            Set(thread, index, head->GetNext());
-            return head->GetValue();
+        JSTaggedValue newKey = head->GetKey(thread);
+        if (head->GetHash(thread).GetInt() == hash && (!key.IsHole() &&
+            JSTaggedValue::SameValue(thread, key, newKey))) {
+            Set(thread, index, head->GetNext(thread));
+            return head->GetValue(thread);
         }
-        JSTaggedValue nodeNextVa = head->GetNext();
+        JSTaggedValue nodeNextVa = head->GetNext(thread);
         LinkedNode *previousNode = head;
         while (!nodeNextVa.IsHole()) {
             LinkedNode *nodeNext = LinkedNode::Cast(nodeNextVa.GetTaggedObject());
-            newKey = nodeNext->GetKey();
-            if (nodeNext->GetHash().GetInt() == hash && (!key.IsHole() && JSTaggedValue::SameValue(key, newKey))) {
-                previousNode->SetNext(thread, nodeNext->GetNext());
+            newKey = nodeNext->GetKey(thread);
+            if (nodeNext->GetHash(thread).GetInt() == hash && (!key.IsHole() &&
+                JSTaggedValue::SameValue(thread, key, newKey))) {
+                previousNode->SetNext(thread, nodeNext->GetNext(thread));
                 Set(thread, index, node);
-                return nodeNext->GetValue();
+                return nodeNext->GetValue(thread);
             }
             previousNode = LinkedNode::Cast(nodeNextVa.GetTaggedObject());
-            nodeNextVa = nodeNext->GetNext();
+            nodeNextVa = nodeNext->GetNext(thread);
         }
     } else if (node.IsRBTreeNode()) {
         JSTaggedValue oldValue = JSTaggedValue::Hole();
@@ -251,8 +254,8 @@ JSTaggedValue TaggedHashArray::RemoveNode(JSThread *thread, int hash, JSTaggedVa
         }
         //set root node as black
         RBTreeNode *root = RBTreeNode::Cast(rootTreeNodeVa.GetTaggedObject());
-        if (root->GetIsRed().ToBoolean()) {
-            root->SetIsRed(thread, JSTaggedValue(false));
+        if (root->GetIsRed()) {
+            root->SetIsRed(false);
             rootTreeNodeVa = JSTaggedValue(root);
         }
         if (!rootTreeNodeVa.IsHole()) {
@@ -267,8 +270,8 @@ JSHandle<JSTaggedValue> TaggedHashArray::GetCurrentNode(JSThread *thread, JSMuta
                                                         const JSHandle<TaggedHashArray> &tableArr, uint32_t &index)
 {
     JSMutableHandle<JSTaggedValue> rootValue(thread, JSTaggedValue::Undefined());
-    if (queue->Empty()) {
-        rootValue.Update(tableArr->Get(index));
+    if (queue->Empty(thread)) {
+        rootValue.Update(tableArr->Get(thread, index));
         if (rootValue->IsHole()) {
             ++index;
             return rootValue;
@@ -278,22 +281,22 @@ JSHandle<JSTaggedValue> TaggedHashArray::GetCurrentNode(JSThread *thread, JSMuta
     }
     if (rootValue->IsRBTreeNode()) {
         JSHandle<RBTreeNode> root = JSHandle<RBTreeNode>::Cast(rootValue);
-        if (!root->GetLeft().IsHole()) {
-            JSHandle<JSTaggedValue> left(thread, root->GetLeft());
+        if (!root->GetLeft(thread).IsHole()) {
+            JSHandle<JSTaggedValue> left(thread, root->GetLeft(thread));
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, left)));
         }
-        if (!root->GetRight().IsHole()) {
-            JSHandle<JSTaggedValue> right(thread, root->GetRight());
+        if (!root->GetRight(thread).IsHole()) {
+            JSHandle<JSTaggedValue> right(thread, root->GetRight(thread));
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, right)));
         }
     } else {
         JSHandle<LinkedNode> root = JSHandle<LinkedNode>::Cast(rootValue);
-        if (!root->GetNext().IsHole()) {
-            JSHandle<JSTaggedValue> next(thread, root->GetNext());
+        if (!root->GetNext(thread).IsHole()) {
+            JSHandle<JSTaggedValue> next(thread, root->GetNext(thread));
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, next)));
         }
     }
-    if (queue->Empty()) {
+    if (queue->Empty(thread)) {
         ++index;
     }
     return rootValue;

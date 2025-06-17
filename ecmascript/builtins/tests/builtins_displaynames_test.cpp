@@ -101,7 +101,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_001)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("French", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("French", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Of(419, type(region))
@@ -125,7 +125,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_002)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Latin America", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("Latin America", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Of(EUR, type(currency))
@@ -149,7 +149,7 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_003)
 
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
-    EXPECT_STREQ("Euro", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("Euro", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Of(Code Cover)
@@ -187,10 +187,10 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, SupportedLocalesOf_001)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
-    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // SupportedLocalesOf("look up")
@@ -217,10 +217,10 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, SupportedLocalesOf_002)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
-    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("de-DE-u-co-phonebk", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("de-DE-u-co-phonebk", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(BuiltinsDisplayNamesTest, ResolvedOptions)
@@ -244,10 +244,10 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, ResolvedOptions)
     // judge whether the properties of the object are the same as those of jsdatetimeformat tag
     JSHandle<JSTaggedValue> localeKey = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> localeValue(factory->NewFromASCII("de-DE"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), localeValue), true);
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, typeKey).GetValue(), typeValue), true);
 }
 }

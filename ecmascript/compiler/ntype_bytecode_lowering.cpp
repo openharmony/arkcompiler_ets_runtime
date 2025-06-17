@@ -399,14 +399,15 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
     if (key.IsUndefined()) {
         return;
     }
+    JSThread *thread = compilationEnv_->GetJSThread();
     JSHClass *hclass = JSHClass::Cast(taggedHClass.GetTaggedObject());
-    int entry = JSHClass::FindPropertyEntry(compilationEnv_->GetJSThread(), hclass, key);
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
     if (entry == -1) {
         return;
     }
 
-    LayoutInfo *LayoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    PropertyAttributes attr(LayoutInfo->GetAttr(entry));
+    LayoutInfo *LayoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
+    PropertyAttributes attr(LayoutInfo->GetAttr(thread, entry));
     if (attr.IsAccessor()) {
         return;
     }

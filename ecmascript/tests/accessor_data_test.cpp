@@ -103,11 +103,11 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
 
     // 1.Create normal AccessorData object by NewAccessorData function.
     JSHandle<AccessorData> accHandle = factory->NewAccessorData();
-    EXPECT_EQ(accHandle->HasSetter(), false);
+    EXPECT_EQ(accHandle->HasSetter(thread), false);
     accHandle->SetSetter(thread, JSTaggedValue::Undefined());
-    EXPECT_EQ(accHandle->HasSetter(), false);
+    EXPECT_EQ(accHandle->HasSetter(thread), false);
     accHandle->SetSetter(thread, normalFunction);
-    EXPECT_EQ(accHandle->HasSetter(), true);
+    EXPECT_EQ(accHandle->HasSetter(thread), true);
 
     // 2.Create internal AccessorData object by NewInternalAccessor function.
     void *setter = nullptr;
@@ -127,9 +127,9 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
     AccessorData *acc = AccessorData::Cast(accObject);
     acc->SetGetter(thread, JSTaggedValue::Undefined());
     acc->SetSetter(thread, JSTaggedValue::Undefined());
-    EXPECT_EQ(acc->HasSetter(), false);
+    EXPECT_EQ(acc->HasSetter(thread), false);
     acc->SetSetter(thread, normalFunction);
-    EXPECT_EQ(acc->HasSetter(), true);
+    EXPECT_EQ(acc->HasSetter(thread), true);
 
     // 4.Create internal AccessorData object from dynamic class.
     JSHandle<JSHClass> internalAccClass =
@@ -156,7 +156,7 @@ HWTEST_F_L0(AccessorDataTest, CallInternalSet)
 
     // Construct objects and specify specific prototypes.
     JSFunction *func1 = globalEnv->GetObjectFunction().GetObject<JSFunction>();
-    Method::Cast(func1->GetMethod().GetTaggedObject())->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
+    Method::Cast(func1->GetMethod(thread).GetTaggedObject())->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
     JSHandle<JSFunction> funcTagVal1 =
         factory->CloneJSFunction(JSHandle<JSFunction>(thread, func1));
 

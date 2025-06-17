@@ -42,14 +42,14 @@ public:
         Set(thread, SENDABLE_PARENT_ENV_INDEX, value);
     }
 
-    JSTaggedValue GetParentEnv() const
+    JSTaggedValue GetParentEnv(JSThread *thread) const
     {
-        return Get(SENDABLE_PARENT_ENV_INDEX);
+        return Get(thread, SENDABLE_PARENT_ENV_INDEX);
     }
 
-    JSTaggedValue GetProperties(uint32_t index) const
+    JSTaggedValue GetProperties(JSThread *thread, uint32_t index) const
     {
-        return Get(index + SENDABLE_RESERVED_ENV_LENGTH);
+        return Get(thread, index + SENDABLE_RESERVED_ENV_LENGTH);
     }
 
     void SetProperties(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -57,9 +57,9 @@ public:
         Set(thread, index + SENDABLE_RESERVED_ENV_LENGTH, value);
     }
 
-    JSTaggedValue GetScopeInfo() const
+    JSTaggedValue GetScopeInfo(JSThread *thread) const
     {
-        return Get(SENDABLE_SCOPE_INFO_INDEX);
+        return Get(thread, SENDABLE_SCOPE_INFO_INDEX);
     }
 
     void SetScopeInfo(JSThread *thread, JSTaggedValue value)

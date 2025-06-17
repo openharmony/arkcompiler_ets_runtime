@@ -29,7 +29,7 @@ void JSSegmentIterator::SetIcuBreakIterator(JSThread *thread, const JSHandle<JSS
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuBreakIterator != nullptr);
-    JSTaggedValue data = iterator->GetIcuField();
+    JSTaggedValue data = iterator->GetIcuField(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuBreakIterator);
@@ -46,7 +46,7 @@ void JSSegmentIterator::SetUString(JSThread *thread, const JSHandle<JSSegmentIte
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(icuUnicodeString != nullptr);
-    JSTaggedValue data = iterator->GetUnicodeString();
+    JSTaggedValue data = iterator->GetUnicodeString(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, icuUnicodeString);
@@ -83,7 +83,7 @@ JSHandle<JSSegmentIterator> JSSegmentIterator::CreateSegmentIterator(JSThread *t
 
 JSTaggedValue JSSegmentIterator::Next(JSThread *thread, const JSHandle<JSSegmentIterator> &iterator)
 {
-    icu::BreakIterator* icuBreakIterator = iterator->GetIcuBreakIterator();
+    icu::BreakIterator* icuBreakIterator = iterator->GetIcuBreakIterator(thread);
     // 5. Let startIndex be iterator.[[IteratedStringNextSegmentCodeUnitIndex]].
     int32_t startIndex = icuBreakIterator->current();
     // 6. Let endIndex be ! FindBoundary(segmenter, string, startIndex, after).
@@ -100,7 +100,7 @@ JSTaggedValue JSSegmentIterator::Next(JSThread *thread, const JSHandle<JSSegment
     icu::UnicodeString unicodeString;
     icuBreakIterator->getText().getText(unicodeString);
     JSHandle<JSObject> segmentData = JSSegments::CreateSegmentDataObject(thread, iterator->GetGranularity(),
-        icuBreakIterator, JSHandle<EcmaString>(thread, iterator->GetIteratedString()),
+        icuBreakIterator, JSHandle<EcmaString>(thread, iterator->GetIteratedString(thread)),
         unicodeString, startIndex, endIndex);
 
     // 10. Return CreateIterResultObject(segmentData, false).

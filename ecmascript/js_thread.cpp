@@ -337,7 +337,7 @@ void JSThread::HandleUncaughtException(JSTaggedValue exception)
         return;
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(this, exceptionHandle);
-    LOG_NO_TAG(ERROR) << ConvertToString(*result);
+    LOG_NO_TAG(ERROR) << ConvertToString(this, *result);
 }
 
 void JSThread::HandleUncaughtException()
@@ -351,13 +351,13 @@ void JSThread::HandleUncaughtException()
 
 JSTaggedValue JSThread::GetCurrentLexenv() const
 {
-    FrameHandler frameHandler(this);
+    FrameHandler frameHandler(const_cast<JSThread*>(this));
     return frameHandler.GetEnv();
 }
 
 JSTaggedValue JSThread::GetCurrentFunction() const
 {
-    FrameHandler frameHandler(this);
+    FrameHandler frameHandler(const_cast<JSThread*>(this));
     return frameHandler.GetFunction();
 }
 
@@ -380,7 +380,7 @@ void JSThread::SetCurrentFrame(JSTaggedType *sp)
 const JSTaggedType *JSThread::GetCurrentInterpretedFrame() const
 {
     if (IsAsmInterpreter()) {
-        auto frameHandler = FrameHandler(this);
+        auto frameHandler = FrameHandler(const_cast<JSThread*>(this));
         return frameHandler.GetSp();
     }
     return GetCurrentSPFrame();
@@ -1206,7 +1206,7 @@ void JSThread::InitializeBuiltinObject(const JSHandle<GlobalEnv>& env, const std
     }
     auto& entry = glueData_.builtinEntries_.builtin_[index];
     entry.box_ = JSTaggedValue::Cast(box);
-    auto builtin = JSHandle<JSObject>(this, box->GetValue());
+    auto builtin = JSHandle<JSObject>(this, box->GetValue(this));
     auto hclass = builtin->GetJSHClass();
     entry.hClass_ = JSTaggedValue::Cast(hclass);
 }

@@ -26,6 +26,9 @@
 namespace panda {
 namespace ecmascript {
 
+// placeholder used when unsure how to get the thread arg
+#define THREAD_ARG_PLACEHOLDER static_cast<JSThread*>(nullptr)
+
 #define SCOPE_LIST(V)                    \
     V(TotalGC)                           \
     V(Initialize)                        \

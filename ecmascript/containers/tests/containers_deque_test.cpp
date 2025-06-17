@@ -60,14 +60,15 @@ public:
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
         {
+            JSThread *thread = argv->GetThread();
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             JSHandle<JSTaggedValue> deque = GetCallArg(argv, 2); // 2 means the secode arg
             if (!deque->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIDeque::Cast(deque.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    JSTaggedValue result = elements->Get(key->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    JSTaggedValue result = elements->Get(thread, key->GetInt());
                     EXPECT_EQ(result, value.GetTaggedValue());
                 }
             }
@@ -131,7 +132,7 @@ HWTEST_F_L0(ContainersDequeTest, DequeConstructor)
     ASSERT_TRUE(result.IsJSAPIDeque());
     JSHandle<JSAPIDeque> deque(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(deque));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
 
     // test DequeConstructor exception

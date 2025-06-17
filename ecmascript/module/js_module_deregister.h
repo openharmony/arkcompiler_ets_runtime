@@ -37,7 +37,7 @@ public:
     static inline void ProcessModuleReference(JSThread *thread, const JSHandle<JSTaggedValue> &nameSpVal)
     {
         JSHandle<ModuleNamespace> nameSp = JSHandle<ModuleNamespace>::Cast(nameSpVal);
-        JSHandle<SourceTextModule> moduleRecord(thread, nameSp->GetModule());
+        JSHandle<SourceTextModule> moduleRecord(thread, nameSp->GetModule(thread));
         JSTaggedValue weakNameSp = JSTaggedValue(nameSpVal->CreateAndGetWeakRef());
         moduleRecord->SetNamespace(thread, weakNameSp);
     }

@@ -171,16 +171,16 @@ JSTaggedValue BuiltinsSharedMap::ForEach(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not Callable", JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
-    JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap());
+    JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap(thread));
     const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // Repeat for each e that is an element of entries, in original insertion order
     while (index < totalElements) {
-        JSHandle<JSTaggedValue> key(thread, hashMap->GetKey(index++));
+        JSHandle<JSTaggedValue> key(thread, hashMap->GetKey(thread, index++));
         if (!key->IsHole()) {
-            JSHandle<JSTaggedValue> value(thread, hashMap->GetValue(index - 1));
+            JSHandle<JSTaggedValue> value(thread, hashMap->GetValue(thread, index - 1));
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(
                 thread, func, thisArg, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

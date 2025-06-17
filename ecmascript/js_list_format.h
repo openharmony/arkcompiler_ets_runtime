@@ -59,7 +59,7 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::ListFormatter *GetIcuListFormatter() const;
+    icu::ListFormatter *GetIcuListFormatter(JSThread *thread) const;
 
     static void FreeIcuListFormatter(void *env, void *pointer, [[maybe_unused]] void* hint);
 

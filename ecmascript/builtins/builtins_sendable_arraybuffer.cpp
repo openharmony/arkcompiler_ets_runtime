@@ -93,7 +93,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::GetByteLength(EcmaRuntimeCallInfo *ar
         THROW_TYPE_ERROR_AND_RETURN(thread, "don't have internal slot", JSTaggedValue::Exception());
     }
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
-    if (IsDetachedBuffer(thisHandle.GetTaggedValue())) {
+    if (IsDetachedBuffer(thread, thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "IsDetachedBuffer", JSTaggedValue::Exception());
     }
     JSHandle<JSSendableArrayBuffer> arrBuf(thisHandle);
@@ -124,7 +124,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // 4. If IsDetachedBuffer(O) is true, throw a TypeError exception.
-    if (IsDetachedBuffer(thisHandle.GetTaggedValue())) {
+    if (IsDetachedBuffer(thread, thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value IsDetachedBuffer", JSTaggedValue::Exception());
     }
     JSHandle<JSSendableArrayBuffer> arrBuf(thisHandle);
@@ -185,11 +185,11 @@ JSTaggedValue BuiltinsSendableArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "don't have bufferdata internal slot", JSTaggedValue::Exception());
     }
     // 18. If IsDetachedBuffer(new) is true, throw a TypeError exception.
-    if (IsDetachedBuffer(newArrBuf.GetTaggedValue())) {
+    if (IsDetachedBuffer(thread, newArrBuf.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "new arrayBuffer IsDetachedBuffer", JSTaggedValue::Exception());
     }
     // 19. If SameValue(new, O) is true, throw a TypeError exception.
-    if (JSTaggedValue::SameValue(newArrBuf.GetTaggedValue(), thisHandle.GetTaggedValue())) {
+    if (JSTaggedValue::SameValue(thread, newArrBuf.GetTaggedValue(), thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "value of new arraybuffer and this is same", JSTaggedValue::Exception());
     }
     JSHandle<JSSendableArrayBuffer> newJsArrBuf(newArrBuf);
@@ -200,14 +200,14 @@ JSTaggedValue BuiltinsSendableArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     }
     // 21. NOTE: Side-effects of the above steps may have detached O.
     // 22. If IsDetachedBuffer(O) is true, throw a TypeError exception.
-    if (IsDetachedBuffer(thisHandle.GetTaggedValue())) {
+    if (IsDetachedBuffer(thread, thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value IsDetachedBuffer", JSTaggedValue::Exception());
     }
     if (newLen > 0) {
         // 23. Let fromBuf be the value of O’s [[ArrayBufferData]] internal slot.
-        void *fromBuf = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
+        void *fromBuf = GetDataPointFromBuffer(thread, arrBuf.GetTaggedValue());
         // 24. Let toBuf be the value of new’s [[ArrayBufferData]] internal slot.
-        void *toBuf = GetDataPointFromBuffer(newJsArrBuf.GetTaggedValue());
+        void *toBuf = GetDataPointFromBuffer(thread, newJsArrBuf.GetTaggedValue());
         // 25. Perform CopyDataBlockBytes(toBuf, fromBuf, first, newLen).
         JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, first, newLen);
     }
@@ -246,7 +246,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(
 }
 
 // 24.1.1.2 IsDetachedBuffer()
-bool BuiltinsSendableArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
+bool BuiltinsSendableArrayBuffer::IsDetachedBuffer(JSThread *thread, JSTaggedValue arrayBuffer)
 {
     if (arrayBuffer.IsByteArray()) {
         return false;
@@ -254,7 +254,7 @@ bool BuiltinsSendableArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
     // 1. Assert: Type(arrayBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
     ASSERT(arrayBuffer.IsSendableArrayBuffer());
     JSSendableArrayBuffer *buffer = JSSendableArrayBuffer::Cast(arrayBuffer.GetTaggedObject());
-    JSTaggedValue dataSlot = buffer->GetArrayBufferData();
+    JSTaggedValue dataSlot = buffer->GetArrayBufferData(thread);
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return true.
     // 3. Return false.
     return dataSlot.IsNull();
@@ -279,7 +279,7 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
         // b. ReturnIfAbrupt(cloneConstructor).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // c. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
-        if (IsDetachedBuffer(srcBuffer.GetTaggedValue())) {
+        if (IsDetachedBuffer(thread, srcBuffer.GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
         } else {
             ASSERT(constructor->IsConstructor());
@@ -311,22 +311,22 @@ JSTaggedValue BuiltinsSendableArrayBuffer::CloneArrayBuffer(JSThread *thread,
     // 9. ReturnIfAbrupt(targetBuffer).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 10. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
-    if (IsDetachedBuffer(srcBuffer.GetTaggedValue())) {
+    if (IsDetachedBuffer(thread, srcBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 11. Let targetBlock be the value of targetBuffer’s [[ArrayBufferData]] internal slot.
     JSHandle<JSSendableArrayBuffer> newArrBuf(thread, taggedBuf);
     // Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
     // 7. Let srcBlock be the value of srcBuffer’s [[ArrayBufferData]] internal slot.
-    void *fromBuf = GetDataPointFromBuffer(srcBuffer.GetTaggedValue());
-    void *toBuf = GetDataPointFromBuffer(taggedBuf);
+    void *fromBuf = GetDataPointFromBuffer(thread, srcBuffer.GetTaggedValue());
+    void *toBuf = GetDataPointFromBuffer(thread, taggedBuf);
     if (cloneLen > 0) {
         JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);
     }
     return taggedBuf;
 }
 
-void *BuiltinsSendableArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset)
+void *BuiltinsSendableArrayBuffer::GetDataPointFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteOffset)
 {
     if (arrBuf.IsByteArray()) {
         return reinterpret_cast<void *>(ToUintPtr(ByteArray::Cast(arrBuf.GetTaggedObject())->GetData()) + byteOffset);
@@ -337,7 +337,7 @@ void *BuiltinsSendableArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, 
         return nullptr;
     }
 
-    JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+    JSTaggedValue data = arrayBuffer->GetArrayBufferData(thread);
     return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
                                     ->GetExternalPointer()) + byteOffset);
 }
