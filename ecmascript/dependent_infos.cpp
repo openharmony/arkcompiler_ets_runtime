@@ -24,11 +24,11 @@ namespace panda::ecmascript {
 
 JSHandle<DependentInfos> DependentInfos::AppendDependentInfos(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> jsFunc,
-                                                              const DependentGroups groups,
+                                                              const DependentStateCollection collection,
                                                               const JSHandle<DependentInfos> info)
 {
     JSHandle<JSTaggedValue> first = jsFunc;
-    JSHandle<JSTaggedValue> second(thread, JSTaggedValue(groups));
+    JSHandle<JSTaggedValue> second(thread, JSTaggedValue(collection));
     JSHandle<WeakVector> newVec1 = WeakVector::Append(thread,
         JSHandle<WeakVector>::Cast(info), first, ElementType::WEAK);
     JSHandle<WeakVector> newVec2 = WeakVector::Append(thread, newVec1, second);
@@ -37,7 +37,7 @@ JSHandle<DependentInfos> DependentInfos::AppendDependentInfos(JSThread *thread,
 
 // static
 void DependentInfos::TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction> func,
-                                          DependentGroups groups)
+                                          DependentStateCollection collection)
 {
     if (!thread->GetEcmaVM()->GetJSOptions().IsEnableLazyDeoptTrace()) {
         return;
@@ -46,8 +46,8 @@ void DependentInfos::TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction>
     std::string funNameS = "Lazy Deoptimization occurred on";
     funNameS += " function: \"" + EcmaStringAccessor(funcName).ToStdString() + "\"";
     LOG_TRACE(INFO) << funNameS;
-    // Get the lowbit of groups.
-    uint32_t value = (static_cast<uint32_t>(groups) & (-static_cast<uint32_t>(groups)));
+    // Get the lowbit of collection.
+    uint32_t value = (static_cast<uint32_t>(collection) & (-static_cast<uint32_t>(collection)));
     std::string reason;
     switch (value) {
     #define LAZY_DEOPT_TYPE_CASE(name, value)           \
@@ -66,13 +66,15 @@ void DependentInfos::TraceLazyDeoptReason(JSThread *thread, JSHandle<JSFunction>
 }
 
 // static
-void DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos> dependentInfos,
-                                      JSThread *thread, DependentGroups groups)
+void DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos> dependentInfos,
+                                               JSThread *thread, DependentStateCollection collection)
 {
     bool hasDeoptMethod = false;
     for (uint32_t i = 0; i < dependentInfos->GetEnd(); i += SLOT_PER_ENTRY) {
-        DependentGroups depGroups = static_cast<DependentGroups>(dependentInfos->Get(i + GROUP_SLOT_OFFSET).GetInt());
-        if (!CheckGroupsEffect(depGroups, groups)) {
+        DependentStateCollection depCollection =
+            static_cast<DependentStateCollection>(
+                dependentInfos->Get(i + COLLECTION_SLOT_OFFSET).GetInt());
+        if (!CheckCollectionEffect(depCollection, collection)) {
             continue;
         }
         JSTaggedValue rawValue = dependentInfos->Get(i + FUNCTION_SLOT_OFFSET).GetWeakRawValue();
@@ -88,7 +90,7 @@ void DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos> dependentInfos,
                                                            func.GetObject<JSFunction>(),
                                                            method.GetObject<Method>(),
                                                            kungfu::DeoptType::LAZYDEOPT);
-            TraceLazyDeoptReason(thread, func, (depGroups & groups));
+            TraceLazyDeoptReason(thread, func, (depCollection & collection));
         }
     }
     if (hasDeoptMethod) {

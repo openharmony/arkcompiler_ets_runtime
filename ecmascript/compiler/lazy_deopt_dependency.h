@@ -24,8 +24,8 @@
 
 namespace panda::ecmascript::kungfu {
 
-using DependentGroup = DependentInfos::DependentGroup;
-using DependentGroups = DependentInfos::DependentGroups;
+using DependentState = DependentInfos::DependentState;
+using DependentStateCollection = DependentInfos::DependentStateCollection;
 class CombinedDependencies {
 public:
     CombinedDependencies(GlobalEnv *globalEnv)
@@ -35,17 +35,17 @@ public:
     NO_COPY_SEMANTIC(CombinedDependencies);
     NO_MOVE_SEMANTIC(CombinedDependencies);
 
-    void Register(JSHClass *hclass, DependentGroup group);
-    void Register(uint32_t detectorID, DependentGroup group);
-    void Register(DependentGroup group);
+    void Register(JSHClass *hclass, DependentState state);
+    void Register(uint32_t detectorID, DependentState state);
+    void Register(DependentState state);
 
     void InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc);
 
 private:
-    std::map<JSHClass *, DependentGroups> deps_;        // hclass, groups
-    std::map<uint32_t, DependentGroups> detectorDeps_;  // detectorID_, groups
+    std::map<JSHClass *, DependentStateCollection> deps_;        // hclass, collection
+    std::map<uint32_t, DependentStateCollection> detectorDeps_;  // detectorID_, collection
     GlobalEnv *globalEnv_;
-    DependentGroups threadDeps_ {0};
+    DependentStateCollection threadDeps_ {0};
 };
 
 enum class LazyDeoptDependencyKind : uint32_t {
@@ -80,7 +80,7 @@ public:
     void Install(CombinedDependencies *combinedDeps) const override
     {
         ASSERT(IsValid());
-        combinedDeps->Register(detectorID_, DependentGroup::DETECTOR_CHECK);
+        combinedDeps->Register(detectorID_, DependentState::DETECTOR_CHECK);
     }
     
 private:
@@ -102,7 +102,7 @@ public:
     void Install(CombinedDependencies *combinedDeps) const override
     {
         ASSERT(IsValid());
-        combinedDeps->Register(hclass_, DependentGroup::IS_PROTOTYPE_CHECK);
+        combinedDeps->Register(hclass_, DependentState::IS_PROTOTYPE_CHECK);
     }
 
 private:
@@ -123,7 +123,7 @@ public:
     void Install(CombinedDependencies *combinedDeps) const override
     {
         ASSERT(IsValid());
-        combinedDeps->Register(hclass_, DependentGroup::PROTOTYPE_CHECK);
+        combinedDeps->Register(hclass_, DependentState::PROTOTYPE_CHECK);
     }
 
 private:
@@ -143,7 +143,7 @@ public:
     void Install(CombinedDependencies *combinedDeps) const override
     {
         ASSERT(IsValid());
-        combinedDeps->Register(DependentGroup::HOTRELOAD_PATCHMAIN);
+        combinedDeps->Register(DependentState::HOTRELOAD_PATCHMAIN);
     }
 
 private:

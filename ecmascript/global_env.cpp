@@ -93,8 +93,8 @@ void GlobalEnv::NotifyDetectorDeoptimize(uint32_t detectorID)
         return;
     }
     JSThread *thread = GetJSThread();
-    DependentInfos::DeoptimizeGroups(JSHandle<DependentInfos>::Cast(dependentInfos),
-        thread, DependentInfos::DependentGroup::DETECTOR_CHECK);
+    DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos>::Cast(dependentInfos),
+        thread, DependentInfos::DependentState::DETECTOR_CHECK);
     SetDependentInfos(detectorID, thread->GlobalConstants()->GetHandledUndefined());
 }
 
