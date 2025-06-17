@@ -24,20 +24,20 @@
 
 namespace panda::ecmascript::kungfu {
 
-void CombinedDependencies::Register(JSHClass *hclass, DependentGroup group)
+void CombinedDependencies::Register(JSHClass *hclass, DependentState state)
 {
     // Since the value of deps_ is uint32_t, we don't need to check whether we can find it.
-    deps_[hclass] |= static_cast<uint32_t>(group);
+    deps_[hclass] |= static_cast<uint32_t>(state);
 }
 
-void CombinedDependencies::Register(uint32_t detectorID, DependentGroup group)
+void CombinedDependencies::Register(uint32_t detectorID, DependentState state)
 {
-    detectorDeps_[detectorID] |= static_cast<uint32_t>(group);
+    detectorDeps_[detectorID] |= static_cast<uint32_t>(state);
 }
 
-void CombinedDependencies::Register(DependentGroup group)
+void CombinedDependencies::Register(DependentState state)
 {
-    threadDeps_ |= static_cast<uint32_t>(group);
+    threadDeps_ |= static_cast<uint32_t>(state);
 }
 
 void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> jsFunc)
@@ -45,11 +45,11 @@ void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> 
     JSMutableHandle<JSHClass> hclass(thread, JSTaggedValue::Undefined());
     for (auto iter : deps_) {
         hclass.Update(JSTaggedValue(iter.first));
-        uint32_t groups = iter.second;
+        uint32_t collection = iter.second;
         JSHandle<DependentInfos> dependentInfos =
             JSHandle<DependentInfos>::Cast(JSObject::GetOrCreateDependentInfos(thread, hclass));
         JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
-            jsFunc, groups, dependentInfos);
+            jsFunc, collection, dependentInfos);
         hclass->SetDependentInfos(thread, infos.GetTaggedValue());
     }
     if (threadDeps_) {
@@ -60,11 +60,11 @@ void CombinedDependencies::InstallAll(JSThread *thread, JSHandle<JSTaggedValue> 
     }
     for (auto iter : detectorDeps_) {
         uint32_t detectorID = iter.first;
-        uint32_t groups = iter.second;
+        uint32_t collection = iter.second;
         JSHandle<DependentInfos> dependentInfos = JSHandle<DependentInfos>::Cast(
             JSObject::GetOrCreateDetectorDependentInfos(thread, detectorID, globalEnv_));
         JSHandle<DependentInfos> infos = DependentInfos::AppendDependentInfos(thread,
-            jsFunc, groups, dependentInfos);
+            jsFunc, collection, dependentInfos);
         globalEnv_->SetDependentInfos(detectorID, JSHandle<JSTaggedValue>::Cast(infos));
     }
 }
@@ -125,7 +125,7 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
         holderHClass = nullptr;
     }
     JSTaggedValue current;
-    if (!receiverHClass->IsCompositeHClass()) {
+    if (receiverHClass->IsCompositeHClass()) {
         if (receiverHClass->IsString()) {
             ASSERT(globalEnv != nullptr);
             current = globalEnv->GetStringPrototype().GetTaggedValue();

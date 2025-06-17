@@ -667,7 +667,7 @@ public:
     inline bool IsCompositeHClass() const
     {
         common::CommonType jsType = static_cast<common::CommonType>(GetObjectType());
-        return !(common::CommonType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::CommonType::LAST_OBJECT_TYPE);
+        return (common::CommonType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::CommonType::LAST_OBJECT_TYPE);
     }
 
     inline bool IsString() const

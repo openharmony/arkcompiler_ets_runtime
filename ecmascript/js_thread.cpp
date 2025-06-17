@@ -1104,7 +1104,8 @@ void JSThread::NotifyHotReloadDeoptimize()
     if (!hotReloadDependInfo_.IsHeapObject()) {
         return;
     }
-    DependentInfos::DeoptimizeGroups(GetDependentInfo(), this, DependentInfos::DependentGroup::HOTRELOAD_PATCHMAIN);
+    DependentInfos::TriggerLazyDeoptimization(GetDependentInfo(),
+        this, DependentInfos::DependentState::HOTRELOAD_PATCHMAIN);
     hotReloadDependInfo_ = JSTaggedValue::Undefined();
 }
 

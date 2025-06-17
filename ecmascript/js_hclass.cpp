@@ -984,8 +984,8 @@ void JSHClass::NotifyHClassNotPrototypeChanged(JSThread *thread, const JSHandle<
         return;
     }
     JSHandle<DependentInfos> infosHandle(thread, infos);
-    DependentInfos::DeoptimizeGroups(
-        infosHandle, thread, DependentInfos::DependentGroup::IS_PROTOTYPE_CHECK);
+    DependentInfos::TriggerLazyDeoptimization(
+        infosHandle, thread, DependentInfos::DependentState::IS_PROTOTYPE_CHECK);
 }
 
 void JSHClass::NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass> &jsHClass)
@@ -999,8 +999,8 @@ void JSHClass::NotifyLeafHClassChanged(JSThread *thread, const JSHandle<JSHClass
         return;
     }
     JSHandle<DependentInfos> infosHandle(thread, infos);
-    DependentInfos::DeoptimizeGroups(
-        infosHandle, thread, DependentInfos::DependentGroup::PROTOTYPE_CHECK);
+    DependentInfos::TriggerLazyDeoptimization(
+        infosHandle, thread, DependentInfos::DependentState::PROTOTYPE_CHECK);
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)

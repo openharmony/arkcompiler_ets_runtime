@@ -4809,7 +4809,7 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<Reference> &vec) const
 {
-    if (IsCompositeHClass()) {
+    if (!IsCompositeHClass()) {
         vec.emplace_back(CString("__proto__"), GetPrototype());
         vec.emplace_back(CString("Layout"), GetLayout());
         vec.emplace_back(CString("Transitions"), GetTransitions());
