@@ -208,24 +208,31 @@ GateRef CircuitBuilder::LoadHClassByConstOffset([[maybe_unused]] GateRef glue, G
     return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
 }
 
-GateRef CircuitBuilder::LoadPrototype(GateRef hclass)
+GateRef CircuitBuilder::LoadPrototype(GateRef glue, GateRef hclass)
 {
+    CheckHClassFieldInvalidAccess(glue, hclass);
     return LoadConstOffset(VariableType::JS_POINTER(), hclass, JSHClass::PROTOTYPE_OFFSET);
+}
+
+GateRef CircuitBuilder::LoadProtoChangeMarker(GateRef glue, GateRef hclass)
+{
+    CheckHClassFieldInvalidAccess(glue, hclass);
+    return LoadConstOffset(VariableType::JS_POINTER(), hclass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
 }
 
 GateRef CircuitBuilder::LoadPrototypeHClass(GateRef glue, GateRef object)
 {
     GateRef objectHClass = LoadHClassByConstOffset(glue, object);
-    GateRef objectPrototype = LoadPrototype(objectHClass);
+    GateRef objectPrototype = LoadPrototype(glue, objectHClass);
     return LoadHClass(glue, objectPrototype);
 }
 
 GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef object)
 {
     GateRef objectHClass = LoadHClassByConstOffset(glue, object);
-    GateRef objectPrototype = LoadPrototype(objectHClass);
+    GateRef objectPrototype = LoadPrototype(glue, objectHClass);
     GateRef objectPrototypeHClass = LoadHClassByConstOffset(glue, objectPrototype);
-    GateRef objectPrototypeOfPrototype = LoadPrototype(objectPrototypeHClass);
+    GateRef objectPrototypeOfPrototype = LoadPrototype(glue, objectPrototypeHClass);
     return LoadHClass(glue, objectPrototypeOfPrototype);
 }
 
@@ -290,6 +297,7 @@ void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hCla
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
 {
+    CheckHClassFieldInvalidAccess(glue, hclass);
     Store(VariableType::JS_POINTER(), glue, hclass, IntPtr(JSHClass::PROTOTYPE_OFFSET), prototype);
 }
 

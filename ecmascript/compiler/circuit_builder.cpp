@@ -698,20 +698,50 @@ GateRef CircuitBuilder::GetEmptyArray(GateRef glue)
     return LoadWithoutBarrier(VariableType::JS_ANY(), gConstAddr, offset);
 }
 
+GateRef CircuitBuilder::IsCompositeHClass(GateRef hClass)
+{
+    GateRef objectType = GetObjectType(hClass);
+    return BitAnd(
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(common::CommonType::LAST_OBJECT_TYPE))),
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(common::CommonType::FIRST_OBJECT_TYPE))));
+}
+
+void CircuitBuilder::CheckHClassFieldInvalidAccess([[maybe_unused]]GateRef glue, [[maybe_unused]] GateRef hClass)
+{
+#ifndef NDEBUG
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    Label exit(env_);
+    Label failed(env_);
+    BRANCH_UNLIKELY(IsCompositeHClass(hClass), &failed, &exit);
+    Bind(&failed);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(FatalPrint), Gate::InvalidGateRef,
+                       {Int32(GET_MESSAGE_STRING_ID(AccessCompositeClassField))}, glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    SubCfgExit();
+#endif
+}
+
 GateRef CircuitBuilder::GetPrototypeFromHClass(GateRef glue, GateRef hClass)
 {
+    CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef protoOffset = IntPtr(JSHClass::PROTOTYPE_OFFSET);
     return Load(VariableType::JS_ANY(), glue, hClass, protoOffset);
 }
 
 GateRef CircuitBuilder::GetEnumCacheFromHClass(GateRef glue, GateRef hClass)
 {
+    CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
     return Load(VariableType::JS_ANY(), glue, hClass, offset);
 }
 
 GateRef CircuitBuilder::GetProtoChangeMarkerFromHClass(GateRef glue, GateRef hClass)
 {
+    CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     return Load(VariableType::JS_ANY(), glue, hClass, offset);
 }
@@ -1678,6 +1708,7 @@ GateRef CircuitBuilder::IsStableArrayLengthWriteable(GateRef glue, GateRef array
     env_->SubCfgEntry(&entry);
     DEFVALUE(result, env_, VariableType::BOOL(), False());
     GateRef hClass = LoadHClassByConstOffset(glue, array);
+    CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef attrOffset = IntPtr(JSHClass::LAYOUT_OFFSET);
     GateRef layout = Load(VariableType::JS_POINTER(), glue, hClass, attrOffset);
     GateRef entryHandler = Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX);

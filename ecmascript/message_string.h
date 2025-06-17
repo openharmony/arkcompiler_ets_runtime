@@ -89,7 +89,8 @@ namespace panda::ecmascript {
     V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")               \
     V(RecordNameMustBeString, "RecordName must be string")                                          \
     V(LexicalEnvIsUndefined, "LexicalEnv is undefined for builtin function")                        \
-    V(CurrenEnvIsUndefined, "CurrentEnv is undefined")
+    V(CurrenEnvIsUndefined, "CurrentEnv is undefined")                                              \
+    V(AccessCompositeClassField, "this field of CompositeClass is unavailable")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

@@ -360,6 +360,8 @@ public:
     inline GateRef GetExpectedNumOfArgs(GateRef method);
     inline GateRef GetGlobalConstantOffset(ConstantIndex index); // shareir
     GateRef GetEmptyArray(GateRef glue);
+    GateRef IsCompositeHClass(GateRef hClass);
+    void CheckHClassFieldInvalidAccess(GateRef glue, GateRef hClass);
     GateRef GetPrototypeFromHClass(GateRef glue, GateRef hClass);
     GateRef GetEnumCacheFromHClass(GateRef glue, GateRef hClass);
     GateRef GetProtoChangeMarkerFromHClass(GateRef glue, GateRef hClass);
@@ -584,7 +586,8 @@ public:
     inline GateRef LoadHClass(GateRef glue, GateRef object);
 #endif
     inline GateRef LoadHClassByConstOffset(GateRef glue, GateRef object);
-    inline GateRef LoadPrototype(GateRef hclass);
+    inline GateRef LoadPrototype(GateRef glue, GateRef hclass);
+    inline GateRef LoadProtoChangeMarker(GateRef glue, GateRef hclass);
     inline GateRef LoadPrototypeHClass(GateRef glue, GateRef object);
     inline GateRef LoadPrototypeOfPrototypeHClass(GateRef glue, GateRef object);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,

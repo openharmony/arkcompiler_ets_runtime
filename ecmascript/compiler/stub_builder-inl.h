@@ -2249,6 +2249,7 @@ inline GateRef StubBuilder::GetProtoChangeMarkerFromHClass(GateRef glue, GateRef
 
 inline GateRef StubBuilder::GetLayoutFromHClass(GateRef glue, GateRef hClass)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef attrOffset = IntPtr(JSHClass::LAYOUT_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, hClass, attrOffset);
 }
@@ -2301,6 +2302,7 @@ inline void StubBuilder::SetIsAllTaggedProp(GateRef glue, GateRef hclass, GateRe
 
 inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::PROTOTYPE_OFFSET);
     Store(type, glue, hClass, offset, proto);
 }
@@ -2308,12 +2310,14 @@ inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, G
 inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
     GateRef glue, GateRef hClass, GateRef protoChange)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     Store(type, glue, hClass, offset, protoChange);
 }
 
 inline GateRef StubBuilder::GetProtoChangeDetails(GateRef glue, GateRef hClass)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     return Load(VariableType::JS_ANY(), glue, hClass, offset);
 }
@@ -2321,30 +2325,42 @@ inline GateRef StubBuilder::GetProtoChangeDetails(GateRef glue, GateRef hClass)
 inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,
                                            MemoryAttribute mAttr)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::LAYOUT_OFFSET);
     Store(type, glue, hClass, offset, attr, mAttr);
 }
 
 inline void StubBuilder::SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::ENUM_CACHE_OFFSET);
     Store(type, glue, hClass, offset, key);
 }
 
 inline void StubBuilder::SetDependentInfosToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef value)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::DEPENDENT_INFOS_OFFSET);
     Store(type, glue, hClass, offset, value);
 }
 
 inline void StubBuilder::SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::TRANSTIONS_OFFSET);
     Store(type, glue, hClass, offset, transition);
 }
 
+inline GateRef StubBuilder::GetTransitionsFromHClass(GateRef glue, GateRef hClass)
+{
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
+    GateRef offset = IntPtr(JSHClass::TRANSTIONS_OFFSET);
+    return Load(VariableType::JS_POINTER(), glue, hClass, offset);
+}
+
 inline void StubBuilder::SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent)
 {
+    env_->GetBuilder()->CheckHClassFieldInvalidAccess(glue, hClass);
     GateRef offset = IntPtr(JSHClass::PARENT_OFFSET);
     Store(type, glue, hClass, offset, parent);
 }

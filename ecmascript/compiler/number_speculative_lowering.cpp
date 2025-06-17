@@ -1004,7 +1004,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         ASSERT(plr.IsLocal() || plr.IsFunction());
 
         auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);
-        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+        auto prototype = builder_.LoadPrototype(glue, receiverHC);
 
         auto holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
         DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
@@ -1020,7 +1020,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
         builder_.Bind(&lookUpProto);
-        current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+        current = builder_.LoadPrototype(glue, curHC);
         builder_.LoopEnd(&loopHead);
 
         builder_.Bind(&loadHolder);

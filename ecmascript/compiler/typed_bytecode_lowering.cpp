@@ -642,8 +642,7 @@ void TypedBytecodeLowering::LoadOnPrototypeForHeapObjectReceiver(const LoadObjPr
         builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), ldProtoInfo.frameState);
     }
     // lookup from receiver for holder
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(),
-                                              ldProtoInfo.receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    auto prototype = builder_.LoadPrototype(glue_, ldProtoInfo.receiverHC);
     // lookup from receiver for holder
     ObjectAccessTypeInfoAccessor::ObjectAccessInfo info = tacc.GetAccessInfo(ldProtoInfo.typeIndex);
     bool protoConstantFound = false;
@@ -677,7 +676,7 @@ void TypedBytecodeLowering::LoadOnPrototypeForHeapObjectReceiver(const LoadObjPr
         BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
         builder_.Bind(&lookUpProto);
-        current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+        current =  builder_.LoadPrototype(glue_, curHC);
         builder_.LoopEnd(&loopHead);
 
         builder_.Bind(&loadHolder);
@@ -1060,8 +1059,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             }
             if (tacc.IsHolderEqNewHolder(i)) {
                 // lookup from receiver for holder
-                auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC,
-                                                          JSHClass::PROTOTYPE_OFFSET);
+                auto prototype = builder_.LoadPrototype(glue_, receiverHC);
                 auto holderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
                 DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
                 Label loopHead(&builder_);
@@ -1075,7 +1073,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 BRANCH_CIR(builder_.Equal(curHC, holderHC), &loadHolder, &lookUpProto);
 
                 builder_.Bind(&lookUpProto);
-                current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+                current = builder_.LoadPrototype(glue_, curHC);
                 builder_.LoopEnd(&loopHead);
 
                 builder_.Bind(&loadHolder);
@@ -1112,8 +1110,8 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
     Label isProto(&builder_);
     auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
     if (compilationEnv_->IsAotCompiler()) {
-        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-        builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+        auto prototype = builder_.LoadPrototype(glue_, receiverHC);
+        builder_.StorePrototype(glue_, newHolderHC, prototype);
     }
     if (!tacc.IsPrototypeHclass(i)) {
         if (!TryLazyDeoptNotPrototype(tacc, i, gate)) {

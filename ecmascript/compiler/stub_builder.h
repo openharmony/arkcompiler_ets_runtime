@@ -601,6 +601,7 @@ public:
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetDependentInfosToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef value);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
+    GateRef GetTransitionsFromHClass(GateRef glue, GateRef hClass);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
     void SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value);
     inline void SetIsAOT(GateRef glue, GateRef hClass, GateRef value);
