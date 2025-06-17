@@ -18,6 +18,7 @@
 
 #include "common_components/common/base_object.h"
 #include "common_components/common/type_def.h"
+#include <vector>
 
 namespace common {
 class Collector;
