@@ -160,7 +160,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (!recordName->IsUndefined()) {
         recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, fileName, recordNameStr.c_str(), false, false, ExecuteTypes::STATIC);
+            thread, fileName, recordNameStr.c_str(), false, ExecuteTypes::STATIC);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
             StaticModuleLoader::TryLoadStaticModule(thread, resolve, reject, specifierString));
         if (curJsPandaFile == nullptr) {
@@ -201,7 +201,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
-        fileName, entryPoint, false, false, ExecuteTypes::STATIC);
+        fileName, entryPoint, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
         StaticModuleLoader::TryLoadStaticModule(thread, resolve, reject, specifierString));
     if (jsPandaFile == nullptr) {

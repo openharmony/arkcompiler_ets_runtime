@@ -1710,7 +1710,7 @@ public:
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                             const std::string &module_path, bool isHybrid = false);
+                                                             const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
@@ -1800,7 +1800,7 @@ public:
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
     static void SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
+    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void PandaFileSerialize(const EcmaVM *vm);
     static void ModuleSerialize(const EcmaVM *vm);
