@@ -6049,7 +6049,7 @@ void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
-    std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
@@ -6276,7 +6276,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         ModulePathHelper::ParseAbcPathAndOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-                thread, name, entry.c_str(), false, false, ecmascript::ExecuteTypes::STATIC);
+                thread, name, entry.c_str(), false, ecmascript::ExecuteTypes::STATIC);
         if (jsPandaFile == nullptr) {
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
@@ -6367,14 +6367,14 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
 
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                          const std::string &module_path, bool isHybrid)
+                                                          const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
     JSHandle<JSTaggedValue> nameSp =
-        ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, requestPath, modulePath, isHybrid);
+        ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, requestPath, modulePath);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }
 
