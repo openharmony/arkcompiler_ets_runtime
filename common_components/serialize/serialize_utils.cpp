@@ -30,7 +30,7 @@ SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
         case RegionDesc::RegionType::LONE_FROM_REGION:
         case RegionDesc::RegionType::EXEMPTED_FROM_REGION:
         case RegionDesc::RegionType::TO_REGION:
-        case RegionDesc::RegionType::MATURE_REGION:
+        case RegionDesc::RegionType::OLD_REGION:
             return SerializedBaseObjectSpace::REGULAR_SPACE;
         case RegionDesc::RegionType::FULL_PINNED_REGION:
         case RegionDesc::RegionType::RECENT_PINNED_REGION:
@@ -40,7 +40,7 @@ SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
         case RegionDesc::RegionType::APPSPAWN_REGION:
             return SerializedBaseObjectSpace::PIN_SPACE;
         case RegionDesc::RegionType::RECENT_LARGE_REGION:
-        case RegionDesc::RegionType::OLD_LARGE_REGION:
+        case RegionDesc::RegionType::LARGE_REGION:
             return SerializedBaseObjectSpace::LARGE_SPACE;
         default:
             return SerializedBaseObjectSpace::OTHER;

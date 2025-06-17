@@ -14,7 +14,7 @@
  */
 
 #include "common_components/heap/space/to_space.h"
-#include "common_components/heap/space/mature_space.h"
+#include "common_components/heap/space/old_space.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
@@ -38,7 +38,7 @@ void ToSpace::DumpRegionStats() const
         fullToRegions,  fullToUnits, fullToSize, allocTLToSize);
 }
 
-void ToSpace::GetPromotedTo(MatureSpace& mspace)
+void ToSpace::GetPromotedTo(OldSpace& mspace)
 {
     mspace.PromoteRegionList(fullToRegionList_);
     mspace.PromoteRegionList(tlToRegionList_);

@@ -453,7 +453,7 @@ public:
         LONE_FROM_REGION,
         EXEMPTED_FROM_REGION,
         TO_REGION,
-        MATURE_REGION,
+        OLD_REGION,
 
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
@@ -469,7 +469,7 @@ public:
         TL_RAW_POINTER_REGION,
 
         RECENT_LARGE_REGION,
-        OLD_LARGE_REGION,
+        LARGE_REGION,
 
         GARBAGE_REGION,
         READ_ONLY_REGION,
@@ -808,10 +808,10 @@ public:
         return type == RegionType::TO_REGION;
     }
 
-    bool IsInMatureSpace() const
+    bool IsInOldSpace() const
     {
         RegionType type = GetRegionType();
-        return type == RegionType::MATURE_REGION;
+        return type == RegionType::OLD_REGION;
     }
 
     int32_t IncRawPointerObjectCount()

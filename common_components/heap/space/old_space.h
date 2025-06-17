@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef COMMON_COMPONENTS_HEAP_SPACE_MATURE_SPACE_H
-#define COMMON_COMPONENTS_HEAP_SPACE_MATURE_SPACE_H
+#ifndef COMMON_COMPONENTS_HEAP_SPACE_OLD_SPACE_H
+#define COMMON_COMPONENTS_HEAP_SPACE_OLD_SPACE_H
 
 #include <assert.h>
 #include <list>
@@ -35,9 +35,9 @@
 
 namespace common {
 // regions for small-sized movable objects, which may be moved during gc.
-class MatureSpace : public RegionalSpace {
+class OldSpace : public RegionalSpace {
 public:
-    MatureSpace(RegionManager& regionManager) : RegionalSpace(regionManager), matureRegionList_("mature regions") {}
+    OldSpace(RegionManager& regionManager) : RegionalSpace(regionManager), oldRegionList_("old regions") {}
 
     void DumpRegionStats() const;
 
@@ -45,35 +45,35 @@ public:
     {
         TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-            RegionManager::FixMatureRegionList(collector, matureRegionList_);
+            RegionManager::FixOldRegionList(collector, oldRegionList_);
         } else {
-            RegionManager::FixOldRegionList(collector, matureRegionList_);
+            RegionManager::FixRegionList(collector, oldRegionList_);
         }
     }
 
     void AssembleGarbageCandidates(FromSpace& fromSpace)
     {
-        fromSpace.AssembleGarbageCandidates(matureRegionList_);
+        fromSpace.AssembleGarbageCandidates(oldRegionList_);
     }
 
     size_t GetAllocatedSize() const
     {
-        return matureRegionList_.GetAllocatedSize();
+        return oldRegionList_.GetAllocatedSize();
     }
 
     size_t GetUsedUnitCount() const
     {
-        return matureRegionList_.GetUnitCount();
+        return oldRegionList_.GetUnitCount();
     }
 
     void PromoteRegionList(RegionList& list)
     {
-        matureRegionList_.MergeRegionList(list, RegionDesc::RegionType::MATURE_REGION);
+        oldRegionList_.MergeRegionList(list, RegionDesc::RegionType::OLD_REGION);
     }
 
     void ClearRSet()
     {
-        RegionDesc* region = matureRegionList_.GetHeadRegion();
+        RegionDesc* region = oldRegionList_.GetHeadRegion();
         while (region != nullptr) {
             region->ClearRSet();
             region = region->GetNextRegion();
@@ -82,7 +82,7 @@ public:
 
     void ClearAllGCInfo()
     {
-        ClearGCInfo(matureRegionList_);
+        ClearGCInfo(oldRegionList_);
     }
 
     void VisitRememberSet(const std::function<void(BaseObject*)>& func)
@@ -94,7 +94,7 @@ public:
                 }
             });
         };
-        matureRegionList_.VisitAllRegions(visitFunc);
+        oldRegionList_.VisitAllRegions(visitFunc);
     }
 
 private:
@@ -109,7 +109,7 @@ private:
         });
     }
 
-    RegionList matureRegionList_;
+    RegionList oldRegionList_;
 };
 } // namespace common
-#endif // COMMON_COMPONENTS_HEAP_SPACE_MATURE_SPACE_H
+#endif // COMMON_COMPONENTS_HEAP_SPACE_OLD_SPACE_H

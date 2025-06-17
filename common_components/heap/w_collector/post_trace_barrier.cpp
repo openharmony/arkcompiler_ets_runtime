@@ -68,7 +68,7 @@ BaseObject* PostTraceBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>
     BaseObject* target = nullptr;
     RefField<false> oldField(field.GetFieldValue(order));
 
-    target = ReadRefField(obj, oldField);
+    target = ReadRefField(nullptr, oldField);
     DLOG(TBARRIER, "katomic read obj %p ref@%p: %#zx -> %p", obj, &field, oldField.GetFieldValue(), target);
     return target;
 }

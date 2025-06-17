@@ -336,7 +336,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
             ProcessWeakReferences();
         } else {
             if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-                LOGF_CHECK(MarkRememberSet(workStack)) << "not cleared\n";
+                MarkRememberSet(workStack);
             }
             ProcessWeakReferences();
         }
@@ -429,7 +429,7 @@ void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStac
     });
 }
 
-bool TraceCollector::MarkRememberSet(WorkStack& workStack)
+void TraceCollector::MarkRememberSet(WorkStack& workStack)
 {
     COMMON_PHASE_TIMER("MarkRememberSet");
     if (!workStack.empty()) {
@@ -449,7 +449,8 @@ bool TraceCollector::MarkRememberSet(WorkStack& workStack)
     do {
         if (LIKELY_CC(!workStack.empty())) {
             Taskpool *threadPool = GetThreadPool();
-            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
+            bool shouldParallel = (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0);
+            TracingImpl(workStack, shouldParallel);
         }
         visitRSetObj();
         if (workStack.empty()) {
@@ -457,13 +458,12 @@ bool TraceCollector::MarkRememberSet(WorkStack& workStack)
             visitRSetObj();
         }
     } while (!workStack.empty());
-    return true;
 }
 
 void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
 {
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-        LOGF_CHECK(MarkRememberSet(remarkStack)) << "not cleared\n";
+        MarkRememberSet(remarkStack);
     }
     LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
 }

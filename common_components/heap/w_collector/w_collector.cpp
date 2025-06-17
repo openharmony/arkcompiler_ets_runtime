@@ -157,8 +157,8 @@ void WCollector::EnumRefFieldRoot(RefField<>& field, RootSet& rootSet) const
     // need fix or clean
     BaseObject* obj = field.GetTargetObject();
     RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
-    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && objRegion->IsInMatureSpace()) {
-        DLOG(ENUM, "enum: skip mature object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && objRegion->IsInOldSpace()) {
+        DLOG(ENUM, "enum: skip old object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
         return;
     }
     rootSet.push_back(obj);
@@ -248,8 +248,8 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
         return;
     }
 
-    if (gcReason == GC_REASON_YOUNG && objRegion->IsInMatureSpace()) {
-        DLOG(TRACE, "trace: skip mature object %p@%p, target object: %p<%p>(%zu)",
+    if (gcReason == GC_REASON_YOUNG && objRegion->IsInOldSpace()) {
+        DLOG(TRACE, "trace: skip old object %p@%p, target object: %p<%p>(%zu)",
             obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
