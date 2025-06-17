@@ -23,10 +23,10 @@ namespace panda::ecmascript {
 class JSPandaFileSnapshot {
 public:
     static constexpr std::string_view JSPANDAFILE_FILE_NAME = "_Pandafile.ams";
-    static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams";  // ark module snapshot
+    static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams"; // ark module snapshot
 
     static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path);
-    static void ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName, const CString &path);
+    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
 
 private:
     static constexpr uint32_t VERSION_CODE_COUNT = 2; // application versionCode + persist versionCode
@@ -37,7 +37,7 @@ private:
     {
         return bit_cast<uint32_t>(JSPANDAFILE_SNAPSHOT_VERSION_CODE);
     }
-    static bool IsSerializeFileExist(const CString &fileName, const CString &path);
+    static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);
     static CString GetJSPandaFileFileName(const CString &fileName, const CString &path);
     static void RemoveSnapshotFiles(const CString &path);
 

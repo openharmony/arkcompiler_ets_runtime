@@ -67,7 +67,7 @@ private:
     }
 
     // process SourceTextModule fields
-    bool SerializeModuleCppObject(TaggedObject *object);
+    bool SerializeModuleCNativeObjects(TaggedObject *object);
 
 private:
     bool defaultTransfer_ {false};
