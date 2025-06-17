@@ -53,7 +53,7 @@ declare_args() {
   HOST_ARCH = 64
 
   if (!defined(timeout)) {
-    timeout = 1200
+    timeout = 2400
   }
 
   # If true app_aot_jit_enable_list will be placed in /etc/ark
