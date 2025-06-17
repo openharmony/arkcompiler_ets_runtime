@@ -34,7 +34,7 @@ public:
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                                 bool needUpdate = false, bool isHybrid = false,
+                                                 bool needUpdate = false,
                                                  const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
@@ -59,7 +59,7 @@ public:
 
     DebugInfoExtractor *CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
-    bool CheckFilePath(JSThread *thread, const CString &fileName, bool isHybrid = false);
+    bool CheckFilePath(JSThread *thread, const CString &fileName);
 
     // for debugger
     template<typename Callback>

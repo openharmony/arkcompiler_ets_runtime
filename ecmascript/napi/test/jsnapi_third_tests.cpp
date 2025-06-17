@@ -697,7 +697,7 @@ HWTEST_F_L0(JSNApiTests, SetHostResolveBufferTracker)
 {
     LocalScope scope(vm_);
     JSNApi::SetHostResolveBufferTracker(vm_,
-        [&](std::string, bool, uint8_t **, size_t *, std::string &) -> bool { return true; });
+        [&](std::string, uint8_t **, size_t *, std::string &) -> bool { return true; });
 }
 
 /*
