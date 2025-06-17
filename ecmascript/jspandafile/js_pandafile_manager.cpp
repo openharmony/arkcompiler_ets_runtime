@@ -47,7 +47,7 @@ JSPandaFileManager::~JSPandaFileManager()
  * Specifically, return jscrash if napi load hsp failed.
 */
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, bool needUpdate, bool isHybrid, const ExecuteTypes &executeType)
+    std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType)
 {
     {
         LockHolder lock(jsPandaFileLock_);
@@ -94,7 +94,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         uint8_t *data = nullptr;
         size_t dataSize = 0;
         std::string errorMsg;
-        bool getBuffer = resolveBufferCallback(hspPath, isHybrid, &data, &dataSize, errorMsg);
+        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
@@ -546,7 +546,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 /*
  * Check whether the file path can be loaded into pandafile, excluding bundle packaging and decompression paths
  */
-bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName, bool isHybrid)
+bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(fileName);
     if (jsPandaFile != nullptr) {
@@ -563,8 +563,7 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         uint8_t *data = nullptr;
         size_t dataSize = 0;
         std::string errorMsg;
-        bool getBuffer =
-            resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), isHybrid, &data, &dataSize, errorMsg);
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
         if (!getBuffer) {
             LOG_FULL(ERROR)
                 << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
