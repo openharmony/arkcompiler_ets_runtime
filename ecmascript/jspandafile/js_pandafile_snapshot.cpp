@@ -28,7 +28,7 @@ namespace panda::ecmascript {
 void JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile,
                                    const CString &methodName, const CString &path)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadData";
     // check application white list & specific file
     if (filesystem::Exists(path.c_str()) && IsSerializeFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
@@ -42,7 +42,7 @@ void JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile,
 
 void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString &path)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JSPandaFileSnapshot::PostWriteDataToFileJob", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::PostWriteDataToFileJob", "");
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::PostWriteDataToFileJob";
     std::unordered_set<std::shared_ptr<JSPandaFile>> jspandaFiles =
         JSPandaFileManager::GetInstance()->GetHapJSPandaFiles();
@@ -78,7 +78,7 @@ void JSPandaFileSnapshot::RemoveSnapshotFiles(const CString &path)
 
 void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JSPandaFileSnapshot::WriteDataToFile", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::WriteDataToFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile: " << filename;
     if (FileExist(filename.c_str())) {
@@ -208,7 +208,7 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
 
 bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "JSPandaFileSnapshot::ReadDataFromFile", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::ReadDataFromFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMap fileMapMem = FileMap(filename.c_str(), FILE_RDONLY, PAGE_PROT_READ, 0);

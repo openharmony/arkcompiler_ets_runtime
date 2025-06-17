@@ -5476,7 +5476,7 @@ void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_
         tagMsg << thread->GetThreadId();
         tagMsg << (isSerialization ? ";task=serialization;startTime=" : ";task=deserialization;startTime=");
         tagMsg << startTimeMS.time_since_epoch().count() << ";duration=" << duration;
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, tagMsg.str().c_str(), "");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, tagMsg.str().c_str(), "");
     }
 }
 

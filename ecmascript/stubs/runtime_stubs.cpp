@@ -4229,7 +4229,7 @@ DEF_RUNTIME_STUBS(TraceLoadSlowPath)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "[dfx]TraceLoadSlowPath");
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "[dfx]TraceLoadSlowPath");
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4241,7 +4241,7 @@ DEF_RUNTIME_STUBS(TraceLoadGetter)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "[DFX]TraceLoadGetter");
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "[DFX]TraceLoadGetter");
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4324,7 +4324,7 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
     } else {
         msg += "heap_obj";
     }
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, msg.c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4336,7 +4336,7 @@ DEF_RUNTIME_STUBS(TraceLoadEnd)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4348,7 +4348,7 @@ DEF_RUNTIME_STUBS(TraceLoadValueSlowPath)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "[dfx]TraceLoadValueSlowPath");
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "[dfx]TraceLoadValueSlowPath");
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4370,7 +4370,7 @@ DEF_RUNTIME_STUBS(TraceLoadValueDetail)
     auto thread = JSThread::GlueToJSThread(argGlue);
     DumpInfoForMoreLdInfo(thread, receiver, msg);
 #endif
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, msg.c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4382,7 +4382,7 @@ DEF_RUNTIME_STUBS(TraceLoadValueEnd)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4414,7 +4414,7 @@ DEF_RUNTIME_STUBS(TraceCallDetail)
             msg += "[unkown]";
         }
     }
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, msg.c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4426,7 +4426,7 @@ DEF_RUNTIME_STUBS(TraceCallEnd)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4438,7 +4438,7 @@ DEF_RUNTIME_STUBS(TraceStoreFastPath)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "[DFX]TraceStoreFastPath");
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "[DFX]TraceStoreFastPath");
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4450,7 +4450,7 @@ DEF_RUNTIME_STUBS(TraceStoreSlowPath)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "[DFX]TraceStoreSlowPath");
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "[DFX]TraceStoreSlowPath");
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4462,7 +4462,7 @@ DEF_RUNTIME_STUBS(TraceStoreEnd)
         return JSTaggedValue::Undefined().GetRawData();
     }
 
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4510,7 +4510,7 @@ DEF_RUNTIME_STUBS(TraceStoreDetail)
     } else {
         msg += "heap_obj";
     }
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, msg.c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4526,8 +4526,8 @@ DEF_RUNTIME_STUBS(TraceNum)
     traceNum[type] ++;
     if (traceNum[type] % TRACE_NUMBER == 0) {
         std::string s = "Trace type " + std::to_string(type);
-        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, s.c_str());
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
     }
 #endif
     return JSTaggedValue::Undefined().GetRawData();
@@ -4543,8 +4543,8 @@ DEF_RUNTIME_STUBS(TraceLazyDeoptNum)
     traceLazyDeoptNum ++;
     if (traceLazyDeoptNum % TRACE_NUMBER == 0) {
         std::string s = "Lazy Deoptimize Code.";
-        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, s.c_str());
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
     }
 #endif
     return JSTaggedValue::Undefined().GetRawData();
@@ -4560,8 +4560,8 @@ DEF_RUNTIME_STUBS(TraceLazyDeoptFailNum)
     traceLazyDeoptFailNum ++;
     if (traceLazyDeoptFailNum % TRACE_NUMBER == 0) {
         std::string s = "Lazy Deoptimize Code Fail."
-        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, s.c_str());
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, s.c_str());
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
     }
 #endif
     return JSTaggedValue::Undefined().GetRawData();
@@ -4580,8 +4580,8 @@ void RuntimeStubs::TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTag
         JSFunction::NameGetter(thread, JSHandle<JSObject>::Cast(func));
     std::string funcName = EcmaStringAccessor(funcNameValue).ToStdString();
     funcName += " Lazy Deoptimize Commit Success.";
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, funcName.c_str());
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, funcName.c_str());
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
 }
 
@@ -4615,7 +4615,7 @@ DEF_RUNTIME_STUBS(TraceDefineFunc)
         }
     }
 
-    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, msg.str().c_str());
+    ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, msg.str().c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4623,7 +4623,7 @@ DEF_RUNTIME_STUBS(TraceDefineFunc)
 DEF_RUNTIME_STUBS(TraceDefineFuncEnd)
 {
 #if ECMASCRIPT_ENABLE_TRACE_DEFINEFUNC
-    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK);
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }

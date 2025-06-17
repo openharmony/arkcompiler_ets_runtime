@@ -24,7 +24,7 @@ namespace panda::ecmascript {
 void SharedFullGC::RunPhases()
 {
     ASSERT("SharedFullGC should be disabled" && !g_isEnableCMCGC);
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, ("SharedFullGC::RunPhases;GCReason"
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedFullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
@@ -45,7 +45,7 @@ void SharedFullGC::RunPhases()
 
 void SharedFullGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedFullGC::Initialize", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedFullGC::Initialize", "");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
     sHeap_->Prepare(true);
     if (UNLIKELY(sHeap_->CheckOngoingConcurrentMarking())) {
@@ -72,7 +72,7 @@ void SharedFullGC::MarkRoots(SharedMarkType markType, VMRootVisitType type)
 
 void SharedFullGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedFullGC::Mark", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedFullGC::Mark", "");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     SharedGCMovableMarker *marker = sHeap_->GetSharedGCMovableMarker();
 
@@ -84,7 +84,7 @@ void SharedFullGC::Mark()
 
 void SharedFullGC::Sweep()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedFullGC::Sweep", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedFullGC::Sweep", "");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, sHeap_->GetEcmaGCStats());
     UpdateRecordWeakReference();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
@@ -124,7 +124,7 @@ void SharedFullGC::Sweep()
 
 void SharedFullGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedFullGC::Finish", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedFullGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
     sHeap_->SwapOldSpace();
     sWorkManager_->Finish();

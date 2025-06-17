@@ -363,7 +363,7 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
 
 bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SharedHeap::AsyncClearTask::Run", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::AsyncClearTask::Run", "");
     sHeap_->ReclaimRegions(gcType_);
     return true;
 }
@@ -381,7 +381,7 @@ void SharedHeap::WaitGCFinished(JSThread *thread)
     ASSERT(thread->GetThreadId() != dThread_->GetThreadId());
     ASSERT(thread->IsInRunningState());
     ThreadSuspensionScope scope(thread);
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "SuspendTime::WaitGCFinished", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SuspendTime::WaitGCFinished", "");
     LockHolder lock(waitGCFinishedMutex_);
     while (!gcFinished_) {
         waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
@@ -1943,7 +1943,7 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
     }
     TRACE_GC(GCStats::Scope::ScopeId::WaitConcurrentMarkFinished, GetEcmaVM()->GetEcmaGCStats());
     if (thread_->IsMarking()) {
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, traceName, "");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceName, "");
         if (threadType == ThreadType::JS_THREAD) {
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
             GetNonMovableMarker()->ProcessMarkStack(threadIndex);
@@ -2473,7 +2473,7 @@ void Heap::NotifyFinishColdStartSoon()
 
 void Heap::NotifyHighSensitive(bool isStart)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("SmartGC: set high sensitive status: " + std::to_string(isStart)).c_str(), "");
     isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
         : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
@@ -2654,7 +2654,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "AsyncClearTask::Run", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "AsyncClearTask::Run", "");
     heap_->ReclaimRegions(gcType_);
     return true;
 }

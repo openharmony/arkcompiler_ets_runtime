@@ -27,7 +27,7 @@ namespace panda::ecmascript {
 void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshot::SerializeDataAndPostSavingJob", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::SerializeDataAndPostSavingJob", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     if (FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "Module serialize file already exist";
@@ -51,7 +51,7 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
 void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData";
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     if (!FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData Module serialize file doesn't exist: " << path;
@@ -97,7 +97,7 @@ JSHandle<TaggedArray> ModuleSnapshot::GetModuleSerializeArray(JSThread *thread)
 
 bool ModuleSnapshot::ModuleSnapshotTask::Run(uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshotTask", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotTask", "");
     WriteDataToFile(thread_, serializeData_, path_);
     return true;
 }
@@ -110,7 +110,7 @@ void ModuleSnapshot::RemoveSnapshotFiles(const CString &path)
 bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString& path)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile";
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshot::ReadDataFromFile", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::ReadDataFromFile", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     MemMap fileMapMem = FileMap(filePath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
     if (fileMapMem.GetOriginAddr() == nullptr) {
@@ -309,7 +309,7 @@ bool ModuleSnapshot::WriteDataToFile(
     JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString& filePath)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::WriteDataToFile";
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "ModuleSnapshot::WriteDataToFile", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::WriteDataToFile", "");
     // calculate file total size
     // versionCode
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();

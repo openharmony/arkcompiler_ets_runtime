@@ -1348,7 +1348,7 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
     if (!IsYoungGC()) {
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         auto iter = nativePointerList_.begin();
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
             ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
             JSNativePointer* object = *iter;
@@ -1391,7 +1391,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
         ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
             ("ProcessReferencesNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
             JSNativePointer* object = *iter;
@@ -1448,7 +1448,7 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
 {
     auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
     auto iter = nativePointerList_.begin();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
     while (iter != nativePointerList_.end()) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*iter)));

@@ -80,7 +80,7 @@ void ConcurrentMarker::Mark()
     RecursionScope recurScope(this);
     TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, gcStats);
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
@@ -190,7 +190,7 @@ void ConcurrentMarker::InitializeMarking()
     if (heap_->IsYoungMark()) {
         NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
         {
-            ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::MarkOldToNew", "");
+            ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkOldToNew", "");
             marker->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
         }
         marker->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);

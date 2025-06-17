@@ -782,7 +782,7 @@ void RegionManager::FixAllRegionLists()
 
 size_t RegionManager::CollectLargeGarbage()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_MAX, "CMCGC::CollectLargeGarbage", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectLargeGarbage", "");
     size_t garbageSize = 0;
     TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
     RegionDesc* region = oldLargeRegionList_.GetHeadRegion();

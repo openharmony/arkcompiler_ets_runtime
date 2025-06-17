@@ -32,7 +32,7 @@ void PartialGC::RunPhases()
 {
     ASSERT("PartialGC should be disabled" && !g_isEnableCMCGC);
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK,
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ("PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
         + ";GCReason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
@@ -78,7 +78,7 @@ void PartialGC::RunPhases()
 
 void PartialGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PartialGC::Initialize", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Initialize", "");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     if (!markingInProgress_ && !heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
         LOG_GC(DEBUG) << "No ongoing Concurrent marking. Initializing...";
@@ -104,7 +104,7 @@ void PartialGC::Initialize()
 
 void PartialGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PartialGC::Finish", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Resume(OLD_GC);
     if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
@@ -137,7 +137,7 @@ void PartialGC::MarkRoots()
 
 void PartialGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PartialGC::Mark", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Mark", "");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     if (markingInProgress_) {
         heap_->GetConcurrentMarker()->ReMark();
@@ -150,7 +150,7 @@ void PartialGC::Mark()
     } else if (heap_->IsYoungMark()) {
         NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
         {
-            ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::ProcessOldToNew", "");
+            ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::ProcessOldToNew", "");
             marker->ProcessOldToNew(MAIN_THREAD_INDEX);
         }
         marker->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
@@ -162,7 +162,7 @@ void PartialGC::Mark()
 
 void PartialGC::Sweep()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PartialGC::Sweep", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Sweep", "");
     ProcessNativeDelete();
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetOldSpace()->EnumerateRegions([](Region *current) {
@@ -175,7 +175,7 @@ void PartialGC::Sweep()
 
 void PartialGC::ProcessNativeDelete()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "GC::ProcessNativeDelete", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::ProcessNativeDelete", "");
     TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
@@ -193,7 +193,7 @@ void PartialGC::ProcessNativeDelete()
 
 void PartialGC::Evacuate()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "PartialGC::Evacuate", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Evacuate", "");
     TRACE_GC(GCStats::Scope::ScopeId::Evacuate, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->GetEvacuator()->Evacuate();
 }

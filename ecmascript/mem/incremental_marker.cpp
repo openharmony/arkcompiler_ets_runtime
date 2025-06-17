@@ -62,7 +62,7 @@ void IncrementalMarker::MarkRoots()
 void IncrementalMarker::Mark()
 {
     LOG_GC(DEBUG) << "IncrementalMarker: Incremental Marking Begin";
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "IncrementalMarker::Mark", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "IncrementalMarker::Mark", "");
     MEM_ALLOCATE_AND_GC_TRACE(vm_, IncrementalMarking);
     Initialize();
     MarkRoots();

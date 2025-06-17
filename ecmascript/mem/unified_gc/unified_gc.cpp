@@ -40,7 +40,7 @@ void UnifiedGC::RunPhases()
 
 void UnifiedGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "UnifiedGC::Initialize", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "UnifiedGC::Initialize", "");
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
         TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap->GetEcmaGCStats());
@@ -50,7 +50,7 @@ void UnifiedGC::Initialize()
 
 void UnifiedGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "UnifiedGC::Mark", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "UnifiedGC::Mark", "");
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
         TRACE_GC(GCStats::Scope::ScopeId::Mark, heap->GetEcmaGCStats());
@@ -90,7 +90,7 @@ void UnifiedGC::Mark()
 
 void UnifiedGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "UnifiedGC::Finish", "");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "UnifiedGC::Finish", "");
     DaemonThread::GetInstance()->FinishRunningTask();
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
