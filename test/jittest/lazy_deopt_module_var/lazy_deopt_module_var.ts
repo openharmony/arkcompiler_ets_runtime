@@ -37,3 +37,9 @@ print(res)
 ArkTools.setHotReloadPatchMain();
 T();
 print(val)
+T();
+ArkTools.jitCompileAsync(T);
+res = ArkTools.waitJitCompileFinish(T);
+print(res)
+ArkTools.setNoHotReloadPatchMain();
+T();

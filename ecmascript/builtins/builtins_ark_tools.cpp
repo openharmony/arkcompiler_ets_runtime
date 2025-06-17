@@ -1718,4 +1718,11 @@ JSTaggedValue BuiltinsArkTools::SetHotReloadPatchMain(EcmaRuntimeCallInfo *info)
     thread->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsArkTools::SetNoHotReloadPatchMain(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    thread->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
+    return JSTaggedValue::Undefined();
+}
 } // namespace panda::ecmascript::builtins
