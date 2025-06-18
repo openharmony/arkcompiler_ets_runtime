@@ -49,6 +49,7 @@ public:
         allocBufferLock_.Unlock();
     }
 
+    template <typename AllocBufferVisitor>
     void VisitAllocBuffers(const AllocBufferVisitor& visitor)
     {
         allocBufferLock_.Lock();

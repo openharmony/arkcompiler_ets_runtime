@@ -299,6 +299,9 @@ protected:
 
     void MergeMutatorRoots(WorkStack& workStack);
     void EnumerateAllRoots(WorkStack& workStack);
+    void EnumerateAllRootsWithMark(WorkStack &workStack);
+    void PushRootInWorkStack(RootSet *dst, RootSet *src);
+
     void TraceRoots(WorkStack& workStack);
     bool MarkSatbBuffer(WorkStack& workStack);
     bool MarkRememberSet(WorkStack& workStack);

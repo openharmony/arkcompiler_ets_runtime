@@ -60,14 +60,14 @@ public:
     void PushRoot(uint64_t* root) { taggedObjStackRoots_.emplace_back(root); }
 
     // move the stack roots to other container so that other threads can visit them.
-    template<class WorkStack>
-    inline void MarkStack(WorkStack& workStack)
+    template <class Functor>
+    inline void MarkStack(Functor consumer)
     {
         if (taggedObjStackRoots_.empty()) {
             return;
         }
         for (uint64_t* obj : taggedObjStackRoots_) {
-            workStack.push_back(reinterpret_cast<BaseObject*>(obj));
+            consumer(reinterpret_cast<BaseObject*>(obj));
         }
         stackRoots_.clear();
     }
