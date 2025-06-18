@@ -20,6 +20,8 @@
 #include <string>
 
 #include "common_components/log/log_base.h"
+#include "common_components/base/time_utils.h"
+#include "securec.h"
 
 #ifdef ENABLE_HILOG
 #if defined(__clang__)
@@ -218,6 +220,7 @@ private:
 #endif
 
 #define LOG_COMMON(level) ARK_LOG(level, Component::COMMON)
+#define LOG_GC(level) ARK_LOG(level, Component::GC)
 
 #define LOGD_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(DEBUG)
 #define LOGI_IF(cond) (UNLIKELY_CC(cond)) && LOG_COMMON(INFO)
@@ -228,9 +231,14 @@ private:
 #define CHECKF(cond) (UNLIKELY_CC(!(cond))) && LOG_COMMON(FATAL) << "Check failed: " << #cond
 #define LOGF_CHECK(cond) LOGF_IF(!(cond))
 
+#ifndef NDEBUG
+#define DLOG(type, format...) LOG_GC(DEBUG) << FormatLog(format)
+#else  // NDEBUG
 #define DLOG(type, format...) (void)(0)
-#define VLOG(type, format...) (void)(0)
-#define COMMON_PHASE_TIMER(...) (void)(0)
+#endif  // NDEBUG
+#define VLOG(level, format...) LOG_GC(level) << FormatLog(format)
+
+#define COMMON_PHASE_TIMER(...) Timer ARK_pt_##__LINE__(__VA_ARGS__)
 
 #ifndef NDEBUG
 #define ASSERT_LOGF(cond, msg) LOGF_IF(!(cond)) << (msg)
@@ -254,5 +262,29 @@ private:
 std::string Pretty(uint64_t number) noexcept;
 std::string PrettyOrderInfo(uint64_t number, const char* unit);
 std::string PrettyOrderMathNano(uint64_t number, const char* unit);
+std::string FormatLogMessage(const char* format, va_list agrs) noexcept;
+std::string FormatLog(const char* format, ...) noexcept;
+class Timer {
+public:
+    explicit Timer(const std::string pName) : name_(pName)
+    {
+        if (common::Log::LogIsLoggable(Level::DEBUG, Component::GC)) {
+            startTime_ = TimeUtil::MicroSeconds();
+        }
+    }
+
+    ~Timer()
+    {
+        if (common::Log::LogIsLoggable(Level::DEBUG, Component::GC)) {
+            uint64_t stopTime = TimeUtil::MicroSeconds();
+            uint64_t diffTime = stopTime - startTime_;
+            VLOG(DEBUG, "%s time: %sus", name_.c_str(), Pretty(diffTime).c_str());
+        }
+    }
+
+private:
+    std::string name_;
+    uint64_t startTime_ = 0;
+};
 }  // namespace common
 #endif  // COMMON_COMPONENTS_LOG_LOG_H

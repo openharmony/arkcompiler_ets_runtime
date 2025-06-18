@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "common_components/base/c_string.h"
+#include "common_components/log/log.h"
 
 #include <libgen.h>
 
@@ -154,6 +155,22 @@ CString::~CString()
         free(str_);
         str_ = nullptr;
     }
+}
+
+const char& CString::operator[](size_t index) const
+{
+    if (index >= length_) {
+        LOG_COMMON(FATAL) << "CString[index] failed index=" << index;
+    }
+    return str_[index];
+}
+
+char& CString::operator[](size_t index)
+{
+    if (index >= length_) {
+        LOG_COMMON(FATAL) << "CString[index] failed index=" << index;
+    }
+    return str_[index];
 }
 
 void CString::EnsureSpace(size_t addLen)

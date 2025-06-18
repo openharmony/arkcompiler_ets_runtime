@@ -103,28 +103,28 @@ void Treap::DumpTree(const char* msg) const
         return;
     }
 
-    VLOG(REPORT, "dump %s %p in graphviz .dot:", msg, this);
-    VLOG(REPORT, "digraph tree%p {", this);
+    VLOG(DEBUG, "dump %s %p in graphviz .dot:", msg, this);
+    VLOG(DEBUG, "digraph tree%p {", this);
     Treap::Iterator it(*const_cast<Treap*>(this));
     auto node = it.Next();
     while (node != nullptr) {
-        VLOG(REPORT, "c-tree %p N%p [label=\"%p:%u+%u=%u\"]", this, node, node, node->GetIndex(),
+        VLOG(DEBUG, "c-tree %p N%p [label=\"%p:%u+%u=%u\"]", this, node, node, node->GetIndex(),
              node->GetCount(), node->GetIndex() + node->GetCount());
 
         if (node->l != nullptr) {
-            VLOG(REPORT, "c-tree %p N%p -> N%p", this, node, node->l);
+            VLOG(DEBUG, "c-tree %p N%p -> N%p", this, node, node->l);
         }
 
-        VLOG(REPORT, "c-tree %p N%p -> D%p [style=invis]", this, node, node);
-        VLOG(REPORT, "c-tree %p D%p [width=0, style=invis]", this, node);
+        VLOG(DEBUG, "c-tree %p N%p -> D%p [style=invis]", this, node, node);
+        VLOG(DEBUG, "c-tree %p D%p [width=0, style=invis]", this, node);
 
         if (node->r != nullptr) {
-            VLOG(REPORT, "c-tree %p N%p -> N%p", this, node, node->r);
+            VLOG(DEBUG, "c-tree %p N%p -> N%p", this, node, node->r);
         }
 
         node = it.Next();
     }
-    VLOG(REPORT, "}");
+    VLOG(DEBUG, "}");
 }
 #endif
 

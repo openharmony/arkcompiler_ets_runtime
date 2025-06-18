@@ -373,7 +373,7 @@ size_t FreeRegionManager::ReleaseGarbageRegions(size_t targetCachedSize)
 {
     size_t dirtyBytes = dirtyUnitTree_.GetTotalCount() * RegionDesc::UNIT_SIZE;
     if (dirtyBytes <= targetCachedSize) {
-        VLOG(REPORT, "release heap garbage memory 0 bytes, cache %zu(%zu) bytes", dirtyBytes, targetCachedSize);
+        VLOG(DEBUG, "release heap garbage memory 0 bytes, cache %zu(%zu) bytes", dirtyBytes, targetCachedSize);
         return 0;
     }
 
@@ -393,7 +393,7 @@ size_t FreeRegionManager::ReleaseGarbageRegions(size_t targetCachedSize)
         releasedBytes += (num * RegionDesc::UNIT_SIZE);
         dirtyBytes = dirtyUnitTree_.GetTotalCount() * RegionDesc::UNIT_SIZE;
     }
-    VLOG(REPORT, "release heap garbage memory %zu bytes, cache %zu(%zu) bytes",
+    VLOG(DEBUG, "release heap garbage memory %zu bytes, cache %zu(%zu) bytes",
          releasedBytes, dirtyBytes, targetCachedSize);
     return releasedBytes;
 }
@@ -870,22 +870,22 @@ void RegionManager::DumpRegionStats() const
     size_t releasedUnits = freeRegionManager_.GetReleasedUnitCount();
     size_t dirtyUnits = freeRegionManager_.GetDirtyUnitCount();
 
-    VLOG(REPORT, "\ttotal units: %zu (%zu B)", totalUnits, totalSize);
-    VLOG(REPORT, "\tactive units: %zu (%zu B)", activeUnits, activeSize);
+    VLOG(DEBUG, "\ttotal units: %zu (%zu B)", totalUnits, totalSize);
+    VLOG(DEBUG, "\tactive units: %zu (%zu B)", activeUnits, activeSize);
 
-    VLOG(REPORT, "\tgarbage regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tgarbage regions %zu: %zu units (%zu B, alloc %zu)",
          garbageRegions, garbageUnits, garbageSize, allocGarbageSize);
-    VLOG(REPORT, "\tpinned regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tpinned regions %zu: %zu units (%zu B, alloc %zu)",
          pinnedRegions, pinnedUnits, pinnedSize, allocPinnedSize);
-    VLOG(REPORT, "\trecent pinned regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\trecent pinned regions %zu: %zu units (%zu B, alloc %zu)",
          recentPinnedRegions, recentPinnedUnits, recentPinnedSize, allocRecentPinnedSize);
-    VLOG(REPORT, "\tlarge-object regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tlarge-object regions %zu: %zu units (%zu B, alloc %zu)",
          largeRegions, largeUnits, largeSize, allocLargeSize);
-    VLOG(REPORT, "\trecent large-object regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\trecent large-object regions %zu: %zu units (%zu B, alloc %zu)",
          recentlargeRegions, recentlargeUnits, recentLargeSize, allocRecentLargeSize);
 
-    VLOG(REPORT, "\treleased units: %zu (%zu B)", releasedUnits, releasedUnits * RegionDesc::UNIT_SIZE);
-    VLOG(REPORT, "\tdirty units: %zu (%zu B)", dirtyUnits, dirtyUnits * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\treleased units: %zu (%zu B)", releasedUnits, releasedUnits * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\tdirty units: %zu (%zu B)", dirtyUnits, dirtyUnits * RegionDesc::UNIT_SIZE);
 }
 
 void RegionManager::RequestForRegion(size_t size)

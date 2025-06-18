@@ -60,7 +60,7 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
 
 void RegionSpace::DumpAllRegionStats(const char* msg) const
 {
-    VLOG(REPORT, msg);
+    VLOG(DEBUG, msg);
 
     youngSpace_.DumpRegionStats();
     matureSpace_.DumpRegionStats();
@@ -69,7 +69,7 @@ void RegionSpace::DumpAllRegionStats(const char* msg) const
     regionManager_.DumpRegionStats();
 
     size_t usedUnits = GetUsedUnitCount();
-    VLOG(REPORT, "\tused units: %zu (%zu B)", usedUnits, usedUnits * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\tused units: %zu (%zu B)", usedUnits, usedUnits * RegionDesc::UNIT_SIZE);
 }
 
 HeapAddress RegionSpace::TryAllocateOnce(size_t allocSize, AllocType allocType)
@@ -106,7 +106,7 @@ bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
         return true;
     } else if (tryTimes == static_cast<size_t>(TryAllocationThreshold::TRIGGER_OOM)) {
         if (!Heap::GetHeap().IsGcStarted()) {
-            VLOG(REPORT, "gc is triggered for OOM");
+            VLOG(INFO, "gc is triggered for OOM");
             Heap::GetHeap().GetCollector().RequestGC(GC_REASON_OOM, false);
         } else {
             ScopedEnterSaferegion enterSaferegion(false);
@@ -299,7 +299,7 @@ void RegionSpace::Init(const RuntimeParam& param)
     reservedStart_ = regionManager_.GetRegionHeapStart();
     reservedEnd_ = reinterpret_cast<HeapAddress>(map_->GetMappedEndAddr());
 #if defined(COMMON_DUMP_ADDRESS)
-    VLOG(REPORT, "region metadata@%zx, heap @[0x%zx+%zu, 0x%zx)", metadata, reservedStart, reservedEnd - reservedStart,
+    VLOG(DEBUG, "region metadata@%zx, heap @[0x%zx+%zu, 0x%zx)", metadata, reservedStart, reservedEnd - reservedStart,
          reservedEnd);
 #endif
     Heap::OnHeapCreated(reservedStart_);

@@ -30,11 +30,11 @@ namespace common {
 void* CollectorResources::GCMainThreadEntry(void* arg)
 {
 #ifdef __APPLE__
-    int ret = pthread_setname_np("gc-main-thread");
+    int ret = pthread_setname_np("OS_GC_Thread");
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "pthread setname in CollectorResources::StartGCThreads() return " <<
         ret << " rather than 0";
 #elif defined(__linux__) || defined(PANDA_TARGET_OHOS)
-    int ret = prctl(PR_SET_NAME, "gc-main-thread");
+    int ret = prctl(PR_SET_NAME, "OS_GC_Thread");
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "pthread setname in CollectorResources::StartGCThreads() return " <<
         ret << " rather than 0";
 #endif
@@ -43,7 +43,7 @@ void* CollectorResources::GCMainThreadEntry(void* arg)
     // set current thread as a gc thread.
     ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
 
-    LOG_COMMON(INFO) << "[GC] CollectorResources Thread begin.";
+    VLOG(INFO, "CollectorResources Thread begin.");
 
 #ifdef ENABLE_QOS
     OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetTid());
@@ -53,7 +53,7 @@ void* CollectorResources::GCMainThreadEntry(void* arg)
     CollectorResources* collectorResources = reinterpret_cast<CollectorResources*>(arg);
     collectorResources->RunTaskLoop();
 
-    LOG_COMMON(INFO) << "[GC] CollectorResources Thread end.";
+    VLOG(INFO, "CollectorResources Thread end.");
     return nullptr;
 }
 
@@ -226,7 +226,7 @@ void CollectorResources::WaitForGCFinish()
     gcFinishedCondVar_.wait(lock, pred);
     uint64_t stopTime = TimeUtil::MicroSeconds();
     uint64_t diffTime = stopTime - startTime;
-    VLOG(REPORT, "WaitForGCFinish cost %zu us", diffTime);
+    VLOG(DEBUG, "WaitForGCFinish cost %zu us", diffTime);
 }
 
 void CollectorResources::StartGCThreads()
@@ -246,7 +246,7 @@ void CollectorResources::StartGCThreads()
     }
     // 1 is for gc main thread.
     gcThreadCount_ = helperThreads + 1;
-    VLOG(REPORT, "total gc thread count %d, helper thread count %d", gcThreadCount_, helperThreads);
+    VLOG(DEBUG, "total gc thread count %d, helper thread count %d", gcThreadCount_, helperThreads);
 
     // create the collector thread.
     if (::pthread_create(&gcMainThread_, nullptr, CollectorResources::GCMainThreadEntry, this) != 0) {
@@ -254,7 +254,7 @@ void CollectorResources::StartGCThreads()
     }
     // set thread name.
 #ifdef __WIN64
-    int ret = pthread_setname_np(gcMainThread_, "gc-main-thread");
+    int ret = pthread_setname_np(gcMainThread_, "OS_GC_Thread");
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "pthread_setname_np() in CollectorResources::StartGCThreads() return " <<
         ret << " rather than 0";
 #endif

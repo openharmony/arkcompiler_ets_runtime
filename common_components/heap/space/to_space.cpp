@@ -32,9 +32,9 @@ void ToSpace::DumpRegionStats() const
     size_t tlToSize = tlToUnits * RegionDesc::UNIT_SIZE;
     size_t allocTLToSize = tlToRegionList_.GetAllocatedSize();
 
-    VLOG(REPORT, "\tfull to-regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tfull to-regions %zu: %zu units (%zu B, alloc %zu)",
         fullToRegions,  fullToUnits, fullToSize, allocfullToSize);
-    VLOG(REPORT, "\tthread-local to-regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tthread-local to-regions %zu: %zu units (%zu B, alloc %zu)",
         fullToRegions,  fullToUnits, fullToSize, allocTLToSize);
 }
 

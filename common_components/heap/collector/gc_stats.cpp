@@ -75,17 +75,29 @@ void GCStats::Dump() const
     // Output one line statistic info after each gc task,
     // include the gc type, collected objects and current heap utilization, etc.
     // display to std-output. take care to modify.
-    LOG_COMMON(INFO) <<
+    std::string maxSTWTime = PrettyOrderMathNano(MaxSTWTime(), "s");
+    std::string totalSTWTime = PrettyOrderMathNano(TotalSTWTime(), "s");
+    std::string totalGCTime = PrettyOrderMathNano(gcEndTime - gcStartTime, "s");
+    std::ostringstream oss;
+    oss <<
         "GC for " << g_gcRequests[reason].name << ": " << (async ? "async:" : "sync:") << " collected objects: " <<
         collectedObjects << "(" << collectedBytes << "->" << PrettyOrderInfo(collectedBytes, "B") << "), " <<
         "->" << PrettyOrderInfo(liveSize, "B") << "/" << heapSize << "->" <<
         PrettyOrderInfo(heapSize, "B") << "), max pause: " << MaxSTWTime() <<
-        "->" << PrettyOrderMathNano(MaxSTWTime(), "s") << ", total pause: " <<
-        TotalSTWTime() << "->" << PrettyOrderMathNano(TotalSTWTime(), "s") <<
-        ", total GC time: " << (gcEndTime - gcStartTime) << "->" <<
-        PrettyOrderMathNano(gcEndTime - gcStartTime, "s");
+        "->" << maxSTWTime << ", total pause: " << TotalSTWTime() << "->" << totalSTWTime <<
+        ", total GC time: " << (gcEndTime - gcStartTime) << "->" << totalGCTime;
+    VLOG(INFO, oss.str().c_str());
+    VLOG(DEBUG, "allocated size: %s, heap size: %s, heap utilization: %.2f%%", Pretty(liveSize).c_str(),
+         Pretty(heapSize).c_str(), utilization * 100); // 100 for percentage.
 
-    VLOG(REPORT, "allocated size: %s, heap size: %s, heap utilization: %.2f%%", Pretty(liveSize),
-         Pretty(heapSize), utilization * 100); // 100 for percentage.
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::GCStatsDump", (
+                    "collectedObjects:" + std::to_string(collectedObjects) +
+                    ";collectedBytes:" + std::to_string(collectedBytes) +
+                    ";liveSize:" + std::to_string(liveSize) +
+                    ";heapSize:" + std::to_string(heapSize) +
+                    ";max pause:" + maxSTWTime +
+                    ";total pause:" + totalSTWTime +
+                    ";total GC time:" + totalGCTime
+                ).c_str());
 }
 } // namespace common

@@ -207,7 +207,7 @@ public:
         if (!resurrected) {
             reinterpret_cast<RegionSpace&>(theAllocator_).CountLiveObject(obj);
             if (!fixReferences_ && RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsFromRegion()) {
-                VLOG(REPORT, "resurrection tag w-obj %zu", obj->GetSize());
+                VLOG(DEBUG, "resurrection tag w-obj %zu", obj->GetSize());
             }
         }
         return resurrected;

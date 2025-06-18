@@ -36,9 +36,9 @@ void FromSpace::DumpRegionStats() const
     size_t allocExemptedFromSize = exemptedFromRegionList_.GetAllocatedSize();
     size_t units = fromUnits + exemptedFromUnits;
 
-    VLOG(REPORT, "\tfrom space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
-    VLOG(REPORT, "\tfrom-regions %zu: %zu units (%zu B, alloc %zu)", fromRegions,  fromUnits, fromSize, allocFromSize);
-    VLOG(REPORT, "\texempted from-regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tfrom space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\tfrom-regions %zu: %zu units (%zu B, alloc %zu)", fromRegions,  fromUnits, fromSize, allocFromSize);
+    VLOG(DEBUG, "\texempted from-regions %zu: %zu units (%zu B, alloc %zu)",
         exemptedFromRegions, exemptedFromUnits, exemptedFromSize, allocExemptedFromSize);
 }
 
@@ -85,7 +85,7 @@ void FromSpace::ExemptFromRegions()
 
     size_t newFromBytes = fromRegionList_.GetUnitCount() * RegionDesc::UNIT_SIZE;
     size_t exemptedFromBytes = exemptedFromRegionList_.GetUnitCount() * RegionDesc::UNIT_SIZE;
-    VLOG(REPORT, "exempt from-space: %zu B - %zu B -> %zu B, %zu B floating garbage, %zu B to forward",
+    VLOG(DEBUG, "exempt from-space: %zu B - %zu B -> %zu B, %zu B floating garbage, %zu B to forward",
          oldFromBytes, exemptedFromBytes, newFromBytes, floatingGarbage, forwardBytes);
 }
 
@@ -139,7 +139,7 @@ void FromSpace::CopyFromRegions()
         heap_.CopyRegion(region);
     }
 
-    VLOG(REPORT, "forward %zu from-region units", fromRegionList_.GetUnitCount());
+    VLOG(DEBUG, "forward %zu from-region units", fromRegionList_.GetUnitCount());
 
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY(allocBuffer != nullptr)) {

@@ -19,6 +19,7 @@
 #include <cinttypes>
 
 #include "common_components/base/c_string.h"
+#include "common_interfaces/base/common.h"
 
 namespace common {
 namespace TimeUtil {
