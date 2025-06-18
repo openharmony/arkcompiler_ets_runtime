@@ -165,6 +165,8 @@ private:
     inline const uint8_t *GetDataUtf8() const;
     inline const uint16_t *GetDataUtf16() const;
 
+    inline Span<const uint8_t> FastToUtf8Span() const;
+
     // require is LineString
     inline uint8_t *GetDataUtf8Writable();
     inline uint16_t *GetDataUtf16Writable();
@@ -1150,6 +1152,8 @@ public:
     {
         return string_->NotTreeString();
     }
+
+    inline Span<const uint8_t> FastToUtf8Span() const;
 
     // the returned string may be a linestring or slicestring!!
     PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,

@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_tagged_value.h"
 
+#include "common_components/objects/string_table/integer_cache.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -1760,12 +1761,20 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         return JSTaggedNumber(0);
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
-        CVector<uint8_t> buf;
-        Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+        common::IntegerCache* cache = nullptr;
+#if ENABLE_NEXT_OPTIMIZATION
+        if ((strLen <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
+            cache = common::IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
+            if (cache->IsInteger()) {
+                return JSTaggedNumber(cache->GetInteger());
+            }
+        }
+#endif
+        Span<const uint8_t> str = strAccessor.FastToUtf8Span();
         if (strAccessor.GetLength() == 0) {
             return JSTaggedNumber(0);
         }
-        auto [isSuccess, result] = base::NumberHelper::FastStringToNumber(str.begin(), str.end());
+        auto [isSuccess, result] = base::NumberHelper::FastStringToNumber(str.begin(), str.end(), cache);
         if (isSuccess) {
             return result;
         }

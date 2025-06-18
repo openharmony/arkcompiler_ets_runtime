@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "common_components/objects/string_table/integer_cache.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 
@@ -207,7 +208,7 @@ public:
     static bool IsDigitalString(const uint8_t *start, const uint8_t *end);
     static int StringToInt(const uint8_t *start, const uint8_t *end);
     static std::pair<bool, JSTaggedNumber> FastStringToNumber(const uint8_t *start,
-                                                              const uint8_t *end);
+                                                              const uint8_t *end, common::IntegerCache *cache);
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t PUBLIC_API DoubleInRangeInt32(double d);

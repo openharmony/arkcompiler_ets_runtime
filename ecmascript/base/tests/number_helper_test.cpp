@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "common_components/objects/string_table/integer_cache.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -899,6 +900,36 @@ HWTEST_F_L0(NumberHelperTest, FastStringToIntFail)
         uint32_t result;
         bool success = NumberHelper::StringToUint<uint32_t, char>(input, result, std::numeric_limits<uint32_t>::max());
         EXPECT_FALSE(success);
+    }
+}
+
+HWTEST_F_L0(NumberHelperTest, FastStringToNumberForLineString)
+{
+    std::vector<std::string> inputs = {
+        "0", "1", "26", "371", "4592", "53100", "642197", "7126573", "81230248", "912331534",
+        "-12", "-345", "-4578", "-135936383", "1.0", "3.21", "54.98", "abcd", "qwerty", "3.123ab"
+    };
+    std::vector<bool> expectedIsSuccess = {
+        true, true, true, true, true, true, true, true, true, true,
+        true, true, true, true, false, false, false, true, true, false
+    };
+    std::vector<uint32_t> expectedValue = {
+        0, 1, 26, 371, 4592, 53100, 642197, 7126573, 81230248, 912331534,
+        -12, -345, -4578, -135936383, 0, 0, 0, 0, 0, 0,
+    };
+    for (std::size_t i = 0; i < inputs.size(); ++i) {
+        Span<const uint8_t> str = Span(reinterpret_cast<const uint8_t *>(inputs[i].data()), inputs[i].length());
+        auto ecmaString = EcmaStringAccessor::CreateFromUtf8(instance, str.data(), str.size(), true);
+        auto baseString = ecmaString->ToBaseString();
+        baseString->SetIsInternString();
+        common::IntegerCache::InitIntegerCache(baseString);
+        common::IntegerCache *cache = nullptr;
+        if (baseString->GetLength() <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) {
+            cache = common::IntegerCache::Extract(ecmaString->ToBaseString());
+        }
+        auto resCached = NumberHelper::FastStringToNumber(str.begin(), str.end(), cache);
+        ASSERT_EQ(resCached.first, expectedIsSuccess[i]);
+        ASSERT_EQ(resCached.second.ToInt32(), expectedValue[i]);
     }
 }
 } // namespace panda::ecmascript

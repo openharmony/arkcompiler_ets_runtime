@@ -19,6 +19,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "common_components/objects/string_table/integer_cache.h"
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
@@ -857,7 +858,8 @@ int NumberHelper::StringToInt(const uint8_t *start, const uint8_t *end)
 
 // only for string is ordinary string and using UTF8 encoding
 // Fast path for short integer and some special value
-std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *start, const uint8_t *end)
+std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *start,
+    const uint8_t *end, common::IntegerCache *cache)
 {
     ASSERT(start < end);
     bool minus = (start[0] == '-');
@@ -874,6 +876,9 @@ std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *
     } else if ((end - (start + pos)) <= MAX_ELEMENT_INDEX_LEN && IsDigitalString((start + pos), end)) {
         int num = StringToInt((start + pos), end);
         if LIKELY(!minus) {
+            if (cache != nullptr) {
+                cache->SetInteger(num);
+            }
             return {true, JSTaggedNumber(num)};
         }
         if (num == 0) {
