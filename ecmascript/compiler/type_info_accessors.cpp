@@ -570,6 +570,10 @@ bool ObjAccByNameTypeInfoAccessor::GeneratePlrInJIT(JSHClass* hclass, ObjectAcce
     info.Set(hclassIndex, plr);
 
     if (mode_ == AccessMode::LOAD) {
+        // For not found ic
+        if (hclass == nullptr) {
+            return true;
+        }
         return plr.IsFound();
     }
 
@@ -905,7 +909,9 @@ bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessI
         JSHClass *holder = parent_.jitTypes_[i].GetHolderHclass();
         PrimitiveType primitiveType = parent_.jitTypes_[i].GetPrimitiveType();
         // case: r.toFixed() => HeapObjectCheck Deopt
-        if ((receiver->IsJsPrimitiveRef() || holder->IsJsPrimitiveRef()) &&
+        ASSERT(receiver != nullptr);
+        if ((receiver->IsJsPrimitiveRef() ||
+            (holder != nullptr && holder->IsJsPrimitiveRef())) &&
             !parent_.compilationEnv_->SupportHeapConstant()) {
             return false;
         }

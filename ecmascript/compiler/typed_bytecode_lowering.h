@@ -159,6 +159,12 @@ private:
     void LowerTypedMonoLdObjByNameOnProto(const LoadObjPropertyTypeInfoAccessor &tacc, Variable &result);
     void LowerTypedMonoLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc);
     void LowerTypedPolyLdObjByName(const LoadObjPropertyTypeInfoAccessor &tacc);
+    
+    bool IsNonExist(const LoadObjPropertyTypeInfoAccessor &tacc, uint32_t index)
+    {
+        return compilationEnv_->SupportNonExistIC() && tacc.GetHolderHClass(index) == nullptr;
+    }
+
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate);
     void TypedStObjByNameTransition(GateRef gate, GateRef receiverHC, GateRef frameState,

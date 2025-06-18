@@ -101,6 +101,8 @@ public:
 
     virtual bool SupportIntrinsic() const = 0;
 
+    virtual bool SupportNonExistIC() const = 0;
+
     virtual JSThread *GetHostThread() const
     {
         ASSERT(0);

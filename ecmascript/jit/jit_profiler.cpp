@@ -14,6 +14,7 @@
  */
 #include "ecmascript/jit/jit_profiler.h"
 
+#include "ecmascript/compiler/lazy_deopt_dependency.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/enum_conversion.h"
@@ -521,14 +522,17 @@ void JITProfiler::HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
                                     JSHClass *hclass, JSTaggedValue &secondValue)
 {
     auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
-    if (HandlerBase::IsNonExist(handlerInfo)) {
-        return;
-    }
-    if (AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass)) {
-        return;
+    if (!HandlerBase::IsNonExist(handlerInfo)) {
+        if (AddBuiltinsInfoByNameInInstance(abcId, bcOffset, hclass)) {
+            return;
+        }
     }
     if (HandlerBase::IsField(handlerInfo) || HandlerBase::IsAccessor(handlerInfo)) {
-        AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
+        if (HandlerBase::IsNonExist(handlerInfo)) {
+            AddObjectInfo(abcId, bcOffset, hclass, nullptr, nullptr);
+        } else {
+            AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
+        }
     }
 }
 
@@ -551,11 +555,16 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
         return;
     }
     auto handlerInfo = static_cast<uint32_t>(handlerInfoVal.GetInt());
-    if (HandlerBase::IsNonExist(handlerInfo)) {
+    JSTaggedValue holder = prototypeHandler->GetHolder(mainThread_);
+    JSHClass *holderHClass = nullptr;
+    bool isNonExist = HandlerBase::IsNonExist(handlerInfo);
+    if (holder.IsHeapObject()) {
+        holderHClass = holder.GetTaggedObject()->GetClass();
+    }
+    if (!kungfu::LazyDeoptAllDependencies::CheckStableProtoChain(mainThread_, hclass, holderHClass,
+                                                                 GetCurrentGlobalEnv().GetObject<GlobalEnv>())) {
         return;
     }
-    auto holder = prototypeHandler->GetHolder(mainThread_);
-    auto holderHClass = holder.GetTaggedObject()->GetClass();
     if (accessor.IsJSFunction()) {
         auto accessorFunction = JSFunction::Cast(accessor);
         auto methodId = Method::Cast(accessorFunction->GetMethod(mainThread_))->GetMethodId().GetOffset();
@@ -564,7 +573,11 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
         static_cast<JitCompilationEnv *>(compilationEnv_)
             ->UpdateFuncSlotIdMap(accessorMethodId, methodId_.GetOffset(), slotId);
     }
-    if (AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass)) {
+    if (AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass, isNonExist)) {
+        return;
+    }
+    if (isNonExist) {
+        AddObjectInfo(abcId, bcOffset, hclass, nullptr, nullptr);
         return;
     }
     if (compilationEnv_->SupportHeapConstant()) {
@@ -1123,11 +1136,19 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
     return true;
 }
 
-bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold)
+bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset,
+                                              JSHClass *receiver, JSHClass *hold, bool isNonExist)
 {
     auto type = receiver->GetObjectType();
     auto builtinsId = ToBuiltinsTypeId(type);
     if (!builtinsId.has_value()) {
+        return false;
+    }
+    // Not support string not found ic now.
+    if (isNonExist) {
+        if (builtinsId == BuiltinTypeId::STRING) {
+            return true;
+        }
         return false;
     }
     JSHClass *exceptRecvHClass = nullptr;

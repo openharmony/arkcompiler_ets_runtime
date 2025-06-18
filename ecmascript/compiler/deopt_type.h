@@ -100,6 +100,7 @@ namespace panda::ecmascript::kungfu {
     V(PrototypeChanged1,               PROTOTYPECHANGED1)              \
     V(PrototypeChanged2,               PROTOTYPECHANGED2)              \
     V(PrototypeChanged3,               PROTOTYPECHANGED3)              \
+    V(PrototypeChanged4,               PROTOTYPECHANGED4)              \
     V(PrimTypePrototypeChanged,        PRIMTYPEPROTOTYPECHANGED)       \
     V(BuiltinIsHole1,                  BUILTINISHOLE1)                 \
     V(NewBuiltinCtorFail1,             NEWBUILTINCTORFAIL1)            \

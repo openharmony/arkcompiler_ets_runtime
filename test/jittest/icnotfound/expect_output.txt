@@ -21,6 +21,12 @@ Test6 ans: 23067
 Test7 ans: 23067
 Test8 ans: 24057
 Test9 ans: 23067
+Test10 ans:
+undefined
+undefined
+undefined
+undefined
+true
 true
 true
 true
@@ -39,3 +45,21 @@ Test6 ans: 47610
 Test7 ans: 47610
 Test8 ans: 48600
 Test9 ans: 23067
+Test10 ans:
+undefined
+undefined
+undefined
+undefined
+Test 11 ans:
+undefined
+undefined
+undefined
+true
+undefined
+undefined
+undefined
+undefined
+2
+undefined
+undefined
+undefined

@@ -738,13 +738,21 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
         LowerTypedMonoLdObjByNameOnProto(tacc, result);
     } else {
         builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0), frameState);
-        if (tacc.IsReceiverEqHolder(0)) {
-            result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
-        } else {
-            if (!TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
-                builder_.ProtoChangeMarkerCheck(receiver, frameState);
+        if (IsNonExist(tacc, 0)) {
+            if (TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
+                result = builder_.Undefined();
+            } else {
+                builder_.DeoptCheck(builder_.Boolean(false), frameState, DeoptType::PROTOTYPECHANGED4);
             }
-            LowerTypedMonoLdObjByNameOnProto(tacc, result);
+        } else {
+            if (tacc.IsReceiverEqHolder(0)) {
+                result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
+            } else {
+                if (!TryLazyDeoptStableProtoChain(tacc, 0, gate)) {
+                    builder_.ProtoChangeMarkerCheck(receiver, frameState);
+                }
+                LowerTypedMonoLdObjByNameOnProto(tacc, result);
+            }
         }
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
@@ -809,13 +817,23 @@ void TypedBytecodeLowering::PolyHeapObjectCheckAndLoad(LoadObjByNameDataInfo &in
             builder_.DeoptCheck(*checkResult, frameState, DeoptType::INCONSISTENTHCLASS1);
         }
 
-        if (info.tacc.IsReceiverEqHolder(i)) {
-            info.result = BuildNamedPropertyAccess(gate, info.tacc.GetReceiver(), info.tacc.GetReceiver(),
-                                                   info.tacc.GetAccessInfo(i).Plr());
-            builder_.Jump(&info.exit);
+        if (IsNonExist(info.tacc, i)) {
+            if (TryLazyDeoptStableProtoChain(info.tacc, i, gate)) {
+                info.result = builder_.Undefined();
+                builder_.Jump(&info.exit);
+            } else {
+                builder_.DeoptCheck(builder_.Boolean(false), frameState, DeoptType::PROTOTYPECHANGED4);
+                builder_.Jump(&info.exit);
+            }
         } else {
-            LoadOnPrototypeForHeapObjectReceiver(info.tacc, info.result,
-                { gate, frameState, receiverHC, &info.exit, i });
+            if (info.tacc.IsReceiverEqHolder(i)) {
+                info.result = BuildNamedPropertyAccess(gate, info.tacc.GetReceiver(), info.tacc.GetReceiver(),
+                                                       info.tacc.GetAccessInfo(i).Plr());
+                builder_.Jump(&info.exit);
+            } else {
+                LoadOnPrototypeForHeapObjectReceiver(info.tacc, info.result,
+                    { gate, frameState, receiverHC, &info.exit, i });
+            }
         }
         if (labelIndex != typeCount - 1) {
             builder_.Bind(&info.fails[labelIndex]);

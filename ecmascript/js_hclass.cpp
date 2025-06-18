@@ -1327,7 +1327,7 @@ PropertyLookupResult JSHClass::LookupPropertyInPGOHClass(const JSThread *thread,
     DISALLOW_GARBAGE_COLLECTION;
 
     PropertyLookupResult result;
-    if (hclass->IsDictionaryMode()) {
+    if (hclass == nullptr || hclass->IsDictionaryMode()) {
         result.SetIsFound(false);
         return result;
     }
