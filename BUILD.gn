@@ -270,8 +270,8 @@ config("ark_jsruntime_public_config") {
     configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
   }
 
-  if (ark_hybrid) {
-    defines += [ "ARK_HYBRID" ]
+  if (ark_use_cmc_gc) {
+    defines += [ "ARK_USE_CMC_GC" ]
 
     if (current_cpu == "amd64" || current_cpu == "x64" ||
         current_cpu == "x86_64") {
@@ -353,7 +353,7 @@ config("ark_jsruntime_common_config") {
 
   if (ets_runtime_enable_cmc_gc) {
     print("########## ets_runtime enable cmc-gc ##############")
-    defines += [ "ARK_HYBRID" ]
+    defines += [ "ARK_USE_CMC_GC" ]
     defines += [ "USE_CMC_GC" ]
     defines += [ "USE_READ_BARRIER" ]
     if (ets_runtime_enable_cmc_rb_dfx) {
