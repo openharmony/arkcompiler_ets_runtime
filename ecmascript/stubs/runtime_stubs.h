@@ -143,7 +143,6 @@ public:
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
     static void FinishObjSizeTracking(JSHClass *cls);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
-    static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
     static int IntLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int DoubleLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y);

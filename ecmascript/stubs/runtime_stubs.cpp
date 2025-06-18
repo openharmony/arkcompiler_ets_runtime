@@ -3582,13 +3582,6 @@ JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
     return base::BuiltinsBase::GetTaggedDouble(result);
 }
 
-JSTaggedValue RuntimeStubs::GetStringToListCacheArray(uintptr_t argGlue)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    return thread->GetGlobalEnv()->GetStringToListResultCache().GetTaggedValue();
-}
-
 double RuntimeStubs::TimeClip(double time)
 {
     DISALLOW_GARBAGE_COLLECTION;

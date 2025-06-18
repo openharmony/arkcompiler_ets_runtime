@@ -3572,6 +3572,12 @@ inline GateRef StubBuilder::GetGlobalEnv(GateRef glue)
     return env_->GetBuilder()->GetGlobalEnv(glue);
 }
 
+inline void StubBuilder::SetGlueGlobalEnv(GateRef glue, GateRef globalEnv)
+{
+    GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env_->IsArch32Bit()));
+    StoreWithoutBarrier(VariableType::JS_POINTER(), glue, globalEnvOffset, globalEnv);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue, GateRef globalEnv)
 {
     return env_->GetBuilder()->GetGlobalObject(glue, globalEnv);

@@ -930,6 +930,7 @@ public:
     GateRef GetGlobalObject(GateRef glue, GateRef globalEnv);
     GateRef GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv);
     void SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv);
+    void SetGlueGlobalEnv(GateRef glue, GateRef globalEnv);
     GateRef GetMethodFromFunction(GateRef glue, GateRef function);
     GateRef GetModuleFromFunction(GateRef glue, GateRef function);
     GateRef GetLengthFromFunction(GateRef function);
