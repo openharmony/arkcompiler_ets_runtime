@@ -4144,4 +4144,82 @@ HWTEST_F_L0(EcmaModuleTest, FindOhpmEntryPoint)
     CString entryPoint = ModulePathHelper::FindOhpmEntryPoint(pf.get(), ohpmPath, requestName);
     EXPECT_EQ(entryPoint, result);
 }
+
+HWTEST_F_L0(EcmaModuleTest, ResolveOhmUrlStartWithBundle)
+{
+    std::string ohmUrl = "@bundle:com.bundleName.test/moduleName/requestModuleName";
+    auto result = ModulePathHelper::ResolveOhmUrl(ohmUrl);
+    EXPECT_EQ(result.first, "requestModuleName");
+    EXPECT_EQ(result.second, "com.bundleName.test/moduleName");
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveOhmUrlStartWithNormalized)
+{
+    std::string ohmUrl = "@normalized:N&hsp&com.example.application&hsp/src/main/page/Test&1.0.0";
+    auto result = ModulePathHelper::ResolveOhmUrl(ohmUrl);
+    EXPECT_EQ(result.first, "hsp/src/main/page/Test");
+    EXPECT_EQ(result.second, "com.example.application/hsp");
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetResolvedModulesSize)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    EXPECT_EQ(moduleManager->GetResolvedModulesSize(), 0);
+
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString recordName = "test";
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    EXPECT_EQ(moduleManager->GetResolvedModulesSize(), 1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, AddNormalSerializeModule)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+
+    CString recordName = "@ohos:hilog";
+    JSHandle<TaggedArray> serializerArray = objectFactory->NewTaggedArray(1);
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    moduleManager->AddNormalSerializeModule(thread, serializerArray, 0);
+    EXPECT_EQ(serializerArray->Get(thread, 0), module.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, RestoreMutableFields)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    SourceTextModule::MutableFields fields;
+
+    fields.TopLevelCapability = JSTaggedValue(1);
+    fields.NameDictionary = JSTaggedValue(2);
+    fields.CycleRoot = JSTaggedValue(3);
+    fields.AsyncParentModules = JSTaggedValue(4);
+    fields.SendableEnv = JSTaggedValue(5);
+    fields.Exception = JSTaggedValue(6);
+    fields.Namespace = JSTaggedValue(7);
+
+    SourceTextModule::RestoreMutableFields(thread, module, fields);
+
+    EXPECT_EQ(module->GetTopLevelCapability(), fields.TopLevelCapability);
+    EXPECT_EQ(module->GetNameDictionary(), fields.NameDictionary);
+    EXPECT_EQ(module->GetCycleRoot(), fields.CycleRoot);
+    EXPECT_EQ(module->GetAsyncParentModules(), fields.AsyncParentModules);
+    EXPECT_EQ(module->GetSendableEnv(), fields.SendableEnv);
+    EXPECT_EQ(module->GetException(), fields.Exception);
+    EXPECT_EQ(module->GetNamespace(), fields.Namespace);
+
+    SourceTextModule::StoreAndResetMutableFields(thread, module, fields);
+
+    EXPECT_EQ(module->GetTopLevelCapability(), undefinedValue);
+    EXPECT_EQ(module->GetNameDictionary(), undefinedValue);
+    EXPECT_EQ(module->GetCycleRoot(), undefinedValue);
+    EXPECT_EQ(module->GetAsyncParentModules(), undefinedValue);
+    EXPECT_EQ(module->GetSendableEnv(), undefinedValue);
+    EXPECT_EQ(module->GetException(), undefinedValue);
+    EXPECT_EQ(module->GetNamespace(), undefinedValue);
+}
 }  // namespace panda::test

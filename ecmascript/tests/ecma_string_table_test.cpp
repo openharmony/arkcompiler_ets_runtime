@@ -380,4 +380,25 @@ HWTEST_F_L0(EcmaStringTableTest, TryGetInternString_ExistingString)
     EXPECT_TRUE(EcmaStringAccessor(retrieved).IsInternString());
 }
 #endif
+
+HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenStringNoGC)
+{
+    auto vm = thread->GetEcmaVM();
+    EcmaStringTable *stringTable = vm->GetEcmaStringTable();
+    uint8_t utf8Data[] = {0x74, 0x65, 0x73, 0x74}; // "test"
+
+    EcmaString *internString = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
+    EcmaStringAccessor(internString).SetInternString();
+    auto result = stringTable->GetOrInternFlattenStringNoGC(vm, internString);
+    EXPECT_EQ(result, internString);
+
+    EcmaString *nonInternString = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
+    EXPECT_TRUE(!EcmaStringAccessor(nonInternString).IsInternString());
+    internString = stringTable->GetOrInternFlattenStringNoGC(vm, nonInternString);
+    EXPECT_TRUE(EcmaStringAccessor(internString).IsInternString());
+    EXPECT_STREQ(EcmaStringAccessor(internString).ToCString().c_str(), "test");
+
+    EcmaString *repeatedCallString = stringTable->GetOrInternFlattenStringNoGC(vm, internString);
+    EXPECT_EQ(internString, repeatedCallString);
+}
 }  // namespace panda::test

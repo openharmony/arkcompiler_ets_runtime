@@ -2226,7 +2226,7 @@ void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<Sou
 
 void SourceTextModule::RestoreMutableFields(JSThread* thread, JSHandle<SourceTextModule> module, MutableFields& fields)
 {
-    module->SetTopLevelCapability(thread, fields.AsyncParentModules);
+    module->SetTopLevelCapability(thread, fields.TopLevelCapability);
     module->SetNameDictionary(thread, fields.NameDictionary);
     module->SetCycleRoot(thread, fields.CycleRoot);
     module->SetAsyncParentModules(thread, fields.AsyncParentModules);
