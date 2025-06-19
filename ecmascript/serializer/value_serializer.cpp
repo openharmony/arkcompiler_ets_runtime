@@ -571,7 +571,7 @@ bool ValueSerializer::SerializeModuleCNativeObjects(TaggedObject *object)
 
     bool *lazyArray = module->GetLazyImportStatusArray();
     // ModuleRequests size is equal to lazy array size.
-    JSTaggedValue requests =  module->GetModuleRequests();
+    JSTaggedValue requests = module->GetModuleRequests();
     data_->WriteEncodeFlag(EncodeFlag::MODULE_LAZY_ARRAY);
     if (lazyArray && requests.IsTaggedArray()) {
         JSHandle<TaggedArray> moduleRequests(thread_, requests);
