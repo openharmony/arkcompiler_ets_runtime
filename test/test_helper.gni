@@ -42,6 +42,15 @@ template("host_unittest_action") {
     resource_config_file =
         "//arkcompiler/ets_runtime/test/resource/js_runtime/ohos_test.xml"
     forward_variables_from(invoker, "*")
+    if (!defined(deps)) {
+      deps = []
+    }
+    if (!defined(external_deps)) {
+      external_deps = []
+    }
+    # hiviewdfx libraries
+    external_deps += hiviewdfx_ext_deps
+    deps += hiviewdfx_deps
   }
 
   _module_out_path_ = invoker.module_out_path
