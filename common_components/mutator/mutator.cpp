@@ -252,6 +252,7 @@ inline void MutatorBase::HandleGCPhase(GCPhase newPhase)
 void MutatorBase::TransitionToGCPhaseExclusive(GCPhase newPhase)
 {
     HandleGCPhase(newPhase);
+    SetSafepointActive(false);
     mutatorPhase_.store(newPhase, std::memory_order_relaxed); // handshake between mutator & mainGC thread
     if (jsThread_ != nullptr) {
         // non-atomic, should update JSThread local gc state before SuspensionFlag store,
@@ -272,6 +273,7 @@ inline void MutatorBase::HandleCpuProfile()
 void MutatorBase::TransitionToCpuProfileExclusive()
 {
     HandleCpuProfile();
+    SetSafepointActive(false);
     ClearSuspensionFlag(SUSPENSION_FOR_CPU_PROFILE);
 }
 

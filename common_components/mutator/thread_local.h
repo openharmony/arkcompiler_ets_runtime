@@ -34,7 +34,6 @@ struct ThreadLocalData {
     uint8_t* schedule;
     uint8_t* preemptFlag;
     uint8_t* protectAddr;
-    uint64_t safepointState;
     uint64_t tid;
     void* foreignThread;
     // Internal thread local var.

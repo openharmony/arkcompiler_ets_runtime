@@ -119,6 +119,7 @@ public:
     void DemandSuspensionForStw()
     {
         VisitAllMutators([](Mutator& mutator) {
+            mutator.SetSafepointActive(true);
             mutator.SetSuspensionFlag(MutatorBase::SuspensionType::SUSPENSION_FOR_STW);
         });
     }
@@ -126,6 +127,7 @@ public:
     void CancelSuspensionAfterStw()
     {
         VisitAllMutators([](Mutator& mutator) {
+            mutator.SetSafepointActive(false);
             mutator.ClearSuspensionFlag(MutatorBase::SuspensionType::SUSPENSION_FOR_STW);
         });
     }

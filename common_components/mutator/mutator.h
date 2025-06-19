@@ -89,6 +89,11 @@ public:
     void* GetArkthreadPtr() const {return thread_;}
     void* GetEcmaVMPtr() const {return ecmavm_;}
 
+    __attribute__((always_inline)) inline void SetSafepointActive(bool state)
+    {
+        mutatorBase_.SetSafepointActive(state);
+    }
+
     // Sets saferegion state of this mutator.
     __attribute__((always_inline)) inline void SetInSaferegion(SaferegionState state)
     {
