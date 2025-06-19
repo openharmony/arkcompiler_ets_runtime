@@ -20,7 +20,7 @@
 #include "ecmascript/platform/aot_crash_info.h"
 
 #if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT) || defined(JIT_ENABLE_CODE_SIGN)
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#include "parameters.h"
 #endif
 #if defined(JIT_ENABLE_CODE_SIGN)
 #include "jit_buffer_integrity.h"

@@ -81,12 +81,13 @@ ohos_source_set("libarkcommon-runtime") {
   sources += source_Mutator
 
   include_dirs = []
-  include_dirs += [
-    "./",
-  ]
+  include_dirs += [ "./" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [ sdk_libc_secshared_dep ]
+  }
   deps = hiviewdfx_deps
 
   part_name = "ets_runtime"

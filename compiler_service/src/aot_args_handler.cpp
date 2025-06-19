@@ -23,7 +23,7 @@
 #include "ecmascript/log_wrapper.h"
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#include "parameters.h"
 #endif
 
 namespace OHOS::ArkCompiler {

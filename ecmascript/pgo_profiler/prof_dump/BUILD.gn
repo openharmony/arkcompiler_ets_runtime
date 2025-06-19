@@ -24,8 +24,8 @@ ohos_executable("profdump") {
   deps = [
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
-    "$js_root/ecmascript/compiler:libark_mock_stub_set",
     "$js_root:libcommon_components_set",
+    "$js_root/ecmascript/compiler:libark_mock_stub_set",
   ]
   external_deps = [
     "runtime_core:arkfile_header_deps",
@@ -65,7 +65,12 @@ ohos_executable("profdump") {
   deps += hiviewdfx_deps
 
   install_enable = true
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "runtime_core:libarkziparchive_static",
+      sdk_libc_secshared_dep,
+    ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
