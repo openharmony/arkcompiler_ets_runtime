@@ -21,6 +21,8 @@ test_js_path = "//arkcompiler/ets_runtime/ecmascript/compiler/aot_file/tests/aot
 test_js_files = [
   "file_size_test",
   "file_size_worker",
+  "file_bind_panda_file_test",
+  "get_an_index_test",
 ]
 
 foreach(file, test_js_files) {
@@ -99,12 +101,64 @@ host_unittest_action("AOTChecksumTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("BinaryBufferParserTest") {
+  module_out_path = module_output_path
+
+  sources = [ "binary_buffer_parser_test.cpp" ]
+
+  configs = [
+    "../../../../:asm_interp_enable_config",
+    "../../../../:ecma_test_config",
+  ]
+
+  deps = [
+    "../../:libark_jsoptimizer_set",
+    "../../../../:libark_jsruntime_test",
+  ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("AnFileInfoTest") {
+  module_out_path = module_output_path
+
+  sources = [ "an_file_info_test.cpp" ]
+
+  configs = [
+    "../../../../:asm_interp_enable_config",
+    "../../../../:ecma_test_config",
+  ]
+
+  deps = [
+    "../../:libark_jsoptimizer_set",
+    "../../../../:libark_jsruntime_test",
+  ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
   deps = []
   deps += [
     ":AOTChecksumTest",
     ":AOTFileTest",
+    ":BinaryBufferParserTest",
+    ":AnFileInfoTest",
   ]
   
   # CMC-GC UT FIX LATER

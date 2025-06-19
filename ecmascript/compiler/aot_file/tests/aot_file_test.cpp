@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -296,6 +296,121 @@ protected:
         JSNApi::DestroyJSVM(vm);
     }
 
+    void BindPreloadedPandaFilesInAotFileTest()
+    {
+        JSRuntimeOptions runtimeOptions;
+        runtimeOptions.SetEntryPoint(testRecordName_);
+        EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
+        std::string moduleName = "file_bind_panda_file_test";
+        std::string anFileName = "file_bind_panda_file_test.an";
+        // Initialize AOT environment
+        ecmascript::AnFileDataManager::GetInstance()->SetDir(testDir_);
+        ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
+        vm->SetModuleName(moduleName.c_str());
+        JSNApi::LoadAotFile(vm, moduleName);
+        uint32_t anIndex = ecmascript::AnFileDataManager::GetInstance()->SafeGetFileInfoIndex(anFileName);
+        ASSERT_EQ(anIndex, 0);
+        
+        // 1: Normal binding process
+        {
+            // Ensure AOT file exists
+            ASSERT_TRUE(AOTFileManager::AOTFileExist(testAotPath_, AOTFileManager::FILE_EXTENSION_AN));
+            std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+                vm->GetJSThread(), CString(testAbcPath_.c_str()), testRecordName_, false, false, ExecuteTypes::STATIC);
+            ASSERT_TRUE(jsPandaFile != nullptr);
+            // Perform binding
+            vm->GetAOTFileManager()->BindPreloadedPandaFilesInAotFile(testRecordName_);
+
+            CString normalizedFileName =
+                JSPandaFile::GetNormalizedFileDesc(CString(testAbcPath_.c_str()));
+            const auto abcFile = JSPandaFileManager::GetInstance()->FindJSPandaFileByNormalizedName(normalizedFileName);
+        
+            ASSERT_TRUE(abcFile != nullptr);
+            ASSERT_TRUE(abcFile->IsLoadedAOT());
+        }
+        // 2: aotFileInfoIndex == INVALID_INDEX
+        {
+            std::string invalidModule = "not_exist_module";
+            // Should not throw exception or bind anything
+            vm->GetAOTFileManager()->BindPreloadedPandaFilesInAotFile(invalidModule);
+            // no crash, branch is covered
+            SUCCEED();
+        }
+
+        JSNApi::DestroyJSVM(vm);
+    }
+
+    void TestGetAnFileIndexCmdLineMode(
+        const std::string &testAbcPath,
+        const std::string &testRecordName,
+        const std::string &testDir)
+    {
+        // Branch 1: Command-line mode (WasAOTOutputFileSet is true)
+        JSRuntimeOptions cmdLineOptions;
+        cmdLineOptions.SetEntryPoint(testRecordName);
+        // Use command-line argument to set AOT output file, which sets the bitmap flag
+        const char* argv[] = {"test_program", "--aot-file", "/tmp/test_output"};
+        bool parsed = cmdLineOptions.ParseCommand(3, argv);
+        ASSERT_TRUE(parsed);
+        ASSERT_TRUE(cmdLineOptions.WasAOTOutputFileSet());
+        EcmaVM *cmdLineVM = JSNApi::CreateEcmaVM(cmdLineOptions);
+        ASSERT_TRUE(cmdLineVM != nullptr);
+        std::string moduleName = testRecordName;
+        std::string anFileName = testRecordName + ".an";
+        // Initialize AOT environment
+        ecmascript::AnFileDataManager::GetInstance()->SetDir(testDir);
+        ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
+        cmdLineVM->SetModuleName(moduleName.c_str());
+        // Load a test file
+        std::shared_ptr<JSPandaFile> jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+                cmdLineVM->GetJSThread(),
+                CString(testAbcPath.c_str()),
+                testRecordName,
+                false,
+                false,
+                ExecuteTypes::STATIC);
+        ASSERT_TRUE(jsPandaFile.get() != nullptr);
+        // Test command-line mode branch
+        uint32_t anIndex = cmdLineVM->GetAOTFileManager()->GetAnFileIndex(jsPandaFile.get());
+        // Should return INVALID_INDEX since file is not bound to AOT
+        ASSERT_EQ(anIndex, panda::ecmascript::INVALID_INDEX);
+        JSNApi::DestroyJSVM(cmdLineVM);
+    }
+
+    void TestGetAnFileIndexHapMode(
+        const std::string &testAbcPath,
+        const std::string &testRecordName,
+        const std::string &testDir)
+    {
+        // Branch 2: Application HAP mode (WasAOTOutputFileSet is false)
+        JSRuntimeOptions runtimeOptions;
+        runtimeOptions.SetEntryPoint(testRecordName);
+        runtimeOptions.SetAOTOutputFile("/tmp/test_output"); // This does not set the bitmap flag
+        EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
+        std::string moduleName = testRecordName;
+        std::string anFileName = testRecordName + ".an";
+        // Initialize AOT environment
+        ecmascript::AnFileDataManager::GetInstance()->SetDir(testDir);
+        ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
+        vm->SetModuleName(moduleName.c_str());
+        // Load a test file
+        std::shared_ptr<JSPandaFile> jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+                vm->GetJSThread(),
+                CString(testAbcPath.c_str()),
+                testRecordName,
+                false,
+                false,
+                ExecuteTypes::STATIC);
+        ASSERT_TRUE(jsPandaFile.get() != nullptr);
+        // Verify WasAOTOutputFileSet is false
+        ASSERT_FALSE(vm->GetJSOptions().WasAOTOutputFileSet());
+        uint32_t anIndex = vm->GetAOTFileManager()->GetAnFileIndex(jsPandaFile.get());
+        ASSERT_EQ(anIndex, panda::ecmascript::INVALID_INDEX);
+        JSNApi::DestroyJSVM(vm);
+    }
+
     std::string testDir_ {""};
     std::string testAbcPath_ {""};
     std::string testRecordName_ {""};
@@ -358,4 +473,70 @@ HWTEST_F_L0(AOTFileTest, loadAiInMultiThread)
 
     LoadAiInMultiThreadTest();
 }
+
+HWTEST_F_L0(AOTFileTest, bindPreloadedPandaFilesInAotFileTest) {
+    // This test verifies the binding process of preloaded panda files in the AOT file.
+    // 1. Normal binding: ensures the AOT file exists, loads the abc file, and binds it.
+    //    Verifies that the file is correctly marked as loaded with AOT.
+    // 2. Invalid module name: calls BindPreloadedPandaFilesInAotFile with a non-existent module name,
+    //    ensures no exception or crash occurs, and the branch is covered.
+    std::string testFile = "file_bind_panda_file_test.abc";
+    SetEnvrionmentForTest(testFile);
+    GetApFileInTest(testApPath_, testRecordName_, testAbcPath_);
+    GetAnFileInTest(testApPath_, testAotPath_, testAbcPath_);
+    ASSERT_TRUE(Exists(testAnPath_));
+    ASSERT_TRUE(Exists(testAiPath_));
+    BindPreloadedPandaFilesInAotFileTest();
+}
+
+HWTEST_F_L0(AOTFileTest, getAnFileIndexTest)
+{
+    // This test covers GetAnFileIndex in different runtime modes.
+    // Test file: get_an_index_test.abc
+    // 1. Command-line mode: WasAOTOutputFileSet is true, should return INVALID_INDEX for unbound file.
+    // 2. Application HAP mode: WasAOTOutputFileSet is false, should also return INVALID_INDEX.
+    // Covers both branches of GetAnFileIndex related to runtime options.
+    std::string testFile = "get_an_index_test.abc";
+    SetEnvrionmentForTest(testFile);
+    GetApFileInTest(testApPath_, testRecordName_, testAbcPath_);
+    GetAnFileInTest(testApPath_, testAotPath_, testAbcPath_);
+    ASSERT_TRUE(Exists(testAnPath_));
+    ASSERT_TRUE(Exists(testAiPath_));
+    TestGetAnFileIndexCmdLineMode(testAbcPath_, testRecordName_, testDir_);
+    TestGetAnFileIndexHapMode(testAbcPath_, testRecordName_, testDir_);
+}
+
+HWTEST_F_L0(AOTFileTest, getAbsolutePathTest)
+{
+    // This test verifies that GetAbsolutePath returns the correct absolute path for a given abc file.
+    // Test file: file_bind_panda_file_test.abc
+    // Ensures the returned path matches the input testAbcPath_.
+    SetEnvrionmentForTest("file_bind_panda_file_test.abc");
+    EcmaVM *vm = JSNApi::CreateEcmaVM(JSRuntimeOptions());
+    ASSERT_TRUE(vm != nullptr);
+    AOTFileManager *manager = vm->GetAOTFileManager();
+    JSThread *thread = vm->GetJSThread();
+    {
+        ThreadManagedScope scope(thread);
+        // Use testAbcPath_ as the absolute path
+        JSTaggedValue absVal = thread->GetEcmaVM()->GetFactory()->NewFromASCII(testAbcPath_.c_str()).GetTaggedValue();
+        JSTaggedValue result = manager->GetAbsolutePath(thread, absVal);
+        CString resStr = ConvertToString(result);
+        ASSERT_EQ(std::string(resStr.c_str()), testAbcPath_);
+    }
+    JSNApi::DestroyJSVM(vm);
+}
+
+HWTEST_F_L0(AOTFileTest, getHeapNotNullTest)
+{
+    // This test verifies that GetHeap returns a non-null heap pointer from AOTFileManager.
+    // Ensures the heap pointer is valid after VM creation.
+    EcmaVM *vm = JSNApi::CreateEcmaVM(JSRuntimeOptions());
+    ASSERT_TRUE(vm != nullptr);
+    AOTFileManager *manager = vm->GetAOTFileManager();
+    const Heap *heap = manager->GetHeap();
+    ASSERT_TRUE(heap != nullptr);
+    JSNApi::DestroyJSVM(vm);
+}
+
 }  // namespace panda::test
