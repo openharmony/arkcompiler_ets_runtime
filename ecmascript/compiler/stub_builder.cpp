@@ -4415,8 +4415,7 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef hclass, GateRef key, 
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    GateRef transitionOffset = IntPtr(JSHClass::TRANSTIONS_OFFSET);
-    GateRef transition = Load(VariableType::JS_POINTER(), glue, hclass, transitionOffset);
+    GateRef transition = GetTransitionsFromHClass(glue, hclass);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label notUndefined(env);
@@ -6274,7 +6273,7 @@ GateRef StubBuilder::GetCtorPrototype(GateRef glue, GateRef ctor)
     BRANCH(IsJSHClass(glue, ctorProtoOrHC), &isHClass, &isPrototype);
     Bind(&isHClass);
     {
-        constructorPrototype = Load(VariableType::JS_POINTER(), glue, ctorProtoOrHC, IntPtr(JSHClass::PROTOTYPE_OFFSET));
+        constructorPrototype = GetPrototypeFromHClass(glue, ctorProtoOrHC);
         Jump(&exit);
     }
     Bind(&isPrototype);

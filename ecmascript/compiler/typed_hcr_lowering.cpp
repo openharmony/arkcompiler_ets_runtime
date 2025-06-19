@@ -1888,7 +1888,7 @@ void TypedHCRLowering::LowerGetSuperConstructor(GateRef glue, GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateRef hclass = builder_.LoadHClassByConstOffset(glue, ctor);
-    GateRef superCtor = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
+    GateRef superCtor = builder_.LoadPrototype(glue_, hclass);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 
@@ -1970,7 +1970,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef glue, GateRef gate)
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
-    holder = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    holder = builder_.LoadPrototype(glue_, curHC);
     builder_.LoopEnd(&loopHead);
 
     builder_.Bind(&exit);
@@ -2028,9 +2028,9 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef glue, GateRef gate)
     uint32_t hclassIndex = acc_.GetHClassIndex(gate);
     auto expectedReceiverHC = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
 
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
+    auto prototype = builder_.LoadPrototype(glue_, expectedReceiverHC);
     auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
-    auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    auto marker = builder_.LoadProtoChangeMarker(glue, protoHClass);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED1);
     auto check = LogicAndBuilder(&env)
         .And(builder_.BoolNot(builder_.GetHasChanged(marker)))
@@ -2764,8 +2764,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                 BRANCH_CIR(builder_.IsJSHClass(glue, ctorProtoOrHC), &isHClass, &isPrototype);
                 builder_.Bind(&isHClass);
                 {
-                    constructorPrototype = builder_.LoadConstOffset(VariableType::JS_POINTER(), ctorProtoOrHC,
-                                                                    JSHClass::PROTOTYPE_OFFSET);
+                    constructorPrototype = builder_.LoadPrototype(glue_, ctorProtoOrHC);
                     builder_.Jump(&gotCtorPrototype);
                 }
                 builder_.Bind(&isPrototype);
@@ -2854,7 +2853,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                     builder_.Bind(&objectNotIsJsProxy);
                     {
                         GateRef objHClass = builder_.LoadHClassByConstOffset(glue, *object);
-                        object = builder_.LoadPrototype(objHClass);
+                        object = builder_.LoadPrototype(glue_, objHClass);
                         builder_.Jump(&shouldContinue);
                     }
                 }
@@ -2880,9 +2879,9 @@ void TypedHCRLowering::LowerProtoChangeMarkerCheck(GateRef glue, GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     auto hclass = builder_.LoadHClassByConstOffset(glue, receiver);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
+    auto prototype = builder_.LoadPrototype(glue_, hclass);
     auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
-    auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    auto marker = builder_.LoadProtoChangeMarker(glue_, protoHClass);
     auto notNull = builder_.TaggedIsNotNull(marker);
     builder_.DeoptCheck(notNull, frameState, DeoptType::PROTOTYPECHANGED2);
     auto hasChanged = builder_.GetHasChanged(marker);
@@ -2896,7 +2895,7 @@ void TypedHCRLowering::LowerPrimitiveTypeProtoChangeMarkerCheck(GateRef glue, Ga
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef prototype = acc_.GetValueIn(gate, 0);
     auto protoHClass = builder_.LoadHClassByConstOffset(glue, prototype);
-    auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
+    auto marker = builder_.LoadProtoChangeMarker(glue_, protoHClass);
     auto notNull = builder_.TaggedIsNotNull(marker);
     builder_.DeoptCheck(notNull, frameState, DeoptType::PRIMTYPEPROTOTYPECHANGED);
     auto hasChanged = builder_.GetHasChanged(marker);
@@ -2940,7 +2939,7 @@ void TypedHCRLowering::GetPropertyHolderFromProtoChain(
         }
     }
     auto receiverHC = builder_.LoadHClassByConstOffset(glue, holderInfo.receiver);
-    *current = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+    *current = builder_.LoadPrototype(glue_, receiverHC);
 
     // lookup from receiver for holder
     auto holderHC = builder_.LoadHClassFromConstpool(
@@ -2955,7 +2954,7 @@ void TypedHCRLowering::GetPropertyHolderFromProtoChain(
     BRANCH_CIR(builder_.Equal(curHC, holderHC), loadHolder, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
-    *current = builder_.LoadConstOffset(VariableType::JS_ANY(), curHC, JSHClass::PROTOTYPE_OFFSET);
+    *current = builder_.LoadPrototype(glue_, curHC);
     builder_.LoopEnd(&loopHead);
 }
 
@@ -3108,8 +3107,8 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     Label isProto(&builder_);
     auto newHolderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
     if (compilationEnv_->IsAotCompiler()) {
-        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
-        builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+        auto prototype = builder_.LoadPrototype(glue_, receiverHC);
+        builder_.StorePrototype(glue_, newHolderHC, prototype);
     }
     if (isPrototype) {
         builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
