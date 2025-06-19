@@ -168,6 +168,13 @@ public:
 
     uint32_t RecordHeapConstant(const JSHandle<JSTaggedValue> &heapObj)
     {
+        auto it = std::find_if(heapConstantInfo_.heapConstantTable.begin(), heapConstantInfo_.heapConstantTable.end(),
+            [&heapObj](const JSHandle<JSTaggedValue> &value) {
+                return value.GetTaggedType() == heapObj.GetTaggedType();
+        });
+        if (it != heapConstantInfo_.heapConstantTable.end()) {
+            return std::distance(heapConstantInfo_.heapConstantTable.begin(), it);
+        }
         heapConstantInfo_.heapConstantTable.push_back(heapObj);
         ASSERT(heapConstantInfo_.heapConstantTable.size() < INVALID_HEAP_CONSTANT_INDEX);
         size_t index = heapConstantInfo_.heapConstantTable.size() - 1;
