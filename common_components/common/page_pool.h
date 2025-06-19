@@ -152,7 +152,7 @@ protected:
 #if defined(__linux__) || defined(PANDA_TARGET_OHOS)
         COMMON_PRCTL(result, size, memName);
 #endif
-        os::PrctlSetVMA(result, size, (std::string("ARKTS_CMC_GC_PAGE_POOL_") + memName).c_str());
+        os::PrctlSetVMA(result, size, (std::string("ArkTS Heap CMCGC PagePool ") + memName).c_str());
         return reinterpret_cast<uint8_t*>(result);
     }
 

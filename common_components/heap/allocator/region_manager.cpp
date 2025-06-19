@@ -283,7 +283,7 @@ void RegionList::PrependRegionLocked(RegionDesc* region, RegionDesc::RegionType 
     region->SetRegionType(type);
 
     os::PrctlSetVMA(reinterpret_cast<void *>(region->GetRegionStart()), region->GetRegionAllocatedSize(),
-                    (std::string("ARKTS_CMC_GC_REGION_") + RegionDescRegionTypeToString(type)).c_str());
+                    (std::string("ArkTS Heap CMCGC Region ") + RegionDescRegionTypeToString(type)).c_str());
 
     region->SetPrevRegion(nullptr);
     IncCounts(1, region->GetUnitCount());

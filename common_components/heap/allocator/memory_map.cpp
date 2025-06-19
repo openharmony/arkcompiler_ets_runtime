@@ -74,7 +74,7 @@ MemoryMap* MemoryMap::MapMemory(size_t reqSize, size_t initSize, const Option& o
     MemoryMap* memMap = new (std::nothrow) MemoryMap(mappedAddr, initSize, reqSize);
     LOGF_CHECK(memMap != nullptr) << "new MemoryMap failed";
 
-    os::PrctlSetVMA(mappedAddr, reqSize, (std::string("ARKTS_CMC_GC_") + opt.tag).c_str());
+    os::PrctlSetVMA(mappedAddr, reqSize, (std::string("ArkTS Heap CMCGC ") + opt.tag).c_str());
     return memMap;
 }
 
@@ -157,7 +157,7 @@ MemoryMap* MemoryMap::MapMemoryAlignInner4G(uint64_t reqSize, uint64_t initSize,
     MemoryMap* memMap = new (std::nothrow) MemoryMap(mappedAddr, initSize, reqSize);
     LOGF_CHECK(memMap != nullptr) << "new MemMap failed";
 
-    os::PrctlSetVMA(mappedAddr, needReqSize, (std::string("ARKTS_CMC_GC_") + opt.tag).c_str());
+    os::PrctlSetVMA(mappedAddr, needReqSize, (std::string("ArkTS Heap CMCGC ") + opt.tag).c_str());
     return memMap;
 }
 
