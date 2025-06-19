@@ -25,4 +25,12 @@ ThreadLocalData* ThreadLocal::GetThreadLocalData()
 {
     return &threadLocalData;
 }
+
+void ThreadLocal::ClearAllocBufferRegion()
+{
+    auto buffer = GetAllocBuffer();
+    if (buffer != nullptr) {
+        buffer->ClearRegion();
+    }
+}
 } // namespace common

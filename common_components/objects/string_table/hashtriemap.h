@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_OBJECTS_STRING_TABLE_HASHTRIEMAP_H
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_HASHTRIEMAP_H
 
+#include "common_components/heap/heap.h"
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
@@ -76,8 +77,8 @@ public:
         if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
             return value_;
         }
-        // add barrier later
-        return value_;
+        return reinterpret_cast<BaseString*>(Heap::GetBarrier().ReadStringTableStaticRef(
+            *reinterpret_cast<RefField<false>*>((void*)(&value_))));
     }
 
     void SetValue(BaseString* v)

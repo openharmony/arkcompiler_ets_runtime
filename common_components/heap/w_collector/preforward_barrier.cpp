@@ -14,6 +14,7 @@
  */
 #include "common_components/heap/w_collector/preforward_barrier.h"
 
+#include "common_components/heap/allocator/region_space.h"
 #include "common_components/base/sys_call.h"
 #include "common_components/common/scoped_object_lock.h"
 #include "common_components/mutator/mutator.h"
@@ -55,6 +56,28 @@ BaseObject* PreforwardBarrier::ReadRefField(BaseObject* obj, RefField<false>& fi
 }
 
 BaseObject* PreforwardBarrier::ReadStaticRef(RefField<false>& field) const { return ReadRefField(nullptr, field); }
+
+// If the object is still alive, return its toSpace object; if not, return nullptr
+BaseObject* PreforwardBarrier::ReadStringTableStaticRef(RefField<false>& field) const
+{
+    auto isSurvivor = [](BaseObject* obj) {
+        auto gcReason = Heap::GetHeap().GetGCReason();
+        RegionDesc *regionInfo =
+            RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+        return ((gcReason == GC_REASON_YOUNG && !regionInfo->IsInYoungSpace()) ||
+                regionInfo->IsNewObjectSinceTrace(obj) ||
+                regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
+    };
+
+    RefField<> tmpField(field);
+    BaseObject* obj = tmpField.GetTargetObject();
+    if (obj != nullptr && isSurvivor(obj)) {
+        return ReadRefField(nullptr, field);
+    } else {
+        return nullptr;
+    }
+}
+
 
 void PreforwardBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const
 {

@@ -27,6 +27,8 @@ public:
 
     BaseObject* ReadRefField(BaseObject* obj, RefField<false>& field) const override;
     BaseObject* ReadStaticRef(RefField<false>& field) const override;
+    BaseObject* ReadStringTableStaticRef(RefField<false>& field) const override;
+
     void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const override;
 
     void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;

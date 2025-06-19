@@ -293,6 +293,8 @@ protected:
 
     // let finalizerProcessor process finalizers, and mark resurrected if in stw gc
     virtual void ProcessWeakReferences() {}
+    virtual void ProcessStringTable() {}
+
     virtual void ProcessFinalizers() {}
     // designed to mark resurrected finalizer, should not be call in stw gc
     virtual void DoResurrection(WorkStack& workStack);

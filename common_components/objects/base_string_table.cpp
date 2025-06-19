@@ -342,6 +342,7 @@ bool BaseStringTableCleaner::CMCSweepWeakRefTask::Run([[maybe_unused]] uint32_t 
     ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
     ProcessSweepWeakRef(iter_, cleaner_, visitor_);
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    ThreadLocal::ClearAllocBufferRegion();
     return true;
 }
 }

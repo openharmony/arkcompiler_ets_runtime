@@ -994,8 +994,10 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
             phase == GC_PHASE_POST_MARK) {
             region->SetTraceLine();
         } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+            region->SetTraceLine();
             region->SetCopyLine();
         } else if (phase == GC_PHASE_FIX) {
+            region->SetTraceLine();
             region->SetCopyLine();
             region->SetFixLine();
         }

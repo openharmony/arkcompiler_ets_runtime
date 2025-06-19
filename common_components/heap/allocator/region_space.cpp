@@ -41,8 +41,10 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
                 phase == GC_PHASE_POST_MARK) {
                 region->SetTraceLine();
             } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+                region->SetTraceLine();
                 region->SetCopyLine();
             } else if (phase == GC_PHASE_FIX) {
+                region->SetTraceLine();
                 region->SetCopyLine();
                 region->SetFixLine();
             }
@@ -130,8 +132,10 @@ uintptr_t RegionSpace::AllocRegion()
         phase == GC_PHASE_POST_MARK) {
         region->SetTraceLine();
     } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        region->SetTraceLine();
         region->SetCopyLine();
     } else if (phase == GC_PHASE_FIX) {
+        region->SetTraceLine();
         region->SetCopyLine();
         region->SetFixLine();
     }
@@ -159,8 +163,10 @@ uintptr_t RegionSpace::AllocPinnedRegion()
         phase == GC_PHASE_POST_MARK) {
         region->SetTraceLine();
     } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        region->SetTraceLine();
         region->SetCopyLine();
     } else if (phase == GC_PHASE_FIX) {
+        region->SetTraceLine();
         region->SetCopyLine();
         region->SetFixLine();
     }

@@ -50,6 +50,7 @@ public:
     static Mutator* GetMutator() { return GetThreadLocalData()->mutator; }
 
     static AllocationBuffer* GetAllocBuffer() { return GetThreadLocalData()->buffer; }
+    static void ClearAllocBufferRegion();
 
     static void SetAllocBuffer(AllocationBuffer* buffer) { GetThreadLocalData()->buffer = buffer; }
 

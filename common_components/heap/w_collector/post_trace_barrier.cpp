@@ -14,7 +14,9 @@
  */
 #include "common_components/heap/w_collector/post_trace_barrier.h"
 
+#include "common_components/heap/allocator/region_space.h"
 #include "common_components/mutator/mutator.h"
+#include "heap/space/young_space.h"
 #if defined(COMMON_TSAN_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"
 #endif
@@ -27,6 +29,26 @@ BaseObject* PostTraceBarrier::ReadRefField(BaseObject* obj, RefField<false>& fie
 }
 
 BaseObject* PostTraceBarrier::ReadStaticRef(RefField<false>& field) const { return ReadRefField(nullptr, field); }
+
+// If the object is still alive, return it; if not, return nullptr
+BaseObject* PostTraceBarrier::ReadStringTableStaticRef(RefField<false> &field) const
+{
+    auto isSurvivor = [](BaseObject* obj) {
+        const GCReason gcReason = Heap::GetHeap().GetGCReason();
+        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+
+        return (gcReason == GC_REASON_YOUNG && !region->IsInYoungSpace())
+            || region->IsMarkedObject(obj)
+            || region->IsNewObjectSinceTrace(obj);
+    };
+
+    auto obj = ReadRefField(nullptr, field);
+    if (obj != nullptr && isSurvivor(obj)) {
+        return obj;
+    } else {
+        return nullptr;
+    }
+}
 
 void PostTraceBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const
 {
