@@ -715,7 +715,7 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
     // 8: size of free object, but free object can not be copied.
     if (size == 8) {
         LOG_COMMON(FATAL) << "forward free obj: " << obj <<
-            "is survived: " << IsSurvivedObject(obj) ? "true" : "false";
+            "is survived: " << (IsSurvivedObject(obj) ? "true" : "false");
     }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
     if (toObj == nullptr) {
