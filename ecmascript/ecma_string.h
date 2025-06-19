@@ -21,6 +21,7 @@
 #include <cstring>
 
 #include "common_components/base/utf_helper.h"
+#include "common_interfaces/objects/base_string.h"
 #include "common_interfaces/objects/string/line_string.h"
 #include "common_interfaces/objects/string/sliced_string.h"
 #include "common_interfaces/objects/string/tree_string.h"
@@ -247,7 +248,15 @@ private:
     static PUBLIC_API bool StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &str1,
         const JSHandle<EcmaString> &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
-    static PUBLIC_API bool StringsAreEqual(EcmaString *str1, EcmaString *str2);
+    template <RBMode mode = RBMode::DEFAULT_RB>
+    static PUBLIC_API bool StringsAreEqual(EcmaString* str1, EcmaString* str2)
+    {
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject<mode>(obj, offset);
+        };
+        return BaseString::StringsAreEqual(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
+    }
+
     // Two strings have the same type of utf encoding format.
     static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2);
     static bool StringsAreEqualDiffUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
@@ -306,7 +315,14 @@ private:
         return str;
     }
 
-    void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
+    template <RBMode mode = RBMode::DEFAULT_RB>
+    void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
+    {
+        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject<mode>(obj, offset);
+        };
+        ToBaseString()->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
+    }
 
     static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len);
     static bool CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len);
@@ -937,6 +953,7 @@ public:
     // require dst is LineString
     // not change src data structure.
     // if src is not flat, this func has low efficiency.
+    template <RBMode mode = RBMode::DEFAULT_RB>
     inline static void ReadData(EcmaString * dst, EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
 
     // not change src data structure.
@@ -995,7 +1012,7 @@ public:
         return EcmaString::Compare(vm, left, right);
     }
 
-    
+
     // can change receiver and search data structure
     static bool IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& left,
         const JSHandle<EcmaString>& right, uint32_t offset = 0)
@@ -1011,9 +1028,10 @@ public:
 
     // not change str1 and str2 data structure.
     // if str1 or str2 is not flat, this func has low efficiency.
+    template <RBMode mode = RBMode::DEFAULT_RB>
     static bool StringsAreEqual(EcmaString *str1, EcmaString *str2)
     {
-        return EcmaString::StringsAreEqual(str1, str2);
+        return EcmaString::StringsAreEqual<mode>(str1, str2);
     }
 
     // not change str1 and str2 data structure.

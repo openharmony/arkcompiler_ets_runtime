@@ -17,10 +17,17 @@
 #define ECMASCRIPT_BASE_CONFIG_H
 
 #include "common_components/base/config.h"
+#include "base/common.h"
 #include <cstdint>
 
 namespace panda::ecmascript {
 extern uint32_t g_isEnableCMCGC;
+
+enum class PUBLIC_API RBMode : uint8_t {
+    DEFAULT_RB = 0,  // Default read barrier mode to support both gc.
+    FAST_NO_RB,   // Use to old gc read barrier mode.
+    FAST_CMC_RB,  // Use to cmc gc read barrier mode.
+};
 
 #define ARK_INLINE __attribute__((always_inline))
 #define ARK_NOINLINE __attribute__((noinline))

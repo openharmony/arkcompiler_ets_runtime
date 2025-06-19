@@ -226,6 +226,7 @@ public:
     }
     static JSTaggedValue CreateCacheTable(JSThread *thread);
     // extend as an additional parameter to judge cached
+    template <RBMode mode = RBMode::DEFAULT_RB>
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> input,
                                    CacheType type, const JSHandle<JSTaggedValue> regexp,
                                    JSTaggedValue lastIndexInput, JSHandle<JSTaggedValue> extend,
@@ -245,6 +246,7 @@ public:
                   JSTaggedValue &lastIndexInputValue, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue,
                   JSTaggedValue &resTableArray);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
+    template <RBMode mode = RBMode::DEFAULT_RB>
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
                JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type);
     static JSTaggedValue GetGlobalTable(JSThread *thread);

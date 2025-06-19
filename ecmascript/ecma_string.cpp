@@ -198,14 +198,6 @@ bool EcmaString::SubStringIsUtf8(const EcmaVM *vm,
     return CanBeCompressed(srcFlat.GetDataUtf16() + start, length);
 }
 
-void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
-{
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
-    };
-    ToBaseString()->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
-}
-
 int32_t EcmaString::Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)
 {
     if (*left == *right) {
@@ -556,15 +548,6 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
     FlatStringInfo str2Flat = FlattenAllString(vm, str2);
     str1Flat.SetString(*string);
     return StringsAreEqualDiffUtfEncoding(str1Flat, str2Flat);
-}
-
-/* static */
-bool EcmaString::StringsAreEqual(EcmaString* str1, EcmaString* str2)
-{
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
-    };
-    return BaseString::StringsAreEqual(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
 }
 
 /* static */

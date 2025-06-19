@@ -128,7 +128,7 @@ public:
                                                    JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
 
 private:
-    template <class Predicate>
+    template <RBMode mode = RBMode::DEFAULT_RB, class Predicate>
     static const JSTaggedType* IndexOfElements(Span<const TaggedType> rawElements, IndexOfOptions options,
                                                Predicate predicate);
     static const JSTaggedType* IndexOfUndefined(Span<const JSTaggedType> elements, IndexOfOptions options,

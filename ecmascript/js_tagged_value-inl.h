@@ -1441,12 +1441,13 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
     return JSTaggedNumber(d);
 }
 
+template <RBMode mode>
 inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
 {
     if (EcmaStringAccessor(xStr).IsInternString() && EcmaStringAccessor(yStr).IsInternString()) {
         return xStr == yStr;
     }
-    return EcmaStringAccessor::StringsAreEqual(xStr, yStr);
+    return EcmaStringAccessor::StringsAreEqual<mode>(xStr, yStr);
 }
 
 inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
