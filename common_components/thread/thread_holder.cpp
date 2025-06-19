@@ -135,7 +135,7 @@ void ThreadHolder::VisitAllThreads(CommonRootVisitor visitor)
     if (jsThread_ != nullptr) {
         VisitJSThread(jsThread_, visitor);
     }
-    for (auto *coroutine : coroutines_) {
+    for ([[maybe_unused]] auto *coroutine : coroutines_) {
         // Depending on the integrated so
     }
 }
