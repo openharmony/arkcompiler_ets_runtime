@@ -368,7 +368,7 @@ void MutatorManager::TransitionAllMutatorsToGCPhase(GCPhase phase)
     Heap::GetHeap().InstallBarrier(phase);
     Heap::GetHeap().SetGCPhase(phase);
 
-    VLOG(REPORT, "transition gc phase: %s(%u) -> %s(%u)",
+    VLOG(DEBUG, "transition gc phase: %s(%u) -> %s(%u)",
          Collector::GetGCPhaseName(prevPhase), prevPhase, Collector::GetGCPhaseName(phase), phase);
 
     std::list<Mutator*> undoneMutators;

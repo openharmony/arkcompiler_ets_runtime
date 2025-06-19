@@ -67,12 +67,12 @@ void ArkHeapData::DumpHeap()
         if (specifiedPath.IsEmpty()) {
             // dump to current path
             fp = fopen(dumpFile.Str(), "wb");
-            LOG_COMMON(INFO) << "Heap dump log is writing into " << separator << dumpFile.Str();
+            VLOG(INFO, "Heap dump log is writing into %s%s", separator, dumpFile.Str());
         } else {
             // dump to specified path
             dumpFile = specifiedPath + separator + dumpFile;
             fp = fopen(dumpFile.Str(), "wb");
-            LOG_COMMON(INFO) << "Heap dump log is writing into " << dumpFile.Str();
+            VLOG(INFO, "Heap dump log is writing into %s", dumpFile.Str());
         }
     } else {
         // dump for prof

@@ -264,9 +264,9 @@ public:
             // Retrieve the task and then process data with dfx
             Type task = asyncTaskQueue_.Pop();
             if (task.IsInvalid()) {
-                VLOG(GCPHASE, "invalid gc task: type %u, reason %u", task.GetTaskType(), task.GetGCReason());
+                VLOG(DEBUG, "invalid gc task: type %u, reason %u", task.GetTaskType(), task.GetGCReason());
             } else {
-                VLOG(GCPHASE, "dequeue gc task: type %u. reason %u", task.GetTaskType(), task.GetGCReason());
+                VLOG(DEBUG, "dequeue gc task: type %u. reason %u", task.GetTaskType(), task.GetGCReason());
                 return task;
             }
 

@@ -20,6 +20,7 @@
 
 #include "common_components/heap/allocator/alloc_buffer.h"
 #include "common_interfaces/base/runtime_param.h"
+#include <string>
 
 namespace common {
 const size_t TraceCollector::MAX_MARKING_WORK_SIZE = 16; // fork task if bigger
@@ -243,6 +244,9 @@ void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumerateAllRoots", "");
     EnumerateAllRootsImpl(GetThreadPool(), workStack);
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumerateAllRoots END", (
+        "rootSet size:" + std::to_string(workStack.size())
+    ).c_str());
 }
 
 void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
@@ -303,13 +307,13 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots", "");
     COMMON_PHASE_TIMER("TraceRoots");
-    VLOG(REPORT, "roots size: %zu", workStack.size());
+    VLOG(DEBUG, "roots size: %zu", workStack.size());
 
     ASSERT_LOGF(GetThreadPool() != nullptr, "null thread pool");
 
     // use fewer threads and lower priority for concurrent mark.
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
-    VLOG(REPORT, "Concurrent mark with %u threads, workStack: %zu", (maxWorkers + 1), workStack.size());
+    VLOG(DEBUG, "Concurrent mark with %u threads, workStack: %zu", (maxWorkers + 1), workStack.size());
 
     {
         COMMON_PHASE_TIMER("Concurrent marking");
@@ -344,8 +348,9 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         COMMON_PHASE_TIMER("concurrent resurrection");
         DoResurrection(workStack);
     }
-
-    VLOG(REPORT, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots END",
+        ("mark obejects:" + std::to_string(markedObjectCount_.load(std::memory_order_relaxed))).c_str());
+    VLOG(DEBUG, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
 }
 
 bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
@@ -388,7 +393,7 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
         ++iterationCnt;
         if (iterationCnt > maxIterationLoopNum && (TimeUtil::NanoSeconds() - iterationStartTime) > maxIterationTime) {
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
-            VLOG(REPORT, "MarkSatbBuffer timeouts");
+            VLOG(DEBUG, "MarkSatbBuffer timeouts");
             Taskpool *threadPool = GetThreadPool();
             TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
             return workStack.empty();
@@ -403,7 +408,7 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
             visitSatbObj();
         }
     } while (!workStack.empty());
-    VLOG(REPORT, "MarkSatbBuffer is finished, takes %zu round and %zu us",
+    VLOG(DEBUG, "MarkSatbBuffer is finished, takes %zu round and %zu us",
         iterationCnt, (TimeUtil::NanoSeconds() - iterationStartTime) / MICRO_SECOND_TO_NANO_SECOND);
     return true;
 }
@@ -467,6 +472,7 @@ void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
 // which are not to be resurrected.
 void TraceCollector::DoResurrection(WorkStack& workStack)
 {
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoResurrection", "");
     workStack.clear();
     RootVisitor func = [&workStack, this](ObjectRef& ref) {
         RefField<>& refField = reinterpret_cast<RefField<>&>(ref);
@@ -505,7 +511,7 @@ void TraceCollector::DoResurrection(WorkStack& workStack)
     }
     markedObjectCount_.fetch_add(resurrectdObjects, std::memory_order_relaxed);
     MergeWeakStack(weakStack);
-    VLOG(REPORT, "resurrected objects %zu", resurrectdObjects);
+    VLOG(DEBUG, "resurrected objects %zu", resurrectdObjects);
 }
 
 void TraceCollector::Init(const RuntimeParam& param) {}
@@ -559,10 +565,6 @@ void TraceCollector::DumpRoots(LogType logType)
 
 void TraceCollector::PreGarbageCollection(bool isConcurrent)
 {
-    VLOG(REPORT, "Begin GC log. GCReason: %s, Current allocated %s, Current threshold %s",
-         g_gcRequests[gcReason_].name, Pretty(Heap::GetHeap().GetAllocatedSize()),
-         Pretty(Heap::GetHeap().GetCollector().GetGCStats().GetThreshold()));
-
     // SatbBuffer should be initialized before concurrent enumeration.
     SatbBuffer::Instance().Init();
     // prepare thread pool.
@@ -573,8 +575,6 @@ void TraceCollector::PreGarbageCollection(bool isConcurrent)
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpBeforeGC();
 #endif
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_COMMERCIAL, "ARK_RT_pre_GC_HeapSize",
-        Heap::GetHeap().GetAllocatedSize());
 }
 
 void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
@@ -618,7 +618,7 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
             }
         }
     }
-    VLOG(REPORT, "Total roots: %zu(exclude stack roots)", rootSet.size());
+    VLOG(DEBUG, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
 
 void TraceCollector::VisitStaticRoots(const RefFieldVisitor& visitor) const
@@ -679,12 +679,21 @@ void TraceCollector::UpdateGCStats()
     } else {
         g_gcRequests[GC_REASON_YOUNG].SetMinInterval(gcParam.gcInterval);
     }
-
-    LOG_COMMON(INFO) << "allocated bytes " << bytesAllocated << " (survive bytes " << survivedBytes
+    std::ostringstream oss;
+    oss << "allocated bytes " << bytesAllocated << " (survive bytes " << survivedBytes
                      << ", recent-allocated " << recentBytes << "), update target footprint "
                      << oldTargetFootprint << " -> " << gcStats.targetFootprint
                      << ", update gc threshold " << oldThreshold << " -> " << gcStats.heapThreshold;
-    OHOS_HITRACE_COUNT(HITRACE_LEVEL_COMMERCIAL, "ARK_RT_post_GC_HeapSize", Heap::GetHeap().GetAllocatedSize());
+    VLOG(INFO, oss.str().c_str());
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::UpdateGCStats END", (
+                    "allocated bytes:" + std::to_string(bytesAllocated) +
+                    ";survive bytes:" + std::to_string(survivedBytes) +
+                    ";recent allocated:" + std::to_string(recentBytes) +
+                    ";update target footprint:" + std::to_string(oldTargetFootprint) +
+                    ";new target footprint:" + std::to_string(gcStats.targetFootprint) +
+                    ";old gc threshold:" + std::to_string(oldThreshold) +
+                    ";new gc threshold:" + std::to_string(gcStats.heapThreshold)
+                ).c_str());
 }
 
 void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, size_t size) const
@@ -700,15 +709,21 @@ void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, si
 
 void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", "");
+    gcReason_ = reason;
+    auto gcReasonName = std::string(g_gcRequests[gcReason_].name);
+    auto currentAllocatedSize = Heap::GetHeap().GetAllocatedSize();
+    auto currentThreshold = Heap::GetHeap().GetCollector().GetGCStats().GetThreshold();
+    VLOG(INFO, "Begin GC log. GCReason: %s, Current allocated %s, Current threshold %s, gcIndex=%llu",
+        gcReasonName.c_str(), Pretty(currentAllocatedSize).c_str(), Pretty(currentThreshold).c_str(), gcIndex);
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", (
+                    "GCReason:" + gcReasonName + ";Sensitive:0;IsInBackground:0;Startup:0" +
+                    ";Current Allocated:" + Pretty(currentAllocatedSize) +
+                    ";Current Threshold:" + Pretty(currentThreshold)
+                ).c_str());
     // prevent other threads stop-the-world during GC.
     // this may be removed in the future.
     ScopedSTWLock stwLock;
-
-    gcReason_ = reason;
     PreGarbageCollection(true);
-    LOG_COMMON(INFO) << "[GC] Start " << GetCollectorName() << " " << g_gcRequests[gcReason_].name << " gcIndex="
-                     << gcIndex;
     Heap::GetHeap().SetGCReason(reason);
     GCStats& gcStats = GetGCStats();
     gcStats.collectedBytes = 0;
@@ -734,7 +749,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
         const int prec = 3;
         oss << "total gc time: " << Pretty(gcTimeNs / NS_PER_US) << " us, collection rate ";
         oss << std::setprecision(prec) << rate << " MB/s";
-        LOG_COMMON(INFO) << oss.str();
+        VLOG(INFO, oss.str().c_str());
     }
 
     g_gcCount++;

@@ -257,4 +257,25 @@ std::string PrettyOrderMathNano(uint64_t number, const char* unit)
 
     return std::to_string(number) + prefix + unit;
 }
+
+constexpr size_t LOG_BUFFER_SIZE = 1024;
+
+std::string FormatLogMessage(const char* format, va_list agrs) noexcept
+{
+    char buf[LOG_BUFFER_SIZE];
+    int ret = vsprintf_s(buf, sizeof(buf), format, agrs);
+    if (ret < 0) {
+        return std::string("Log format error: ") + strerror(errno);
+    }
+    return std::string(buf, ret);
+}
+
+std::string FormatLog(const char* format, ...) noexcept
+{
+    va_list args;
+    va_start(args, format);
+    auto msg = FormatLogMessage(format, args);
+    va_end(args);
+    return "[CMC GC] " + msg;
+}
 }  // namespace common

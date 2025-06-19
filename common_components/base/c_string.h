@@ -20,7 +20,6 @@
 #include <cstdlib>
 
 #include "securec.h"
-#include "common_components/log/log.h"
 
 namespace common {
 class CString {
@@ -92,21 +91,9 @@ public:
 
     bool operator<(const CString& other) const { return strcmp(str_, other.str_) < 0; }
 
-    const char& operator[](size_t index) const
-    {
-        if (index >= length_) {
-            LOG_COMMON(FATAL) << "CString[index] failed index=" << index;
-        }
-        return str_[index];
-    }
+    const char& operator[](size_t index) const;
 
-    char& operator[](size_t index)
-    {
-        if (index >= length_) {
-            LOG_COMMON(FATAL) << "CString[index] failed index=" << index;
-        }
-        return str_[index];
-    }
+    char& operator[](size_t index);
 
     // Split a string into string tokens according to the separator, such as blank space
     static std::vector<CString> Split(CString& source, char separator = ' ');

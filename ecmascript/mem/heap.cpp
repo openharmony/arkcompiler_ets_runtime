@@ -2210,6 +2210,9 @@ bool Heap::TryTriggerFullMarkBySharedLimit()
 
 void Heap::CheckAndTriggerTaskFinishedGC()
 {
+    if (g_isEnableCMCGC) {
+        return;
+    }
     size_t objectSizeOfTaskBegin = GetRecordObjectSize();
     size_t objectSizeOfTaskFinished = GetHeapObjectSize();
     size_t nativeSizeOfTaskBegin = GetRecordNativeSize();

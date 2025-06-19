@@ -135,7 +135,7 @@ public:
                 InitPage(*cur);
                 ++totalPages_;
                 nonFull_ = cur;
-                LOG_COMMON(DEBUG) << "\ttotal pages mapped: " << totalPages_ << ", slot_size: " << slotSize_;
+                VLOG(DEBUG, "\ttotal pages mapped: %u, slot_size: %u", totalPages_, slotSize_);
             }
 
             result = nonFull_->Allocate();
@@ -168,7 +168,7 @@ public:
             RemoveFromList(nonFull_, *current);
             DestroyPage(*current);
             --totalPages_;
-            LOG_COMMON(DEBUG) << "\ttotal pages mapped: " << totalPages_ << ", slot_size: " << slotSize_;
+            VLOG(DEBUG, "\ttotal pages mapped: %u, slot_size: %u", totalPages_, slotSize_);
         }
     }
 

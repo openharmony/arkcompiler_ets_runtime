@@ -106,9 +106,9 @@ void BaseRuntime::Init(const RuntimeParam &param)
     heapManager_ = NewAndInit<HeapManager>(param_);
     baseClassRoots_ = NewAndInit<BaseClassRoots>();
     stringTable_ = NewAndInit<BaseStringTableImpl>();
-    LOG_COMMON(INFO) << "Arkcommon runtime started.";
+    VLOG(INFO, "Arkcommon runtime started.");
     // Record runtime parameter to report. heap growth value needs to plus 1.
-    VLOG(REPORT, "Runtime parameter:\n\tHeap size: %zu(KB)\n\tRegion size: %zu(KB)\n\tExemption threshold: %.2f\n\t"
+    VLOG(DEBUG, "Runtime parameter:\n\tHeap size: %zu(KB)\n\tRegion size: %zu(KB)\n\tExemption threshold: %.2f\n\t"
         "Heap utilization: %.2f\n\tHeap growth: %.2f\n\tAllocation rate: %.2f(MB/s)\n\tAlloction wait time: %zuns\n\t"
         "GC Threshold: %zu(KB)\n\tGarbage threshold: %.2f\n\tGC interval: %zums\n\tBackup GC interval: %zus\n\t"
         "Log level: %d\n\tThread stack size: %zu(KB)\n\tArkcommon stack size: %zu(KB)\n\t"
@@ -140,7 +140,7 @@ void BaseRuntime::Fini()
         PagePool::Instance().Fini();
     }
 
-    LOG_COMMON(INFO) << "Arkcommon runtime shutdown.";
+    VLOG(INFO, "Arkcommon runtime shutdown.");
     initialized_ = false;
 }
 

@@ -772,7 +772,7 @@ void WCollector::CollectSmallSpace()
         COMMON_PHASE_TIMER("CollectFromSpaceGarbage");
         stats.collectedBytes += stats.smallGarbageSize;
         if (gcReason_ == GC_REASON_APPSPAWN) {
-            VLOG(REPORT, "APPSPAWN GC Collect");
+            VLOG(DEBUG, "APPSPAWN GC Collect");
             space.CollectAppSpawnSpaceGarbage();
         } else {
             space.CollectFromSpaceGarbage();
@@ -785,13 +785,22 @@ void WCollector::CollectSmallSpace()
 
     stats.liveBytesAfterGC = space.GetAllocatedBytes();
 
-    VLOG(REPORT,
+    VLOG(INFO,
          "collect %zu B: old small %zu - %zu B, old pinned %zu - %zu B, old large %zu - %zu B. garbage ratio %.2f%%",
          stats.collectedBytes, stats.fromSpaceSize, stats.smallGarbageSize, stats.pinnedSpaceSize,
          stats.pinnedGarbageSize, stats.largeSpaceSize, stats.largeGarbageSize,
          stats.garbageRatio * 100); // The base of the percentage is 100
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectSmallSpace END", (
+                    "collect:" + std::to_string(stats.collectedBytes) +
+                    "B;old small:" + std::to_string(stats.fromSpaceSize) +
+                    "-" + std::to_string(stats.smallGarbageSize) +
+                    "B;old pinned:" + std::to_string(stats.pinnedSpaceSize) +
+                    "-" + std::to_string(stats.pinnedGarbageSize) +
+                    "B;old large:" + std::to_string(stats.largeSpaceSize) +
+                    "-" + std::to_string(stats.largeGarbageSize) +
+                    "B;garbage ratio:" + std::to_string(stats.garbageRatio)
+                ).c_str());
 
-    VLOG(REPORT, "start to release heap garbage memory");
     collectorResources_.GetFinalizerProcessor().NotifyToReclaimGarbage();
 }
 

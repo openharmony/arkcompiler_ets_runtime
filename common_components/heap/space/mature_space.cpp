@@ -26,7 +26,7 @@ void MatureSpace::DumpRegionStats() const
     size_t matureSize = matureUnits * RegionDesc::UNIT_SIZE;
     size_t allocFromSize = matureRegionList_.GetAllocatedSize();
 
-    VLOG(REPORT, "\tmature-regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tmature-regions %zu: %zu units (%zu B, alloc %zu)",
         matureRegions,  matureUnits, matureSize, allocFromSize);
 }
 } // namespace common
