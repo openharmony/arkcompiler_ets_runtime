@@ -163,14 +163,27 @@ namespace panda::ecmascript::kungfu {
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)
 
+#define COMMON_STW_COPY_STUB_LIST(V) \
+    COMMON_STUB_LIST(V)
+
 class CommonStubCSigns {
 public:
     enum ID {
 #define DEF_STUB_ID(name) name,
         COMMON_STUB_ID_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
-        NUM_OF_STUBS
+#define DEF_STUB_ID(name) name##StwCopy,
+        COMMON_STW_COPY_STUB_LIST(DEF_STUB_ID)
+#undef DEF_STUB_ID
+        NUM_OF_STUBS,
+        NUM_OF_ALL_NORMAL_STUBS = DefineBaseConstructorForJit + 1,
     };
+#define ASSERT_ID_EQUAL(name)                                 \
+    static_assert((static_cast<uint32_t>(ID::name##StwCopy)) == \
+                  (static_cast<uint32_t>(ID::name) + ID::NUM_OF_ALL_NORMAL_STUBS));
+
+    COMMON_STUB_ID_LIST(ASSERT_ID_EQUAL)
+#undef ASSERT_ID_EQUAL
 
     static void Initialize();
 

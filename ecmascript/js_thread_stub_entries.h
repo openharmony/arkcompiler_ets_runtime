@@ -127,7 +127,7 @@ struct BCDebuggerStubEntries {
 };
 
 struct BuiltinStubEntries {
-    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS;
+    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS_EXTEND;
     Address stubEntries_[COUNT];
 
     static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;

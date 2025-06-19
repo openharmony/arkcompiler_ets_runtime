@@ -30,6 +30,9 @@
     BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
+#define BUILTINS_STW_COPY_STUB_LIST(V, D, C)        \
+    BUILTINS_STUB_LIST(V, D, C)
+
 #define BUILTINS_NOSTUB_LIST(V)                     \
     V(ObjectConstructor)                            \
     V(ErrorConstructor)                             \

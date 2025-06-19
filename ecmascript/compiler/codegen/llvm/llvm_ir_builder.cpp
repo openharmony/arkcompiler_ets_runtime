@@ -43,7 +43,7 @@ namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit, LLVMModule *module,
                              LLVMValueRef function, const CompilationConfig *cfg, CallSignature::CallConv callConv,
                              bool enableLog, bool isFastCallAot, const std::string &funcName, bool enableOptDirectCall,
-                             bool enableOptInlining, bool enableBranchProfiling)
+                             bool enableOptInlining, bool enableBranchProfiling, bool isStwCopyStub)
     : compCfg_(cfg),
       scheduledGates_(schedule),
       circuit_(circuit),
@@ -57,7 +57,8 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
       isFastCallAot_(isFastCallAot),
       enableOptDirectCall_(enableOptDirectCall),
       enableOptInlining_(enableOptInlining),
-      enableOptBranchProfiling_(enableBranchProfiling)
+      enableOptBranchProfiling_(enableBranchProfiling),
+      isStwCopyStub_(isStwCopyStub)
 {
     ASSERT(compCfg_->Is64Bit());
     context_ = module->GetContext();
@@ -1046,6 +1047,9 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
         if (enableOptDirectCall_) {
+            if (isStwCopyStub_) {
+                calleeDescriptor = CommonStubCSigns::Get(index + CommonStubCSigns::NUM_OF_ALL_NORMAL_STUBS);
+            }
             callee = GetOrDeclareFunction(calleeDescriptor);
         } else {
             rtoffset = GetCoStubOffset(glue, index);

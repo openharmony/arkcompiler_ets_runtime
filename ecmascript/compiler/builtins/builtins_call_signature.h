@@ -30,6 +30,18 @@ public:
     static_assert(ID::NONE == 0);
     static constexpr int NONE = ID::NONE;
     static constexpr int NUM_OF_BUILTINS_STUBS = ID::NUM_OF_BUILTINS_STUBS;
+    using SubID = builtinssubid::SubID;
+    static constexpr int NUM_OF_BUILTINS_STUBS_EXTEND = SubID::NUM_OF_BUILTINS_STUBS_EXTEND;
+    static_assert(SubID::NONE == 0);
+#define ASSERT_ID_EQUAL(name) \
+    static_assert((static_cast<uint32_t>(ID::name)) == (static_cast<uint32_t>(SubID::name)));
+
+#define ASSERT_ID_EQUAL_DYN(name, type, ...) \
+    static_assert((static_cast<uint32_t>(ID::type##name)) == (static_cast<uint32_t>(SubID::type##name)));
+
+    BUILTINS_STUB_LIST(ASSERT_ID_EQUAL, ASSERT_ID_EQUAL_DYN, ASSERT_ID_EQUAL)
+#undef ASSERT_ID_EQUAL_DYN
+#undef ASSERT_ID_EQUAL
 
     static void Initialize();
 
@@ -37,13 +49,13 @@ public:
 
     static const CallSignature *Get(size_t index)
     {
-        ASSERT(index < NUM_OF_BUILTINS_STUBS);
+        ASSERT(index < NUM_OF_BUILTINS_STUBS_EXTEND);
         return &callSigns_[index];
     }
 
     static const std::string &GetName(int index)
     {
-        ASSERT(index < NUM_OF_BUILTINS_STUBS);
+        ASSERT(index < NUM_OF_BUILTINS_STUBS_EXTEND);
         return callSigns_[index].GetName();
     }
 
@@ -395,7 +407,7 @@ public:
     }
 
 private:
-    static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];
+    static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS_EXTEND];
     static CallSignature builtinsCSign_;
     static CallSignature builtinsWithArgvCSign_;
 };
