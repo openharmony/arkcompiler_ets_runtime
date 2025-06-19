@@ -27,9 +27,7 @@
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/mem/c_containers.h"
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/mem/clock_scope.h"
-#endif
 
 namespace panda::ecmascript {
 class HeapSnapshot;
@@ -82,7 +80,6 @@ private:
     CUnorderedMap<JSTaggedType, NodeId> idMap_ {};
 };
 
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 struct ScopeWrapper {
     LocalScope *localScope_ {nullptr};
     EcmaHandleScope *ecmaHandleScope_ {nullptr};
@@ -91,7 +88,6 @@ struct ScopeWrapper {
     ScopeWrapper(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope)
         : localScope_(localScope), ecmaHandleScope_(ecmaHandleScope) {}
 };
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
 enum class DumpHeapSnapshotStatus : uint8_t {
     SUCCESS,
@@ -142,7 +138,7 @@ public:
     {
         return const_cast<StringHashMap *>(&stringTable_);
     }
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+
     bool IsStartLocalHandleLeakDetect() const;
     void SwitchStartLocalHandleLeakDetect();
     void IncreaseScopeCount();
@@ -156,7 +152,6 @@ public:
     int32_t GetLeakStackTraceFd() const;
     void CloseLeakStackTraceFd();
     void StorePotentiallyLeakHandles(uintptr_t handle);
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
 private:
     /**
@@ -178,11 +173,10 @@ private:
     void ClearSnapshot();
     void FillIdMap();
     bool BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption);
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+
     uint32_t GetScopeCount() const;
     std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
     bool InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace);
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
@@ -194,14 +188,13 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+
     static const long LOCAL_HANDLE_LEAK_TIME_MS {5000};
     bool startLocalHandleLeakDetect_ {false};
     uint32_t scopeCount_ {0};
     std::stack<std::shared_ptr<ScopeWrapper>> activeScopeStack_;
     std::map<uintptr_t, std::string> handleBackTrace_;
     int32_t leakStackTraceFd_ {-1};
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     friend class HeapProfilerFriendTest;
 };

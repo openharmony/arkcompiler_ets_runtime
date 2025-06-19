@@ -307,6 +307,68 @@ host_unittest_action("JSMetadataTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("LocalHandleLeakDetectTest") {
+  module_out_path = module_output_path
+
+  sources = []
+
+  if (enable_handle_leak_detect) {
+    sources += [
+    # test file
+      "local_handle_leak_detect_test.cpp",
+    ]
+  }
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+  ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc"
+  ]
+  external_deps += hiviewdfx_ext_deps
+
+  cflags_cc = [
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-nested-anon-types",
+    "-Wno-variadic-macros",
+  ]
+}
+
+host_unittest_action("GlobalHandleLeakDetectTest") {
+  module_out_path = module_output_path
+
+  sources = [
+  # test file
+    "global_handle_leak_detect_test.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+  ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc"
+  ]
+  external_deps += hiviewdfx_ext_deps
+
+  cflags_cc = [
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-nested-anon-types",
+    "-Wno-variadic-macros",
+  ]
+}
+
 group("unittest") {
   testonly = true
   deps = [
@@ -319,6 +381,7 @@ group("unittest") {
     ":HeapTrackerThirdTest",
     ":JSMetadataTest",
     ":RawHeapTranslateTest",
+    ":GlobalHandleLeakDetectTest",
   ]
 
   # TODO: CMC-GC UT FIX LATER
@@ -346,6 +409,7 @@ group("host_unittest") {
     ":HeapTrackerThirdTestAction",
     ":JSMetadataTestAction",
     ":RawHeapTranslateTestAction",
+    ":GlobalHandleLeakDetectTestAction",
   ]
   if (is_mac) {
     deps -= [
@@ -358,6 +422,7 @@ group("host_unittest") {
       ":HeapTrackerThirdTestAction",
       ":JSMetadataTestAction",
       ":RawHeapTranslateTestAction",
+      ":GlobalHandleLeakDetectTestAction",
     ]
   }
 

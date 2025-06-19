@@ -402,7 +402,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         }
         // fork
         if ((pid = fork()) < 0) {
-            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);
             if (callback) {
                 callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
             }
@@ -666,7 +666,6 @@ const struct SamplingInfo *HeapProfiler::GetAllocationProfile()
     return heapSampling_->GetAllocationProfile();
 }
 
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 bool HeapProfiler::IsStartLocalHandleLeakDetect() const
 {
     return startLocalHandleLeakDetect_;
@@ -776,5 +775,4 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
         InsertHandleBackTrace(handle, stack.str());
     }
 }
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }  // namespace panda::ecmascript
