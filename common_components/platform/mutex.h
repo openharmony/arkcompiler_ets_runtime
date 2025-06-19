@@ -15,6 +15,10 @@
 
 #ifndef COMMON_COMPONENTS_PLATFORM_MUTEX_H
 #define COMMON_COMPONENTS_PLATFORM_MUTEX_H
+
+#include "common_interfaces/base/common.h"
+#include "thread/thread_state_transition.h"
+
 #ifdef DEBUG
 #define FATAL_IF_ERROR(f, rc)                             \
     do {                                                  \
@@ -25,7 +29,6 @@
 #else
 #define FATAL_IF_ERROR(f, rc) static_cast<void>(0)
 #endif
-#include "thread/thread_state_transition.h"
 
 namespace common {
 class Mutex {
@@ -90,5 +93,73 @@ inline void Mutex::Unlock()
     [[maybe_unused]] int rc = pthread_mutex_unlock(&mutex_);
     FATAL_IF_ERROR("pthread_mutex_unlock", rc);
 }
+
+class LockHolder {
+public:
+    explicit LockHolder(Mutex &mtx) : lock_(mtx)
+    {
+        lock_.Lock();
+    }
+
+    ~LockHolder()
+    {
+        lock_.Unlock();
+    }
+
+private:
+    Mutex &lock_;
+
+    NO_COPY_SEMANTIC_CC(LockHolder);
+    NO_MOVE_SEMANTIC_CC(LockHolder);
+};
+
+class PUBLIC_API ConditionVariable {
+public:
+    ConditionVariable();
+
+    ~ConditionVariable();
+
+    void Signal();
+
+    void SignalAll();
+
+    void Wait(Mutex *mutex);
+
+    bool TimedWait(Mutex *mutex, uint64_t ms, uint64_t ns = 0, bool is_absolute = false);
+
+private:
+    pthread_cond_t cond_;
+};
+
+inline ConditionVariable::ConditionVariable() : cond_()
+{
+    [[maybe_unused]]int rc = pthread_cond_init(&cond_, nullptr);
+    FATAL_IF_ERROR("pthread_cond_init", rc);
+}
+
+inline ConditionVariable::~ConditionVariable()
+{
+    [[maybe_unused]]int rc = pthread_cond_destroy(&cond_);
+    FATAL_IF_ERROR("pthread_cond_destroy", rc);
+}
+
+inline void ConditionVariable::Signal()
+{
+    [[maybe_unused]]int rc = pthread_cond_signal(&cond_);
+    FATAL_IF_ERROR("pthread_cond_signal", rc);
+}
+
+inline void ConditionVariable::SignalAll()
+{
+    [[maybe_unused]]int rc = pthread_cond_broadcast(&cond_);
+    FATAL_IF_ERROR("pthread_cond_broadcast", rc);
+}
+
+inline void ConditionVariable::Wait(Mutex *mutex)
+{
+    [[maybe_unused]]int rc = pthread_cond_wait(&cond_, &mutex->mutex_);
+    FATAL_IF_ERROR("pthread_cond_wait", rc);
+}
+
 }
 #endif //COMMON_COMPONENTS_PLATFORM_MUTEX_H

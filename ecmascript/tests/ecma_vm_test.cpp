@@ -61,7 +61,7 @@ static void ResetAbortFlag()
     g_abortFlag = false;
 }
 
-class EcmaVmIterator : public RootVisitor {
+class EcmaVmIterator : public ecmascript::RootVisitor {
 public:
     EcmaVmIterator() = default;
     ~EcmaVmIterator() = default;
