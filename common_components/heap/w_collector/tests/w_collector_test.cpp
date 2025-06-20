@@ -30,7 +30,8 @@ protected:
         BaseRuntime::GetInstance()->Init();
     }
 
-    static void TearDownTestCase() {}
+    static void TearDownTestCase()
+    {}
 
     void SetUp() override
     {
@@ -45,43 +46,46 @@ protected:
 
 std::unique_ptr<WCollector> GetWCollector()
 {
-    CollectorResources& resources = Heap::GetHeap().GetCollectorResources();
-    Allocator& allocator = Heap::GetHeap().GetAllocator();
-    
+    CollectorResources &resources = Heap::GetHeap().GetCollectorResources();
+    Allocator &allocator = Heap::GetHeap().GetAllocator();
+
     return std::make_unique<WCollector>(allocator, resources);
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest0) {
+HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest0)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
-    BaseObject* obj = nullptr;
+    BaseObject *obj = nullptr;
     EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest1) {
+HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest1)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
     EXPECT_FALSE(wcollector->ResurrectObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2) {
+HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
-    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    RegionDesc *region = RegionDesc::GetRegionDescAt(addr);
 
     bool isMarked = region->GetOrAllocResurrectBitmap()->MarkBits(0);
     region->SetResurrectedRegionFlag(1);
@@ -93,13 +97,14 @@ HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2) {
     EXPECT_TRUE(wcollector->ResurrectObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest0) {
+HWTEST_F_L0(WCollectorTest, MarkNewObjectTest0)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
@@ -111,13 +116,14 @@ HWTEST_F_L0(WCollectorTest, MarkNewObjectTest0) {
     EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest1) {
+HWTEST_F_L0(WCollectorTest, MarkNewObjectTest1)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
@@ -128,13 +134,14 @@ HWTEST_F_L0(WCollectorTest, MarkNewObjectTest1) {
     wcollector->MarkNewObject(obj);
     EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
 }
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest2) {
+HWTEST_F_L0(WCollectorTest, MarkNewObjectTest2)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
@@ -146,13 +153,14 @@ HWTEST_F_L0(WCollectorTest, MarkNewObjectTest2) {
     EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest3) {
+HWTEST_F_L0(WCollectorTest, MarkNewObjectTest3)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_FINAL_MARK);
@@ -164,13 +172,14 @@ HWTEST_F_L0(WCollectorTest, MarkNewObjectTest3) {
     EXPECT_FALSE(RegionSpace::IsMarkedObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0) {
+HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0)
+{
     std::unique_ptr<WCollector> wcollector = GetWCollector();
     ASSERT_TRUE(wcollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
-    
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
     new (obj) BaseObject();
 
     common::ObjectRef root = {obj};
@@ -178,4 +187,4 @@ HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0) {
     BaseObject *oldObj = wcollector->ForwardUpdateRawRef(root);
     EXPECT_EQ(oldObj, obj);
 }
-} // namespace common::test
+}  // namespace common::test

@@ -24,49 +24,54 @@ class TraceBarrierTest : public BaseTestWithScope {
 protected:
     void SetUp() override
     {
-        Collector& collector = Heap::GetHeap().GetCollector();
+        Collector &collector = Heap::GetHeap().GetCollector();
         traceBarrier_ = std::make_unique<TraceBarrier>(collector);
     }
 
-    void TearDown() override {}
+    void TearDown() override
+    {}
 
-    std::unique_ptr<TraceBarrier> traceBarrier_ {nullptr};
+    std::unique_ptr<TraceBarrier> traceBarrier_{nullptr};
 };
 
-HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject obj;
     RefField<false> field(&obj);
 
-    BaseObject* resultObj = traceBarrier_->ReadRefField(&obj, field);
+    BaseObject *resultObj = traceBarrier_->ReadRefField(&obj, field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, &obj);
 }
 
-HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST2) {
+HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST2)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject obj;
     RefField<false> field(&obj);
 
-    BaseObject* resultObj = traceBarrier_->ReadRefField(nullptr, field);
+    BaseObject *resultObj = traceBarrier_->ReadRefField(nullptr, field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, &obj);
 }
 
-HWTEST_F_L0(TraceBarrierTest, ReadStaticRef_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, ReadStaticRef_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject obj;
     RefField<false> field(&obj);
 
-    BaseObject* resultObj = traceBarrier_->ReadStaticRef(field);
+    BaseObject *resultObj = traceBarrier_->ReadStaticRef(field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, &obj);
 }
 
-HWTEST_F_L0(TraceBarrierTest, ReadStruct_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, ReadStruct_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject obj;
@@ -81,7 +86,8 @@ HWTEST_F_L0(TraceBarrierTest, ReadStruct_TEST1) {
     EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
 }
 
-HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -89,7 +95,7 @@ HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1) {
     oldObj.SetSizeForwarded(oldSize);
     EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
     RefField<false> field(&oldObj);
-    BaseObject* target = field.GetTargetObject();
+    BaseObject *target = field.GetTargetObject();
     EXPECT_TRUE(target != nullptr);
     MAddress oldAddress = field.GetFieldValue();
 
@@ -102,7 +108,8 @@ HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1) {
     EXPECT_NE(newAddress, oldAddress);
 }
 
-HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST2) {
+HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST2)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -110,7 +117,7 @@ HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST2) {
     oldObj.SetSizeForwarded(oldSize);
     EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
     RefField<> field(MAddress(0));
-    BaseObject* target = field.GetTargetObject();
+    BaseObject *target = field.GetTargetObject();
     EXPECT_TRUE(target == nullptr);
 
     BaseObject newObj;
@@ -123,7 +130,8 @@ HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST2) {
     EXPECT_EQ(newField.GetFieldValue(), newAddress);
 }
 
-HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
 #ifndef ARK_USE_SATB_BARRIER
@@ -135,13 +143,14 @@ HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST1) {
 
     RefField<> field(MAddress(0));
     traceBarrier_->WriteBarrier(nullptr, field, nullptr);
-    BaseObject* obj = reinterpret_cast<BaseObject*>(TAG_HEAP_OBJECT_MASK);
+    BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
     traceBarrier_->WriteBarrier(obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }
 
-HWTEST_F_L0(TraceBarrierTest, WriteStaticRef_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, WriteStaticRef_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -160,7 +169,8 @@ HWTEST_F_L0(TraceBarrierTest, WriteStaticRef_TEST1) {
     EXPECT_NE(newAddress, oldAddress);
 }
 
-HWTEST_F_L0(TraceBarrierTest, AtomicReadRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, AtomicReadRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject obj;
@@ -169,12 +179,13 @@ HWTEST_F_L0(TraceBarrierTest, AtomicReadRefField_TEST1) {
     EXPECT_EQ(obj.GetSizeForwarded(), size);
     RefField<true> field(&obj);
 
-    BaseObject* resultObj = nullptr;
+    BaseObject *resultObj = nullptr;
     resultObj = traceBarrier_->AtomicReadRefField(&obj, field, std::memory_order_seq_cst);
     ASSERT_TRUE(resultObj != nullptr);
 }
 
-HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -196,7 +207,8 @@ HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST1) {
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST2) {
+HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST2)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -218,7 +230,8 @@ HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST2) {
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(TraceBarrierTest, AtomicSwapRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, AtomicSwapRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -236,13 +249,14 @@ HWTEST_F_L0(TraceBarrierTest, AtomicSwapRefField_TEST1) {
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    BaseObject* resultObj = nullptr;
+    BaseObject *resultObj = nullptr;
     resultObj = traceBarrier_->AtomicSwapRefField(&oldObj, oldField, &newObj, std::memory_order_relaxed);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(oldField.GetFieldValue(), newField.GetFieldValue());
 }
 
-HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST1) {
+HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST1)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -260,12 +274,13 @@ HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST1) {
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(&oldObj, oldField, &oldObj, &newObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier_->CompareAndSwapRefField(
+        &oldObj, oldField, &oldObj, &newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
 }
 
-HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST2) {
+HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST2)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -274,12 +289,13 @@ HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST2) {
     EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
     RefField<true> oldField(&oldObj);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(&oldObj, oldField, &oldObj, &oldObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier_->CompareAndSwapRefField(
+        &oldObj, oldField, &oldObj, &oldObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
 }
 
-HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST3) {
+HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST3)
+{
     ASSERT_TRUE(traceBarrier_ != nullptr);
 
     BaseObject oldObj;
@@ -297,8 +313,8 @@ HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST3) {
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(&oldObj, newField, &oldObj, &newObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier_->CompareAndSwapRefField(
+        &oldObj, newField, &oldObj, &newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_FALSE(result);
 }
-} // namespace common::test
+}  // namespace common::test

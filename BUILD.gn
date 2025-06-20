@@ -215,6 +215,15 @@ group("ark_unittest") {
       ]
     }
   }
+  if (ets_runtime_enable_cmc_gc) {
+    deps += [
+      "common_components/base_runtime/tests:host_unittest",
+      "common_components/heap/w_collector/tests:host_unittest",
+      "common_components/base/tests:host_unittest",
+      "common_components/heap/allocator/tests:host_unittest",
+      "common_components/mutator/tests:host_unittest",
+    ]
+  }
 }
 
 ohos_static_library("ark_runtime_host_unittest") {

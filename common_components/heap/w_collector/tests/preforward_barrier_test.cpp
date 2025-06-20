@@ -20,11 +20,11 @@
 using namespace common;
 
 namespace common::test {
-class PreforwardBarrierTest : public BaseTestWithScope {
-};
+class PreforwardBarrierTest : public BaseTestWithScope {};
 
-HWTEST_F_L0(PreforwardBarrierTest, AtomicWriteRefField_TEST1) {
-    Collector& collector = Heap::GetHeap().GetCollector();
+HWTEST_F_L0(PreforwardBarrierTest, AtomicWriteRefField_TEST1)
+{
+    Collector &collector = Heap::GetHeap().GetCollector();
     auto preforwardBarrier = std::make_unique<PreforwardBarrier>(collector);
     ASSERT_TRUE(preforwardBarrier != nullptr);
 
@@ -47,8 +47,9 @@ HWTEST_F_L0(PreforwardBarrierTest, AtomicWriteRefField_TEST1) {
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(PreforwardBarrierTest, AtomicWriteRefField_TEST2) {
-    Collector& collector = Heap::GetHeap().GetCollector();
+HWTEST_F_L0(PreforwardBarrierTest, AtomicWriteRefField_TEST2)
+{
+    Collector &collector = Heap::GetHeap().GetCollector();
     auto preforwardBarrier = std::make_unique<PreforwardBarrier>(collector);
     ASSERT_TRUE(preforwardBarrier != nullptr);
 
