@@ -41,10 +41,10 @@ public:
         UNREACHABLE_CC();
     }
     static Heap& GetHeap();
-    static Barrier& GetBarrier() { return **currentBarrierPtr; }
+    static Barrier& GetBarrier() { return *currentBarrierPtr->load(std::memory_order_relaxed); }
 
     // concurrent gc uses barrier to access heap.
-    static bool UseBarrier() { return *currentBarrierPtr != stwBarrierPtr; }
+    static bool UseBarrier() { return currentBarrierPtr->load(std::memory_order_relaxed) != stwBarrierPtr; }
 
     // should be removed after HeapParam is supported
     virtual void Init(const RuntimeParam& param) = 0;
@@ -150,7 +150,7 @@ public:
     static void OnHeapExtended(HeapAddress newEnd) { heapCurrentEnd = newEnd; }
 
     virtual ~Heap() {}
-    static Barrier** currentBarrierPtr; // record ptr for fast access
+    static std::atomic<Barrier*>* currentBarrierPtr; // record ptr for fast access
     static Barrier* stwBarrierPtr;      // record nonGC barrier
     static HeapAddress heapStartAddr;
     static HeapAddress heapCurrentEnd;
