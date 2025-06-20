@@ -489,7 +489,7 @@ public:
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
                             bool mayThrow = false);
     static bool DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                               const JSHandle<JSTaggedValue> &key);
+                               const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
     static bool DeletePropertyOrThrow(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                       const JSHandle<JSTaggedValue> &key);
     static bool DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

@@ -1202,7 +1202,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
 }
 
 bool JSTaggedValue::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                   const JSHandle<JSTaggedValue> &key)
+                                   const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     if (obj->IsJSProxy()) {
         return JSProxy::DeleteProperty(thread, JSHandle<JSProxy>(obj), key);
@@ -1220,7 +1220,7 @@ bool JSTaggedValue::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedValu
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not delete property in Container Object", false);
     }
 
-    return JSObject::DeleteProperty(thread, JSHandle<JSObject>(obj), key);
+    return JSObject::DeleteProperty(thread, JSHandle<JSObject>(obj), key, sCheckMode);
 }
 
 // 7.3.8 DeletePropertyOrThrow (O, P)
