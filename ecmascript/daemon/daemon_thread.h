@@ -20,6 +20,7 @@
 #include <deque>
 #include <thread>
 
+#include "common_components/taskpool/runner.h"
 #include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mutator_lock.h"
@@ -75,6 +76,7 @@ public:
         return GetSharedMarkStatus() == SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
     }
 
+    void SetRssPriority(common::RssPriorityType type);
 #ifndef NDEBUG
     MutatorLock::MutatorLockState GetMutatorLockState() const;
     void SetMutatorLockState(MutatorLock::MutatorLockState newState);

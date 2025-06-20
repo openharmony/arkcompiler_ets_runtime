@@ -77,6 +77,11 @@ public:
         runner_->SetQosPriority(mode);
     }
 
+    void SetThreadRssPriority(RssPriorityType type)
+    {
+        runner_->SetRssPriority(type);
+    }
+
     void ForEachTask(const std::function<void(Task*)> &f);
 
 private:

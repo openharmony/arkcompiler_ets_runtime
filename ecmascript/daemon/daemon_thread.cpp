@@ -22,6 +22,9 @@
 #ifdef ENABLE_QOS
 #include "qos.h"
 #endif
+#ifdef ENABLE_RSS
+#include "res_sched_client.h"
+#endif
 
 namespace panda::ecmascript {
 DaemonThread *DaemonThread::instance_ = nullptr;
@@ -187,6 +190,18 @@ void DaemonThread::SetSharedMarkStatus(SharedMarkStatus markStatus)
         ASSERT(!thread->IsInRunningState());
         thread->SetSharedMarkStatus(markStatus);
     });
+}
+
+void DaemonThread::SetRssPriority([[maybe_unused]] common::RssPriorityType type)
+{
+#ifdef ENABLE_RSS
+    LOG_GC(DEBUG) << "daemonThread SetRssPriority" << static_cast<int64_t>(type);
+    std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
+            { "tid", std::to_string(GetThreadId()) }};
+    OHOS::ResourceSchedule::ResSchedClient::GetInstance()
+        .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,
+        static_cast<int64_t>(type), payLoad);
+#endif
 }
 
 #ifndef NDEBUG
