@@ -92,3 +92,340 @@ ohos_source_set("libarkcommon-runtime") {
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
+
+config("common_components_public_config") {
+  configs = [
+    "$ark_root/common_interfaces:common_interfaces_public_config",
+    "$ark_root/libpandabase:arkbase_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+    "$ark_third_party_root/icu/icu4c:icu_config",
+    sdk_libc_secshared_config,
+  ]
+
+  include_dirs = [
+    "//arkcompiler/ets_runtime",
+  ]
+
+  defines = []
+  ldflags = []
+
+  if (ark_hybrid) {
+    defines += [ "ARK_HYBRID" ]
+
+    if (current_cpu == "amd64" || current_cpu == "x64" ||
+        current_cpu == "x86_64") {
+      ldflags += [ "-latomic" ]
+    }
+  }
+
+  if (ark_js_hybrid) {
+    defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
+    configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
+  }
+}
+
+config("common_components_common_config") {
+  configs = [ "//arkcompiler/ets_runtime/:hiviewdfx_config" ]
+
+  defines = [ "PANDA_ENABLE_LTO" ]
+
+  if (ets_runtime_enable_cmc_gc) {
+    defines += [ "USE_CMC_GC" ]
+    defines += [ "USE_READ_BARRIER" ]
+    if (is_ohos && current_cpu == "arm64") {
+      defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
+    }
+  } else {
+    print("########## ets_runtime disable cmc-gc ##############")
+  }
+
+  if (ark_standalone_build) {
+    defines += [ "STANDALONE_MODE" ]
+  }
+
+  if (enable_next_optimization) {
+    defines += [ "NEXT_OPTIMIZATION_MACRO" ]
+  }
+
+  cflags_cc = [
+    "-Wall",
+    "-Wshadow",
+    "-Werror",
+    "-Wextra",
+    "-pedantic",
+    "-Wno-invalid-offsetof",
+    "-Wno-gnu-statement-expression",
+    "-pipe",
+    "-Wdate-time",
+    "-funwind-tables",
+    "-fno-rtti",
+    "-fasynchronous-unwind-tables",
+    "-Wformat=2",
+    "-std=c++17",
+  ]
+
+  cflags_cc += [
+    "-Wno-unused-command-line-argument",
+    "-Wno-variadic-macros",
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-zero-length-array",
+    "-Wno-nested-anon-types",
+    "-Wno-c99-extensions",
+    "-Wno-unused-parameter",
+    "-Wno-shadow",
+    "-Wno-pedantic",
+    "-Wno-gnu-zero-variadic-macro-arguments",
+    "-Wno-unused-lambda-capture",
+    "-Wno-unused-function",
+    "-Wno-unused-variable",
+    "-Wno-unused-but-set-variable",
+  ]
+  cflags_c = []
+
+  if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
+    if (ets_runtime_feature_enable_pgo) {
+      cflags = [
+        "-fprofile-use=" + rebase_path(
+                "${ets_runtime_feature_pgo_path}/libark_jsruntime.profdata",
+                root_build_dir),
+        "-Wno-error=backend-plugin",
+        "-Wno-profile-instr-out-of-date",
+        "-Wno-profile-instr-unprofiled",
+        "-mllvm",
+        "-enable-partial-inlining",
+      ]
+    }
+  }
+
+  if (use_musl) {
+    defines += [ "PANDA_USE_MUSL" ]
+  }
+
+  if (build_public_version) {
+    defines += [ "IS_PUBLIC_VERSION" ]
+  }
+
+  if (is_arkui_x) {
+    defines += [ "CROSS_PLATFORM" ]
+  }
+
+  if (target_os == "android") {
+    defines += [ "ANDROID_PLATFORM" ]
+  }
+
+  if (is_ohos) {
+    defines += [ "PANDA_TARGET_OHOS" ]
+  }
+
+  if (is_qemu_runtime && is_ohos) {
+    defines += [ "OHOS_FOR_QEMU" ]
+  }
+
+  if (use_libfuzzer) {
+    defines += [ "FUZZ_TEST" ]
+  }
+
+  if (is_fastverify) {
+    cflags_cc += [
+      "-O3",
+      "-ggdb3",
+      "-gdwarf-4",
+      "-fno-omit-frame-pointer",
+      "-D_GLIBCXX_ASSERTIONS",
+    ]
+    cflags_c += [
+      "-O3",
+      "-ggdb3",
+      "-gdwarf-4",
+      "-fno-omit-frame-pointer",
+      "-D_GLIBCXX_ASSERTIONS",
+    ]
+  } else if (is_debug) {
+    cflags_cc += [
+      "-O0",
+      "-ggdb3",
+      "-gdwarf-4",
+    ]
+  } else {
+    defines += [ "NDEBUG" ]
+  }
+
+  if (enable_asm_assert) {
+    defines += [ "ENABLE_ASM_ASSERT" ]
+  }
+
+  if (run_with_asan) {
+    defines += [ "RUN_WITH_ASAN" ]
+  }
+
+  if (enable_cow_array) {
+    defines += [ "ENABLE_COW_ARRAY" ]
+  }
+
+  if (current_cpu == "arm") {
+    defines += [
+      "PANDA_TARGET_ARM32_ABI_SOFT=1",
+      "PANDA_TARGET_ARM32",
+      "PANDA_TARGET_32",
+    ]
+  } else if (current_cpu == "arm64") {
+    defines += [
+      "PANDA_TARGET_ARM64",
+      "PANDA_TARGET_64",
+      "PANDA_ENABLE_GLOBAL_REGISTER_VARIABLES",
+      "PANDA_USE_32_BIT_POINTER",
+    ]
+  } else if (current_cpu == "x86") {
+    defines += [ "PANDA_TARGET_X86" ]
+  } else if (current_cpu == "amd64" || current_cpu == "x64" ||
+             current_cpu == "x86_64") {
+    defines += [
+      "PANDA_TARGET_64",
+      "PANDA_TARGET_AMD64",
+      "PANDA_USE_32_BIT_POINTER",
+    ]
+  }
+  if (enable_ark_intl) {
+    defines += [ "ARK_SUPPORT_INTL" ]
+  } else {
+    if (target_os == "android" || target_os == "ios") {
+      defines += [ "ARK_NOT_SUPPORT_INTL_GLOBAL" ]
+    } else {
+      configs += [ "$global_root/frameworks/intl:intl_util_config" ]
+    }
+  }
+
+  if (enable_handle_leak_detect) {
+    defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    defines += [ "ENABLE_EXCEPTION_BACKTRACE" ]
+
+    if (use_musl && (current_cpu == "arm" || current_cpu == "arm64") &&
+        !is_mac && !is_mingw && target_os != "ios" && !is_asan) {
+      defines += [ "HOOK_ENABLE" ]
+    }
+  }
+
+  code_encrypto_enable = true
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_crypto_metadata_process)) {
+    code_encrypto_enable = false
+  }
+  if (is_mingw && ark_standalone_build) {
+    code_encrypto_enable = false
+  }
+  if (code_encrypto_enable) {
+    defines += [ "CODE_ENCRYPTION_ENABLE" ]
+  }
+}
+
+# common_components unit testcase config
+config("common_components_test_config") {
+  visibility = [
+    "./*",
+  ]
+
+  configs = [
+    ":common_components_public_config",
+    ":common_components_common_config",
+  ]
+
+  if (enable_handle_leak_detect) {
+    defines = [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
+  }
+  if (!is_mac) {
+    ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  } else {
+    ldflags = [ "-Wl" ]
+  }
+
+  if (!ark_standalone_build) {
+    ldflags += [ "-Wl,--lto-O0" ]
+  }
+}
+
+ohos_shared_library("libark_common_components_test") {
+  testonly = true
+  stack_protector_ret = false
+
+  configs = [ ":common_components_test_config" ]
+
+  sources = [
+    "base_runtime/base_runtime.cpp",
+    "base_runtime/base_runtime_param.cpp",
+    "log/log.cpp",
+    "objects/base_object.cpp",
+    "taskpool/taskpool.cpp",
+    "taskpool/runner.cpp",
+    "taskpool/task_queue.cpp",
+    "tests/test_hooks.cpp",
+    "heap/heap_visitor.cpp",
+    "profiler/heap_profiler_listener.cpp",
+    "thread/thread_holder.cpp",
+    "thread/thread_holder_manager.cpp",
+    "platform/unix/map.cpp",
+  ]
+
+  if (is_mingw) {
+    sources += [
+      "platform/windows/cpu.cpp",
+      "platform/windows/os.cpp",
+    ]
+  } else if (is_mac) {
+    sources += [
+      "platform/unix/mac/cpu.cpp",
+      "platform/unix/mac/os.cpp",
+    ]
+  } else if (is_ohos || target_os == "android") {
+    sources += [
+      "platform/unix/linux/cpu.cpp",
+      "platform/unix/linux/os.cpp",
+    ]
+  } else if (is_linux) {
+    sources += [
+      "platform/unix/linux/cpu.cpp",
+      "platform/unix/linux/os.cpp",
+    ]
+  }
+
+  deps = [ ":libarkcommon-runtime" ]
+
+  public_configs = [ ":common_components_public_config" ]
+  public_configs += [ "//arkcompiler/ets_runtime:include_llvm" ]
+
+  external_deps = []
+  if (!ark_standalone_build) {
+    public_external_deps = [
+      "zlib:libz",
+    ]
+  } else {
+    external_deps += [
+      "zlib:libz",
+    ]
+  }
+
+  ldflags = []
+  if (enable_coverage) {
+    ldflags += [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
+  if (!ark_standalone_build) {
+    ldflags += [ "-Wl,--lto-O0" ]
+  }
+
+  install_enable = false
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
+  }
+
+  if (!is_arkui_x) {
+    external_deps += [ "runtime_core:libarkfile_runtime_static" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+  }
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

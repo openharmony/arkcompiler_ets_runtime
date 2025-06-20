@@ -142,6 +142,36 @@ group("ark_js_unittest") {
   }
 }
 
+group("common_components_js_unittest") {
+  testonly = true
+  deps = []
+
+  if (ets_runtime_enable_cmc_gc) {
+    deps += [
+      "common_components/base_runtime/tests:unittest",
+      "common_components/heap/w_collector/tests:unittest",
+      "common_components/base/tests:unittest",
+      "common_components/heap/allocator/tests:unittest",
+      "common_components/mutator/tests:unittest",
+    ]
+  }
+}
+
+group("common_components_unittest") {
+  testonly = true
+  deps = []
+
+  if (ets_runtime_enable_cmc_gc) {
+    deps += [
+      "common_components/base_runtime/tests:host_unittest",
+      "common_components/heap/w_collector/tests:host_unittest",
+      "common_components/base/tests:host_unittest",
+      "common_components/heap/allocator/tests:host_unittest",
+      "common_components/mutator/tests:host_unittest",
+    ]
+  }
+}
+
 group("ark_js_perform") {
   testonly = true
   deps = []
@@ -184,6 +214,15 @@ group("ark_unittest") {
         "ecmascript/ohos/tests:host_unittest",
       ]
     }
+  }
+  if (ets_runtime_enable_cmc_gc) {
+    deps += [
+      "common_components/base_runtime/tests:host_unittest",
+      "common_components/heap/w_collector/tests:host_unittest",
+      "common_components/base/tests:host_unittest",
+      "common_components/heap/allocator/tests:host_unittest",
+      "common_components/mutator/tests:host_unittest",
+    ]
   }
 }
 
@@ -656,6 +695,7 @@ config("ecma_test_config") {
     "./test/executiontest/*",
     "./test/fuzztest/*",
     "./tools/ap_file_viewer/*",
+    "./common_components/*",
   ]
 
   configs = [
