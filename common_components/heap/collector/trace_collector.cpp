@@ -178,31 +178,55 @@ void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, Glo
     }
 }
 
-void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool,
-                                      WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
+void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
+                                      GlobalWorkStackQueue &globalQueue)
 {
     size_t nNewlyMarked = 0;
     WeakStack weakStack;
+    TraceCollector::WorkStack remarkStack;
+    auto fetchFromSatbBuffer = [this, &workStack, &remarkStack]() {
+        SatbBuffer::Instance().TryFetchOneRetiredNode(remarkStack);
+        while (!remarkStack.empty()) {
+            BaseObject *obj = remarkStack.back();
+            remarkStack.pop_back();
+            if (Heap::IsHeapAddress(obj) && (!MarkObject(obj))) {
+                workStack.push_back(obj);
+                DLOG(TRACE, "tracing take from satb buffer: obj %p", obj);
+            }
+        }
+    };
+    size_t iterationCnt = 0;
+    constexpr size_t maxIterationLoopNum = 1000;
     // loop until work stack empty.
-    for (;;) {
-        ++nNewlyMarked;
-        if (workStack.empty()) {
-            break;
+    do {
+        for (;;) {
+            ++nNewlyMarked;
+            if (workStack.empty()) {
+                break;
+            }
+            // get next object from work stack.
+            BaseObject *obj = workStack.back();
+            workStack.pop_back();
+            auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void *)obj));
+            region->AddLiveByteCount(obj->GetSize());
+            [[maybe_unused]] auto beforeSize = workStack.count();
+            TraceObjectRefFields(obj, workStack, weakStack);
+            DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d", beforeSize,
+                 workStack.count(), workStack.count() - beforeSize);
+            // try to fork new task if needed.
+            if (threadPool != nullptr) {
+                TryForkTask(threadPool, workStack, globalQueue);
+            }
         }
-        // get next object from work stack.
-        BaseObject* obj = workStack.back();
-        workStack.pop_back();
-        auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
-        region->AddLiveByteCount(obj->GetSize());
-        [[maybe_unused]] auto beforeSize = workStack.count();
-        TraceObjectRefFields(obj, workStack, weakStack);
-        DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d",
-             beforeSize, workStack.count(), workStack.count() - beforeSize);
-        // try to fork new task if needed.
-        if (threadPool != nullptr) {
-            TryForkTask(threadPool, workStack, globalQueue);
+
+        // Try some task from satb buffer, bound the loop to make sure it converges in time
+        if (++iterationCnt < maxIterationLoopNum) {
+            fetchFromSatbBuffer();
+            if (workStack.empty()) {
+                fetchFromSatbBuffer();
+            }
         }
-    } // end of mark loop.
+    } while (!workStack.empty());
     // newly marked statistics.
     markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
     MergeWeakStack(weakStack);
