@@ -314,6 +314,14 @@ inline void EcmaString::WriteData(uint32_t index, uint16_t src)
     return ToBaseString()->WriteData(index, src);
 }
 
+inline Span<const uint8_t> EcmaString::FastToUtf8Span() const
+{
+    uint32_t len = GetLength();
+    ASSERT(IsUtf8());
+    const uint8_t *data = GetDataUtf8();
+    return Span<const uint8_t>(data, len);
+}
+
 inline bool EcmaString::IsFlat() const
 {
     auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
@@ -429,6 +437,11 @@ inline void EcmaStringAccessor::ReadData(EcmaString *dst, EcmaString *src,
     uint32_t start, uint32_t destSize, uint32_t length)
 {
     dst->WriteData(src, start, destSize, length);
+}
+
+inline Span<const uint8_t> EcmaStringAccessor::FastToUtf8Span() const
+{
+    return string_->FastToUtf8Span();
 }
 }  // namespace panda::ecmascript
 #endif

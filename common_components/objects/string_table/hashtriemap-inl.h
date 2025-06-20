@@ -19,6 +19,7 @@
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
+#include "common_components/objects/string_table/integer_cache.h"
 
 namespace common {
 // Expand to get oldEntry and newEntry, with hash conflicts from 32 bits up to
@@ -201,6 +202,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
 
     BaseString* value = *str;
     value->SetIsInternString();
+    IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -298,6 +300,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
     }
 
     value->SetIsInternString();
+    IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -395,6 +398,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
 
     BaseString* value = *str;
     value->SetIsInternString();
+    IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -571,6 +575,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
 
     BaseString* value = *str;
     value->SetIsInternString();
+    IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
