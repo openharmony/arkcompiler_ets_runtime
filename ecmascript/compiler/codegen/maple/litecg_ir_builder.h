@@ -127,6 +127,7 @@ private:
     const JSPandaFile *jsPandaFile_ {nullptr};
     std::string funcName_;
     GateAccessor acc_;
+    GateRef glue_ {Circuit::NullGate()};
     maple::litecg::LMIRBuilder *lmirBuilder_ {nullptr};
     std::unordered_map<GateRef, maple::litecg::LiteCGValue> gate2Expr_;
     std::set<OpCode> illegalOpHandlers_;

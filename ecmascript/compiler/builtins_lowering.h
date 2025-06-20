@@ -24,7 +24,11 @@ namespace panda::ecmascript::kungfu {
 class BuiltinLowering {
 public:
     BuiltinLowering(Circuit *circuit, CompilationConfig *cmpCfg, bool traceBuiltins)
-        : circuit_(circuit), builder_(circuit, cmpCfg), acc_(circuit), traceBuiltins_(traceBuiltins)
+        : circuit_(circuit),
+          builder_(circuit, cmpCfg),
+          acc_(circuit),
+          traceBuiltins_(traceBuiltins),
+          glue_(acc_.GetGlueFromArgList())
     {}
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
@@ -57,6 +61,7 @@ private:
     CircuitBuilder builder_;
     GateAccessor acc_;
     bool traceBuiltins_ {false};
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H

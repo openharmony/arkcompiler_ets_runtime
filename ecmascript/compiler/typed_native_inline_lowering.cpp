@@ -1089,7 +1089,7 @@ void TypedNativeInlineLowering::LowerTrunc(GateRef gate)
         builder_.Bind(&isDouble);
         {
             GateRef input = builder_.GetDoubleOfTDouble(param);
-            result = builder_.DoubleTrunc(gate, input);
+            result = builder_.DoubleTrunc(glue_, gate, input);
             builder_.Jump(&exit);
         }
     }
@@ -1906,7 +1906,7 @@ GateRef TypedNativeInlineLowering::BuildTaggedIsInteger(GateRef gate, GateRef va
     BRANCH_CIR(BuildDoubleIsFinite(doubleVal), &isFinite, &exit);
     builder_.Bind(&isFinite);
     {
-        GateRef doubleTrunc = builder_.DoubleTrunc(gate, doubleVal);
+        GateRef doubleTrunc = builder_.DoubleTrunc(glue_, gate, doubleVal);
         result = builder_.Equal(doubleVal, doubleTrunc);
         if (safe) {
             GateRef resultVal = *result;
@@ -2773,9 +2773,8 @@ void TypedNativeInlineLowering::LowerFunctionPrototypeBind(GateRef gate)
 void TypedNativeInlineLowering::LowerFunctionPrototypeCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glue = glue_;
     std::vector<GateRef> args = acc_.GetValueIns(gate);
-    GateRef result = builder_.CallRuntime(glue, RTSTUB_ID(FunctionPrototypeCall), Gate::InvalidGateRef, args, gate);
+    GateRef result = builder_.CallRuntime(glue_, RTSTUB_ID(FunctionPrototypeCall), Gate::InvalidGateRef, args, gate);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
 }
 
@@ -2783,7 +2782,7 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     Label exit(&builder_);
-    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glue = glue_;
     BuiltinsArrayStubBuilder stubBuilder(&env, builder_.GetGlobalEnv(glue));
 
     using Indices = CircuitArgIndices::ArrayIncludesIndexOf;
@@ -3699,9 +3698,8 @@ void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
     }
     builder_.Bind(&returnEmptyArray);
     {
-        GateRef glue = acc_.GetGlueFromArgList();
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
-        res->WriteVariable(newBuilder.CreateEmptyArray(glue));
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue_));
+        res->WriteVariable(newBuilder.CreateEmptyArray(glue_));
         builder_.Jump(exit);
     }
 }

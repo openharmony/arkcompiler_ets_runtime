@@ -386,8 +386,7 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
         UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatMod),
+        result = builder_.CallNGCRuntime(glue_, RTSTUB_ID(FloatMod),
             Gate::InvalidGateRef, {left, right}, Circuit::NullGate());
         acc_.SetMachineType(gate, MachineType::F64);
     }
@@ -1000,7 +999,7 @@ void NumberSpeculativeLowering::VisitLoadPropertyOnProto(GateRef gate)
         GateRef unsharedConstPool = acc_.GetValueIn(gate, 3); // 3: constpool
         PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
         GateRef result = Circuit::NullGate();
-        GateRef glue = acc_.GetGlueFromArgList();
+        GateRef glue = glue_;
         ASSERT(plr.IsLocal() || plr.IsFunction());
 
         auto receiverHC = builder_.LoadHClassByConstOffset(glue, receiver);

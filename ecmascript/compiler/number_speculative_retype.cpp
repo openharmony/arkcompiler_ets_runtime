@@ -1404,8 +1404,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
                 result = builder_.CheckUndefinedAndConvertToFloat64(gate);
             } else {
                 if (convert == ConvertToNumber::ALL) {
-                    GateRef glue = acc_.GetGlueFromArgList();
-                    GateRef number = builder_.ToNumber(glue, gate, glue);
+                    GateRef number = builder_.ToNumber(glue_, gate, glue_);
                     ResizeAndSetTypeInfo(number, TypeInfo::TAGGED);
                     result = builder_.GetDoubleOfTNumber(number);
                 } else {
@@ -1451,8 +1450,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             if (convert == ConvertToNumber::ALL) {
                 // Convert if not number
                 ASSERT(gateType.IsNumberType());
-                GateRef glue = acc_.GetGlueFromArgList();
-                GateRef ret = builder_.ToNumber(glue, gate, glue);
+                GateRef ret = builder_.ToNumber(glue_, gate, glue_);
                 ResizeAndSetTypeInfo(ret, TypeInfo::TAGGED);
                 return ret;
             }
@@ -2076,7 +2074,7 @@ void NumberSpeculativeRetype::SetNewInputForMathImul(GateRef gate, int idx)
     } else {
         ASSERT(type == TypeInfo::FLOAT64);
         input = CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY);
-        input = builder_.TruncDoubleToInt(acc_.GetGlueFromArgList(), input, base::INT32_BITS);
+        input = builder_.TruncDoubleToInt(glue_, input, base::INT32_BITS);
     }
     ResizeAndSetTypeInfo(input, TypeInfo::INT32);
     acc_.ReplaceValueIn(gate, input, idx);

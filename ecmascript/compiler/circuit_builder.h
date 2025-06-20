@@ -958,7 +958,7 @@ public:
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
     inline GateRef IntPtrEqual(GateRef x, GateRef y);
-    GateRef DoubleTrunc(GateRef gate, GateRef value, const char* comment = nullptr);
+    GateRef DoubleTrunc(GateRef glue, GateRef gate, GateRef value, const char* comment = nullptr);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
