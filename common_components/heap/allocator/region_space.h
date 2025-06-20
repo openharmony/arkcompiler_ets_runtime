@@ -26,7 +26,7 @@
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/heap/space/young_space.h"
-#include "common_components/heap/space/mature_space.h"
+#include "common_components/heap/space/old_space.h"
 #include "common_components/heap/space/from_space.h"
 #include "common_components/heap/space/to_space.h"
 #include "common_components/mutator/mutator.h"
@@ -57,7 +57,7 @@ public:
         return ToAllocatedSize(objSize);
     }
 
-    RegionSpace() : youngSpace_(regionManager_), matureSpace_(regionManager_),
+    RegionSpace() : youngSpace_(regionManager_), oldSpace_(regionManager_),
         fromSpace_(regionManager_, *this), toSpace_(regionManager_) {}
     NO_INLINE_CC virtual ~RegionSpace()
     {
@@ -102,7 +102,7 @@ public:
 
     ToSpace& GetToSpace() noexcept { return toSpace_; }
 
-    MatureSpace& GetMatureSpace() noexcept { return matureSpace_; }
+    OldSpace& GetOldSpace() noexcept { return oldSpace_; }
 
     YoungSpace& GetYoungSpace() noexcept { return youngSpace_; }
 
@@ -122,13 +122,13 @@ public:
     inline size_t GetSurvivedSize() const
     {
         return fromSpace_.GetSurvivedSize() + toSpace_.GetAllocatedSize() +
-            youngSpace_.GetAllocatedSize() + matureSpace_.GetAllocatedSize() + regionManager_.GetSurvivedSize();
+            youngSpace_.GetAllocatedSize() + oldSpace_.GetAllocatedSize() + regionManager_.GetSurvivedSize();
     }
 
     inline size_t GetUsedUnitCount() const
     {
         return fromSpace_.GetUsedUnitCount() + toSpace_.GetUsedUnitCount() +
-            youngSpace_.GetUsedUnitCount() + matureSpace_.GetUsedUnitCount() + regionManager_.GetUsedUnitCount();
+            youngSpace_.GetUsedUnitCount() + oldSpace_.GetUsedUnitCount() + regionManager_.GetUsedUnitCount();
     }
 
     size_t GetUsedPageSize() const override { return regionManager_.GetUsedRegionSize(); }
@@ -142,7 +142,7 @@ public:
     size_t GetAllocatedBytes() const override
     {
         return fromSpace_.GetAllocatedSize() + toSpace_.GetAllocatedSize() +
-            youngSpace_.GetAllocatedSize() + matureSpace_.GetAllocatedSize() + regionManager_.GetAllocatedSize();
+            youngSpace_.GetAllocatedSize() + oldSpace_.GetAllocatedSize() + regionManager_.GetAllocatedSize();
     }
 
     size_t LargeObjectSize() const override { return regionManager_.GetLargeObjectSize(); }
@@ -206,7 +206,7 @@ public:
     void FixHeap()
     {
         youngSpace_.FixAllRegions();
-        matureSpace_.FixAllRegions();
+        oldSpace_.FixAllRegions();
         fromSpace_.FixAllRegions();
         toSpace_.FixAllRegions();
         regionManager_.FixAllRegionLists();
@@ -223,16 +223,16 @@ public:
 
     void HandlePromotion()
     {
-        fromSpace_.GetPromotedTo(matureSpace_);
-        toSpace_.GetPromotedTo(matureSpace_);
+        fromSpace_.GetPromotedTo(oldSpace_);
+        toSpace_.GetPromotedTo(oldSpace_);
     }
 
     void AssembleSmallGarbageCandidates()
     {
         youngSpace_.AssembleGarbageCandidates(fromSpace_);
         if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
-            matureSpace_.ClearRSet();
-            matureSpace_.AssembleGarbageCandidates(fromSpace_);
+            oldSpace_.ClearRSet();
+            oldSpace_.AssembleGarbageCandidates(fromSpace_);
             regionManager_.ClearRSet();
         }
     }
@@ -249,7 +249,7 @@ public:
     {
         regionManager_.ClearAllGCInfo();
         youngSpace_.ClearAllGCInfo();
-        matureSpace_.ClearAllGCInfo();
+        oldSpace_.ClearAllGCInfo();
         toSpace_.ClearAllGCInfo();
         fromSpace_.ClearAllGCInfo();
     }
@@ -378,7 +378,7 @@ private:
     MemoryMap* map_{ nullptr };
 
     YoungSpace youngSpace_;
-    MatureSpace matureSpace_;
+    OldSpace oldSpace_;
 
     FromSpace fromSpace_;
     ToSpace toSpace_;

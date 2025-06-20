@@ -63,7 +63,7 @@ void RegionSpace::DumpAllRegionStats(const char* msg) const
     VLOG(DEBUG, msg);
 
     youngSpace_.DumpRegionStats();
-    matureSpace_.DumpRegionStats();
+    oldSpace_.DumpRegionStats();
     fromSpace_.DumpRegionStats();
     toSpace_.DumpRegionStats();
     regionManager_.DumpRegionStats();
@@ -463,7 +463,7 @@ void RegionSpace::FeedHungryBuffers()
 
 void RegionSpace::VisitOldSpaceRememberSet(const std::function<void(BaseObject*)>& func)
 {
-    matureSpace_.VisitRememberSet(func);
+    oldSpace_.VisitRememberSet(func);
     regionManager_.VisitRememberSet(func);
 }
 } // namespace common

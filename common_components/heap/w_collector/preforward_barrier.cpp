@@ -76,7 +76,7 @@ void PreforwardBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress
 BaseObject* PreforwardBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& field, MemoryOrder order) const
 {
     RefField<false> tmpField(field.GetFieldValue(order));
-    BaseObject* target = ReadRefField(obj, tmpField);
+    BaseObject* target = ReadRefField(nullptr, tmpField);
     DLOG(PBARRIER, "atomic read obj %p ref@%p: %#zx -> %p", obj, &field, tmpField.GetFieldValue(), target);
     return target;
 }

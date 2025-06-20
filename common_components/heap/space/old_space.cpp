@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/space/mature_space.h"
+#include "common_components/heap/space/old_space.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
 
 namespace common {
-void MatureSpace::DumpRegionStats() const
+void OldSpace::DumpRegionStats() const
 {
-    size_t matureRegions = matureRegionList_.GetRegionCount();
-    size_t matureUnits = matureRegionList_.GetUnitCount();
-    size_t matureSize = matureUnits * RegionDesc::UNIT_SIZE;
-    size_t allocFromSize = matureRegionList_.GetAllocatedSize();
+    size_t oldRegions = oldRegionList_.GetRegionCount();
+    size_t oldUnits = oldRegionList_.GetUnitCount();
+    size_t oldSize = oldUnits * RegionDesc::UNIT_SIZE;
+    size_t allocFromSize = oldRegionList_.GetAllocatedSize();
 
-    VLOG(DEBUG, "\tmature-regions %zu: %zu units (%zu B, alloc %zu)",
-        matureRegions,  matureUnits, matureSize, allocFromSize);
+    VLOG(DEBUG, "\told-regions %zu: %zu units (%zu B, alloc %zu)",
+        oldRegions,  oldUnits, oldSize, allocFromSize);
 }
 } // namespace common

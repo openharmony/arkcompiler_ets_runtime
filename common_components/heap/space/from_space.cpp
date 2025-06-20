@@ -15,7 +15,7 @@
 
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/heap/space/from_space.h"
-#include "common_components/heap/space/mature_space.h"
+#include "common_components/heap/space/old_space.h"
 #include "common_components/heap/collector/collector_resources.h"
 #include "common_components/taskpool/taskpool.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
@@ -108,7 +108,7 @@ public:
 
 private:
     FromSpace &fromSpace_;
-    RegionDesc *startRegion_;
+    RegionDesc *startRegion_ {nullptr};
     size_t regionCount_;
     TaskPackMonitor &monitor_;
 };
@@ -176,7 +176,7 @@ void FromSpace::CopyFromRegions(Taskpool* threadPool)
     }
 }
 
-void FromSpace::GetPromotedTo(MatureSpace& mspace)
+void FromSpace::GetPromotedTo(OldSpace& mspace)
 {
     mspace.PromoteRegionList(exemptedFromRegionList_);
 }

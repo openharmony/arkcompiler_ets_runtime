@@ -34,7 +34,7 @@
 #endif
 
 namespace common {
-class MatureSpace;
+class OldSpace;
 // regions for small-sized movable objects, which may be moved during gc.
 class ToSpace : public RegionalSpace {
 public:
@@ -84,7 +84,7 @@ public:
         return tlToRegionList_.GetUnitCount() + fullToRegionList_.GetUnitCount();
     }
 
-    void GetPromotedTo(MatureSpace& mspace);
+    void GetPromotedTo(OldSpace& mspace);
 
     void ClearAllGCInfo()
     {

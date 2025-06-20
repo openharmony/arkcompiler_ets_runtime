@@ -67,24 +67,24 @@ public:
         return RoundUp<size_t>(metadataSize, COMMON_PAGE_SIZE);
     }
 
+    static void FixRegionList(TraceCollector& collector, RegionList& list);
     static void FixRecentRegionList(TraceCollector& collector, RegionList& list);
     static void FixToRegionList(TraceCollector& collector, RegionList& list);
     static void FixOldRegionList(TraceCollector& collector, RegionList& list);
-    static void FixMatureRegionList(TraceCollector& collector, RegionList& list);
-    static void FixRecentMatureRegionList(TraceCollector& collector, RegionList& list);
+    static void FixRecentOldRegionList(TraceCollector& collector, RegionList& list);
 
     void Initialize(size_t regionNum, uintptr_t regionInfoStart);
 
     RegionManager()
         : freeRegionManager_(*this), garbageRegionList_("garbage regions"),
-          recentPinnedRegionList_("recent pinned regions"), oldPinnedRegionList_("old pinned regions"),
-          rawPointerRegionList_("raw pointer pinned regions"), oldLargeRegionList_("old large regions"),
+          pinnedRegionList_("pinned regions"), recentPinnedRegionList_("recent pinned regions"),
+          rawPointerRegionList_("raw pointer pinned regions"), largeRegionList_("large regions"),
           recentLargeRegionList_("recent large regions"), readOnlyRegionList_("read only region"),
           largeTraceRegions_("large trace regions"), appSpawnRegionList_("appSpawn regions")
     {
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            fixedPinnedRegionList_[i] = new RegionList("fixed recent pinned regions");
-            oldFixedPinnedRegionList_[i] = new RegionList("fixed old pinned regions");
+            recentFixedPinnedRegionList_[i] = new RegionList("fixed recent pinned regions");
+            fixedPinnedRegionList_[i] = new RegionList("fixed pinned regions");
         }
     }
 
@@ -93,7 +93,7 @@ public:
     RegionManager& operator=(const RegionManager&) = delete;
 
     void FixAllRegionLists();
-    void FixOldPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats);
+    void FixPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats);
     void FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
 
     using RootSet = MarkStack<BaseObject*>;
@@ -119,13 +119,13 @@ public:
     ~RegionManager()
     {
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            if (recentFixedPinnedRegionList_[i] != nullptr) {
+                delete recentFixedPinnedRegionList_[i];
+                recentFixedPinnedRegionList_[i] = nullptr;
+            }
             if (fixedPinnedRegionList_[i] != nullptr) {
                 delete fixedPinnedRegionList_[i];
                 fixedPinnedRegionList_[i] = nullptr;
-            }
-            if (oldFixedPinnedRegionList_[i] != nullptr) {
-                delete oldFixedPinnedRegionList_[i];
-                oldFixedPinnedRegionList_[i] = nullptr;
             }
         }
     }
@@ -155,7 +155,7 @@ public:
         }
         CHECK_CC(size % sizeof(uint64_t) == 0);
         size_t cellCount = size / sizeof(uint64_t) - 1;
-        RegionList* list = fixedPinnedRegionList_[cellCount];
+        RegionList* list = recentFixedPinnedRegionList_[cellCount];
         std::mutex& listMutex = list->GetListMutex();
         listMutex.lock();
         RegionDesc* headRegion = list->GetHeadRegion();
@@ -332,13 +332,13 @@ public:
 
     size_t GetSurvivedSize() const
     {
-        return oldPinnedRegionList_.GetAllocatedSize() + oldLargeRegionList_.GetAllocatedSize();
+        return pinnedRegionList_.GetAllocatedSize() + largeRegionList_.GetAllocatedSize();
     }
 
     size_t GetUsedUnitCount() const
     {
-        return oldLargeRegionList_.GetUnitCount() + recentLargeRegionList_.GetUnitCount() +
-            oldPinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount() +
+        return largeRegionList_.GetUnitCount() + recentLargeRegionList_.GetUnitCount() +
+            pinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount() +
             rawPointerRegionList_.GetUnitCount() + readOnlyRegionList_.GetUnitCount() +
             largeTraceRegions_.GetUnitCount() + appSpawnRegionList_.GetUnitCount();
     }
@@ -349,13 +349,13 @@ public:
 
     inline size_t GetLargeObjectSize() const
     {
-        return oldLargeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize();
+        return largeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize();
     }
 
     size_t GetAllocatedSize() const
     {
-        return oldLargeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
-            oldPinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize() +
+        return largeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
+            pinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize() +
             rawPointerRegionList_.GetAllocatedSize() + readOnlyRegionList_.GetAllocatedSize() +
             largeTraceRegions_.GetAllocatedSize() + appSpawnRegionList_.GetAllocatedSize();
     }
@@ -363,10 +363,10 @@ public:
     inline size_t GetPinnedSpaceSize() const
     {
         size_t pinnedSpaceSize =
-            oldPinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();
+            pinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            pinnedSpaceSize += recentFixedPinnedRegionList_[i]->GetAllocatedSize();
             pinnedSpaceSize += fixedPinnedRegionList_[i]->GetAllocatedSize();
-            pinnedSpaceSize += oldFixedPinnedRegionList_[i]->GetAllocatedSize();
         }
         return pinnedSpaceSize;
     }
@@ -410,7 +410,7 @@ public:
         }
 
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            RegionDesc* region = fixedPinnedRegionList_[i]->GetHeadRegion();
+            RegionDesc* region = recentFixedPinnedRegionList_[i]->GetHeadRegion();
             if (region != nullptr && region != RegionDesc::NullRegion()) {
                 region->SetTraceLine();
             }
@@ -446,7 +446,7 @@ public:
             region->SetFixLine();
         }
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            RegionDesc* region = fixedPinnedRegionList_[i]->GetHeadRegion();
+            RegionDesc* region = recentFixedPinnedRegionList_[i]->GetHeadRegion();
             if (region != nullptr && region != RegionDesc::NullRegion()) {
                 region->SetFixLine();
             }
@@ -455,16 +455,16 @@ public:
 
     void ClearAllGCInfo()
     {
-        ClearGCInfo(oldLargeRegionList_);
+        ClearGCInfo(largeRegionList_);
         ClearGCInfo(recentLargeRegionList_);
         ClearGCInfo(recentPinnedRegionList_);
         ClearGCInfo(rawPointerRegionList_);
-        ClearGCInfo(oldPinnedRegionList_);
+        ClearGCInfo(pinnedRegionList_);
         ClearGCInfo(readOnlyRegionList_);
         ClearGCInfo(appSpawnRegionList_);
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            ClearGCInfo(*recentFixedPinnedRegionList_[i]);
             ClearGCInfo(*fixedPinnedRegionList_[i]);
-            ClearGCInfo(*oldFixedPinnedRegionList_[i]);
         }
     }
 
@@ -515,13 +515,15 @@ private:
     // cache for fromRegionList after forwarding.
     RegionList garbageRegionList_;
 
-    // regions for small-sized atomic objects when read-barrier is not used.
-    // region lists for small-sized pinned objects which are not be moved during concurrent gc, but
-    // may be moved during stw-compaction.
-    RegionList recentPinnedRegionList_;
+    // regions for small-sized object which is not movable.
+    RegionList pinnedRegionList_;
     RegionList* fixedPinnedRegionList_[FIXED_PINNED_REGION_COUNT];
-    RegionList oldPinnedRegionList_;
-    RegionList* oldFixedPinnedRegionList_[FIXED_PINNED_REGION_COUNT];
+
+    // regions which allocated since last GC beginning.
+    // record pinned regions in here first and move those regions
+    // to pinned/fixedPinned RegionList when gc starts.
+    RegionList recentPinnedRegionList_;
+    RegionList* recentFixedPinnedRegionList_[FIXED_PINNED_REGION_COUNT];
 
     // region lists for small-sized raw-pointer objects (i.e. future, monitor)
     // which can not be moved ever (even during compaction).
@@ -529,9 +531,10 @@ private:
 
     // regions for large-sized objects.
     // large region is recorded here after large object is allocated.
-    RegionList oldLargeRegionList_;
+    RegionList largeRegionList_;
 
-    // if large region is allocated when gc is not running, it is recorded here.
+    // large regions which allocated since last GC beginning.
+    // record pinned regions in here first and move those when gc starts.
     RegionList recentLargeRegionList_;
 
     // regions for read only objects

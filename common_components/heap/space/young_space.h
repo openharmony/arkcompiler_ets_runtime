@@ -92,15 +92,6 @@ public:
         ClearGCInfo(recentFullRegionList_);
     }
 
-    void VisitRememberSet(const std::function<void(BaseObject*)>& func)
-    {
-        auto visitFunc = [&func](RegionDesc* region) {
-            region->VisitRememberSet(func);
-        };
-        tlRegionList_.VisitAllRegions(visitFunc);
-        recentFullRegionList_.VisitAllRegions(visitFunc);
-    }
-
     RegionList& GetTlRegionList() noexcept { return tlRegionList_; }
 
     RegionList& GetRecentFullRegionList() noexcept { return recentFullRegionList_; }

@@ -32,7 +32,7 @@
 
 namespace common {
 class RegionSpace;
-class MatureSpace;
+class OldSpace;
 class Taskpool;
 
 // regions for small-sized movable objects, which may be moved during gc.
@@ -54,7 +54,7 @@ public:
     void FixAllRegions()
     {
         TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
-        RegionManager::FixOldRegionList(collector, exemptedFromRegionList_);
+        RegionManager::FixRegionList(collector, exemptedFromRegionList_);
     }
 
     size_t GetUsedUnitCount() const
@@ -95,7 +95,7 @@ public:
     void CopyFromRegions(Taskpool* threadPool);
     void CopyFromRegions();
 
-    void GetPromotedTo(MatureSpace& mspace);
+    void GetPromotedTo(OldSpace& mspace);
 
     void SetExemptedRegionThreshold(double threshold)
     {
@@ -110,15 +110,6 @@ public:
             region->ClearRSet();
             region = region->GetNextRegion();
         }
-    }
-
-    void VisitRememberSet(const std::function<void(BaseObject*)>& func)
-    {
-        auto visitFunc = [&func](RegionDesc* region) {
-            region->VisitRememberSet(func);
-        };
-        fromRegionList_.VisitAllRegions(visitFunc);
-        exemptedFromRegionList_.VisitAllRegions(visitFunc);
     }
 
     RegionList& GetExemptedRegionList() noexcept { return exemptedFromRegionList_; }
