@@ -135,7 +135,7 @@ public:
         if (UNLIKELY(g_isEnableCMCGC)) {
             if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
-                JSTaggedValue value(reinterpret_cast<JSTaggedType>(BaseRuntime::AtomicReadBarrier(
+                JSTaggedValue value(reinterpret_cast<JSTaggedType>(common::BaseRuntime::AtomicReadBarrier(
                     const_cast<void*>(obj), (void*) (ToUintPtr(obj) + offset), std::memory_order_acquire)));
                 value.RemoveReadBarrierDFXTag();
                 return value.GetRawData();

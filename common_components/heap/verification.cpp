@@ -38,7 +38,7 @@
  *
  * RB DFX:
  * Force to use STW GC. Force to use read barrier out of GC.
- * After GC is finished, set the lowerst bit(WEAK_TAG) of RefField that is not root or points to pinned objects.
+ * After GC is finished, set the lowerst bit(WEAK_TAG) of RefField which is not root or doesn't point to pinned objects.
  * The read barrier is responsible to remove the WEAK_TAG for properly deferencing the object.
  * Disabled by defualt. Controlled by gn-option `ets_runtime_enable_rb_dfx`.
  *
@@ -48,6 +48,7 @@
  * openharmony:
  * ./build_system.sh --gn-args="ets_runtime_enable_heap_verify=true ets_runtime_enable_rb_dfx=true" ...
  */
+
 namespace common {
 void VisitRoots(const RefFieldVisitor& visitorFunc, bool isMark);
 void VisitWeakRoots(const WeakRefFieldVisitor& visitorFunc);
@@ -114,7 +115,7 @@ std::string GetObjectInfo(const BaseObject* obj)
 std::string GetRefInfo(const RefField<>& ref)
 {
     std::ostringstream s;
-    s << std::hex << std::endl << ">>> Ref value: 0x" << ref.GetFieldValue() << "]";
+    s << std::hex << std::endl << ">>> Ref value: 0x" << ref.GetFieldValue();
     if (Heap::IsTaggedObject(ref.GetFieldValue())) {
         s << GetObjectInfo(ref.GetTargetObject()) << std::endl;
     } else {
