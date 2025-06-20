@@ -145,6 +145,7 @@
     V("createNapiObject",                          CreateNapiObject,                          0, INVALID)     \
     V("hasConstructor",                            HasConstructor,                            1, INVALID)     \
     V("setHotReloadPatchMain",                     SetHotReloadPatchMain,                     0, INVALID)     \
+    V("setNoHotReloadPatchMain",                   SetNoHotReloadPatchMain,                   0, INVALID)     \
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
@@ -466,6 +467,7 @@ public:
     }
 
     static JSTaggedValue SetHotReloadPatchMain(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue SetNoHotReloadPatchMain(EcmaRuntimeCallInfo *info);
 
 private:
 #define BUILTINS_ARK_TOOLS_FUNCTION_ENTRY(name, method, length, id) \

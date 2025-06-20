@@ -15,3 +15,4 @@ true
 [trace] Lazy Deoptimization occurred on function: "T"
 [trace] Lazy Deoptimize reason: HOTRELOAD_PATCHMAIN
 123411
+true

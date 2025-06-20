@@ -52,7 +52,7 @@ enum class LazyDeoptDependencyKind : uint32_t {
     STABLE_HCLASS,          // Once the HClass undergoes transition, "isStable" bit remains false permanently
     NOT_PROTOTYPE_HCLASS,   // Once the HClass becomes prototype, "isPrototype" bit remains true permanently
     DETECTOR,
-    NOT_HOT_RELOAD,
+    NOT_HOT_RELOAD_PATCHMAIN,
 };
 
 class LazyDeoptDependency {
@@ -130,10 +130,10 @@ private:
     JSHClass *hclass_ {nullptr};
 };
 
-class HotReloadDependency final : public LazyDeoptDependency {
+class NotHotReloadDependency final : public LazyDeoptDependency {
 public:
-    HotReloadDependency(JSThread *thread)
-        : LazyDeoptDependency(LazyDeoptDependencyKind::NOT_HOT_RELOAD), thread_(thread) {}
+    NotHotReloadDependency(JSThread *thread)
+        : LazyDeoptDependency(LazyDeoptDependencyKind::NOT_HOT_RELOAD_PATCHMAIN), thread_(thread) {}
 
     bool IsValid() const override
     {
@@ -165,7 +165,7 @@ public:
     bool DependOnStableProtoChain(JSHClass *receiverHClass,
                                   JSHClass *holderHClass,
                                   GlobalEnv *globalEnv = nullptr);
-    bool DependOnHotReloadPatchMain(JSThread *thread);
+    bool DependOnNotHotReloadPatchMain(JSThread *thread);
     bool PreInstall(JSThread *thread);
     PUBLIC_API static bool Commit(LazyDeoptAllDependencies *dependencies,
                                   JSThread *thread, JSTaggedValue jsFunc);

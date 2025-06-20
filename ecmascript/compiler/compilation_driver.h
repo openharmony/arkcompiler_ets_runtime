@@ -154,7 +154,7 @@ public:
                        const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
         SetCurrentCompilationFile();
-        if (methodLiteral == nullptr) {
+        if (methodLiteral == nullptr || methodLiteral->IsShared()) {
             return false;
         }
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));

@@ -150,9 +150,9 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
     return success;
 }
 
-bool LazyDeoptAllDependencies::DependOnHotReloadPatchMain(JSThread *thread)
+bool LazyDeoptAllDependencies::DependOnNotHotReloadPatchMain(JSThread *thread)
 {
-    LazyDeoptDependency *dependency = new HotReloadDependency(thread);
+    LazyDeoptDependency *dependency = new NotHotReloadDependency(thread);
     if (dependency->IsValid()) {
         RegisterDependency(dependency);
         return true;

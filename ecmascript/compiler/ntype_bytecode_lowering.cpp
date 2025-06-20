@@ -358,7 +358,7 @@ void NTypeBytecodeLowering::LowerLdExternalMoudleVar(GateRef gate)
     }
 
     if (enableLazyDeopt_) {
-        if (!compilationEnv_->GetDependencies()->DependOnHotReloadPatchMain(compilationEnv_->GetHostThread())) {
+        if (!compilationEnv_->GetDependencies()->DependOnNotHotReloadPatchMain(compilationEnv_->GetHostThread())) {
             return;
         }
     } else {
