@@ -581,11 +581,7 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
             visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
-            TaggedObject *object = value.GetTaggedObject();
-            MarkWord word(value.GetTaggedObject());
-            if (word.IsForwardingAddress()) {
-                object = word.ToForwardingAddress();
-            }
+            auto object = reinterpret_cast<TaggedObject *>(node->GetObject());
             typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
 
             // Print global information about possible memory leaks.

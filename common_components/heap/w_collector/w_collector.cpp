@@ -76,9 +76,11 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
     if (IsFromObject(fromObj)) {
         if (copy) {
             toObj = const_cast<WCollector*>(this)->TryForwardObject(fromObj);
-            HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(fromObj),
-                                                            reinterpret_cast<uintptr_t>(toObj),
-                                                            toObj->GetSize());
+            if (toObj != nullptr) {
+                HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(fromObj),
+                                                                reinterpret_cast<uintptr_t>(toObj),
+                                                                toObj->GetSize());
+            }
         } else {
             toObj = FindToVersion(fromObj);
         }
@@ -327,10 +329,10 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
     DLOG(FIX, "try fix raw-ref @%p: %p", &root, oldObj);
     if (IsFromObject(oldObj)) {
         BaseObject* toVersion = TryForwardObject(oldObj);
+        CHECK_CC(toVersion != nullptr);
         HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
                                                         reinterpret_cast<uintptr_t>(toVersion),
                                                         toVersion->GetSize());
-        CHECK_CC(toVersion != nullptr);
         RefField<> newField(toVersion);
         // CAS failure means some mutator or gc thread writes a new ref (must be a to-object), no need to retry.
         if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
@@ -351,10 +353,10 @@ void WCollector::PreforwardStaticRoots()
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
         if (IsFromObject(oldObj)) {
             BaseObject* toVersion = TryForwardObject(oldObj);
+            CHECK_CC(toVersion != nullptr);
             HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
                                                             reinterpret_cast<uintptr_t>(toVersion),
                                                             toVersion->GetSize());
-            CHECK_CC(toVersion != nullptr);
             RefField<> newField(toVersion);
             // CAS failure means some mutator or gc thread writes a new ref (must be a to-object), no need to retry.
             if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
@@ -381,10 +383,10 @@ void WCollector::PreforwardStaticRoots()
         DLOG(FIX, "visit weak raw-ref @%p: %p", &refField, oldObj);
         if (IsFromObject(oldObj)) {
             BaseObject *toVersion = TryForwardObject(oldObj);
+            CHECK_CC(toVersion != nullptr);
             HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
                                                             reinterpret_cast<uintptr_t>(toVersion),
                                                             toVersion->GetSize());
-            CHECK_CC(toVersion != nullptr);
             RefField<> newField(toVersion);
             // CAS failure means some mutator or gc thread writes a new ref (must be
             // a to-object), no need to retry.
@@ -674,8 +676,11 @@ void WCollector::ProcessFinalizers()
 BaseObject* WCollector::ForwardObject(BaseObject* obj)
 {
     BaseObject* to = TryForwardObject(obj);
-    HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(obj), reinterpret_cast<uintptr_t>(to),
-                                                    to->GetSize());
+    if (to != nullptr) {
+        HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(obj),
+                                                        reinterpret_cast<uintptr_t>(to),
+                                                        to->GetSize());
+    }
     return (to != nullptr) ? to : obj;
 }
 

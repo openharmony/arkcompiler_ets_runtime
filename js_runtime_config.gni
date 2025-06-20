@@ -71,6 +71,8 @@ declare_args() {
   ark_js_hybrid = !ark_standalone_build && !is_mac
 
   ets_runtime_enable_cmc_gc = false
+
+  enable_handle_leak_detect = false
 }
 
 if (defined(enable_cmc_gc) && !ets_runtime_enable_cmc_gc) {
@@ -108,7 +110,6 @@ compile_llvm_online = false
 if (enable_fuzz_option) {
   run_with_asan = true
 }
-enable_handle_leak_detect = false
 enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false

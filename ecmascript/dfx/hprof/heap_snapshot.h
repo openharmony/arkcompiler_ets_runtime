@@ -542,12 +542,15 @@ private:
     void EraseNodeUnique(Node *node);
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
+    void NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
+                     CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
+    void HandleCMCGCRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
+    void HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
-#endif
+    void LogLeakedLocalHandleBackTrace(common::RefField<> &refField);
 
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
