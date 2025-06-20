@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "mapiteratorefget_fuzzer.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -62,7 +63,7 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace OHOS {
-void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void MapIteratorRefGetIndexFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -78,7 +79,13 @@ void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[mayb
         JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
         jsMap->SetLinkedMap(thread, linkedHashMap);
         JSHandle<JSTaggedValue> mapValue(jsMap);
-        JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
+        FuzzedDataProvider fdp(data, size);
+        auto kind = fdp.PickValueInArray({
+            IterationKind::KEY,
+            IterationKind::VALUE,
+            IterationKind::KEY_AND_VALUE,
+        });
+        JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread, mapValue, kind);
         JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
         mapIterator->SetNextIndex(1);
         Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
@@ -87,7 +94,7 @@ void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[mayb
     JSNApi::DestroyJSVM(vm);
 }
 
-void MapIteratorRefGetKindFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+void MapIteratorRefGetKindFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -103,9 +110,16 @@ void MapIteratorRefGetKindFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe
         JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
         jsMap->SetLinkedMap(thread, linkedHashMap);
         JSHandle<JSTaggedValue> mapValue(jsMap);
+        FuzzedDataProvider fdp(data, size);
+        auto kind = fdp.PickValueInArray({
+            IterationKind::KEY,
+            IterationKind::VALUE,
+            IterationKind::KEY_AND_VALUE,
+        });
         JSHandle<JSTaggedValue> mapIteratorVal =
-            JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
+            JSMapIterator::CreateMapIterator(thread, mapValue, kind);
         JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+        mapIterator->SetIterationKind(IterationKind::KEY);
         mapIterator->SetIterationKind(IterationKind::VALUE);
         mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
         Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);

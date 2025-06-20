@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "nativepointernew2_fuzzer.h"
 
 #include "ecmascript/napi/include/jsnapi.h"
@@ -29,8 +30,13 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
+        FuzzedDataProvider fdp(data, size);
+        std::string str1 = fdp.ConsumeRandomLengthString(1024);
+        void *ptr1 = static_cast<void *>(const_cast<char *>(str1.data()));
+        std::string str2 = fdp.ConsumeRandomLengthString(1024);
+        void *ptr2 = static_cast<void *>(const_cast<char *>(str2.data()));
         NativePointerCallback callBack = nullptr;
-        NativePointerRef::New(vm, (void *)(data + size), callBack, (void*)data);
+        NativePointerRef::New(vm, ptr1, callBack, ptr2);
         JSNApi::DestroyJSVM(vm);
     }
 }

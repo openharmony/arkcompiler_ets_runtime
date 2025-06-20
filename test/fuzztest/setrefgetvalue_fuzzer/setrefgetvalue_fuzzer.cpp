@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "setrefgetvalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -29,7 +30,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void SetRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void SetRefGetValueFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -49,12 +50,16 @@ void SetRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
         JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
         Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
-        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-        JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
-        JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
-        JSHandle<JSTaggedValue> secondValue(factory->NewFromASCII("vlue2"));
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> value(factory->NewFromStdString(str));
+        std::string str1 = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> firstValue(factory->NewFromStdString(str1));
+        JSSet::Add(vm->GetJSThread(), jsSet, firstValue);
+        std::string str2 = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> secondValue(factory->NewFromStdString(str2));
         JSSet::Add(vm->GetJSThread(), jsSet, secondValue);
-        int index = size % 2; // 2:Take the remainder of 2
+        int index = fdp.ConsumeIntegralInRange<int>(0, 1);
         set->GetValue(vm, index);
     }
     JSNApi::DestroyJSVM(vm);

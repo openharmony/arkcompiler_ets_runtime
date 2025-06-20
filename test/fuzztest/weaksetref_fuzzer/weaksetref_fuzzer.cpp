@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "weaksetref_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -28,7 +29,7 @@ using namespace panda::ecmascript;
 using namespace common::utf_helper;
 
 namespace OHOS {
-void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void WeakSetRefGetSizeFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -48,7 +49,9 @@ void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         weakSet->SetLinkedSet(thread, hashSet);
         JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
         Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> value(factory->NewFromStdString(str));
         JSWeakSet::Add(thread, weakSet, value);
         set->GetSize(vm);
     }
@@ -56,7 +59,7 @@ void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     return;
 }
 
-void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void WeakSetRefGetTotalElementsFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -76,7 +79,9 @@ void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, siz
         weakSet->SetLinkedSet(thread, hashSet);
         JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
         Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> value(factory->NewFromStdString(str));
         JSWeakSet::Add(thread, weakSet, value);
         set->GetTotalElements(vm);
     }
@@ -84,7 +89,7 @@ void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, siz
     return;
 }
 
-void WeakSetRefGetValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void WeakSetRefGetValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -104,7 +109,9 @@ void WeakSetRefGetValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         weakSet->SetLinkedSet(thread, hashSet);
         JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
         Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> value(factory->NewFromStdString(str));
         JSWeakSet::Add(thread, weakSet, value);
         set->GetValue(vm, 0);
     }

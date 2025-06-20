@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "notifyapplicationstate_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
@@ -33,18 +34,9 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        int input = 0;
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        bool inBackground = false;
-        if (input % 2 == 0) { // 2 : determine whether the type is bool or true
-            inBackground = true;
-        }
+
+        FuzzedDataProvider fdp(data, size);
+        bool inBackground = fdp.ConsumeBool();
         DFXJSNApi::NotifyApplicationState(vm, inBackground);
         JSNApi::DestroyJSVM(vm);
     }

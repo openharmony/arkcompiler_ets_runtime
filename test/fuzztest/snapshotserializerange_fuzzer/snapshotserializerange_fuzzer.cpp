@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "snapshotserializerange_fuzzer.h"
 
 #include "ecmascript/log_wrapper.h"
@@ -33,10 +34,13 @@ namespace OHOS {
             if (size <= 0) {
                 return;
             }
+            FuzzedDataProvider fdp(data, size);
+            const uint32_t len1 = fdp.ConsumeIntegralInRange<uint32_t>(0, 1024);
+            const uint32_t len2 = fdp.ConsumeIntegralInRange<uint32_t>(0, 1024);
             auto factory = vm->GetFactory();
             CVector<TaggedType> objVector;
-            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(*data);
-            JSHandle<TaggedArray> array2 = factory->NewTaggedArray(*data);
+            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(len1);
+            JSHandle<TaggedArray> array2 = factory->NewTaggedArray(len2);
             objVector.push_back(array1.GetTaggedType());
             objVector.push_back(array2.GetTaggedType());
 

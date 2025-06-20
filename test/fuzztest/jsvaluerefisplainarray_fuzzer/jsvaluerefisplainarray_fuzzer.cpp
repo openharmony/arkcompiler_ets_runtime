@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefisplainarray_fuzzer.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -112,7 +113,7 @@ void TearDownFrame(JSThread *thread, JSTaggedType *prev)
     thread->SetCurrentSPFrame(prev);
 }
 
-void JSValueRefIsPlainArrayFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefIsPlainArrayFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -140,7 +141,8 @@ void JSValueRefIsPlainArrayFuzzTest([[maybe_unused]] const uint8_t *data, size_t
         JSHandle<JSTaggedValue> constructor(thread, result);
         JSHandle<JSAPIPlainArray> plainArray(
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        constexpr int nodeNumbers = 8;
+        FuzzedDataProvider fdp(data, size);
+        const int nodeNumbers = fdp.ConsumeIntegralInRange<int>(0, 1024);
         JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(nodeNumbers));
         JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(nodeNumbers));
         plainArray->SetKeys(thread, keyArray);

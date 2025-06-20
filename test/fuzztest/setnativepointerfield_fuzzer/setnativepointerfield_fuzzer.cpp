@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "setnativepointerfield_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
@@ -30,15 +31,8 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        int32_t index = 0;
-        size_t maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&index, maxByteLen, data, size) != EOK) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
+        FuzzedDataProvider fdp(data, size);
+        int32_t index = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
         Local<ObjectRef> object = ObjectRef::New(vm);
         NativePointerCallback callBack = nullptr;
         object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);

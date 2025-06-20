@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "setiteratorrefget_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
@@ -43,7 +44,7 @@ JSSet *CreateJSSet(JSThread *thread)
     return JSSet::Cast(set.GetTaggedValue().GetTaggedObject());
 }
 
-void SetIteratorRefGetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void SetIteratorRefGetFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -56,8 +57,14 @@ void SetIteratorRefGetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         }
         auto thread = vm->GetAssociatedJSThread();
         JSHandle<JSSet> jsSet(thread, CreateJSSet(thread));
+        FuzzedDataProvider fdp(data, size);
+        auto kind = fdp.PickValueInArray({
+            IterationKind::KEY,
+            IterationKind::VALUE,
+            IterationKind::KEY_AND_VALUE,
+        });
         JSHandle<JSTaggedValue> jsTagSetIterator =
-            JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+            JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), kind);
         JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
         JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet());
         Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
