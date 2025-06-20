@@ -809,6 +809,7 @@ public:
     inline GateRef TaggedIsJSGlobalObject(GateRef glue, GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef glue, GateRef x);
     inline GateRef TaggedIsJSArray(GateRef glue, GateRef x);
+    inline GateRef TaggedIsJSProxy(GateRef glue, GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef glue, GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef glue, GateRef x);

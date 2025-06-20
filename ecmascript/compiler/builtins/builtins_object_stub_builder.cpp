@@ -232,7 +232,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
             Bind(&enumerable);
             {
                 DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
-                value = JSObjectGetProperty(glue_, source, cls, attr);
+                value = JSObjectGetPropertyWithRep(glue_, source, cls, attr);
                 // exception
                 Label exception0(env);
                 Label noexception0(env);
@@ -1805,7 +1805,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
         GateRef arrayProp = newBuilder.NewTaggedArray(glue, Int32(2)); // 2: length of array to store [key, value] is 2
         GateRef key = GetKeyFromLayoutInfo(glue, layout, *idx);
         GateRef attr = GetPropAttrFromLayoutInfo(glue, layout, *idx);
-        GateRef value = JSObjectGetProperty(glue, obj, cls, attr);
+        GateRef value = JSObjectGetPropertyWithRep(glue, obj, cls, attr);
         BRANCH(IsEnumerable(attr), &propertyIsEnumerable, &loopEnd);
         Bind(&propertyIsEnumerable);
         {
@@ -2066,7 +2066,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
             GateRef attr = GetAttr(glue_, layout, *i);
             GateRef descriptor = newBuilder.CreateEmptyObject(glue_);
             DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
-            value = JSObjectGetProperty(glue_, obj, hclass, attr);
+            value = JSObjectGetPropertyWithRep(glue_, obj, hclass, attr);
             BRANCH(IsAccessor(attr), &isAccessor, &setValueAndIsWritable);
             Bind(&isAccessor);
             {

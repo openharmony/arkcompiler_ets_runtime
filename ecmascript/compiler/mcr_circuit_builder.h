@@ -531,6 +531,11 @@ GateRef CircuitBuilder::TaggedIsJSArray(GateRef glue, GateRef x)
     return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_ARRAY)).Done();
 }
 
+GateRef CircuitBuilder::TaggedIsJSProxy(GateRef glue, GateRef x)
+{
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::JS_PROXY)).Done();
+}
+
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef glue, GateRef x)
 {
     return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(glue, x, JSType::PROPERTY_BOX)).Done();

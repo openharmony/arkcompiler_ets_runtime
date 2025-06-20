@@ -1961,13 +1961,13 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef glue, const StringInfoG
     return ret;
 }
 
-void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fastPath)
+void FlatStringStubBuilder::FlattenStringImpl(GateRef glue, GateRef str, Label *handleSlicedString, Label *exit)
 {
     auto env = GetEnvironment();
     Label notLineString(env);
-    Label exit(env);
+    Label fastPath(env);
     length_ = GetLengthFromString(str);
-    BRANCH(IsLineString(glue, str), &exit, &notLineString);
+    BRANCH(IsLineString(glue, str), &fastPath, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
@@ -1982,73 +1982,53 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
             Bind(&isFlat);
             {
                 flatString_.WriteVariable(GetFirstFromTreeString(glue, str));
-                Jump(fastPath);
+                Jump(exit);
             }
             Bind(&notFlat);
             {
                 flatString_.WriteVariable(CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str }));
-                Jump(fastPath);
+                Jump(exit);
             }
         }
         Bind(&notTreeString);
-        BRANCH(IsSlicedString(glue, str), &isSlicedString, &exit);
+        BRANCH(IsSlicedString(glue, str), &isSlicedString, &fastPath);
         Bind(&isSlicedString);
         {
-            flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
-            startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
-            Jump(fastPath);
+            Jump(handleSlicedString);
         }
     }
-    Bind(&exit);
+    Bind(&fastPath);
     {
         flatString_.WriteVariable(str);
-        Jump(fastPath);
+        Jump(exit);
     }
 }
 
-void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *fastPath)
+void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label handleSlicedString(env);
+    FlattenStringImpl(glue, str, &handleSlicedString, exit);
+    Bind(&handleSlicedString);
+    {
+        flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
+        startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
+        Jump(exit);
+    }
+}
+
+void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *exit)
 {
     // Note this method modifies "index" variable for Sliced String
     auto env = GetEnvironment();
-    Label notLineString(env);
-    Label exit(env);
-    BRANCH(IsLineString(glue, str), &exit, &notLineString);
-    Bind(&notLineString);
+    Label handleSlicedString(env);
+    FlattenStringImpl(glue, str, &handleSlicedString, exit);
+    Bind(&handleSlicedString);
     {
-        Label isTreeString(env);
-        Label notTreeString(env);
-        Label isSlicedString(env);
-        BRANCH(IsTreeString(glue, str), &isTreeString, &notTreeString);
-        Bind(&isTreeString);
-        {
-            Label isFlat(env);
-            Label notFlat(env);
-            BRANCH(TreeStringIsFlat(glue, str), &isFlat, &notFlat);
-            Bind(&isFlat);
-            {
-                flatString_.WriteVariable(GetFirstFromTreeString(glue, str));
-                Jump(fastPath);
-            }
-            Bind(&notFlat);
-            {
-                flatString_.WriteVariable(CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str }));
-                Jump(fastPath);
-            }
-        }
-        Bind(&notTreeString);
-        BRANCH(IsSlicedString(glue, str), &isSlicedString, &exit);
-        Bind(&isSlicedString);
-        {
-            flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
-            startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
-            index->WriteVariable(Int32Add(*startIndex_, index->ReadVariable()));
-            Jump(fastPath);
-        }
-    }
-    Bind(&exit);
-    {
-        flatString_.WriteVariable(str);
-        Jump(fastPath);
+        flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
+        startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
+        index->WriteVariable(Int32Add(*startIndex_, index->ReadVariable()));
+        Jump(exit);
     }
 }
 

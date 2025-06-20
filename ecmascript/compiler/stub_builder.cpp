@@ -1037,66 +1037,49 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isProperty(env);
-    Label isElement(env);
-    Label isJSProxy(env);
-    Label ifFound(env);
-    Label notFound(env);
-    DEFVARIABLE(holder, VariableType::JS_ANY(), obj);
-    DEFVARIABLE(propKey, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(elemKey, VariableType::INT32(), Int32(-1));
+    Label checkHolder(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
-    ObjectOperatorStubBuilder opStubBuilder(this, GetCurrentGlobalEnv());
 
     IsNotPropertyKey(TaggedIsPropertyKey(glue, key));
 
-    // 1. handle property key
-    opStubBuilder.HandleKey(glue, key, &propKey, &elemKey, &isProperty, &isElement, &exit, hir);
+    ObjectOperatorStubBuilder opStubBuilder(this, GetCurrentGlobalEnv());
 
-    // 2(1). start lookup when key is property
-    Bind(&isProperty);
+    ObjectOperatorStubBuilder::ObjectOperatorOptions opOptions;
+    opOptions.lookupKind = ObjectOperatorStubBuilder::LookupKind::KIND_HAS_PROPERTY;
+
+    ObjectOperatorStubBuilder::ObjectOperatorResult opResult;
+    opStubBuilder.InitializeOperatorResults(opResult);
+    opResult.holder->WriteVariable(obj);
+
+    opStubBuilder.StartLookup<ObjectOperatorStubBuilder::StartLookupType::NO_RECEIVER>(
+        glue, key, &checkHolder, opOptions, opResult, hir);
+
+    // if holder is JSProxy, op's lookup will return. This will be handled by CallRuntime. 
+    Bind(&checkHolder);
     {
-        Label holderUpdated(env);
-        opStubBuilder.UpdateHolder<false>(glue, &holder, *propKey, &holderUpdated);
-
-        Bind(&holderUpdated);
-        opStubBuilder.LookupProperty<false>(glue, &holder, *propKey, &isJSProxy, &ifFound, &notFound, hir);
-    }
-
-    // 2(2). start lookup when key is element
-    Bind(&isElement);
-    {
-        Label holderUpdated(env);
-        opStubBuilder.UpdateHolder<true>(glue, &holder, *elemKey, &holderUpdated);
-
-        Bind(&holderUpdated);
-        opStubBuilder.LookupProperty<true>(glue, &holder, *elemKey, &isJSProxy, &ifFound, &notFound, hir);
-    }
-
-    Bind(&isJSProxy);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(JSProxyHasProperty), {*holder, key});
-        Jump(&exit);
-    }
-
-    Bind(&ifFound);
-    {
-        result = TaggedTrue();
-        Jump(&exit);
-    }
-
-    Bind(&notFound);
-    {
-        Jump(&exit);
+        Label isJSProxy(env);
+        Label isFound(env);
+        BRANCH(TaggedIsJSProxy(glue, opResult.GetHolder()), &isJSProxy, &isFound);
+        Bind(&isJSProxy);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(JSProxyHasProperty), {opResult.GetHolder(), key});
+            Jump(&exit);
+        }
+        Bind(&isFound);
+        {
+            result = BooleanToTaggedBooleanPtr(opStubBuilder.IsFound(opResult.metaData));
+            Jump(&exit);
+        }
     }
 
     Bind(&exit);
     auto ret = *result;
+    opStubBuilder.FinalizeOperatorResults(opResult);
     env->SubCfgExit();
     return ret;
 }
 
-GateRef StubBuilder::JSObjectGetProperty(GateRef glue, GateRef obj, GateRef hclass, GateRef attr)
+GateRef StubBuilder::JSObjectGetPropertyWithRep(GateRef glue, GateRef obj, GateRef hclass, GateRef attr)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3782,7 +3765,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 {
                     // PropertyAttributes attr(layoutInfo->GetAttr(entry))
                     GateRef attr = GetPropAttrFromLayoutInfo(glue, layOutInfo, entryA);
-                    GateRef value = JSObjectGetProperty(glue, *holder, hclass, attr);
+                    GateRef value = JSObjectGetPropertyWithRep(glue, *holder, hclass, attr);
                     Label isAccessor(env);
                     Label notAccessor(env);
                     BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
@@ -3924,7 +3907,7 @@ void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, G
             {
                 // PropertyAttributes attr(layoutInfo->GetAttr(entry))
                 GateRef attr = GetPropAttrFromLayoutInfo(glue, layOutInfo, entryA);
-                GateRef value = JSObjectGetProperty(glue, holder, hclass, attr);
+                GateRef value = JSObjectGetPropertyWithRep(glue, holder, hclass, attr);
                 Label notHole(env);
                 BRANCH(TaggedIsHole(value), notFound, &notHole);
                 Bind(&notHole);
@@ -5010,7 +4993,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
                 if (defineSemantics) {
                     Jump(&exit);
                 } else {
-                    GateRef accessor = JSObjectGetProperty(glue, *holder, hclass, attr);
+                    GateRef accessor = JSObjectGetPropertyWithRep(glue, *holder, hclass, attr);
                     Label shouldCall(env);
                     BRANCH(ShouldCallSetter(glue, receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
                     Bind(&shouldCall);
@@ -5044,7 +5027,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
                         BRANCH(IsAOTHClass(hclass), &isAOT, &notAOT);
                         Bind(&isAOT);
                         {
-                            GateRef attrVal = JSObjectGetProperty(glue, *holder, hclass, attr);
+                            GateRef attrVal = JSObjectGetPropertyWithRep(glue, *holder, hclass, attr);
                             Label attrValIsHole(env);
                             BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notAOT);
                             Bind(&attrValIsHole);
@@ -5334,7 +5317,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                     Jump(&exit);
                 }
                 Bind(&isNotSCheckModelIsCHECK1);
-                GateRef accessor = JSObjectGetProperty(glue, *holder, hclass, attr);
+                GateRef accessor = JSObjectGetPropertyWithRep(glue, *holder, hclass, attr);
                 Label shouldCall(env);
                 BRANCH(ShouldCallSetter(glue, receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
                 Bind(&shouldCall);
@@ -5367,7 +5350,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                         BRANCH(IsAOTHClass(hclass), &isAOT, &notAOT);
                         Bind(&isAOT);
                         {
-                            GateRef attrVal = JSObjectGetProperty(glue, *holder, hclass, attr);
+                            GateRef attrVal = JSObjectGetPropertyWithRep(glue, *holder, hclass, attr);
                             Label attrValIsHole(env);
                             BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notAOT);
                             Bind(&attrValIsHole);
@@ -11594,7 +11577,7 @@ GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, Gat
             GateRef hClass = LoadHClass(glue, exports);
             GateRef layoutInfo = GetLayoutFromHClass(glue, hClass);
             GateRef attr = GetAttr(glue, layoutInfo, index);
-            result = JSObjectGetProperty(glue, exports, hClass, attr);
+            result = JSObjectGetPropertyWithRep(glue, exports, hClass, attr);
             Jump(&checkResultIsAccessor);
         }
     }
