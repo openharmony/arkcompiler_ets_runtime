@@ -33,6 +33,7 @@
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
+#include "ecmascript/js_api/js_api_buffer.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -155,6 +156,7 @@ public:
         // { typeName: [all fields' name of this type in the same order as declared in .h files + typeName] }
         // typeName: Type name in JSType Enum
         fieldNameTable_ = {
+            {JSType::INVALID, {"INVALID"}},
             {JSType::HCLASS, {
                 "BitField", "BitField1", "Proto", "Layout", "Transitions", "Parent", "ProtoChangeMarker",
                 "ProtoChangeDetails", "EnumCache", "DependentInfos",
@@ -204,6 +206,7 @@ public:
             {JSType::JS_API_LIST, {"SingleList", "JS_API_LIST"}},
             {JSType::JS_API_LIST_ITERATOR, {"IteratedList", "JS_API_LIST_ITERATOR"}},
             {JSType::JS_API_PLAIN_ARRAY, {"Keys", "Values", "JS_API_PLAIN_ARRAY"}},
+            {JSType::JS_API_FAST_BUFFER, {"FastBufferData", "JS_API_FAST_BUFFER"}},
             {JSType::JS_API_PLAIN_ARRAY_ITERATOR, {"IteratedPlainArray", "JS_API_PLAIN_ARRAY_ITERATOR"}},
             {JSType::JS_API_QUEUE, {"Length", "JS_API_QUEUE"}},
             {JSType::JS_API_QUEUE_ITERATOR, {"IteratedQueue", "JS_API_QUEUE_ITERATOR"}},
@@ -407,6 +410,10 @@ public:
             {JSType::TRANS_WITH_PROTO_HANDLER, {"HandlerInfo", "TransitionHClass",
                                                 "ProtoCell", "TRANS_WITH_PROTO_HANDLER"}},
             {JSType::TREE_STRING, {"First", "Second", "TREE_STRING"}},
+            {JSType::COMPOSITE_BASE_CLASS, {"COMPOSITE_BASE_CLASS"}},
+            {JSType::FREE_OBJECT_WITH_ONE_FIELD, {"FREE_OBJECT_WITH_ONE_FIELD"}},
+            {JSType::FREE_OBJECT_WITH_NONE_FIELD, {"FREE_OBJECT_WITH_NONE_FIELD"}},
+            {JSType::FREE_OBJECT_WITH_TWO_FIELD, {"FREE_OBJECT_WITH_TWO_FIELD"}},
             {JSType::VTABLE, {"VTABLE"}}
         };
         // { typeName: [all fields' start offset of this type in the same order as declared in .h files + endOffset] }
@@ -529,6 +536,7 @@ public:
             {JSType::JS_API_PLAIN_ARRAY, {JSAPIPlainArray::KEYS_OFFSET,
                                           JSAPIPlainArray::VALUES_OFFSET,
                                           JSAPIPlainArray::SIZE - JSAPIPlainArray::KEYS_OFFSET}},
+            {JSType::JS_API_FAST_BUFFER, {JSAPIFastBuffer::TYPEDARRAY_OFFSET}},
             {JSType::JS_API_PLAIN_ARRAY_ITERATOR, {
                 JSAPIPlainArrayIterator::ITERATED_PLAIN_ARRAY_OFFSET,
                 JSAPIPlainArrayIterator::LAST_OFFSET - JSAPIPlainArrayIterator::ITERATED_PLAIN_ARRAY_OFFSET}},
@@ -1068,6 +1076,7 @@ public:
             {JSType::JS_API_LIST, {"JS_OBJECT"}},
             {JSType::JS_API_LIST_ITERATOR, {"JS_OBJECT"}},
             {JSType::JS_API_PLAIN_ARRAY, {"JS_OBJECT"}},
+            {JSType::JS_API_FAST_BUFFER, {"JS_OBJECT"}},
             {JSType::JS_API_PLAIN_ARRAY_ITERATOR, {"JS_OBJECT"}},
             {JSType::JS_API_QUEUE, {"JS_OBJECT"}},
             {JSType::JS_API_QUEUE_ITERATOR, {"JS_OBJECT"}},
@@ -1339,6 +1348,7 @@ public:
                 JSAPIListIterator::DATA_INDEX_OFFSET - JSAPIListIterator::ITERATED_LIST_OFFSET}},
             {JSType::JS_API_PLAIN_ARRAY, {JSAPIPlainArray::VALUES_OFFSET - JSAPIPlainArray::KEYS_OFFSET,
                                           JSAPIPlainArray::LENGTH_OFFSET - JSAPIPlainArray::VALUES_OFFSET}},
+            {JSType::JS_API_FAST_BUFFER, {JSAPIFastBuffer::BUFFER_LENGTH_OFFSET - JSAPIFastBuffer::TYPEDARRAY_OFFSET}},
             {JSType::JS_API_PLAIN_ARRAY_ITERATOR, {
                 JSAPIPlainArrayIterator::NEXT_INDEX_OFFSET - JSAPIPlainArrayIterator::ITERATED_PLAIN_ARRAY_OFFSET}},
             {JSType::JS_API_QUEUE, {JSAPIQueue::FRONT_OFFSET - JSAPIQueue::LENGTH_OFFSET}},
@@ -1775,7 +1785,37 @@ public:
         int status {MetadataStatus::UNINITIALIZED};
     };
 
-    void ReadAndParseMetadataJson(std::string &filePath, Metadata &metadata)
+    void ReadAndParseTypeEnums(const std::string &filePath, CVector<std::string> &typeEnums)
+    {
+        std::ifstream jsonFile(filePath);
+        if (!jsonFile.is_open()) {
+            std::cout << "Fail to open type enums file: " << filePath << std::endl;
+            return;
+        }
+        std::stringstream buffer;
+        buffer << jsonFile.rdbuf();
+        auto json = cJSON_ParseWithOpts(buffer.str().c_str(), nullptr, true);
+        if (!json) {
+            std::cout << "Fail to parse type enums cJSON" << std::endl;
+            jsonFile.close();
+            return;
+        }
+        jsonFile.close();
+        cJSON *typeEnumsJson = cJSON_GetObjectItem(json, "type_enum");
+        if (typeEnumsJson == nullptr) {
+            std::cout << "Fail to get item \"type_enums\" from cJSON" << std::endl;
+        }
+        auto typeEnumsVisitor = [&typeEnums](const cJSON *item, int index) -> bool {
+            typeEnums.push_back(item->string);
+            return true;
+        };
+        if (!VisitArrayItems(typeEnumsJson, typeEnumsVisitor)) {
+            std::cout << "Fail to get type enums: " << filePath << std::endl;
+            return;
+        }
+    }
+
+    void ReadAndParseMetadataJson(const std::string &filePath, Metadata &metadata)
     {
         // Open specific metadata json file and using cJSON to parse
         std::ifstream jsonFile(filePath);
@@ -1891,7 +1931,27 @@ public:
         return true;
     }
 
-    bool TestForDictionaryLayout(std::string &filePath)
+    bool TestForTypeEnums(const CVector<std::string> typeEnums)
+    {
+        uint8_t type = static_cast<uint8_t>(JSType::INVALID);
+        for (auto typeName : typeEnums) {
+            auto fieldNames = GetFieldNamesByType(static_cast<JSType>(type));
+            if (fieldNames.size() == 0) {
+                std::cout << "JSType " << int(type) << " got " << typeName << "missed in fieldNameTable_" << std::endl;
+                return false;
+            }
+            if (typeName != fieldNames[fieldNames.size() - 1]) {
+                std::cout << "JSType " << int(type) << " expected "
+                          << fieldNames[fieldNames.size() - 1] << ", but got "
+                          << typeName << std::endl;
+                return false;
+            }
+            ++type;
+        }
+        return true;
+    }
+
+    bool TestForDictionaryLayout(const std::string &filePath)
     {
         std::ifstream jsonFile(filePath);
         if (!jsonFile.is_open()) {
@@ -2179,6 +2239,17 @@ std::unordered_map<JSType, std::vector<std::string>> JSMetadataTestHelper::field
 std::unordered_map<JSType, std::vector<size_t>> JSMetadataTestHelper::fieldOffsetTable_ {};
 std::unordered_map<JSType, std::vector<std::string>> JSMetadataTestHelper::parentsTable_ {};
 std::unordered_map<JSType, std::vector<size_t>> JSMetadataTestHelper::fieldSizeTable_ {};
+
+HWTEST_F_L0(JSMetadataTest, TestTypeEnumOrder)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"type_enums.json";
+    CVector<std::string> typeEnums {};
+
+    tester.ReadAndParseTypeEnums(metadataFilePath, typeEnums);
+    ASSERT_EQ(typeEnums.size(), static_cast<size_t>(JSType::TYPE_LAST) + 1);
+    ASSERT_TRUE(tester.TestForTypeEnums(typeEnums));
+}
 
 HWTEST_F_L0(JSMetadataTest, TestHClassMetadata)
 {
