@@ -184,7 +184,9 @@ uintptr_t RegionSpace::AllocLargeRegion(size_t size)
 
 uintptr_t RegionSpace::AllocJitFortRegion(size_t size)
 {
-    return regionManager_.AllocLarge(size, false);
+    uintptr_t addr = regionManager_.AllocLarge(size, false);
+    os::PrctlSetVMA(reinterpret_cast<void *>(addr), size, "ArkTS Code");
+    return addr;
 }
 
 HeapAddress RegionSpace::Allocate(size_t size, AllocType allocType)
@@ -285,9 +287,9 @@ void RegionSpace::Init(const RuntimeParam& param)
 
     size_t metadataSize = RegionManager::GetMetadataSize(regionNum);
     uintptr_t baseAddr = reinterpret_cast<uintptr_t>(map_->GetBaseAddr());
-    os::PrctlSetVMA(reinterpret_cast<void*>(baseAddr), metadataSize, "ARKTS_CMC_GC_META_DATA");
+    os::PrctlSetVMA(reinterpret_cast<void*>(baseAddr), metadataSize, "ArkTS Heap CMCGC Metadata");
     os::PrctlSetVMA(reinterpret_cast<void*>(baseAddr + metadataSize), totalSize - metadataSize,
-                    "ARKTS_CMC_GC_REGION_HEAP");
+                    "ArkTS Heap CMCGC RegionHeap");
 
 #if defined(COMMON_SANITIZER_SUPPORT)
     Sanitizer::OnHeapAllocated(map->GetBaseAddr(), map->GetMappedSize());

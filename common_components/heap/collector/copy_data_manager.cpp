@@ -57,6 +57,6 @@ void HeapBitmapManager::InitializeHeapBitmap()
     heapBitmapStart_ = reinterpret_cast<uintptr_t>(startAddress);
     heapBitmap_[0].InitializeMemory(heapBitmapStart_, heapBitmapSize, regionUnitCount_);
 
-    os::PrctlSetVMA(startAddress, allHeapBitmapSize_, "ARKTS_CMC_GC_HEAP_BIT_MAP");
+    os::PrctlSetVMA(startAddress, allHeapBitmapSize_, "ArkTS Heap CMCGC HeapBitMap");
 }
 } // namespace common
