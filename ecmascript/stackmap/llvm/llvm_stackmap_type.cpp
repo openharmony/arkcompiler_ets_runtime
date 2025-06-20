@@ -16,7 +16,7 @@
 
 namespace panda::ecmascript::kungfu {
 void LLVMStackMapType::EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
-    DwarfRegType reg, OffsetType offset, Triple triple, bool isBase)
+    DwarfRegType reg, OffsetType offset, Triple triple, bool isBaseDerivedEq)
 {
     SLeb128Type dwarfRegAndOff = offset;
     auto fpReg = GCStackMapRegisters::GetFpRegByTriple(triple);
@@ -32,12 +32,18 @@ void LLVMStackMapType::EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_
         LOG_ECMA(FATAL) << "dwarfreg branch is unreachable";
         UNREACHABLE();
     }
-    if (isBase) {
+    if (isBaseDerivedEq) {
         dwarfRegAndOff |= NO_DERIVED; // use the second to last digit for base ref/has derived ref
     }
     size_t valueSize = panda::leb128::SignedEncodingSize(dwarfRegAndOff);
     regOffset.resize(valueSize);
     regOffsetSize = panda::leb128::EncodeSigned(dwarfRegAndOff, regOffset.data());
+}
+
+bool LLVMStackMapType::IsBaseEqualDerive(SLeb128Type regOffset) { return (regOffset & NO_DERIVED) != 0; }
+LLVMStackMapType::OffsetType LLVMStackMapType::GetOffsetFromRegOff(SLeb128Type regOffset)
+{
+    return static_cast<LLVMStackMapType::OffsetType>(regOffset & STACKMAP_OFFSET_MASK);
 }
 
 bool LLVMStackMapType::DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset)
@@ -47,12 +53,11 @@ bool LLVMStackMapType::DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &r
     } else {
         reg = GCStackMapRegisters::SP;
     }
-    bool isBase = (regOffset >> 1) % STACKMAP_TYPE_NUM;
 
-    // the last digit and the second to last digit are used to flag reg type and base ref/has derived ref
-    offset = static_cast<LLVMStackMapType::OffsetType>((regOffset >> STACKMAP_OFFSET_EXP) << STACKMAP_OFFSET_EXP);
+    // last three bits set to 0
+    offset = GetOffsetFromRegOff(regOffset);
     ASSERT(offset % STACKMAP_OFFSET_MUL == 0);
-    return isBase;
+    return IsBaseEqualDerive(regOffset);
 }
 
 void LLVMStackMapType::EncodeVRegsInfo(std::vector<uint8_t> &vregsInfo, size_t &vregsInfoSize,

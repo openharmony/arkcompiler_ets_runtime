@@ -126,7 +126,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRe
 
 // this function will increase the value of 'offset'
 uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
-                                                 uint32_t &offset, bool &skipDerived, size_t &regOffsetSize) const
+                                                 uint32_t &offset, bool &nextIsBase, size_t &regOffsetSize) const
 {
     LLVMStackMapType::DwarfRegType regType;
     LLVMStackMapType::OffsetType offsetType;
@@ -135,7 +135,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_
     uintptr_t address = 0;
     std::tie(regOffset, regOffsetSize, isFull) =
         panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(stackmapAddr + offset);
-    bool isBase = LLVMStackMapType::DecodeRegAndOffset(regOffset, regType, offsetType);
+    bool isBaseDerivedEq = LLVMStackMapType::DecodeRegAndOffset(regOffset, regType, offsetType);
     if (regType == GCStackMapRegisters::SP) {
         address = callSiteSp + offsetType;
     } else if (regType == GCStackMapRegisters::FP) {
@@ -144,7 +144,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    skipDerived = !isBase;
+    nextIsBase = isBaseDerivedEq;
     offset += regOffsetSize;
 
     return address;
@@ -277,7 +277,6 @@ void ArkStackMapParser::IteratorStackMap(RootVisitor& visitor, uintptr_t callsit
                                          std::map<uintptr_t, uintptr_t> &baseSet) const
 {
     ASSERT(callsiteFp != callSiteSp);
-    bool skipDerived = false;
 // Original layout: <base, base>..<base, derive>..
 // +----------------------+  --
 // |regNo: 6   offset: -40|    |
@@ -300,18 +299,16 @@ void ArkStackMapParser::IteratorStackMap(RootVisitor& visitor, uintptr_t callsit
 // |regNo: 7   offset: -24|    |
 // +----------------------+ <--
     for (size_t i = 0; i < stackmapNum; i++) {
-        if (skipDerived) {
-            skipDerived = false;
-            continue;
-        }
         size_t regOffsetSize;
-        // skipDerived decoded (updated) from DecodeRegAndOffset inside GetStackSlotAddress
-        uintptr_t base = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, skipDerived, regOffsetSize);
+        // nextIsBase decoded (updated) from DecodeRegAndOffset inside GetStackSlotAddress
+        bool nextIsBase = true;
+        uintptr_t base = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, nextIsBase, regOffsetSize);
         uintptr_t derived;
-        if (!skipDerived) { // base reference
-            derived = base;
+        if (nextIsBase) {
+            derived = base; // because the base=derive and the derived one have been removed.
         } else {
-            derived = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, skipDerived, regOffsetSize);
+            derived = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset, nextIsBase, regOffsetSize);
+            i++; // move to next entry
         }
         if (*reinterpret_cast<uintptr_t *>(base) == 0) {
             base = derived;
@@ -402,10 +399,10 @@ void ArkStackMapParser::ParseArkStackMap(const CallsiteHeader& callsiteHead,
     for (uint32_t j = 0; j < stackmapNum; j++) {
         auto [regOffset, regOffsetSize, is_full] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + offset);
-        bool isBase = LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, offsetType);
+        bool isBaseDerivedEq = LLVMStackMapType::DecodeRegAndOffset(regOffset, reg, offsetType);
         offset += regOffsetSize;
         LOG_COMPILER(VERBOSE) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
-        if (isBase) {
+        if (isBaseDerivedEq) {
             LOG_COMPILER(VERBOSE) << " reg(base): " << std::dec << reg << " offset(base):" <<  offsetType;
         }
         arkStackMaps.emplace_back(std::make_pair(reg, offsetType));

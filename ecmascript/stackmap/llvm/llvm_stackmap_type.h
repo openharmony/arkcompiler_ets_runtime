@@ -83,6 +83,7 @@ public:
     using Pc2Deopt = std::unordered_map<uintptr_t, DeoptInfoType>;
 
     static constexpr size_t STACKMAP_ALIGN_BYTES = 2;
+    static constexpr size_t STACKMAP_PAIR_SIZE = 2;
     static constexpr KindType CONSTANT_TYPE = 0;
     static constexpr KindType OFFSET_TYPE = 1;
     static constexpr uint16_t INVALID_DWARF_REG = 0;
@@ -97,8 +98,10 @@ public:
         dataSize = panda::leb128::EncodeSigned(data, outData.data());
     }
 
+    static bool IsBaseEqualDerive(SLeb128Type regOffset);
+    static LLVMStackMapType::OffsetType GetOffsetFromRegOff(SLeb128Type regOffset);
     static void EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
-        DwarfRegType reg, OffsetType offset, Triple triple, bool isBase = false);
+        DwarfRegType reg, OffsetType offset, Triple triple, bool isBaseDerivedEq = false);
     static bool DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset);
     static void EncodeVRegsInfo(std::vector<uint8_t> &vregsInfo, size_t &vregsInfoSize,
         VRegId id, LocationTy::Kind kind);
@@ -111,6 +114,7 @@ private:
     static constexpr RegType FP_VALUE = 0;
     static constexpr RegType SP_VALUE = 1;
     static constexpr KindType NO_DERIVED = 2;
+    static constexpr size_t STACKMAP_OFFSET_MASK = ~0x7LL;
 };
 
 struct Header {

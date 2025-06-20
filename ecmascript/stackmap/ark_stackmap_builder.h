@@ -93,9 +93,8 @@ private:
                         std::vector<intptr_t> &callsitePcs);
     void GenArkCallsiteAOTFileInfo(const CGStackMapInfo &stackMapInfo,
                                    ARKCallsiteAOTFileInfo &result, Triple triple);
-    void SaveArkDeopt(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple,
-                      size_t totalReducedOffset);
-    size_t SaveArkStackMap(ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
+    void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
+    void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
     void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
                                     ARKCallsiteAOTFileInfo& info, Triple triple);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
@@ -105,7 +104,6 @@ private:
 
     bool traceStackMap_{false};
     StackMapDumper dumper_;
-    bool align = false;
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H
