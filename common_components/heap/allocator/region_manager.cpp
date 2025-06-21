@@ -132,7 +132,10 @@ void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
         return;
     }
     if (IsLargeRegion()) {
-        func(reinterpret_cast<BaseObject*>(GetRegionStart()));
+        if (IsJitFortAwaitInstallFlag()) {
+            return;
+        }
+        func(reinterpret_cast<BaseObject *>(GetRegionStart()));
     } else if (IsSmallRegion()) {
         uintptr_t position = GetRegionStart();
         uintptr_t allocPtr = GetRegionAllocPtr();
@@ -163,10 +166,15 @@ void RegionDesc::VisitAllObjectsWithFixedSize(size_t cellCount, const std::funct
     }
 }
 
-void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func)
+void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject *)> &&func)
 {
-    if (IsLargeRegion() && !IsNewRegionSinceFix()) {
-        func(reinterpret_cast<BaseObject*>(GetRegionStart()));
+    if (IsLargeRegion()) {
+        if (IsJitFortAwaitInstallFlag()) {
+            return;
+        }
+        if (!IsNewRegionSinceFix()) {
+            func(reinterpret_cast<BaseObject *>(GetRegionStart()));
+        }
     } else if (IsSmallRegion()) {
         uintptr_t position = GetRegionStart();
         uintptr_t allocPtr = GetRegionAllocPtr();
@@ -191,7 +199,10 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
 
     TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
     if (IsLargeRegion()) {
-        return func(reinterpret_cast<BaseObject*>(GetRegionStart()));
+        if (IsJitFortAwaitInstallFlag()) {
+            return true;
+        }
+        return func(reinterpret_cast<BaseObject *>(GetRegionStart()));
     }
     if (IsSmallRegion()) {
         uintptr_t position = GetRegionStart();
@@ -447,8 +458,9 @@ void RegionManager::ReclaimRegion(RegionDesc* region)
     if (num >= HUGE_PAGE) {
         UntagHugePage(region, num);
     }
-    DLOG(REGION, "reclaim region %p@%#zx+%zu type %u", region, region->GetRegionStart(),
-        region->GetRegionAllocatedSize(), region->GetRegionType());
+    DLOG(REGION, "reclaim region %p@%#zx+%zu type %u", region,
+         region->GetRegionStart(), region->GetRegionAllocatedSize(),
+         region->GetRegionType());
 
     region->InitFreeUnits();
     freeRegionManager_.AddGarbageUnits(unitIndex, num);
@@ -528,7 +540,15 @@ void RegionManager::ForEachObjectSafe(const std::function<void(BaseObject*)>& vi
     ForEachObjectUnsafe(visitor);
 }
 
-RegionDesc* RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, bool expectPhysicalMem, bool allowGC)
+void RegionManager::ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const
+{
+    ASSERT(BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped());
+    for (const auto jitFort : awaitingJitFort_) {
+        visitor(jitFort);
+    }
+}
+
+RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, bool expectPhysicalMem, bool allowGC)
 {
     // a chance to invoke heuristic gc.
     if (allowGC && !Heap::GetHeap().IsGcStarted()) {
@@ -784,7 +804,12 @@ size_t RegionManager::CollectLargeGarbage()
     RegionDesc* region = largeRegionList_.GetHeadRegion();
     while (region != nullptr) {
         HeapAddress addr = region->GetRegionStart();
-        BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+        BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
+
+        if (region->IsJitFortAwaitInstallFlag()) {
+                region = region->GetNextRegion();
+                continue;
+        }
         if (!collector.IsSurvivedObject(obj) && !region->IsNewObjectSinceTrace(obj)) {
             DLOG(REGION, "reclaim large region %p@0x%zx+%zu type %u", region, region->GetRegionStart(),
                  region->GetRegionAllocatedSize(), region->GetRegionType());

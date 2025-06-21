@@ -240,6 +240,7 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
 uint32_t JitCompilationEnv::RecordHeapConstant(
     ConstantPoolHeapConstant heapConstant, const JSHandle<JSTaggedValue> &heapObj)
 {
+    ASSERT(SupportHeapConstant());
     auto itr = heapConstantInfo_.constPoolHeapConstant2Index.find(heapConstant);
     if (itr != heapConstantInfo_.constPoolHeapConstant2Index.end()) {
         return itr->second;

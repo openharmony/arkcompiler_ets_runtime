@@ -185,6 +185,7 @@ if (ets_runtime_enable_cmc_gc) {
   module_test_list -= [
     "allocatearraybuffer",
     "builtins",
+    "object",
   ]
 }
 

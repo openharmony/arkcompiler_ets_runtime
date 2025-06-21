@@ -108,7 +108,6 @@ public:
         metadata.freeSlot = nullptr;
         metadata.regionStart = reinterpret_cast<uintptr_t>(nullptr);
         metadata.regionEnd = reinterpret_cast<uintptr_t>(nullptr);
-        metadata.toSpaceRegion = false;
         metadata.regionRSet = nullptr;
     }
     static inline RegionDesc* NullRegion()
@@ -639,15 +638,6 @@ public:
         metadata.liveByteCount = 0;
     }
 
-    void SetToSpaceRegion(bool toSpaceRegion)
-    {
-        metadata.toSpaceRegion = toSpaceRegion;
-    }
-    bool IsToSpaceRegion()
-    {
-        return metadata.toSpaceRegion;
-    }
-
     // These interfaces are used to make sure the writing operations of value in C++ Bit Field will be atomic.
     void SetUnitRole(UnitRole role)
     {
@@ -692,6 +682,16 @@ public:
     {
         // 7: region cell count is 7 bits.
         return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_REGION_CELLCOUNT, 7);
+    }
+
+    void SetJitFortAwaitInstallFlag(uint8_t flag)
+    {
+        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_IS_JITFORT_AWAIT_INSTALL, 1, flag);
+    }
+
+    bool IsJitFortAwaitInstallFlag()
+    {
+        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_IS_JITFORT_AWAIT_INSTALL, 1);
     }
 
     RegionType GetRegionType() const
@@ -1039,7 +1039,8 @@ private:
         BIT_OFFSET_ENQUEUED_REGION = 6,
         BIT_OFFSET_RESURRECTED_REGION = 7,
         BIT_OFFSET_FIXED_REGION = 8,
-        BIT_OFFSET_REGION_CELLCOUNT = 9
+        BIT_OFFSET_REGION_CELLCOUNT = 9,
+        BIT_OFFSET_IS_JITFORT_AWAIT_INSTALL = 16,
     };
 
     struct ObjectSlot {
@@ -1110,11 +1111,13 @@ private:
                 uint8_t isResurrected : 1;
                 uint8_t isFixed : 1;
                 uint8_t cellCount : 7;
+                // Only valid in huge region. To mark the JitFort code await for install.
+                // An awaiting JitFort does not hold valid data on and no parent reference, but considered as alive.
+                uint8_t isJitFortAwaitInstall : 1;
             };
-            BitFields<uint16_t> regionBits;
+            BitFields<uint32_t> regionBits;
         };
 
-        bool toSpaceRegion;
         std::mutex regionMutex;
     };
 
@@ -1211,7 +1214,6 @@ private:
 
     void InitRegionDesc(size_t nUnit, UnitRole uClass)
     {
-        metadata.toSpaceRegion = false;
         metadata.allocPtr = GetRegionStart();
         metadata.regionStart = GetRegionStart();
         metadata.regionEnd = metadata.allocPtr + nUnit * RegionDesc::UNIT_SIZE;

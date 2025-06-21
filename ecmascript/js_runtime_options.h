@@ -780,13 +780,7 @@ public:
 
     bool GetEnableAsyncCopyToFort() const
     {
-        if (g_isEnableCMCGC) {
-            // async alloc needs adaption work from CMCGC
-            // Need to also modify jit.cpp
-            return false;
-        } else {
-            return enableAsyncCopyToFort_;
-        }
+        return enableAsyncCopyToFort_;
     }
 
     void SetLargeHeap(bool largeHeap)

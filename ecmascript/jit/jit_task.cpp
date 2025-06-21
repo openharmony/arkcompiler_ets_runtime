@@ -15,6 +15,7 @@
 
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/base/config.h"
+#include "common_components/heap/heap_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/platform/file.h"
@@ -339,7 +340,12 @@ void JitTask::InstallCode()
     __builtin___clear_cache(reinterpret_cast<char *>(codeAddr), reinterpret_cast<char*>(codeAddrEnd));
 
     if (Jit::GetInstance()->IsEnableJitFort()) {
-        if (!codeDesc_.isHugeObj) {
+        if (codeDesc_.isHugeObj) {
+            if (g_isEnableCMCGC) {
+                common::BaseRuntime::GetInstance()->GetHeapManager().MarkJitFortMemInstalled(
+                    machineCodeObj.GetObject<MachineCode>());
+            }
+        } else {
             const Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
             heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
         }

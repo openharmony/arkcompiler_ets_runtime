@@ -212,6 +212,11 @@ public:
         regionManager_.FixAllRegionLists();
     }
 
+    void MarkAwaitingJitFort()
+    {
+        regionManager_.ForEachAwaitingJitFortUnsafe(MarkObject);
+    }
+
     using RootSet = MarkStack<BaseObject*>;
 
     size_t CollectLargeGarbage() { return regionManager_.CollectLargeGarbage(); }

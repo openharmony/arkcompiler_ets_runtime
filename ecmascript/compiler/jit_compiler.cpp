@@ -220,8 +220,12 @@ ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv
 
     if (desc.isHugeObj) {
         // for cmc-gc, obj is machineCodeObj here, otherwise obj is region
-        void* obj = heap->GetHugeMachineCodeSpace()->AllocateFort(
-            size + MachineCode::SIZE, hostThread, &desc);
+        void* obj = nullptr;
+        if (g_isEnableCMCGC) {
+            obj = heap->GetHugeMachineCodeSpace()->AllocateFortForCMC(size + MachineCode::SIZE, hostThread, &desc);
+        } else {
+            obj = heap->GetHugeMachineCodeSpace()->AllocateFort(size + MachineCode::SIZE, hostThread, &desc);
+        }
         if (!obj || !desc.instructionsAddr) {
             return false;
         }

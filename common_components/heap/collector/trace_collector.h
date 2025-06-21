@@ -316,6 +316,7 @@ protected:
 private:
     void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
     void ConcurrentReMark(WorkStack& remarkStack, bool parallel);
+    void MarkAwaitingJitFort();
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;
     void EnumStaticRoots(RootSet& rootSet) const;

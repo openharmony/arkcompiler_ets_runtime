@@ -333,11 +333,13 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
             EnumerateAllRoots(workStack);
             TracingImpl(workStack, maxWorkers > 0);
             ConcurrentReMark(workStack, maxWorkers > 0);
+            MarkAwaitingJitFort();
             ProcessWeakReferences();
         } else {
             if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
                 MarkRememberSet(workStack);
             }
+            MarkAwaitingJitFort();
             ProcessWeakReferences();
         }
 #endif
@@ -466,6 +468,11 @@ void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
         MarkRememberSet(remarkStack);
     }
     LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
+}
+
+void TraceCollector::MarkAwaitingJitFort()
+{
+    reinterpret_cast<RegionSpace&>(theAllocator_).MarkAwaitingJitFort();
 }
 
 // no need to do resurrection with write barrier and satb-buffer, because write barrier affects only live objects

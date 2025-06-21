@@ -473,6 +473,11 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         Branch(isObjSizeTrackingInProgress, &objSizeTrackingStep, exit);
         Bind(&objSizeTrackingStep);
         {
+            Label checkNext(env);
+            BRANCH_UNLIKELY(LoadPrimitive(VariableType::BOOL(), glue_,
+                                          IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+                            exit, &checkNext);
+            Bind(&checkNext);
             Label calcuFinalCount(env);
             GateRef count = GetConstructionCounter(hclass);
             GateRef nextCount = Int32Sub(count, Int32(1));
