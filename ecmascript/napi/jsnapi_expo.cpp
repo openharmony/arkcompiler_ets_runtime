@@ -4527,6 +4527,7 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
         hostVM->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
     vmModuleManager->SetExecuteMode(hostVMModuleManager->GetExecuteMode());
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
+    vm->SetResolveBufferCallbackForHybridApp(hostVM->GetResolveBufferCallbackForHybridApp());
 }
 
 bool JSNApi::IsProfiling(EcmaVM *vm)
@@ -6054,6 +6055,13 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     vm->SetResolveBufferCallback(cb);
 }
 
+void JSNApi::SetHostResolveBufferTrackerForHybridApp(EcmaVM *vm,
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
+{
+    vm->SetResolveBufferCallbackForHybridApp(cb);
+}
+
+
 void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
     std::function<bool(const std::string moduleName, std::string &hapPath)> cb)
 {
@@ -6365,7 +6373,7 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
         return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
     }
 
-
+template<ForHybridApp isHybrid>
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                           const std::string &module_path)
 {
@@ -6374,8 +6382,23 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std:
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
     JSHandle<JSTaggedValue> nameSp =
-        ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, requestPath, modulePath);
+        ecmascript::NapiModuleLoader::LoadModuleNameSpace<isHybrid>(vm, requestPath, modulePath);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
+}
+template Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Normal>(EcmaVM *vm,
+    const std::string &file, const std::string &module_path);
+template Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(EcmaVM *vm,
+    const std::string &file, const std::string &module_path);
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForNormalApp(EcmaVM *vm, const std::string &file,
+    const std::string &module_path)
+{
+    return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Normal>(vm, file, module_path);
+}
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
+    const std::string &module_path)
+{
+    return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)
