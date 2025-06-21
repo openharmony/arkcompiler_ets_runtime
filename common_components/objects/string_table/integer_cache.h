@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTEGER_CACHE_H
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTEGER_CACHE_H
 
+#include <array>
 #include "common_interfaces/objects/base_string.h"
 
 namespace common {
