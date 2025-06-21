@@ -556,6 +556,16 @@ public:
         return resolveBufferCallback_;
     }
 
+    void SetResolveBufferCallbackForHybridApp(ResolveBufferCallback cb)
+    {
+        resolveBufferCallbackForHybridApp_ = cb;
+    }
+
+    ResolveBufferCallback GetResolveBufferCallbackForHybridApp() const
+    {
+        return resolveBufferCallbackForHybridApp_;
+    }
+
     void SetTimerTaskCallback(TimerTaskCallback callback)
     {
         timerTaskCallback_ = callback;
@@ -1439,6 +1449,7 @@ private:
 
     // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+    ResolveBufferCallback resolveBufferCallbackForHybridApp_ {nullptr};
 
     // set timer task to execute callback on time
     TimerTaskCallback timerTaskCallback_ {nullptr};
