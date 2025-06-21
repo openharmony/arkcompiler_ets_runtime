@@ -38,5 +38,6 @@ PUBLIC_API void InitializeMallocConfig();
 PUBLIC_API bool HasJitFortACL();
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
 bool CheckDiskSpace(const std::string& path, size_t requiredBytes);
+uint64_t PUBLIC_API GetDeviceValidSize(const std::string &path);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_OS_H

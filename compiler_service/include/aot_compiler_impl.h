@@ -43,6 +43,8 @@ public:
     void HandlePowerDisconnected();
     void HandleScreenOn();
     void HandleThermalLevelChanged(const int32_t level);
+    int32_t SendSysEvent(const std::unordered_map<std::string, std::string> &argsMap) const;
+    std::string ParseArkCacheFromArgs(const std::unordered_map<std::string, std::string> &argsMap) const;
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     void SetAnFileMaxSizeBySysParam();
     void SetEnableCodeCommentBySysParam();

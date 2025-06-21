@@ -23,5 +23,6 @@ namespace panda::ecmascript {
 bool PUBLIC_API ForceCreateDirectory(const std::string &path);
 bool PUBLIC_API SetDirModeAsDefault(const std::string &path);
 bool PUBLIC_API SetFileModeAsDefault(const std::string &filename);
+uint64_t PUBLIC_API GetFolderSize(const std::string &path);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_DIRECTORY_H

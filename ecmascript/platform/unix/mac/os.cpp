@@ -91,4 +91,9 @@ bool CheckDiskSpace(const std::string& path, size_t requiredBytes)
     LOG_ECMA(INFO) << "Check Disk Space not support in Mac";
     return true;
 }
+
+uint64_t GetDeviceValidSize(const std::string &path)
+{
+    return 0;
+}
 }  // namespace panda::ecmascript

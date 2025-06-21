@@ -26,6 +26,9 @@
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
 #endif
+#ifdef ENABLE_HISYSEVENT
+#include "ecmascript/compiler/aot_compiler_stats.h"
+#endif
 
 namespace OHOS::ArkCompiler {
 AotCompilerImpl& AotCompilerImpl::GetInstance()
@@ -176,11 +179,36 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (ret == ERR_OK_NO_AOT_FILE) {
         return ERR_OK;
     }
+    SendSysEvent(argsMap);
     return ret != ERR_OK ? ret : AOTLocalCodeSign(sigData);
 #else
     LOG_SA(ERROR) << "no need to AOT compile when code signature disable";
     return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
 #endif
+}
+
+int32_t AotCompilerImpl::SendSysEvent(const std::unordered_map<std::string, std::string> &argsMap) const
+{
+#ifdef ENABLE_HISYSEVENT
+    panda::ecmascript::AotCompilerStats aotCompilerStats;
+    return aotCompilerStats.SendDataPartitionSysEvent(ParseArkCacheFromArgs(argsMap));
+#endif
+    return 0;
+}
+
+std::string AotCompilerImpl::ParseArkCacheFromArgs(const std::unordered_map<std::string, std::string> &argsMap) const
+{
+    if (argsMap.find(ArgsIdx::AOT_FILE) == argsMap.end()) {
+        LOG_SA(ERROR) << "aot compiler SendSysEvent parsing an or ap path error";
+        return "";
+    }
+    std::string aotFile = argsMap.at(ArgsIdx::AOT_FILE);
+    auto index = aotFile.find_last_of('/');
+    if (index == std::string::npos) {
+        LOG_SA(ERROR) << "ark-cache path find / error";
+        return "";
+    }
+    return aotFile.substr(0, index);
 }
 
 int32_t AotCompilerImpl::GetAOTVersion(std::string& sigData)
