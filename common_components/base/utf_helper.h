@@ -80,6 +80,11 @@ constexpr size_t MASK_16BIT = 0xffff;
 
 static constexpr uint8_t UTF8_1B_MAX = 0x7f;
 
+static constexpr size_t UTF8_SINGLE_BYTE_LENGTH = 1;
+static constexpr size_t UTF8_DOUBLE_BYTE_LENGTH = 2;
+static constexpr size_t UTF8_TRIPLE_BYTE_LENGTH = 3;
+static constexpr size_t UTF8_QUAD_BYTE_LENGTH = 4;
+static constexpr uint8_t UTF8_NUL = 0x00U;
 static constexpr uint16_t UTF8_2B_MAX = 0x7ff;
 static constexpr uint8_t UTF8_2B_FIRST = 0xc0;
 static constexpr uint8_t UTF8_2B_SECOND = 0x80;

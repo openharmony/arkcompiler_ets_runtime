@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "common_components/base/config.h"
 #include "common_components/base/utf_helper.h"
 
 #include "common_components/log/log.h"
@@ -247,6 +248,70 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool
     return res;
 }
 
+#if ENABLE_NEXT_OPTIMIZATION && defined(USE_CMC_GC)
+size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
+                                size_t start, bool modify, bool isWriteBuffer, bool cesu8)
+{
+    if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
+        return 0;
+    }
+    size_t utf8Pos = 0;
+    size_t end = start + utf16Len;
+    for (size_t i = start; i < end; ++i) {
+        uint32_t codepoint = utf16In[i];
+        if (codepoint == 0) {
+            if (isWriteBuffer) {
+                utf8Out[utf8Pos++] = UTF8_NUL;
+                continue;
+            }
+            if (modify) {
+                utf8Out[utf8Pos++] = UTF8_2B_FIRST;
+                utf8Out[utf8Pos++] = UTF8_2B_SECOND;
+            }
+            continue;
+        }
+        if (codepoint >= DECODE_LEAD_LOW && codepoint <= DECODE_LEAD_HIGH && i + 1 < end) {
+            uint32_t high = utf16In[i];
+            uint32_t low = utf16In[i + 1];
+            if (!cesu8) {
+                if (low >= DECODE_TRAIL_LOW && low <= DECODE_TRAIL_HIGH) {
+                    codepoint =
+                    SURROGATE_RAIR_START + ((high - DECODE_LEAD_LOW) << UTF16_OFFSET) + (low - DECODE_TRAIL_LOW);
+                    i++;
+                }
+            }
+        }
+        if (codepoint <= UTF8_1B_MAX) {
+            if (UNLIKELY(utf8Pos + UTF8_SINGLE_BYTE_LENGTH > utf8Len)) {
+                break;
+            }
+            utf8Out[utf8Pos++] = static_cast<uint8_t>(codepoint);
+        } else if (codepoint <= UTF8_2B_MAX) {
+            if (UNLIKELY(utf8Pos + UTF8_DOUBLE_BYTE_LENGTH > utf8Len)) {
+                break;
+            }
+            utf8Out[utf8Pos++] = (BIT_MASK_2 | (codepoint >> OFFSET_6POS));
+            utf8Out[utf8Pos++] = (byteMark | (codepoint & LOW_6BITS));
+        } else if (codepoint <= UTF8_3B_MAX) {
+            if (UNLIKELY(utf8Pos + UTF8_TRIPLE_BYTE_LENGTH > utf8Len)) {
+                break;
+            }
+            utf8Out[utf8Pos++] = (UTF8_3B_FIRST | (codepoint >> OFFSET_12POS));
+            utf8Out[utf8Pos++] = (byteMark | ((codepoint >> OFFSET_6POS) & LOW_6BITS));
+            utf8Out[utf8Pos++] = (byteMark | (codepoint & LOW_6BITS));
+        } else {
+            if (UNLIKELY(utf8Pos + UTF8_QUAD_BYTE_LENGTH > utf8Len)) {
+                break;
+            }
+            utf8Out[utf8Pos++] = (UTF8_4B_FIRST | (codepoint >> OFFSET_18POS));
+            utf8Out[utf8Pos++] = (byteMark | ((codepoint >> OFFSET_12POS) & LOW_6BITS));
+            utf8Out[utf8Pos++] = (byteMark | ((codepoint >> OFFSET_6POS) & LOW_6BITS));
+            utf8Out[utf8Pos++] = (byteMark | (codepoint & LOW_6BITS));
+        }
+    }
+    return utf8Pos;
+}
+#else
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                 size_t start, bool modify, bool isWriteBuffer, bool cesu8)
 {
@@ -277,6 +342,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
     }
     return utf8Pos;
 }
+#endif
 
 size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                         size_t start, bool modify, bool isWriteBuffer)

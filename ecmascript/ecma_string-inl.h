@@ -36,6 +36,7 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
     return string;
 }
 
+#if ENABLE_NEXT_OPTIMIZATION && defined(USE_CMC_GC)
 /* static */
 inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress, MemSpaceType type)
@@ -50,6 +51,32 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
     BaseString *str = BaseString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
     return EcmaString::FromBaseString(str);
 }
+#else
+inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                              bool canBeCompress, MemSpaceType type)
+{
+    if (utf8Len == 0) {
+        return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
+    }
+    EcmaString *string = nullptr;
+    if (canBeCompress) {
+        string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
+        ASSERT(string != nullptr);
+        std::copy(utf8Data, utf8Data + utf8Len, string->GetDataUtf8Writable());
+    } else {
+        auto utf16Len = common::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
+        string = CreateLineStringWithSpaceType(vm, utf16Len, false, type);
+        ASSERT(string != nullptr);
+
+        [[maybe_unused]] auto len =
+            common::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, string->GetDataUtf16Writable(), utf8Len, utf16Len);
+        ASSERT(len == utf16Len);
+    }
+
+    ASSERT_PRINT(canBeCompress == CanBeCompressed(string), "Bad input canBeCompress!");
+    return string;
+}
+#endif
 
 /* static */
 inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
@@ -78,31 +105,16 @@ inline EcmaString *EcmaString::CreateUtf16StringFromUtf8(const EcmaVM *vm, const
     auto len = utf::ConvertRegionMUtf8ToUtf16(
         utf8Data, string->GetDataUtf16Writable(), utf::Mutf8Size(utf8Data), utf16Len, 0);
     if (len < utf16Len) {
-        string->TrimLineString(vm->GetJSThread(), len);
+        string->TrimLineString(len);
     }
     ASSERT_PRINT(false == CanBeCompressed(string), "Bad input canBeCompress!");
     return string;
 }
 
-inline void EcmaString::TrimLineString(const JSThread *thread, uint32_t newLength)
+inline void EcmaString::TrimLineString(uint32_t newLength)
 {
-    ASSERT(IsLineString());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint32_t oldLength = GetLength();
-    ASSERT(oldLength >= newLength);
-    if (newLength == oldLength) return;
-    bool isUtf8 = IsUtf8();
-    size_t size_new = isUtf8 ? LineEcmaString::ComputeSizeUtf8(newLength): LineEcmaString::ComputeSizeUtf16(newLength);
-    size_t size_old = isUtf8 ? LineEcmaString::ComputeSizeUtf8(oldLength): LineEcmaString::ComputeSizeUtf16(oldLength);
-    size_new = AlignUp(size_new, ALIGNMENT_8_BYTES);
-    size_old = AlignUp(size_old, ALIGNMENT_8_BYTES);
-    size_t trimBytes = size_old - size_new;
-    if (trimBytes > 0) {
-        uintptr_t newEndAddr = ToUintPtr(this) + size_new;
-        ASSERT_PRINT((newEndAddr % ALIGNMENT_8_BYTES) == 0, "Alignment failed");
-        factory->FillFreeObject(newEndAddr, trimBytes, RemoveSlots::YES, ToUintPtr(this));
-    }
-    InitLengthAndFlags(newLength, isUtf8);
+    BaseString* baseThis = reinterpret_cast<BaseString*>(this);
+    reinterpret_cast<LineString *>(baseThis)->LineString::Trim(newLength);
 }
 
 inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,

@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/ecma_test_common.h"
+#include "gtest/gtest.h"
 
 using namespace panda::ecmascript;
 
@@ -113,6 +114,23 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateFromUtf8)
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrU8).GetLength(), lengthEcmaStrU8);
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrU8).IsUtf8());
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrU8).IsUtf16());
+}
+
+/*
+ * @tc.name: CreateFromUtf8Chinese
+ * @tc.desc: Verifies CreateFromUtf8 method correctly creates an EcmaString from a UTF-8 encoded Chinese string.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringAccessorTest, CreateFromUtf8Chinese)
+{
+    const char* chineseStr = u8"方舟编译器是为支持多种编程语言和多种芯片平台的联合编译及运行而设计的统一编译运行时平台";
+    JSHandle<EcmaString> handleEcmaStr(thread,
+        EcmaStringAccessor::CreateFromUtf8(instance, reinterpret_cast<const uint8_t*>(chineseStr),
+                                           strlen(chineseStr), false));
+    EXPECT_EQ(EcmaStringAccessor(handleEcmaStr).GetLength(), 43U);
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStr).IsUtf8());
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStr).IsUtf16());
 }
 
 /*
