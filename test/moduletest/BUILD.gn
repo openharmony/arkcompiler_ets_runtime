@@ -80,6 +80,7 @@ module_test_list = [
   "deleteobjproperty",
   "div",
   "dynamicimport",
+  "dynamicimportcontext",
   "dyninstruction",
   "ecmastringtable",
   "internstring",
