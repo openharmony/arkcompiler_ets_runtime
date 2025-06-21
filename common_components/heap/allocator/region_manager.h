@@ -322,6 +322,7 @@ public:
 
     void ForEachObjectUnsafe(const std::function<void(BaseObject*)>& visitor) const;
     void ForEachObjectSafe(const std::function<void(BaseObject*)>& visitor) const;
+    void ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const;
 
     size_t GetUsedRegionSize() const { return GetUsedUnitCount() * RegionDesc::UNIT_SIZE; }
 
@@ -490,6 +491,21 @@ public:
 
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
     void ClearRSet();
+
+    void MarkJitFortMemInstalled(BaseObject *obj)
+    {
+        std::lock_guard guard(awaitingJitFortMutex_);
+        RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
+        awaitingJitFort_.erase(obj);
+    }
+
+    void MarkJitFortMemAwaitingInstall(BaseObject *obj)
+    {
+        std::lock_guard guard(awaitingJitFortMutex_);
+        RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(true);
+        awaitingJitFort_.insert(obj);
+    }
+
 private:
     static const size_t MAX_UNIT_COUNT_PER_REGION;
     static const size_t HUGE_PAGE;
@@ -559,6 +575,11 @@ private:
     std::atomic<uintptr_t> inactiveZone_ = { 0 };
     size_t maxUnitCountPerRegion_ = MAX_UNIT_COUNT_PER_REGION; // max units count for threadLocal buffer.
     size_t largeObjectThreshold_;
+    // Awaiting JitFort object has no references from other objects,
+    // but we need to keep them as live untill jit compilation has finished installing.
+    std::set<BaseObject*> awaitingJitFort_;
+    std::mutex awaitingJitFortMutex_;
+
     friend class VerifyIterator;
 };
 } // namespace common

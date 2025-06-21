@@ -357,7 +357,8 @@ public:
 
         void InsertMachineCodeObject(TextStart start, TextEnd end, MachineCodeAddress obj)
         {
-            LOG_JIT(INFO) << "Insert MachineCodeObject " << obj << " , code range " << start << " to " << end;
+            LOG_JIT(INFO) << "Insert MachineCodeObject 0x" << std::hex << obj << " , code range 0x" << std::hex << start
+                          << " to 0x" << std::hex << end;
             // first interval whose start > our start
             auto it = intervals.upper_bound(start);
             // find first overlapping interval, if any
@@ -371,8 +372,9 @@ public:
             // Remove all overlapping intervals, if any
             while (it != intervals.end()) {
                 if (it->first < end) {
-                    LOG_JIT(INFO) << "MachoneCodeObject at " << it->second.second << " was freed: " << it->first
-                                  << " - " << it->second.first;
+                    LOG_JIT(INFO) << "MachoneCodeObject at 0x" << std::hex << it->second.second
+                                  << " was freed: 0x" << std::hex << it->first
+				  << " - 0x" << std::hex << it->second.first;
                     it = intervals.erase(it);
                 } else {
                     break;

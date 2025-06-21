@@ -989,7 +989,7 @@ void JITProfiler::AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &
     }
     if (cur != nullptr) {
         auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
-        if (name != JSTaggedValue::Undefined()) {
+        if (name != JSTaggedValue::Undefined() && compilationEnv_->SupportHeapConstant()) {
             JSHandle<JSTaggedValue> nameHandle = jitCompilationEnv->NewJSHandle(name);
             auto nameConstantIndex = jitCompilationEnv->RecordHeapConstant(nameHandle);
             cur->SetName(nameHandle);

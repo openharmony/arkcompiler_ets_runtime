@@ -186,6 +186,7 @@ uintptr_t RegionSpace::AllocJitFortRegion(size_t size)
 {
     uintptr_t addr = regionManager_.AllocLarge(size, false);
     os::PrctlSetVMA(reinterpret_cast<void *>(addr), size, "ArkTS Code");
+    regionManager_.MarkJitFortMemAwaitingInstall(reinterpret_cast<BaseObject*>(addr));
     return addr;
 }
 
@@ -358,7 +359,6 @@ HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize, AllocType allocT
     }
 
     DLOG(ALLOC, "alloc to 0x%zx(%zu)", addr, totalSize);
-    tlRegion_->SetToSpaceRegion(true);
     return addr;
 }
 

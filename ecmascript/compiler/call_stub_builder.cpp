@@ -210,6 +210,7 @@ static GateRef IsAotCall(CircuitBuilder &builder, GateRef func)
 void CallCoStubBuilder::LowerFastSuperCall(GateRef glue, CircuitBuilder &builder, const std::vector<GateRef> &args,
                                            GateRef elementsPtr, Variable &result, Label &exit)
 {
+    auto env = builder.GetCurrentEnvironment();
     auto &builder_ = builder;
     Label fastCall(&builder);
     Label notFastCall(&builder);
@@ -224,13 +225,21 @@ void CallCoStubBuilder::LowerFastSuperCall(GateRef glue, CircuitBuilder &builder
 
     GateRef method = builder.GetMethodFromFunction(glue, superFunc);
     GateRef expectedNum = builder.GetExpectedNumOfArgs(method);
-#ifdef USE_READ_BARRIER
+    Label readBarrier(&builder);
+    Label skipReadBarrier(&builder);
+    BRANCH_CIR(
+        builder.LoadWithoutBarrier(
+            VariableType::BOOL(), glue,
+            builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &readBarrier, &skipReadBarrier);
+    builder_.Bind(&readBarrier);
     builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
                             Gate::InvalidGateRef, {glue, superFunc}, glue);
     builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray),
                             Gate::InvalidGateRef,
                             {glue, elementsPtr, actualArgc}, glue);
-#endif
+    builder_.Jump(&skipReadBarrier);
+    builder_.Bind(&skipReadBarrier);
     BRANCH_CIR(IsAotFastCall(builder, superFunc), &fastCall, &notFastCall);
     builder.Bind(&fastCall);
     {
@@ -272,6 +281,7 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
     Variable *result, Label *exit, bool isNew)
 {
+    auto env = builder.GetCurrentEnvironment();
     Label isHeapObject(&builder);
     Label isJsFcuntion(&builder);
     Label fastCall(&builder);
@@ -286,10 +296,18 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     Label isCallConstructor(&builder);
     // use builder_ to make BRANCH_CIR work.
     auto &builder_ = builder;
-#ifdef USE_READ_BARRIER
+    Label readBarrier(&builder);
+    Label skipReadBarrier(&builder);
+    BRANCH_CIR(
+        builder.LoadWithoutBarrier(
+            VariableType::BOOL(), glue,
+            builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &readBarrier, &skipReadBarrier);
+    builder.Bind(&readBarrier);
     builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
                             Gate::InvalidGateRef, {glue, func}, glue);
-#endif
+    builder.Jump(&skipReadBarrier);
+    builder.Bind(&skipReadBarrier);
     BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder.Bind(&isHeapObject);
     {
@@ -595,13 +613,21 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     }
     HandleProfileCall();
 
-#ifdef USE_READ_BARRIER
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
+    Label readBarrier(env);
+    Label skipReadBarrier(env);
+    BRANCH(
+        LoadPrimitive(
+            VariableType::BOOL(), glue_,
+            IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &readBarrier, &skipReadBarrier);
+    Bind(&readBarrier);
+    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), {glue_, func_});
     if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
         CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+                       {glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc});
     }
-#endif
+    Jump(&skipReadBarrier);
+    Bind(&skipReadBarrier);
 
     if (isForBaseline_ && env->IsBaselineBuiltin()) {
         sp_ = Argument(static_cast<size_t>(BaselineCallInputs::SP));
