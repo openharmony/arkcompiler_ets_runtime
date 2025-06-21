@@ -104,6 +104,15 @@ ohos_static_library("ark_js_host_linux_tools_packages") {
 
 group("ark_js_unittest") {
   testonly = true
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    deps = []
+  } else {
+    deps = [ ":ark_js_unittest_suit" ]
+  }
+}
+
+group("ark_js_unittest_suit") {
+  testonly = true
   deps = []
 
   deps += [
@@ -292,9 +301,14 @@ config("ark_jsruntime_public_config") {
     "$ark_root/common_interfaces:common_interfaces_public_config",
     "$ark_root/libpandabase:arkbase_public_config",
     "$ark_root/libpandafile:arkfile_public_config",
-    "$ark_third_party_root/icu/icu4c:icu_config",
-    sdk_libc_secshared_config,
   ]
+  if (ark_standalone_build ||
+      (defined(ohos_indep_compiler_enable) && !ohos_indep_compiler_enable)) {
+    configs += [
+      "$ark_third_party_root/icu/icu4c:icu_config",
+      sdk_libc_secshared_config,
+    ]
+  }
 
   include_dirs = [
     "$js_root",
@@ -400,12 +414,12 @@ config("ark_jsruntime_common_config") {
       defines += [ "USE_READ_BARRIER" ]
     }
     if (ets_runtime_enable_cmc_rb_dfx) {
-        defines += [ "ENABLE_CMC_RB_DFX" ]
-        print("########## ets_runtime enable cmc RB-DFX ##############")
+      defines += [ "ENABLE_CMC_RB_DFX" ]
+      print("########## ets_runtime enable cmc RB-DFX ##############")
     }
     if (ets_runtime_enable_cmc_verify) {
-        defines += [ "ENABLE_CMC_VERIFY" ]
-        print("########## ets_runtime enable cmc heap-verify ##############")
+      defines += [ "ENABLE_CMC_VERIFY" ]
+      print("########## ets_runtime enable cmc heap-verify ##############")
     }
   } else {
     print("########## ets_runtime disable cmc-gc ##############")
@@ -1128,7 +1142,7 @@ if (!is_arkui_x) {
   if (current_cpu == "arm64") {
     ecma_source += [ "ecmascript/trampoline/aarch64/raw_asm_stub.S" ]
   } else if (current_cpu == "amd64" || current_cpu == "x64" ||
-            current_cpu == "x86_64") {
+             current_cpu == "x86_64") {
     ecma_source += [ "ecmascript/trampoline/x64/raw_asm_stub.S" ]
   } else if (current_cpu == "arm") {
     ecma_source += [ "ecmascript/trampoline/arm32/raw_asm_stub.S" ]
@@ -1394,10 +1408,10 @@ ohos_source_set("libcommon_components_set") {
     "common_components/base_runtime/base_runtime_param.cpp",
     "common_components/heap/heap_allocator.cpp",
     "common_components/heap/heap_visitor.cpp",
+    "common_components/profiler/heap_profiler_listener.cpp",
     "common_components/serialize/serialize_utils.cpp",
     "common_components/thread/thread_holder.cpp",
     "common_components/thread/thread_holder_manager.cpp",
-    "common_components/profiler/heap_profiler_listener.cpp",
     "ecmascript/dynamic_object_accessor.cpp",
     "ecmascript/dynamic_object_descriptor.cpp",
     "ecmascript/dynamic_type_converter.cpp",
@@ -1423,7 +1437,12 @@ ohos_source_set("libcommon_components_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "icu:shared_icuuc",
+      sdk_libc_secshared_dep,
+    ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -1546,6 +1565,9 @@ ohos_source_set("libark_jsruntime_test_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [ sdk_libc_secshared_dep ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -1620,8 +1642,8 @@ config("arkjs_runtime_lto_link_config") {
     }
     if (ets_runtime_feature_enable_pgo && enable_enhanced_opt) {
       ldflags += [
-          "-Wl,--aarch64-inline-plt",
-          "-Wl,-mllvm,-enable-partial-inlining",
+        "-Wl,--aarch64-inline-plt",
+        "-Wl,-mllvm,-enable-partial-inlining",
       ]
       if (ets_runtime_feature_enable_codemerge) {
         ldflags += [
@@ -1703,8 +1725,8 @@ ohos_shared_library("libark_jsruntime") {
     public_external_deps = [
       "icu:shared_icui18n",
       "icu:shared_icuuc",
-      "runtime_core:common_interfaces_header",
       "runtime_core:arkplatform_header",
+      "runtime_core:common_interfaces_header",
     ]
   }
   innerapi_tags = [ "platformsdk_indirect" ]
@@ -1715,6 +1737,9 @@ ohos_shared_library("libark_jsruntime") {
     ":ark_jsruntime_common_config",
     ":arkjs_runtime_lto_link_config",
   ]
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [ "runtime_core:libarkziparchive_static" ]
+  }
 }
 
 ohos_shared_library("libark_jsruntime_test") {

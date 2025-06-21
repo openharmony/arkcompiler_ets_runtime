@@ -243,7 +243,12 @@ ohos_source_set("libark_jsoptimizer_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "icu:shared_icuuc",
+      sdk_libc_secshared_dep,
+    ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -317,7 +322,12 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "icu:shared_icuuc",
+      sdk_libc_secshared_dep,
+    ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -450,6 +460,13 @@ ohos_executable("ark_stub_compiler") {
     ]
   }
 
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "runtime_core:libarkziparchive_static",
+      sdk_libc_secshared_dep,
+    ]
+  }
+
   install_enable = false
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
@@ -481,8 +498,8 @@ ohos_executable("ark_aot_compiler") {
       ":libark_jsoptimizer_set_with_maple",
       "$js_root:libark_js_intl_set",
       "$js_root:libark_jsruntime_set",
-      "${MAPLEALL_ROOT}/maple_be:libcg",
       "$js_root:libcommon_components_set",
+      "${MAPLEALL_ROOT}/maple_be:libcg",
     ]
   }
 
@@ -532,7 +549,12 @@ ohos_executable("ark_aot_compiler") {
   deps += hiviewdfx_deps
 
   install_enable = true
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "runtime_core:libarkziparchive_static",
+      sdk_libc_secshared_dep,
+    ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -581,18 +603,35 @@ action("gen_stub_file") {
     "0",
     "--timeout-limit",
     "${_timeout_}",
-    "--env-path",
-    rebase_path(root_out_dir_with_host_toolchain) +
-        "/arkcompiler/ets_runtime:" +
-        rebase_path(root_out_dir_with_host_toolchain) +
-        "/${icu_subsystem_name}/${icu_part_name}:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/zlib:" +
-        rebase_path(root_out_dir_with_host_toolchain) +
-        "/resourceschedule/frame_aware_sched:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +
-        rebase_path(root_out_dir_with_host_toolchain) +
-        "/thirdparty/bounds_checking_function:" + rebase_path(llvm_lib_dir),
   ]
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    args += [
+      "--env-path",
+      rebase_path("//binarys/arkcompiler/runtime_core/") + ":" +
+          rebase_path("//binarys/arkcompiler/ets_frontend/") + ":" +
+          rebase_path("//binarys/arkcompiler/ets_runtime/") + ":" + rebase_path(
+              "//binarys/arkcompiler/runtime_core/innerapis/libarkziparchive_static/clang_x64/libs") + ":" + rebase_path(
+              "//binarys/third_party/icu/innerapis/shared_icuuc/clang_x64/libs") + ":" + rebase_path(
+              "//binarys/third_party/icu/innerapis/shared_icui18n/clang_x64/libs") + ":" + rebase_path(
+              "//binarys/third_party/zlib/innerapis/shared_libz/clang_x64/libs") + ":" + rebase_path(
+              "//binarys/third_party/bounds_checking_function/innerapis/libsec_shared/clang_x64/libs"),
+    ]
+    not_needed([ "llvm_lib_dir" ])
+  } else {
+    args += [
+      "--env-path",
+      rebase_path(root_out_dir_with_host_toolchain) +
+          "/arkcompiler/ets_runtime:" +
+          rebase_path(root_out_dir_with_host_toolchain) +
+          "/${icu_subsystem_name}/${icu_part_name}:" +
+          rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/zlib:" +
+          rebase_path(root_out_dir_with_host_toolchain) +
+          "/resourceschedule/frame_aware_sched:" +
+          rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +
+          rebase_path(root_out_dir_with_host_toolchain) +
+          "/thirdparty/bounds_checking_function:" + rebase_path(llvm_lib_dir),
+    ]
+  }
 
   # Use with caution. It can only be used when the IR(stub.an) logic is not modified.
   if (skip_gen_stub) {

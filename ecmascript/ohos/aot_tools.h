@@ -16,7 +16,7 @@
 #define ECMASCRIPT_AOT_TOOLS_H
 
 #if defined(OHOS_GET_PARAMETER)
-#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#include "parameters.h"
 #endif
 
 namespace panda::ecmascript::ohos {

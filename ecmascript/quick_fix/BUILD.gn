@@ -36,7 +36,12 @@ ohos_executable("quick_fix") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-
+  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+    external_deps += [
+      "icu:shared_icuuc",
+      sdk_libc_secshared_dep,
+    ]
+  }
   install_enable = false
 
   part_name = "ets_runtime"
