@@ -99,7 +99,7 @@
     /* String.prototype.toLowerCase ( ) */                                          \
     V("toLowerCase",       ToLowerCase,       0, StringToLowerCase)                 \
     /* String.prototype.toString ( ) */                                             \
-    V("toString",          ToString,          0, INVALID)                           \
+    V("toString",          ToString,          0, StringToStringFunc)                \
     /* String.prototype.toUpperCase ( ) */                                          \
     V("toUpperCase",       ToUpperCase,       0, INVALID)                           \
     /* String.prototype.trim ( ) */                                                 \

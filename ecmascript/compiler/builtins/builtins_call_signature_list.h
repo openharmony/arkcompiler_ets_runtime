@@ -68,6 +68,7 @@
     V(Concat,             String,   Undefined(),                  STRING_CONCAT)                        \
     V(Slice,              String,   Undefined(),                  STRING_SLICE)                         \
     V(ToLowerCase,        String,   Undefined(),                  STRING_TO_LOWER_CASE)                 \
+    V(ToStringFunc,       String,   Undefined(),                  STRING_TO_STRING_FUNC)                \
     V(StartsWith,         String,   TaggedFalse(),                STRING_STARTS_WITH)                   \
     V(EndsWith,           String,   TaggedFalse(),                STRING_ENDS_WITH)                     \
     V(GetStringIterator,  String,   Undefined(),                  STRING_GET_STRING_ITERATOR)
