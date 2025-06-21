@@ -42,4 +42,5 @@ function f() {
     runNearStackLimit(f);
 }
 f();
+
 print("Exception Test End")
