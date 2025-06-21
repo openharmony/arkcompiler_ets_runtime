@@ -1312,6 +1312,16 @@ public:
         return enableJitFrame_;
     }
 
+    void SetEnableWarmStartupSmartGC(bool value)
+    {
+        enableWarmStartupSmartGC_ = value;
+    }
+
+    bool GetEnableWarmStartupSmartGC() const
+    {
+        return enableWarmStartupSmartGC_;
+    }
+
     bool IsEnableJitDfxDump() const
     {
         return isEnableJitDfxDump_;
@@ -2540,6 +2550,7 @@ private:
     std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
     size_t heapSize_ = {0};
     common::RuntimeParam param_;
+    bool enableWarmStartupSmartGC_ {false};
 };
 } // namespace panda::ecmascript
 
