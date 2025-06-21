@@ -103,4 +103,24 @@ let resSplit4 = str2.split("");
 let resSplit4Cache = str2.split("");
 assert_equal(resSplit4, resSplit4Cache);
 
+const v16 = /\u{12345}/iuygs;
+function f17() {
+    return f17;
+}
+function f20() {
+    return 4294967295;
+}
+f17.toString = f20;
+function f21() {
+    return f17;
+}
+function f22() {
+    return v16;
+}
+Object.defineProperty(f17, "lastIndex", { get: f21, set: f22 });
+f17.exec = f17;
+f17[Symbol.species] = f17;
+v16.constructor = f17;
+const v33 = ("56871958").split(v16);
+
 test_end();
