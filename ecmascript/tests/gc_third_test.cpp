@@ -757,4 +757,18 @@ HWTEST_F_L0(GCTest, DisableSharedConcurrentSweep)
     sHeap->WaitGCFinished(thread);
     sHeap->GetSweeper()->ConfigConcurrentSweep(true);
 };
+
+HWTEST_F_L0(GCTest, RawHeapSendSysEventDataSize)
+{
+    const std::string fileName = "/data/log/faultlog/temp/jsheap.rawheap";
+    uint64_t fileSize = 256;
+    std::vector<std::string> filePaths;
+    std::vector<uint64_t> fileSizes;
+
+    filePaths.emplace_back(fileName);
+    fileSizes.emplace_back(fileSize);
+    GCKeyStats *keystats = thread->GetEcmaVM()->GetEcmaGCKeyStats();
+    int32_t ret = keystats->SendSysEventDataSize(filePaths, fileSizes);
+    ASSERT_EQ(ret, 0);
+}
 } // namespace panda::test

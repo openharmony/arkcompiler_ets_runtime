@@ -289,6 +289,8 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
 {
     [[maybe_unused]] EcmaHandleScope ecmaHandleScope(vm_->GetJSThread());
     DumpSnapShotOption option;
+    std::vector<std::string> filePaths;
+    std::vector<uint64_t> fileSizes;
     auto stringTable = chunk_.New<StringHashMap>(vm_);
     auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
 
@@ -312,6 +314,9 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
     }
 
     rawHeapDump->BinaryDump();
+    filePaths.emplace_back(RAWHEAP_FILE_NAME);
+    fileSizes.emplace_back(rawHeapDump->GetRawHeapFileOffset());
+    vm_->GetEcmaGCKeyStats()->SendSysEventDataSize(filePaths, fileSizes);
     chunk_.Delete<StringHashMap>(stringTable);
     chunk_.Delete<HeapSnapshot>(snapshot);
     delete rawHeapDump;

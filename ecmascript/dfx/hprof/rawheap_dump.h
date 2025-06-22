@@ -73,6 +73,10 @@ public:
     virtual ~RawHeapDump();
 
     virtual void BinaryDump() = 0;
+    uint32_t GetRawHeapFileOffset() const
+    {
+        return fileOffset_;
+    }
 
 protected:
     void DumpVersion(const std::string &version);

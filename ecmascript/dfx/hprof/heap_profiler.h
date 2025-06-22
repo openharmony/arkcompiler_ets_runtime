@@ -188,6 +188,7 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
+    const std::string RAWHEAP_FILE_NAME = "/data/log/faultlog/temp/jsheap.rawheap";
 
     static const long LOCAL_HANDLE_LEAK_TIME_MS {5000};
     bool startLocalHandleLeakDetect_ {false};
