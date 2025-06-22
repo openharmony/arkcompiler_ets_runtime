@@ -70,6 +70,7 @@ public:
     bool CheckIfMainThread() const;
     bool CheckIfKeyPauseTime() const;
     void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const;
+    int32_t SendSysEventDataSize(std::vector<std::string> filePaths,  std::vector<uint64_t> fileSizes) const;
     void ProcessLongGCEvent();
     static bool IsIdle(GCReason gcReason)
     {

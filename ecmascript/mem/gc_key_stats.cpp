@@ -25,10 +25,13 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/dfx_hisys_event.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using Clock = std::chrono::high_resolution_clock;
+const std::string PARTITION_NAME = "/data";
+const std::string COMPONENT_NAME = "ets_runtime";
 
 bool GCKeyStats::CheckIfMainThread() const
 {
@@ -128,6 +131,25 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
 #else
     LOG_GC(INFO) << "GCKeyStats type: " << type << ", limitSize: " << limitSize << ", activeMemory: " << activeMemory;
 #endif
+}
+
+int32_t GCKeyStats::SendSysEventDataSize(std::vector<std::string> filePaths,  std::vector<uint64_t> fileSizes) const
+{
+#ifdef ENABLE_HISYSEVENT
+    int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FILEMANAGEMENT,
+        "USER_DATA_SIZE",
+        OHOS::HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "COMPONENT_NAME", COMPONENT_NAME,
+        "PARTITION_NAME", PARTITION_NAME,
+        "REMAIN_PARTITION_SIZE", panda::ecmascript::GetDeviceValidSize(PARTITION_NAME),
+        "FILE_OR_FOLDER_PATH", filePaths,
+        "FILE_OR_FOLDER_SIZE", fileSizes);
+    if (ret != 0) {
+        LOG_GC(ERROR) << "DataPartitionStats HiSysEventWrite Failed! ret = " << ret;
+    }
+    return ret;
+#endif
+    return 0;
 }
 
 void GCKeyStats::PrintKeyStatisticResult() const
