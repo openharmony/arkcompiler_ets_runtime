@@ -2180,6 +2180,35 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
     }
 }
 
+void BuiltinsStringStubBuilder::ToStringFunc(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
+    Variable *res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isString(env);
+    Label notString(env);
+    Label isPrimitiveRef(env);
+    Label isPrimitiveString(env);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsString(glue, thisValue), &isString, &notString);
+    Bind(&isString);
+    {
+        res->WriteVariable(thisValue);
+        Jump(exit);
+    }
+    Bind(&notString);
+    {
+        BRANCH(IsJSPrimitiveRef(glue, thisValue), &isPrimitiveRef, slowPath);
+        Bind(&isPrimitiveRef);
+        GateRef value = Load(VariableType::JS_ANY(), glue, thisValue, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
+        BRANCH(TaggedIsString(glue, value), &isPrimitiveString, slowPath);
+        Bind(&isPrimitiveString);
+        res->WriteVariable(value);
+        Jump(exit);
+    }
+}
+
 GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, GateRef rightString, GateRef status)
 {
     auto env = GetEnvironment();
