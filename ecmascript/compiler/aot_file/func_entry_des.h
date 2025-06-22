@@ -53,12 +53,14 @@ struct FuncEntryDes {
     bool IsBuiltinsStub() const
     {
         return (kind_ == CallSignature::TargetKind::BUILTINS_STUB ||
-                kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
+                kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB ||
+                kind_ == CallSignature::TargetKind::BUILTINS_STW_COPY_STUB);
     }
 
     bool IsCommonStub() const
     {
-        return (kind_ == CallSignature::TargetKind::COMMON_STUB);
+        return (kind_ == CallSignature::TargetKind::COMMON_STUB ||
+                kind_ == CallSignature::TargetKind::COMMON_STW_COPY_STUB);
     }
 
     bool IsBaselineStub() const

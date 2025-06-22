@@ -118,6 +118,40 @@ public:
                                  GateRef thisValue, GateRef numArgs);                               \
     };
     BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS, DECLARE_BUILTINS_STUB_CLASS_DYN, DECLARE_BUILTINS_STUB_CLASS)
+
+#define DECLARE_BUILTINS_STW_COPY_STUB_CLASS(name, base)                                            \
+    class name##StubBuilder : public base##StubBuilder {                                            \
+    public:                                                                                         \
+        name##StubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)        \
+            : base##StubBuilder(callSignature, env, globalEnv) {}                                   \
+        ~name##StubBuilder() = default;                                                             \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                                        \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                                        \
+    };
+
+#define DECLARE_BUILTINS_STW_COPY_STUB_CLASS_SECOND(base)                                           \
+    DECLARE_BUILTINS_STW_COPY_STUB_CLASS(base##StwCopy, base)
+
+#define DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN(name, base, type)                                  \
+    class type##name##StubBuilder : public type##base##StubBuilder {                                \
+    public:                                                                                         \
+        type##name##StubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)  \
+            : type##base##StubBuilder(callSignature, env, globalEnv) {}                             \
+        ~type##name##StubBuilder() = default;                                                       \
+        NO_MOVE_SEMANTIC(type##name##StubBuilder);                                                  \
+        NO_COPY_SEMANTIC(type##name##StubBuilder);                                                  \
+    };
+
+#define DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN_SECOND(base, type, ...)                            \
+    DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN(base##StwCopy, base, type)
+
+    BUILTINS_STW_COPY_STUB_LIST(DECLARE_BUILTINS_STW_COPY_STUB_CLASS_SECOND, \
+        DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN_SECOND, DECLARE_BUILTINS_STW_COPY_STUB_CLASS_SECOND)
+
+#undef DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN_SECOND
+#undef DECLARE_BUILTINS_STW_COPY_STUB_CLASS_DYN
+#undef DECLARE_BUILTINS_STW_COPY_STUB_CLASS_SECOND
+#undef DECLARE_BUILTINS_STW_COPY_STUB_CLASS
 #undef DECLARE_BUILTINS_STUB_CLASS_DYN
 #undef DECLARE_BUILTINS_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu

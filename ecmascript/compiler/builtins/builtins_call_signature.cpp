@@ -18,35 +18,60 @@
 #include "ecmascript/global_env_fields.h"
 
 namespace panda::ecmascript::kungfu {
-CallSignature BuiltinsStubCSigns::callSigns_[BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS];
+CallSignature BuiltinsStubCSigns::callSigns_[BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS_EXTEND];
 CallSignature BuiltinsStubCSigns::builtinsCSign_;
 CallSignature BuiltinsStubCSigns::builtinsWithArgvCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
 #define COMMON_INIT(name)                                                   \
-    callSigns_[ID::name].SetID(ID::name);                                   \
-    callSigns_[ID::name].SetName(std::string("BuiltinStub_") + #name);      \
-    callSigns_[ID::name].SetConstructor(                                    \
+    callSigns_[SubID::name].SetID(SubID::name);                             \
+    callSigns_[SubID::name].SetName(std::string("BuiltinStub_") + #name);   \
+    callSigns_[SubID::name].SetConstructor(                                 \
     [](void* env) {                                                         \
         return static_cast<void*>(                                          \
-            new name##StubBuilder(&callSigns_[ID::name],                    \
+            new name##StubBuilder(&callSigns_[SubID::name],                 \
                 static_cast<Environment*>(env), Gate::InvalidGateRef));     \
     });
 
 #define INIT_BUILTINS_METHOD(name)                                          \
-    BuiltinsCallSignature::Initialize(&callSigns_[ID::name]);               \
+    BuiltinsCallSignature::Initialize(&callSigns_[SubID::name]);            \
     COMMON_INIT(name)
 
 #define INIT_BUILTINS_METHOD_DYN(name, type, ...)                           \
-    BuiltinsCallSignature::Initialize(&callSigns_[ID::type##name]);         \
+    BuiltinsCallSignature::Initialize(&callSigns_[SubID::type##name]);      \
     COMMON_INIT(type##name)
 
 #define INIT_BUILTINS_CONSTRUCTOR_METHOD(name)                              \
-    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[ID::name]);       \
+    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[SubID::name]);    \
     COMMON_INIT(name)
 
     BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD, INIT_BUILTINS_METHOD_DYN, INIT_BUILTINS_CONSTRUCTOR_METHOD)
+
+#define STW_COPY_INIT(name)                                                 \
+    callSigns_[SubID::name].SetStwCopyStub(true);                           \
+    callSigns_[SubID::name].SetTargetKind(CallSignature::TargetKind::BUILTINS_STW_COPY_STUB);
+
+#define INIT_BUILTINS_METHOD_STW_COPY(name)                                 \
+    INIT_BUILTINS_METHOD(name##StwCopy)                                     \
+    STW_COPY_INIT(name##StwCopy)
+
+#define INIT_BUILTINS_METHOD_DYN_STW_COPY(name, type, ...)                  \
+    INIT_BUILTINS_METHOD_DYN(name##StwCopy, type)                           \
+    STW_COPY_INIT(type##name##StwCopy)
+
+#define INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY(name)                     \
+    INIT_BUILTINS_CONSTRUCTOR_METHOD(name##StwCopy)                         \
+    STW_COPY_INIT(name##StwCopy)
+
+    BUILTINS_STW_COPY_STUB_LIST(INIT_BUILTINS_METHOD_STW_COPY, INIT_BUILTINS_METHOD_DYN_STW_COPY, \
+        INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY)
+
+#undef INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY
+#undef INIT_BUILTINS_METHOD_DYN_STW_COPY
+#undef INIT_BUILTINS_METHOD_STW_COPY
+#undef STW_COPY_INIT
+#undef INIT_BUILTINS_CONSTRUCTOR_METHOD
 #undef INIT_BUILTINS_METHOD_DYN
 #undef INIT_BUILTINS_METHOD
 
@@ -58,7 +83,7 @@ void BuiltinsStubCSigns::Initialize()
 void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
 {
     const size_t firstStubId = BUILTINS_STUB_ID(NONE) + 1;
-    for (size_t i = firstStubId; i < NUM_OF_BUILTINS_STUBS; i++) {
+    for (size_t i = firstStubId; i < NUM_OF_BUILTINS_STUBS_EXTEND; i++) {
         outCSigns.push_back(&callSigns_[i]);
     }
 }

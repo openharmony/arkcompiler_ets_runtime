@@ -34,5 +34,22 @@ namespace panda::ecmascript::kungfu {
     COMMON_STUB_LIST(DECLARE_STUB_CLASS)
 #undef DECLARE_STUB_CLASS
 
+#define DECLARE_STW_COPY_STUB_CLASS(name, base)                                    \
+    class name##StubBuilder : public base##StubBuilder {                           \
+    public:                                                                        \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env) \
+            : base##StubBuilder(callSignature, env) {}                             \
+        ~name##StubBuilder() = default;                                            \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                       \
+    };
+
+#define DECLARE_STW_COPY_STUB_CLASS_SECOND(base)                                   \
+    DECLARE_STW_COPY_STUB_CLASS(base##StwCopy, base)
+
+    COMMON_STW_COPY_STUB_LIST(DECLARE_STW_COPY_STUB_CLASS_SECOND)
+#undef DECLARE_STW_COPY_STUB_CLASS_SECOND
+#undef DECLARE_STW_COPY_STUB_CLASS
+
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_COMMON_STUBS_H

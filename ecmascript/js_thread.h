@@ -94,6 +94,16 @@ enum class BCStubStatus: uint8_t {
     STW_COPY_BC_STUB,
 };
 
+enum class CommonStubStatus: uint8_t {
+    NORMAL_COMMON_STUB,
+    STW_COPY_COMMON_STUB,
+};
+
+enum class BuiltinsStubStatus: uint8_t {
+    NORMAL_BUILTINS_STUB,
+    STW_COPY_BUILTINS_STUB,
+};
+
 enum ThreadType : uint8_t {
     JS_THREAD,
     JIT_THREAD,
@@ -171,6 +181,8 @@ public:
     using InstallMachineCodeBit = VMHasSuspendedBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BCSTUBSTATUS_BITFIELD_NUM>;
+    using CommonStubStatusBits = BCStubStatusBits::NextField<CommonStubStatus, BOOL_BITFIELD_NUM>;
+    using BuiltinsStubStatusBits = CommonStubStatusBits::NextField<BuiltinsStubStatus, BOOL_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
     enum FrameDroppedState {
@@ -478,7 +490,9 @@ public:
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
     void SwitchJitProfileStubs(bool isEnablePgo);
-    void SwitchStwCopyStubs(bool isStwCopy);
+    void SwitchStwCopyBCStubs(bool isStwCopy);
+    void SwitchStwCopyCommonStubs(bool isStwCopy);
+    void SwitchStwCopyBuiltinsStubs(bool isStwCopy);
 
     ThreadId GetThreadId() const
     {
@@ -595,6 +609,26 @@ public:
     BCStubStatus GetBCStubStatus() const
     {
         return BCStubStatusBits::Decode(glueData_.interruptVector_);
+    }
+
+    void SetCommonStubStatus(CommonStubStatus status)
+    {
+        SetInterruptValue<CommonStubStatusBits>(status);
+    }
+
+    CommonStubStatus GetCommonStubStatus() const
+    {
+        return CommonStubStatusBits::Decode(glueData_.interruptVector_);
+    }
+
+    void SetBuiltinsStubStatus(BuiltinsStubStatus status)
+    {
+        SetInterruptValue<BuiltinsStubStatusBits>(status);
+    }
+
+    BuiltinsStubStatus GetBuiltinsStubStatus() const
+    {
+        return BuiltinsStubStatusBits::Decode(glueData_.interruptVector_);
     }
 
     bool ShouldHandleMarkingFinishedInSafepoint();

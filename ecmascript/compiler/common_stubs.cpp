@@ -1841,6 +1841,25 @@ void CommonStubCSigns::Initialize()
 
     COMMON_STUB_ID_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
+
+#define INIT_SIGNATURES_DYN(name, base)                                                    \
+    base##CallSignature::Initialize(&callSigns_[name]);                                    \
+    callSigns_[name].SetID(name);                                                          \
+    callSigns_[name].SetName(std::string("COStub_") + #name);                              \
+    callSigns_[name].SetConstructor(                                                       \
+        [](void* env) {                                                                    \
+            return static_cast<void*>(                                                     \
+                new name##StubBuilder(&callSigns_[name], static_cast<Environment*>(env))); \
+        });                                                                                \
+    callSigns_[name].SetStwCopyStub(true);                                                 \
+    callSigns_[name].SetTargetKind(CallSignature::TargetKind::COMMON_STW_COPY_STUB);
+
+#define INIT_SIGNATURES_DYN_SECOND(base)                                                   \
+    INIT_SIGNATURES_DYN(base##StwCopy, base)
+
+    COMMON_STW_COPY_STUB_LIST(INIT_SIGNATURES_DYN_SECOND)
+#undef INIT_SIGNATURES_DYN_SECOND
+#undef INIT_SIGNATURES_DYN
 }
 
 void CommonStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)

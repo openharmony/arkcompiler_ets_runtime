@@ -53,6 +53,7 @@ namespace panda::ecmascript {
 uintptr_t TaggedStateWord::BASE_ADDRESS = 0;
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
 using BytecodeStubCSigns = panda::ecmascript::kungfu::BytecodeStubCSigns;
+using BuiltinsStubCSigns = panda::ecmascript::kungfu::BuiltinsStubCSigns;
 
 void SuspendBarrier::Wait()
 {
@@ -835,7 +836,7 @@ void JSThread::CheckOrSwitchPGOStubs()
             SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
             isSwitch = true;
         } else if (GetBCStubStatus() == BCStubStatus::STW_COPY_BC_STUB) {
-            SwitchStwCopyStubs(false);
+            SwitchStwCopyBCStubs(false);
             ASSERT(GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB);
             SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
             isSwitch = true;
@@ -857,7 +858,7 @@ void JSThread::CheckOrSwitchPGOStubs()
 #undef SWITCH_PGO_STUB_ENTRY
     }
     if (isSwitchToNormal && !g_isEnableCMCGC) {
-        SwitchStwCopyStubs(true);
+        SwitchStwCopyBCStubs(true);
     }
 }
 
@@ -873,7 +874,7 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
         isSwitch = true;
     } else if (GetBCStubStatus() == BCStubStatus::STW_COPY_BC_STUB) {
-        SwitchStwCopyStubs(false);
+        SwitchStwCopyBCStubs(false);
         ASSERT(GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB);
         SetBCStubStatus(BCStubStatus::JIT_PROFILE_BC_STUB);
         isSwitch = true;
@@ -889,7 +890,7 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
     }
 }
 
-void JSThread::SwitchStwCopyStubs(bool isStwCopy)
+void JSThread::SwitchStwCopyBCStubs(bool isStwCopy)
 {
     bool isSwitch = false;
     if (isStwCopy && GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
@@ -902,11 +903,61 @@ void JSThread::SwitchStwCopyStubs(bool isStwCopy)
     if (isSwitch) {
         Address curAddress;
 #define SWITCH_STW_COPY_STUB_ENTRY(base)                                                                    \
-        curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##base##StwCopy);                                \
+        curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##base);                                         \
         SetBCStubEntry(BytecodeStubCSigns::ID_##base,                                                       \
                        GetBCStubEntry(BytecodeStubCSigns::ID_##base##StwCopy));                             \
-        SetBCStubEntry(BytecodeStubCSigns::ID_##base, curAddress);
+        SetBCStubEntry(BytecodeStubCSigns::ID_##base##StwCopy, curAddress);
         ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(SWITCH_STW_COPY_STUB_ENTRY)
+#undef SWITCH_STW_COPY_STUB_ENTRY
+    }
+}
+
+void JSThread::SwitchStwCopyCommonStubs(bool isStwCopy)
+{
+    bool isSwitch = false;
+    if (isStwCopy && GetCommonStubStatus() == CommonStubStatus::NORMAL_COMMON_STUB) {
+        SetCommonStubStatus(CommonStubStatus::STW_COPY_COMMON_STUB);
+        isSwitch = true;
+    } else if (!isStwCopy && GetCommonStubStatus() == CommonStubStatus::STW_COPY_COMMON_STUB) {
+        SetCommonStubStatus(CommonStubStatus::NORMAL_COMMON_STUB);
+        isSwitch = true;
+    }
+    if (isSwitch) {
+        Address curAddress;
+#define SWITCH_STW_COPY_STUB_ENTRY(base)                                                                    \
+        curAddress = GetFastStubEntry(CommonStubCSigns::base);                                              \
+        SetFastStubEntry(CommonStubCSigns::base,                                                            \
+                         GetFastStubEntry(CommonStubCSigns::base##StwCopy));                                \
+        SetFastStubEntry(CommonStubCSigns::base##StwCopy, curAddress);
+        COMMON_STW_COPY_STUB_LIST(SWITCH_STW_COPY_STUB_ENTRY)
+#undef SWITCH_STW_COPY_STUB_ENTRY
+    }
+}
+
+void JSThread::SwitchStwCopyBuiltinsStubs(bool isStwCopy)
+{
+    bool isSwitch = false;
+    if (isStwCopy && GetBuiltinsStubStatus() == BuiltinsStubStatus::NORMAL_BUILTINS_STUB) {
+        SetBuiltinsStubStatus(BuiltinsStubStatus::STW_COPY_BUILTINS_STUB);
+        isSwitch = true;
+    } else if (!isStwCopy && GetBuiltinsStubStatus() == BuiltinsStubStatus::STW_COPY_BUILTINS_STUB) {
+        SetBuiltinsStubStatus(BuiltinsStubStatus::NORMAL_BUILTINS_STUB);
+        isSwitch = true;
+    }
+    if (isSwitch) {
+        Address curAddress;
+#define SWITCH_STW_COPY_STUB_ENTRY(base)                                                                    \
+        curAddress = GetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base);                                  \
+        SetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base,                                                \
+                            GetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base##StwCopy));                 \
+        SetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base##StwCopy, curAddress);
+
+#define SWITCH_STW_COPY_STUB_ENTRY_DYN(base, type, ...)                                                     \
+        SWITCH_STW_COPY_STUB_ENTRY(type##base)
+
+        BUILTINS_STW_COPY_STUB_LIST(SWITCH_STW_COPY_STUB_ENTRY, SWITCH_STW_COPY_STUB_ENTRY_DYN, \
+            SWITCH_STW_COPY_STUB_ENTRY)
+#undef SWITCH_STW_COPY_STUB_ENTRY_DYN
 #undef SWITCH_STW_COPY_STUB_ENTRY
     }
 }

@@ -40,4 +40,22 @@ enum BuiltinsStubCSignsID {
 };
 } // namespace panda::ecmascript::kungfu::stubcsigns
 
+namespace panda::ecmascript::kungfu::builtinssubid {
+// SubID indicates the index in callSigns[] for builtins stubs, including the StwCopy version ones
+enum SubID {
+#define DEF_STUB_ID(name) name,
+#define DEF_STUB_ID_DYN(name, type, ...) type##name,
+    PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
+    BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
+#undef DEF_STUB_ID_DYN
+#undef DEF_STUB_ID
+#define DEF_STUB_ID(name) name##StwCopy,
+#define DEF_STUB_ID_DYN(name, type, ...) type##name##StwCopy,
+    BUILTINS_STW_COPY_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
+#undef DEF_STUB_ID_DYN
+#undef DEF_STUB_ID
+    NUM_OF_BUILTINS_STUBS_EXTEND,
+};
+} // namespace panda::ecmascript::kungfu::builtinssubid
+
 #endif // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_ID_PROPERTIES_H
