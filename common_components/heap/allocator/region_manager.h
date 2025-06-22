@@ -289,12 +289,13 @@ public:
              region->GetLiveByteCount(), region->GetRegionType());
 
         garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
-#ifdef ARK_ASAN_ON
-        ASAN_POISON_MEMORY_REGION(region->GetRegionStart(), region->GetRegionSize());
+#ifdef USE_HWASAN
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionStart()),
+            region->GetRegionSize());
         const uintptr_t p_addr = region->GetRegionStart();
         const uintptr_t p_size = region->GetRegionSize();
-        LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
-        LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
+        LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr <<
+                             std::hex << ", " << p_addr + p_size << ") poisoned\n";
 #endif
         if (region->IsLargeRegion()) {
             return region->GetRegionSize();

@@ -442,12 +442,13 @@ void RegionManager::Initialize(size_t nRegion, uintptr_t regionInfoAddr)
 
     DLOG(REPORT, "region info @0x%zx+%zu, heap [0x%zx, 0x%zx), unit count %zu", regionInfoAddr, metadataSize,
          regionHeapStart_, regionHeapEnd_, nRegion);
-#ifdef ARK_ASAN_ON
-    ASAN_POISON_MEMORY_REGION(regionInfoAddr, metadataSize + nRegion * RegionDesc::UNIT_SIZE);
+#ifdef USE_HWASAN
+    ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(regionInfoAddr),
+        metadataSize + nRegion * RegionDesc::UNIT_SIZE);
     const uintptr_t p_addr = regionInfoAddr;
     const uintptr_t p_size = metadataSize + nRegion * RegionDesc::UNIT_SIZE;
-    LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr;
-    LOG_COMMON(DEBUG) << std::hex << ", " << p_addr + p_size << ") unaddressable\n";
+    LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr <<
+                         std::hex << ", " << p_addr + p_size << ") unpoisoned\n";
 #endif
 }
 

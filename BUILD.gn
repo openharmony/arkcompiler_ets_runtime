@@ -628,6 +628,14 @@ config("ark_jsruntime_common_config") {
     defines += [ "RUN_WITH_ASAN" ]
   }
 
+  if (is_asan) {
+    if (use_hwasan) {
+      defines += [ "USE_HWASAN" ]
+    } else {
+      defines += [ "USE_ASAN" ]
+    }
+  }
+
   if (enable_cow_array) {
     defines += [ "ENABLE_COW_ARRAY" ]
   }

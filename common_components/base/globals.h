@@ -18,7 +18,7 @@
 
 #include <cstddef>
 
-#include "common_components/base/asan_interface.h"
+#include "common_components/base/ark_sanitizer.h"
 #include "common_interfaces/base/common.h"
 
 namespace common {

@@ -555,11 +555,11 @@ public:
 #ifdef COMMON_ASAN_SUPPORT
         Sanitizer::OnHeapMadvise(unitAddress, size);
 #endif
-#ifdef ARK_ASAN_ON
-        ASAN_POISON_MEMORY_REGION(unitAddress, size);
+#ifdef USE_HWASAN
+        ASAN_UNPOISON_MEMORY_REGION(unitAddress, size);
         const uintptr_t pSize = size;
         LOG_COMMON(DEBUG) << std::hex << "set [" << unitAddress << ", " <<
-            (reinterpret_cast<uintptr_t>(unitAddress) + pSize) << ") unaddressable\n";
+            (reinterpret_cast<uintptr_t>(unitAddress) + pSize) << ") poisoned\n";
 #endif
     }
 
@@ -1231,12 +1231,13 @@ private:
         SetResurrectedRegionFlag(0);
         SetFixedRegionFlag(0);
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
-#ifdef ARK_ASAN_ON
-        ASAN_UNPOISON_MEMORY_REGION(metadata.allocPtr, nUnit * RegionDesc::UNIT_SIZE);
+#ifdef USE_HWASAN
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(metadata.allocPtr),
+            nUnit * RegionDesc::UNIT_SIZE);
         uintptr_t pAddr = metadata.allocPtr;
         uintptr_t pSize = nUnit * RegionDesc::UNIT_SIZE;
-        LOG_COMMON(DEBUG) << std::hex << "set [" << pAddr;
-        LOG_COMMON(DEBUG) << std::hex << ", " << (pAddr + pSize) << ") unaddressable\n";
+        LOG_COMMON(DEBUG) << std::hex << "set [" << pAddr <<
+            std::hex << ", " << (pAddr + pSize) << ") unpoisoned\n";
 #endif
     }
 
