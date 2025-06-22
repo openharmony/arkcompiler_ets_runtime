@@ -918,6 +918,7 @@ public:
     void StartUnifiedGCMark(TriggerGCType gcType, GCReason gcReason);
     template<TriggerGCType gcType, GCReason gcReason>
     bool TriggerUnifiedGCMark(JSThread *thread) const;
+    void SetGCThreadRssPriority(common::RssPriorityType type);
 
 private:
     void ProcessAllGCListeners();

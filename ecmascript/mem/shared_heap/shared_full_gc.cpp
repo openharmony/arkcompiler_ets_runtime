@@ -37,10 +37,12 @@ void SharedFullGC::RunPhases()
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
         + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
+    sHeap_->SetGCThreadRssPriority(common::RssPriorityType::KEY);
     Initialize();
     Mark();
     Sweep();
     Finish();
+    sHeap_->SetGCThreadRssPriority(common::RssPriorityType::COMMON);
 }
 
 void SharedFullGC::Initialize()

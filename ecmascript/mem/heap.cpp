@@ -663,6 +663,16 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     }
 }
 
+void SharedHeap::SetGCThreadRssPriority(common::RssPriorityType type)
+{
+#ifdef ENABLE_RSS
+    if (Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->IsPostForked()) {
+        dThread_->SetRssPriority(type);
+        common::Taskpool::GetCurrentTaskpool()->SetThreadRssPriority(type);
+    }
+#endif
+}
+
 bool SharedHeap::IsReadyToConcurrentMark() const
 {
     return dThread_->IsReadyToConcurrentMark();

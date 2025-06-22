@@ -395,6 +395,9 @@ config("hiviewdfx_config") {
   if (enable_unwinder) {
     defines += [ "ENABLE_UNWINDER" ]
   }
+  if (enable_rss) {
+    defines += [ "ENABLE_RSS" ]
+  }
 
   include_dirs = [ "$hilog_root/include" ]
 }

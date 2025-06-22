@@ -38,6 +38,11 @@ enum class PriorityMode {
     BACKGROUND
 };
 
+enum class RssPriorityType {
+    COMMON = 0,
+    KEY = 1
+};
+
 class Runner {
 public:
     explicit Runner(uint32_t threadNum,
@@ -61,6 +66,7 @@ public:
     void PUBLIC_API TerminateThread();
     void TerminateTask(int32_t id, TaskType type);
     void SetQosPriority(PriorityMode mode);
+    void SetRssPriority(RssPriorityType type);
     void RecordThreadId();
 
     uint32_t GetTotalThreadNum() const

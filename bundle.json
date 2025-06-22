@@ -49,6 +49,7 @@
               "access_token",
               "eventhandler",
               "ipc",
+              "resource_schedule_service",
               "safwk",
               "samgr",
               "common_event_service",
