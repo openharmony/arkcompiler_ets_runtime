@@ -181,6 +181,7 @@ public:
                 const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
+    GateRef GetReservedRegister();
     void LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
     GateRef CheckSuspendForCMCGC(GateRef glue);

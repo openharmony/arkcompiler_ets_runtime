@@ -61,6 +61,16 @@ public:
                                 constraints.size(), true, true, LLVMInlineAsmDialectATT, false);
 #endif
     }
+
+    void SetTargetFeature(LLVMContextRef ctxt, LLVMValueRef func) override
+    {
+        const char* attrName = "target-features";
+        const char* attrValue = "+fixed-r15";
+        LLVMAddAttributeAtIndex(
+            func,
+            LLVMAttributeFunctionIndex,
+            LLVMCreateStringAttribute(ctxt, attrName, strlen(attrName), attrValue, strlen(attrValue)));
+    }
 };
 
 class X64TargetBuilderRegistry {

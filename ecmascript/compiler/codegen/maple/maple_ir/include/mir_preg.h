@@ -32,7 +32,8 @@ enum SpecialReg : signed int {
     kSregRetval1 = 4,
     kSregRetval2 = 5,
     kSregRetval3 = 6,
-    kSregLast = 7,
+    kSregReserve = 7,
+    kSregLast = 8,
 };
 #if MIR_FEATURE_FULL
 class MIRPreg {
@@ -126,6 +127,7 @@ public:
         specPregTable[kSregFp].SetPregNo(-kSregFp);
         specPregTable[kSregRetval0].SetPregNo(-kSregRetval0);
         specPregTable[kSregRetval1].SetPregNo(-kSregRetval1);
+        specPregTable[kSregReserve].SetPregNo(-kSregReserve);
         for (uint32 i = 0; i < kSregLast; ++i) {
             specPregTable[i].SetPrimType(PTY_unknown);
         }

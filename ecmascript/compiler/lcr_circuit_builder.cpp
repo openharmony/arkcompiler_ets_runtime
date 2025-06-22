@@ -60,6 +60,11 @@ GateRef CircuitBuilder::ReadSp()
     return circuit_->NewGate(circuit_->ReadSp(), MachineType::I64, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::ReadReserveRegister()
+{
+    return circuit_->NewGate(circuit_->ReservedReg(), MachineType::I64, GateType::NJSValue());
+}
+
 MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
 {
     switch (type) {

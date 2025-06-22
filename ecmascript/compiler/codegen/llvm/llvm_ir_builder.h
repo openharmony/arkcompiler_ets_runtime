@@ -276,6 +276,7 @@ class LLVMTargetBuilder {
 public:
     virtual ~LLVMTargetBuilder() = default;
     virtual LLVMValueRef GetASMBarrierCall(LLVMModule *llvmModule_, bool isDirectCall) = 0;
+    virtual void SetTargetFeature(LLVMContextRef ctxt, LLVMValueRef func) = 0;
 };
 
 class LLVMIRBuilder {
@@ -308,6 +309,7 @@ private:
     BasicBlock *EnsureBB(int id);
     LLVMValueRef CallingFp(LLVMModuleRef &module, LLVMBuilderRef &builder, bool isCaller);
     LLVMValueRef GetCurrentSP();
+    LLVMValueRef ReadReserveRegister();
     LLVMValueRef ReadRegister(LLVMModuleRef &module, LLVMBuilderRef &builder, LLVMMetadataRef meta);
     void GenPrologue();
     void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType);

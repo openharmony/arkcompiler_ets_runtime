@@ -83,6 +83,11 @@ public:
         return isGhcCallingConv_ ? r13 : rdi;
     }
 
+    Register ReserveRegister()
+    {
+        return r15;
+    }
+
     bool FromInterpreterHandler() const
     {
         return isGhcCallingConv_;

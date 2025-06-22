@@ -68,7 +68,11 @@ host_unittest_action("mapleallUT") {
   # If dynamic cast is used in the source code, set COMPILE_RTTI_ to true
   rtti_compile_flag = true
   deps += deps_libcg
+  defines = []
   external_deps = [ "bounds_checking_function:libsec_shared" ]
+  if (ets_runtime_enable_cmc_gc) {
+    # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
+  }
   libs = [ "pthread" ]
 }
 group("host_unittest") {

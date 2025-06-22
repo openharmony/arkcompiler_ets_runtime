@@ -165,6 +165,11 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
+GateRef StubBuilder::GetReservedRegister()
+{
+    return env_->GetBuilder()->ReadReserveRegister();
+}
+
 void StubBuilder::MatchFieldType(
     GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
