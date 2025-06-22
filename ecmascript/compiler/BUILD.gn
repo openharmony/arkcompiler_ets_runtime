@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 if (defined(timeout)) {
-  _timeout_ = timeout
+  _timeout_ = 14400
 } else {
   _timeout_ = 2400
 }
