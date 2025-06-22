@@ -565,6 +565,12 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
         DLOG(REGION, "take garbage region %p@%#zx+%zu", head, head->GetRegionStart(), head->GetRegionSize());
         if (head->GetUnitCount() == num) {
             auto idx = head->GetUnitIdx();
+#ifdef USE_HWASAN
+            const uintptr_t pAddr = RegionDesc::GetUnitAddress(idx);
+            ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(pAddr), size);
+            LOG_COMMON(DEBUG) << std::hex << "set [" << pAddr <<
+                                std::hex << ", " << pAddr + size << ") unpoisoned\n";
+#endif
             RegionDesc::ClearUnits(idx, num);
             DLOG(REGION, "reuse garbage region %p@%#zx+%zu", head, head->GetRegionStart(), head->GetRegionSize());
             return RegionDesc::InitRegion(idx, num, type);

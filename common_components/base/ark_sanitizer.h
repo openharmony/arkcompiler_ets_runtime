@@ -52,22 +52,14 @@ void* __hwasan_tag_pointer(void const volatile *addr, unsigned char tag) __attri
 #ifndef ASAN_POISON_MEMORY_REGION
 #define ASAN_POISON_MEMORY_REGION(addr, size) \
     do { \
-        auto __addr = (addr); \
-        std::srand(static_cast<unsigned>(std::time(nullptr))); \
-        unsigned char __tag = static_cast<unsigned char>(std::rand() % 255 + 1); \
-        __hwasan_tag_memory(static_cast<const volatile void*>(__addr), __tag, (size)); \
-        (void)__hwasan_tag_pointer(static_cast<const volatile void*>(__addr), __tag); \
+        __hwasan_tag_memory(static_cast<const volatile void*>(addr), 0xFF, (size)); \
     } while (0)
 #endif
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #ifndef ASAN_UNPOISON_MEMORY_REGION
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) \
     do { \
-        auto __addr = (addr); \
-        if ((0xff00000000000000ULL & reinterpret_cast<uintptr_t>(__addr))) { \
-            void* __untagged = const_cast<void*>(__hwasan_tag_pointer(static_cast<const volatile void*>(__addr), 0)); \
-            __hwasan_tag_memory(static_cast<const volatile void*>(__untagged), 0, (size)); \
-        } \
+        __hwasan_tag_memory(static_cast<const volatile void*>(addr), 0, (size)); \
     } while (0)
 #endif
 
