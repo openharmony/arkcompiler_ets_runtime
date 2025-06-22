@@ -462,6 +462,7 @@ ohos_executable("ark_stub_compiler") {
 
   if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
     external_deps += [
+      "runtime_core:libarkbase_static",
       "runtime_core:libarkziparchive_static",
       sdk_libc_secshared_dep,
     ]

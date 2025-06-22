@@ -1746,7 +1746,10 @@ ohos_shared_library("libark_jsruntime") {
     ":arkjs_runtime_lto_link_config",
   ]
   if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
-    external_deps += [ "runtime_core:libarkziparchive_static" ]
+    external_deps += [
+      "runtime_core:libarkbase_static",
+      "runtime_core:libarkziparchive_static",
+    ]
   }
 }
 
