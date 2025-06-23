@@ -556,7 +556,7 @@ public:
         Sanitizer::OnHeapMadvise(unitAddress, size);
 #endif
 #ifdef USE_HWASAN
-        ASAN_UNPOISON_MEMORY_REGION(unitAddress, size);
+        ASAN_POISON_MEMORY_REGION(unitAddress, size);
         const uintptr_t pSize = size;
         LOG_COMMON(DEBUG) << std::hex << "set [" << unitAddress << ", " <<
             (reinterpret_cast<uintptr_t>(unitAddress) + pSize) << ") poisoned\n";

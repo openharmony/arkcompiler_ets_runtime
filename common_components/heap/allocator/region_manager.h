@@ -290,7 +290,7 @@ public:
 
         garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
 #ifdef USE_HWASAN
-        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionStart()),
+        ASAN_POISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionStart()),
             region->GetRegionSize());
         const uintptr_t p_addr = region->GetRegionStart();
         const uintptr_t p_size = region->GetRegionSize();
