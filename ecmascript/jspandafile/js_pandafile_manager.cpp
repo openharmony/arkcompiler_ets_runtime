@@ -174,7 +174,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
+    std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate, void *fileMapper)
 {
     CString traceInfo = "JSPandaFileManager::LoadJSPandaFileSecure:" + filename;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
@@ -209,7 +209,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
     // JSPandaFile desc cannot be empty, if buffer with empty filename, use pf filename as a descriptor.
     const CString &desc = filename.empty() ? pf->GetFilename().c_str() : filename;
 
-    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint, fileMapper);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling()) {
         GetJSPtExtractorAndExtract(jsPandaFile.get());
@@ -498,13 +498,14 @@ std::string GetModuleNameFromDesc(const std::string &desc)
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
-                                                                     const CString &desc, std::string_view entryPoint)
+                                                                     const CString &desc, std::string_view entryPoint,
+                                                                     void *fileMapper)
 {
     ThreadNativeScope nativeScope(thread);
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
-
+    newJsPandaFile->SetFileMapper(fileMapper);
     std::string moduleName = GetModuleNameFromDesc(desc.c_str());
     std::string hapPath;
     SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();

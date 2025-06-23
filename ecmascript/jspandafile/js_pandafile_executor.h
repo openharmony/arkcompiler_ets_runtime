@@ -63,7 +63,8 @@ public:
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,
-                                                                 const CString &filename = "", bool needUpdate = false);
+                                                                 const CString &filename = "", bool needUpdate = false,
+                                                                 void *fileMapper = nullptr);
     static Expected<JSTaggedValue, bool> ExecuteModuleBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                    const CString &filename = "",
                                                                    bool needUpdate = false);

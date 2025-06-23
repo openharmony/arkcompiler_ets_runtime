@@ -43,7 +43,7 @@ public:
     // load pandafile from secure mem
     std::shared_ptr<JSPandaFile> LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
                                                        std::string_view entryPoint, uint8_t *buffer, size_t size,
-                                                       bool needUpdate = false);
+                                                       bool needUpdate = false, void *fileMapper = nullptr);
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename);
 
@@ -122,7 +122,7 @@ private:
     };
 
     std::shared_ptr<JSPandaFile> GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
-                                                     std::string_view entryPoint);
+                                                     std::string_view entryPoint, void *fileMapper = nullptr);
     std::shared_ptr<JSPandaFile> GetJSPandaFile(const panda_file::File *pf);
     std::shared_ptr<JSPandaFile> FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     std::shared_ptr<JSPandaFile> FindJSPandaFileUnlocked(const CString &filename);

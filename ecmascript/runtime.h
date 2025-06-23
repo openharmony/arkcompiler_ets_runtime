@@ -36,6 +36,8 @@
 namespace panda::ecmascript {
 class EcmaStringTable;
 using AppfreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
+using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
+
 class Runtime {
 public:
     PUBLIC_API static Runtime *GetInstance();
@@ -270,6 +272,16 @@ public:
         rawHeapDumpCropLevel_ = level;
     }
 
+    void SetReleaseSecureMemCallback(ReleaseSecureMemCallback callback)
+    {
+        releaseSecureMemCallback_ = callback;
+    }
+
+    ReleaseSecureMemCallback GetReleaseSecureMemCallback() const
+    {
+        return releaseSecureMemCallback_;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -356,6 +368,9 @@ private:
 
     // for rawheap dump crop level
     RawHeapDumpCropLevel rawHeapDumpCropLevel_ {RawHeapDumpCropLevel::DEFAULT};
+    
+    // release secure mem after jspandafile released.
+    ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
 
     friend class EcmaVM;
     friend class JSThread;

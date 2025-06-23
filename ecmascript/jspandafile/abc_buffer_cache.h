@@ -84,14 +84,31 @@ public:
         abcBufferCache_->AddAbcBufferToCache(filename_, buffer, size, bufferType);
     }
 
+    AbcBufferCacheScope(JSThread *thread, const CString &filename, const void *buffer, size_t size,
+        JSPandaFile *jsPandaFile, void *fileMapper)
+        : filename_(filename), jsPandaFile_(jsPandaFile), fileMapper_(fileMapper)
+    {
+        abcBufferCache_ = thread->GetEcmaVM()->GetAbcBufferCache();
+        ASSERT(abcBufferCache_ != nullptr);
+        // if input has fileMapper, assume it's secure memory
+        abcBufferCache_->AddAbcBufferToCache(filename_, buffer, size, AbcBufferType::SECURE_BUFFER);
+    }
+
     ~AbcBufferCacheScope()
     {
         ASSERT(abcBufferCache_ != nullptr);
         abcBufferCache_->DeleteAbcBufferFromCache(filename_);
+        // secure memory & make sure buffer is not used in pandafile
+        if (fileMapper_ != nullptr && jsPandaFile_->GetFileMapper() != fileMapper_) {
+            // release secure memory buffer
+            JSPandaFile::CallReleaseSecureMemFunc(fileMapper_);
+        }
     }
 
 private:
     const CString filename_;
+    JSPandaFile *jsPandaFile_ {nullptr};
+    void *fileMapper_ {nullptr};
     AbcBufferCache *abcBufferCache_ {nullptr};
 };
 }  // namespace panda::ecmascript

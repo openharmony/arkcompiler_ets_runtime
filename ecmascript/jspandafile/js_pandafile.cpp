@@ -17,6 +17,7 @@
 
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 namespace {
@@ -85,7 +86,9 @@ JSPandaFile::~JSPandaFile()
 {
     if (pf_ != nullptr) {
         delete pf_;
+        CallReleaseSecureMemFunc(fileMapper_);
         pf_ = nullptr;
+        fileMapper_ = nullptr;
     }
 
     constpoolMap_.clear();
@@ -514,5 +517,18 @@ void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
     TranslateClass(thread, methodName);
     WaitTranslateClassTaskFinished();
     SetAllMethodLiteralToMap();
+}
+
+void JSPandaFile::CallReleaseSecureMemFunc(void* fileMapper)
+{
+    if (fileMapper == nullptr) {
+        return;
+    }
+    ReleaseSecureMemCallback releaseSecureMemCallBack = Runtime::GetInstance()->GetReleaseSecureMemCallback();
+    if (releaseSecureMemCallBack != nullptr) {
+        releaseSecureMemCallBack(fileMapper);
+        return;
+    }
+    LOG_ECMA(ERROR) << "JSPandaFile::CallReleaseSecureMemFunc release secure memory failed.";
 }
 }  // namespace panda::ecmascript
