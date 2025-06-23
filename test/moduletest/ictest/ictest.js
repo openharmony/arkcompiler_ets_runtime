@@ -147,4 +147,10 @@ class C3 {
       print("v6");
   }
 }
-new C3(); 
+new C3();
+
+globalThis.a = 123;
+for (let i = 0; i < 1000; i++) {
+  globalThis.a = 321;
+}
+print(globalThis.a);
