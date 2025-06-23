@@ -1966,7 +1966,7 @@ DEF_RUNTIME_STUBS(GetModuleValueOuterInternal)
     JSTaggedValue curModule = GetArg(argv, argc, 0); // 0: means the zeroth parameter
     int32_t index =
         JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 2: means the second parameter
-    return ModuleValueAccessor::GetModuleValueOuterInternal(thread, index, curModule, false).GetRawData();
+    return ModuleValueAccessor::GetModuleValueOuterInternal<false>(thread, index, curModule).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetModuleName)
