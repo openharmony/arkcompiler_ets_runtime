@@ -1547,9 +1547,8 @@ void Heap::ProcessGCCallback()
     // even lead to another GC, so this have to invoke after this GC process.
     if (g_isEnableCMCGC) {
         thread_->InvokeWeakNodeFreeGlobalCallBack();
-    } else {
-        thread_->InvokeWeakNodeNativeFinalizeCallback();
     }
+    thread_->InvokeWeakNodeNativeFinalizeCallback();
     // PostTask for ProcessNativeDelete
     CleanCallback();
     JSFinalizationRegistry::CheckAndCall(thread_);
