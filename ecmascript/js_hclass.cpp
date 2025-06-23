@@ -353,6 +353,22 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     obj->SynchronizedTransitionClass(thread, *newJsHClass);
 }
 
+void JSHClass::AddPropertyToNewHClassWithoutTransition(const JSThread *thread, JSHandle<JSHClass> &newJsHClass,
+                                                       const JSHandle<JSTaggedValue> &key,
+                                                       const PropertyAttributes &attr)
+{
+    ASSERT(!newJsHClass->IsDictionaryMode());
+    // Add Property and metaData
+    newJsHClass->IncNumberOfProps();
+    JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout());
+    uint32_t offset = attr.GetOffset();
+    ASSERT(layoutInfoHandle->NumberOfElements() == static_cast<int>(offset));
+    ASSERT(layoutInfoHandle->GetPropertiesCapacity() > static_cast<int>(offset));
+    // Duplicate key has Already been Checked in CreateClassFuncWithProperties.
+    ASSERT(!layoutInfoHandle->CheckIsDuplicateKey(thread, offset, key->GetKeyHashCode(), key.GetTaggedValue()));
+    layoutInfoHandle->AddKey<false>(thread, offset, key.GetTaggedValue(), attr);
+}
+
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledPreventExtensionsString());

@@ -410,6 +410,9 @@ public:
     static void InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSFunction> &func);
     static void InitializeBuiltinWithDefaultValue(JSThread *thread, const JSHandle<GlobalEnv> &env,
                                                   const JSHandle<JSFunction> &func);
+    static void InitClassFunction(JSThread *thread, JSHandle<JSFunction> &func, bool callNapi);
+    static void InitClassFunctionWithClsPrototype(JSThread *thread, JSHandle<JSFunction> &func, bool callNapi,
+                                                  JSHandle<JSObject> &clsPrototype);
     static JSHClass *PUBLIC_API GetOrCreateInitialJSHClass(JSThread *thread, const JSHandle<JSFunction> &fun);
     static JSHandle<JSHClass> GetInstanceJSHClass(JSThread *thread, JSHandle<JSFunction> constructor,
                                                   JSHandle<JSTaggedValue> newTarget);

@@ -445,6 +445,17 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
     }
 }
 
+void JSHClass::AddInlinedPropToHClass(const JSThread *thread, const PropertyDescriptor &desc, size_t attrOffset,
+                                      const JSHandle<JSTaggedValue> &key, JSHandle<JSHClass> &hClass)
+{
+    ecmascript::PropertyAttributes attr(desc);
+    attr.SetIsInlinedProps(true);
+    attr.SetOffset(attrOffset);
+    attr.SetRepresentation(ecmascript::Representation::TAGGED);
+    // Classes defined by napi_define_class are different from each other, there's no need to consider about transition.
+    JSHClass::AddPropertyToNewHClassWithoutTransition(thread, hClass, key, attr);
+}
+
 template<bool checkDuplicateKeys /* = false*/>
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                     const JSHandle<JSTaggedValue> &key,

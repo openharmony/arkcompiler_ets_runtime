@@ -967,11 +967,16 @@ public:
                                                          void *data,
                                                          bool callNapi = false,
                                                          size_t nativeBindingsize = 0);
-    static Local<FunctionRef> NewConcurrentClassFunctionWithName(EcmaVM *vm, const Local<JSValueRef> &context,
+    static Local<FunctionRef> NewConcurrentClassFunctionWithName(const EcmaVM *vm, const Local<JSValueRef> &context,
                                                                  InternalFunctionCallback nativeFunc,
                                                                  NativePointerCallback deleter, const char *name,
                                                                  void *data, bool callNapi = false,
+                                                                 size_t propertyCount = 0,
+                                                                 size_t staticPropCount = 0,
+                                                                 Local<panda::JSValueRef> *keys = nullptr,
+                                                                 PropertyAttribute *attrs = nullptr,
                                                                  size_t nativeBindingsize = 0);
+                                                                 
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
                                                InternalFunctionCallback nativeFunc,
                                                NativePointerCallback deleter,

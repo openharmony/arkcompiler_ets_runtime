@@ -215,6 +215,21 @@ inline void LayoutInfo::SetIsPGODumped(int index)
     SetWithoutBarrier(fixedIdx, attr.GetTaggedValue());
 }
 
+inline bool LayoutInfo::CheckIsDuplicateKey(const JSThread *thread, int curKeyIdx, uint32_t curKeyHashCode,
+                                            const JSTaggedValue &key)
+{
+    while (curKeyIdx > 0) {
+        JSTaggedValue prevKey = GetSortedKey(--curKeyIdx);
+        if (prevKey.GetKeyHashCode() < curKeyHashCode) {
+            return false;
+        }
+        if (prevKey == key) {
+            return true;
+        }
+    }
+    return false;
+}
+
 template<bool checkDuplicateKeys /* = false*/>
 void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
                         const PropertyAttributes &attr)
@@ -237,14 +252,8 @@ void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, cons
     }
     SetSortedIndex(thread, insertIndex, number);
     if constexpr (checkDuplicateKeys) {
-        while (insertIndex > 0) {
-            JSTaggedValue prevKey = GetSortedKey(--insertIndex);
-            if (prevKey.GetKeyHashCode() < keyHash) {
-                return;
-            }
-            if (prevKey == key) {
-                THROW_TYPE_ERROR(const_cast<JSThread *>(thread), "property keys can not duplicate");
-            }
+        if (CheckIsDuplicateKey(thread, insertIndex, keyHash, key)) {
+            THROW_TYPE_ERROR(const_cast<JSThread *>(thread), "property keys can not duplicate");
         }
     }
 }

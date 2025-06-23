@@ -782,6 +782,8 @@ public:
                                                          const PropertyDescriptor *attributes);
     JSHandle<JSTaggedValue> CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                               const Local<JSValueRef> *values);
+    JSHandle<JSHClass> CreateClassFuncProtoHClass(const JSThread *thread, size_t inlNonStaticPropCount);
+    JSHandle<JSHClass> CreateClassFuncHClass(const JSThread *thread, size_t inlinedStaticPropCount);
     // Fill the given free memory range with special zam value.
     void FillFreeMemoryRange(uintptr_t start, uintptr_t end);
 
@@ -1007,7 +1009,8 @@ private:
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<GlobalEnv> &env,
                                          const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                           const JSHandle<JSTaggedValue> &prototype);
+                                           const JSHandle<JSTaggedValue> &prototype,
+                                           uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 

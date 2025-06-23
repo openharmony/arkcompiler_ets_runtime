@@ -65,6 +65,7 @@ public:
     JSTaggedValue GetSortedKey(int index) const;
     uint32_t GetSortedIndex(int index) const;
     void SetSortedIndex(const JSThread *thread, int index, int sortedIndex);
+    bool CheckIsDuplicateKey(const JSThread *thread, int curKeyIdx, uint32_t curKeyHashCode, const JSTaggedValue &key);
     template<bool checkDuplicateKeys = false>
     void AddKey(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
     void SetIsNotHole(const JSThread *thread, int index);
