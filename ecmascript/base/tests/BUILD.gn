@@ -354,7 +354,9 @@ host_unittest_action("JSHelper_DtoaHelper_Test") {
 
 host_unittest_action("JSHelper_NumberHelper_Test") {
   module_out_path = module_output_path
-
+  if (ark_standalone_build && is_ohos && run_with_qemu) {
+    defines = [ "RUN_WITH_QEMU" ]
+  }
   sources = [
     # test file
     "number_helper_test.cpp",
