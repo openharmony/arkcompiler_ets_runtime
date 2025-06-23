@@ -44,8 +44,6 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
         LOG_ECMA(FATAL) << "Alloc size " << size << " bytes string fail";
         UNREACHABLE();
     }
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    object->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return EcmaString::Cast(object);
 }
 
@@ -54,8 +52,6 @@ EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateNonMovableOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
@@ -64,8 +60,6 @@ EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
@@ -74,8 +68,6 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
@@ -84,8 +76,6 @@ EcmaString *ObjectFactory::AllocReadOnlyLineStringObject(size_t size)
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateReadOnlyOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetLineStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
@@ -95,8 +85,6 @@ EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
     NewSObjectHook();
     EcmaString* str = reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(SlicedString::SIZE,
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetSlicedStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
@@ -106,8 +94,6 @@ EcmaString *ObjectFactory::AllocTreeStringObject()
     EcmaString* str = reinterpret_cast<EcmaString *>(sHeap_->AllocateOldOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()),
         TreeString::SIZE));
-    JSTaggedValue hclass = thread_->GlobalConstants()->GetTreeStringClass();
-    str->SetFullBaseClassWithoutBarrier(reinterpret_cast<common::BaseClass*>(hclass.GetTaggedObject()));
     return str;
 }
 
