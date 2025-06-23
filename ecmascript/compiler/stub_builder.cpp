@@ -121,20 +121,24 @@ GateRef StubBuilder::CheckSuspendForCMCGC(GateRef glue)
 {
     GateRef threadHolderOffset = IntPtr(JSThread::GlueData::GetThreadHolderOffset(env_->IsArch32Bit()));
     GateRef threadHolder = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, threadHolderOffset);
-    GateRef stateAndFlags = LoadPrimitive(VariableType::INT16(), threadHolder, IntPtr(0));
-    return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(ThreadFlag::SUSPEND_REQUEST));
+    GateRef mutatorBase = LoadPrimitive(VariableType::NATIVE_POINTER(), threadHolder, IntPtr(ThreadHolder::GetMutatorBaseOffset()));
+    GateRef safepointActive = LoadPrimitive(VariableType::INT32(), mutatorBase, IntPtr(common::MutatorBase::GetSafepointActiveOffset()));
+    return safepointActive;
 }
 
 void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue)
 {
     Label loopEnd(env);
     Label needSuspend(env);
-    Label checkNext(env);
+    Label checkSuspendForCMCGC(env);
+    Label checkSuspend(env);
     BRANCH_UNLIKELY(LoadPrimitive(
         VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &needSuspend, &checkNext);
-    Bind(&checkNext);
+        &checkSuspendForCMCGC, &checkSuspend);
+    Bind(&checkSuspend);
     BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
+    Bind(&checkSuspendForCMCGC);
+    BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspendForCMCGC(glue)), &needSuspend, &loopEnd);
     Bind(&needSuspend);
     {
         CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});
