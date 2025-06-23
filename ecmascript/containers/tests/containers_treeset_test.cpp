@@ -1080,6 +1080,84 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionTest)
     }
 }
 
+HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionApi20Test)
+{
+    constexpr int NODE_NUMBERS = 8;
+    // 20 : Isolating version to fix comparator missing
+    thread->GetEcmaVM()->SetVMAPIVersion(20);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestCompareFunction));
+    JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet(func.GetTaggedValue());
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tset.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeSet::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tset->GetSize(), i + 1);
+    }
+    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+
+    // test add string
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    std::string myKey("mykey");
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        std::string ikey = myKey + std::to_string(i);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tset.GetTaggedValue());
+        callInfo->SetCallArg(0, key.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeSet::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+    }
+    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+
+    // test sort
+    auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    callInfo1->SetFunction(JSTaggedValue::Undefined());
+    callInfo1->SetThis(tset.GetTaggedValue());
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+    JSHandle<JSTaggedValue> iterValues(thread, ContainersTreeSet::Values(callInfo1));
+    TestHelper::TearDownFrame(thread, prev1);
+    EXPECT_TRUE(iterValues->IsJSAPITreeSetIterator());
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        std::string ikey = myKey + std::to_string(NODE_NUMBERS - 1 - i);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(iterValues.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        result.Update(JSAPITreeSetIterator::Next(callInfo));
+        TestHelper::TearDownFrame(thread, prev);
+        JSHandle<JSTaggedValue> itRes = JSIterator::IteratorValue(thread, result);
+        EXPECT_TRUE(JSTaggedValue::SameValue(key, itRes));
+    }
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(iterValues.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        result.Update(JSAPITreeSetIterator::Next(callInfo));
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ((NODE_NUMBERS - 1 - i), JSIterator::IteratorValue(thread, result)->GetInt());
+    }
+}
+
 HWTEST_F_L0(ContainersTreeSetTest, ProxyOfGetLength)
 {
     constexpr uint32_t NODE_NUMBERS = 8;

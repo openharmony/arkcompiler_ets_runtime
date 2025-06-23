@@ -473,9 +473,12 @@ JSHandle<Derived> TaggedTree<Derived>::GrowCapacity(const JSThread *thread, JSHa
     int newCapacity = ComputeCapacity(oldCapacity);
     int length = ELEMENTS_START_INDEX + newCapacity * (Derived::ENTRY_SIZE);
     JSHandle<Derived> newTree = AdjustTaggedTree(thread, tree, length);
-    JSTaggedValue fn = tree->GetCompare();
-    if (!fn.IsUndefined() && !fn.IsNull()) {
-        newTree->SetCompare(thread, fn);
+    // 20 : version isolation at api20
+    if (thread->GetEcmaVM()->GetVMAPIVersion() >= 20) {
+        JSTaggedValue fn = tree->GetCompare();
+        if (!fn.IsUndefined() && !fn.IsNull()) {
+            newTree->SetCompare(thread, fn);
+        }
     }
     newTree->SetCapacity(thread, newCapacity);
     return newTree;
