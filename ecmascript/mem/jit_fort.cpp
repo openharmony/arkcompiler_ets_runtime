@@ -208,6 +208,18 @@ void JitFort::UpdateFreeSpace()
         << allocator_->GetAvailableSize();
 }
 
+void JitFort::ClearMarkBits()
+{
+    ASSERT(g_isEnableCMCGC);
+    JitFortRegion *region = regionList_.GetFirst();
+    while (region) {
+        region->GetGCBitset()->IterateMarkedBitsConst(
+            region->GetBegin(), region->GetGCBitsetSize(),
+            [](void *, size_t) {}); // Dummy vistor, only need to trigger bits clearing.
+        region = region->GetNext();
+    }
+}
+
 void JitFort::FreeRegion(JitFortRegion *region)
 {
     LOG_JIT(DEBUG) << "JitFort FreeRegion " << (void*)(region->GetBegin());

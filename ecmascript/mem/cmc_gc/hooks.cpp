@@ -17,6 +17,7 @@
 
 #include <cstdint>
 
+#include "common_components/heap/heap.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
@@ -181,7 +182,14 @@ void SweepThreadLocalJitFort()
     runtime->GCIterateThreadList([&](JSThread* thread) {
         if (thread->IsJSThread()) {
             auto vm = thread->GetEcmaVM();
-            const_cast<panda::ecmascript::Heap*>(vm->GetHeap())->GetMachineCodeSpace()->Sweep();
+            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+                // JitFort space does not have generational feature, so far we have to assume all JitFort code is in
+                // oldspace after creation.
+                const_cast<panda::ecmascript::Heap *>(vm->GetHeap())->GetMachineCodeSpace()->ClearMarkBits();
+            } else {
+                // Small JitFort space implicitly clear the marking bits after sweep.
+                const_cast<panda::ecmascript::Heap *>(vm->GetHeap())->GetMachineCodeSpace()->Sweep();
+            }
         }
     });
 }

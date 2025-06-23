@@ -748,6 +748,14 @@ void MachineCodeSpace::PrepareSweeping()
     }
 }
 
+void MachineCodeSpace::ClearMarkBits()
+{
+    ASSERT(g_isEnableCMCGC);
+    if (jitFort_) {
+        jitFort_->ClearMarkBits();
+    }
+}
+
 void MachineCodeSpace::Sweep()
 {
     if (!g_isEnableCMCGC) {
