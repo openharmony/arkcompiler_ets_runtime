@@ -58,6 +58,8 @@ public:
     bool InRange(uintptr_t address) const;
     void CollectFreeRanges(JitFortRegion  *region);
     void UpdateFreeSpace();
+    // Used by CMCGC to clear the marking bits in Young GC.
+    void ClearMarkBits();
 
     JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
     static void InitJitFortResource();

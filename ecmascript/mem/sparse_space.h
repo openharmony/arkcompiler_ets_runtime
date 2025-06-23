@@ -291,6 +291,8 @@ public:
     void AsyncSweep(bool isMain) override;
     void Sweep() override;
     void PrepareSweeping() override;
+    // Used by CMCGC to clear the marking bits in Young GC.
+    void ClearMarkBits();
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
     uintptr_t PUBLIC_API JitFortAllocate(MachineCodeDesc *desc);
