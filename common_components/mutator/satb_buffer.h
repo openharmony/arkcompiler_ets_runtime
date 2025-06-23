@@ -246,6 +246,18 @@ public:
         }
     }
 
+    template<typename T>
+    void TryFetchOneRetiredNode(T& stack)
+    {
+        TreapNode* node = retiredNodes_.Pop();
+        if (!node) {
+            return;
+        }
+        node->GetObjects(stack);
+        node->Clear();
+        freeNodes_.Push(node);
+    }
+
     void ClearBuffer()
     {
         TreapNode* head = retiredNodes_.PopAll();
