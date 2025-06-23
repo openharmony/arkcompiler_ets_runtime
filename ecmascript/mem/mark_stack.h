@@ -170,6 +170,7 @@ private:
 
 using MarkStack = ContinuousStack<TaggedObject>;
 using ProcessQueue = ContinuousStack<JSTaggedType>;
+using JSWeakMapProcessQueue = ContinuousStack<TaggedObject>;
 }  // namespace ecmascript
 }  // namespace panda
 

@@ -288,6 +288,7 @@ public:
                 break;
             case JSType::JS_WEAK_MAP:
                 JSWeakMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                visitor.VisitJSWeakMap(object);
                 break;
             case JSType::JS_WEAK_SET:
                 JSWeakSet::Cast(object)->VisitRangeSlot<visitType>(visitor);

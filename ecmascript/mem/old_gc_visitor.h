@@ -47,6 +47,8 @@ public:
                                      VisitObjectArea area) override;
 
     inline void VisitObjectHClassImpl(BaseObject *hclass) override;
+
+    inline void VisitJSWeakMapImpl(BaseObject *rootObject) override;
 private:
     inline void HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate);
 

@@ -60,11 +60,21 @@ public:
         static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(hclass);
     }
 
+    // A temporary impl to collect JSWeakMap, need to refactor and fix
+    void VisitJSWeakMap(BaseObject *rootObject)
+    {
+        ASSERT(JSTaggedValue(TaggedObject::Cast(rootObject)).IsJSWeakMap());
+        static_cast<DerivedVisitor*>(this)->VisitJSWeakMapImpl(rootObject);
+    }
+
     virtual void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] uintptr_t startAddr,
                                       [[maybe_unused]] uintptr_t endAddr, [[maybe_unused]] VisitObjectArea area)
     {}
 
     virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *hclass)
+    {}
+
+    virtual void VisitJSWeakMapImpl([[maybe_unused]] BaseObject *rootObject)
     {}
 };
 

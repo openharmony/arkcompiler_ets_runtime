@@ -45,6 +45,8 @@ private:
     void MarkRoots();
     void ProcessSharedGCRSetWorkList();
     bool HasEvacuated(Region *region);
+    void UpdateRecordWeakReference(uint32_t threadId);
+    void UpdateRecordJSWeakMap(uint32_t threadId);
 
     Heap *heap_;
     size_t youngAndOldAliveSize_ = 0;
@@ -82,6 +84,8 @@ public:
 
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
+
+    inline void VisitJSWeakMapImpl(BaseObject *rootObject) override;
 
     inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
 private:
@@ -138,6 +142,8 @@ private:
     inline void PushObject(TaggedObject *object);
 
     inline void RecordWeakReference(JSTaggedType *weak);
+
+    inline void RecordJSWeakMap(TaggedObject *object);
 
     Heap *heap_ {nullptr};
     WorkNodeHolder *workNodeHolder_ {nullptr};

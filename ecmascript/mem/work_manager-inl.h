@@ -28,6 +28,7 @@ void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack
     workManager_ = workManager;
     workStack_ = workStack;
     continuousQueue_ = new ProcessQueue();
+    continuousJSWeakMapQueue_ = new JSWeakMapProcessQueue();
 }
 
 void WorkNodeHolder::Destroy()
@@ -35,6 +36,10 @@ void WorkNodeHolder::Destroy()
     continuousQueue_->Destroy();
     delete continuousQueue_;
     continuousQueue_ = nullptr;
+
+    continuousJSWeakMapQueue_->Destroy();
+    delete continuousJSWeakMapQueue_;
+    continuousJSWeakMapQueue_ = nullptr;
 }
 
 void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase)
@@ -44,6 +49,8 @@ void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPh
     outNode_ = workManager_->AllocateWorkNode();
     weakQueue_ = new ProcessQueue();
     weakQueue_->BeginMarking(continuousQueue_);
+    jsWeakMapQueue_ = new JSWeakMapProcessQueue();
+    jsWeakMapQueue_->BeginMarking(continuousJSWeakMapQueue_);
     aliveSize_ = 0;
     promotedSize_ = 0;
     parallelGCTaskPhase_ = taskPhase;
@@ -58,6 +65,11 @@ void WorkNodeHolder::Finish()
         weakQueue_->FinishMarking(continuousQueue_);
         delete weakQueue_;
         weakQueue_ = nullptr;
+    }
+    if (jsWeakMapQueue_ != nullptr) {
+        jsWeakMapQueue_->FinishMarking(continuousJSWeakMapQueue_);
+        delete jsWeakMapQueue_;
+        jsWeakMapQueue_ = nullptr;
     }
     if (allocator_ != nullptr) {
         allocator_->Finalize();
@@ -121,10 +133,17 @@ void WorkNodeHolder::PushWeakReference(JSTaggedType *weak)
 {
     weakQueue_->PushBack(weak);
 }
+
+void WorkNodeHolder::PushJSWeakMap(TaggedObject *jsWeakMap)
+{
+    jsWeakMapQueue_->PushBack(jsWeakMap);
+}
+
 void WorkNodeHolder::IncreaseAliveSize(size_t size)
 {
     aliveSize_ += size;
 }
+
 void WorkNodeHolder::IncreasePromotedSize(size_t size)
 {
     promotedSize_ += size;
@@ -134,6 +153,12 @@ ProcessQueue *WorkNodeHolder::GetWeakReferenceQueue() const
 {
     return weakQueue_;
 }
+
+JSWeakMapProcessQueue *WorkNodeHolder::GetJSWeakMapQueue() const
+{
+    return jsWeakMapQueue_;
+}
+
 TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
 {
     return allocator_;
