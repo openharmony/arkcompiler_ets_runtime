@@ -174,14 +174,6 @@ void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>
     VisitAllObjectsBefore(std::move(func), end);
 }
 
-void RegionDesc::VisitAllObjectsBeforeTrace(const std::function<void(BaseObject *)> &&func)
-{
-    uintptr_t allocPtr = GetRegionAllocPtr();
-    uintptr_t phaseLine = GetTraceLine();
-    uintptr_t end = std::min(phaseLine, allocPtr);
-    VisitAllObjectsBefore(std::move(func), end);
-}
-
 bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func)
 {
     // no need to visit this region.
@@ -208,16 +200,21 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
     return true;
 }
 
+void RegionDesc::VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func)
+{
+    uintptr_t end = std::min(GetTraceLine(), GetRegionAllocPtr());
+    GetRSet()->VisitAllMarkedCardBefore(func, GetRegionStart(), end);
+}
+
+void RegionDesc::VisitRememberSetBeforeFix(const std::function<void(BaseObject*)>& func)
+{
+    uintptr_t end = std::min(GetFixLine(), GetRegionAllocPtr());
+    GetRSet()->VisitAllMarkedCardBefore(func, GetRegionStart(), end);
+}
+
 void RegionDesc::VisitRememberSet(const std::function<void(BaseObject*)>& func)
 {
-    RegionRSet* rSet = GetRSet();
-    if (IsLargeRegion()) {
-        if (rSet->IsMarkedCard(0)) {
-            func(reinterpret_cast<BaseObject*>(GetRegionStart()));
-        }
-        return;
-    }
-    rSet->VisitAllMarkedCard(func, GetRegionStart());
+    GetRSet()->VisitAllMarkedCardBefore(func, GetRegionStart(), GetRegionAllocPtr());
 }
 
 void RegionList::MergeRegionList(RegionList& srcList, RegionDesc::RegionType regionType)
@@ -708,12 +705,11 @@ void RegionManager::FixRegionList(TraceCollector& collector, RegionList& list)
 
 static void FixOldRegion(TraceCollector& collector, RegionDesc* region)
 {
-    region->VisitAllObjects([&collector, &region](BaseObject* object) {
-        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object) || region->IsInRSet(object)) {
-            DLOG(FIX, "fix: mature obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-            collector.FixObjectRefFields(object);
-        }
-    });
+    auto visitFunc = [&collector, &region](BaseObject* object) {
+        DLOG(FIX, "fix: old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
+        collector.FixObjectRefFields(object);
+    };
+    region->VisitRememberSet(visitFunc);
 }
 
 void RegionManager::FixOldRegionList(TraceCollector& collector, RegionList& list)
@@ -726,12 +722,11 @@ void RegionManager::FixOldRegionList(TraceCollector& collector, RegionList& list
 
 static void FixRecentOldRegion(TraceCollector& collector, RegionDesc* region)
 {
-    region->VisitAllObjectsBeforeFix([&collector, &region](BaseObject* object) {
-        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object) || region->IsInRSet(object)) {
-            DLOG(FIX, "fix: mature obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-            collector.FixObjectRefFields(object);
-        }
-    });
+    auto visitFunc = [&collector, &region](BaseObject* object) {
+        DLOG(FIX, "fix: old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
+        collector.FixObjectRefFields(object);
+    };
+    region->VisitRememberSetBeforeFix(visitFunc);
 }
 
 void RegionManager::FixRecentOldRegionList(TraceCollector& collector, RegionList& list)
@@ -1006,14 +1001,10 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
     return addr;
 }
 
-void RegionManager::VisitRememberSet(const std::function<void(BaseObject*)>& func)
+void RegionManager::MarkRememberSet(const std::function<void(BaseObject*)>& func)
 {
     auto visitFunc = [&func](RegionDesc* region) {
-        region->VisitAllObjectsBeforeTrace([&region, &func](BaseObject* obj) {
-            if (region->IsInRSet(obj)) {
-                func(obj);
-            }
-        });
+        region->VisitRememberSetBeforeTrace(func);
     };
     recentPinnedRegionList_.VisitAllRegions(visitFunc);
     pinnedRegionList_.VisitAllRegions(visitFunc);

@@ -509,9 +509,9 @@ void RegionSpace::FeedHungryBuffers()
     }
 }
 
-void RegionSpace::VisitRememberSet(const std::function<void(BaseObject*)>& func)
+void RegionSpace::MarkRememberSet(const std::function<void(BaseObject*)>& func)
 {
-    oldSpace_.VisitRememberSet(func);
-    regionManager_.VisitRememberSet(func);
+    oldSpace_.MarkRememberSet(func);
+    regionManager_.MarkRememberSet(func);
 }
 } // namespace common

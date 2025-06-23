@@ -64,7 +64,9 @@ void PostTraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, Ba
 
 void PostTraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
-    UpdateRememberSet(obj, ref);
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        UpdateRememberSet(obj, ref);
+    }
 }
 
 void PostTraceBarrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const

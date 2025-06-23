@@ -82,7 +82,9 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
     }
-    UpdateRememberSet(obj, ref);
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        UpdateRememberSet(obj, ref);
+    }
     ref = (BaseObject*)((uintptr_t)ref & ~(TAG_WEAK));
     Mutator* mutator = Mutator::GetMutator();
     mutator->RememberObjectInSatbBuffer(ref);
