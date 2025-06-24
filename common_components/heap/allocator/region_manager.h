@@ -400,7 +400,11 @@ public:
     void PrepareTrace()
     {
         AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
-            RegionDesc* region = regionBuffer.GetRegion();
+            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetTraceLine();
+            }
+            region = regionBuffer.GetRegion<AllocBufferType::OLD>();
             if (region != RegionDesc::NullRegion()) {
                 region->SetTraceLine();
             }

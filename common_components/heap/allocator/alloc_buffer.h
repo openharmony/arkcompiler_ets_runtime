@@ -18,10 +18,17 @@
 
 #include <functional>
 
+#include "common_components/mutator/thread_local.h"
 #include "common_components/heap/allocator/region_list.h"
 #include "common_components/common/mark_work_stack.h"
 
 namespace common {
+
+enum class AllocBufferType: uint8_t {
+    YOUNG = 0, // for young space
+    OLD,       // for old space
+};
+
 // thread-local data structure
 class AllocationBuffer {
 public:
@@ -32,9 +39,28 @@ public:
     static AllocationBuffer* GetAllocBuffer();
     HeapAddress ToSpaceAllocate(size_t size, AllocType allocType);
     HeapAddress Allocate(size_t size, AllocType allocType);
-    RegionDesc* GetRegion() { return tlRegion_; }
+
+    template<AllocBufferType type = AllocBufferType::YOUNG>
+    RegionDesc* GetRegion()
+    {
+        if constexpr (type == AllocBufferType::YOUNG) {
+            return tlRegion_;
+        } else if constexpr (type == AllocBufferType::OLD) {
+            return tlOldRegion_;
+        }
+    }
+
+    template <AllocBufferType type = AllocBufferType::YOUNG>
+    void SetRegion(RegionDesc* newRegion)
+    {
+        if constexpr (type == AllocBufferType::YOUNG) {
+            tlRegion_ = newRegion;
+        } else if constexpr (type == AllocBufferType::OLD) {
+            tlOldRegion_ = newRegion;
+        }
+    }
+
     RegionDesc* GetPreparedRegion() { return preparedRegion_.load(std::memory_order_acquire); }
-    void SetRegion(RegionDesc* newRegion) { tlRegion_ = newRegion; }
     inline void ClearRegion()
     {
         if (tlRegion_ == RegionDesc::NullRegion()) {
@@ -86,6 +112,7 @@ private:
     // tlRegion in AllocBuffer is a shortcut for fast allocation.
     // we should handle failure in RegionManager
     RegionDesc* tlRegion_ = RegionDesc::NullRegion();
+    RegionDesc* tlOldRegion_ = RegionDesc::NullRegion();
 
     std::atomic<RegionDesc*> preparedRegion_ = { nullptr };
     // allocate objects which are exposed to runtime thus can not be moved.

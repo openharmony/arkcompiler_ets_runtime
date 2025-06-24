@@ -1641,13 +1641,7 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
     Label *callRuntime, [[maybe_unused]] Label *exit)
 {
     auto env = GetEnvironment();
-    Label success(env);
     Label next(env);
-    Label checkNext(env);
-    BRANCH_UNLIKELY(
-        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        callRuntime, &checkNext);
-    Bind(&checkNext);
 
 #if defined(ARK_ASAN_ON)
     Jump(callRuntime);
@@ -1658,6 +1652,27 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
     BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
     Bind(&next);
 #endif
+    Label isCMCGC(env);
+    Label notCMCGC(env);
+    BRANCH_UNLIKELY(
+        LoadPrimitive(VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &isCMCGC, &notCMCGC);
+    Bind(&isCMCGC);
+    {
+        AllocateInSOldPrologueImplForCMCGC(result, callRuntime, exit);
+    }
+    Bind(&notCMCGC);
+    {
+        AllocateInSOldPrologueImpl(result, callRuntime, exit);
+    }
+#endif
+}
+
+void NewObjectStubBuilder::AllocateInSOldPrologueImpl([[maybe_unused]] Variable *result,
+    Label *callRuntime, [[maybe_unused]] Label *exit)
+{
+    auto env = GetEnvironment();
+    Label success(env);
     auto topOffset = JSThread::GlueData::GetSOldSpaceAllocationTopAddressOffset(env->Is32Bit());
     auto endOffset = JSThread::GlueData::GetSOldSpaceAllocationEndAddressOffset(env->Is32Bit());
     auto topAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, IntPtr(topOffset));
@@ -1675,7 +1690,30 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
         result->WriteVariable(top);
         Jump(exit);
     }
-#endif
+}
+
+void NewObjectStubBuilder::AllocateInSOldPrologueImplForCMCGC(Variable *result, Label *callRuntime, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label success(env);
+
+    auto allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(env->Is32Bit());
+    auto allocBufferAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, IntPtr(allocBufferOffset));
+    auto tlOldRegion =
+        LoadPrimitive(VariableType::NATIVE_POINTER(), allocBufferAddress, env->Is32Bit() ? IntPtr(4) : IntPtr(8));
+    auto allocPtr = LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, IntPtr(0));
+    auto regionEnd = LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, env->Is32Bit()? IntPtr(4) : IntPtr(8));
+    auto newAllocPtr = PtrAdd(allocPtr, size_);
+    BRANCH(IntPtrGreaterThan(newAllocPtr, regionEnd), callRuntime, &success);
+    Bind(&success);
+    {
+        Store(VariableType::NATIVE_POINTER(), glue_, tlOldRegion, IntPtr(0), newAllocPtr, MemoryAttribute::NoBarrier());
+        if (env->Is32Bit()) {
+            allocPtr = ZExtInt32ToInt64(allocPtr);
+        }
+        result->WriteVariable(allocPtr);
+        Jump(exit);
+    }
 }
 
 void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
@@ -1683,11 +1721,6 @@ void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef
     // disable fastpath for now
     auto env = GetEnvironment();
     Label callRuntime(env);
-    Label checkNext(env);
-    BRANCH_UNLIKELY(LoadPrimitive(
-        VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &callRuntime, &checkNext);
-    Bind(&checkNext);
     AllocateInSOldPrologue(result, &callRuntime, exit);
     Bind(&callRuntime);
     {

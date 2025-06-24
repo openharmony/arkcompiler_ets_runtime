@@ -21,10 +21,13 @@
 namespace common {
 void OldSpace::DumpRegionStats() const
 {
-    size_t oldRegions = oldRegionList_.GetRegionCount();
-    size_t oldUnits = oldRegionList_.GetUnitCount();
+    size_t oldRegions =
+        tlRegionList_.GetRegionCount() + recentFullRegionList_.GetRegionCount() + oldRegionList_.GetRegionCount();
+    size_t oldUnits =
+        tlRegionList_.GetUnitCount() + recentFullRegionList_.GetUnitCount() + oldRegionList_.GetUnitCount();
     size_t oldSize = oldUnits * RegionDesc::UNIT_SIZE;
-    size_t allocFromSize = oldRegionList_.GetAllocatedSize();
+    size_t allocFromSize =
+        tlRegionList_.GetAllocatedSize() + recentFullRegionList_.GetAllocatedSize() + oldRegionList_.GetAllocatedSize();
 
     VLOG(DEBUG, "\told-regions %zu: %zu units (%zu B, alloc %zu)",
         oldRegions,  oldUnits, oldSize, allocFromSize);

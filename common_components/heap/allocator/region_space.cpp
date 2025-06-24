@@ -25,7 +25,7 @@
 #include "common_components/heap/heap.h"
 
 namespace common {
-RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
+RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem, AllocType allocType)
 {
     RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
     if (region != nullptr) {
@@ -49,7 +49,13 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
                 region->SetFixLine();
             }
 
-            youngSpace_.AddThreadLocalRegion(region);
+            if (allocType == AllocType::MOVEABLE_OBJECT) {
+                youngSpace_.AddThreadLocalRegion(region);
+            } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
+                oldSpace_.AddThreadLocalRegion(region);
+            } else {
+                UNREACHABLE();
+            }
             DLOG(REGION, "alloc tl-region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u, gc phase: %u",
                 region, region->GetRegionStart(), region->GetRegionSize(),
                 region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
@@ -330,8 +336,11 @@ void AllocationBuffer::ClearThreadLocalRegion()
 {
     if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
         RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-        heap.HandleFullThreadLocalRegion(tlRegion_);
+        heap.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
         tlRegion_ = RegionDesc::NullRegion();
+
+        heap.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
+        tlOldRegion_ = RegionDesc::NullRegion();
     }
 }
 AllocationBuffer* AllocationBuffer::GetAllocBuffer() { return ThreadLocal::GetAllocBuffer(); }
@@ -346,6 +355,7 @@ void AllocationBuffer::Init()
     static_assert(offsetof(AllocationBuffer, tlRegion_) == 0,
                   "need to modify the offset of this value in llvm-project at the same time");
     tlRegion_ = RegionDesc::NullRegion();
+    tlOldRegion_ = RegionDesc::NullRegion();
     Heap::GetHeap().RegisterAllocBuffer(*this);
 }
 
@@ -376,8 +386,17 @@ HeapAddress AllocationBuffer::Allocate(size_t totalSize, AllocType allocType)
         return AllocateRawPointerObject(totalSize);
     }
 
-    if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-        addr = tlRegion_->Alloc(totalSize);
+    ASSERT_LOGF(allocType == AllocType::MOVEABLE_OBJECT || allocType == AllocType::MOVEABLE_OLD_OBJECT,
+                "unexpected alloc type");
+
+    if (allocType == AllocType::MOVEABLE_OBJECT) {
+        if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
+            addr = tlRegion_->Alloc(totalSize);
+        }
+    } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
+        if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
+            addr = tlOldRegion_->Alloc(totalSize);
+        }
     }
 
     if (UNLIKELY_CC(addr == 0)) {
@@ -394,24 +413,45 @@ HeapAddress AllocationBuffer::AllocateImpl(size_t totalSize, AllocType allocType
     RegionSpace& heapSpace = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
 
     // allocate from thread local region
-    if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-        HeapAddress addr = tlRegion_->Alloc(totalSize);
-        if (addr != 0) {
-            return addr;
-        }
+    if (allocType == AllocType::MOVEABLE_OBJECT) {
+        if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
+            HeapAddress addr = tlRegion_->Alloc(totalSize);
+            if (addr != 0) {
+                return addr;
+            }
 
-        // allocation failed because region is full.
-        if (tlRegion_->IsThreadLocalRegion()) {
-            heapSpace.HandleFullThreadLocalRegion(tlRegion_);
-            tlRegion_ = RegionDesc::NullRegion();
+            // allocation failed because region is full.
+            if (tlRegion_->IsThreadLocalRegion()) {
+                heapSpace.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
+                tlRegion_ = RegionDesc::NullRegion();
+            }
+        }
+    } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
+        if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
+            HeapAddress addr = tlOldRegion_->Alloc(totalSize);
+            if (addr != 0) {
+                return addr;
+            }
+
+            // allocation failed because region is full.
+            if (tlOldRegion_->IsThreadLocalRegion()) {
+                heapSpace.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
+                tlOldRegion_ = RegionDesc::NullRegion();
+            }
         }
     }
 
-    RegionDesc* r = heapSpace.AllocateThreadLocalRegion();
+    RegionDesc* r = heapSpace.AllocateThreadLocalRegion(false, allocType);
     if (UNLIKELY_CC(r == nullptr)) {
         return 0;
     }
-    tlRegion_ = r;
+
+    if (allocType == AllocType::MOVEABLE_OBJECT) {
+        tlRegion_ = r;
+    } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
+        tlOldRegion_ = r;
+    }
+
     return r->Alloc(totalSize);
 }
 

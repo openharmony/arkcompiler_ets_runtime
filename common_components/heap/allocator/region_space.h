@@ -73,15 +73,23 @@ public:
 
     void Init(const RuntimeParam &param) override;
 
-    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false);
+    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false,
+                                          AllocType allocType = AllocType::MOVEABLE_OBJECT);
 
+    template <AllocBufferType type = AllocBufferType::YOUNG>
     void HandleFullThreadLocalRegion(RegionDesc* region) noexcept
     {
         ASSERT_LOGF(region->IsThreadLocalRegion(), "unexpected region type");
-        if (IsGcThread()) {
-            toSpace_.HandleFullThreadLocalRegion(region);
-        } else {
-            youngSpace_.HandleFullThreadLocalRegion(region);
+
+        if constexpr (type == AllocBufferType::YOUNG) {
+            if (IsGcThread()) {
+                toSpace_.HandleFullThreadLocalRegion(region);
+            } else {
+                youngSpace_.HandleFullThreadLocalRegion(region);
+            }
+        } else if constexpr (type == AllocBufferType::OLD) {
+            ASSERT_LOGF(!IsGcThread(), "unexpected gc thread for old space");
+            oldSpace_.HandleFullThreadLocalRegion(region);
         }
     }
 
@@ -235,6 +243,7 @@ public:
     void AssembleSmallGarbageCandidates()
     {
         youngSpace_.AssembleGarbageCandidates(fromSpace_);
+        oldSpace_.AssembleRecentFull();
         if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
             oldSpace_.ClearRSet();
             oldSpace_.AssembleGarbageCandidates(fromSpace_);

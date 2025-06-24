@@ -173,6 +173,8 @@ private:
     void AllocateInYoung(Variable *result, Label *exit, GateRef hclass);
     void AllocateInYoung(Variable *result, Label *error, Label *noError, GateRef hclass);
     void AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit);
+    void AllocateInSOldPrologueImpl(Variable *result, Label *callRuntime, Label *exit);
+    void AllocateInSOldPrologueImplForCMCGC(Variable *result, Label *callRuntime, Label *exit);
     void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
