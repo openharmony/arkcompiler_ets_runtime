@@ -55,6 +55,10 @@
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/serializer/inter_op_value_deserializer.h"
+#include "ecmascript/serializer/inter_op_value_serializer.h"
+#endif
 
 namespace panda {
 using ecmascript::AccessorData;
@@ -6075,6 +6079,68 @@ bool JSNApi::IsValidHeapObject(const EcmaVM *vm, uintptr_t addr)
     return vm->GetCrossVMOperator()->IsValidHeapObject(value);
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+void *JSNApi::InterOpSerializeValue([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Local<JSValueRef> value,
+    [[maybe_unused]] Local<JSValueRef> transfer, [[maybe_unused]] Local<JSValueRef> cloneList,
+    [[maybe_unused]] bool defaultTransfer, [[maybe_unused]] bool defaultCloneShared)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
+    JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
+    JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    ecmascript::InterOpValueSerializer serializer(thread, defaultTransfer, defaultCloneShared);
+    std::unique_ptr<ecmascript::SerializeData> data;
+    if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
+        data = serializer.Release();
+    }
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
+    }
+    if (data == nullptr) {
+        return nullptr;
+    } else {
+        return reinterpret_cast<void *>(data.release());
+    }
+#else
+    LOG_FULL(FATAL) << "Only support in inter-op";
+    UNREACHABLE();
+#endif
+}
+
+Local<JSValueRef> JSNApi::InterOpDeserializeValue([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] void *recoder,
+                                                  [[maybe_unused]] void *hint)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    ecmascript::ThreadManagedScope scope(thread);
+    std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
+    ecmascript::InterOpValueDeserializer deserializer(thread, data.release(), hint);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
+    }
+    return JSNApiHelper::ToLocal<ObjectRef>(result);
+#else
+    LOG_FULL(FATAL) << "Only support in inter-op";
+    UNREACHABLE();
+#endif
+}
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
                              Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)

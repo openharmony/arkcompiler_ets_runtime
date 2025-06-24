@@ -34,6 +34,7 @@ static constexpr int SERIALIZE_SPACE_NUM = 12;
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
+typedef Local<JSValueRef> (*AttachXRefFunc)(void *enginePointer, void *attachXRefData);
 typedef void (*DetachFinalizer)(void *detachedObject, void *finalizerHint);
 
 struct NativeBindingDetachInfo {
@@ -68,6 +69,7 @@ enum class EncodeFlag : uint8_t {
     SHARED_ARRAY_BUFFER,
     SENDABLE_ARRAY_BUFFER,
     NATIVE_BINDING_OBJECT,
+    XREF_BINDING_OBJECT,    // Only support in inter-op.
     JS_ERROR,
     JS_REG_EXP,
     SHARED_OBJECT,

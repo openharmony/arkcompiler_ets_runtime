@@ -388,6 +388,7 @@ public:
         Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
     }
 
+    JSTaggedValue GetNativePointerByIndex(const JSThread *thread, int32_t index) const;
     void* GetNativePointerField(const JSThread *thread, int32_t index) const;
     static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
                                       void *nativePointer, const NativePointerCallback &callBack, void *data,

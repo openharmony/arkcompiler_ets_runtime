@@ -100,6 +100,7 @@ private:
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
     void DeserializeObjectField(uintptr_t start, uintptr_t end);
     size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset);
+    virtual size_t DerivedExtraReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset);
     void HandleNewObjectEncodeFlag(SerializedObjectSpace space, uintptr_t objAddr, size_t fieldOffset);
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
@@ -230,15 +231,17 @@ private:
     }
 
 protected:
+    JSThread *thread_;
     SerializeData *data_;
+    void *engine_;
     size_t position_ {0};
     CVector<JSTaggedType> objectVector_ {};
 
+    virtual void DeserializeSpecialRecordedObjects() {}
+
 private:
-    JSThread *thread_;
     Heap *heap_;
     SharedHeap *sheap_;
-    void *engine_;
     uintptr_t currentRegularObjectAddr_ {0};
     uintptr_t currentRegularRegionBeginAddr_ {0};
     uintptr_t currentPinObjectAddr_ {0};
