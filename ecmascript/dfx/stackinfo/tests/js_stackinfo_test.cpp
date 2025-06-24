@@ -46,6 +46,7 @@ public:
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        JsStackInfo::nameMap.clear();
     }
 
     EcmaVM *instance {nullptr};
@@ -292,6 +293,7 @@ HWTEST_F_L0(JsStackInfoTest, TestParseJsFrameInfo)
     JsFunction jsFunction;
     ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(), EntityId(methods[0].methodId), offset, jsFunction);
     EXPECT_TRUE(std::string(jsFunction.functionName) == "foo");
+    EXPECT_TRUE(JsStackInfo::nameMap.empty());
 }
 
 /**
@@ -394,6 +396,7 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     EXPECT_TRUE(ret == 1);
 
     ret = ark_destory_js_symbol_extractor(extractorptr2);
+    EXPECT_TRUE(!JsStackInfo::nameMap.empty());
     EXPECT_TRUE(ret == 1);
 }
 
@@ -573,6 +576,7 @@ HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__001)
 
     ret = ark_parse_js_frame_info_local(byteCodePc, mapBase, loadOffset, &jsFunction);
     EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(JsStackInfo::nameMap.empty());
 
     ark_destroy_local();
 
