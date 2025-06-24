@@ -1156,7 +1156,11 @@ ecma_source += [
 ]
 
 if (ark_js_hybrid) {
-  ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
+  ecma_source += [
+    "ecmascript/cross_vm/cross_vm_operator.cpp",
+    "ecmascript/serializer/inter_op_value_deserializer.cpp",
+    "ecmascript/serializer/inter_op_value_serializer.cpp",
+  ]
 }
 
 if (!is_arkui_x) {

@@ -1656,6 +1656,12 @@ public:
         void *detachedHint = nullptr;
     };
 
+    struct XRefBindingInfo {
+        static XRefBindingInfo* CreateNewInstance() { return new(std::nothrow) XRefBindingInfo(); }
+        void *attachXRefFunc = nullptr;
+        void *attachXRefData = nullptr;
+    };
+
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
     enum class PUBLIC_API TRIGGER_GC_TYPE : uint8_t {
@@ -1808,6 +1814,10 @@ public:
                                          Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
                                          bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
+    // InterOp Serialize & Deserialize.
+    static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+        Local<JSValueRef> cloneList, bool defaultTransfer = false, bool defaultCloneShared = true);
+    static Local<JSValueRef> InterOpDeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);

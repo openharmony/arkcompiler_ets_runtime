@@ -41,7 +41,6 @@ protected:
     virtual bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
 
 private:
-    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
     virtual bool SerializeSharedObj([[maybe_unused]] TaggedObject *object);
     void SerializeJSError(TaggedObject *object);
     void SerializeNativeBindingObject(TaggedObject *object);
@@ -69,10 +68,13 @@ private:
     // process SourceTextModule fields
     bool SerializeModuleCNativeObjects(TaggedObject *object);
 
+protected:
+    void SerializeObjectImpl(TaggedObject *object) override;
+    bool notSupport_ {false};
+
 private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};
-    bool notSupport_ {false};
     bool supportJSNativePointer_ {false};
     std::vector<std::pair<ssize_t, panda::JSNApi::NativeBindingInfo *>> detachCallbackInfo_;
     CUnorderedSet<uintptr_t> transferDataSet_;
