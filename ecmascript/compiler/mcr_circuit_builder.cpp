@@ -1055,6 +1055,18 @@ GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, siz
     return ret;
 }
 
+GateRef CircuitBuilder::LoadHClassByConstOffset(VariableType type, GateRef receiver)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    size_t offset = TaggedObject::HCLASS_OFFSET;
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, MemoryAttribute::NoBarrier());
+    auto ret = GetCircuit()->NewGate(circuit_->LoadHClassConstOffset(bits), type.GetMachineType(),
+                                     { currentDepend, receiver }, type.GetGateType());
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
 {
     auto currentLabel = env_->GetCurrentLabel();

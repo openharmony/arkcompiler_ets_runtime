@@ -52,7 +52,7 @@ private:
     bool VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
     bool VisitHeapAllocForCMCGC(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
     bool VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
-    bool VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
+    bool VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx, bool isLoadHClass = false);
 
     void ReplaceGateDirectly(std::vector<GateRef> &gates, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
     void ScheduleEndBB(std::vector<GateRef> &gates, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx);
@@ -90,6 +90,7 @@ private:
                                                                      std::vector<GateRef> &successBBGates,
                                                                      std::vector<GateRef> &failBBGates,
                                                                      std::vector<GateRef> &endBBGates);
+    void LoweringLoadHClassAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates);
 
     void PrepareToScheduleNewGate(GateRef gate, std::vector<GateRef> &gates);
     MemoryAttribute::Barrier GetBarrierKind(GateRef gate);

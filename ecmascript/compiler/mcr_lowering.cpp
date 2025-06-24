@@ -38,6 +38,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
             break;
+        case OpCode::LOAD_HCLASS_CONST_OFFSET:
+            LowerLoadHClassConstOffset(gate);
+            break;
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
             LowerLoadHClassFromConstpool(gate);
             break;
@@ -164,6 +167,14 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
     GateRef result = builder_.Load(type, glue_, receiver, offset, acc_.GetMemoryAttribute(gate));
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
+}
+
+void MCRLowering::LowerLoadHClassConstOffset(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.LoadHClass(glue_, receiver);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 

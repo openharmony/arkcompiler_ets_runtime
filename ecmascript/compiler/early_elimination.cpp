@@ -77,6 +77,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::ELEMENTSKIND_CHECK:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_CONST_OFFSET:
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL:
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
@@ -302,7 +303,7 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::STORE_CONST_OFFSET: {
-            if (lop == OpCode::LOAD_CONST_OFFSET) {
+            if (lop == OpCode::LOAD_CONST_OFFSET || lop == OpCode::LOAD_HCLASS_CONST_OFFSET) {
                 auto loff = acc_.GetOffset(lhs);
                 auto roff = acc_.GetOffset(rhs);
                 return loff == roff;
@@ -405,7 +406,8 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             }
             break;
         }
-        case OpCode::LOAD_CONST_OFFSET: {
+        case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_CONST_OFFSET: {
             if (acc_.GetOffset(lhs) != acc_.GetOffset(rhs)) {
                 return false;
             }
