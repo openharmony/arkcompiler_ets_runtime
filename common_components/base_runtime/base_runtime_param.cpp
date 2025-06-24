@@ -24,7 +24,7 @@ size_t BaseRuntimeParam::InitHeapSize()
     constexpr auto DEFAULT_HEAP_SIZE_PERCENTAGE = 0.6;
     size_t systemSize = PhysicalSize();
     size_t initHeapSize =
-        systemSize > 1 * GB ? std::min(systemSize * DEFAULT_HEAP_SIZE_PERCENTAGE / KB, 3.6 * MB) : 64 * KB;
+        systemSize > 1 * GB ? std::min(systemSize * DEFAULT_HEAP_SIZE_PERCENTAGE / KB, 1.2 * MB) : 64 * KB;
     return initHeapSize;
 }
 
