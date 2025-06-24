@@ -40,13 +40,49 @@ private:
     }
     static constexpr int BUFFER_SIZE_INDEX = 0;
     static constexpr int BUFFER_CAPACITY_INDEX = 1;
-    static constexpr int OLD_SPACE_SIZE_INDEX = 2;
-    static constexpr int NONMOVABLE_SPACE_SIZE_INDEX = 3;
-    static constexpr int MACHINECODE_SPACE_SIZE_INDEX = 4;
-    static constexpr int SHARED_OLD_SPACE_SIZE_INDEX = 5;
-    static constexpr int SHARED_NONMOVABLE_SPACE_SIZE_INDEX = 6;
-    static constexpr int INCOMPLETE_DATA_INDEX = 7;
-
+    static constexpr int REGULAR_SPACE_SIZE_INDEX = 2;
+    static constexpr int PIN_SPACE_SIZE_INDEX = 3;
+    static constexpr int OLD_SPACE_SIZE_INDEX = 4;
+    static constexpr int NONMOVABLE_SPACE_SIZE_INDEX = 5;
+    static constexpr int MACHINECODE_SPACE_SIZE_INDEX = 6;
+    static constexpr int SHARED_OLD_SPACE_SIZE_INDEX = 7;
+    static constexpr int SHARED_NONMOVABLE_SPACE_SIZE_INDEX = 8;
+    static constexpr int INCOMPLETE_DATA_INDEX = 9;
+    static constexpr int GROUP_SIZE = 10;
+    static constexpr int CMC_GC_REGION_SIZE = 2;
+// Module snapshot layout
+// +--------------------------------------+<-------- BaseInfo
+// |       Application Version Code       |
+// +--------------------------------------+
+// |         Snapshot Version Code        |
+// +--------------------------------------+<-------- data
+// |               dataIndex              |
+// +--------------------------------------+
+// |               sizeLimit              |
+// +--------------------------------------+
+// |              bufferSize              |
+// |            bufferCapacity            |
+// |           regularSpaceSize           |
+// |             pinSpaceSize             |
+// |             oldSpaceSize             |
+// |          nonMovableSpaceSize         |
+// |          machineCodeSpaceSize        |
+// |           sharedOldSpaceSize         |
+// |       sharedNonMovableSpaceSize      |
+// |             incompleteData           |
+// +--------------------------------------+<-------- CMCGC
+// |     regularRemainSizeVector size     |
+// |       regularRemainSizeVector        |
+// |     regularRemainSizeVector size     |
+// |         pinRemainSizeVector          |
+// +--------------------------------------+<-------- GC
+// |     regionRemainSizeVectors size     |
+// |       regionRemainSizeVectors        |
+// +--------------------------------------+<-------- data
+// |                buffer                |
+// +--------------------------------------+<-------- CheckSum
+// |               CheckSum               |
+// +--------------------------------------+
     static bool ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString &path);
     static bool WriteDataToFile(JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString &filePath);
 
