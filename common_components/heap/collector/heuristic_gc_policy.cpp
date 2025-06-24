@@ -68,4 +68,62 @@ void HeuristicGCPolicy::TryHeuristicGC()
         }
     }
 }
+
+void HeuristicGCPolicy::NotifyNativeAllocation(size_t bytes)
+{
+    notifiedNativeSize_.fetch_add(bytes, std::memory_order_relaxed);
+    size_t currentObjects = nativeHeapObjects_.fetch_add(1, std::memory_order_relaxed);
+    if (currentObjects % NOTIFY_NATIVE_INTERVAL == NOTIFY_NATIVE_INTERVAL - 1
+        || bytes > NATIVE_IMMEDIATE_THRESHOLD) {
+        CheckGCForNative();
+    }
+}
+void HeuristicGCPolicy::CheckGCForNative()
+{
+    size_t currentNativeSize = notifiedNativeSize_.load(std::memory_order_relaxed);
+    size_t currentThreshold = nativeHeapThreshold_.load(std::memory_order_relaxed);
+    if (currentNativeSize > currentThreshold) {
+        if (currentNativeSize > URGENCY_NATIVE_LIMIT) {
+            // Native binding size is too large, should wait a sync finished.
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE_SYNC, false);
+            return;
+        }
+        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE, true);
+    }
+}
+void HeuristicGCPolicy::NotifyNativeFree(size_t bytes)
+{
+    size_t allocated;
+    size_t newFreedBytes;
+    do {
+        allocated = notifiedNativeSize_.load(std::memory_order_relaxed);
+        newFreedBytes = std::min(allocated, bytes);
+        // We should not be registering more free than allocated bytes.
+        // But correctly keep going in non-debug builds.
+        ASSERT(newFreedBytes == bytes);
+    } while (!notifiedNativeSize_.compare_exchange_weak(allocated, allocated - newFreedBytes,
+                                                        std::memory_order_relaxed));
+}
+
+void HeuristicGCPolicy::NotifyNativeReset(size_t oldBytes, size_t newBytes)
+{
+    NotifyNativeFree(oldBytes);
+    NotifyNativeAllocation(newBytes);
+}
+
+size_t HeuristicGCPolicy::GetNotifiedNativeSize() const
+{
+    return notifiedNativeSize_.load(std::memory_order_relaxed);
+}
+
+void HeuristicGCPolicy::SetNativeHeapThreshold(size_t newThreshold)
+{
+    nativeHeapThreshold_.store(newThreshold, std::memory_order_relaxed);
+}
+
+size_t HeuristicGCPolicy::GetNativeHeapThreshold() const
+{
+    return nativeHeapThreshold_.load(std::memory_order_relaxed);
+}
+
 } // namespace common

@@ -19,6 +19,7 @@
 #include <iomanip>
 
 #include "common_components/heap/allocator/alloc_buffer.h"
+#include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_interfaces/base/runtime_param.h"
 #include <string>
 
@@ -653,6 +654,8 @@ void TraceCollector::UpdateGCStats()
     gcStats.heapThreshold = std::max(gcStats.targetFootprint - remainingBytes, bytesAllocated);
     gcStats.heapThreshold = std::min(gcStats.heapThreshold, gcParam.gcThreshold);
 
+    UpdateNativeThreshold(gcParam);
+
     if (!gcStats.isYoungGC()) {
         g_gcRequests[GC_REASON_HEU].SetMinInterval(gcParam.gcInterval);
     } else {
@@ -672,8 +675,25 @@ void TraceCollector::UpdateGCStats()
                     ";update target footprint:" + std::to_string(oldTargetFootprint) +
                     ";new target footprint:" + std::to_string(gcStats.targetFootprint) +
                     ";old gc threshold:" + std::to_string(oldThreshold) +
-                    ";new gc threshold:" + std::to_string(gcStats.heapThreshold)
+                    ";new gc threshold:" + std::to_string(gcStats.heapThreshold) +
+                    ";native size:" + std::to_string(Heap::GetHeap().GetNotifiedNativeSize()) +
+                    ";new native threshold:" + std::to_string(Heap::GetHeap().GetNativeHeapThreshold())
                 ).c_str());
+}
+
+void TraceCollector::UpdateNativeThreshold(GCParam& gcParam)
+{
+    size_t nativeHeapSize = Heap::GetHeap().GetNotifiedNativeSize();
+    size_t newNativeHeapThreshold = Heap::GetHeap().GetNotifiedNativeSize();
+    if (nativeHeapSize < MAX_NATIVE_SIZE_INC) {
+        newNativeHeapThreshold = std::max(nativeHeapSize + gcParam.minGrowBytes,
+                                          nativeHeapSize * NATIVE_MULTIPLIER);
+    } else {
+        newNativeHeapThreshold += MAX_NATIVE_STEP;
+    }
+    newNativeHeapThreshold = std::min(newNativeHeapThreshold, MAX_GLOBAL_NATIVE_LIMIT);
+    Heap::GetHeap().SetNativeHeapThreshold(newNativeHeapThreshold);
+    collectorResources_.SetIsNativeGCInvoked(false);
 }
 
 void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, size_t size) const
@@ -698,7 +718,9 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", (
                     "GCReason:" + gcReasonName + ";Sensitive:0;IsInBackground:0;Startup:0" +
                     ";Current Allocated:" + Pretty(currentAllocatedSize) +
-                    ";Current Threshold:" + Pretty(currentThreshold)
+                    ";Current Threshold:" + Pretty(currentThreshold) +
+                    ";Current Native:" + Pretty(Heap::GetHeap().GetNotifiedNativeSize()) +
+                    ";NativeThreshold:" + Pretty(Heap::GetHeap().GetNativeHeapThreshold())
                 ).c_str());
     // prevent other threads stop-the-world during GC.
     // this may be removed in the future.

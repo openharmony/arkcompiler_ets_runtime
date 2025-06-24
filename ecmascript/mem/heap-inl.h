@@ -1295,6 +1295,9 @@ void SharedHeap::InvokeSharedNativePointerCallbacks()
 void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)
 {
     ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::NotifyNativeAllocation(pointer->GetBindingSize());
+    }
     std::lock_guard<std::mutex> lock(sNativePointerListMutex_);
     sharedNativePointerList_.emplace_back(pointer);
 }
@@ -1310,6 +1313,7 @@ void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
             JSNativePointer* object = *sharedIter;
             sharedNativePointerCallbacks.emplace_back(
                 object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData()));
+            common::BaseRuntime::NotifyNativeFree(object->GetBindingSize());
             SwapBackAndPop(sharedNativePointerList_, sharedIter);
         } else {
             ++sharedIter;
@@ -1437,6 +1441,9 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
 {
     ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::NotifyNativeAllocation(pointer->GetBindingSize());
+    }
     if (isConcurrent) {
         concurrentNativePointerList_.emplace_back(pointer);
     } else {
@@ -1459,6 +1466,7 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
             asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
                 std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
             nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
+            common::BaseRuntime::NotifyNativeFree(bindingSize);
             SwapBackAndPop(nativePointerList_, iter);
         } else {
             ++iter;
@@ -1476,6 +1484,7 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
             nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
             concurrentNativeCallbacks.emplace_back(object->GetDeleter(),
                 std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
+            common::BaseRuntime::NotifyNativeFree(object->GetBindingSize());
             SwapBackAndPop(concurrentNativePointerList_, concurrentIter);
         } else {
             ++concurrentIter;

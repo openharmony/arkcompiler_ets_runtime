@@ -141,7 +141,7 @@ void IsValidRef(const BaseObject* obj, const RefField<>& ref)
     CHECKF(Heap::IsHeapAddress(refObj))
         << CONTEXT << std::hex
         << "Object address: 0x" << reinterpret_cast<MAddress>(refObj) << ","
-        << "Heap range: [0x" << Heap::heapStartAddr << ", 0x" << Heap::heapCurrentEnd << "]";
+        << "Heap range: [0x" << Heap::heapStartAddr_ << ", 0x" << Heap::heapCurrentEnd_ << "]";
 
     auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(refObj));
     CHECKF(region->GetRegionType() != RegionDesc::RegionType::GARBAGE_REGION)

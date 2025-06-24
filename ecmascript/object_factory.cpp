@@ -235,6 +235,9 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
             UNREACHABLE();
         }
         pointer->ResetExternalPointer(thread_, newData);
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::NotifyNativeReset(pointer->GetBindingSize(), size);
+        }
         vm_->GetNativeAreaAllocator()->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                              NativeFlag::ARRAY_BUFFER);
         return;
@@ -274,6 +277,9 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
             UNREACHABLE();
         }
         pointer->ResetExternalPointer(thread_, newData);
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::NotifyNativeReset(pointer->GetBindingSize(), size);
+        }
         nativeAreaAllocator->ModifyNativeSizeStats(pointer->GetBindingSize(), size,
                                                    NativeFlag::ARRAY_BUFFER);
         return;
@@ -456,6 +462,9 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread_, newBuffer);
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::NotifyNativeReset(native->GetBindingSize(), size);
+        }
         return;
     }
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBuffer, NativeAreaAllocator::FreeBufferFunc,

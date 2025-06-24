@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_HEAP_HEURISTIC_GC_POLICY_H
 #define COMMON_COMPONENTS_HEAP_HEURISTIC_GC_POLICY_H
 
+#include "common_components/base/globals.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_components/log/log.h"
 
@@ -74,6 +75,23 @@ private:
     };
 };
 
+static constexpr size_t NATIVE_MULTIPLIER = 2;
+// Use interval to avoid gc request too frequent.
+static constexpr size_t NOTIFY_NATIVE_INTERVAL = 32;
+#if defined(PANDA_TARGET_32)
+    static constexpr size_t NATIVE_INIT_THRESHOLD = 100 * MB;
+    static constexpr size_t MAX_GLOBAL_NATIVE_LIMIT = 512 * MB;
+    static constexpr size_t MAX_NATIVE_STEP = 64 * MB;
+    static constexpr size_t MAX_NATIVE_SIZE_INC = 256 * MB;
+    static constexpr size_t NATIVE_IMMEDIATE_THRESHOLD = 300 * KB;
+#else
+    static constexpr size_t NATIVE_INIT_THRESHOLD = 200 * MB;
+    static constexpr size_t MAX_GLOBAL_NATIVE_LIMIT = 2 * GB;
+    static constexpr size_t MAX_NATIVE_STEP = 300 * MB;
+    static constexpr size_t MAX_NATIVE_SIZE_INC = 1 * GB;
+    static constexpr size_t NATIVE_IMMEDIATE_THRESHOLD = 2 * MB;
+#endif
+static constexpr size_t URGENCY_NATIVE_LIMIT = (MAX_NATIVE_SIZE_INC + MAX_GLOBAL_NATIVE_LIMIT) / 2;
 
 class HeuristicGCPolicy {
 public:
@@ -83,8 +101,26 @@ public:
     bool ShouldRestrainGCOnStartup();
 
     void TryHeuristicGC();
+
+    void NotifyNativeAllocation(size_t bytes);
+
+    void NotifyNativeFree(size_t bytes);
+
+    void NotifyNativeReset(size_t oldBytes, size_t newBytes);
+
+    size_t GetNotifiedNativeSize() const;
+
+    void SetNativeHeapThreshold(size_t newThreshold);
+
+    size_t GetNativeHeapThreshold() const;
+
 private:
+    void CheckGCForNative();
     uint64_t heapSize_ {0};
+
+    std::atomic<size_t> notifiedNativeSize_ = 0;
+    std::atomic<size_t> nativeHeapThreshold_ = NATIVE_INIT_THRESHOLD;
+    std::atomic<size_t> nativeHeapObjects_ = 0;
 };
 } // namespace common
 

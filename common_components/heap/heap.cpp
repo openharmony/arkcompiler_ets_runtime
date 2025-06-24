@@ -36,23 +36,23 @@
 #include <mach/mach.h>
 #endif
 namespace common {
-std::atomic<Barrier*>* Heap::currentBarrierPtr = nullptr;
-Barrier* Heap::stwBarrierPtr = nullptr;
-HeapAddress Heap::heapStartAddr = 0;
-HeapAddress Heap::heapCurrentEnd = 0;
+std::atomic<Barrier*>* Heap::currentBarrierPtr_ = nullptr;
+Barrier* Heap::stwBarrierPtr_ = nullptr;
+HeapAddress Heap::heapStartAddr_ = 0;
+HeapAddress Heap::heapCurrentEnd_ = 0;
 
 class HeapImpl : public Heap {
 public:
     HeapImpl()
-        : theSpace(Allocator::CreateAllocator()), collectorResources(collectorProxy),
-          collectorProxy(*theSpace, collectorResources), stwBarrier(collectorProxy),
-        idleBarrier(collectorProxy), enumBarrier(collectorProxy), traceBarrier(collectorProxy),
-        remarkBarrier(collectorProxy), postTraceBarrier(collectorProxy), preforwardBarrier(collectorProxy),
-        copyBarrier(collectorProxy)
+        : theSpace_(Allocator::CreateAllocator()), collectorResources_(collectorProxy_),
+          collectorProxy_(*theSpace_, collectorResources_), stwBarrier_(collectorProxy_),
+        idleBarrier_(collectorProxy_), enumBarrier_(collectorProxy_), traceBarrier_(collectorProxy_),
+        remarkBarrier_(collectorProxy_), postTraceBarrier_(collectorProxy_), preforwardBarrier_(collectorProxy_),
+        copyBarrier_(collectorProxy_)
     {
-        currentBarrier.store(&stwBarrier, std::memory_order_relaxed);
-        stwBarrierPtr = &stwBarrier;
-        Heap::currentBarrierPtr = &currentBarrier;
+        currentBarrier_.store(&stwBarrier_, std::memory_order_relaxed);
+        stwBarrierPtr_ = &stwBarrier_;
+        Heap::currentBarrierPtr_ = &currentBarrier_;
         RunType::InitRunTypeMap();
     }
 
@@ -67,17 +67,17 @@ public:
         return RegionSpace::IsMarkedObject(obj) || RegionSpace::IsResurrectedObject(obj);
     }
 
-    bool IsGcStarted() const override { return collectorResources.IsGcStarted(); }
+    bool IsGcStarted() const override { return collectorResources_.IsGcStarted(); }
 
-    void WaitForGCFinish() override { return collectorResources.WaitForGCFinish(); }
+    void WaitForGCFinish() override { return collectorResources_.WaitForGCFinish(); }
 
-    bool IsGCEnabled() const override { return isGCEnabled.load(); }
+    bool IsGCEnabled() const override { return isGCEnabled_.load(); }
 
-    void EnableGC(bool val) override { return isGCEnabled.store(val); }
+    void EnableGC(bool val) override { return isGCEnabled_.store(val); }
 
-    GCReason GetGCReason() override { return gcReason; }
+    GCReason GetGCReason() override { return gcReason_; }
 
-    void SetGCReason(GCReason reason) override { gcReason = reason; }
+    void SetGCReason(GCReason reason) override { gcReason_ = reason; }
 
     HeapAddress Allocate(size_t size, AllocType allocType, bool allowGC = true) override;
 
@@ -106,6 +106,12 @@ public:
     void RegisterAllocBuffer(AllocationBuffer& buffer) override;
     void StopGCWork() override;
     void TryHeuristicGC() override;
+    void NotifyNativeAllocation(size_t bytes) override;
+    void NotifyNativeFree(size_t bytes) override;
+    void NotifyNativeReset(size_t oldBytes, size_t newBytes) override;
+    size_t GetNotifiedNativeSize() override;
+    void SetNativeHeapThreshold(size_t newThreshold) override;
+    size_t GetNativeHeapThreshold() override;
     class ScopedFileHandler {
     public:
         ScopedFileHandler(const char* fileName, const char* mode) { file = fopen(fileName, mode); }
@@ -123,29 +129,30 @@ public:
 
 private:
     // allocator is actually a subspace in heap
-    Allocator* theSpace;
+    Allocator* theSpace_;
 
-    CollectorResources collectorResources;
+    CollectorResources collectorResources_;
 
     // collector is closely related to barrier. but we do not put barrier inside collector because even without
     // collector (i.e. no-gc), allocator and barrier (interface to access heap) is still needed.
-    CollectorProxy collectorProxy;
+    CollectorProxy collectorProxy_;
 
-    Barrier stwBarrier;
-    IdleBarrier idleBarrier;
-    EnumBarrier enumBarrier;
-    TraceBarrier traceBarrier;
-    RemarkBarrier remarkBarrier;
-    PostTraceBarrier postTraceBarrier;
-    PreforwardBarrier preforwardBarrier;
-    CopyBarrier copyBarrier;
-    std::atomic<Barrier*> currentBarrier = nullptr;
-    HeuristicGCPolicy heuristicGCPolicy;
+    Barrier stwBarrier_;
+    IdleBarrier idleBarrier_;
+    EnumBarrier enumBarrier_;
+    TraceBarrier traceBarrier_;
+    RemarkBarrier remarkBarrier_;
+    PostTraceBarrier postTraceBarrier_;
+    PreforwardBarrier preforwardBarrier_;
+    CopyBarrier copyBarrier_;
+    std::atomic<Barrier*> currentBarrier_ = nullptr;
+    HeuristicGCPolicy heuristicGCPolicy_;
     // manage gc roots entry
-    StaticRootTable staticRootTable;
+    StaticRootTable staticRootTable_;
 
-    std::atomic<bool> isGCEnabled = { true };
-    GCReason gcReason = GCReason::GC_REASON_INVALID;
+    std::atomic<bool> isGCEnabled_ = { true };
+
+    GCReason gcReason_ = GCReason::GC_REASON_INVALID;
 }; // end class HeapImpl
 
 static ImmortalWrapper<HeapImpl> g_heapInstance;
@@ -153,9 +160,9 @@ static ImmortalWrapper<HeapImpl> g_heapInstance;
 HeapAddress HeapImpl::Allocate(size_t size, AllocType allocType, bool allowGC)
 {
     if (allowGC) {
-        return theSpace->Allocate(size, allocType);
+        return theSpace_->Allocate(size, allocType);
     } else {
-        return theSpace->AllocateNoGC(size, allocType);
+        return theSpace_->AllocateNoGC(size, allocType);
     }
 }
 
@@ -166,110 +173,141 @@ bool HeapImpl::ForEachObject(const std::function<void(BaseObject*)>& visitor, bo
         this->GetCollectorResources().WaitForGCFinish();
     }
     // Expect no gc in ForEachObj, dfx tools and oom gc should be considered.
-    return theSpace->ForEachObject(visitor, safe);
+    return theSpace_->ForEachObject(visitor, safe);
 }
 
 void HeapImpl::Init(const RuntimeParam& param)
 {
-    if (theSpace == nullptr) {
+    if (theSpace_ == nullptr) {
         // Hack impl, since HeapImpl is Immortal, this may happen in multi UT case
         new (this) HeapImpl();
     }
-    theSpace->Init(param);
+    theSpace_->Init(param);
     Heap::GetHeap().EnableGC(param.gcParam.enableGC);
-    collectorProxy.Init(param);
-    collectorResources.Init();
-    heuristicGCPolicy.Init();
+    collectorProxy_.Init(param);
+    collectorResources_.Init();
+    heuristicGCPolicy_.Init();
 }
 
 void HeapImpl::Fini()
 {
-    collectorResources.Fini();
-    collectorProxy.Fini();
-    if (theSpace != nullptr) {
-        delete theSpace;
-        theSpace = nullptr;
+    collectorResources_.Fini();
+    collectorProxy_.Fini();
+    if (theSpace_ != nullptr) {
+        delete theSpace_;
+        theSpace_ = nullptr;
     }
 }
 
 void HeapImpl::StartRuntimeThreads()
 {
-    collectorResources.StartRuntimeThreads();
+    collectorResources_.StartRuntimeThreads();
 }
 
 void HeapImpl::StopRuntimeThreads()
 {
-    collectorResources.StopRuntimeThreads();
+    collectorResources_.StopRuntimeThreads();
 }
 
 void HeapImpl::TryHeuristicGC()
 {
-    heuristicGCPolicy.TryHeuristicGC();
+    heuristicGCPolicy_.TryHeuristicGC();
 }
 
-Collector& HeapImpl::GetCollector() { return collectorProxy.GetCurrentCollector(); }
+void HeapImpl::NotifyNativeAllocation(size_t bytes)
+{
+    heuristicGCPolicy_.NotifyNativeAllocation(bytes);
+}
 
-Allocator& HeapImpl::GetAllocator() { return *theSpace; }
+void HeapImpl::NotifyNativeFree(size_t bytes)
+{
+    heuristicGCPolicy_.NotifyNativeFree(bytes);
+}
+
+void HeapImpl::NotifyNativeReset(size_t oldBytes, size_t newBytes)
+{
+    heuristicGCPolicy_.NotifyNativeFree(oldBytes);
+    heuristicGCPolicy_.NotifyNativeAllocation(newBytes);
+}
+
+size_t HeapImpl::GetNotifiedNativeSize()
+{
+    return heuristicGCPolicy_.GetNotifiedNativeSize();
+}
+
+void HeapImpl::SetNativeHeapThreshold(size_t newThreshold)
+{
+    heuristicGCPolicy_.SetNativeHeapThreshold(newThreshold);
+}
+
+size_t HeapImpl::GetNativeHeapThreshold()
+{
+    return heuristicGCPolicy_.GetNativeHeapThreshold();
+}
+
+Collector& HeapImpl::GetCollector() { return collectorProxy_.GetCurrentCollector(); }
+
+Allocator& HeapImpl::GetAllocator() { return *theSpace_; }
 
 void HeapImpl::InstallBarrier(const GCPhase phase)
 {
     if (phase == GCPhase::GC_PHASE_ENUM) {
-        currentBarrier.store(&enumBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&enumBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_MARK) {
-        currentBarrier.store(&traceBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&traceBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_PRECOPY) {
-        currentBarrier.store(&preforwardBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&preforwardBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_COPY || phase == GCPhase::GC_PHASE_FIX) {
-        currentBarrier.store(&copyBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&copyBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_IDLE) {
-        currentBarrier.store(&idleBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&idleBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_POST_MARK) {
-        currentBarrier.store(&postTraceBarrier, std::memory_order_relaxed);
+        currentBarrier_.store(&postTraceBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_FINAL_MARK ||
                phase == GCPhase::GC_PHASE_REMARK_SATB) {
-        currentBarrier = &remarkBarrier;
+        currentBarrier_ = &remarkBarrier_;
     }
     DLOG(GCPHASE, "install barrier for gc phase %u", phase);
 }
 
-GCPhase HeapImpl::GetGCPhase() const { return collectorProxy.GetGCPhase(); }
+GCPhase HeapImpl::GetGCPhase() const { return collectorProxy_.GetGCPhase(); }
 
-void HeapImpl::SetGCPhase(const GCPhase phase) { collectorProxy.SetGCPhase(phase); }
+void HeapImpl::SetGCPhase(const GCPhase phase) { collectorProxy_.SetGCPhase(phase); }
 
-size_t HeapImpl::GetMaxCapacity() const { return theSpace->GetMaxCapacity(); }
+size_t HeapImpl::GetMaxCapacity() const { return theSpace_->GetMaxCapacity(); }
 
-size_t HeapImpl::GetCurrentCapacity() const { return theSpace->GetCurrentCapacity(); }
+size_t HeapImpl::GetCurrentCapacity() const { return theSpace_->GetCurrentCapacity(); }
 
-size_t HeapImpl::GetUsedPageSize() const { return theSpace->GetUsedPageSize(); }
+size_t HeapImpl::GetUsedPageSize() const { return theSpace_->GetUsedPageSize(); }
 
-size_t HeapImpl::GetAllocatedSize() const { return theSpace->GetAllocatedBytes(); }
+size_t HeapImpl::GetAllocatedSize() const { return theSpace_->GetAllocatedBytes(); }
 
-size_t HeapImpl::GetRemainHeapSize() const { return theSpace->GetMaxCapacity() - theSpace->GetUsedPageSize(); }
+size_t HeapImpl::GetRemainHeapSize() const { return theSpace_->GetMaxCapacity() - theSpace_->GetUsedPageSize(); }
 
 size_t HeapImpl::GetAccumulatedAllocateSize() const
 {
-    return collectorResources.GetGCStats().GetAccumulatedFreeSize() + theSpace->GetUsedPageSize();
+    return collectorResources_.GetGCStats().GetAccumulatedFreeSize() + theSpace_->GetUsedPageSize();
 }
 
-size_t HeapImpl::GetAccumulatedFreeSize() const { return collectorResources.GetGCStats().GetAccumulatedFreeSize(); }
+size_t HeapImpl::GetAccumulatedFreeSize() const { return collectorResources_.GetGCStats().GetAccumulatedFreeSize(); }
 
-HeapAddress HeapImpl::GetStartAddress() const { return theSpace->GetSpaceStartAddress(); }
+HeapAddress HeapImpl::GetStartAddress() const { return theSpace_->GetSpaceStartAddress(); }
 
-HeapAddress HeapImpl::GetSpaceEndAddress() const { return theSpace->GetSpaceEndAddress(); }
+HeapAddress HeapImpl::GetSpaceEndAddress() const { return theSpace_->GetSpaceEndAddress(); }
 
 Heap& Heap::GetHeap() { return *g_heapInstance; }
 
 void HeapImpl::RegisterStaticRoots(uintptr_t addr, uint32_t size)
 {
-    staticRootTable.RegisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
+    staticRootTable_.RegisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
 }
 
 void HeapImpl::UnregisterStaticRoots(uintptr_t addr, uint32_t size)
 {
-    staticRootTable.UnregisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
+    staticRootTable_.UnregisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
 }
 
-void HeapImpl::VisitStaticRoots(const RefFieldVisitor& visitor) { staticRootTable.VisitRoots(visitor); }
+void HeapImpl::VisitStaticRoots(const RefFieldVisitor& visitor) { staticRootTable_.VisitRoots(visitor); }
 
 #if defined(_WIN64)
 ssize_t HeapImpl::GetHeapPhysicalMemorySize() const
@@ -352,11 +390,11 @@ ssize_t HeapImpl::GetHeapPhysicalMemorySize() const
 }
 #endif
 
-FinalizerProcessor& HeapImpl::GetFinalizerProcessor() { return collectorResources.GetFinalizerProcessor(); }
+FinalizerProcessor& HeapImpl::GetFinalizerProcessor() { return collectorResources_.GetFinalizerProcessor(); }
 
-CollectorResources& HeapImpl::GetCollectorResources() { return collectorResources; }
+CollectorResources& HeapImpl::GetCollectorResources() { return collectorResources_; }
 
-void HeapImpl::StopGCWork() { collectorResources.StopGCWork(); }
+void HeapImpl::StopGCWork() { collectorResources_.StopGCWork(); }
 
 void HeapImpl::RegisterAllocBuffer(AllocationBuffer& buffer) { GetAllocator().RegisterAllocBuffer(buffer); }
 } // namespace common

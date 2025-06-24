@@ -213,4 +213,25 @@ bool BaseRuntime::ForEachObj(HeapVisitor& visitor, bool safe)
 {
     return Heap::GetHeap().ForEachObject(visitor, safe);
 }
+
+void BaseRuntime::NotifyNativeAllocation(size_t bytes)
+{
+    Heap::GetHeap().NotifyNativeAllocation(bytes);
+}
+
+void BaseRuntime::NotifyNativeFree(size_t bytes)
+{
+    Heap::GetHeap().NotifyNativeFree(bytes);
+}
+
+void BaseRuntime::NotifyNativeReset(size_t oldBytes, size_t newBytes)
+{
+    Heap::GetHeap().NotifyNativeReset(oldBytes, newBytes);
+}
+
+size_t BaseRuntime::GetNotifiedNativeSize()
+{
+    return Heap::GetHeap().GetNotifiedNativeSize();
+}
+
 }  // namespace common

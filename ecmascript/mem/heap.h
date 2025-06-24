@@ -1607,6 +1607,9 @@ public:
 
     size_t GetNativeBindingSize() const
     {
+        if (g_isEnableCMCGC) {
+            return common::BaseRuntime::GetNotifiedNativeSize();
+        }
         return nativeBindingSize_;
     }
 
