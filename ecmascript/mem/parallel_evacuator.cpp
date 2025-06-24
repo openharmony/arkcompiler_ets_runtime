@@ -15,6 +15,8 @@
 
 #include "ecmascript/mem/parallel_evacuator-inl.h"
 
+#include "ecmascript/js_weak_container.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/parallel_evacuator_visitor-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 #include "ecmascript/mem/work_manager-inl.h"
@@ -108,6 +110,18 @@ void ParallelEvacuator::EvacuateSpace()
     TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::EvacuateSpace", "");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
+    {
+        // Process JSWeakMap before evacuate
+        // fixme: process in parallel
+        uint32_t totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+        for (uint32_t i = 0; i < totalThreadCount; ++i) {
+            if (heap_->IsYoungMark()) {
+                UpdateRecordJSWeakMap<TriggerGCType::YOUNG_GC>(i);
+            } else {
+                UpdateRecordJSWeakMap<TriggerGCType::OLD_GC>(i);
+            }
+        }
+    }
     auto &workloadSet = evacuateWorkloadSet_;
     if (heap_->IsConcurrentFullMark() || heap_->IsYoungMark()) {
         ProcessFromSpaceEvacuation();
@@ -161,23 +175,70 @@ void ParallelEvacuator::UpdateRecordWeakReferenceInParallel(uint32_t idOrder)
 {
     auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = idOrder; i < totalThreadCount; i += (evacuateTaskNum_ + 1)) {
-        ProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(i)->GetWeakReferenceQueue();
-        while (true) {
-            auto obj = queue->PopBack();
-            if (UNLIKELY(obj == nullptr)) {
-                break;
-            }
-            ObjectSlot slot(ToUintPtr(obj));
-            JSTaggedType value = slot.GetTaggedType();
-            if (JSTaggedValue(value).IsWeak()) {
-                ASSERT(heap_->IsConcurrentFullMark());
-                Region *objectRegion = Region::ObjectAddressToRange(value);
-                if (!objectRegion->InYoungSpaceOrCSet() && !objectRegion->InSharedHeap() &&
-                        (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value))) {
-                    slot.Clear();
-                }
+        UpdateRecordWeakReference(i);
+    }
+}
+
+void ParallelEvacuator::UpdateRecordWeakReference(uint32_t threadId)
+{
+    ProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(threadId)->GetWeakReferenceQueue();
+    while (true) {
+        auto obj = queue->PopBack();
+        if (UNLIKELY(obj == nullptr)) {
+            break;
+        }
+        ObjectSlot slot(ToUintPtr(obj));
+        JSTaggedType value = slot.GetTaggedType();
+        if (JSTaggedValue(value).IsWeak()) {
+            ASSERT(heap_->IsConcurrentFullMark());
+            Region *objectRegion = Region::ObjectAddressToRange(value);
+            if (!objectRegion->InYoungSpaceOrCSet() && !objectRegion->InSharedHeap() &&
+                    (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value))) {
+                slot.Clear();
             }
         }
+    }
+}
+
+template <TriggerGCType gcType>
+void ParallelEvacuator::UpdateRecordJSWeakMap(uint32_t threadId)
+{
+    std::function<bool(JSTaggedValue)> visitor = [](JSTaggedValue key) {
+        ASSERT(!key.IsHole());
+        if (key.IsUndefined()) {    // Dead key, and set to undefined by GC
+            return true;
+        }
+        ASSERT(key.IsHeapObject() && key.IsWeak());
+        uintptr_t addr = ToUintPtr(key.GetTaggedWeakRef());
+        Region *keyRegion = Region::ObjectAddressToRange(addr);
+
+        if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+            return keyRegion->InYoungSpace() && !keyRegion->Test(addr);
+        } else {
+            static_assert(gcType == TriggerGCType::OLD_GC);
+            if (keyRegion->InSharedHeap()) {
+                return false;
+            }
+            if (keyRegion->GetMarkGCBitset() == nullptr) {
+                return true;
+            }
+            return !keyRegion->Test(addr);
+        }
+    };
+
+    JSWeakMapProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(threadId)->GetJSWeakMapQueue();
+    while (true) {
+        TaggedObject *obj = queue->PopBack();
+        if (UNLIKELY(obj == nullptr)) {
+            break;
+        }
+        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
+        JSTaggedValue maybeMap = weakMap->GetLinkedMap();
+        if (maybeMap.IsUndefined()) {
+            continue;
+        }
+        LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
+        map->ClearAllDeadEntries(visitor);
     }
 }
 

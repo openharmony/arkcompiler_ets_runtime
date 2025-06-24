@@ -97,6 +97,13 @@ void YoungGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t 
     }
 }
 
+void YoungGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+{
+    TaggedObject *obj = TaggedObject::Cast(rootObject);
+    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    workNodeHolder_->PushJSWeakMap(obj);
+}
+
 void YoungGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());

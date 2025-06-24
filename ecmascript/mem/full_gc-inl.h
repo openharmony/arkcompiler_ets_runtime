@@ -195,6 +195,12 @@ void FullGCRunner::RecordWeakReference(JSTaggedType *weak)
     workNodeHolder_->PushWeakReference(weak);
 }
 
+void FullGCRunner::RecordJSWeakMap(TaggedObject *object)
+{
+    ASSERT(JSTaggedValue(object).IsJSWeakMap());
+    workNodeHolder_->PushJSWeakMap(object);
+}
+
 FullGCMarkRootVisitor::FullGCMarkRootVisitor(FullGCRunner *runner) : runner_(runner) {}
 
 void FullGCMarkRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
@@ -241,6 +247,13 @@ void FullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t s
     for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
         runner_->HandleMarkingSlot(slot);
     }
+}
+
+void FullGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+{
+    TaggedObject *obj = TaggedObject::Cast(rootObject);
+    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    runner_->RecordJSWeakMap(obj);
 }
 
 void FullGCMarkObjectVisitor::VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass)

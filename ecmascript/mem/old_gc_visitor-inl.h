@@ -100,6 +100,13 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
     }
 }
 
+void OldGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+{
+    TaggedObject *obj = TaggedObject::Cast(rootObject);
+    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    workNodeHolder_->PushJSWeakMap(obj);
+}
+
 void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);

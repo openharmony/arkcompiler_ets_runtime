@@ -157,11 +157,15 @@ public:
 
     inline void PushWeakReference(JSTaggedType *weak);
 
+    inline void PushJSWeakMap(TaggedObject *jsWeakMap);
+
     inline void IncreaseAliveSize(size_t size);
 
     inline void IncreasePromotedSize(size_t size);
 
     inline ProcessQueue *GetWeakReferenceQueue() const;
+
+    inline JSWeakMapProcessQueue *GetJSWeakMapQueue() const;
 
     inline TlabAllocator *GetTlabAllocator() const;
 private:
@@ -174,7 +178,9 @@ private:
     WorkNode *outNode_ {nullptr};
     WorkNode *cachedInNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
+    JSWeakMapProcessQueue *jsWeakMapQueue_ {nullptr};
     ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
+    ContinuousStack<TaggedObject> *continuousJSWeakMapQueue_ {nullptr};
     TlabAllocator *allocator_ {nullptr};
     size_t aliveSize_ {0};
     size_t promotedSize_ {0};

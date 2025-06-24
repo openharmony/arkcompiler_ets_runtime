@@ -120,6 +120,23 @@ public:
         SetNumberOfDeletedElements(thread, NumberOfDeletedElements() + 1);
     }
 
+    inline void RemoveEntryFromGCThread(int entry)
+    {
+        // Skip Barrier
+        ASSERT_PRINT(entry >= 0 && entry < Capacity(), "entry must be a non-negative integer less than capacity");
+        int index = static_cast<int>(EntryToIndex(entry));
+        for (int i = 0; i < HashObject::ENTRY_SIZE; i++) {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), JSTaggedValue::TaggedTypeSize() * (index + i),
+                                                 JSTaggedValue::Hole().GetRawData());
+        }
+        JSTaggedValue newNumOfElements = JSTaggedValue(NumberOfElements() - 1);
+        JSTaggedValue newNumOfDeletedElements = JSTaggedValue(NumberOfDeletedElements() + 1);
+        Barriers::SetPrimitive<JSTaggedType>(GetData(), JSTaggedValue::TaggedTypeSize() * NUMBER_OF_ELEMENTS_INDEX,
+                                             newNumOfElements.GetRawData());
+        Barriers::SetPrimitive<JSTaggedType>(GetData(),
+            JSTaggedValue::TaggedTypeSize() * NUMBER_OF_DELETED_ELEMENTS_INDEX, newNumOfDeletedElements.GetRawData());
+    }
+
     inline static int ComputeCapacity(uint32_t atLeastSpaceFor)
     {
         // Add 50% slack to make slot collisions sufficiently unlikely.
@@ -366,6 +383,8 @@ public:
     bool Has(const JSThread *thread, JSTaggedValue key) const;
 
     static JSHandle<LinkedHashMap> Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table);
+
+    void ClearAllDeadEntries(std::function<bool(JSTaggedValue)> &visitor);
     DECL_DUMP()
 };
 

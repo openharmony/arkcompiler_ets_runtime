@@ -199,6 +199,23 @@ JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHa
     return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::Shrink(thread, table, additionalCapacity);
 }
 
+void LinkedHashMap::ClearAllDeadEntries(std::function<bool(JSTaggedValue)> &visitor)
+{
+    int entries = NumberOfElements() + NumberOfDeletedElements();
+
+    for (int i = 0; i < entries; ++i) {
+        JSTaggedValue maybeKey = GetKey(i);
+        if (maybeKey.IsHole()) {
+            // Already removed
+            continue;
+        }
+        bool dead = visitor(maybeKey);
+        if (dead) {
+            RemoveEntryFromGCThread(i);
+        }
+    }
+}
+
 // LinkedHashSet
 JSHandle<LinkedHashSet> LinkedHashSet::Create(const JSThread *thread, int numberOfElements, MemSpaceKind spaceKind)
 {
