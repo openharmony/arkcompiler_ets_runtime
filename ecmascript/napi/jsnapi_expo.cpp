@@ -6152,7 +6152,7 @@ void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
 // Arkui trigger jsPandafile Seralize when cold start is end.
 void JSNApi::PandaFileSerialize(const EcmaVM *vm)
 {
-    if (!const_cast<EcmaVM *>(vm)->GetJSOptions().EnableJSPandaFileAndModuleSnapshot()) {
+    if (const_cast<EcmaVM *>(vm)->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
     ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
@@ -6162,7 +6162,7 @@ void JSNApi::PandaFileSerialize(const EcmaVM *vm)
 // Arkui trigger module Seralize when cold start is end.
 void JSNApi::ModuleSerialize(const EcmaVM *vm)
 {
-    if (!const_cast<EcmaVM *>(vm)->GetJSOptions().EnableJSPandaFileAndModuleSnapshot()) {
+    if (const_cast<EcmaVM *>(vm)->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
     ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
@@ -6172,7 +6172,7 @@ void JSNApi::ModuleSerialize(const EcmaVM *vm)
 // Ability Runtime trigger module Deseralize when application start.
 void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
 {
-    if (!vm->GetJSOptions().EnableJSPandaFileAndModuleSnapshot()) {
+    if (vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
     vm->SetApplicationVersionCode(appVersion);
