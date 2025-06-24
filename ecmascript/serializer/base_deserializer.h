@@ -80,7 +80,7 @@ class BaseDeserializer {
 public:
     explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr);
 
-    ~BaseDeserializer()
+    virtual ~BaseDeserializer()
     {
         objectVector_.clear();
         regionVector_.clear();
@@ -100,6 +100,8 @@ private:
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
     void DeserializeObjectField(uintptr_t start, uintptr_t end);
     size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset, bool isRoot = false);
+    virtual size_t DerivedExtraReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset,
+                                                    bool isRoot);
     void HandleNewObjectEncodeFlag(SerializedObjectSpace space, uintptr_t objAddr, size_t fieldOffset, bool isRoot);
 
     void TransferArrayBufferAttach(uintptr_t objAddr);
@@ -220,12 +222,17 @@ private:
         isWeak ? slot.UpdateWeak(addr) : slot.Update(addr);
     }
 
-private:
+protected:
     JSThread *thread_;
-    Heap *heap_;
-    SharedHeap *sheap_;
     SerializeData *data_;
     void *engine_;
+    size_t position_ {0};
+
+    virtual void DeserializeSpecialRecordedObjects() {}
+
+private:
+    Heap *heap_;
+    SharedHeap *sheap_;
 #ifdef USE_CMC_GC
     uintptr_t currentRegularObjectAddr_ {0};
     uintptr_t currentRegularRegionBeginAddr_ {0};
@@ -262,7 +269,6 @@ private:
     CVector<NativeBindingAttachInfo *> nativeBindingAttachInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;
     CVector<JSHandle<JSFunction>> concurrentFunctions_;
-    size_t position_ {0};
 };
 }
 
