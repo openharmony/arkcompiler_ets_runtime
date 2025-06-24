@@ -68,6 +68,7 @@ public:
     virtual bool IsHeapObject(HeapAddress) const = 0;
 #endif
 
+    template <typename AllocBufferVisitor>
     void VisitAllocBuffers(const AllocBufferVisitor& visitor) { allocBufferManager_->VisitAllocBuffers(visitor); }
     void AddHungryBuffer(AllocationBuffer& buffer) { allocBufferManager_->AddHungryBuffer(buffer); }
     void SwapHungryBuffers(AllocBufferManager::HungryBuffers &getBufferList)

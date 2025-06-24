@@ -250,18 +250,34 @@ void TraceCollector::EnumStaticRoots(RootSet& rootSet) const
     VisitRoots(visitor, true);
 }
 
+class MergeMutatorRootsScope {
+public:
+    MergeMutatorRootsScope() : manager_(&MutatorManager::Instance()), worldStopped_(manager_->WorldStopped())
+    {
+        if (!worldStopped_) {
+            manager_->MutatorManagementWLock();
+        }
+    }
+
+    ~MergeMutatorRootsScope()
+    {
+        if (!worldStopped_) {
+            manager_->MutatorManagementWUnlock();
+        }
+    }
+
+private:
+    MutatorManager *manager_;
+    bool worldStopped_;
+};
+
 void TraceCollector::MergeMutatorRoots(WorkStack& workStack)
 {
-    MutatorManager& mutatorManager = MutatorManager::Instance();
     // hold mutator list lock to freeze mutator liveness, otherwise may access dead mutator fatally
-    bool worldStopped = mutatorManager.WorldStopped();
-    if (!worldStopped) {
-        mutatorManager.MutatorManagementWLock();
-    }
-    theAllocator_.VisitAllocBuffers([&workStack](AllocationBuffer& buffer) { buffer.MarkStack(workStack); });
-    if (!worldStopped) {
-        mutatorManager.MutatorManagementWUnlock();
-    }
+    MergeMutatorRootsScope lockScope;
+    theAllocator_.VisitAllocBuffers([&workStack](AllocationBuffer &buffer) {
+        buffer.MarkStack([&workStack](BaseObject *o) { workStack.push_back(o); });
+    });
 }
 
 void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
@@ -275,7 +291,7 @@ void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
 
 void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TracingImpl", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::TracingImpl_" + std::to_string(workStack.count())).c_str(), "");
     if (workStack.empty()) {
         return;
     }
@@ -327,9 +343,25 @@ bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkSt
     return true;
 }
 
-void TraceCollector::TraceRoots(WorkStack& workStack)
+void TraceCollector::PushRootInWorkStack(RootSet *dst, RootSet *src)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::PushRootInWorkStack_" + std::to_string(src->count())).c_str(), "");
+    while (!src->empty()) {
+        auto temp = src->back();
+        src->pop_back();
+        if (!this->MarkObject(temp)) {
+            dst->push_back(temp);
+        }
+    }
+}
+
+void TraceCollector::TraceRoots(WorkStack &tempStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots", "");
+
+    WorkStack workStack = NewWorkStack();
+    PushRootInWorkStack(&workStack, &tempStack);
+
     COMMON_PHASE_TIMER("TraceRoots");
     VLOG(DEBUG, "roots size: %zu", workStack.size());
 
@@ -354,7 +386,7 @@ void TraceCollector::TraceRoots(WorkStack& workStack)
         if (!BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped()) {
             COMMON_PHASE_TIMER("STW re-marking");
             ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
-            EnumerateAllRoots(workStack);
+            EnumerateAllRootsWithMark(workStack);
             TracingImpl(workStack, maxWorkers > 0);
             ConcurrentReMark(workStack, maxWorkers > 0);
             MarkAwaitingJitFort();
@@ -620,6 +652,29 @@ void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
 #endif
 }
 
+void TraceCollector::EnumerateAllRootsWithMark(WorkStack &workStack)
+{
+    const auto dispatch = [&workStack, this](BaseObject *temp) {
+        if (!this->MarkObject(temp)) {
+            workStack.push_back(temp);
+        }
+    };
+    const auto dispatchFieldVisitor = [&workStack, this](RefField<>& field) {
+        if (!this->MarkObject(field.GetTargetObject())) {
+            EnumRefFieldRoot(field, workStack);
+        }
+    };
+
+    // inline EnumStaticRoots
+    VisitRoots(dispatchFieldVisitor, true);
+
+    // inline MergeMutatorRoots
+    {
+        MergeMutatorRootsScope lockScope;
+        theAllocator_.VisitAllocBuffers([&dispatch](AllocationBuffer &buffer) { buffer.MarkStack(dispatch); });
+    }
+}
+
 void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet)
 {
     ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
@@ -634,20 +689,8 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MergeMutatorRoots", "");
         MergeMutatorRoots(rootSet);
     }
-
-    {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInWorkStack", "");
-        WorkStack tempStack = NewWorkStack();
-        for (size_t i = 0; i < threadCount; ++i) {
-            tempStack.insert(rootSets[i]);
-        }
-        while (!tempStack.empty()) {
-            auto temp = tempStack.back();
-            tempStack.pop_back();
-            if (!this->MarkObject(temp)) {
-                rootSet.push_back(temp);
-            }
-        }
+    for (size_t i = 0; i < threadCount; ++i) {
+        rootSet.insert(rootSets[i]);
     }
     VLOG(DEBUG, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
