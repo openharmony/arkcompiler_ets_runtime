@@ -30,7 +30,6 @@ class PGOProfilerHeader;
 class PGOPandaFileInfos;
 class PGOAbcFilePool;
 class PGORecordDetailInfos;
-class SaveTask;
 class PGOProfilerDecoder;
 
 class PGOInfo {
@@ -56,7 +55,7 @@ public:
     void SetHotnessThreshold(uint32_t threshold);
     uint32_t GetHotnessThreshold() const;
     void SamplePandaFileInfoSafe(uint32_t checksum, const CString& abcName);
-    void MergeWithExistProfile(PGOInfo& other, PGOProfilerDecoder& decoder, const SaveTask* task);
+    void MergeWithExistProfile(PGOInfo& other, PGOProfilerDecoder& decoder);
     bool GetPandaFileIdSafe(const CString& abcName, ApEntityId& entryId);
     bool GetPandaFileDescSafe(ApEntityId abcId, CString& desc);
     void MergeSafe(const PGORecordDetailInfos& recordInfos);

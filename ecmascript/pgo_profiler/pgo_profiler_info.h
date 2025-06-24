@@ -47,7 +47,6 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::pgo {
-class SaveTask;
 class PGOContext;
 
 class PGOPandaFileInfos {
@@ -319,8 +318,10 @@ public:
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk* chunk, PGOContext& context, void** addr, size_t bufferSize);
-    bool ProcessToBinary(PGOContext &context, ProfileTypeRef recordProfileRef, const SaveTask *task,
-                         std::fstream &fileStream, PGOProfilerHeader *const header) const;
+    bool ProcessToBinary(PGOContext& context,
+                         ProfileTypeRef recordProfileRef,
+                         std::fstream& fileStream,
+                         PGOProfilerHeader* const header) const;
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
     void ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const;
@@ -520,7 +521,7 @@ public:
     void UpdateLayout();
 
     bool ParseFromBinary(void* buffer, PGOProfilerHeader* const header, size_t bufferSize);
-    void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
+    void ProcessToBinary(std::fstream& fileStream, PGOProfilerHeader* const header);
 
     void ProcessToText(std::ofstream &stream) const;
 
@@ -595,7 +596,7 @@ private:
                                    ProfileType& recordType);
     bool ParseRecordInfosFromBinary(void* buffer, PGOProfilerHeader* header, size_t bufferSize);
     bool ParseFromBinaryForLayout(void** addr, void* buffer, size_t bufferSize);
-    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream);
+    bool ProcessToBinaryForLayout(NativeAreaAllocator* allocator, std::fstream& stream);
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;

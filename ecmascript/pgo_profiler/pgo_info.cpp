@@ -159,7 +159,7 @@ bool PGOInfo::VerifyPandaFileMatched(const PGOPandaFileInfos& pandaFileInfos,
     return GetPandaFileInfos().VerifyChecksum(pandaFileInfos, base, incoming);
 }
 
-void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder, const SaveTask* task)
+void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PGOInfo::MergeWithExistProfile", "");
     ClockScope start;
@@ -178,17 +178,11 @@ void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder
         abcFilePool_->CopySafe(rtInfo.GetAbcFilePoolPtr());
         pandaFileInfos_->MergeSafe(rtInfo.GetPandaFileInfos());
     }
-    if (task && task->IsTerminate()) {
-        return;
-    }
     if (decoder.LoadFull(abcFilePool_)) {
         MergeSafe(decoder.GetPandaFileInfos());
         SetRecordDetailInfos(decoder.GetRecordDetailInfosPtr());
     } else {
         LOG_PGO(ERROR) << "fail to load ap: " << decoder.GetInPath();
-    }
-    if (task && task->IsTerminate()) {
-        return;
     }
     MergeSafe(rtInfo.GetRecordDetailInfos());
     if (PGOTrace::GetInstance()->IsEnable()) {
