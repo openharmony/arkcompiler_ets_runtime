@@ -1047,7 +1047,11 @@ if (ets_runtime_enable_cmc_gc) {
 }
 
 if (ark_js_hybrid) {
-  ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
+  ecma_source += [
+    "ecmascript/cross_vm/cross_vm_operator.cpp",
+    "ecmascript/serializer/inter_op_value_deserializer.cpp",
+    "ecmascript/serializer/inter_op_value_serializer.cpp",
+  ]
 }
 
 hitrace_scope_source = []
