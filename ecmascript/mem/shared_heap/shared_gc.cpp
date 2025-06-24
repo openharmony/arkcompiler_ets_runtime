@@ -147,6 +147,7 @@ void SharedGC::Sweep()
     Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
+        thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
         if (needClearCache) {
             thread->ClearVMCachedConstantPool();

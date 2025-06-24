@@ -21,7 +21,7 @@
 #include "ecmascript/mem/shared_heap/shared_full_gc-inl.h"
 
 namespace panda::ecmascript {
-void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType, VMRootVisitType type)
+void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots", "");
     MarkSerializeRoots(visitor);
@@ -37,22 +37,21 @@ void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        MarkLocalVMRoots(visitor, vm, markType, type);
+        MarkLocalVMRoots(visitor, vm, markType);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
             CollectLocalVMRSet(vm);
         }
     });
 }
 
-void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType,
-                                          VMRootVisitType type)
+void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots", "");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         heap->GetSweeper()->EnsureAllTaskFinished();
     }
-    ObjectXRay::VisitVMRoots(localVm, visitor, type);
+    ObjectXRay::VisitVMRoots(localVm, visitor);
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 

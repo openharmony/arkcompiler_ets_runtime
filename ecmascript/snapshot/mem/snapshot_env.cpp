@@ -25,7 +25,7 @@ void SnapshotEnv::AddGlobalConstToMap()
     for (size_t index = 0; index < globalConst->GetConstantCount(); index++) {
         JSTaggedValue objectValue = globalConst->GetGlobalConstantObject(index);
         if (objectValue.IsHeapObject() && !objectValue.IsString()) {
-            rootObjectMap_.emplace(objectValue.GetRawData(), index);
+            globalObjectMap_.emplace(objectValue.GetRawData(), index);
         }
     }
 }
@@ -49,25 +49,48 @@ JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
     return value->GetRawData();
 }
 
-void SnapshotEnv::Iterate(RootVisitor &v, VMRootVisitType type)
+void SnapshotEnv::ProcessSnapShotEnv(const WeakRootVisitor& visitor)
 {
-    if (type == VMRootVisitType::UPDATE_ROOT) {
-        // during update root, rootObjectMap_ key need update
-        std::unordered_map<JSTaggedType, uint32_t> rootObjectMap(rootObjectMap_.size());
-        for (auto &it : rootObjectMap_) {
-            auto objectAddr = it.first;
-            ObjectSlot slot(reinterpret_cast<uintptr_t>(&objectAddr));
-            v.VisitRoot(Root::ROOT_VM, slot);
-            rootObjectMap.emplace(slot.GetTaggedType(), it.second);
+    std::unordered_map<JSTaggedType, uint32_t> globalObjectMap(globalObjectMap_.size());
+    auto it = globalObjectMap_.begin();
+    while (it != globalObjectMap_.end()) {
+        JSTaggedValue globalVal = JSTaggedValue(it->first);
+        if (globalVal.IsHeapObject()) {
+            TaggedObject *obj = globalVal.GetTaggedObject();
+            auto fwd = visitor(obj);
+            if (fwd == nullptr) {
+                ++it;
+                continue;
+            }
+            globalObjectMap.emplace(JSTaggedValue(fwd).GetRawData(), it->second);
         }
-        std::swap(rootObjectMap_, rootObjectMap);
-        rootObjectMap.clear();
-    } else {
-        for (auto &it : rootObjectMap_) {
-            ObjectSlot slot(reinterpret_cast<uintptr_t>(&it));
-            v.VisitRoot(Root::ROOT_VM, slot);
-        }
+        ++it;
     }
+    std::swap(globalObjectMap_, globalObjectMap);
+    globalObjectMap.clear();
+}
+
+// for cmc-gc
+void SnapshotEnv::IteratorSnapShotEnv(WeakVisitor& visitor)
+{
+    // const key cannot modify.
+    std::unordered_map<JSTaggedType, uint32_t> globalObjectMap(globalObjectMap_.size());
+    auto it = globalObjectMap_.begin();
+    while (it != globalObjectMap_.end()) {
+        JSTaggedValue globalVal = JSTaggedValue(it->first);
+        if (globalVal.IsHeapObject()) {
+            bool isAlive = visitor.VisitRoot(Root::ROOT_VM,
+                ObjectSlot(reinterpret_cast<uintptr_t>(&globalVal)));
+            if (!isAlive) {
+                ++it;
+                continue;
+            }
+            globalObjectMap.emplace(globalVal.GetRawData(), it->second);
+        }
+        ++it;
+    }
+    std::swap(globalObjectMap_, globalObjectMap);
+    globalObjectMap.clear();
 }
 }  // namespace panda::ecmascript
 

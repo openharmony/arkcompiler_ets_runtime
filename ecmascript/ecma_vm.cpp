@@ -836,6 +836,17 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor& visitor)
     GetPGOProfiler()->ProcessReferences(visitor);
 }
 
+void EcmaVM::ProcessSnapShotEnv(const WeakRootVisitor& visitor)
+{
+    GetSnapshotEnv()->ProcessSnapShotEnv(visitor);
+}
+
+// for cmc-gc
+void EcmaVM::IteratorSnapShotEnv(WeakVisitor & visitor)
+{
+    GetSnapshotEnv()->IteratorSnapShotEnv(visitor);
+}
+
 void EcmaVM::PushToNativePointerList(JSNativePointer* pointer, Concurrent isConcurrent)
 {
     heap_->PushToNativePointerList(pointer, isConcurrent == Concurrent::YES);
@@ -889,15 +900,12 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
     heap_->CollectGarbage(gcType, reason);
 }
 
-void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
+void EcmaVM::Iterate(RootVisitor &v)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "CMCGC::VisitRootEcmaVM", "");
     if (!internalNativeMethods_.empty()) {
         v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
             ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    }
-    if (!WIN_OR_MAC_OR_IOS_PLATFORM && snapshotEnv_!= nullptr) {
-        snapshotEnv_->Iterate(v, type);
     }
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->Iterate(v);

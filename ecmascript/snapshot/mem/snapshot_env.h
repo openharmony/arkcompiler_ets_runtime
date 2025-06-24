@@ -33,25 +33,26 @@ public:
 
     void ClearEnvMap()
     {
-        rootObjectMap_.clear();
+        globalObjectMap_.clear();
     }
 
-    void Iterate(RootVisitor &v, VMRootVisitType type);
+    void ProcessSnapShotEnv(const WeakRootVisitor& visitor);
+    void IteratorSnapShotEnv(WeakVisitor& visitor);
 
     void Push(JSTaggedType objectAddr, uint32_t index)
     {
-        rootObjectMap_.emplace(objectAddr, index);
+        globalObjectMap_.emplace(objectAddr, index);
     }
 
     void Remove(JSTaggedType objectAddr)
     {
-        rootObjectMap_.erase(objectAddr);
+        globalObjectMap_.erase(objectAddr);
     }
 
     uint32_t FindEnvObjectIndex(JSTaggedType objectAddr) const
     {
-        if (rootObjectMap_.find(objectAddr) != rootObjectMap_.end()) {
-            return rootObjectMap_.find(objectAddr)->second;
+        if (globalObjectMap_.find(objectAddr) != globalObjectMap_.end()) {
+            return globalObjectMap_.find(objectAddr)->second;
         }
         return MAX_UINT_32;
     }
@@ -68,7 +69,7 @@ private:
     void InitGlobalEnv();
 
     EcmaVM *vm_;
-    std::unordered_map<JSTaggedType, uint32_t> rootObjectMap_;
+    std::unordered_map<JSTaggedType, uint32_t> globalObjectMap_;
     std::atomic<uint32_t> multiThreadCheckValue_ {0};
 };
 }  // namespace panda::ecmascript

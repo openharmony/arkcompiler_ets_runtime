@@ -105,7 +105,7 @@ void FullGC::MarkRoots()
     CompressGCMarker *marker = static_cast<CompressGCMarker*>(heap_->GetCompressGCMarker());
     FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX), forAppSpawn_);
     FullGCMarkRootVisitor &fullGCMarkRootVisitor = fullGCRunner.GetMarkRootVisitor();
-    marker->MarkRoots(fullGCMarkRootVisitor, VMRootVisitType::UPDATE_ROOT);
+    marker->MarkRoots(fullGCMarkRootVisitor);
 }
 
 void FullGC::Mark()
@@ -180,6 +180,7 @@ void FullGC::Sweep()
     };
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
+    heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
 
     heap_->GetSweeper()->Sweep(true);
     heap_->GetSweeper()->PostTask(true);
