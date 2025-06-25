@@ -101,8 +101,16 @@ void MutatorBase::HandleSuspensionRequest()
             while (true) {
                 sleep(INT_MAX);
             }
+        } else if (HasSuspensionRequest(SUSPENSION_FOR_PENDING_CALLBACK)) {
+            reinterpret_cast<Mutator*>(mutator_)->TryRunFlipFunction();
+        } else if (HasSuspensionRequest(SUSPENSION_FOR_RUNNING_CALLBACK)) {
+            reinterpret_cast<Mutator*>(mutator_)->WaitFlipFunctionFinish();
         }
         SetInSaferegion(SAFE_REGION_FALSE);
+        if (HasSuspensionRequest(SUSPENSION_FOR_FINALIZE)) {
+            HandleJSGCCallback();
+            ClearFinalizeRequest();
+        }
         // Leave saferegion if current mutator has no suspend request, otherwise try again
         if (LIKELY_CC(!HasAnySuspensionRequest() && !HasObserver())) {
             return;

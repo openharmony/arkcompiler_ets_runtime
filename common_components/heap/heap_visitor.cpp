@@ -16,16 +16,45 @@
 #include "common_interfaces/heap/heap_visitor.h"
 
 #include "common_components/base_runtime/hooks.h"
+#include "common_components/mutator/mutator.h"
 
 namespace common {
-void VisitRoots(const RefFieldVisitor &visitor, bool isMark)
+void VisitRoots(const RefFieldVisitor &visitor)
 {
-    VisitDynamicRoots(visitor, isMark);
+    VisitDynamicGlobalRoots(visitor);
+    VisitDynamicLocalRoots(visitor);
     VisitBaseRoots(visitor);
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
-    VisitDynamicWeakRoots(visitor);
+    VisitDynamicWeakGlobalRoots(visitor);
+    VisitDynamicWeakLocalRoots(visitor);
+}
+
+void VisitGlobalRoots(const RefFieldVisitor &visitor)
+{
+    VisitDynamicGlobalRoots(visitor);
+    VisitBaseRoots(visitor);
+}
+
+void VisitWeakGlobalRoots(const WeakRefFieldVisitor &visitor)
+{
+    VisitDynamicWeakGlobalRoots(visitor);
+}
+
+// Visit specific mutator's root.
+void VisitMutatorRoot(const RefFieldVisitor &visitor, Mutator &mutator)
+{
+    if (mutator.GetEcmaVMPtr()) {
+        VisitDynamicThreadRoot(visitor, mutator.GetEcmaVMPtr());
+    }
+}
+
+void VisitWeakMutatorRoot(const WeakRefFieldVisitor &visitor, Mutator &mutator)
+{
+    if (mutator.GetEcmaVMPtr()) {
+        VisitDynamicWeakThreadRoot(visitor, mutator.GetEcmaVMPtr());
+    }
 }
 }  // namespace common

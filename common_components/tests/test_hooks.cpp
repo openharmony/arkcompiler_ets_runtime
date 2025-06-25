@@ -19,9 +19,13 @@ namespace common {
 void SetBaseAddress(uintptr_t base) {}
 void JitFortUnProt(size_t size, void* base) {}
 void FillFreeObject(void *object, size_t size) {}
-void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark) {}
+void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc) {}
+void VisitDynamicLocalRoots(const RefFieldVisitor &visitor) {}
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc) {}
-void VisitDynamicWeakRoots(const common::WeakRefFieldVisitor &visitorFunc) {}
+void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc) {}
+void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc) {}
+void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm) {}
+void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm) {}
 void SweepThreadLocalJitFort() {}
 void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase) {}
 void JSGCCallback(void *ecmaVM) {}

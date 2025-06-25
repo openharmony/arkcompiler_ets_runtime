@@ -19,10 +19,12 @@
 #include "common_components/heap/collector/collector_proxy.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/heap/allocator/region_desc.h"
+#include "common_components/mutator/mutator_manager-inl.h"
 
 using namespace common;
 
 namespace common::test {
+using SuspensionType = MutatorBase::SuspensionType;
 class WCollectorTest : public BaseTestWithScope {
 protected:
     static void SetUpTestCase()
@@ -186,5 +188,28 @@ HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0)
 
     BaseObject *oldObj = wcollector->ForwardUpdateRawRef(root);
     EXPECT_EQ(oldObj, obj);
+}
+
+void FlipTest()
+{
+    MutatorManager &mutatorManager = MutatorManager::Instance();
+    ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+    bool stwCallbackExecuted = false;
+    auto stwTest = [&mutatorManager, &stwCallbackExecuted]() {
+        EXPECT_TRUE(mutatorManager.WorldStopped());
+        stwCallbackExecuted = true;
+    };
+    FlipFunction mutatorTest = [&mutatorManager, &stwCallbackExecuted](Mutator &mutator) {
+        EXPECT_TRUE(mutator.HasSuspensionRequest(SuspensionType::SUSPENSION_FOR_RUNNING_CALLBACK));
+        EXPECT_FALSE(mutatorManager.WorldStopped());
+        EXPECT_TRUE(stwCallbackExecuted);
+    };
+    mutatorManager.FlipMutators("flip-test", stwTest, &mutatorTest);
+}
+
+HWTEST_F_L0(WCollectorTest, FlipTest)
+{
+    std::thread t1(FlipTest);
+    t1.join();
 }
 }  // namespace common::test

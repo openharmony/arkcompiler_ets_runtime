@@ -200,7 +200,7 @@ bool MutatorManager::AcquireMutatorManagementWLockForCpuProfile()
 }
 
 // Visit all mutators, hold mutatorListLock firstly
-void MutatorManager::VisitAllMutators(MutatorVisitor func)
+void MutatorManager::VisitAllMutators(MutatorVisitor func, bool ignoreFinalizer)
 {
     {
         std::lock_guard<std::mutex> guard(allMutatorListLock_);
@@ -208,10 +208,11 @@ void MutatorManager::VisitAllMutators(MutatorVisitor func)
             func(*mutator);
         }
     }
-
-    Mutator* mutator = Heap::GetHeap().GetFinalizerProcessor().GetMutator();
-    if (mutator != nullptr) {
-        func(*mutator);
+    if (!ignoreFinalizer) {
+        Mutator* mutator = Heap::GetHeap().GetFinalizerProcessor().GetMutator();
+        if (mutator != nullptr) {
+            func(*mutator);
+        }
     }
 }
 
