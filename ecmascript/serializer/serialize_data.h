@@ -30,7 +30,6 @@ constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
 static constexpr int SERIALIZE_SPACE_NUM = 12;
-static constexpr int GROUP_SIZE = SERIALIZE_SPACE_NUM + 1; // 1: incomplete data
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
