@@ -139,7 +139,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
         auto& baseStringTable = common::BaseRuntime::GetInstance()->GetStringTable();
         stringTable_ = std::make_unique<EcmaStringTable>(true, &baseStringTable,
                                                          &static_cast<common::BaseStringTableImpl*>(&baseStringTable)->
-                                                         GetHashTrieMap());
+                                                          GetInternalTable()->GetHashTrieMap());
     } else {
         stringTable_ = std::make_unique<EcmaStringTable>(false);
     }

@@ -44,7 +44,7 @@ void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTa
                                                  const WeakRootVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < common::HashTrieMap<EcmaStringTableMutex, JSThread>::INDIRECT_SIZE) {
+    while ((index = GetNextIndexId(iter)) < common::TrieMapConfig::INDIRECT_SIZE) {
         cleaner->stringTable_->SweepWeakRef(visitor, index);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTask();
@@ -56,8 +56,7 @@ void EcmaStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = false;
-    PendingTaskCount_.store(common::HashTrieMap<EcmaStringTableMutex, JSThread>::INDIRECT_SIZE,
-                            std::memory_order_relaxed);
+    PendingTaskCount_.store(common::TrieMapConfig::INDIRECT_SIZE, std::memory_order_relaxed);
 }
 
 void EcmaStringTableCleaner::WaitSweepWeakRefTask()
@@ -460,7 +459,7 @@ void EcmaStringTableImpl<Traits>::SweepWeakRef(const WeakRootVisitor &visitor)
     if (root_node == nullptr) {
         return;
     }
-    for (uint32_t index = 0; index < HashTrieMapImpl::INDIRECT_SIZE; ++index) {
+    for (uint32_t index = 0; index < common::TrieMapConfig::INDIRECT_SIZE; ++index) {
         SweepWeakRef(visitor, index);
     }
 }
@@ -468,7 +467,7 @@ void EcmaStringTableImpl<Traits>::SweepWeakRef(const WeakRootVisitor &visitor)
 template <typename Traits>
 void EcmaStringTableImpl<Traits>::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index)
 {
-    ASSERT(index >= 0 && index < HashTrieMapImpl::INDIRECT_SIZE);
+    ASSERT(index >= 0 && index < common::TrieMapConfig::INDIRECT_SIZE);
     auto *root_node = stringTable_.root_.load(std::memory_order_relaxed);
     stringTable_.ClearNodeFromGC(root_node, index, visitor);
 }
@@ -564,23 +563,6 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringThreadUnsafe(EcmaVM* v
     return EcmaString::FromBaseString(result);
 }
 
-template <typename Traits>
-void EcmaStringTableImpl<Traits>::IterWeakRoot(const common::WeakRefFieldVisitor& visitor)
-{
-    // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
-    for (uint32_t index = 0; index < HashTrieMapImpl::INDIRECT_SIZE; ++index) {
-        IterWeakRoot(visitor, index);
-    }
-}
-
-template <typename Traits>
-void EcmaStringTableImpl<Traits>::IterWeakRoot(const common::WeakRefFieldVisitor& visitor, uint32_t index)
-{
-    ASSERT(index >= 0 && index < HashTrieMapImpl::INDIRECT_SIZE);
-    auto* rootNode = stringTable_.root_.load(std::memory_order_relaxed);
-    stringTable_.ClearNodeFromGC(rootNode, index, visitor);
-}
-
 EcmaString* EcmaStringTable::GetOrInternFlattenString(EcmaVM* vm, EcmaString* string)
 {
     return visitImpl([&](auto& impl) { return impl.GetOrInternFlattenString(vm, string); });
@@ -664,32 +646,20 @@ EcmaString* EcmaStringTable::TryGetInternString(const JSHandle<EcmaString>& stri
     });
 }
 
-void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor& visitor)
-{
-    return visitImpl([&](auto& impl) {
-        return impl.IterWeakRoot(visitor);
-    });
-}
-
-void EcmaStringTable::IterWeakRoot(const common::WeakRefFieldVisitor& visitor, uint32_t index)
-{
-    return visitImpl([&](auto& impl) {
-        return impl.IterWeakRoot(visitor, index);
-    });
-}
-
 void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor)
 {
-    return visitImpl([&](auto& impl) {
-        return impl.SweepWeakRef(visitor);
-    });
+    if (std::holds_alternative<EcmaStringTableImpl<DisableCMCGCTrait>>(impl_)) {
+        return std::get<EcmaStringTableImpl<DisableCMCGCTrait>>(impl_).SweepWeakRef(visitor);
+    }
+    UNREACHABLE();
 }
 
 void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor, uint32_t index)
 {
-    return visitImpl([&](auto& impl) {
-        return impl.SweepWeakRef(visitor, index);
-    });
+    if (std::holds_alternative<EcmaStringTableImpl<DisableCMCGCTrait>>(impl_)) {
+        return std::get<EcmaStringTableImpl<DisableCMCGCTrait>>(impl_).SweepWeakRef(visitor, index);
+    }
+    UNREACHABLE();
 }
 
 bool EcmaStringTable::CheckStringTableValidity()

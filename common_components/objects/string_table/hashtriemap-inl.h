@@ -19,14 +19,15 @@
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/readonly_handle.h"
 #include "common_interfaces/objects/base_string.h"
+#include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/objects/string_table/integer_cache.h"
 
 namespace common {
 // Expand to get oldEntry and newEntry, with hash conflicts from 32 bits up to
 // hashShift and Generate a subtree of indirect nodes to hold two new entries.
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <bool IsLock>
-typename HashTrieMap<Mutex, ThreadHolder>::Node* HashTrieMap<Mutex, ThreadHolder>::Expand(
+typename HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Node* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Expand(
     Entry* oldEntry, Entry* newEntry, uint32_t newHash, uint32_t hashShift, Indirect* parent)
 {
     uint32_t oldHash = oldEntry->Key();
@@ -44,7 +45,7 @@ typename HashTrieMap<Mutex, ThreadHolder>::Node* HashTrieMap<Mutex, ThreadHolder
 
     while (true) {
 #ifndef NDEBUG
-        if (hashShift == TOTAL_HASH_BITS) {
+        if (hashShift == TrieMapConfig::TOTAL_HASH_BITS) {
             if constexpr (IsLock) {
                 GetMutex().Unlock();
             }
@@ -53,10 +54,10 @@ typename HashTrieMap<Mutex, ThreadHolder>::Node* HashTrieMap<Mutex, ThreadHolder
         }
 #endif
 
-        hashShift += N_CHILDREN_LOG2; // hashShift is the level at which the parent
+        hashShift += TrieMapConfig::N_CHILDREN_LOG2; // hashShift is the level at which the parent
         // is located. Need to go deeper.
-        uint32_t oldIdx = (oldHash >> hashShift) & N_CHILDREN_MASK;
-        uint32_t newIdx = (newHash >> hashShift) & N_CHILDREN_MASK;
+        uint32_t oldIdx = (oldHash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
+        uint32_t newIdx = (newHash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
         if (oldIdx != newIdx) {
             newIndirect->children_[oldIdx].store(oldEntry, std::memory_order_release);
             newIndirect->children_[newIdx].store(newEntry, std::memory_order_release);
@@ -71,15 +72,17 @@ typename HashTrieMap<Mutex, ThreadHolder>::Node* HashTrieMap<Mutex, ThreadHolder
 }
 
 // Load returns the value of the key stored in the mapping, or nullptr value if not
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <bool IsCheck, typename ReadBarrier>
-BaseString* HashTrieMap<Mutex, ThreadHolder>::Load(ReadBarrier&& readBarrier, const uint32_t key, BaseString* value)
+BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& readBarrier, const uint32_t key,
+                                                                BaseString* value)
 {
     uint32_t hash = key;
     Indirect* current = root_.load(std::memory_order_relaxed);
 
-    for (uint32_t hashShift = 0; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-        size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+    for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
+         TrieMapConfig::N_CHILDREN_LOG2) {
+        size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
 
         std::atomic<Node*>* slot = &current->children_[index];
         Node* node = slot->load(std::memory_order_acquire);
@@ -92,16 +95,21 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::Load(ReadBarrier&& readBarrier, co
         }
         for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key) {
-                bool valuesEqual = BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier),
-                                                               currentEntry->Value(), value);
-                if constexpr (IsCheck) {
-                    if (!valuesEqual) {
-                        return currentEntry->Value();
-                    }
-                } else if (valuesEqual) {
-                    return currentEntry->Value();
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            auto oldValue = currentEntry->Value<SlotBarrier>();
+            bool valuesEqual = false;
+            if (!IsNull(oldValue) && BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), oldValue,
+                                                                 value)) {
+                valuesEqual = true;
+            }
+            if constexpr (IsCheck) {
+                if (!valuesEqual) {
+                    return oldValue;
                 }
+            } else if (valuesEqual) {
+                return oldValue;
             }
         }
         return nullptr;
@@ -114,11 +122,11 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::Load(ReadBarrier&& readBarrier, co
 // LoadOrStore returns the existing value of the key, if it exists.
 // Otherwise, call the callback function to create a value,
 // store the value, and return the value
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <bool IsLock, typename LoaderCallback, typename EqualsCallback>
-BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, const uint32_t key,
-                                                          LoaderCallback loaderCallback,
-                                                          EqualsCallback equalsCallback)
+BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHolder* holder, const uint32_t key,
+                                                                       LoaderCallback loaderCallback,
+                                                                       EqualsCallback equalsCallback)
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
@@ -132,8 +140,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
     while (true) {
         haveInsertPoint = false;
         // find the key or insert the candidate position.
-        for (; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-            size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+        for (; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift += TrieMapConfig::N_CHILDREN_LOG2) {
+            size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
             slot = &current->children_[index];
             node = slot->load(std::memory_order_acquire);
             if (node == nullptr) {
@@ -148,9 +156,15 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
             }
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() == key &&
-                    std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
-                    return currentEntry->Value();
+                if (currentEntry->Key() != key) {
+                    continue;
+                }
+                auto oldValue = currentEntry->Value<SlotBarrier>();
+                if (IsNull(oldValue)) {
+                    continue;
+                }
+                if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
+                    return oldValue;
                 }
             }
             haveInsertPoint = true;
@@ -182,7 +196,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
             GetMutex().Unlock();
         }
         current = node->AsIndirect();
-        hashShift += N_CHILDREN_LOG2;
+        hashShift += TrieMapConfig::N_CHILDREN_LOG2;
     }
 
     Entry* oldEntry = nullptr;
@@ -190,12 +204,18 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key &&
-                std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            auto oldValue = currentEntry->Value<SlotBarrier>();
+            if (IsNull(oldValue)) {
+                continue;
+            }
+            if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
                 if constexpr (IsLock) {
                     GetMutex().Unlock();
                 }
-                return currentEntry->Value();
+                return oldValue;
             }
         }
     }
@@ -204,6 +224,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
+    oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
         slot->store(newEntry, std::memory_order_release);
@@ -223,11 +244,11 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStore(ThreadHolder* holder, 
 // returns the existing value of the key, if it exists.
 // Otherwise, call the callback function to create a value,
 // store the value, and return the value
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename LoaderCallback, typename EqualsCallback>
-BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* holder, const uint32_t key,
-                                                                LoaderCallback loaderCallback,
-                                                                EqualsCallback equalsCallback)
+BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(ThreadHolder* holder, const uint32_t key,
+                                                                             LoaderCallback loaderCallback,
+                                                                             EqualsCallback equalsCallback)
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
@@ -240,8 +261,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
     while (true) {
         haveInsertPoint = false;
         // find the key or insert the candidate position.
-        for (; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-            size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+        for (; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift += TrieMapConfig::N_CHILDREN_LOG2) {
+            size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
             slot = &current->children_[index];
             node = slot->load(std::memory_order_acquire);
             if (node == nullptr) {
@@ -256,9 +277,15 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
             }
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() == key &&
-                    std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
-                    return currentEntry->Value();
+                if (currentEntry->Key() != key) {
+                    continue;
+                }
+                auto oldValue = currentEntry->Value<SlotBarrier>();
+                if (IsNull(oldValue)) {
+                    continue;
+                }
+                if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
+                    return oldValue;
                 }
             }
             haveInsertPoint = true;
@@ -283,7 +310,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
 
         GetMutex().Unlock();
         current = node->AsIndirect();
-        hashShift += N_CHILDREN_LOG2;
+        hashShift += TrieMapConfig::N_CHILDREN_LOG2;
     }
 
     Entry* oldEntry = nullptr;
@@ -291,10 +318,16 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key &&
-                std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            auto oldValue = currentEntry->Value<SlotBarrier>();
+            if (IsNull(oldValue)) {
+                continue;
+            }
+            if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
                 GetMutex().Unlock();
-                return currentEntry->Value();
+                return oldValue;
             }
         }
     }
@@ -302,6 +335,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
+    oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
         slot->store(newEntry, std::memory_order_release);
@@ -317,12 +351,12 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::LoadOrStoreForJit(ThreadHolder* ho
 
 // Based on the loadResult, try the store first
 // StoreOrLoad returns the existing value of the key, store the value, and return the value
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename LoaderCallback, typename EqualsCallback>
-BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, const uint32_t key,
-                                                          HashTrieMapLoadResult loadResult,
-                                                          LoaderCallback loaderCallback,
-                                                          EqualsCallback equalsCallback)
+BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHolder* holder, const uint32_t key,
+                                                                       HashTrieMapLoadResult loadResult,
+                                                                       LoaderCallback loaderCallback,
+                                                                       EqualsCallback equalsCallback)
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
@@ -338,12 +372,12 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
     if (node != nullptr && !node->IsEntry()) {
         GetMutex().Unlock();
         current = node->AsIndirect();
-        hashShift += N_CHILDREN_LOG2;
+        hashShift += TrieMapConfig::N_CHILDREN_LOG2;
         while (true) {
             haveInsertPoint = false;
             // find the key or insert the candidate position.
-            for (; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-                size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+            for (; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift += TrieMapConfig::N_CHILDREN_LOG2) {
+                size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
                 slot = &current->children_[index];
                 node = slot->load(std::memory_order_acquire);
                 if (node == nullptr) {
@@ -354,9 +388,12 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
                 if (node->IsEntry()) {
                     for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                          currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                        if (currentEntry->Key() == key &&
-                            std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
-                            return currentEntry->Value();
+                        if (currentEntry->Key() == key) {
+                            auto oldValue = currentEntry->Value<SlotBarrier>();
+                            if (!IsNull(oldValue) && std::invoke(std::forward<EqualsCallback>(equalsCallback),
+                                                                 oldValue)) {
+                                return oldValue;
+                            }
                         }
                     }
                     haveInsertPoint = true;
@@ -380,18 +417,24 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
             }
             GetMutex().Unlock();
             current = node->AsIndirect();
-            hashShift += N_CHILDREN_LOG2;
+            hashShift += TrieMapConfig::N_CHILDREN_LOG2;
         }
     }
     Entry* oldEntry = nullptr;
     if (node != nullptr) {
         oldEntry = node->AsEntry();
-        for (Entry* currentEntry = oldEntry; currentEntry;
+        for (Entry* currentEntry = oldEntry; currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key &&
-                std::invoke(std::forward<EqualsCallback>(equalsCallback), currentEntry->Value())) {
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            auto oldValue = currentEntry->Value<SlotBarrier>();
+            if (IsNull(oldValue)) {
+                continue;
+            }
+            if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
                 GetMutex().Unlock();
-                return currentEntry->Value();
+                return oldValue;
             }
         }
     }
@@ -400,6 +443,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
+    oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
         slot->store(newEntry, std::memory_order_release);
@@ -415,16 +459,16 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
 }
 
 // Load returns the value of the key stored in the mapping, or HashTrieMapLoadResult for StoreOrLoad
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename ReadBarrier>
-typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder>::Load(
-    ReadBarrier&& readBarrier,
-    const uint32_t key, BaseString* value)
+HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& readBarrier,
+                                                                          const uint32_t key, BaseString* value)
 {
     uint32_t hash = key;
     Indirect* current = root_.load(std::memory_order_relaxed);
-    for (uint32_t hashShift = 0; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-        size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+    for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
+         TrieMapConfig::N_CHILDREN_LOG2) {
+        size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
 
         std::atomic<Node*>* slot = &current->children_[index];
         Node* node = slot->load(std::memory_order_acquire);
@@ -434,10 +478,15 @@ typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mut
         if (node->IsEntry()) {
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() == key &&
-                    BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), currentEntry->Value(),
-                                                value)) {
-                    return {currentEntry->Value(), nullptr, hashShift, nullptr};
+                if (currentEntry->Key() != key) {
+                    continue;
+                }
+                auto oldValue = currentEntry->Value<SlotBarrier>();
+                if (IsNull(oldValue)) {
+                    continue;
+                }
+                if (BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), oldValue, value)) {
+                    return {oldValue, nullptr, hashShift, nullptr};
                 }
             }
             return {nullptr, current, hashShift, slot};
@@ -450,17 +499,18 @@ typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mut
 }
 
 // Load returns the value of the key stored in the mapping, or HashTrieMapLoadResult for StoreOrLoad
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename ReadBarrier>
-typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder>::Load(
-    ReadBarrier&& readBarrier,
-    const uint32_t key, const ReadOnlyHandle<BaseString>& string, uint32_t offset, uint32_t utf8Len)
+HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& readBarrier, const uint32_t key,
+                                                                          const ReadOnlyHandle<BaseString>& string,
+                                                                          uint32_t offset, uint32_t utf8Len)
 {
     uint32_t hash = key;
     Indirect* current = root_.load(std::memory_order_relaxed);
     const uint8_t* utf8Data = string->GetDataUtf8() + offset;
-    for (uint32_t hashShift = 0; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-        size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+    for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
+         TrieMapConfig::N_CHILDREN_LOG2) {
+        size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
 
         std::atomic<Node*>* slot = &current->children_[index];
         Node* node = slot->load(std::memory_order_acquire);
@@ -473,9 +523,16 @@ typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mut
         }
         for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key && BaseString::StringIsEqualUint8Data(
-                std::forward<ReadBarrier>(readBarrier), currentEntry->Value(), utf8Data, utf8Len, true)) {
-                return {currentEntry->Value(), nullptr, hashShift, nullptr};
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            auto oldValue = currentEntry->Value<SlotBarrier>();
+            if (IsNull(oldValue)) {
+                continue;
+            }
+            if (BaseString::StringIsEqualUint8Data(std::forward<ReadBarrier>(readBarrier), oldValue, utf8Data, utf8Len,
+                                                   true)) {
+                return {oldValue, nullptr, hashShift, nullptr};
             }
         }
         return {nullptr, current, hashShift, slot};
@@ -487,11 +544,12 @@ typename HashTrieMap<Mutex, ThreadHolder>::HashTrieMapLoadResult HashTrieMap<Mut
 
 // Based on the loadResult, try the store first
 // StoreOrLoad returns the existing value of the key, store the value, and return the value
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <bool threadState, typename ReadBarrier, typename HandleType>
-BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, ReadBarrier&& readBarrier,
-                                                          const uint32_t key, HashTrieMapLoadResult loadResult,
-                                                          HandleType str)
+BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHolder* holder, ReadBarrier&& readBarrier,
+                                                                       const uint32_t key,
+                                                                       HashTrieMapLoadResult loadResult,
+                                                                       HandleType str)
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
@@ -509,11 +567,11 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
     if (node != nullptr && !node->IsEntry()) {
         GetMutex().Unlock();
         current = node->AsIndirect();
-        hashShift += N_CHILDREN_LOG2;
+        hashShift += TrieMapConfig::N_CHILDREN_LOG2;
         while (true) {
             haveInsertPoint = false;
-            for (; hashShift < TOTAL_HASH_BITS; hashShift += N_CHILDREN_LOG2) {
-                size_t index = (hash >> hashShift) & N_CHILDREN_MASK;
+            for (; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift += TrieMapConfig::N_CHILDREN_LOG2) {
+                size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
                 slot = &current->children_[index];
                 node = slot->load(std::memory_order_acquire);
                 if (node == nullptr) {
@@ -528,10 +586,15 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
                 }
                 for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                      currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                    if (currentEntry->Key() == key &&
-                        BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), currentEntry->Value(),
-                                                    *str)) {
-                        return currentEntry->Value();
+                    if (currentEntry->Key() != key) {
+                        continue;
+                    }
+                    BaseString* oldValue = currentEntry->Value<SlotBarrier>();
+                    if (IsNull(oldValue)) {
+                        continue;
+                    }
+                    if (BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), oldValue, *str)) {
+                        return oldValue;
                     }
                 }
                 haveInsertPoint = true;
@@ -556,19 +619,25 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
             }
             GetMutex().Unlock();
             current = node->AsIndirect();
-            hashShift += N_CHILDREN_LOG2;
+            hashShift += TrieMapConfig::N_CHILDREN_LOG2;
         }
     }
 
     Entry* oldEntry = nullptr;
     if (node != nullptr) {
         oldEntry = node->AsEntry();
-        for (Entry* currentEntry = oldEntry; currentEntry;
+        for (Entry* currentEntry = oldEntry; currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() == key && BaseString::StringsAreEqual(
-                std::forward<ReadBarrier>(readBarrier), currentEntry->Value(), *str)) {
+            if (currentEntry->Key() != key) {
+                continue;
+            }
+            BaseString* oldValue = currentEntry->Value<SlotBarrier>();
+            if (IsNull(oldValue)) {
+                continue;
+            }
+            if (BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), oldValue, *str)) {
                 GetMutex().Unlock();
-                return currentEntry->Value();
+                return oldValue;
             }
         }
     }
@@ -577,10 +646,11 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(key, value);
+    oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
         slot->store(newEntry, std::memory_order_release);
-    } else {
+    }  else {
         // Expand an existing entry to one or more new nodes.
         // Release the node, which will make both oldEntry and newEntry visible
         auto expandedNode = Expand<true>(oldEntry, newEntry, hash, hashShift, current);
@@ -591,10 +661,11 @@ BaseString* HashTrieMap<Mutex, ThreadHolder>::StoreOrLoad(ThreadHolder* holder, 
 }
 
 
-template <typename Mutex, typename ThreadHolder>
-bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry)
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry)
 {
-    panda::ecmascript::TaggedObject* object = reinterpret_cast<panda::ecmascript::TaggedObject*>(entry->Value());
+    panda::ecmascript::TaggedObject* object = reinterpret_cast<panda::ecmascript::TaggedObject*>(entry->Value<
+        SlotBarrier>());
     auto fwd = visitor(object);
     if (fwd == nullptr) {
         LOG_COMMON(VERBOSE) << "StringTable: delete string " << std::hex << object;
@@ -606,9 +677,10 @@ bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRootVisitor& visit
     return false;
 }
 
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename ReadBarrier>
-bool HashTrieMap<Mutex, ThreadHolder>::CheckValidity(ReadBarrier&& readBarrier, BaseString* value, bool& isValid)
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckValidity(ReadBarrier&& readBarrier, BaseString* value,
+                                                                  bool& isValid)
 {
     if (!value->NotTreeString()) {
         isValid = false;
@@ -622,9 +694,9 @@ bool HashTrieMap<Mutex, ThreadHolder>::CheckValidity(ReadBarrier&& readBarrier, 
     return true;
 }
 
-template <typename Mutex, typename ThreadHolder>
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <typename ReadBarrier>
-void HashTrieMap<Mutex, ThreadHolder>::Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid)
+void HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid)
 {
     if (node == nullptr)
         return;
@@ -641,35 +713,82 @@ void HashTrieMap<Mutex, ThreadHolder>::Iter(ReadBarrier&& readBarrier, Indirect*
         }
 
         for (Entry* e = childNode->AsEntry(); e != nullptr; e = e->Overflow().load(std::memory_order_relaxed)) {
-            if (!CheckValidity(std::forward<ReadBarrier>(readBarrier), e->Value(), isValid)) {
-                return; // 用户终止迭代
+            auto value = e->Value<SlotBarrier>();
+            if (!IsNull(value) &&
+                !CheckValidity(std::forward<ReadBarrier>(readBarrier), value, isValid)) {
+                return;
             }
         }
     }
 }
 
-template <typename Mutex, typename ThreadHolder>
-bool HashTrieMap<Mutex, ThreadHolder>::CheckWeakRef(const WeakRefFieldVisitor& visitor, HashTrieMap::Entry* entry)
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckWeakRef(const WeakRefFieldVisitor& visitor,
+                                                                 HashTrieMap::Entry* entry)
 {
     // RefField only support 64-bit value, so could not cirectly pass `Entry::Value` to WeakRefFieldVisitor
     // int 32-bit machine
-    uint64_t str = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(entry->Value()));
-    bool isAlive = visitor(reinterpret_cast<RefField<> &>(str));
+    if (SlotBarrier == TrieMapConfig::NeedSlotBarrier) {
+        uint64_t str = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(entry->Value<SlotBarrier>()));
+        bool isAlive = visitor(reinterpret_cast<RefField<>&>(str));
+        entry->SetValue(reinterpret_cast<BaseString*>(static_cast<uintptr_t>(str)));
+        return isAlive;
+    }
+    uint64_t str = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(entry->Value<SlotBarrier>()));
+    bool isAlive = visitor(reinterpret_cast<RefField<>&>(str));
     if (!isAlive) {
         return true;
     }
-    entry->SetValue(reinterpret_cast<BaseString *>(static_cast<uintptr_t>(str)));
+    entry->SetValue(reinterpret_cast<BaseString*>(static_cast<uintptr_t>(str)));
     return false;
 }
 
-template <typename Mutex, typename ThreadHolder>
-bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int index, const WeakRefFieldVisitor& visitor)
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template <TrieMapConfig::SlotBarrier Barrier, std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Indirect* parent, int index,
+                                                                    const WeakRefFieldVisitor& visitor,
+                                                                    std::vector<Entry*>& waitDeleteEntries)
 {
     // load sub-nodes
     Node* child = parent->children_[index].load(std::memory_order_relaxed);
     if (child == nullptr)
         return true;
 
+    if (child->IsEntry()) {
+        // Processing the overflow linked list
+        for (Entry *prev = nullptr, *current = child->AsEntry(); current != nullptr; current = current->
+             Overflow().load(std::memory_order_acquire)) {
+            if (!CheckWeakRef(visitor, current) && prev != nullptr) {
+                prev->Overflow().store(current->Overflow().load(std::memory_order_acquire), std::memory_order_release);
+                waitDeleteEntries.push_back(current);
+            } else {
+                prev = current;
+            }
+        }
+        return false;
+    } else {
+        // Recursive processing of the Indirect node
+        Indirect* indirect = child->AsIndirect();
+        uint32_t cleanCount = 0;
+        for (uint32_t i = 0; i < TrieMapConfig::INDIRECT_SIZE; ++i) {
+            if (ClearNodeFromGC(indirect, i, visitor, waitDeleteEntries)) {
+                cleanCount += 1;
+            }
+        }
+        return false;
+    }
+}
+
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template <TrieMapConfig::SlotBarrier Barrier, std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier, int>>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Indirect* parent, int index,
+                                                                    const WeakRefFieldVisitor& visitor)
+{
+    // load sub-nodes
+    Node* child = parent->children_[index].load(std::memory_order_relaxed);
+    if (child == nullptr) {
+        return true;
+    }
     if (child->IsEntry()) {
         Entry* entry = child->AsEntry();
         // Processing the overflow linked list
@@ -707,13 +826,13 @@ bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int ind
         // Recursive processing of the Indirect node
         Indirect* indirect = child->AsIndirect();
         uint32_t cleanCount = 0;
-        for (uint32_t i = 0; i < INDIRECT_SIZE; ++i) {
+        for (uint32_t i = 0; i < TrieMapConfig::INDIRECT_SIZE; ++i) {
             if (ClearNodeFromGC(indirect, i, visitor)) {
                 cleanCount += 1;
             }
         }
         // Check whether the indirect node is empty
-        if (cleanCount == INDIRECT_SIZE) {
+        if (cleanCount == TrieMapConfig::INDIRECT_SIZE) {
             // Remove the empty Indirect and update the parent reference
             delete indirect;
             parent->children_[index].store(nullptr, std::memory_order_relaxed);
@@ -723,8 +842,10 @@ bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int ind
     }
 }
 
-template <typename Mutex, typename ThreadHolder>
-bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor)
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template <TrieMapConfig::SlotBarrier Barrier, std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier, int>>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Indirect* parent, int index,
+                                                                    const WeakRootVisitor& visitor)
 {
     // load sub-nodes
     Node* child = parent->children_[index].load(std::memory_order_relaxed);
@@ -767,13 +888,13 @@ bool HashTrieMap<Mutex, ThreadHolder>::ClearNodeFromGC(Indirect* parent, int ind
         // Recursive processing of the Indirect node
         Indirect* indirect = child->AsIndirect();
         uint32_t cleanCount = 0;
-        for (uint32_t i = 0; i < INDIRECT_SIZE; ++i) {
+        for (uint32_t i = 0; i < TrieMapConfig::INDIRECT_SIZE; ++i) {
             if (ClearNodeFromGC(indirect, i, visitor)) {
                 cleanCount += 1;
             }
         }
         // Check whether the indirect node is empty
-        if (cleanCount == INDIRECT_SIZE && inuseCount_ == 0) {
+        if (cleanCount == TrieMapConfig::INDIRECT_SIZE && inuseCount_ == 0) {
             // Remove the empty Indirect and update the parent reference
             delete indirect;
             parent->children_[index].store(nullptr, std::memory_order_relaxed);
