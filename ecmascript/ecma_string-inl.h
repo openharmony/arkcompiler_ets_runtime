@@ -433,10 +433,11 @@ inline size_t EcmaStringAccessor::GetUtf8Length(bool isGetBufferSize) const
     return string_->GetUtf8Length(true, isGetBufferSize);
 }
 
+template <RBMode mode>
 inline void EcmaStringAccessor::ReadData(EcmaString *dst, EcmaString *src,
     uint32_t start, uint32_t destSize, uint32_t length)
 {
-    dst->WriteData(src, start, destSize, length);
+    dst->WriteData<mode>(src, start, destSize, length);
 }
 
 inline Span<const uint8_t> EcmaStringAccessor::FastToUtf8Span() const

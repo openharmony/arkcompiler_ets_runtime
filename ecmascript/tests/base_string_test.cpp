@@ -105,7 +105,7 @@ namespace panda::test {
                                              EcmaStringAccessor::CreateFromUtf8(
                                                  instance, &arrayU8[0], lengthEcmaStrU8, true));
         for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
-            EXPECT_EQ(arrayU8[i], handleEcmaStrU8->ToBaseString()->At(Barriers::GetTaggedObject, i));
+            EXPECT_EQ(arrayU8[i], handleEcmaStrU8->ToBaseString()->At(Barriers::GetTaggedObject<>, i));
         }
         EXPECT_EQ(handleEcmaStrU8->ToBaseString()->GetLength(), lengthEcmaStrU8);
         EXPECT_TRUE(handleEcmaStrU8->ToBaseString()->IsUtf8());
@@ -455,10 +455,10 @@ namespace panda::test {
                                                        instance, handleEcmaStrFrontU8, handleEcmaStrBackU8));
         EXPECT_TRUE(handleEcmaStrConcatU8->ToBaseString()->IsUtf8());
         for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
-            EXPECT_EQ(handleEcmaStrConcatU8->ToBaseString()->At(Barriers::GetTaggedObject, i), arrayFrontU8[i]);
+            EXPECT_EQ(handleEcmaStrConcatU8->ToBaseString()->At(Barriers::GetTaggedObject<>, i), arrayFrontU8[i]);
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU8; i++) {
-            EXPECT_EQ(handleEcmaStrConcatU8->ToBaseString()->At(Barriers::GetTaggedObject, i + lengthEcmaStrFrontU8),
+            EXPECT_EQ(handleEcmaStrConcatU8->ToBaseString()->At(Barriers::GetTaggedObject<>, i + lengthEcmaStrFrontU8),
                       arrayBackU8[i]);
         }
         EXPECT_EQ(handleEcmaStrConcatU8->ToBaseString()->GetLength(), lengthEcmaStrFrontU8 + lengthEcmaStrBackU8);
@@ -493,12 +493,12 @@ namespace panda::test {
                                                                handleEcmaStrBackU16NotComp));
         EXPECT_TRUE(handleEcmaStrConcatU16NotComp->ToBaseString()->IsUtf16());
         for (uint32_t i = 0; i < lengthEcmaStrFrontU16NotComp; i++) {
-            EXPECT_EQ(handleEcmaStrConcatU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject, i),
+            EXPECT_EQ(handleEcmaStrConcatU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>, i),
                       arrayFrontU16NotComp[i]);
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
             EXPECT_EQ(
-                handleEcmaStrConcatU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject, i +
+                handleEcmaStrConcatU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>, i +
                     lengthEcmaStrFrontU16NotComp), arrayBackU16NotComp[i]);
         }
         EXPECT_EQ(handleEcmaStrConcatU16NotComp->ToBaseString()->GetLength(),
@@ -532,12 +532,12 @@ namespace panda::test {
                                                                  handleEcmaStrBackU16NotComp));
         EXPECT_TRUE(handleEcmaStrConcatU8U16NotComp->ToBaseString()->IsUtf16());
         for (uint32_t i = 0; i < lengthEcmaStrFrontU8; i++) {
-            EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject, i),
+            EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>, i),
                       arrayFrontU8[i]);
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
-            EXPECT_EQ(
-                handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject, i + lengthEcmaStrFrontU8),
+            EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(
+                          Barriers::GetTaggedObject<>, i + lengthEcmaStrFrontU8),
                 arrayBackU16NotComp[i]);
         }
         EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->GetLength(),
@@ -565,8 +565,8 @@ namespace panda::test {
                                                 EcmaStringAccessor::FastSubString(
                                                     instance, handleEcmaStrU8, indexStartSubU8, lengthSubU8));
         for (uint32_t i = 0; i < lengthSubU8; i++) {
-            EXPECT_EQ(handleEcmaStrSubU8->ToBaseString()->At(Barriers::GetTaggedObject, i),
-                      handleEcmaStrU8->ToBaseString()->At(Barriers::GetTaggedObject, i + indexStartSubU8));
+            EXPECT_EQ(handleEcmaStrSubU8->ToBaseString()->At(Barriers::GetTaggedObject<>, i),
+                      handleEcmaStrU8->ToBaseString()->At(Barriers::GetTaggedObject<>, i + indexStartSubU8));
         }
         EXPECT_EQ(handleEcmaStrSubU8->ToBaseString()->GetLength(), lengthSubU8);
     }
@@ -593,8 +593,8 @@ namespace panda::test {
                                                          instance, handleEcmaStrU16Comp, indexStartSubU16Comp,
                                                          lengthSubU16Comp));
         for (uint32_t i = 0; i < lengthSubU16Comp; i++) {
-            EXPECT_EQ(handleEcmaStrSubU16Comp->ToBaseString()->At(Barriers::GetTaggedObject, i),
-                      handleEcmaStrU16Comp->ToBaseString()->At(Barriers::GetTaggedObject, i + indexStartSubU16Comp));
+            EXPECT_EQ(handleEcmaStrSubU16Comp->ToBaseString()->At(Barriers::GetTaggedObject<>, i),
+                      handleEcmaStrU16Comp->ToBaseString()->At(Barriers::GetTaggedObject<>, i + indexStartSubU16Comp));
         }
         EXPECT_EQ(handleEcmaStrSubU16Comp->ToBaseString()->GetLength(), lengthSubU16Comp);
     }
@@ -622,8 +622,8 @@ namespace panda::test {
                                                             instance, handleEcmaStrU16NotComp, indexStartSubU16NotComp,
                                                             lengthSubU16NotComp));
         for (uint32_t i = 0; i < lengthSubU16NotComp; i++) {
-            EXPECT_EQ(handleEcmaStrSubU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject, i),
-                      handleEcmaStrU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject,
+            EXPECT_EQ(handleEcmaStrSubU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>, i),
+                      handleEcmaStrU16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>,
                       i + indexStartSubU16NotComp));
         }
         EXPECT_EQ(handleEcmaStrSubU16NotComp->ToBaseString()->GetLength(), lengthSubU16NotComp);
@@ -644,8 +644,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 2, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf8());
-            EXPECT_TRUE(
-                BaseString::StringsAreEqual(Barriers::GetTaggedObject, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(BaseString::StringsAreEqual(
+                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
@@ -653,8 +653,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 2);
             EXPECT_TRUE(res->ToBaseString()->IsUtf16());
-            EXPECT_TRUE(
-                BaseString::StringsAreEqual(Barriers::GetTaggedObject, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(BaseString::StringsAreEqual(
+                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
@@ -662,8 +662,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 1, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf16());
-            EXPECT_TRUE(
-                BaseString::StringsAreEqual(Barriers::GetTaggedObject, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(BaseString::StringsAreEqual(
+                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromASCII("integer123");
@@ -671,8 +671,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf8());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf8());
-            EXPECT_TRUE(
-                BaseString::StringsAreEqual(Barriers::GetTaggedObject,res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(BaseString::StringsAreEqual(
+                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
         }
     }
 
@@ -699,15 +699,15 @@ namespace panda::test {
                                                                instance, sizeEcmaStrU8WriteTo, true));
         uint32_t indexStartWriteFromArrayU8 = 2;
         uint32_t lengthWriteFromArrayU8 = 2;
-        handleEcmaStrAllocTrueWriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject,
+        handleEcmaStrAllocTrueWriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
                                                                  handleEcmaStrU8WriteFrom->ToBaseString(),
                                                                  indexStartWriteFromArrayU8,
                                                                  sizeEcmaStrU8WriteTo, lengthWriteFromArrayU8);
         for (uint32_t i = 0; i < lengthWriteFromArrayU8; i++) {
             EXPECT_EQ(
-                handleEcmaStrAllocTrueWriteTo->ToBaseString()->At(Barriers::GetTaggedObject, i +
+                handleEcmaStrAllocTrueWriteTo->ToBaseString()->At(Barriers::GetTaggedObject<>, i +
                     indexStartWriteFromArrayU8
-                ), handleEcmaStrU8WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject, i));
+                ), handleEcmaStrU8WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i));
         }
     }
 
@@ -729,7 +729,7 @@ namespace panda::test {
                                                                instance, sizeEcmaStrU8WriteTo, true));
         uint32_t indexAtWriteFromU8 = 4;
         handleEcmaStrAllocTrueWriteTo->ToBaseString()->WriteData(indexAtWriteFromU8, u8Write);
-        EXPECT_EQ(handleEcmaStrAllocTrueWriteTo->ToBaseString()->At(Barriers::GetTaggedObject, indexAtWriteFromU8),
+        EXPECT_EQ(handleEcmaStrAllocTrueWriteTo->ToBaseString()->At(Barriers::GetTaggedObject<>, indexAtWriteFromU8),
                   u8Write);
     }
 
@@ -757,14 +757,14 @@ namespace panda::test {
                                                          instance, sizeEcmaStrU16WriteTo, false));
         uint32_t indexStartWriteFromArrayU16 = 3;
         uint32_t numBytesWriteFromArrayU16 = 2 * 3;
-        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject,
+        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
                                                            handleEcmaStrU16WriteFrom->ToBaseString(),
                                                            indexStartWriteFromArrayU16, sizeEcmaStrU16WriteTo,
                                                            numBytesWriteFromArrayU16);
         for (uint32_t i = 0; i < (numBytesWriteFromArrayU16 / 2); i++) {
-            EXPECT_EQ(
-                handleEcmaStrU16WriteTo->ToBaseString()->At(Barriers::GetTaggedObject, i + indexStartWriteFromArrayU16),
-                handleEcmaStrU16WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject, i));
+            EXPECT_EQ(handleEcmaStrU16WriteTo->ToBaseString()->At(
+                          Barriers::GetTaggedObject<>, i + indexStartWriteFromArrayU16),
+                handleEcmaStrU16WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i));
         }
     }
 
@@ -790,14 +790,14 @@ namespace panda::test {
                                                          instance, sizeEcmaStrU16WriteTo, false));
         uint32_t indexStartWriteFromU8ToU16 = 1;
         uint32_t numBytesWriteFromU8ToU16 = 4;
-        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject,
+        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
                                                            handleEcmaStrU8WriteFrom->ToBaseString(),
                                                            indexStartWriteFromU8ToU16, sizeEcmaStrU16WriteTo,
                                                            numBytesWriteFromU8ToU16);
         for (uint32_t i = 0; i < numBytesWriteFromU8ToU16; i++) {
-            EXPECT_EQ(
-                handleEcmaStrU16WriteTo->ToBaseString()->At(Barriers::GetTaggedObject, i + indexStartWriteFromU8ToU16),
-                handleEcmaStrU8WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject, i));
+            EXPECT_EQ(handleEcmaStrU16WriteTo->ToBaseString()->At(
+                          Barriers::GetTaggedObject<>, i + indexStartWriteFromU8ToU16),
+                handleEcmaStrU8WriteFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i));
         }
     }
 
@@ -818,7 +818,7 @@ namespace panda::test {
         char u8Write = 'a';
         uint32_t indexAt = 4;
         handleEcmaStrU16WriteTo->ToBaseString()->WriteData(indexAt, u8Write);
-        EXPECT_EQ(handleEcmaStrU16WriteTo->ToBaseString()->At(Barriers::GetTaggedObject, indexAt), u8Write);
+        EXPECT_EQ(handleEcmaStrU16WriteTo->ToBaseString()->At(Barriers::GetTaggedObject<>, indexAt), u8Write);
     }
 
     /*
@@ -845,10 +845,10 @@ namespace panda::test {
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp,
                                                          false));
-        EXPECT_EQ(handleEcmaStrU8->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject), lengthEcmaStrU8 + 1);
-        EXPECT_EQ(handleEcmaStrU16Comp->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject),
+        EXPECT_EQ(handleEcmaStrU8->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject<>), lengthEcmaStrU8 + 1);
+        EXPECT_EQ(handleEcmaStrU16Comp->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject<>),
                   lengthEcmaStrU16Comp + 1);
-        EXPECT_EQ(handleEcmaStrU16NotComp->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject),
+        EXPECT_EQ(handleEcmaStrU16NotComp->ToBaseString()->GetUtf8Length(Barriers::GetTaggedObject<>),
                   2 * lengthEcmaStrU16NotComp + 1);
     }
 
@@ -926,13 +926,13 @@ namespace panda::test {
         size_t indexStartFromArrayU8 = 2;
         size_t lengthCopyToEcmaStrU8 = 3;
         size_t lengthReturnU8 = handleEcmaStrU8CopyFrom->ToBaseString()->CopyDataRegionUtf8(
-            Barriers::GetTaggedObject, arrayU8CopyTo, indexStartFromArrayU8,
+            Barriers::GetTaggedObject<>, arrayU8CopyTo, indexStartFromArrayU8,
             lengthCopyToEcmaStrU8, lengthArrayU8Target);
 
         EXPECT_EQ(lengthReturnU8, lengthCopyToEcmaStrU8);
         for (uint32_t i = 0; i < lengthCopyToEcmaStrU8; i++) {
             EXPECT_EQ(arrayU8CopyTo[i],
-                      handleEcmaStrU8CopyFrom->ToBaseString()->At(Barriers::GetTaggedObject, i + indexStartFromArrayU8));
+                handleEcmaStrU8CopyFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i + indexStartFromArrayU8));
         }
         for (uint32_t i = lengthCopyToEcmaStrU8; i < lengthArrayU8Target; i++) {
             EXPECT_EQ(arrayU8CopyTo[i], defaultByteForU8CopyTo);
@@ -955,13 +955,13 @@ namespace panda::test {
         size_t indexStartFromArrayU16Comp = 2;
         size_t lengthCopyToEcmaStrU16Comp = 3;
         size_t lengthReturnU16Comp = handleEcmaStrU16CompCopyFrom->ToBaseString()->CopyDataRegionUtf8(
-            Barriers::GetTaggedObject, &arrayU16CompCopyTo[0],
+            Barriers::GetTaggedObject<>, &arrayU16CompCopyTo[0],
             indexStartFromArrayU16Comp, lengthCopyToEcmaStrU16Comp, lengthArrayU16Target);
 
         EXPECT_EQ(lengthReturnU16Comp, lengthCopyToEcmaStrU16Comp);
         for (uint32_t i = 0; i < lengthReturnU16Comp; i++) {
             EXPECT_EQ(arrayU16CompCopyTo[i],
-                      handleEcmaStrU16CompCopyFrom->ToBaseString()->At(Barriers::GetTaggedObject, i +
+                      handleEcmaStrU16CompCopyFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i +
                           indexStartFromArrayU16Comp));
         }
         for (uint32_t i = lengthReturnU16Comp; i < lengthArrayU16Target; i++) {
@@ -994,13 +994,13 @@ namespace panda::test {
         EXPECT_TRUE(checkResUtf16 == 0);
 
         size_t lengthReturnU16NotComp = handleEcmaStrU16NotCompCopyFrom->ToBaseString()->CopyDataUtf16(
-            Barriers::GetTaggedObject, &arrayU16NotCompCopyTo[0],
+            Barriers::GetTaggedObject<>, &arrayU16NotCompCopyTo[0],
             lengthArrayU16Target);
 
         EXPECT_EQ(lengthReturnU16NotComp, lengthEcmaStrU16NotCompCopyFrom);
         for (uint32_t i = 0; i < lengthReturnU16NotComp; i++) {
             EXPECT_EQ(arrayU16NotCompCopyTo[i],
-                      handleEcmaStrU16NotCompCopyFrom->ToBaseString()->At(Barriers::GetTaggedObject, i));
+                      handleEcmaStrU16NotCompCopyFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i));
         }
         for (uint32_t i = lengthReturnU16NotComp; i < lengthArrayU16Target; i++) {
             EXPECT_EQ(arrayU16NotCompCopyTo[i],
@@ -1034,13 +1034,13 @@ namespace panda::test {
                                                 EcmaStringAccessor::CreateFromUtf8(
                                                     instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
                 handleEcmaStrU8No2->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
                 handleEcmaStrU8No3->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No3->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No3->ToBaseString(),
                 handleEcmaStrU8No1->ToBaseString()));
     }
 
@@ -1070,10 +1070,10 @@ namespace panda::test {
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
                 handleEcmaStrU16CompNo2->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
                 handleEcmaStrU16CompNo3->ToBaseString()));
     }
 
@@ -1103,13 +1103,13 @@ namespace panda::test {
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(),
                 handleEcmaStrU16CompNo2->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(),
                 handleEcmaStrU16CompNo3->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16CompNo3->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo3->ToBaseString(),
                 handleEcmaStrU16CompNo1->ToBaseString()));
     }
 
@@ -1135,10 +1135,10 @@ namespace panda::test {
                                                             instance, &arrayU16NotCompNo1[0],
                                                             lengthEcmaStrU16NotCompNo1, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
                 handleEcmaStrU16NotCompNo1->ToBaseString()));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(),
                 handleEcmaStrU8No1->ToBaseString()));
     }
 
@@ -1164,10 +1164,10 @@ namespace panda::test {
                                                             instance, &arrayU16NotCompNo1[0],
                                                             lengthEcmaStrU16NotCompNo1, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(),
                 handleEcmaStrU16NotCompNo1->ToBaseString()));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(),
                 handleEcmaStrU16CompNo1->ToBaseString()));
     }
 
@@ -1200,13 +1200,13 @@ namespace panda::test {
                                                             instance, &arrayU16NotCompNo3[0],
                                                             lengthEcmaStrU16NotCompNo3, false));
         EXPECT_TRUE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(),
                 handleEcmaStrU16NotCompNo2->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(),
                 handleEcmaStrU16NotCompNo3->ToBaseString()));
         EXPECT_FALSE(
-            BaseString::StringsAreEqual(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo3->ToBaseString(),
+            BaseString::StringsAreEqual(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo3->ToBaseString(),
                 handleEcmaStrU16NotCompNo1->ToBaseString()));
     }
 
@@ -1236,17 +1236,14 @@ namespace panda::test {
                                                 EcmaStringAccessor::CreateFromUtf8(
                                                     instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
         EXPECT_TRUE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(), &
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(), &
                 arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(), &arrayU8No1
-                [0], lengthEcmaStrU8No1, false));
-        EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU8No2->ToBaseString(), &arrayU8No1
-                [0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU8No3->ToBaseString(), &arrayU8No1
-                [0], lengthEcmaStrU8No1, true));
+        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
+            &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(
+            Barriers::GetTaggedObject<>, handleEcmaStrU8No2->ToBaseString(), &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(
+            Barriers::GetTaggedObject<>, handleEcmaStrU8No3->ToBaseString(), &arrayU8No1[0], lengthEcmaStrU8No1, true));
     }
 
     /*
@@ -1277,16 +1274,16 @@ namespace panda::test {
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
         EXPECT_TRUE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(),
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(),
                 &arrayU8No1[0], lengthEcmaStrU8No1, true));
         EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(),
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(),
                 &arrayU8No1[0], lengthEcmaStrU8No1, false));
         EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU16CompNo2->ToBaseString(),
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo2->ToBaseString(),
                 &arrayU8No1[0], lengthEcmaStrU8No1, true));
         EXPECT_FALSE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject, handleEcmaStrU16CompNo3->ToBaseString(),
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo3->ToBaseString(),
                 &arrayU8No1[0], lengthEcmaStrU8No1, true));
     }
 
@@ -1331,13 +1328,13 @@ namespace panda::test {
                                                 EcmaStringAccessor::CreateFromUtf8(
                                                     instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU8No1->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(), &
                 arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU8No2->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU8No2->ToBaseString(), &
                 arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU8No3->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU8No3->ToBaseString(), &
                 arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
     }
 
@@ -1372,16 +1369,16 @@ namespace panda::test {
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16CompNo4[0], lengthEcmaStrU16CompNo4, true));
         EXPECT_TRUE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16CompNo1->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo1->ToBaseString(), &
                 arrayU16CompNo1[0], lengthEcmaStrU16CompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16CompNo2->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo2->ToBaseString(), &
                 arrayU16CompNo1[0], lengthEcmaStrU16CompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16CompNo3->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo3->ToBaseString(), &
                 arrayU16CompNo1[0], lengthEcmaStrU16CompNo1));
         EXPECT_TRUE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16CompNo4->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16CompNo4->ToBaseString(), &
                 arrayU16CompNo1[0], lengthEcmaStrU16CompNo1));
     }
 
@@ -1419,23 +1416,23 @@ namespace panda::test {
                                                             instance, &arrayU16NotCompNo4[0],
                                                             lengthEcmaStrU16NotCompNo4, false));
         EXPECT_TRUE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(), &
                 arrayU16NotCompNo1[0],
                 lengthEcmaStrU16NotCompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo1->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo1->ToBaseString(), &
                 arrayU16NotCompNo2[0],
                 lengthEcmaStrU16NotCompNo2));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo2->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo2->ToBaseString(), &
                 arrayU16NotCompNo1[0],
                 lengthEcmaStrU16NotCompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo3->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo3->ToBaseString(), &
                 arrayU16NotCompNo1[0],
                 lengthEcmaStrU16NotCompNo1));
         EXPECT_FALSE(
-            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject, handleEcmaStrU16NotCompNo4->ToBaseString(), &
+            BaseString::StringsAreEqualUtf16(Barriers::GetTaggedObject<>, handleEcmaStrU16NotCompNo4->ToBaseString(), &
                 arrayU16NotCompNo1[0],
                 lengthEcmaStrU16NotCompNo1));
     }
@@ -1495,7 +1492,7 @@ namespace panda::test {
         for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
             hashExpect = hashExpect * 31 + arrayU8[i];
         }
-        EXPECT_EQ(handleEcmaStrU8->ToBaseString()->GetHashcode(Barriers::GetTaggedObject), hashExpect);
+        EXPECT_EQ(handleEcmaStrU8->ToBaseString()->GetHashcode(Barriers::GetTaggedObject<>), hashExpect);
     }
 
     /*
@@ -1517,7 +1514,7 @@ namespace panda::test {
         for (uint32_t i = 0; i < lengthEcmaStrU16Comp; i++) {
             hashExpect = hashExpect * 31 + arrayU16Comp[i];
         }
-        EXPECT_EQ(handleEcmaStrU16Comp->ToBaseString()->GetHashcode(Barriers::GetTaggedObject), hashExpect);
+        EXPECT_EQ(handleEcmaStrU16Comp->ToBaseString()->GetHashcode(Barriers::GetTaggedObject<>), hashExpect);
     }
 
     /*
@@ -1540,7 +1537,7 @@ namespace panda::test {
         for (uint32_t i = 0; i < lengthEcmaStrU16NotComp; i++) {
             hashExpect = hashExpect * 31 + arrayU16NotComp[i];
         }
-        EXPECT_EQ(handleEcmaStrU16NotComp->ToBaseString()->GetHashcode(Barriers::GetTaggedObject), hashExpect);
+        EXPECT_EQ(handleEcmaStrU16NotComp->ToBaseString()->GetHashcode(Barriers::GetTaggedObject<>), hashExpect);
     }
 
     /*
@@ -1554,7 +1551,7 @@ namespace panda::test {
     {
         // GetHashcode(). EcmaString made by CreateEmptyString().
         JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(instance));
-        EXPECT_EQ(handleEcmaStrEmpty->ToBaseString()->GetHashcode(Barriers::GetTaggedObject), 0U);
+        EXPECT_EQ(handleEcmaStrEmpty->ToBaseString()->GetHashcode(Barriers::GetTaggedObject<>), 0U);
     }
 
     /*
@@ -1631,7 +1628,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf16());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(result);
         }
 
@@ -1643,7 +1640,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf8());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(!result);
         }
 
@@ -1655,7 +1652,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf16());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf16());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(result);
         }
 
@@ -1667,7 +1664,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf8());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(result);
         }
 
@@ -1679,7 +1676,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf16());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(!result);
         }
 
@@ -1691,7 +1688,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf8());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(!result);
         }
 
@@ -1703,7 +1700,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf16());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf16());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(!result);
         }
 
@@ -1715,7 +1712,7 @@ namespace panda::test {
             EXPECT_TRUE(firstString->ToBaseString()->IsUtf8());
             EXPECT_TRUE(secondString->ToBaseString()->IsUtf16());
             bool result = sourceString->ToBaseString()->EqualToSplicedString(
-                Barriers::GetTaggedObject, firstString->ToBaseString(), secondString->ToBaseString());
+                Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(!result);
         }
     }

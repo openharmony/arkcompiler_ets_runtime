@@ -128,6 +128,14 @@
 #define ACCESSORS(name, offset, endOffset)                                                                    \
     ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, false, DUMMY_FUNC)
 
+#define ACCESSORS_WITH_RB_MODE(name, offset, endOffset)                                                       \
+    ACCESSORS(name, offset, endOffset)                                                                        \
+    template <RBMode mode = RBMode::DEFAULT_RB>                                                               \
+    JSTaggedValue Get##name() const                                                                           \
+    {                                                                                                         \
+        return JSTaggedValue(Barriers::GetTaggedValue<mode>(this, offset));                                   \
+    }                                                                                                         \
+
 #define ACCESSORS_DCHECK(name, offset, endOffset, check)                                                      \
     ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, true, check)
 

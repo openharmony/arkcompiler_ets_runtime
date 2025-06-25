@@ -16,9 +16,11 @@
 #include "ecmascript/builtins/builtins_string.h"
 
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/builtins/builtins_regexp-inl.h"
 #include "ecmascript/builtins/builtins_symbol.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -995,8 +997,16 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     }
     bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
     EcmaString *result = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), thisLen * count, isUtf8);
-    for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
-        EcmaStringAccessor::ReadData(result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+    if (UNLIKELY(g_isEnableCMCGC)) {
+        for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
+            EcmaStringAccessor::ReadData<RBMode::FAST_CMC_RB>(
+                result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+        }
+    } else {
+        for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
+            EcmaStringAccessor::ReadData<RBMode::FAST_NO_RB>(
+                result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+        }
     }
     return JSTaggedValue(result);
 }
@@ -1027,9 +1037,16 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, searchTag.GetTaggedValue());
         if (isFastPath) {
             uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
-            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, thisTag,
-                RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
-                replaceTag);
+            JSTaggedValue cacheResult;
+            if (g_isEnableCMCGC) {
+                cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, thisTag,
+                    RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
+                    replaceTag);
+            } else {
+                cacheResult = cacheTable->FindCachedResult<RBMode::FAST_NO_RB>(thread, thisTag,
+                    RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
+                    replaceTag);
+            }
             if (!cacheResult.IsUndefined()) {
                 return cacheResult;
             }

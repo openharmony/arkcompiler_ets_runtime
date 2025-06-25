@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_stable_array.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/base/sort_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -994,20 +995,20 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     return base::BuiltinsBase::GetTaggedBoolean(true);
 }
 
-template <class Predicate>
+template <RBMode mode, class Predicate>
 const JSTaggedType* JSStableArray::IndexOfElements(Span<const JSTaggedType> elements, IndexOfOptions options,
                                                    Predicate predicate)
 {
     static_assert(std::is_invocable_r_v<bool, Predicate, JSTaggedType>, "Invalid call signature.");
     if (options.reversedOrder) {
         for (auto cur = elements.end() - 1; cur >= elements.begin(); --cur) {
-            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue(ToUintPtr(cur))))) {
+            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue<mode>(ToUintPtr(cur))))) {
                 return cur;
             }
         }
     } else {
         for (auto cur = elements.begin(); cur < elements.end(); ++cur) {
-            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue(ToUintPtr(cur))))) {
+            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue<mode>(ToUintPtr(cur))))) {
                 return cur;
             }
         }
@@ -1127,18 +1128,33 @@ const JSTaggedType* JSStableArray::IndexOfString(Span<const JSTaggedType> elemen
     if (!searchElement.IsString()) {
         return nullptr;
     }
-    return IndexOfElements(elements, options, [searchElement](JSTaggedType cur) {
-        if (searchElement.GetRawData() == cur) {
-            return true;
-        }
-        JSTaggedValue curValue(cur);
-        if (!curValue.IsString()) {
-            return false;
-        }
-        return JSTaggedValue::StringCompare(
-            EcmaString::Cast(curValue.GetTaggedObject()),
-            EcmaString::Cast(searchElement.GetTaggedObject()));
-    });
+    if (g_isEnableCMCGC) {
+        return IndexOfElements<RBMode::FAST_CMC_RB>(elements, options, [searchElement](JSTaggedType cur) {
+            if (searchElement.GetRawData() == cur) {
+                return true;
+            }
+            JSTaggedValue curValue(cur);
+            if (!curValue.IsString()) {
+                return false;
+            }
+            return JSTaggedValue::StringCompare<RBMode::FAST_CMC_RB>(
+                EcmaString::Cast(curValue.GetTaggedObject()),
+                EcmaString::Cast(searchElement.GetTaggedObject()));
+        });
+    } else {
+        return IndexOfElements<RBMode::FAST_NO_RB>(elements, options, [searchElement](JSTaggedType cur) {
+            if (searchElement.GetRawData() == cur) {
+                return true;
+            }
+            JSTaggedValue curValue(cur);
+            if (!curValue.IsString()) {
+                return false;
+            }
+            return JSTaggedValue::StringCompare<RBMode::FAST_NO_RB>(
+                EcmaString::Cast(curValue.GetTaggedObject()),
+                EcmaString::Cast(searchElement.GetTaggedObject()));
+        });
+    }
 }
 
 const JSTaggedType* JSStableArray::IndexOfBigInt(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
