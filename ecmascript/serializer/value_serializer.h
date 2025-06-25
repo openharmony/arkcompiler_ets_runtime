@@ -38,7 +38,6 @@ public:
                     const JSHandle<JSTaggedValue> &cloneList);
 
 private:
-    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
     void SerializeJSError(TaggedObject *object);
     void SerializeNativeBindingObject(TaggedObject *object);
     bool SerializeJSArrayBufferPrologue(TaggedObject *object);
@@ -57,10 +56,13 @@ private:
         return type >= JSType::HCLASS && type <= JSType::TYPE_LAST && type != JSType::SYMBOL;
     }
 
+protected:
+    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
+    bool notSupport_ {false};
+
 private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};
-    bool notSupport_ {false};
     bool supportJSNativePointer_ {false};
     std::vector<std::pair<ssize_t, panda::JSNApi::NativeBindingInfo *>> detachCallbackInfo_;
     CUnorderedSet<uintptr_t> transferDataSet_;

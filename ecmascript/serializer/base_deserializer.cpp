@@ -29,7 +29,7 @@
 namespace panda::ecmascript {
 
 BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *hint)
-    : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
+    : thread_(thread), data_(data), engine_(hint), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap()))
 {
     sheap_ = SharedHeap::GetInstance();
     uint32_t index = data_->GetDataIndex();
@@ -84,6 +84,9 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
         delete jsErrorInfo;
     }
     jsErrorInfos_.clear();
+
+    // May be some other special object need to process at last
+    DeserializeSpecialRecordedObjects();
 
     // recovery gc after serialize
     heap_->SetOnSerializeEvent(false);
@@ -376,11 +379,17 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
+            // This flag may be supported by subclass.
+            return DerivedExtraReadSingleEncodeData(encodeFlag, objAddr, fieldOffset, isRoot);
     }
     return handledFieldSize;
+}
+
+size_t BaseDeserializer::DerivedExtraReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset,
+                                                          bool isRoot)
+{
+    LOG_ECMA(FATAL) << "this branch is unreachable " << static_cast<int>(encodeFlag);
+    UNREACHABLE();
 }
 
 uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size_t objSize)
