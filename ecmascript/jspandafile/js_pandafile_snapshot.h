@@ -25,18 +25,10 @@ public:
     static constexpr std::string_view JSPANDAFILE_FILE_NAME = "_Pandafile.ams";
     static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams"; // ark module snapshot
 
-    static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path);
-    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
+    static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version);
+    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path, const CString &version);
 
 private:
-    static constexpr uint32_t VERSION_CODE_COUNT = 2; // application versionCode + persist versionCode
-    static constexpr size_t VERSION_SIZE = 4;
-    using Version = std::array<uint8_t, VERSION_SIZE>;
-    static constexpr Version JSPANDAFILE_SNAPSHOT_VERSION_CODE = { 0, 0, 0, 1 };
-    inline static uint32_t GetVersionCode()
-    {
-        return bit_cast<uint32_t>(JSPANDAFILE_SNAPSHOT_VERSION_CODE);
-    }
     static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);
     static CString GetJSPandaFileFileName(const CString &fileName, const CString &path);
     static void RemoveSnapshotFiles(const CString &path);
@@ -45,7 +37,8 @@ private:
 // +---------------------------------+<-------- BaseInfo
 // |    Application Version Code     |
 // +---------------------------------+
-// |      Snapshot Version Code      |
+// |   System Version Code Length    |
+// |      System Version Code        |
 // +---------------------------------+
 // |        JSPandaFile Size         |
 // +---------------------------------+
@@ -65,13 +58,16 @@ private:
 // +---------------------------------+<-------- CheckSum
 // |             CheckSum            |
 // +---------------------------------+
-    static void WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
-    static bool ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
+    static void WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+        const CString &version);
+    static bool ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+        const CString &version);
 
     class JSPandaFileSnapshotTask : public common::Task {
     public:
-        JSPandaFileSnapshotTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
-            : Task(id), thread_(thread), jsPandaFile_(jsPandaFile), path_(path) {}
+        JSPandaFileSnapshotTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+            const CString &version) : Task(id), thread_(thread), jsPandaFile_(jsPandaFile), path_(path),
+            version_(version) {}
         ~JSPandaFileSnapshotTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -82,6 +78,7 @@ private:
         JSThread *thread_ {nullptr};
         JSPandaFile *jsPandaFile_ {nullptr};
         CString path_ {};
+        CString version_ {};
     };
 };
 }  // namespace panda::ecmascript

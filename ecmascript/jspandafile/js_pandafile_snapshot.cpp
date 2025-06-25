@@ -23,18 +23,19 @@
 #include "zlib.h"
 
 namespace panda::ecmascript {
-bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
+bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+    const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadData";
     // check application white list & specific file
     if (filesystem::Exists(path.c_str()) && IsJSPandaFileSnapshotFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
-        return ReadDataFromFile(thread, jsPandaFile, path);
+        return ReadDataFromFile(thread, jsPandaFile, path, version);
     }
     return false;
 }
 
-void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString &path)
+void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::PostWriteDataToFileJob", "");
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::PostWriteDataToFileJob";
@@ -44,13 +45,13 @@ void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString
     int32_t tid = thread->GetThreadId();
     for (const auto &item : jspandaFiles) {
         common::Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<JSPandaFileSnapshotTask>(tid, thread, item.get(), path));
+            std::make_unique<JSPandaFileSnapshotTask>(tid, thread, item.get(), path, version));
     }
 }
 
 bool JSPandaFileSnapshot::JSPandaFileSnapshotTask::Run(uint32_t threadIndex)
 {
-    WriteDataToFile(thread_, jsPandaFile_, path_);
+    WriteDataToFile(thread_, jsPandaFile_, path_, version_);
     return true;
 }
 
@@ -71,7 +72,8 @@ void JSPandaFileSnapshot::RemoveSnapshotFiles(const CString &path)
     DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
 }
 
-void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
+void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+    const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::WriteDataToFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
@@ -83,7 +85,10 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
     // calculate file size
     size_t checksumSize = sizeof(uint32_t);
     size_t fileSize = sizeof(uint32_t);
-    size_t bufSize = VERSION_CODE_COUNT * sizeof(uint32_t) + fileSize + checksumSize;
+    size_t appVersionCodeSize = sizeof(uint32_t);
+    size_t versionStrLenSize = sizeof(uint32_t);
+    size_t versionStrLen = version.size();
+    size_t bufSize = appVersionCodeSize + versionStrLenSize + versionStrLen + fileSize + checksumSize;
     // add moduleName len & ptr
     CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(jsPandaFile->GetJSPandaFileDesc());
     uint32_t moduleNameLen = moduleName.size();
@@ -123,12 +128,16 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return;
     }
     writeBuf += sizeof(uint32_t);
-    uint32_t snapshotVersionCode = GetVersionCode();
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &snapshotVersionCode, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: snapshotVersionCode memcpy_s failed";
+    if (memcpy_s(writeBuf, sizeof(uint32_t), &versionStrLen, sizeof(uint32_t)) != EOK) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: versionStrLen memcpy_s failed";
         return;
     }
     writeBuf += sizeof(uint32_t);
+    if (memcpy_s(writeBuf, versionStrLen, version.c_str(), versionStrLen) != EOK) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: versionStrLen memcpy_s failed";
+        return;
+    }
+    writeBuf += versionStrLen;
     // write pandafile size
     uint32_t fsize = jsPandaFile->GetFileSize();
     if (memcpy_s(writeBuf, sizeof(fsize), &fsize, sizeof(fsize)) != EOK) {
@@ -201,7 +210,8 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
     FileSync(fileMapMem, FILE_MS_SYNC);
 }
 
-bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
+bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+    const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::ReadDataFromFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
@@ -227,23 +237,29 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     // verify version code
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
     uint32_t readAppVersionCode = *reinterpret_cast<const uint32_t*>(readBuf);
-    uint32_t readVersionCode = *reinterpret_cast<const uint32_t*>(readBuf + sizeof(uint32_t));
-    if (appVersionCode != readAppVersionCode ||
-        GetVersionCode() != readVersionCode) {
+    if (appVersionCode != readAppVersionCode) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot version compare failed, appVersionCode: " << appVersionCode
-            << ", readAppVersionCode" << readAppVersionCode
-            << ", PANDAFILE_VERSION_CODE" << GetVersionCode()
-            << ", readVersionCode" << readVersionCode;
+            << ", readAppVersionCode" << readAppVersionCode;
         RemoveSnapshotFiles(path);
         return false;
     }
-    readBuf += VERSION_CODE_COUNT * sizeof(uint32_t);
+    readBuf += sizeof(uint32_t);
+    uint32_t readVersionStrLen = *reinterpret_cast<const uint32_t*>(readBuf);
+    readBuf += sizeof(uint32_t);
+    CString readVersion(readBuf, readVersionStrLen);
+    if (version != readVersion) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot version compare failed, version: " << version
+            << ", readVersion" << readVersion;
+        RemoveSnapshotFiles(path);
+        return false;
+    }
+    readBuf += readVersionStrLen;
     // verify filesize
     uint32_t fsize = *reinterpret_cast<const uint32_t*>(readBuf);
     if (fsize != jsPandaFile->GetFileSize()) {
         LOG_COMPILER(ERROR) << "JSPandaFileSnapshot: file size not equal, " << filename  << ", old = "
             << fsize << ", new = " << jsPandaFile->GetFileSize();
-        FileUnMap(fileMapMem);
+        RemoveSnapshotFiles(path);
         return false;
     }
     readBuf += sizeof(uint32_t);

@@ -14,6 +14,7 @@
  */
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/platform/filesystem.h"
 
@@ -28,7 +29,12 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
         LOG_ECMA(INFO) << "ModuleSnapshotInterface::Serialize: " << path <<" is not exists";
         return;
     }
-    ModuleSnapshot::SerializeDataAndPostSavingJob(vm, path);
+    CString version = OhosVersionInfoTools::GetRomVersion();
+    if (version.empty()) {
+        LOG_ECMA(ERROR) << "ModuleSnapshotInterface::Serialize rom version is empty";
+        return;
+    }
+    ModuleSnapshot::SerializeDataAndPostSavingJob(vm, path, version);
 }
 
 void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path)
@@ -40,6 +46,11 @@ void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path
         LOG_ECMA(INFO) << "ModuleSnapshotInterface::Deserialize: " << path << " is not exists";
         return;
     }
-    ModuleSnapshot::DeserializeData(vm, path);
+    CString version = OhosVersionInfoTools::GetRomVersion();
+    if (version.empty()) {
+        LOG_ECMA(ERROR) << "ModuleSnapshotInterface::Serialize rom version is empty";
+        return;
+    }
+    ModuleSnapshot::DeserializeData(vm, path, version);
 }
 } // namespace panda::ecmascript
