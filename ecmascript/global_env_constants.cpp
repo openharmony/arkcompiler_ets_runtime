@@ -108,8 +108,6 @@ void GlobalEnvConstants::InitCompositeBaseClasses(ObjectFactory* factory, JSHCla
     classRoots.InitializeCompositeBaseClass(
         [compositeBaseClassClass, factory]()-> common::CompositeBaseClass* {
             TaggedObject* compositeBaseClass = factory->NewNonMovableObject(compositeBaseClassClass, 0);
-            compositeBaseClass->SetFullBaseClassWithoutBarrier(
-                reinterpret_cast<common::BaseClass*>(*compositeBaseClassClass));
             factory->InitObjectFields(compositeBaseClass, JSTaggedValue(reinterpret_cast<JSTaggedType>(nullptr)));
             return reinterpret_cast<common::CompositeBaseClass*>(compositeBaseClass);
         });

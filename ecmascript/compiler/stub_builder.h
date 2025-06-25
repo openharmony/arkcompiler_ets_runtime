@@ -421,7 +421,6 @@ public:
     GateRef DefineField(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass,
                      MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
-    void StoreBaseAddressForBaseClass(GateRef glue, GateRef object, GateRef hClass);
     void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,
                           MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
