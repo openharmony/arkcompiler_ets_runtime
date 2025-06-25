@@ -195,17 +195,22 @@ GateRef CircuitBuilder::LoadHClassWithLineASM([[maybe_unused]] GateRef glue, Gat
 GateRef CircuitBuilder::LoadHClass([[maybe_unused]] GateRef glue, GateRef object)
 {
     // ReadBarrier is not need for loading hClass as long as it is non-movable
-    // now temporarily add RB for hClass
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    GateRef value = LoadWithoutBarrier(VariableType::INT64(), object, offset);
-    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
+    GateRef addr = PtrAdd(object, offset);
+    VariableType type = VariableType::JS_POINTER();
+    auto label = env_->GetCurrentLabel();
+    auto depend = label->GetDepend();
+    auto bits = LoadStoreAccessor::ToValue(MemoryAttribute::NoBarrier());
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadHClass(bits), type.GetMachineType(),
+                                           { depend, glue, addr }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
 }
 #endif
 
 GateRef CircuitBuilder::LoadHClassByConstOffset([[maybe_unused]] GateRef glue, GateRef object)
 {
-    GateRef value = LoadConstOffset(VariableType::INT64(), object, TaggedObject::HCLASS_OFFSET);
-    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
+    return LoadHClassByConstOffset(VariableType::JS_POINTER(), object);
 }
 
 GateRef CircuitBuilder::LoadPrototype(GateRef glue, GateRef hclass)

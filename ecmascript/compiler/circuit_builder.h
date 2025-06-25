@@ -751,6 +751,7 @@ public:
     GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
                             MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef LoadHClassByConstOffset(VariableType type, GateRef receiver);
     GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);

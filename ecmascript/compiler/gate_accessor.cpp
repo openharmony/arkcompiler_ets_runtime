@@ -103,6 +103,7 @@ FCmpCondition GateAccessor::GetFCmpCondition(GateRef gate) const
 size_t GateAccessor::GetOffset(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_CONST_OFFSET ||
+           GetOpCode(gate) == OpCode::LOAD_HCLASS_CONST_OFFSET ||
            GetOpCode(gate) == OpCode::STORE_CONST_OFFSET);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     auto accessor = LoadStoreConstOffsetAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
@@ -139,12 +140,14 @@ MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
     switch (op) {
         case OpCode::LOAD_WITHOUT_BARRIER:
         case OpCode::LOAD:
+        case OpCode::LOAD_HCLASS:
         case OpCode::STORE_WITHOUT_BARRIER:
         case OpCode::STORE: {
             auto accessor = LoadStoreAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetMemoryAttribute();
         }
         case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_CONST_OFFSET:
         case OpCode::STORE_CONST_OFFSET: {
             auto accessor = LoadStoreConstOffsetAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetMemoryAttribute();

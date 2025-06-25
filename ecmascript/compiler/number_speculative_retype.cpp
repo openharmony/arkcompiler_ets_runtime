@@ -302,6 +302,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::SAVE_REGISTER:
         case OpCode::RESTORE_REGISTER:
         case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_CONST_OFFSET:
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
         case OpCode::TYPE_OF_CHECK:

@@ -68,6 +68,10 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
                     needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx);
                     break;
                 }
+                case OpCode::LOAD_HCLASS: {
+                    needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx, true);
+                    break;
+                }
                 default: {
                     break;
                 }
@@ -852,7 +856,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
+bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx, bool isLoadHClass)
 {
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> successBBGates;
@@ -861,6 +865,10 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     MemoryAttribute::Barrier kind = GetBarrierKind(gate);
     if (isStwCopyStub_) {
         kind = MemoryAttribute::Barrier::NO_BARRIER;
+    } else if (isLoadHClass) {
+        LoweringLoadHClassAndPrepareScheduleGate(gate, currentBBGates);
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
     }
     switch (kind) {
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
@@ -985,6 +993,28 @@ void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std
         PrepareToScheduleNewGate(loadWithoutBarrier, currentBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithoutBarrier);
+}
+
+void PostSchedule::LoweringLoadHClassAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef addr = acc_.GetValueIn(gate, 1);
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    GateRef loadWithoutBarrier = builder_.LoadFromAddressWithoutBarrier(type, addr, acc_.GetMemoryAttribute(gate));
+    GateRef valueWithTag = builder_.ChangeTaggedPointerToInt64(loadWithoutBarrier);
+    GateRef mask = circuit_->GetConstantGateWithoutCache(
+        MachineType::I64, TaggedObject::GC_STATE_MASK, GateType::NJSValue());
+    GateRef value = builder_.Int64And(valueWithTag, mask);
+    GateRef hclass = builder_.Int64ToTaggedPtr(value);
+    {
+        PrepareToScheduleNewGate(hclass, currentBBGates);
+        PrepareToScheduleNewGate(value, currentBBGates);
+        PrepareToScheduleNewGate(mask, currentBBGates);
+        PrepareToScheduleNewGate(valueWithTag, currentBBGates);
+        PrepareToScheduleNewGate(loadWithoutBarrier, currentBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), hclass);
 }
 
 void PostSchedule::PrintGraph(const char* title, ControlFlowGraph &cfg)

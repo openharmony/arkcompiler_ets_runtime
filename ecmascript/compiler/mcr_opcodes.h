@@ -185,6 +185,7 @@ namespace panda::ecmascript::kungfu {
 
 #define MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                                           \
     V(LoadConstOffset,             LOAD_CONST_OFFSET,              GateFlags::NO_WRITE,  0, 1, 1)       \
+    V(LoadHClassConstOffset,       LOAD_HCLASS_CONST_OFFSET,       GateFlags::NO_WRITE,  0, 1, 1)       \
     V(LoadHClassFromConstpool,     LOAD_HCLASS_FROM_CONSTPOOL,     GateFlags::NO_WRITE,  0, 1, 1)       \
     V(StoreConstOffset,            STORE_CONST_OFFSET,             GateFlags::NONE_FLAG, 0, 1, 2)       \
     V(LoadElement,                 LOAD_ELEMENT,                   GateFlags::NO_WRITE,  1, 1, 2)       \

@@ -430,6 +430,7 @@ GateRef EscapeAnalysis::VisitGate(GateRef gate)
         case OpCode::LOAD_PROPERTY:
             return VisitLoadProperty(gate, &info);
         case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::LOAD_HCLASS_CONST_OFFSET:
             return VisitLoadConstOffset(gate, &info);
         case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
             return VisitCreateObjectWithBuffer(gate, &info);
