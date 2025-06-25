@@ -753,6 +753,7 @@ void TraceCollector::UpdateGCStats()
     } else {
         g_gcRequests[GC_REASON_YOUNG].SetMinInterval(gcParam.gcInterval);
     }
+    gcStats.IncreaseAccumulatedFreeSize(bytesAllocated);
     std::ostringstream oss;
     oss << "allocated bytes " << bytesAllocated << " (survive bytes " << survivedBytes
                      << ", recent-allocated " << recentBytes << "), update target footprint "
