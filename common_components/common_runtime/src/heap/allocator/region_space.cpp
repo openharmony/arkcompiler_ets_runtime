@@ -113,12 +113,8 @@ HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
     if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
         internalAddr = regionManager_.AllocPinned(allocSize, allowGC);
     } else if (LIKELY_CC(allocType == AllocType::MOVEABLE_OBJECT)) {
-        if (UNLIKELY_CC(allocSize >= regionManager_.GetLargeObjectThreshold())) {
-            internalAddr =  regionManager_.AllocLarge(allocSize, false);
-        } else {
-            AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
-            internalAddr = allocBuffer->Allocate(allocSize, allocType);
-        }
+        AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
+        internalAddr = allocBuffer->Allocate(allocSize, allocType);
     } else {
         // Unreachable for serialization
     }
