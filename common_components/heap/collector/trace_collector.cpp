@@ -375,37 +375,19 @@ void TraceCollector::TraceRoots(WorkStack &tempStack)
         COMMON_PHASE_TIMER("Concurrent marking");
         TracingImpl(workStack, maxWorkers > 0);
     }
+}
 
-    {
-#ifdef ARK_USE_SATB_BARRIER
-        COMMON_PHASE_TIMER("Concurrent re-marking");
-        ConcurrentReMark(workStack, maxWorkers > 0);
-        ProcessWeakReferences();
-#else
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ReMark[STW]", "");
-        if (!BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped()) {
-            COMMON_PHASE_TIMER("STW re-marking");
-            ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
-            EnumerateAllRootsWithMark(workStack);
-            TracingImpl(workStack, maxWorkers > 0);
-            ConcurrentReMark(workStack, maxWorkers > 0);
-            MarkAwaitingJitFort();
-            ProcessWeakReferences();
-        } else {
-            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-                MarkRememberSet(workStack);
-            }
-            MarkAwaitingJitFort();
-            ProcessWeakReferences();
-        }
-#endif
-    }
+void TraceCollector::ReMark(WorkStack &workStack)
+{
+    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ReMark[STW]", "");
+    COMMON_PHASE_TIMER("STW re-marking");
+    ReMarkAndPreforwardStaticRoots(workStack);
+    ConcurrentReMark(workStack, maxWorkers > 0);
+    TracingImpl(workStack, maxWorkers > 0);
+    MarkAwaitingJitFort();
+    ProcessWeakReferences();
 
-    {
-        // weakref -> strong ref
-        COMMON_PHASE_TIMER("concurrent resurrection");
-        DoResurrection(workStack);
-    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots END",
         ("mark obejects:" + std::to_string(markedObjectCount_.load(std::memory_order_relaxed))).c_str());
     VLOG(DEBUG, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
@@ -415,11 +397,6 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MarkSatbBuffer", "");
     COMMON_PHASE_TIMER("MarkSatbBuffer");
-    if (!workStack.empty()) {
-        workStack.clear();
-    }
-    constexpr uint64_t maxIterationTime = 120ULL * 1000 * 1000 * 1000; // 2 mins.
-    constexpr size_t maxIterationLoopNum = 1000;
     auto visitSatbObj = [this, &workStack]() {
         WorkStack remarkStack;
         auto func = [&remarkStack](Mutator& mutator) {
@@ -444,30 +421,6 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
     };
 
     visitSatbObj();
-    size_t iterationCnt = 0;
-    uint64_t iterationStartTime = TimeUtil::NanoSeconds();
-    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
-    do {
-        ++iterationCnt;
-        if (iterationCnt > maxIterationLoopNum && (TimeUtil::NanoSeconds() - iterationStartTime) > maxIterationTime) {
-            ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
-            VLOG(DEBUG, "MarkSatbBuffer timeouts");
-            Taskpool *threadPool = GetThreadPool();
-            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
-            return workStack.empty();
-        }
-        if (LIKELY_CC(!workStack.empty())) {
-            Taskpool *threadPool = GetThreadPool();
-            TracingImpl(workStack, (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0));
-        }
-        visitSatbObj();
-        if (workStack.empty()) {
-            TransitionToGCPhase(GCPhase::GC_PHASE_REMARK_SATB, true);
-            visitSatbObj();
-        }
-    } while (!workStack.empty());
-    VLOG(DEBUG, "MarkSatbBuffer is finished, takes %zu round and %zu us",
-        iterationCnt, (TimeUtil::NanoSeconds() - iterationStartTime) / MICRO_SECOND_TO_NANO_SECOND);
     return true;
 }
 
@@ -490,9 +443,6 @@ void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStac
 void TraceCollector::MarkRememberSet(WorkStack& workStack)
 {
     COMMON_PHASE_TIMER("MarkRememberSet");
-    if (!workStack.empty()) {
-        workStack.clear();
-    }
     auto func = [this, &workStack](BaseObject* object) {
         if (Heap::IsHeapAddress(object)) {
             MarkRememberSetImpl(object, workStack);
@@ -650,29 +600,6 @@ void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpAfterGC();
 #endif
-}
-
-void TraceCollector::EnumerateAllRootsWithMark(WorkStack &workStack)
-{
-    const auto dispatch = [&workStack, this](BaseObject *temp) {
-        if (!this->MarkObject(temp)) {
-            workStack.push_back(temp);
-        }
-    };
-    const auto dispatchFieldVisitor = [&workStack, this](RefField<>& field) {
-        if (!this->MarkObject(field.GetTargetObject())) {
-            EnumRefFieldRoot(field, workStack);
-        }
-    };
-
-    // inline EnumStaticRoots
-    VisitRoots(dispatchFieldVisitor, true);
-
-    // inline MergeMutatorRoots
-    {
-        MergeMutatorRootsScope lockScope;
-        theAllocator_.VisitAllocBuffers([&dispatch](AllocationBuffer &buffer) { buffer.MarkStack(dispatch); });
-    }
 }
 
 void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet)

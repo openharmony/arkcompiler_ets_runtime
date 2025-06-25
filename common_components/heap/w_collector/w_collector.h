@@ -189,9 +189,9 @@ private:
 
     void TraceHeap(WorkStack& workStack);
     void PostTrace();
-
+    void ReMarkAndPreforwardStaticRoots(WorkStack& workStack) override;
     void Preforward();
-    void PreforwardStaticRoots();
+    void PreforwardStaticWeakRoots();
     void PreforwardConcurrencyModelRoots();
     void PreforwardFinalizerProcessorRoots();
 

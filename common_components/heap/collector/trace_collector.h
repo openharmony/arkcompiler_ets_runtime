@@ -296,13 +296,18 @@ protected:
     virtual void ProcessFinalizers() {}
     // designed to mark resurrected finalizer, should not be call in stw gc
     virtual void DoResurrection(WorkStack& workStack);
+    virtual void ReMarkAndPreforwardStaticRoots(WorkStack& workStack)
+    {
+        LOG_COMMON(FATAL) << "Unresolved fatal";
+        UNREACHABLE_CC();
+    }
 
     void MergeMutatorRoots(WorkStack& workStack);
     void EnumerateAllRoots(WorkStack& workStack);
-    void EnumerateAllRootsWithMark(WorkStack &workStack);
     void PushRootInWorkStack(RootSet *dst, RootSet *src);
 
     void TraceRoots(WorkStack& workStack);
+    void ReMark(WorkStack& workStack);
     bool MarkSatbBuffer(WorkStack& workStack);
     void MarkRememberSet(WorkStack& workStack);
 
