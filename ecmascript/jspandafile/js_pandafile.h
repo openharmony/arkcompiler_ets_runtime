@@ -32,6 +32,7 @@
 namespace panda {
 namespace ecmascript {
 class EcmaVM;
+using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 
 enum class CreateMode : uint8_t {
     RUNTIME = 0,
@@ -477,6 +478,18 @@ public:
         return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX);
     }
 
+    void SetFileMapper(void *fileMapper)
+    {
+        fileMapper_ = fileMapper;
+    }
+
+    void *GetFileMapper() const
+    {
+        return fileMapper_;
+    }
+
+    static void CallReleaseSecureMemFunc(void* fileMapper);
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -503,6 +516,7 @@ private:
 
     // please add member after *pf_. static constexpr int32_t PF_OFFSET = 0.
     const panda_file::File *pf_ {nullptr};
+    void *fileMapper_ {nullptr};
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};

@@ -116,6 +116,7 @@ using SourceMapCallback = std::function<std::string(const std::string& rawStack)
 using TimerCallbackFunc = void (*)(void *data);
 using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
 using CancelTimerCallback = void (*)(void *timerCallbackInfo);
+using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
     std::string& packageName)>;
 using DeviceDisconnectCallback = std::function<bool()>;
@@ -1693,7 +1694,8 @@ public:
                         const std::string &entry, bool needUpdate = false,
                         const ecmascript::ExecuteTypes &executeType = ecmascript::ExecuteTypes::STATIC);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
-                        const std::string &filename = "", bool needUpdate = false);
+                        const std::string &filename = "", bool needUpdate = false,
+                        [[maybe_unused]] void* fileMapper = nullptr);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,
         const std::string &moduleName, const std::string &ohmurl, bool isSingletonPattern);
     static bool IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
@@ -1720,7 +1722,7 @@ public:
      * memory internally.
      */
     static bool ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &entry,
-                                const std::string &filename = "", bool needUpdate = false);
+                              const std::string &filename = "", bool needUpdate = false, void* fileMapper = nullptr);
     /*
      * Execute panda file(merge abc) from secure mem. secure memory lifecycle managed externally.
      * The data parameter needs to be created externally by an external caller and managed externally
@@ -1797,6 +1799,7 @@ public:
     static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
+    static void SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc);
     static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void PandaFileSerialize(const EcmaVM *vm);

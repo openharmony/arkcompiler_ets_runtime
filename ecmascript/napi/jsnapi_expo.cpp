@@ -5548,7 +5548,7 @@ bool JSNApi::Execute(const EcmaVM *vm, const std::string &fileName, const std::s
 
 // The security interface needs to be modified accordingly.
 bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
-                     const std::string &filename, bool needUpdate)
+                     const std::string &filename, bool needUpdate, [[maybe_unused]] void* fileMapper)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
@@ -5651,14 +5651,15 @@ bool JSNApi::ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, co
     return true;
 }
 
+// file mapper only used for secure memory
 bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &entry,
-                           const std::string &filename, bool needUpdate)
+                           const std::string &filename, bool needUpdate, void *fileMapper)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute ark buffer with secure memory: " << filename;
     ecmascript::ThreadManagedScope scope(thread);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(thread, data, size, entry, filename.c_str(),
-                                                                  needUpdate)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBufferSecure(
+        thread, data, size, entry, filename.c_str(), needUpdate, fileMapper)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->HandleUncaughtException();
@@ -6147,6 +6148,13 @@ void JSNApi::SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback)
 void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
 {
     ecmascript::ModuleLogger::SetModuleLoggerTask(vm);
+}
+
+void JSNApi::SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc)
+{
+    CROSS_THREAD_CHECK(vm);
+    // register release sucere mem func to ark_js_runtime
+    ecmascript::Runtime::GetInstance()->SetReleaseSecureMemCallback(releaseSecureMemFunc);
 }
 
 // Arkui trigger jsPandafile Seralize when cold start is end.

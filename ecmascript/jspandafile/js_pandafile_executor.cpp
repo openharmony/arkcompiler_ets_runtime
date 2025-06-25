@@ -262,14 +262,14 @@ void JSPandaFileExecutor::BindPandaFileToAot(JSPandaFile *jsPandaFile)
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer,
-    size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
+    size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate, void *fileMapper)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
     CString traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + filename;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
+        LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate, fileMapper);
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
         CString msg = "jsPandaFile is nullptr";
@@ -278,7 +278,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
 #endif
     }
-    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, AbcBufferType::SECURE_BUFFER);
+    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, jsPandaFile.get(), fileMapper);
     auto vm = thread->GetEcmaVM();
 
     CString entry = entryPoint.data();
