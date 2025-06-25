@@ -32,12 +32,8 @@ template <bool ConcurrentSweep>
 BaseString* BaseStringTableInternal<ConcurrentSweep>::AllocateLineStringObject(size_t size)
 {
     size = AlignUp(size, ALIGN_OBJECT);
-    BaseString* str;
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        str = reinterpret_cast<BaseString*>(HeapAllocator::AllocateInHuge(size, LanguageType::DYNAMIC));
-    } else {
-        str = reinterpret_cast<BaseString*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
-    }
+    BaseString* str =
+        reinterpret_cast<BaseString*>(HeapAllocator::AllocateInOldOrHuge(size, LanguageType::DYNAMIC));
     BaseClass* cls = BaseRuntime::GetInstance()->GetBaseClassRoots().GetBaseClass(CommonType::LINE_STRING);
     str->SetFullBaseClassWithoutBarrier(cls);
     return str;
