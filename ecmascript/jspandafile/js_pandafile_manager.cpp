@@ -657,7 +657,7 @@ void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)
 
 bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
 {
-    if (!jsPandaFile->IsBundlePack() && thread->GetEcmaVM()->GetJSOptions().EnableJSPandaFileAndModuleSnapshot()) {
+    if (!jsPandaFile->IsBundlePack() && !thread->GetEcmaVM()->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return JSPandaFileSnapshot::ReadData(
             thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
     }
