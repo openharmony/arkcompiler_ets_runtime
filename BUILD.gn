@@ -164,6 +164,7 @@ group("common_components_js_unittest") {
       "common_components/mutator/tests:unittest",
       "common_components/heap/collector/tests:unittest",
       "common_components/objects/tests:unittest",
+      "common_components/heap/barrier/tests:unittest",
     ]
   }
 }
@@ -181,6 +182,7 @@ group("common_components_unittest") {
       "common_components/mutator/tests:host_unittest",
       "common_components/heap/collector/tests:host_unittest",
       "common_components/objects/tests:host_unittest",
+      "common_components/heap/barrier/tests:host_unittest",
     ]
   }
 }
@@ -236,6 +238,7 @@ group("ark_unittest") {
       "common_components/base/tests:host_unittest",
       "common_components/heap/allocator/tests:host_unittest",
       "common_components/mutator/tests:host_unittest",
+      "common_components/heap/barrier/tests:unittest",
     ]
   }
 }
