@@ -76,7 +76,7 @@ private:
                                   uintptr_t callSiteSp,
                                   uintptr_t callsiteFp) const;
     uintptr_t GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
-                                  uint32_t &offset, bool &skipDerived, size_t &regOffsetSize) const;
+                                  uint32_t &offset, bool &nextIsBase, size_t &regOffsetSize) const;
     uintptr_t GetDeoptStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp,
                                        uintptr_t callsiteFp, uint32_t &offset) const;
     friend class ArkStackMapBuilder;

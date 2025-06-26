@@ -54,7 +54,7 @@ struct ARKCallsite {
         return head.calliteOffsetInTxtSec < x.head.calliteOffsetInTxtSec;
     }
     uint32_t CalHeadSize() const;
-    uint32_t CalStackMapSize(Triple triple) const;
+    uint32_t CalStackMapSize(Triple triple, size_t &stackmapNumReduced) const;
 };
 
 struct ARKCallsiteAOTFileInfo {

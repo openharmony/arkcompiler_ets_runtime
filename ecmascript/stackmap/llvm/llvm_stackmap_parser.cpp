@@ -227,14 +227,27 @@ uint32_t ARKCallsite::CalHeadSize() const
     return headSize;
 }
 
-uint32_t ARKCallsite::CalStackMapSize(Triple triple) const
+uint32_t ARKCallsite::CalStackMapSize(Triple triple, size_t &stackmapNumReduced) const
 {
     size_t stackmapSize = 0;
-    for (auto &x : stackmaps) {
-        std::vector<uint8_t> value;
-        size_t valueSize = 0;
-        LLVMStackMapType::EncodeRegAndOffset(value, valueSize, x.first, x.second, triple);
-        stackmapSize += value.size();
+    size_t stackmapsNum = stackmaps.size();
+    for (size_t i = 0; i < stackmapsNum; i += LLVMStackMapType::STACKMAP_PAIR_SIZE) {
+        std::vector<uint8_t> valBase;
+        size_t valSizeBase = 0;
+        auto &stackmapBase = stackmaps.at(i);
+        auto &stackmapDerived = stackmaps.at(i + 1);
+        LLVMStackMapType::EncodeRegAndOffset(valBase, valSizeBase, stackmapBase.first, stackmapBase.second, triple);
+        stackmapSize += valBase.size();
+        if (stackmapBase.first != stackmapDerived.first || stackmapBase.second != stackmapDerived.second) {
+            std::vector<uint8_t> valDerived;
+            size_t valSizeDerived = 0;
+            LLVMStackMapType::EncodeRegAndOffset(valDerived, valSizeDerived, stackmapDerived.first,
+                stackmapDerived.second, triple);
+            stackmapSize += valDerived.size();
+        } else {
+        // base ref, base ref and derived ref equal ===> remove repeated derived ref reg&offset
+            stackmapNumReduced++;
+        }
     }
     return stackmapSize;
 }
