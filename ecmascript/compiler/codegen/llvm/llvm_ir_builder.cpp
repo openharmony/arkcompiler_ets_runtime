@@ -2983,9 +2983,9 @@ void LLVMIRBuilder::GetDeoptBundleInfo(GateRef deoptFrameState, std::vector<LLVM
 
     // inline depth
     size_t maxDepth = acc_.GetFrameDepth(deoptFrameState, OpCode::FRAME_STATE);
-    int32_t specInlineDepthIndex = static_cast<int32_t>(SpecVregIndex::INLINE_DEPTH);
+    uint32_t specInlineDepthIndex = static_cast<uint32_t>(SpecVregIndex::INLINE_DEPTH);
     LLVMValueRef depthValue = LLVMConstInt(GetInt32T(), maxDepth, false);
-    values.emplace_back(LLVMConstInt(GetInt32T(), specInlineDepthIndex, false));
+    values.emplace_back(LLVMConstInt(GetInt32T(), static_cast<uint64_t>(specInlineDepthIndex), false));
     values.emplace_back(depthValue);
 
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
