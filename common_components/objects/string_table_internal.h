@@ -112,7 +112,7 @@ private:
     IteratorPtr iter_{};
     BaseStringTableInternal<true>* stringTable_;
     std::atomic<uint32_t> PendingTaskCount_{0U};
-    std::array<std::vector<HashTrieMapEntry*>, TrieMapConfig::INDIRECT_SIZE> waitFreeEntries_{};
+    std::array<std::vector<HashTrieMapEntry*>, TrieMapConfig::ROOT_SIZE> waitFreeEntries_{};
     Mutex sweepWeakRefMutex_{};
     bool sweepWeakRefFinished_{true};
     ConditionVariable sweepWeakRefCV_{};
@@ -164,7 +164,7 @@ public:
     }
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
-    void SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index,
+    void SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t rootID,
                       std::vector<HashTrieMapEntry*>& waitDeleteEntries);
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
@@ -173,8 +173,6 @@ public:
     template <bool B = ConcurrentSweep, std::enable_if_t<!B, int> = 0>
     void SweepWeakRef(const WeakRefFieldVisitor& visitor);
 private:
-    template <bool B = ConcurrentSweep, std::enable_if_t<!B, int> = 0>
-    void SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index);
 
     HashTrieMapType stringTable_{};
     BaseStringTableCleaner* cleaner_ = nullptr;

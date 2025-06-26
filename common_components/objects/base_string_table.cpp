@@ -200,12 +200,17 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::TryGetInternString(const R
 
 template <bool ConcurrentSweep>
 template <bool B, std::enable_if_t<B, int>>
-void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index,
+void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t rootID,
                                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries)
 {
-    ASSERT(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
-    auto* rootNode = stringTable_.root_.load(std::memory_order_relaxed);
-    stringTable_.ClearNodeFromGC(rootNode, index, visitor, waitDeleteEntries);
+    ASSERT(rootID >= 0 && rootID < TrieMapConfig::ROOT_SIZE);
+    auto rootNode = stringTable_.root_[rootID].load(std::memory_order_relaxed);
+    if (rootNode == nullptr) {
+        return;
+    }
+    for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
+        stringTable_.ClearNodeFromGC(rootNode, index, visitor, waitDeleteEntries);
+    }
 }
 
 template <bool ConcurrentSweep>
@@ -217,24 +222,20 @@ void BaseStringTableInternal<ConcurrentSweep>::CleanUp()
 
 template <bool ConcurrentSweep>
 template <bool B, std::enable_if_t<!B, int>>
-void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index)
-{
-    ASSERT(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
-    auto* rootNode = stringTable_.root_.load(std::memory_order_relaxed);
-    stringTable_.ClearNodeFromGC(rootNode, index, visitor);
-}
-
-template <bool ConcurrentSweep>
-template <bool B, std::enable_if_t<!B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
-    for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-        SweepWeakRef(visitor, index);
+    for (uint32_t rootID = 0; rootID < TrieMapConfig::ROOT_SIZE; ++rootID) {
+        auto rootNode = stringTable_.root_[rootID].load(std::memory_order_relaxed);
+        if (rootNode == nullptr) {
+            continue;
+        }
+        for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
+            stringTable_.ClearNodeFromGC(rootNode, index, visitor);
+        }
     }
 }
 
-template void BaseStringTableInternal<false>::SweepWeakRef<false>(const WeakRefFieldVisitor& visitor, uint32_t index);
 template void BaseStringTableInternal<false>::SweepWeakRef<false>(const WeakRefFieldVisitor& visitor);
 
 BaseString* BaseStringTableImpl::GetOrInternFlattenString(ThreadHolder* holder, const HandleCreator& handleCreator,
@@ -271,7 +272,7 @@ void BaseStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = false;
-    PendingTaskCount_.store(TrieMapConfig::INDIRECT_SIZE, std::memory_order_relaxed);
+    PendingTaskCount_.store(TrieMapConfig::ROOT_SIZE, std::memory_order_relaxed);
 }
 
 void BaseStringTableCleaner::WaitSweepWeakRefTask()
@@ -328,7 +329,7 @@ void BaseStringTableCleaner::ProcessSweepWeakRef(
     const WeakRefFieldVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < TrieMapConfig::INDIRECT_SIZE) {
+    while ((index = GetNextIndexId(iter)) < TrieMapConfig::ROOT_SIZE) {
         cleaner->waitFreeEntries_[index].clear();
         cleaner->stringTable_->SweepWeakRef(visitor, index, cleaner->waitFreeEntries_[index]);
         if (ReduceCountAndCheckFinish(cleaner)) {

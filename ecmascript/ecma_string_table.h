@@ -184,8 +184,7 @@ public:
     EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                                        bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
-    void SweepWeakRef(const WeakRootVisitor &visitor);
-    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
+    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID);
 
     bool CheckStringTableValidity();
 
@@ -257,7 +256,6 @@ public:
                                                        bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(const JSHandle<EcmaString> &string);
 
-    void SweepWeakRef(const WeakRootVisitor &visitor);
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
 
     bool CheckStringTableValidity();

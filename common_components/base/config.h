@@ -30,6 +30,8 @@ namespace common {
     #define NEXT_OPTIMIZATION_BOOL false
 #endif
 
+#define ECMASCRIPT_ENABLE_TRACE_STRING_TABLE 0
+
 }  // namespace common
 
 #endif  // COMMON_COMPONENTS_BASE_CONFIG_H

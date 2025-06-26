@@ -78,7 +78,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& re
                                                                 BaseString* value)
 {
     uint32_t hash = key;
-    Indirect* current = root_.load(std::memory_order_relaxed);
+    Indirect* current = GetRootAndProcessHash(hash);
 
     for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
          TrieMapConfig::N_CHILDREN_LOG2) {
@@ -95,7 +95,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& re
         }
         for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -136,7 +136,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
     [[maybe_unused]] bool haveInsertPoint = false;
     ReadOnlyHandle<BaseString> str;
     bool isStrCreated = false; // Flag to track whether an object has been created
-    Indirect* current = root_.load(std::memory_order_acquire);
+    Indirect* current = GetRootAndProcessHash(hash);
     while (true) {
         haveInsertPoint = false;
         // find the key or insert the candidate position.
@@ -156,7 +156,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
             }
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() != key) {
+                if (currentEntry->Key() != hash) {
                     continue;
                 }
                 auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -164,6 +164,9 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
                     continue;
                 }
                 if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
+#if ECMASCRIPT_ENABLE_TRACE_STRING_TABLE
+                    TraceFindSuccessDepth(hashShift);
+#endif
                     return oldValue;
                 }
             }
@@ -199,12 +202,15 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
         hashShift += TrieMapConfig::N_CHILDREN_LOG2;
     }
 
+#if ECMASCRIPT_ENABLE_TRACE_STRING_TABLE
+    TraceFindFail();
+#endif
     Entry* oldEntry = nullptr;
     if (node != nullptr) {
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -223,7 +229,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
     BaseString* value = *str;
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
-    Entry* newEntry = new Entry(key, value);
+    Entry* newEntry = new Entry(hash, value);
     oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -257,7 +263,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
     Node* node = nullptr;
     [[maybe_unused]] bool haveInsertPoint = false;
     BaseString* value = nullptr;
-    Indirect* current = root_.load(std::memory_order_acquire);
+    Indirect* current = GetRootAndProcessHash(hash);
     while (true) {
         haveInsertPoint = false;
         // find the key or insert the candidate position.
@@ -277,7 +283,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
             }
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() != key) {
+                if (currentEntry->Key() != hash) {
                     continue;
                 }
                 auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -318,7 +324,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -334,7 +340,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
 
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
-    Entry* newEntry = new Entry(key, value);
+    Entry* newEntry = new Entry(hash, value);
     oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -360,6 +366,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
+    ProcessHash(hash);
     uint32_t hashShift = loadResult.hashShift;
     std::atomic<Node*>* slot = loadResult.slot;
     Node* node = nullptr;
@@ -388,7 +395,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
                 if (node->IsEntry()) {
                     for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                          currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                        if (currentEntry->Key() == key) {
+                        if (currentEntry->Key() == hash) {
                             auto oldValue = currentEntry->Value<SlotBarrier>();
                             if (!IsNull(oldValue) && std::invoke(std::forward<EqualsCallback>(equalsCallback),
                                                                  oldValue)) {
@@ -425,7 +432,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -442,7 +449,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
     BaseString* value = *str;
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
-    Entry* newEntry = new Entry(key, value);
+    Entry* newEntry = new Entry(hash, value);
     oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
@@ -465,7 +472,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
                                                                           const uint32_t key, BaseString* value)
 {
     uint32_t hash = key;
-    Indirect* current = root_.load(std::memory_order_relaxed);
+    Indirect* current = GetRootAndProcessHash(hash);
     for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
          TrieMapConfig::N_CHILDREN_LOG2) {
         size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
@@ -478,7 +485,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
         if (node->IsEntry()) {
             for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                  currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                if (currentEntry->Key() != key) {
+                if (currentEntry->Key() != hash) {
                     continue;
                 }
                 auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -506,7 +513,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
                                                                           uint32_t offset, uint32_t utf8Len)
 {
     uint32_t hash = key;
-    Indirect* current = root_.load(std::memory_order_relaxed);
+    Indirect* current = GetRootAndProcessHash(hash);
     const uint8_t* utf8Data = string->GetDataUtf8() + offset;
     for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
          TrieMapConfig::N_CHILDREN_LOG2) {
@@ -523,7 +530,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
         }
         for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             auto oldValue = currentEntry->Value<SlotBarrier>();
@@ -553,6 +560,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
 {
     HashTrieMapInUseScope mapInUse(this);
     uint32_t hash = key;
+    ProcessHash(hash);
     uint32_t hashShift = loadResult.hashShift;
     std::atomic<Node*>* slot = loadResult.slot;
     Node* node = nullptr;
@@ -586,7 +594,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
                 }
                 for (Entry* currentEntry = node->AsEntry(); currentEntry != nullptr;
                      currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-                    if (currentEntry->Key() != key) {
+                    if (currentEntry->Key() != hash) {
                         continue;
                     }
                     BaseString* oldValue = currentEntry->Value<SlotBarrier>();
@@ -628,7 +636,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
         oldEntry = node->AsEntry();
         for (Entry* currentEntry = oldEntry; currentEntry != nullptr;
              currentEntry = currentEntry->Overflow().load(std::memory_order_acquire)) {
-            if (currentEntry->Key() != key) {
+            if (currentEntry->Key() != hash) {
                 continue;
             }
             BaseString* oldValue = currentEntry->Value<SlotBarrier>();
@@ -645,7 +653,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
     BaseString* value = *str;
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
-    Entry* newEntry = new Entry(key, value);
+    Entry* newEntry = new Entry(hash, value);
     oldEntry = PruneHead(oldEntry);
     if (oldEntry == nullptr) {
         // The simple case: Create a new entry and store it.
