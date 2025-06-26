@@ -469,16 +469,30 @@ void ElfBuilder::FixUndefinedSymbols(const std::map<std::string_view, llvm::ELF:
     if (!enableOptDirectCall_) {
         return;
     }
-    std::map<std::string, uint64_t> asmStubToAddr;
+    struct symInfo {
+        size_t addr_;
+        size_t size_;
+    };
+    std::map<std::string, symInfo> asmStubToAddr;
     for (auto &des : des_) {
         if (!des.HasAsmStubStrTab()) {
             continue;
         }
 
         const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo = des.GetAsmStubELFInfo();
-        ASSERT(asmStubELFInfo.size() > 0);
-        for (auto &[name, offset] : asmStubELFInfo) {
-            if (auto [result, inserted] = asmStubToAddr.try_emplace(name, asmStubOffset + offset); !inserted) {
+
+        auto end = asmStubELFInfo.cend();
+        for (auto iter = asmStubELFInfo.cbegin(); iter != end; ++iter) {
+            auto& [name, offset] = *iter;
+            auto nextIt = std::next(iter);
+            size_t symAddr = asmStubOffset + offset;
+            size_t symSize = 0;
+            if (nextIt != end) {
+                symSize = nextIt->second - offset;
+            } else {
+                symSize = des.GetSecSize(ElfSecName::ARK_ASMSTUB) - offset;
+            }
+            if (auto [result, inserted] = asmStubToAddr.try_emplace(name, symInfo{symAddr, symSize}); !inserted) {
                 LOG_COMPILER(FATAL) << "Duplicate asm symbol: " << name << std::endl;
             }
             if (nameToSym.find(name) != nameToSym.end()) {
@@ -502,7 +516,8 @@ void ElfBuilder::FixUndefinedSymbols(const std::map<std::string_view, llvm::ELF:
                 // preempt with defined symbol.
                 undefSym->setBindingAndType(llvm::ELF::STB_GLOBAL, llvm::ELF::STT_FUNC);
                 undefSym->st_shndx = static_cast<uint16_t>(asmSecIndex);
-                undefSym->st_value = asmTargetSymIter->second;
+                undefSym->st_value = asmTargetSymIter->second.addr_;
+                undefSym->st_size = asmTargetSymIter->second.size_;
                 undefSym->st_other = llvm::ELF::STV_DEFAULT;
             }
             continue;
