@@ -203,7 +203,7 @@ uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, vo
         UNREACHABLE();
     }
 #endif
-    if (g_isEnableCMCGC && allocType == AllocateEventType::NORMAL) {
+    if (!g_isEnableCMCGC && allocType == AllocateEventType::NORMAL) {
         // CMCGC: huge machine code is allocated in async way and should not take much time,
         // so we skip the safepoint check at this point.
         thread->CheckSafepointIfSuspended();
