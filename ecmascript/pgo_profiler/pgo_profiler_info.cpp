@@ -859,6 +859,9 @@ bool PGORecordDetailInfos::ParseRecordTypeFromBinary(PGOProfilerHeader* header,
 bool PGORecordDetailInfos::ParseRecordInfosFromBinary(void* buffer, PGOProfilerHeader* header, size_t bufferSize)
 {
     SectionInfo* info = header->GetRecordInfoSection();
+    if (info == nullptr) {
+        LOG_PGO(ERROR) << "[ParseRecordInfosFromBinary] section info is nullptr";
+    }
     void* addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
         ApEntityId recordId(0);

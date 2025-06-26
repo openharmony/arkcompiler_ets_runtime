@@ -98,7 +98,12 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info)
         return false;
     }
     static const char* tempSuffix = ".tmp";
-    auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
+    auto tmpPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
+    std::string tmpOutPath;
+    if (!RealPath(tmpPath, tmpOutPath, false)) {
+        LOG_PGO(ERROR) << "Fail to get realPath: " << tmpPath;
+        return false;
+    }
     if (!WriteProfilerFile(info, tmpOutPath)) {
         LOG_PGO(ERROR) << "failed to write or close file, errno: " << errno << ", " << strerror(errno);
         remove(tmpOutPath.c_str());
