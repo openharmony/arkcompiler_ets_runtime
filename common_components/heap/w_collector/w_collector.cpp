@@ -242,7 +242,6 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
 
     auto gcReason = Heap::GetHeap().GetGCReason();
     auto targetRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
-    auto objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
 
     if (gcReason != GC_REASON_YOUNG && oldField.IsWeak()) {
         DLOG(TRACE, "trace: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
@@ -250,7 +249,7 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
         return;
     }
 
-    if (gcReason == GC_REASON_YOUNG && objRegion->IsInOldSpace()) {
+    if (gcReason == GC_REASON_YOUNG && targetRegion->IsInOldSpace()) {
         DLOG(TRACE, "trace: skip old object %p@%p, target object: %p<%p>(%zu)",
             obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
@@ -344,10 +343,27 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
     return oldObj;
 }
 
-void WCollector::PreforwardStaticRoots()
+void WCollector::ReMarkAndPreforwardStaticRoots(WorkStack& workStack)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardStaticRoots", "");
-    RefFieldVisitor visitor = [this](RefField<>& refField) {
+    const auto markObject = [&workStack, this](BaseObject *temp) {
+        if (!this->MarkObject(temp)) {
+            workStack.push_back(temp);
+        }
+    };
+
+    const auto markToObject = [&workStack, this](BaseObject *oldVersion, BaseObject *toVersion) {
+        if (!this->MarkObject(toVersion)) {
+            // Therefore, we must still attempt to mark the old object to prevent
+            // it from being pushed into the mark stack during subsequent
+            // traversals.
+            this->MarkObject(oldVersion);
+            // The reference in toSpace needs to be fixed up. Therefore, even if
+            // the oldVersion has been marked, it must still be pushed into the
+            // stack. This will be optimized later.
+            workStack.push_back(toVersion);
+        }
+    };
+    RefFieldVisitor visitor = [this, &markObject, &markToObject](RefField<>& refField) {
         RefField<> oldField(refField);
         BaseObject* oldObj = oldField.GetTargetObject();
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
@@ -362,8 +378,23 @@ void WCollector::PreforwardStaticRoots()
             if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
                 DLOG(FIX, "fix raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
             }
+            markToObject(oldObj, toVersion);
+        } else {
+            markObject(oldObj);
         }
     };
+    VisitRoots(visitor, false);
+    // inline MergeMutatorRoots
+    MutatorManager &mutatorManager = MutatorManager::Instance();
+    bool worldStopped = mutatorManager.WorldStopped();
+    worldStopped ? ((void)0) : mutatorManager.MutatorManagementWLock();
+    theAllocator_.VisitAllocBuffers([&markObject](AllocationBuffer &buffer) { buffer.MarkStack(markObject); });
+    worldStopped ? ((void)0) : mutatorManager.MutatorManagementWUnlock();
+}
+
+void WCollector::PreforwardStaticWeakRoots()
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardStaticRoots", "");
 
     WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
         RefField<> oldField(refField);
@@ -397,7 +428,6 @@ void WCollector::PreforwardStaticRoots()
         return true;
     };
 
-    VisitRoots(visitor, false);
     VisitWeakRoots(weakVisitor);
     MutatorManager::Instance().VisitAllMutators([](Mutator& mutator) {
         // Request finalize callback in each vm-thread when gc finished.
@@ -446,6 +476,7 @@ void WCollector::TraceHeap(WorkStack& workStack)
 
     TraceRoots(workStack);
     ProcessFinalizers();
+    ExemptFromSpace();
 }
 
 void WCollector::PostTrace()
@@ -456,7 +487,6 @@ void WCollector::PostTrace()
 
     // clear satb buffer when gc finish tracing.
     SatbBuffer::Instance().ClearBuffer();
-    ExemptFromSpace();
 
     WVerify::VerifyAfterMark(*this);
 }
@@ -471,7 +501,7 @@ void WCollector::Preforward()
 
     // copy and fix finalizer roots.
     // Only one root task, no need to post task.
-    PreforwardStaticRoots();
+    PreforwardStaticWeakRoots();
 }
 
 void WCollector::PrepareFix()
@@ -505,6 +535,7 @@ void WCollector::DoGarbageCollection()
         WorkStack workStack = NewWorkStack();
         EnumRoots(workStack);
         TraceHeap(workStack);
+        ReMark(workStack);
         PostTrace();
 
         Preforward();
@@ -540,11 +571,13 @@ void WCollector::DoGarbageCollection()
             EnumRoots(workStack);
         }
         TraceHeap(workStack);
+    {
+        ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
+        ReMark(workStack);
         PostTrace();
-
-        ScopedStopTheWorld stw("wgc-preforward");
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
         Preforward();
+    }
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
         if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
@@ -573,10 +606,10 @@ void WCollector::DoGarbageCollection()
         EnumRoots(workStack);
     }
     TraceHeap(workStack);
-    PostTrace();
-
     {
-        ScopedStopTheWorld stw("wgc-preforward");
+        ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
+        ReMark(workStack);
+        PostTrace();
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
         Preforward();
     }
@@ -637,32 +670,6 @@ void WCollector::ProcessWeakReferences()
             }
         }
     }
-#ifndef ARK_USE_SATB_BARRIER
-    {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessWeakRoots", "");
-        WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
-            RefField<> oldField(refField);
-            BaseObject *oldObj = oldField.GetTargetObject();
-            if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-                if (RegionSpace::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
-                    !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
-                    return false;
-                }
-            } else {
-                if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
-                    return false;
-                }
-            }
-            return true;
-        };
-        VisitWeakRoots(weakVisitor);
-        MutatorManager::Instance().VisitAllMutators([](Mutator& mutator) {
-            // Request finalize callback in each vm-thread when gc finished.
-            mutator.SetCallbackRequest();
-        });
-    }
-
-#endif
 }
 
 void WCollector::ProcessFinalizers()
@@ -695,7 +702,7 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
     // reconsider phase difference between mutator and GC thread during transition.
     if (IsGcThread()) {
         CHECK_CC(GetGCPhase() == GCPhase::GC_PHASE_PRECOPY || GetGCPhase() == GCPhase::GC_PHASE_COPY ||
-                 GetGCPhase() == GCPhase::GC_PHASE_FIX);
+                 GetGCPhase() == GCPhase::GC_PHASE_FIX || GetGCPhase() == GCPhase::GC_PHASE_FINAL_MARK);
     } else {
         auto phase = Mutator::GetMutator()->GetMutatorPhase();
         CHECK_CC(phase == GCPhase::GC_PHASE_PRECOPY || phase == GCPhase::GC_PHASE_COPY ||

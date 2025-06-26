@@ -211,11 +211,32 @@ public:
 
         // check retraced objects, so they must be in one of the states below
         auto refObj = ref.GetTargetObject();
-        CHECKF(RegionSpace::IsResurrectedObject(refObj) || RegionSpace::IsMarkedObject(refObj) ||
-               RegionSpace::IsNewObjectSinceTrace(refObj) || !RegionSpace::IsYoungSpaceObject(refObj))
-            << CONTEXT
-            << "Object: " << GetObjectInfo(obj) << std::endl
-            << "Ref: " << GetRefInfo(ref) << std::endl;
+        RegionDesc *region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(refObj));
+
+        // obj == nullptr means that during EnumStrongRoots, there can no longer
+        // be any objects in fromSpace, because they would all have been copied
+        // by then
+        if (obj == nullptr) {
+            CHECKF(!region->IsFromRegion())
+                << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
+                << "Ref: " << GetRefInfo(ref) << std::endl;
+            return;
+        }
+
+        if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+            CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
+                   RegionSpace::IsMarkedObject(refObj) ||
+                   RegionSpace::IsNewObjectSinceTrace(refObj) ||
+                   !RegionSpace::IsYoungSpaceObject(refObj))
+                << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
+                << "Ref: " << GetRefInfo(ref) << std::endl;
+        } else {
+            CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
+                   RegionSpace::IsMarkedObject(refObj) ||
+                   RegionSpace::IsNewObjectSinceTrace(refObj))
+                << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
+                << "Ref: " << GetRefInfo(ref) << std::endl;
+        }
     }
 };
 
@@ -336,14 +357,23 @@ public:
                 return;
             }
 
-            visitor.VerifyRef(obj, field);
-
             BaseObject* refObj = nullptr;
             if (forRBDFX) {
                 refObj = ReadBarrierUnsetter::GetTargetObject(field);
             } else {
                 refObj = field.GetTargetObject();
             }
+            // If it is forwarded, its toVersion must have been traversed during
+            // EnumRoot, so it must have been marked. There is no need for me to
+            // check it, nor to push it into the mark stack.
+            if (refObj->IsForwarded()) {
+                auto toObj = refObj->GetForwardingPointer();
+                bool find = markSet.find(toObj) != markSet.end();
+                CHECKF(find) << "not found to version obj in markSet";
+                return;
+            }
+
+            visitor.VerifyRef(obj, field);
 
             if (markSet.find(refObj) != markSet.end()) {
                 return;

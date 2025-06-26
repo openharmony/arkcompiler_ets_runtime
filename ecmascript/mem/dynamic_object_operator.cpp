@@ -59,6 +59,9 @@ void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
 
 void RefFieldObjectVisitor::visit(ObjectSlot slot)
 {
+    if (!slot.GetTaggedValue().IsHeapObject()) {
+        return;
+    }
     visitor_(reinterpret_cast<common::RefField<>&>(*(slot.GetRefFieldAddr())));
 }
 
