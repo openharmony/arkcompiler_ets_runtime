@@ -285,12 +285,18 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 
 void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method, JSTaggedValue env)
 {
+    auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
     FrameHandler frameHandler(thread);
+    // No frame before the first method is executed
+    if (!frameHandler.HasFrame()) {
+        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method, env);
+        return;
+    }
+
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
-        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
         debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method, env);
         return;
     }
