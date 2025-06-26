@@ -367,7 +367,7 @@ public:
 
     void CopyRegion(RegionDesc* region);
 
-    void VisitOldSpaceRememberSet(const std::function<void(BaseObject*)>& func);
+    void VisitRememberSet(const std::function<void(BaseObject *)> &func);
 
     friend class Allocator;
 private:

@@ -362,6 +362,13 @@ void TraceCollector::TraceRoots(WorkStack &tempStack)
     WorkStack workStack = NewWorkStack();
     PushRootInWorkStack(&workStack, &tempStack);
 
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
+        auto func = [this, &workStack](BaseObject *object) { MarkRememberSetImpl(object, workStack); };
+        RegionSpace &space = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator());
+        space.VisitRememberSet(func);
+    }
+
     COMMON_PHASE_TIMER("TraceRoots");
     VLOG(DEBUG, "roots size: %zu", workStack.size());
 
@@ -426,6 +433,7 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 
 void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStack)
 {
+    // in Young GC: maybe we can skip the object if it has no ref to young space
     object->ForEachRefField([this, &workStack, &object](RefField<>& field) {
         BaseObject* targetObj = field.GetTargetObject();
         if (Heap::IsHeapAddress(targetObj)) {
@@ -440,39 +448,8 @@ void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStac
     });
 }
 
-void TraceCollector::MarkRememberSet(WorkStack& workStack)
-{
-    COMMON_PHASE_TIMER("MarkRememberSet");
-    auto func = [this, &workStack](BaseObject* object) {
-        if (Heap::IsHeapAddress(object)) {
-            MarkRememberSetImpl(object, workStack);
-        }
-    };
-    auto visitRSetObj = [this, &workStack, &func]() {
-        RegionSpace& space = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-        space.VisitOldSpaceRememberSet(func);
-    };
-    visitRSetObj();
-    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
-    do {
-        if (LIKELY_CC(!workStack.empty())) {
-            Taskpool *threadPool = GetThreadPool();
-            bool shouldParallel = (workStack.size() > MAX_MARKING_WORK_SIZE) && (maxWorkers > 0);
-            TracingImpl(workStack, shouldParallel);
-        }
-        visitRSetObj();
-        if (workStack.empty()) {
-            TransitionToGCPhase(GCPhase::GC_PHASE_REMARK_SATB, true);
-            visitRSetObj();
-        }
-    } while (!workStack.empty());
-}
-
 void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
 {
-    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-        MarkRememberSet(remarkStack);
-    }
     LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
 }
 
@@ -619,6 +596,7 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
     for (size_t i = 0; i < threadCount; ++i) {
         rootSet.insert(rootSets[i]);
     }
+
     VLOG(DEBUG, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
 

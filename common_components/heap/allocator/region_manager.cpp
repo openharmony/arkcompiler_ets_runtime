@@ -111,15 +111,18 @@ const char* RegionDesc::GetTypeName() const
 
 void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
 {
+    uintptr_t allocPtr = GetRegionAllocPtr();
+    VisitAllObjectsBefore(std::move(func), GetRegionAllocPtr());
+}
+
+void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &&func, uintptr_t end)
+{
+    uintptr_t position = GetRegionStart();
+
     if (IsFixedRegion()) {
         size_t size = static_cast<size_t>(GetRegionCellCount() + 1) * sizeof(uint64_t);
-        uintptr_t position = GetRegionStart();
-        uintptr_t end = GetRegionEnd();
-        if (!IsFixedRegionFlag()) {
-            end = GetRegionAllocPtr();
-        }
         while (position < end) {
-            BaseObject* obj = reinterpret_cast<BaseObject*>(position);
+            BaseObject *obj = reinterpret_cast<BaseObject *>(position);
             position += size;
             if (position > end) {
                 break;
@@ -130,19 +133,16 @@ void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
             func(obj);
         }
         return;
-    }
-    if (IsLargeRegion()) {
+    } else if (IsLargeRegion() && (position < end)) {
         if (IsJitFortAwaitInstallFlag()) {
             return;
         }
         func(reinterpret_cast<BaseObject *>(GetRegionStart()));
     } else if (IsSmallRegion()) {
-        uintptr_t position = GetRegionStart();
-        uintptr_t allocPtr = GetRegionAllocPtr();
-        while (position < allocPtr) {
+        while (position < end) {
             // GetAllocSize should before call func, because object maybe destroy in compact gc.
-            func(reinterpret_cast<BaseObject*>(position));
-            size_t size = RegionSpace::GetAllocSize(*reinterpret_cast<BaseObject*>(position));
+            func(reinterpret_cast<BaseObject *>(position));
+            size_t size = RegionSpace::GetAllocSize(*reinterpret_cast<BaseObject *>(position));
             position += size;
         }
     }
@@ -166,28 +166,20 @@ void RegionDesc::VisitAllObjectsWithFixedSize(size_t cellCount, const std::funct
     }
 }
 
-void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject *)> &&func)
+void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func)
 {
-    if (IsLargeRegion()) {
-        if (IsJitFortAwaitInstallFlag()) {
-            return;
-        }
-        if (!IsNewRegionSinceFix()) {
-            func(reinterpret_cast<BaseObject *>(GetRegionStart()));
-        }
-    } else if (IsSmallRegion()) {
-        uintptr_t position = GetRegionStart();
-        uintptr_t allocPtr = GetRegionAllocPtr();
-        uintptr_t fixline = GetFixLine();
+    uintptr_t allocPtr = GetRegionAllocPtr();
+    uintptr_t phaseLine = GetFixLine();
+    uintptr_t end = std::min(phaseLine, allocPtr);
+    VisitAllObjectsBefore(std::move(func), end);
+}
 
-        uintptr_t end = std::min(fixline, allocPtr);
-        while (position < end) {
-            // GetAllocSize should before call func, because object maybe destroy in compact gc.
-            func(reinterpret_cast<BaseObject*>(position));
-            size_t size = RegionSpace::GetAllocSize(*reinterpret_cast<BaseObject*>(position));
-            position += size;
-        }
-    }
+void RegionDesc::VisitAllObjectsBeforeTrace(const std::function<void(BaseObject *)> &&func)
+{
+    uintptr_t allocPtr = GetRegionAllocPtr();
+    uintptr_t phaseLine = GetTraceLine();
+    uintptr_t end = std::min(phaseLine, allocPtr);
+    VisitAllObjectsBefore(std::move(func), end);
 }
 
 bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func)
@@ -685,7 +677,7 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
                 region->CollectPinnedGarbage(object, cellCount);
             }
         });
-        region->SetFixedRegionFlag(1);
+        region->SetRegionAllocPtr(region->GetRegionEnd());
         region = region->GetNextRegion();
     }
     stats.pinnedGarbageSize += garbageSize;
@@ -952,7 +944,7 @@ uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
 {
     GCPhase mutatorPhase = Mutator::GetMutator()->GetMutatorPhase();
     // workaround: make sure once fixline is set, newly allocated objects are after fixline
-    if (mutatorPhase == GC_PHASE_FIX) {
+    if (mutatorPhase == GC_PHASE_FIX || mutatorPhase == GC_PHASE_MARK) {
         return 0;
     }
 
@@ -1012,7 +1004,7 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
 void RegionManager::VisitRememberSet(const std::function<void(BaseObject*)>& func)
 {
     auto visitFunc = [&func](RegionDesc* region) {
-        region->VisitAllObjects([&region, &func](BaseObject* obj) {
+        region->VisitAllObjectsBeforeTrace([&region, &func](BaseObject* obj) {
             if (region->IsInRSet(obj)) {
                 func(obj);
             }
@@ -1024,6 +1016,7 @@ void RegionManager::VisitRememberSet(const std::function<void(BaseObject*)>& fun
     largeRegionList_.VisitAllRegions(visitFunc);
     appSpawnRegionList_.VisitAllRegions(visitFunc);
     rawPointerRegionList_.VisitAllRegions(visitFunc);
+
     for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
         recentFixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
         fixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
