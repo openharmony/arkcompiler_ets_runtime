@@ -384,8 +384,10 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk* chunk, PGOContext& context, void**
     return true;
 }
 
-bool PGOMethodInfoMap::ProcessToBinary(PGOContext &context, ProfileTypeRef recordProfileRef, const SaveTask *task,
-                                       std::fstream &stream, PGOProfilerHeader *const header) const
+bool PGOMethodInfoMap::ProcessToBinary(PGOContext& context,
+                                       ProfileTypeRef recordProfileRef,
+                                       std::fstream& stream,
+                                       PGOProfilerHeader* const header) const
 {
     SectionInfo secInfo;
     std::stringstream methodStream;
@@ -394,10 +396,6 @@ bool PGOMethodInfoMap::ProcessToBinary(PGOContext &context, ProfileTypeRef recor
                         << DumpUtils::ELEMENT_SEPARATOR
                         << std::to_string(static_cast<int>(iter->second->GetSampleMode()))
                         << DumpUtils::ELEMENT_SEPARATOR << iter->second->GetMethodName();
-        if (task && task->IsTerminate()) {
-            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
-            return false;
-        }
         auto curMethodInfo = iter->second;
         if (curMethodInfo->IsFilter(context.GetHotnessThreshold())) {
             continue;
@@ -925,26 +923,20 @@ bool PGORecordDetailInfos::ParseFromBinaryForLayout(void** addr, void* buffer, s
     return true;
 }
 
-void PGORecordDetailInfos::ProcessToBinary(
-    const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header)
+void PGORecordDetailInfos::ProcessToBinary(std::fstream& fileStream, PGOProfilerHeader* const header)
 {
     header_ = header;
     auto info = header->GetRecordInfoSection();
     info->number_ = 0;
     info->offset_ = static_cast<uint32_t>(fileStream.tellp());
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
-        if (task && task->IsTerminate()) {
-            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
-            break;
-        }
         auto recordId = iter->first;
         auto curMethodInfos = iter->second;
-        if (curMethodInfos->ProcessToBinary(*this, ProfileTypeRef(*this, recordId), task, fileStream, header)) {
+        if (curMethodInfos->ProcessToBinary(*this, ProfileTypeRef(*this, recordId), fileStream, header)) {
             info->number_++;
         }
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
-
     info = header->GetLayoutDescSection();
     if (info == nullptr) {
         return;
@@ -952,36 +944,29 @@ void PGORecordDetailInfos::ProcessToBinary(
     info->number_ = 0;
     info->offset_ = static_cast<uint32_t>(fileStream.tellp());
     if (header->SupportType()) {
-        if (!ProcessToBinaryForLayout(const_cast<NativeAreaAllocator *>(&nativeAreaAllocator_), task, fileStream)) {
+        if (!ProcessToBinaryForLayout(const_cast<NativeAreaAllocator*>(&nativeAreaAllocator_), fileStream)) {
             return;
         }
         info->number_++;
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
-
     PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *recordPool_);
     PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *protoTransitionPool_);
     // ProfileTypePool must be processed at last
     PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *profileTypePool_->GetPool());
 }
 
-bool PGORecordDetailInfos::ProcessToBinaryForLayout(
-    NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream)
+bool PGORecordDetailInfos::ProcessToBinaryForLayout(NativeAreaAllocator* allocator, std::fstream& stream)
 {
     SectionInfo secInfo;
     auto layoutBeginPosition = stream.tellp();
     stream.seekp(sizeof(SectionInfo), std::ofstream::cur);
-    for (const auto &typeInfo : hclassTreeDescInfos_) {
-        if (task && task->IsTerminate()) {
-            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
-            return false;
-        }
+    for (const auto& typeInfo: hclassTreeDescInfos_) {
         auto profileType = PGOSampleType(typeInfo.GetProfileType());
         size_t size = PGOHClassTreeDescInnerRef::CaculateSize(typeInfo);
         if (size == 0) {
             continue;
         }
-
         PGOSampleTypeRef classRef = PGOSampleTypeRef::ConvertFrom(*this, profileType);
         auto protoSt = PGOSampleType(typeInfo.GetProtoPt());
         PGOSampleTypeRef protoClassRef = PGOSampleTypeRef::ConvertFrom(*this, protoSt);
@@ -992,7 +977,6 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
         allocator->Delete(addr);
         secInfo.number_++;
     }
-
     secInfo.offset_ = sizeof(SectionInfo);
     secInfo.size_ = static_cast<uint32_t>(stream.tellp()) -
         static_cast<uint32_t>(layoutBeginPosition) - sizeof(SectionInfo);

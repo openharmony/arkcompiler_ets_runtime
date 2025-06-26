@@ -41,9 +41,7 @@ std::string PGOProfilerEncoder::GetDirectoryPath(const std::string& path) const
     }
 }
 
-bool PGOProfilerEncoder::WriteProfilerFile(const std::shared_ptr<PGOInfo> info,
-                                           const SaveTask* task,
-                                           const std::string& tmpOutPath)
+bool PGOProfilerEncoder::WriteProfilerFile(const std::shared_ptr<PGOInfo> info, const std::string& tmpOutPath)
 {
     umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH); // ensure the permission of ap file is -rw-------
     std::fstream fileStream(tmpOutPath.c_str(),
@@ -56,7 +54,7 @@ bool PGOProfilerEncoder::WriteProfilerFile(const std::shared_ptr<PGOInfo> info,
         LOG_PGO(FATAL) << "[PGOProfilerEncoder::SaveAndRename] header_ is not initialized";
     }
     info->GetPandaFileInfos().ProcessToBinary(fileStream, info->GetHeaderPtr()->GetPandaInfoSection());
-    info->GetRecordDetailInfosPtr()->ProcessToBinary(task, fileStream, info->GetHeaderPtr());
+    info->GetRecordDetailInfosPtr()->ProcessToBinary(fileStream, info->GetHeaderPtr());
     PGOFileSectionInterface::ProcessSectionToBinary(
         info->GetRecordDetailInfos(), fileStream, info->GetHeaderPtr(), *info->GetAbcFilePool().GetPool());
     info->GetHeaderPtr()->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
@@ -88,7 +86,7 @@ bool PGOProfilerEncoder::ValidateAndRename(const std::string& tmpOutPath)
     return true;
 }
 
-bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
+bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename", "");
     LOG_PGO(INFO) << "start save and rename ap file to " << path_;
@@ -101,12 +99,9 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     }
     static const char* tempSuffix = ".tmp";
     auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
-    if (!WriteProfilerFile(info, task, tmpOutPath)) {
+    if (!WriteProfilerFile(info, tmpOutPath)) {
         LOG_PGO(ERROR) << "failed to write or close file, errno: " << errno << ", " << strerror(errno);
         remove(tmpOutPath.c_str());
-        return false;
-    }
-    if (task && task->IsTerminate()) {
         return false;
     }
     if (!ValidateAndRename(tmpOutPath)) {
@@ -121,17 +116,21 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     return true;
 }
 
-bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo, const SaveTask* task)
+bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave", "");
+    if (rtInfo == nullptr) {
+        LOG_PGO(ERROR) << "pgo info is nullptr";
+        return false;
+    }
     LOG_PGO(INFO) << (mode_ == MERGE ? "MERGE(1)" : "OVERWRITE(0)") << " pgo info";
     if ((mode_ == MERGE) && FileExist(path_.c_str())) {
         auto info = std::make_shared<PGOInfo>(rtInfo->GetHotnessThreshold());
         PGOProfilerDecoder decoder(path_, rtInfo->GetHotnessThreshold());
-        info->MergeWithExistProfile(*rtInfo, decoder, task);
-        return SaveAndRename(info, task);
+        info->MergeWithExistProfile(*rtInfo, decoder);
+        return SaveAndRename(info);
     }
-    return SaveAndRename(rtInfo, task);
+    return SaveAndRename(rtInfo);
 }
 
 void PGOProfilerEncoder::AddChecksum(std::fstream& fileStream)
@@ -157,34 +156,6 @@ void PGOProfilerEncoder::AddChecksum(std::fstream& fileStream)
     // third, write the checksum back to the checksum field in the output stream.
     fileStream.seekp(PGOProfilerHeader::MAGIC_SIZE + PGOProfilerHeader::VERSION_SIZE, std::fstream::beg);
     fileStream.write(reinterpret_cast<char*>(&checksum), sizeof(checksum));
-}
-
-void PGOProfilerEncoder::TerminateSaveTask()
-{
-    common::Taskpool::GetCurrentTaskpool()->TerminateTask(common::GLOBAL_TASK_ID, common::TaskType::PGO_SAVE_TASK);
-}
-
-void PGOProfilerEncoder::PostSaveTask(const std::string& path,
-                                      ApGenMode mode,
-                                      const std::shared_ptr<PGOInfo> pgoInfo)
-{
-    LOG_PGO(INFO) << "dispatch save task, path: " << path;
-    auto encoder = std::make_shared<PGOProfilerEncoder>(path, mode);
-    common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SaveTask>(encoder, pgoInfo, common::GLOBAL_TASK_ID));
-}
-
-void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
-{
-    if (task == nullptr) {
-        return;
-    }
-    if (task->IsTerminate()) {
-        LOG_PGO(ERROR) << "save task is terminated";
-        return;
-    }
-    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
-    InternalSave(info, task);
 }
 
 ApGenMode PGOProfilerEncoder::GetApGenMode() const
