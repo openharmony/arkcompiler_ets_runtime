@@ -613,20 +613,21 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     }
     HandleProfileCall();
 
-    Label readBarrier(env);
     Label skipReadBarrier(env);
-    BRANCH(
-        LoadPrimitive(
-            VariableType::BOOL(), glue_,
-            IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &readBarrier, &skipReadBarrier);
+    GateRef gcStateBitField = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
+                                            IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+    GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
+    Label readBarrier(env);
+    BRANCH_LIKELY(Int64Equal(readBarrierStateBit, Int64(0)), &skipReadBarrier, &readBarrier);
     Bind(&readBarrier);
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), {glue_, func_});
-    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
-        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-                       {glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc});
+    {
+        CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), {glue_, func_});
+        if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
+            CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+                           {glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc});
+        }
+        Jump(&skipReadBarrier);
     }
-    Jump(&skipReadBarrier);
     Bind(&skipReadBarrier);
 
     if (isForBaseline_ && env->IsBaselineBuiltin()) {
