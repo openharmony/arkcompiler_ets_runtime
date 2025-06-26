@@ -31,7 +31,6 @@
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
-class SourceTextModule;
 #ifdef PANDA_TARGET_WINDOWS
 using fd_t = HANDLE;
 #define INVALID_FD INVALID_HANDLE_VALUE
@@ -76,7 +75,6 @@ int PUBLIC_API FileUnMap(MemMap addr);
 CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname, CString request);
 bool PUBLIC_API FileExist(const char *filename);
 int PUBLIC_API Unlink(const char *filename);
-bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
 void *LoadLib(const std::string &libname);
 void *FindSymbol(void *handle, const char *symbol);
 int CloseLib(void *handle);

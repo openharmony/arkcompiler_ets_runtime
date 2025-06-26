@@ -54,6 +54,15 @@ ohos_shared_library("libcompiler_service") {
     "src/screen_status_listener.cpp",
     "src/thermal_mgr_listener.cpp",
   ]
+  if (is_mingw) {
+    sources += [
+      "${js_root}/ecmascript/platform/windows/file.cpp",
+    ]
+  } else {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/file.cpp",
+    ]
+  }
   external_deps = [
     "ability_base:want",
     "access_token:libaccesstoken_sdk",
