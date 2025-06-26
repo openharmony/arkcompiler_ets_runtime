@@ -17,3 +17,4 @@ regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 
 #21809
 regresstest/ark-regress/mjsunit/regress/regress-crbug-551287.js
+regresstest/ark-regress/mjsunit/compiler/bigint-asintn.js
