@@ -5,3 +5,6 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
 
 #26530
 obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
+
+#27094
+obj/arkcompiler/ets_runtime/test/aottest/forin_enum_cache_chain/forin_enum_cache_chain/pgo
