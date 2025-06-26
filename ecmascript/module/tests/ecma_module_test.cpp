@@ -136,32 +136,38 @@ public:
     {
         return ModuleValueAccessor::GetModuleNamespaceInternal(thread, index, curModule);
     }
-    static JSTaggedValue GetSendableModuleValueOuterInternal(JSThread *thread, int32_t index, JSTaggedValue curModule,
-        bool isLazy)
+    template <bool isLazy>
+    static JSTaggedValue GetSendableModuleValueOuterInternal(JSThread *thread, int32_t index, JSTaggedValue curModule)
     {
-        return ModuleValueAccessor::GetSendableModuleValueOuterInternal(thread, index, curModule, isLazy);
+        return ModuleValueAccessor::GetSendableModuleValueOuterInternal<isLazy>(thread, index, curModule);
     }
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromRecordIndexBinding(JSThread *thread, JSHandle<SourceTextModule> module,
-        JSTaggedValue resolvedBinding, bool isSendable, bool isLazy)
+        JSTaggedValue resolvedBinding, bool isSendable)
     {
-        return ModuleValueAccessor::GetModuleValueFromRecordIndexBinding({ thread, module, resolvedBinding, 0,
-            isSendable, isLazy });
+        GetModuleValueFromBindingInfo info { thread, module, resolvedBinding, 0, isSendable };
+        return ModuleValueAccessor::GetModuleValueFromRecordIndexBinding<isLazy>(info);
     }
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromRecordBinding(JSThread *thread, JSHandle<SourceTextModule> module,
-        JSTaggedValue resolvedBinding, int32_t index, bool isSendable, bool isLazy)
+        JSTaggedValue resolvedBinding, int32_t index, bool isSendable)
     {
-        return ModuleValueAccessor::GetModuleValueFromRecordBinding({ thread, module, resolvedBinding, index,
-            isSendable, isLazy });
+        GetModuleValueFromBindingInfo info { thread, module, resolvedBinding, index, isSendable };
+        return ModuleValueAccessor::GetModuleValueFromRecordBinding<isLazy>(info);
     }
+    template <bool isLazy>
     static JSHandle<SourceTextModule> GetResolvedModuleFromRecordIndexBinding(JSThread *thread,
-        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordIndexBinding> binding, bool isLazy)
+        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordIndexBinding> binding)
     {
-        return ModuleValueAccessor::GetResolvedModuleFromRecordIndexBinding(thread, module, binding, isLazy);
+        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(thread, module, binding,
+            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
     }
+    template <bool isLazy>
     static JSHandle<SourceTextModule> GetResolvedModuleFromRecordBinding(JSThread *thread,
-        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordBinding> binding, bool isLazy)
+        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordBinding> binding)
     {
-        return ModuleValueAccessor::GetResolvedModuleFromRecordBinding(thread, module, binding, isLazy);
+        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordBinding>(thread, module, binding,
+            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
     }
 };
 class MockDeprecatedModuleValueAccessor : public DeprecatedModuleValueAccessor {
@@ -2855,8 +2861,8 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
     int32_t index = 2;
     JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    JSTaggedValue res1 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal(
-        thread, index, currentModule1, false);
+    JSTaggedValue res1 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(
+        thread, index, currentModule1);
     EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
 
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
@@ -2866,8 +2872,8 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
     ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<SourceTextModule> module2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
     JSTaggedValue currentModule2 = module2.GetTaggedValue();
-    JSTaggedValue res2 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal(
-        thread, index, currentModule2, false);
+    JSTaggedValue res2 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(
+        thread, index, currentModule2);
     EXPECT_NE(res2, thread->GlobalConstants()->GetUndefined());
 }
 
@@ -2876,8 +2882,8 @@ HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl) {
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
     int32_t index = 2;
     JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    JSTaggedValue res1 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal(
-        thread, index, currentModule1, true);
+    JSTaggedValue res1 = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<true>(
+        thread, index, currentModule1);
     EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
 }
 
@@ -2947,7 +2953,7 @@ HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordIndexBindingModule)
         objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
 
     JSHandle<SourceTextModule> resolvedModule = MockModuleValueAccessor::
-        GetResolvedModuleFromRecordIndexBinding(thread, module1, recordIndexBinding, false);
+        GetResolvedModuleFromRecordIndexBinding<false>(thread, module1, recordIndexBinding);
     EXPECT_TRUE(resolvedModule->GetStatus() == ModuleStatus::EVALUATED);
 }
 
@@ -2968,7 +2974,7 @@ HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordBindingModule)
         objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
 
     JSHandle<SourceTextModule> resolvedModule = MockModuleValueAccessor::
-        GetResolvedModuleFromRecordBinding(thread, module1, nameBinding, false);
+        GetResolvedModuleFromRecordBinding<false>(thread, module1, nameBinding);
     EXPECT_TRUE(resolvedModule->GetStatus() == ModuleStatus::EVALUATED);
 }
 
@@ -2993,8 +2999,8 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromIndexBindingTest)
     JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
         objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
 
-    JSTaggedValue value = MockModuleValueAccessor::GetModuleValueFromRecordIndexBinding(
-        thread, module1, recordIndexBinding.GetTaggedValue(), false, true);
+    JSTaggedValue value = MockModuleValueAccessor::GetModuleValueFromRecordIndexBinding<true>(
+        thread, module1, recordIndexBinding.GetTaggedValue(), false);
 
     EXPECT_TRUE(value.IsString());
 }
@@ -3016,7 +3022,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBindingTest)
         objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
 
     JSTaggedValue resolvedModuleVal1 = MockModuleValueAccessor::
-        GetModuleValueFromRecordBinding(thread, module1, nameBinding.GetTaggedValue(), 0, false, true);
+        GetModuleValueFromRecordBinding<true>(thread, module1, nameBinding.GetTaggedValue(), 0, false);
     EXPECT_TRUE(resolvedModuleVal1.IsString());
 }
 
@@ -3154,8 +3160,8 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBinding)
     JSHandle<ResolvedRecordBinding> nameBinding =
         objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
     JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(nameBinding);
-    MockModuleValueAccessor::GetModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue(), 0, false, true);
-    MockModuleValueAccessor::GetModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue(), 0, false, false);
+    MockModuleValueAccessor::GetModuleValueFromRecordBinding<true>(thread, module2, key.GetTaggedValue(), 0, false);
+    MockModuleValueAccessor::GetModuleValueFromRecordBinding<false>(thread, module2, key.GetTaggedValue(), 0, false);
     EXPECT_TRUE(!thread->HasPendingException());
 }
 
@@ -3687,7 +3693,7 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl2) {
     JSHandle<JSTaggedValue> resolution = JSHandle<JSTaggedValue>::Cast(nameBinding);
     envRec->Set(thread, 0, resolution);
     module->SetEnvironment(thread, envRec);
-    MockModuleValueAccessor::GetSendableModuleValueOuterInternal(thread, 0, module.GetTaggedValue(), false);
+    MockModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(thread, 0, module.GetTaggedValue());
     EXPECT_TRUE(thread->HasPendingException());
 }
 
@@ -3710,7 +3716,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl2) {
     JSHandle<JSTaggedValue> resolution = JSHandle<JSTaggedValue>::Cast(nameBinding);
     envRec->Set(thread, 0, resolution);
     module->SetEnvironment(thread, envRec);
-    MockModuleValueAccessor::GetSendableModuleValueOuterInternal(thread, 0, module.GetTaggedValue(), true);
+    MockModuleValueAccessor::GetSendableModuleValueOuterInternal<true>(thread, 0, module.GetTaggedValue());
     EXPECT_TRUE(thread->HasPendingException());
 }
 

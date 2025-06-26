@@ -51,18 +51,18 @@ protected:
         JSTaggedValue resolvedBinding;
         int32_t index;
         bool isSendable;
-        bool isLazy;
     };
     static JSTaggedValue GetCurrentModule(JSThread *thread);
     static JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int32_t index);
+
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueOuterInternal(JSThread *thread,
                                                      int32_t index,
-                                                     JSTaggedValue curModule,
-                                                     bool isLazy);
+                                                     JSTaggedValue curModule);
+    template <bool isLazy>
     static JSTaggedValue GetSendableModuleValueOuterInternal(JSThread *thread,
                                                              int32_t index,
-                                                             JSTaggedValue curModule,
-                                                             bool isLazy);
+                                                             JSTaggedValue curModule);
     static JSTaggedValue GetModuleNamespaceInternal(JSThread *thread, int32_t index, JSTaggedValue curModule);
 
     static void StoreModuleValueInternal(JSThread *thread,
@@ -70,9 +70,13 @@ protected:
                                          int32_t index,
                                          JSTaggedValue value);
 
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromIndexBinding(const GetModuleValueFromBindingInfo &info);
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromBinding(const GetModuleValueFromBindingInfo &info);
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromRecordIndexBinding(const GetModuleValueFromBindingInfo &info);
+    template <bool isLazy>
     static JSTaggedValue GetModuleValueFromRecordBinding(const GetModuleValueFromBindingInfo &info);
     static JSTaggedValue UpdateBindingAndGetModuleValue(JSThread *thread,
                                                         JSHandle<SourceTextModule> module,
@@ -80,23 +84,20 @@ protected:
                                                         int32_t index,
                                                         JSTaggedValue bindingName);
 
-    static JSHandle<SourceTextModule> GetResolvedModuleFromRecordIndexBinding(JSThread *thread,
-        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordIndexBinding> binding, bool isLazy);
-    static JSHandle<SourceTextModule> GetResolvedModuleFromRecordBinding(JSThread *thread,
-        JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordBinding> binding, bool isLazy);
-
-    static void EvaluateModuleIfNeeded(JSThread *thread, JSHandle<SourceTextModule> module, bool isLazy);
+    template <bool isLazy>
+    static void EvaluateModuleIfNeeded(JSThread *thread, JSHandle<SourceTextModule> module);
     static void LogModuleLoadInfo(JSThread *thread,
                                   JSHandle<SourceTextModule> module,
                                   JSHandle<SourceTextModule> requiredModule,
                                   int32_t index,
                                   bool isSendable);
     static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule);
+
+    template <bool isLazy, typename BindingType>
     static JSHandle<SourceTextModule> GetResolvedModule(JSThread *thread,
                                                         JSHandle<SourceTextModule> module,
-                                                        const CString& fileName,
-                                                        const CString& requestModuleRecordName,
-                                                        bool isLazy);
+                                                        JSHandle<BindingType> binding,
+                                                        const CString& requestModuleRecordName);
 
     friend class DeprecatedModuleValueAccessor;
     friend class RuntimeStubs;
