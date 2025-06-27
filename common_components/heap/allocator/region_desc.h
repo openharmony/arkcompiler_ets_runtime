@@ -592,9 +592,10 @@ public:
     const char* GetTypeName() const;
 #endif
 
-    void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjectsBeforeTrace(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
@@ -660,16 +661,6 @@ public:
     void SetResurrectedRegionFlag(uint8_t flag)
     {
         metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_RESURRECTED_REGION, 1, flag);
-    }
-
-    void SetFixedRegionFlag(uint8_t flag)
-    {
-        metadata.regionBits.AtomicSetValue(RegionBitOffset::BIT_OFFSET_FIXED_REGION, 1, flag);
-    }
-
-    bool IsFixedRegionFlag()
-    {
-        return metadata.regionBits.AtomicGetValue(RegionBitOffset::BIT_OFFSET_FIXED_REGION, 1);
     }
 
     void SetRegionCellCount(uint8_t cellCount)
@@ -1028,6 +1019,8 @@ public:
     }
 
 private:
+    void VisitAllObjectsBefore(const std::function<void(BaseObject*)>&& func, uintptr_t end);
+
     static constexpr int32_t MAX_RAW_POINTER_COUNT = std::numeric_limits<int32_t>::max();
     static constexpr int32_t BITS_4 = 4;
     static constexpr int32_t BITS_5 = 5;
@@ -1229,7 +1222,6 @@ private:
         SetMarkedRegionFlag(0);
         SetEnqueuedRegionFlag(0);
         SetResurrectedRegionFlag(0);
-        SetFixedRegionFlag(0);
         __atomic_store_n(&metadata.rawPointerObjectCount, 0, __ATOMIC_SEQ_CST);
 #ifdef USE_HWASAN
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(metadata.allocPtr),

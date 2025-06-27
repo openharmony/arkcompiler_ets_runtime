@@ -463,7 +463,7 @@ void RegionSpace::FeedHungryBuffers()
     }
 }
 
-void RegionSpace::VisitOldSpaceRememberSet(const std::function<void(BaseObject*)>& func)
+void RegionSpace::VisitRememberSet(const std::function<void(BaseObject*)>& func)
 {
     oldSpace_.VisitRememberSet(func);
     regionManager_.VisitRememberSet(func);

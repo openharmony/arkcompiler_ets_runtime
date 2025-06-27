@@ -309,7 +309,6 @@ protected:
     void TraceRoots(WorkStack& workStack);
     void ReMark(WorkStack& workStack);
     bool MarkSatbBuffer(WorkStack& workStack);
-    void MarkRememberSet(WorkStack& workStack);
 
     // concurrent marking.
     void TracingImpl(WorkStack& workStack, bool parallel);
