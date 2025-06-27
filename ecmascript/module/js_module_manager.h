@@ -126,6 +126,12 @@ public:
     static bool CheckModuleValueOutterResolved(JSThread *thread, int32_t index, JSFunction *jsFunc);
     static JSTaggedValue GetExternalModuleVarFastPathForJIT(JSThread *thread, int32_t index, JSFunction *jsFunc);
 
+    // for ut
+    void ClearResolvedModules()
+    {
+        resolvedModules_.clear();
+    }
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

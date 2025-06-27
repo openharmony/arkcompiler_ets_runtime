@@ -104,5 +104,121 @@ public:
 private:
     MemMap memMap_ {};
 };
+
+class FileMemMapReader {
+public:
+    using ReadFailedCallback = std::function<void()>;
+    FileMemMapReader(const MemMap &memMap, ReadFailedCallback readFailedCallback, CString logTag) : memMap_(memMap),
+        readFailedCallback_(std::move(readFailedCallback)), readPtr_(static_cast<uint8_t *>(memMap.GetOriginAddr())),
+        remainingSize_(memMap.GetSize()), fileSize_(memMap.GetSize()), logTag_(std::move(logTag)) {}
+
+    template<typename T>
+    bool ReadSingleData(T *readDst, const size_t readSize, const CString &message)
+    {
+        if (remainingSize_ < readSize) {
+            LOG_ECMA(ERROR) << logTag_ << " read " << message << " remainingSize not sufficient";
+            readFailedCallback_();
+            return false;
+        }
+        if (memcpy_s(readDst, readSize, readPtr_, readSize) != EOK) {
+            LOG_ECMA(ERROR) << logTag_ << " memcpy_s read " << message << " failed";
+            readFailedCallback_();
+            return false;
+        }
+        Step(readSize);
+        return true;
+    }
+
+    bool ReadString(CString &readDst, const size_t readSize, const CString &message)
+    {
+        readDst.reserve(readSize);
+        if (remainingSize_ < readSize) {
+            LOG_ECMA(ERROR) << logTag_ << " read " << message << " remainingSize not sufficient";
+            readFailedCallback_();
+            return false;
+        }
+        readDst.assign(reinterpret_cast<const char*>(readPtr_), readSize);
+        Step(readSize);
+        return true;
+    }
+
+    template<typename T>
+    bool ReadFromOffset(T *readDst, const size_t readSize, const size_t offset, const CString &message)
+    {
+        if (fileSize_ < offset + readSize) {
+            LOG_ECMA(ERROR) << logTag_ << " read " << message << " fileSize_ not sufficient";
+            readFailedCallback_();
+            return false;
+        }
+        uint8_t *readPtr = static_cast<uint8_t *>(memMap_.GetOriginAddr());
+        if (memcpy_s(readDst, readSize, readPtr + offset, readSize) != EOK) {
+            LOG_ECMA(ERROR) << logTag_ << " memcpy_s read " << message << " failed";
+            readFailedCallback_();
+            return false;
+        }
+        return true;
+    }
+
+    void Step(const size_t stepSize)
+    {
+        readPtr_ += stepSize;
+        remainingSize_ -= stepSize;
+    }
+
+    uint8_t *GetReadPtr() const
+    {
+        return readPtr_;
+    }
+
+private:
+    MemMap memMap_ {};
+    ReadFailedCallback readFailedCallback_ {};
+    uint8_t *readPtr_ { nullptr };
+    size_t remainingSize_ { 0 };
+    size_t fileSize_ { 0 };
+    CString logTag_ {};
+};
+
+class FileMemMapWriter {
+public:
+    FileMemMapWriter(const MemMap &memMap, CString logTag) : memMap_(memMap),
+        writePtr_(static_cast<uint8_t *>(memMap.GetOriginAddr())),
+        fileSize_(memMap.GetSize()), logTag_(std::move(logTag)) {}
+
+    template<typename T>
+    bool WriteSingleData(T *writeSrc, const size_t writeSize, const CString &message)
+    {
+        if (memcpy_s(writePtr_, writeSize, writeSrc, writeSize) != EOK) {
+            LOG_ECMA(ERROR) << logTag_ << " memcpy_s write " << message << " failed";
+            return false;
+        }
+        writePtr_ += writeSize;
+        return true;
+    }
+
+    uint8_t *GetWritePtr() const
+    {
+        return writePtr_;
+    }
+
+    bool WriteAlignUpPadding(const size_t paddingSize)
+    {
+        if (paddingSize <= 0) {
+            return true;
+        }
+        if (memset_s(writePtr_, paddingSize, 0, paddingSize) != EOK) {
+            LOG_ECMA(ERROR) << logTag_ << " memset_s WriteAlignUpPadding " << paddingSize << " failed";
+            return false;
+        }
+        writePtr_ += paddingSize;
+        return true;
+    }
+
+private:
+    MemMap memMap_ {};
+    uint8_t *writePtr_ { nullptr };
+    size_t fileSize_ { 0 };
+    CString logTag_ {};
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

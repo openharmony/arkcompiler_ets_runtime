@@ -104,6 +104,14 @@ host_unittest_action("JSPandaFileTest") {
     "quick_fix_test.cpp",
   ]
 
+  if (!defined(run_with_qemu)) {
+    run_with_qemu = false
+  }
+
+  if (!run_with_qemu) {
+    sources += [ "js_pandafile_snapshot_test.cpp" ]
+  }
+
   configs = [
     "//arkcompiler/ets_runtime:ecma_test_config",
     "$ark_root/assembler:arkassembler_public_config",
