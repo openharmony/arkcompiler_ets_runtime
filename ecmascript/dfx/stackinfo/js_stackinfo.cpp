@@ -528,7 +528,6 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
     }
     std::string name = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     name = name.empty() ? "anonymous" : name;
-    SaveFuncName(methodId, name);
     std::string url = debugExtractor->GetSourceFile(methodId);
 
     // line number and column number
@@ -601,7 +600,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
     auto offset = codeInfo->offset;
     ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(codeInfo->methodId), offset,
                      *jsFunction, extractor->GetSourceMap());
-
+    SaveFuncName(EntityId(codeInfo->methodId), jsFunction->functionName);
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
     return true;
