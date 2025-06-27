@@ -130,6 +130,13 @@ public:
         return base::bit_cast<JSTaggedType>(val) + JSTaggedValue::DOUBLE_ENCODE_OFFSET;
     }
 
+    static void FakeReleaseSecureMemCallback(void* mapper)
+    {
+        if (mapper != nullptr) {
+            delete reinterpret_cast<uint32_t *>(mapper);
+        }
+    }
+
 protected:
     JSThread *thread_ = nullptr;
     EcmaVM *vm_ = nullptr;
@@ -2400,5 +2407,18 @@ HWTEST_F_L0(JSNApiTests, GetGeneratorState)
     Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
 
     ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE);
+}
+
+HWTEST_F_L0(JSNApiTests, SetReleaseSecureMemCallback)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+    ReleaseSecureMemCallback releaseSecureMemCallBack1 =
+        ecmascript::Runtime::GetInstance()->GetReleaseSecureMemCallback();
+    ASSERT_FALSE(releaseSecureMemCallBack1 == nullptr);
+    
+    JSNApi::SetReleaseSecureMemCallback(nullptr);
+    ReleaseSecureMemCallback releaseSecureMemCallBack2 =
+        ecmascript::Runtime::GetInstance()->GetReleaseSecureMemCallback();
+    ASSERT_FALSE(releaseSecureMemCallBack2 == nullptr);
 }
 }  // namespace panda::test

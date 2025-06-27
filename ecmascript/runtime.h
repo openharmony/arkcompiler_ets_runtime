@@ -274,11 +274,16 @@ public:
 
     void SetReleaseSecureMemCallback(ReleaseSecureMemCallback callback)
     {
+        LockHolder lock(releaseSecureMemCallbackLock_);
+        if (releaseSecureMemCallback_ != nullptr) {
+            return;
+        }
         releaseSecureMemCallback_ = callback;
     }
 
-    ReleaseSecureMemCallback GetReleaseSecureMemCallback() const
+    ReleaseSecureMemCallback GetReleaseSecureMemCallback()
     {
+        LockHolder lock(releaseSecureMemCallbackLock_);
         return releaseSecureMemCallback_;
     }
 
@@ -371,6 +376,7 @@ private:
     
     // release secure mem after jspandafile released.
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
+    Mutex releaseSecureMemCallbackLock_;
 
     friend class EcmaVM;
     friend class JSThread;
