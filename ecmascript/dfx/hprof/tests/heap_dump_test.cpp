@@ -880,7 +880,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     heap->IterateOverObjects(countCb);
 
     TestAllocationEventRootVisitor testAllocationEventRootVisitor(countCb);
-    ecmaVm_->Iterate(testAllocationEventRootVisitor, VMRootVisitType::HEAP_SNAPSHOT);
+    ecmaVm_->Iterate(testAllocationEventRootVisitor);
     thread_->Iterate(testAllocationEventRootVisitor);
 
     bool result = JSNApi::Execute(ecmaVm_, abcFileName, "heapdump");
@@ -889,7 +889,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     std::unordered_map<TaggedObject *, bool> ObjAfterExecute;
     ObjMap = &ObjAfterExecute;
     heap->IterateOverObjects(countCb);
-    ecmaVm_->Iterate(testAllocationEventRootVisitor, VMRootVisitType::HEAP_SNAPSHOT);
+    ecmaVm_->Iterate(testAllocationEventRootVisitor);
     thread_->Iterate(testAllocationEventRootVisitor);
     ecmaVm_->SetHeapProfile(mockHeapProfiler.profiler_);
 

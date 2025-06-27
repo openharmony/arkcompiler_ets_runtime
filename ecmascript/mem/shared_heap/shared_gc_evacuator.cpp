@@ -85,7 +85,7 @@ void SharedGCEvacuator::UpdateReference()
     runtime->GCIterateThreadList([this](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        ObjectXRay::VisitVMRoots(vm, rootVisitor_, VMRootVisitType::UPDATE_ROOT);
+        ObjectXRay::VisitVMRoots(vm, rootVisitor_);
     });
     ProcessWorkloads(true);
     WaitFinished();

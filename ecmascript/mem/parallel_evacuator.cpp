@@ -379,7 +379,7 @@ void ParallelEvacuator::UpdateRoot()
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateRoot);
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateRoot", "");
 
-    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_, VMRootVisitType::UPDATE_ROOT);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_);
 }
 
 template<TriggerGCType gcType>
@@ -424,6 +424,7 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
 
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
+    heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 }
 

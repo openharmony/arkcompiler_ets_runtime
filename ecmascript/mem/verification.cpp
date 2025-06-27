@@ -357,7 +357,7 @@ size_t Verification::VerifyRoot() const
 {
     size_t failCount = 0;
     VerificationRootVisitor verificationRootVisitor(this, failCount);
-    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), verificationRootVisitor, VMRootVisitType::VERIFY);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), verificationRootVisitor);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyRoot detects deadObject count is " << failCount;
     }
@@ -636,7 +636,7 @@ size_t SharedHeapVerification::VerifyRoot() const
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
         localHeap->GetSweeper()->EnsureAllTaskFinished();
-        ObjectXRay::VisitVMRoots(vm, verificationRootVisitor, VMRootVisitType::VERIFY);
+        ObjectXRay::VisitVMRoots(vm, verificationRootVisitor);
         if (failCount > 0) {
             LOG_GC(ERROR) << "SharedHeap VerifyRoot detects deadObject count is " << failCount;
         }

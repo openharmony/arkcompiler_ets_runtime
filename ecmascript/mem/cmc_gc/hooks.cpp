@@ -108,8 +108,6 @@ void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 {
-    panda::ecmascript::VMRootVisitType type = isMark ? panda::ecmascript::VMRootVisitType::MARK :
-                                                panda::ecmascript::VMRootVisitType::UPDATE_ROOT;
     CMCRootVisitor visitor(visitorFunc);
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitSharedRoot", "");
     // MarkSharedModule
@@ -124,7 +122,7 @@ void VisitDynamicRoots(const RefFieldVisitor &visitorFunc, bool isMark)
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
-        ObjectXRay::VisitVMRoots(vm, visitor, type);
+        ObjectXRay::VisitVMRoots(vm, visitor);
 
         auto profiler = vm->GetPGOProfiler();
         if (profiler != nullptr) {
@@ -154,6 +152,7 @@ void VisitDynamicWeakRoots(const common::WeakRefFieldVisitor &visitorFunc)
         const_cast<panda::ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
         thread->ClearVMCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
+        vm->IteratorSnapShotEnv(visitor);
     });
 }
 

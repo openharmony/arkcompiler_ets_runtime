@@ -47,7 +47,7 @@ protected:
     void Finish() override;
 
 private:
-    void MarkRoots(SharedMarkType markType, VMRootVisitType type);
+    void MarkRoots(SharedMarkType markType);
     void UpdateRecordWeakReference();
     bool HasEvacuated(Region *region);
 

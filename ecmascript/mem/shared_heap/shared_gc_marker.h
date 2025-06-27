@@ -42,9 +42,8 @@ public:
     virtual ~SharedGCMarkerBase() = default;
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
-    void MarkRoots(RootVisitor &visitor, SharedMarkType markType, VMRootVisitType type = VMRootVisitType::MARK);
-    void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType,
-                          VMRootVisitType type = VMRootVisitType::MARK);
+    void MarkRoots(RootVisitor &visitor, SharedMarkType markType);
+    void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType);
     void CollectLocalVMRSet(EcmaVM *localVm);
     void MarkStringCache(RootVisitor &visitor);
     void MarkSerializeRoots(RootVisitor &visitor);

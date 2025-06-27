@@ -21,7 +21,7 @@ namespace panda::ecmascript {
 void HeapRootVisitor::VisitHeapRoots(JSThread *thread, RootVisitor &visitor)
 {
     auto ecmaVm = GetVMInstance(thread);
-    ecmaVm->Iterate(visitor, VMRootVisitType::HEAP_SNAPSHOT);
+    ecmaVm->Iterate(visitor);
     thread->Iterate(visitor);
 
     // SerializeRoot from shared heap
