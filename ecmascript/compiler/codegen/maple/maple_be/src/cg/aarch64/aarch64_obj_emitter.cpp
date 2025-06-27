@@ -1687,20 +1687,8 @@ void AArch64ObjEmitter::EmitTaggedIsHeapObject(const Insn &insn, const std::vect
     AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
     RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
     RegOperand &srcReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
-    ImmOperand &heapObjectTagMask = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
-    CHECK_FATAL(static_cast<uint64_t>(heapObjectTagMask.GetValue()) == 0xFFFF000000000006,
-                "unexpected heap object tag mask");
-    //0xffff000000000006
-    ImmOperand &immValue6 = cgFunc.CreateImmOperand(6, k16BitSize, false);
-    Insn &movInsn1 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, immValue6);
-    EncodeInstruction(movInsn1, label2Offset, objFuncEmitInfo);
-
-    ImmOperand &immValue = cgFunc.CreateImmOperand(65535, k16BitSize, false); // 65535: 0xFFFF, top 16 bits
-    BitShiftOperand *lslOpnd = cgFunc.GetLogicalShiftLeftOperand(48, true); // 48: left shift 48 bits
-    Insn &movInsn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovkri16, destReg, immValue, *lslOpnd);
-    EncodeInstruction(movInsn2, label2Offset, objFuncEmitInfo);
-
-    Insn &insn3 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, destReg);
+    RegOperand &heapObjectTagMask = static_cast<RegOperand&>(insn.GetOperand(kInsnThirdOpnd));
+    Insn &insn3 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, heapObjectTagMask);
     EncodeInstruction(insn3, label2Offset, objFuncEmitInfo);
     Operand &rflag = cgFunc.GetOrCreateRflag();
     ImmOperand &immValueZero = cgFunc.CreateImmOperand(0, k16BitSize, false);

@@ -988,9 +988,13 @@ RegOperand &X64MPIsel::SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &
         cgFunc->GetCurBB()->AppendInsn(insn);
     } else {
         RegOperand &tmpReg = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
+        MOperator mopMov = x64::MOP_movabs_i_r;
+        Insn &movInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopMov, X64CG::kMd[mopMov]);
+        movInsn.AddOpndChain(opnd1).AddOpndChain(tmpReg);
+        cgFunc->GetCurBB()->AppendInsn(movInsn);
         MOperator mOp = x64::MOP_tagged_is_heapobject;
         Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-        insn.AddOpndChain(destReg).AddOpndChain(tmpReg).AddOpndChain(opnd0).AddOpndChain(opnd1);
+        insn.AddOpndChain(destReg).AddOpndChain(tmpReg).AddOpndChain(opnd0);
         cgFunc->GetCurBB()->AppendInsn(insn);
     }
     return destReg;
