@@ -431,7 +431,7 @@ void NativeInlineLowering::TryInlineStringCharCodeAt(GateRef gate, size_t argc, 
     }
 
     GateRef ret = builder_.StringCharCodeAt(thisValue, posTag);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, bool skipThis)
@@ -474,7 +474,7 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
         std::vector<GateRef> args {thisValue, startTag, endTag};
         ret = builder_.StringSubstring(args);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineStringSubStr(GateRef gate, size_t argc, bool skipThis)
@@ -516,7 +516,7 @@ void NativeInlineLowering::TryInlineStringSubStr(GateRef gate, size_t argc, bool
         }
         ret = builder_.StringSubStr(thisValue, intStart, lengthTag);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool skipThis)
@@ -559,7 +559,7 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
         std::vector<GateRef> args {thisValue, startTag, endTag};
         ret = builder_.StringSlice(args);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bool skipThis)
@@ -577,7 +577,7 @@ void NativeInlineLowering::TryInlineNumberIsFinite(GateRef gate, size_t argc, bo
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsFinite)));
     }
     GateRef ret = builder_.NumberIsFinite(tacc.GetArg0());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, bool skipThis)
@@ -599,7 +599,7 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
         AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberIsInteger(tacc.GetArg0());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool skipThis)
@@ -617,7 +617,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsNaN)));
     }
     GateRef ret = builder_.NumberIsNaN(tacc.GetArg0());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis)
@@ -635,7 +635,7 @@ void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, 
         AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberParseFloat(arg, acc_.GetFrameState(gate));
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberParseInt(GateRef gate, size_t argc, bool skipThis)
@@ -680,7 +680,7 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
         AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -745,11 +745,11 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
     }
 
     if (argc == 0) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineWhitoutParamBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -767,7 +767,7 @@ void NativeInlineLowering::TryInlineWhitoutParamBuiltin(GateRef gate, size_t arg
     }
 
     GateRef ret = builder_.BuildControlDependOp(op, {});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bool skipThis)
@@ -784,12 +784,12 @@ void NativeInlineLowering::TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bo
     }
 
     if (argc == 0) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(circuit_->MathAbs(), {acc_.GetValueIn(gate, firstParam)},
                                                 {acc_.GetFrameState(gate)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineMathClz32Builtin(GateRef gate, size_t argc, bool skipThis)
@@ -805,11 +805,11 @@ void NativeInlineLowering::TryInlineMathClz32Builtin(GateRef gate, size_t argc, 
     }
     if (argc == 0) {
         const int32_t defaultValue = 32;
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Int32(defaultValue));
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.Int32(defaultValue));
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(circuit_->MathClz32(), {acc_.GetValueIn(gate, firstParam)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineGlobalFiniteBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -825,11 +825,11 @@ void NativeInlineLowering::TryInlineGlobalFiniteBuiltin(GateRef gate, size_t arg
         AddTraceLogs(gate, id);
     }
     if (argc == 0) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Boolean(false));
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.Boolean(false));
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineGlobalNanBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -845,11 +845,11 @@ void NativeInlineLowering::TryInlineGlobalNanBuiltin(GateRef gate, size_t argc, 
         AddTraceLogs(gate, id);
     }
     if (argc == 0) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Boolean(true));
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.Boolean(true));
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineMathImulBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -865,12 +865,12 @@ void NativeInlineLowering::TryInlineMathImulBuiltin(GateRef gate, size_t argc, B
         AddTraceLogs(gate, id);
     }
     if (argc < 2U) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Int32(0));
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.Int32(0));
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam),
                                               acc_.GetValueIn(gate, firstParam + 1)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
     return;
 }
 
@@ -887,12 +887,12 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
         AddTraceLogs(gate, id);
     }
     if (argc < 2U) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.NanValue());
         return;
     }
     GateRef ret = builder_.BuildControlDependOp(op, {acc_.GetValueIn(gate, firstParam),
                                               acc_.GetValueIn(gate, firstParam + 1)});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
     return;
 }
 
@@ -909,20 +909,20 @@ void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc,
         AddTraceLogs(gate, id);
     }
     if (argc == 0) {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Double(defaultValue));
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.Double(defaultValue));
         return;
     }
     GateRef ret = acc_.GetValueIn(gate, firstParam);
     if (argc == 1) {
         builder_.TypeOfCheck(ret, ParamType::NumberType());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
         return;
     }
     for (size_t i = 1; i < argc; i++) {
         auto param = acc_.GetValueIn(gate, i + firstParam);
         ret = builder_.BuildControlDependOp(op, {ret, param});
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
@@ -943,7 +943,7 @@ void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
     }
     GateRef arg0 = tacc.GetArg0();
     GateRef ret = builder_.ArrayBufferIsView(arg0);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -976,7 +976,7 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1014,7 +1014,7 @@ void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, Built
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, size_t realArgc,
@@ -1038,7 +1038,7 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
         args.push_back(i <= realArgc ? acc_.GetValueIn(gate, i) : builder_.Undefined());
     }
     GateRef ret = builder_.BuildControlDependOp(op, args);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::ReplaceGateWithPendingException(GateRef hirGate, GateRef value)
@@ -1102,7 +1102,7 @@ void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool 
     // Take object using "this"
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef ret = builder_.BuildControlDependOp(circuit_->DateGetTime(), {obj});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineObjectIs(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1507,7 +1507,7 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1528,7 +1528,7 @@ void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSig
     }
     GateRef CallIDRef = builder_.Int32(static_cast<int32_t>(id));
     GateRef ret = builder_.ArrayIteratorBuiltin(thisObj, CallIDRef);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1837,7 +1837,7 @@ void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, Builti
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArraySort(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1870,7 +1870,7 @@ void NativeInlineLowering::TryInlineArraySort(GateRef gate, size_t argc, Builtin
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     builder_.ElementsKindCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     ret = builder_.ArraySort(thisValue, builder_.UndefineConstant());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 }  // namespace panda::ecmascript

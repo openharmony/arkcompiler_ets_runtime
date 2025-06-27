@@ -1332,7 +1332,7 @@ void GateAccessor::ReplaceHirDirectly(GateRef hirGate,
     DeleteGate(hirGate);
 }
 
-void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
+void GateAccessor::ReplaceHirAndReplaceDeadIfException(GateRef hirGate,
     StateDepend replacement, GateRef value)
 {
     if (value != Circuit::NullGate()) {

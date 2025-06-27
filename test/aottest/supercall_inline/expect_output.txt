@@ -19,7 +19,7 @@ true
 [trace] aot inline function name: #~A=#A@supercall_inline caller function name: #~B=#B@supercall_inline
 AOT
 456
-[trace] Opcode: INLINE_SUPER_CTOR_CHECK Count:1
+[trace] Opcode: INLINE_SUPER_CTOR_CHECK Count:2
 not constructor
 [trace] aot inline function name: #~E=#E@supercall_inline caller function name: #~F=#F@supercall_inline
 [trace] aot inline builtin: Math.sin, caller function name:#~E=#E@supercall_inline

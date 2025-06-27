@@ -520,6 +520,15 @@ public:
             NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
                                               enableLog, data->GetMethodName(), &chunk);
             nativeInline.RunNativeInlineLowering();
+            CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+            DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
+            TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
+                                    data->GetMethodName());
+
+            visitor.AddPass(&optimization);
+            visitor.AddPass(&deadCodeElimination);
+            visitor.VisitGraph();
+            visitor.PrintLog("TSHCROptPass");
         }
         return true;
     }
