@@ -25,6 +25,7 @@
 #include "ecmascript/platform/pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
 #include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -658,8 +659,13 @@ void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)
 bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
 {
     if (!jsPandaFile->IsBundlePack() && !thread->GetEcmaVM()->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+        CString version = ohos::OhosVersionInfoTools::GetRomVersion();
+        if (version.empty()) {
+            LOG_ECMA(ERROR) << "JSPandaFileManager::UseSnapshot rom version is empty";
+            return false;
+        }
         return JSPandaFileSnapshot::ReadData(
-            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
     }
     return false;
 }

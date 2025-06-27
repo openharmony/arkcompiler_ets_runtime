@@ -14,6 +14,7 @@
  */
 #include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
 
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
 #include "ecmascript/platform/filesystem.h"
 
@@ -28,6 +29,11 @@ void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &p
         LOG_ECMA(INFO) << "PandaFileSnapshotInterfaces::Serialize: " << path << " is not exists";
         return;
     }
-    JSPandaFileSnapshot::PostWriteDataToFileJob(vm, path);
+    CString version = OhosVersionInfoTools::GetRomVersion();
+    if (version.empty()) {
+        LOG_ECMA(ERROR) << "PandaFileSnapshotInterfaces::Serialize rom version is empty";
+        return;
+    }
+    JSPandaFileSnapshot::PostWriteDataToFileJob(vm, path, version);
 }
 } // namespace panda::ecmascript

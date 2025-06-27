@@ -24,7 +24,7 @@
 #include "zlib.h"
 
 namespace panda::ecmascript {
-void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path)
+void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path, const CString &version)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::SerializeDataAndPostSavingJob", "");
@@ -45,10 +45,10 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
     }
     std::unique_ptr<SerializeData> fileData = serializer.Release();
     common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<ModuleSnapshotTask>(thread->GetThreadId(), thread, fileData, filePath));
+        std::make_unique<ModuleSnapshotTask>(thread->GetThreadId(), thread, fileData, filePath, version));
 }
 
-void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path)
+void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, const CString &version)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
@@ -59,7 +59,7 @@ void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path)
     }
     JSThread *thread = vm->GetJSThread();
     std::unique_ptr<SerializeData> fileData = std::make_unique<SerializeData>(thread);
-    if (!ReadDataFromFile(thread, fileData, path)) {
+    if (!ReadDataFromFile(thread, fileData, path, version)) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::DeserializeData failed: " << filePath;
         return;
     }
@@ -98,7 +98,7 @@ JSHandle<TaggedArray> ModuleSnapshot::GetModuleSerializeArray(JSThread *thread)
 bool ModuleSnapshot::ModuleSnapshotTask::Run(uint32_t threadIndex)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotTask", "");
-    WriteDataToFile(thread_, serializeData_, path_);
+    WriteDataToFile(thread_, serializeData_, path_, version_);
     return true;
 }
 
@@ -107,7 +107,8 @@ void ModuleSnapshot::RemoveSnapshotFiles(const CString &path)
     DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
 }
 
-bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString& path)
+bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString& path,
+    const CString &version)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::ReadDataFromFile", "");
@@ -151,25 +152,33 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
         return false;
     }
 
-    // read module version
-    uint32_t snapshotVersionCode;
-    if (remaining < sizeof(snapshotVersionCode)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read snapshotVersionCode failed";
+    // read version
+    uint32_t versionStrLen;
+    if (remaining < sizeof(versionStrLen)) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read versionStrLen failed";
         RemoveSnapshotFiles(path);
         return false;
     }
-    if (memcpy_s(&snapshotVersionCode, sizeof(snapshotVersionCode), readPtr, sizeof(snapshotVersionCode)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s read snapshotVersionCode failed";
+    if (memcpy_s(&versionStrLen, sizeof(versionStrLen), readPtr, sizeof(versionStrLen)) != EOK) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s read versionStrLen failed";
         return false;
     }
-    if (snapshotVersionCode != GetVersionCode()) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile snapshotVersionCode: " << snapshotVersionCode <<
-            ", MODULE_VERSION_CODE: " << GetVersionCode() << " doesn't match.";
+    readPtr += sizeof(versionStrLen);
+    remaining -= sizeof(versionStrLen);
+    if (remaining < versionStrLen) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read versionStr failed";
         RemoveSnapshotFiles(path);
         return false;
     }
-    readPtr += sizeof(snapshotVersionCode);
-    remaining -= sizeof(snapshotVersionCode);
+    CString readVersion(reinterpret_cast<const char*>(readPtr), versionStrLen);
+    if (readVersion != version) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile readVersion: " << readVersion <<
+            ", version: " << version << " doesn't match.";
+        RemoveSnapshotFiles(path);
+        return false;
+    }
+    readPtr += versionStrLen;
+    remaining -= versionStrLen;
 
     // read dataIndex
     if (remaining < sizeof(data->dataIndex_)) {
@@ -366,7 +375,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
 }
 
 bool ModuleSnapshot::WriteDataToFile(
-    JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString& filePath)
+    JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString& filePath, const CString &version)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::WriteDataToFile";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::WriteDataToFile", "");
@@ -374,8 +383,10 @@ bool ModuleSnapshot::WriteDataToFile(
     // versionCode
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
     size_t totalSize = sizeof(appVersionCode);
-    uint32_t curModuleVersionCode = GetVersionCode();
-    totalSize += sizeof(curModuleVersionCode);
+    size_t versionStrLenSize = sizeof(uint32_t);
+    size_t versionStrLen = version.size();
+    totalSize += versionStrLenSize;
+    totalSize += versionStrLen;
 
     totalSize += sizeof(data->dataIndex_);
     const size_t alignUp = AlignUp(totalSize, sizeof(uint64_t));
@@ -421,14 +432,17 @@ bool ModuleSnapshot::WriteDataToFile(
     }
     writePtr += sizeof(appVersionCode);
 
-    // write module versionCode
-    if (memcpy_s(writePtr, sizeof(curModuleVersionCode),
-        &curModuleVersionCode, sizeof(curModuleVersionCode)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write module versionCode failed";
+    // write version
+    if (memcpy_s(writePtr, versionStrLenSize, &versionStrLen, versionStrLenSize) != EOK) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write versionStrLen failed";
         return false;
     }
-    writePtr += sizeof(curModuleVersionCode);
-
+    writePtr += versionStrLenSize;
+    if (memcpy_s(writePtr, versionStrLen, version.c_str(), versionStrLen) != EOK) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write versionStr failed";
+        return false;
+    }
+    writePtr += versionStrLen;
     // write dataIndex
     if (memcpy_s(writePtr, sizeof(data->dataIndex_), &data->dataIndex_, sizeof(data->dataIndex_)) != EOK) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write dataIndex failed";

@@ -25,19 +25,12 @@ public:
     static constexpr std::string_view MODULE_SNAPSHOT_FILE_NAME = "Module.ams";
     static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams"; // ark module snapshot
 
-    static void SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path);
-    static void DeserializeData(const EcmaVM *vm, const CString &path);
+    static void SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path, const CString &version);
+    static void DeserializeData(const EcmaVM *vm, const CString &path, const CString &version);
     static JSHandle<TaggedArray> GetModuleSerializeArray(JSThread *thread);
     static void RemoveSnapshotFiles(const CString &path);
 
 private:
-    static constexpr size_t VERSION_SIZE = 4;
-    using Version = std::array<uint8_t, VERSION_SIZE>;
-    static constexpr Version MODULE_SNAPSHOT_VERSION_CODE = { 0, 0, 0, 1 };
-    inline static uint32_t GetVersionCode()
-    {
-        return bit_cast<uint32_t>(MODULE_SNAPSHOT_VERSION_CODE);
-    }
     static constexpr int BUFFER_SIZE_INDEX = 0;
     static constexpr int BUFFER_CAPACITY_INDEX = 1;
     static constexpr int REGULAR_SPACE_SIZE_INDEX = 2;
@@ -54,7 +47,8 @@ private:
 // +--------------------------------------+<-------- BaseInfo
 // |       Application Version Code       |
 // +--------------------------------------+
-// |         Snapshot Version Code        |
+// |      System Version Code Length      |
+// |         System Version Code          |
 // +--------------------------------------+<-------- data
 // |               dataIndex              |
 // +--------------------------------------+
@@ -83,13 +77,16 @@ private:
 // +--------------------------------------+<-------- CheckSum
 // |               CheckSum               |
 // +--------------------------------------+
-    static bool ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString &path);
-    static bool WriteDataToFile(JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString &filePath);
+    static bool ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString &path,
+        const CString &version);
+    static bool WriteDataToFile(JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString &filePath,
+        const CString &version);
 
     class ModuleSnapshotTask : public common::Task {
     public:
         ModuleSnapshotTask(int32_t id, JSThread* thread, std::unique_ptr<SerializeData>& serializeData,
-            const CString& path) : Task(id), thread_(thread), serializeData_(std::move(serializeData)), path_(path) {}
+            const CString& path, const CString &version) : Task(id), thread_(thread),
+            serializeData_(std::move(serializeData)), path_(path), version_(version) {}
         bool Run(uint32_t threadIndex) override;
 
         NO_COPY_SEMANTIC(ModuleSnapshotTask);
@@ -99,6 +96,7 @@ private:
         JSThread* thread_ { nullptr };
         std::unique_ptr<SerializeData> serializeData_ {};
         CString path_ {};
+        CString version_ {};
     };
 };
 }  // namespace panda::ecmascript
