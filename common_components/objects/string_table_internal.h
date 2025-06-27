@@ -203,7 +203,7 @@ public:
         return &stringTable_;
     }
 private:
-#ifdef GC_CONCURRENT_STRINGTABLE
+#ifndef GC_STW_STRINGTABLE
     BaseStringTableInternal<true> stringTable_{};
 #else
     BaseStringTableInternal<false> stringTable_{};

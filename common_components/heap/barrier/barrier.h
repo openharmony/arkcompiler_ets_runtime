@@ -31,6 +31,8 @@ public:
 
     virtual BaseObject* ReadRefField(BaseObject* obj, RefField<false>& field) const;
     virtual BaseObject* ReadStaticRef(RefField<false>& field) const;
+    virtual BaseObject* ReadStringTableStaticRef(RefField<false> &field) const;
+
     virtual void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const;
 
     virtual void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const;

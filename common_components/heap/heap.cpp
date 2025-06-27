@@ -21,6 +21,7 @@
 #include "common_components/heap/w_collector/idle_barrier.h"
 #include "common_components/heap/w_collector/enum_barrier.h"
 #include "common_components/heap/w_collector/trace_barrier.h"
+#include "common_components/heap/w_collector/remark_barrier.h"
 #include "common_components/heap/w_collector/post_trace_barrier.h"
 #include "common_components/heap/w_collector/preforward_barrier.h"
 #include "common_components/heap/w_collector/copy_barrier.h"
@@ -46,7 +47,8 @@ public:
         : theSpace(Allocator::CreateAllocator()), collectorResources(collectorProxy),
           collectorProxy(*theSpace, collectorResources), stwBarrier(collectorProxy),
         idleBarrier(collectorProxy), enumBarrier(collectorProxy), traceBarrier(collectorProxy),
-        postTraceBarrier(collectorProxy), preforwardBarrier(collectorProxy), copyBarrier(collectorProxy)
+        remarkBarrier(collectorProxy), postTraceBarrier(collectorProxy), preforwardBarrier(collectorProxy),
+        copyBarrier(collectorProxy)
     {
         currentBarrier.store(&stwBarrier, std::memory_order_relaxed);
         stwBarrierPtr = &stwBarrier;
@@ -130,6 +132,7 @@ private:
     IdleBarrier idleBarrier;
     EnumBarrier enumBarrier;
     TraceBarrier traceBarrier;
+    RemarkBarrier remarkBarrier;
     PostTraceBarrier postTraceBarrier;
     PreforwardBarrier preforwardBarrier;
     CopyBarrier copyBarrier;
@@ -209,7 +212,7 @@ void HeapImpl::InstallBarrier(const GCPhase phase)
 {
     if (phase == GCPhase::GC_PHASE_ENUM) {
         currentBarrier.store(&enumBarrier, std::memory_order_relaxed);
-    } else if (phase == GCPhase::GC_PHASE_MARK || phase == GCPhase::GC_PHASE_REMARK_SATB) {
+    } else if (phase == GCPhase::GC_PHASE_MARK) {
         currentBarrier.store(&traceBarrier, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_PRECOPY) {
         currentBarrier.store(&preforwardBarrier, std::memory_order_relaxed);
@@ -219,6 +222,9 @@ void HeapImpl::InstallBarrier(const GCPhase phase)
         currentBarrier.store(&idleBarrier, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_POST_MARK) {
         currentBarrier.store(&postTraceBarrier, std::memory_order_relaxed);
+    } else if (phase == GCPhase::GC_PHASE_FINAL_MARK ||
+               phase == GCPhase::GC_PHASE_REMARK_SATB) {
+        currentBarrier = &remarkBarrier;
     }
     DLOG(GCPHASE, "install barrier for gc phase %u", phase);
 }

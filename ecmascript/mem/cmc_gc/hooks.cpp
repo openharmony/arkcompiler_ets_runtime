@@ -142,7 +142,7 @@ void VisitDynamicWeakRoots(const common::WeakRefFieldVisitor &visitorFunc)
 
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
 
-#ifndef GC_CONCURRENT_STRINGTABLE
+#ifdef GC_STW_STRINGTABLE
     auto *baseRuntime = BaseRuntime::GetInstance();
     auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
     stringTable.GetInternalTable()->SweepWeakRef(visitorFunc);

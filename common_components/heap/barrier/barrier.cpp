@@ -56,13 +56,19 @@ void Barrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const
 BaseObject* Barrier::ReadRefField(BaseObject* obj, RefField<false>& field) const
 {
     HeapAddress target = field.GetFieldValue();
-    return (BaseObject*)target;
+    return reinterpret_cast<BaseObject*>(target);
 }
 
 BaseObject* Barrier::ReadStaticRef(RefField<false>& field) const
 {
     HeapAddress target = field.GetFieldValue();
-    return (BaseObject*)target;
+    return reinterpret_cast<BaseObject*>(target);
+}
+
+BaseObject* Barrier::ReadStringTableStaticRef(RefField<false>& field) const
+{
+    HeapAddress target = field.GetFieldValue();
+    return reinterpret_cast<BaseObject*>(target);
 }
 
 // barrier for atomic operation.

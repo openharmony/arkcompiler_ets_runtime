@@ -752,7 +752,7 @@ void TraceCollector::CopyFromSpace()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CopyFromSpace", "");
     TransitionToGCPhase(GCPhase::GC_PHASE_COPY, true);
-
+    ProcessStringTable();
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
     GCStats& stats = GetGCStats();
     stats.liveBytesBeforeGC = space.GetAllocatedBytes();

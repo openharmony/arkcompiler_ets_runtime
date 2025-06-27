@@ -48,6 +48,7 @@ source_Heap = [
   "heap/w_collector/idle_barrier.cpp",
   "heap/w_collector/enum_barrier.cpp",
   "heap/w_collector/trace_barrier.cpp",
+  "heap/w_collector/remark_barrier.cpp",
   "heap/w_collector/preforward_barrier.cpp",
   "heap/w_collector/post_trace_barrier.cpp",
   "heap/collector/trace_collector.cpp",

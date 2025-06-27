@@ -182,8 +182,10 @@ public:
                 phase == GC_PHASE_REMARK_SATB || phase == GC_PHASE_POST_MARK) {
                 region->SetTraceLine();
             } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+                region->SetTraceLine();
                 region->SetCopyLine();
             } else if (phase == GC_PHASE_FIX) {
+                region->SetTraceLine();
                 region->SetCopyLine();
                 region->SetFixLine();
             }
@@ -220,8 +222,10 @@ public:
                 phase == GC_PHASE_POST_MARK) {
                 region->SetTraceLine();
             } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+                region->SetTraceLine();
                 region->SetCopyLine();
             } else if (phase == GC_PHASE_FIX) {
+                region->SetTraceLine();
                 region->SetCopyLine();
                 region->SetFixLine();
             }
@@ -250,8 +254,10 @@ public:
             phase == GC_PHASE_POST_MARK) {
             region->SetTraceLine();
         } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+            region->SetTraceLine();
             region->SetCopyLine();
         } else if (phase == GC_PHASE_FIX) {
+            region->SetTraceLine();
             region->SetCopyLine();
             region->SetFixLine();
         }

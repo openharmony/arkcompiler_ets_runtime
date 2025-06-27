@@ -46,14 +46,12 @@ public:
     {
         stringTable_ = nullptr;
     }
-
     void PostSweepWeakRefTask(const WeakRootVisitor &visitor);
     void JoinAndWaitSweepWeakRefTask(const WeakRootVisitor &visitor);
 
 private:
     NO_COPY_SEMANTIC(EcmaStringTableCleaner);
     NO_MOVE_SEMANTIC(EcmaStringTableCleaner);
-
     static void ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTableCleaner *cleaner, const WeakRootVisitor &visitor);
     void StartSweepWeakRefTask();
     void WaitSweepWeakRefTask();
@@ -87,7 +85,6 @@ private:
         EcmaStringTableCleaner *cleaner_;
         const WeakRootVisitor &visitor_;
     };
-
     IteratorPtr iter_;
     EcmaStringTable *stringTable_;
     std::atomic<uint32_t> PendingTaskCount_ {0U};
@@ -120,7 +117,7 @@ private:
 
 struct EnableCMCGCTrait {
     using StringTableInterface = common::BaseStringTableInterface<common::BaseStringTableImpl>;
-#ifdef GC_CONCURRENT_STRINGTABLE
+#ifndef GC_STW_STRINGTABLE
     using HashTrieMapImpl = common::HashTrieMap<common::BaseStringTableMutex, common::ThreadHolder,
                                                 common::TrieMapConfig::NeedSlotBarrier>;
 #else

@@ -21,6 +21,7 @@
 #include "common_interfaces/heap/heap_visitor.h"
 #include "common_interfaces/objects/ref_field.h"
 #include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "common_components/objects/string_table_internal.h"
 
 namespace common {
 bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
@@ -511,6 +512,11 @@ void WCollector::PrepareFix()
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PrepareFix[STW]", "");
     reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFix();
     reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
+#ifndef GC_STW_STRINGTABLE
+    auto *baseRuntime = BaseRuntime::GetInstance();
+    auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
+    stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+#endif
     TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
 }
 
@@ -644,6 +650,54 @@ void WCollector::MarkNewObject(BaseObject* obj)
         UNLIKELY_CC(mutatorPhase == GCPhase::GC_PHASE_REMARK_SATB)) {
         MarkObject(obj);
     }
+}
+void WCollector::ProcessStringTable()
+{
+#ifdef GC_STW_STRINGTABLE
+    return;
+#endif
+    WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
+        auto isSurvivor = [this](BaseObject* oldObj) {
+            RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(oldObj));
+            auto gcReason = Heap::GetHeap().GetGCReason();
+            return (gcReason == GC_REASON_YOUNG && !region->IsInYoungSpace())
+                || region->IsMarkedObject(oldObj)
+                || region->IsNewObjectSinceTrace(oldObj)
+                || region->IsToRegion();
+        };
+
+        RefField<> oldField(refField);
+        BaseObject *oldObj = oldField.GetTargetObject();
+        if (oldObj == nullptr) {
+            return false;
+        }
+        if (!isSurvivor(oldObj)) {
+            // CAS failure means some mutator or gc thread writes a new ref (must be
+            // a to-object), no need to retry.
+            RefField<> newField(nullptr);
+            if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
+                DLOG(FIX, "fix weak raw-ref @%p: %p -> %p", &refField, oldObj, nullptr);
+            }
+            return false;
+        }
+        DLOG(FIX, "visit weak raw-ref @%p: %p", &refField, oldObj);
+        if (IsFromObject(oldObj)) {
+            BaseObject *toVersion = TryForwardObject(oldObj);
+            CHECK_CC(toVersion != nullptr);
+            RefField<> newField(toVersion);
+            // CAS failure means some mutator or gc thread writes a new ref (must be
+            // a to-object), no need to retry.
+            if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
+                DLOG(FIX, "fix weak raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
+            }
+        }
+        return true;
+    };
+    auto* baseRuntime = BaseRuntime::GetInstance();
+    auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
+    auto stringTableCleaner = stringTable.GetInternalTable()->GetCleaner();
+    stringTableCleaner->PostSweepWeakRefTask(weakVisitor);
+    stringTableCleaner->JoinAndWaitSweepWeakRefTask(weakVisitor);
 }
 
 void WCollector::ProcessWeakReferences()
