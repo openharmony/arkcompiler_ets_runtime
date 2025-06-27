@@ -88,6 +88,11 @@ public:
     // total memory allocated for each allocation request, including memory fragment for alignment or padding.
     virtual size_t GetAllocatedSize() const = 0;
 
+    virtual size_t GetRemainHeapSize() const = 0;
+
+    virtual size_t GetAccumulatedAllocateSize() const = 0;
+    virtual size_t GetAccumulatedFreeSize() const = 0;
+
     virtual HeapAddress GetStartAddress() const = 0;
     virtual HeapAddress GetSpaceEndAddress() const = 0;
 

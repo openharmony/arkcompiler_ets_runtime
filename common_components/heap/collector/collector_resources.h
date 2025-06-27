@@ -61,6 +61,7 @@ public:
 
     void BroadcastGCFinished();
     GCStats& GetGCStats() { return gcStats_; }
+    const GCStats& GetGCStats() const { return gcStats_; }
     void RequestHeapDump(GCTask::GCTaskType gcTask);
 
     void StartRuntimeThreads();

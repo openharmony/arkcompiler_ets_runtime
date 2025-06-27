@@ -90,6 +90,9 @@ public:
     size_t GetCurrentCapacity() const override;
     size_t GetUsedPageSize() const override;
     size_t GetAllocatedSize() const override;
+    size_t GetRemainHeapSize() const override;
+    size_t GetAccumulatedAllocateSize() const override;
+    size_t GetAccumulatedFreeSize() const override;
     HeapAddress GetStartAddress() const override;
     HeapAddress GetSpaceEndAddress() const override;
     void RegisterStaticRoots(uintptr_t addr, uint32_t) override;
@@ -240,6 +243,15 @@ size_t HeapImpl::GetCurrentCapacity() const { return theSpace->GetCurrentCapacit
 size_t HeapImpl::GetUsedPageSize() const { return theSpace->GetUsedPageSize(); }
 
 size_t HeapImpl::GetAllocatedSize() const { return theSpace->GetAllocatedBytes(); }
+
+size_t HeapImpl::GetRemainHeapSize() const { return theSpace->GetMaxCapacity() - theSpace->GetUsedPageSize(); }
+
+size_t HeapImpl::GetAccumulatedAllocateSize() const
+{
+    return collectorResources.GetGCStats().GetAccumulatedFreeSize() + theSpace->GetUsedPageSize();
+}
+
+size_t HeapImpl::GetAccumulatedFreeSize() const { return collectorResources.GetGCStats().GetAccumulatedFreeSize(); }
 
 HeapAddress HeapImpl::GetStartAddress() const { return theSpace->GetSpaceStartAddress(); }
 

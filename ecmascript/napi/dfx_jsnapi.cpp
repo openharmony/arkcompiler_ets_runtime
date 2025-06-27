@@ -16,6 +16,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/base/block_hook_scope.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/debugger/debugger_api.h"
@@ -53,6 +54,8 @@ using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
 using ecmascript::Tracing;
 using ecmascript::DumpSnapShotOption;
+using ecmascript::g_isEnableCMCGC;
+
 sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
@@ -435,35 +438,67 @@ void DFXJSNApi::StopRuntimeStat(EcmaVM *vm)
     vm->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(false);
 }
 
+size_t GetArrayBufferSizeForCMCGC()
+{
+    size_t result = 0;
+    auto visitor = [&result](common::BaseObject *obj) {
+        panda::ecmascript::JSTaggedValue entry = panda::ecmascript::JSTaggedValue(
+            reinterpret_cast<panda::ecmascript::JSTaggedType>(obj));
+        panda::ecmascript::TaggedObject *taggedObj = entry.GetTaggedObject();
+        panda::ecmascript::JSHClass* jsClass = taggedObj->GetClass();
+        result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;
+    };
+    common::Heap::GetHeap().ForEachObject(visitor, true);
+    return result;
+}
+
 size_t DFXJSNApi::GetArrayBufferSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return GetArrayBufferSizeForCMCGC();
+    }
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetHeap()->GetArrayBufferSize();
 }
 
 size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetCurrentCapacity();
+    }
     return vm->GetHeap()->GetCommittedSize();
 }
 
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetAllocatedSize();
+    }
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetHeap()->GetLiveObjectSize();
 }
 
 size_t DFXJSNApi::GetHeapObjectSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetUsedPageSize();
+    }
     return vm->GetHeap()->GetHeapObjectSize();
 }
 
 size_t DFXJSNApi::GetHeapLimitSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetMaxCapacity();
+    }
     return vm->GetHeap()->GetHeapLimitSize();
 }
 
 size_t DFXJSNApi::GetProcessHeapLimitSize()
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetMaxCapacity();
+    }
     return ecmascript::MemMapAllocator::GetInstance()->GetCapacity();
 }
 
@@ -487,6 +522,9 @@ size_t DFXJSNApi::GetGCDuration(const EcmaVM *vm)
 
 size_t DFXJSNApi::GetAccumulatedAllocateSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetAccumulatedAllocateSize();
+    }
     if (vm->IsWorkerThread()) {
         return vm->GetEcmaGCStats()->GetAccumulatedAllocateSize();
     }
@@ -496,6 +534,9 @@ size_t DFXJSNApi::GetAccumulatedAllocateSize(const EcmaVM *vm)
 
 size_t DFXJSNApi::GetAccumulatedFreeSize(const EcmaVM *vm)
 {
+    if (g_isEnableCMCGC) {
+        return common::Heap::GetHeap().GetAccumulatedFreeSize();
+    }
     if (vm->IsWorkerThread()) {
         return vm->GetEcmaGCStats()->GetAccumulatedFreeSize();
     }

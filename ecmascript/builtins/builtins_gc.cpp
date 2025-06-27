@@ -17,10 +17,15 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "common_components/heap/heap.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 {
+    if (g_isEnableCMCGC) {
+        auto size = common::Heap::GetHeap().GetRemainHeapSize();
+        return JSTaggedValue(static_cast<int64_t>(size));
+    }
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     auto size = heap->GetHeapLimitSize() - heap->GetHeapObjectSize();
     return JSTaggedValue(static_cast<int64_t>(size));
@@ -28,12 +33,20 @@ JSTaggedValue BuiltinsGc::GetFreeHeapSize(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsGc::GetReservedHeapSize(EcmaRuntimeCallInfo *info)
 {
+    if (g_isEnableCMCGC) {
+        auto size = common::Heap::GetHeap().GetMaxCapacity();
+        return JSTaggedValue(static_cast<int64_t>(size));
+    }
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapLimitSize()));
 }
 
 JSTaggedValue BuiltinsGc::GetUsedHeapSize(EcmaRuntimeCallInfo *info)
 {
+    if (g_isEnableCMCGC) {
+        auto size = common::Heap::GetHeap().GetAllocatedSize();
+        return JSTaggedValue(static_cast<int64_t>(size));
+    }
     auto *heap = info->GetThread()->GetEcmaVM()->GetHeap();
     return JSTaggedValue(static_cast<int64_t>(heap->GetHeapObjectSize()));
 }

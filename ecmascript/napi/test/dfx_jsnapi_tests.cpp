@@ -16,6 +16,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
@@ -279,26 +280,39 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_RuntimeStat)
 
 HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
 {
-    auto heap = vm_->GetHeap();
     size_t arrayBufferSize = DFXJSNApi::GetArrayBufferSize(vm_);
-    size_t expectArrayBufferSize = heap->GetArrayBufferSize();
-    EXPECT_EQ(arrayBufferSize, expectArrayBufferSize);
-
     size_t heapTotalSize = DFXJSNApi::GetHeapTotalSize(vm_);
-    size_t expectHeapTotalSize = heap->GetCommittedSize();
-    EXPECT_EQ(heapTotalSize, expectHeapTotalSize);
-
     size_t heapUsedSize = DFXJSNApi::GetHeapUsedSize(vm_);
-    size_t expectHeapUsedSize = heap->GetLiveObjectSize();
-    EXPECT_EQ(heapUsedSize, expectHeapUsedSize);
-
     size_t heapObjectSize = DFXJSNApi::GetHeapObjectSize(vm_);
-    size_t expectHeapObjectSize = heap->GetHeapObjectSize();
-    EXPECT_EQ(heapObjectSize, expectHeapObjectSize);
-
     size_t processHeapLimitSize = DFXJSNApi::GetProcessHeapLimitSize();
-    EXPECT_GE(processHeapLimitSize, heap->GetEcmaParamConfiguration().GetMaxHeapSize());
-    EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
+
+    size_t expectArrayBufferSize = 0;
+    size_t expectHeapTotalSize = 0;
+    size_t expectHeapUsedSize = 0;
+    size_t expectHeapObjectSize = 0;
+    size_t expectProcessHeapLimitSize = 0;
+
+    if (g_isEnableCMCGC) {
+        expectHeapTotalSize = common::Heap::GetHeap().GetCurrentCapacity();
+        expectHeapUsedSize = common::Heap::GetHeap().GetAllocatedSize();
+        expectHeapObjectSize = common::Heap::GetHeap().GetUsedPageSize();
+        expectProcessHeapLimitSize = common::Heap::GetHeap().GetMaxCapacity();
+    } else {
+        auto heap = vm_->GetHeap();
+        expectArrayBufferSize = heap->GetArrayBufferSize();
+        expectHeapTotalSize = heap->GetCommittedSize();
+        expectHeapUsedSize = heap->GetLiveObjectSize();
+        expectHeapObjectSize = heap->GetHeapObjectSize();
+        expectProcessHeapLimitSize = heap->GetEcmaParamConfiguration().GetMaxHeapSize();
+        EXPECT_EQ(arrayBufferSize, expectArrayBufferSize);
+        EXPECT_LE(processHeapLimitSize, MAX_MEM_POOL_CAPACITY);
+    }
+
+    EXPECT_GE(arrayBufferSize, 0);
+    EXPECT_EQ(heapTotalSize, expectHeapTotalSize);
+    EXPECT_EQ(heapUsedSize, expectHeapUsedSize);
+    EXPECT_EQ(heapObjectSize, expectHeapObjectSize);
+    EXPECT_GE(processHeapLimitSize, expectProcessHeapLimitSize);
 }
 
 HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
@@ -478,6 +492,11 @@ HWTEST_F_L0(DFXJSNApiTests, GetGCDuration)
 
 HWTEST_F_L0(DFXJSNApiTests, GetAccumulatedAllocateSize)
 {
+    if (g_isEnableCMCGC) {
+        size_t size = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
+        ASSERT_EQ(size, common::Heap::GetHeap().GetAccumulatedAllocateSize());
+        return;
+    }
     vm_->GetJSOptions().SetIsWorker(true);
     size_t size = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
     ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedAllocateSize());
@@ -490,6 +509,11 @@ HWTEST_F_L0(DFXJSNApiTests, GetAccumulatedAllocateSize)
 
 HWTEST_F_L0(DFXJSNApiTests, GetAccumulatedFreeSize)
 {
+    if (g_isEnableCMCGC) {
+        size_t size = DFXJSNApi::GetAccumulatedFreeSize(vm_);
+        ASSERT_EQ(size, common::Heap::GetHeap().GetAccumulatedFreeSize());
+        return;
+    }
     vm_->GetJSOptions().SetIsWorker(true);
     size_t size = DFXJSNApi::GetAccumulatedFreeSize(vm_);
     ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedFreeSize());

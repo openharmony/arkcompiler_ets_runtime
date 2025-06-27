@@ -65,6 +65,10 @@ public:
 
     static void SetPrevGCFinishTime(uint64_t timestamp) { prevGcFinishTime = timestamp; }
 
+    size_t GetAccumulatedFreeSize() const { return accumulatedFreeSize; }
+
+    void IncreaseAccumulatedFreeSize(size_t size) { accumulatedFreeSize += size; }
+
     static uint64_t prevGcStartTime;
     static uint64_t prevGcFinishTime;
 
@@ -91,6 +95,8 @@ public:
 
     size_t collectedBytes;
     size_t collectedObjects;
+
+    size_t accumulatedFreeSize;
 
     double garbageRatio;
     double collectionRate; // bytes per nano-second
