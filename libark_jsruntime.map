@@ -116,6 +116,14 @@
       common::RegisterVisitStaticRootsHook*;
       common::RegisterUpdateStaticRootsHook*;
       common::RegisterSweepStaticRootsHook*;
+      common::InterOpCoroutineToNative*;
+      common::InterOpCoroutineToRunning*;
+      common::RegisterInterOpCoroutineToNativeHook*;
+      common::RegisterInterOpCoroutineToRunningHook*;
+      common::RegisterUnmarkAllXRefsHook*;
+      common::RegisterSweepUnmarkedXRefsHook*;
+      common::RegisterAddXRefToStaticRootsHook*;
+      common::RegisterRemoveXRefFromStaticRootsHook*;
       common::MutatorBase::*;
       common::Log::*;
       common::AndroidLog*;
