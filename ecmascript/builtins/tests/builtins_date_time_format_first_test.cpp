@@ -196,10 +196,8 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_002)
         AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 8, AlgorithmType::ALGORITHM_FORMAT_RANGE);  // 8: args length
 
     JSHandle<EcmaString> handleStr(thread, result);
-    JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
-    JSHandle<EcmaString> oldStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
-    EXPECT_TRUE(EcmaStringAccessor::Compare(instance, handleStr, resultStr) == 0 ||
-                EcmaStringAccessor::Compare(instance, handleStr, oldStr) == 0);
+    JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleStr, resultStr), 0);
 }
 
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)
