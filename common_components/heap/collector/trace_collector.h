@@ -246,6 +246,7 @@ protected:
 
     void RequestGCInternal(GCReason reason, bool async) override { collectorResources_.RequestGC(reason, async); }
     void MergeWeakStack(WeakStack& weakStack);
+    void UpdateNativeThreshold(GCParam& gcParam);
 
     Allocator& theAllocator_;
 

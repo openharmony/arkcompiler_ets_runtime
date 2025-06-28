@@ -2269,10 +2269,7 @@ bool Heap::IsReadyToConcurrentMark() const
 void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
 {
     size_t size = object->GetBindingSize();
-    if (size == 0) {
-        return;
-    }
-    nativeBindingSize_ += size;
+    IncreaseNativeBindingSize(size);
 }
 
 void Heap::IncreaseNativeBindingSize(size_t size)

@@ -193,10 +193,14 @@ void CollectorResources::RequestGC(GCReason reason, bool async)
     GCRequest& request = g_gcRequests[reason];
     uint64_t curTime = TimeUtil::NanoSeconds();
     request.SetPrevRequestTime(curTime);
-    if (collectorProxy_.ShouldIgnoreRequest(request)) {
+    if (collectorProxy_.ShouldIgnoreRequest(request)
+        || (reason == GCReason::GC_REASON_NATIVE && IsNativeGCInvoked())) {
         DLOG(ALLOC, "ignore gc request");
         PostIgnoredGcRequest(reason);
     } else if (async) {
+        if (reason == GCReason::GC_REASON_NATIVE) {
+            SetIsNativeGCInvoked(true);
+        }
         RequestAsyncGC(reason);
     } else {
         RequestGCAndWait(reason);

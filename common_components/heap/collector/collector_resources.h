@@ -55,6 +55,10 @@ public:
 
     void SetGcStarted(bool val) { isGcStarted_.store(val, std::memory_order_relaxed); }
 
+    bool IsNativeGCInvoked() const { return isNativeGCInvoked_.load(std::memory_order_relaxed); }
+
+    void SetIsNativeGCInvoked(bool val) { isNativeGCInvoked_.store(val, std::memory_order_relaxed); }
+
     bool IsGCActive() const { return Heap::GetHeap().IsGCEnabled(); }
 
     FinalizerProcessor& GetFinalizerProcessor() { return finalizerProcessor_; }
@@ -98,6 +102,7 @@ private:
     // Indicate whether GC is already started.
     // NOTE: When GC finishes, it clears isGcStarted, must be over-written only by gc thread.
     std::atomic<bool> isGcStarted_ = { false };
+    std::atomic<bool> isNativeGCInvoked_ = {false};
 
     // only gc thread can access it, so we don't use atomic type
     bool isHeapMarked_ = false;
