@@ -184,6 +184,7 @@ protected:
     void EnumAndTagRawRoot(ObjectRef& ref, RootSet& rootSet) const override;
 
 private:
+    friend class RemarkAndPreforwardVisitor;
     template<bool copy>
     bool TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& ref, BaseObject*& oldRef, BaseObject*& newRef) const;
 
@@ -192,6 +193,7 @@ private:
     void TraceHeap(WorkStack& workStack);
     void PostTrace();
     void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
+    void ParallelRemarkAndPreforward(WorkStack& workStack);
     void Preforward();
     void PreforwardStaticWeakRoots();
     void PreforwardConcurrencyModelRoots();

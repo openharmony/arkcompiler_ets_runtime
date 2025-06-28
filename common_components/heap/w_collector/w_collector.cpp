@@ -344,32 +344,19 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
     return oldObj;
 }
 
-void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
-{
-    const auto markObject = [&workStack, this](BaseObject *temp) {
-        if (!this->MarkObject(temp)) {
-            workStack.push_back(temp);
-        }
-    };
+class RemarkAndPreforwardVisitor {
+public:
+    using WorkStack = WCollector::WorkStack;
+    RemarkAndPreforwardVisitor(WorkStack &localStack, WCollector *collector)
+        : localStack_(localStack), collector_(collector) {}
 
-    const auto markToObject = [&workStack, this](BaseObject *oldVersion, BaseObject *toVersion) {
-        if (!this->MarkObject(toVersion)) {
-            // Therefore, we must still attempt to mark the old object to prevent
-            // it from being pushed into the mark stack during subsequent
-            // traversals.
-            this->MarkObject(oldVersion);
-            // The reference in toSpace needs to be fixed up. Therefore, even if
-            // the oldVersion has been marked, it must still be pushed into the
-            // stack. This will be optimized later.
-            workStack.push_back(toVersion);
-        }
-    };
-    RefFieldVisitor visitor = [this, &markObject, &markToObject](RefField<>& refField) {
+    void operator()(RefField<> &refField)
+    {
         RefField<> oldField(refField);
         BaseObject* oldObj = oldField.GetTargetObject();
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
-        if (IsFromObject(oldObj)) {
-            BaseObject* toVersion = TryForwardObject(oldObj);
+        if (collector_->IsFromObject(oldObj)) {
+            BaseObject* toVersion = collector_->TryForwardObject(oldObj);
             CHECK_CC(toVersion != nullptr);
             HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
                                                             reinterpret_cast<uintptr_t>(toVersion),
@@ -379,18 +366,115 @@ void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
             if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
                 DLOG(FIX, "fix raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
             }
-            markToObject(oldObj, toVersion);
+            MarkToObject(oldObj, toVersion);
         } else {
-            markObject(oldObj);
+            MarkObject(oldObj);
         }
-    };
-    VisitRoots(visitor);
-    // inline MergeAllocBufferRoots
+    }
+
+private:
+    void MarkObject(BaseObject *object)
+    {
+        if (!collector_->MarkObject(object)) {
+            localStack_.push_back(object);
+        }
+    }
+
+    void MarkToObject(BaseObject *oldVersion, BaseObject *toVersion)
+    {
+        if (!collector_->MarkObject(toVersion)) {
+            // Therefore, we must still attempt to mark the old object to prevent
+            // it from being pushed into the mark stack during subsequent
+            // traversals.
+            collector_->MarkObject(oldVersion);
+            // The reference in toSpace needs to be fixed up. Therefore, even if
+            // the oldVersion has been marked, it must still be pushed into the
+            // stack. This will be optimized later.
+            localStack_.push_back(toVersion);
+        }
+    }
+
+private:
+    WorkStack &localStack_;
+    WCollector *collector_;
+};
+
+class RemarkingAndPreforwardTask : public common::Task {
+public:
+    using WorkStack = WCollector::WorkStack;
+    RemarkingAndPreforwardTask(WCollector *collector, WorkStack &localStack, TaskPackMonitor &monitor,
+                               std::function<Mutator*()>& next)
+        : Task(0), visitor_(localStack, collector), monitor_(monitor), getNextMutator_(next)
+    {}
+
+    bool Run([[maybe_unused]] uint32_t threadIndex) override
+    {
+        ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
+        Mutator *mutator = getNextMutator_();
+        while (mutator != nullptr) {
+            VisitMutatorRoot(visitor_, *mutator);
+            mutator = getNextMutator_();
+        }
+        ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+        ThreadLocal::ClearAllocBufferRegion();
+        monitor_.NotifyFinishOne();
+        return true;
+    }
+
+private:
+    RemarkAndPreforwardVisitor visitor_;
+    TaskPackMonitor &monitor_;
+    std::function<Mutator*()> &getNextMutator_;
+};
+
+void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
+{
+    std::vector<Mutator*> taskList;
     MutatorManager &mutatorManager = MutatorManager::Instance();
-    bool worldStopped = mutatorManager.WorldStopped();
-    worldStopped ? ((void)0) : mutatorManager.MutatorManagementWLock();
-    theAllocator_.VisitAllocBuffers([&markObject](AllocationBuffer &buffer) { buffer.MarkStack(markObject); });
-    worldStopped ? ((void)0) : mutatorManager.MutatorManagementWUnlock();
+    mutatorManager.VisitAllMutators([&taskList](Mutator &mutator) {
+        taskList.push_back(&mutator);
+    });
+    std::atomic<int> taskIter = 0;
+    std::function<Mutator*()> getNextMutator = [&taskIter, &taskList]() -> Mutator* {
+        uint32_t idx = taskIter.fetch_add(1U, std::memory_order_relaxed);
+        if (idx < taskList.size()) {
+            return taskList[idx];
+        }
+        return nullptr;
+    };
+
+    const uint32_t runningWorkers = std::min<uint32_t>(GetGCThreadCount(true) - 1, taskList.size());
+    uint32_t parallelCount = runningWorkers + 1; // 1 ：DaemonThread
+    TaskPackMonitor monitor(runningWorkers, runningWorkers);
+    WorkStack localStack[parallelCount];
+    for (uint32_t i = 1; i < parallelCount; ++i) {
+        GetThreadPool()->PostTask(std::make_unique<RemarkingAndPreforwardTask>(this, localStack[i], monitor,
+                                                                               getNextMutator));
+    }
+    // Run in daemon thread.
+    RemarkAndPreforwardVisitor visitor(localStack[0], this);
+    VisitGlobalRoots(visitor);
+    Mutator *mutator = getNextMutator();
+    while (mutator != nullptr) {
+        VisitMutatorRoot(visitor, *mutator);
+        mutator = getNextMutator();
+    }
+    monitor.WaitAllFinished();
+    for (uint32_t i = 0; i < parallelCount; ++i) {
+        workStack.insert(localStack[i]);
+    }
+}
+
+void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RemarkAndPreforwardStaticRoots", "");
+    const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
+    if (maxWorkers > 0) {
+        ParallelRemarkAndPreforward(workStack);
+    } else {
+        RemarkAndPreforwardVisitor visitor(workStack, this);
+        VisitRoots(visitor);
+    }
 }
 
 void WCollector::PreforwardStaticWeakRoots()
