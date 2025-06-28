@@ -53,6 +53,8 @@ public:
 
     static void DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
         std::set<CString> &decreaseModule);
+
+    static bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_MODULE_DEREGISTER_H

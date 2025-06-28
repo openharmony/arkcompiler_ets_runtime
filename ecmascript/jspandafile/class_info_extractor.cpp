@@ -35,7 +35,7 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     // non static properties number is hidden in the last index of Literal buffer
     uint32_t nonStaticNum = 0;
     // The effective data length of taggedarray(valueLength) is equal to length - implementationLength -1
-    int32_t valueLength = length - implementLength - 1;
+    uint32_t valueLength = length - implementLength - 1;
     if (length != 0) {
         nonStaticNum = static_cast<uint32_t>(literal->Get(thread, valueLength).GetInt());
     }
