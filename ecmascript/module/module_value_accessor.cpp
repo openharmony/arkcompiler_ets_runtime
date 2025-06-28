@@ -209,6 +209,10 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal(JSThread *thread,
         << ", index: " << index << ", currentModule: " << oss.str();
     UNREACHABLE();
 }
+
+template JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal<true>(JSThread *, int32_t, JSTaggedValue);
+template JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal<false>(JSThread *, int32_t, JSTaggedValue);
+
 template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal(JSThread *thread, int32_t index,
     JSTaggedValue curModule)
@@ -237,6 +241,12 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal(JSThread 
     LOG_ECMA(FATAL) << "Unexpect binding";
     UNREACHABLE();
 }
+
+template JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal<true>(JSThread *, int32_t,
+    JSTaggedValue);
+template JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(JSThread *, int32_t,
+    JSTaggedValue);
+
 JSTaggedValue ModuleValueAccessor::GetModuleNamespaceInternal(JSThread *thread, int32_t index, JSTaggedValue curModule)
 {
     if (curModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
@@ -302,6 +312,11 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromIndexBinding(const GetModul
     return GetModuleValue(info.thread, resolvedModule, binding->GetIndex());
 }
 
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromIndexBinding<true>(
+    const GetModuleValueFromBindingInfo &);
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromIndexBinding<false>(
+    const GetModuleValueFromBindingInfo &);
+
 template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValueFromBindingInfo &info)
 {
@@ -321,6 +336,9 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValu
         binding->GetBindingName());
 }
 
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding<true>(const GetModuleValueFromBindingInfo &);
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding<false>(const GetModuleValueFromBindingInfo &);
+
 template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding(const GetModuleValueFromBindingInfo &info)
 {
@@ -333,6 +351,11 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding(const Ge
     return GetModuleValue(info.thread, resolvedModule, binding->GetIndex());
 }
 
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding<true>(
+    const GetModuleValueFromBindingInfo &);
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordIndexBinding<false>(
+    const GetModuleValueFromBindingInfo &);
+
 template <bool isLazy>
 JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding(const GetModuleValueFromBindingInfo &info)
 {
@@ -344,6 +367,11 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding(const GetModu
     LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
     return GetNativeOrCjsModuleValue(info.thread, resolvedModule, binding->GetBindingName());
 }
+
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding<true>(
+    const GetModuleValueFromBindingInfo &);
+template JSTaggedValue ModuleValueAccessor::GetModuleValueFromRecordBinding<false>(
+    const GetModuleValueFromBindingInfo &);
 
 JSTaggedValue ModuleValueAccessor::UpdateBindingAndGetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module,
     JSHandle<SourceTextModule> requiredModule, int32_t index, JSTaggedValue bindingName)
