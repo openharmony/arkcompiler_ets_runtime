@@ -1215,6 +1215,9 @@ private:
         metadata.liveByteCount = 0;
         metadata.liveInfo = nullptr;
         metadata.freeSlot = nullptr;
+        if (metadata.regionRSet != nullptr) {
+            ClearRSet();
+        }
         metadata.regionRSet = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
@@ -1236,7 +1239,9 @@ private:
     void InitRegion(size_t nUnit, UnitRole uClass)
     {
         InitRegionDesc(nUnit, uClass);
-        metadata.regionRSet = new RegionRSet(GetRegionSize());
+        if (metadata.regionRSet == nullptr) {
+            metadata.regionRSet = new RegionRSet(GetRegionSize());
+        }
 
         // initialize region's subordinate units.
         UnitInfo* unit = reinterpret_cast<UnitInfo*>(this) - (nUnit - 1);

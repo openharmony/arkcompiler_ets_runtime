@@ -15,6 +15,7 @@
 #ifndef COMMON_COMPONENTS_HEAP_COLLECTOR_REGION_RSET_H
 #define COMMON_COMPONENTS_HEAP_COLLECTOR_REGION_RSET_H
 #include <atomic>
+#include <errno.h>
 
 namespace common {
 static constexpr size_t CARD_SIZE = 512;
@@ -32,7 +33,7 @@ public:
         void* startAddress = mmap(nullptr, cardCnt * sizeof(uint64_t),
             PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (startAddress == MAP_FAILED) {
-            LOG_COMMON(FATAL) << "failed to initialize HeapBitmapManager";
+            LOG_COMMON(FATAL) << "failed to initialize HeapBitmapManager: " << errno;
             UNREACHABLE_CC();
         } else {
 #ifndef __APPLE__
@@ -52,7 +53,7 @@ public:
         }
 #else
         if (munmap(reinterpret_cast<void*>(cardTable), cardCnt * sizeof(uint64_t)) != 0) {
-            LOG_COMMON(ERROR) << "munmap error for HeapBitmapManager";
+            LOG_COMMON(ERROR) << "munmap error for HeapBitmapManager: " << errno;
         }
 #endif
     }
