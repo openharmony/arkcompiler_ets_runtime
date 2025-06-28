@@ -172,7 +172,6 @@ protected:
     void ClearAllGCInfo();
 
     void DoGarbageCollection() override;
-    void ProcessWeakReferences() override;
     void ProcessStringTable() override;
 
     void ProcessFinalizers() override;

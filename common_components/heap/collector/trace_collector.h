@@ -31,7 +31,8 @@ namespace common {
 template <typename T>
 using CArrayList = std::vector<T>;
 
-class GlobalWorkStackQueue;
+template <typename StackType>
+class GlobalStackQueue;
 
 // number of nanoseconds in a microsecond.
 constexpr uint64_t NS_PER_US = 1000;
@@ -103,6 +104,13 @@ private:
 
 class MarkingWork;
 class ConcurrentMarkingWork;
+using RootSet = MarkStack<BaseObject*>;
+using WorkStack = MarkStack<BaseObject*>;
+using WorkStackBuf = MarkStackBuffer<BaseObject*>;
+using WeakStack = MarkStack<RefField<>*>;
+using WeakStackBuf = MarkStackBuffer<RefField<>*>;
+using GlobalWorkStackQueue = GlobalStackQueue<WorkStack>;
+using GlobalWeakStackQueue = GlobalStackQueue<WeakStack>;
 
 class TraceCollector : public Collector {
     friend MarkingWork;
@@ -120,10 +128,6 @@ public:
     // Types, so that we don't confuse root sets and working stack.
     // The policy is: we simply `push_back` into root set,
     // but we use Enqueue to add into work stack.
-    using RootSet = MarkStack<BaseObject*>;
-    using WorkStack = MarkStack<BaseObject*>;
-    using WorkStackBuf = MarkStackBuffer<BaseObject*>;
-    using WeakStack = MarkStack<RefField<>*>;
 
     void Init(const RuntimeParam& param) override;
     void Fini() override;
@@ -160,6 +164,7 @@ public:
 
     void ProcessMarkStack(uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
                           GlobalWorkStackQueue &globalQueue);
+    void ProcessWeakStack(WeakStack &weakStack);
 
     void TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue);
 
@@ -285,7 +290,7 @@ protected:
     Taskpool *GetThreadPool() const { return collectorResources_.GetThreadPool(); }
 
     // let finalizerProcessor process finalizers, and mark resurrected if in stw gc
-    virtual void ProcessWeakReferences() {}
+    void ClearWeakStack(bool parallel);
     virtual void ProcessStringTable() {}
 
     virtual void ProcessFinalizers() {}
@@ -308,6 +313,7 @@ protected:
     void TracingImpl(WorkStack& workStack, bool parallel);
 
     bool AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue, size_t threadCount);
+    bool AddWeakStackClearWork(WeakStack& workStack, GlobalWeakStackQueue &globalQueue, size_t threadCount);
 private:
     void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
     void ConcurrentRemark(WorkStack& remarkStack, bool parallel);
@@ -315,6 +321,62 @@ private:
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;
 };
+
+
+template <typename StackType>
+class GlobalStackQueue {
+public:
+    GlobalStackQueue() = default;
+    ~GlobalStackQueue() = default;
+
+    void AddWorkStack(StackType &&stack)
+    {
+        DCHECK_CC(!stack.empty());
+        std::lock_guard<std::mutex> guard(mtx_);
+        stacks_.push_back(std::move(stack));
+    }
+
+    StackType PopWorkStack()
+    {
+        std::unique_lock<std::mutex> lock(mtx_);
+        while (true) {
+            if (!stacks_.empty()) {
+                StackType stack(std::move(stacks_.back()));
+                stacks_.pop_back();
+                return stack;
+            }
+            if (finished_) {
+                return StackType();
+            }
+            cv_.wait(lock);
+        }
+    }
+
+    StackType DrainAllWorkStack()
+    {
+        std::unique_lock<std::mutex> lock(mtx_);
+        while (!stacks_.empty()) {
+            StackType stack(std::move(stacks_.back()));
+            stacks_.pop_back();
+            return stack;
+        }
+        return StackType();
+    }
+
+    void NotifyFinish()
+    {
+        std::lock_guard<std::mutex> guard(mtx_);
+        DCHECK_CC(!finished_);
+        finished_ = true;
+        cv_.notify_all();
+    }
+private:
+    bool finished_ {false};
+    std::condition_variable cv_;
+    std::mutex mtx_;
+    std::vector<StackType> stacks_;
+};
+
 } // namespace common
 
 #endif  // COMMON_COMPONENTS_HEAP_COLLECTOR_TRACE_COLLECTOR_H
