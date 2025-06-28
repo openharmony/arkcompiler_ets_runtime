@@ -238,6 +238,41 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, GateRef argc, G
     return result;
 }
 
+inline GateRef StubBuilder::CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv,
+                                                     int index, const std::vector<GateRef>& args)
+{
+    SavePcIfNeeded(glue);
+    SetGlueGlobalEnv(glue, globalEnv);
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                     glue, name.c_str());
+    return result;
+}
+
+inline GateRef StubBuilder::CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv,
+                                                     int index, GateRef argc, GateRef argv)
+{
+    SavePcIfNeeded(glue);
+    SetGlueGlobalEnv(glue, globalEnv);
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallRuntimeVarargs(glue, index, argc, argv, name.c_str());
+    return result;
+}
+
+// To reduce overhead, we provide an additional interface for
+// bytecode that directly CallRuntime and requires globalEnv,
+// which is essentially the same as CallRuntimeWithGlobalEnv.
+inline GateRef StubBuilder::CallRuntimeWithCurrentEnv(GateRef glue, GateRef currentEnv,
+                                                      int index, const std::vector<GateRef>& args)
+{
+    SavePcIfNeeded(glue);
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                     glue, name.c_str());
+    return result;
+}
+
 inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index,
                                            const std::vector<GateRef>& args, GateRef hir)
 {
@@ -1597,6 +1632,18 @@ inline GateRef StubBuilder::IsGlobalEnv(GateRef glue, GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::GLOBAL_ENV)));
+}
+
+inline GateRef StubBuilder::IsLexicalEnv(GateRef glue, GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LEXICAL_ENV)));
+}
+
+inline GateRef StubBuilder::IsSFunctionEnv(GateRef glue, GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SFUNCTION_ENV)));
 }
 
 inline GateRef StubBuilder::IsNativeModuleFailureInfo(GateRef glue, GateRef obj)
@@ -3620,6 +3667,33 @@ inline void StubBuilder::SetGlueGlobalEnv(GateRef glue, GateRef globalEnv)
 {
     GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env_->IsArch32Bit()));
     StoreWithoutBarrier(VariableType::JS_POINTER(), glue, globalEnvOffset, globalEnv);
+}
+
+inline void StubBuilder::SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv)
+{
+    auto env0 = GetEnvironment();
+    {
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentEnvIsInvalid),
+            LogicAndBuilder(env0).And(TaggedIsHeapObject(currentEnv))
+                                 .And(LogicOrBuilder(env0).Or(IsGlobalEnv(glue, currentEnv))
+                                      .Or(IsLexicalEnv(glue, currentEnv))
+                                      .Or(IsSFunctionEnv(glue, currentEnv)).Done())
+                                 .Done());
+    }
+    Label entry(env0);
+    env0->SubCfgEntry(&entry);
+    Label setGlue(env0);
+    Label exit(env0);
+    GateRef globalEnv = GetValueFromTaggedArray(glue, currentEnv, Int32(BaseEnv::GLOBAL_ENV_INDEX));
+    BRANCH_UNLIKELY(TaggedIsHole(globalEnv), &exit, &setGlue);
+    Bind(&setGlue);
+    {
+        GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env0->IsArch32Bit()));
+        StoreWithoutBarrier(VariableType::JS_POINTER(), glue, globalEnvOffset, globalEnv);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env0->SubCfgExit();
 }
 
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue, GateRef globalEnv)
