@@ -81,3 +81,6 @@ ElementsKind of bigintArr = 16
 [bigintArr] Target = 1.125 (number): indexOf => -1 lastIndexOf => -1 includes => false
 [bigintArr] Target = 1 (string): indexOf => -1 lastIndexOf => -1 includes => false
 [bigintArr] Target = 1 (bigint): indexOf => 10 lastIndexOf => 10 includes => true
+======== Regression test ========
+NaN with [0, -0]: indexOf => -1, lastIndexOf => -1, includes => false
+NaN with [0, -0, 0n, "NaN", {}]: indexOf => -1, lastIndexOf => -1, includes => false

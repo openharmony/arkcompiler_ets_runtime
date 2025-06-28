@@ -527,7 +527,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedNumber(
     Bind(&targetIsNaN);
     if (options.compType == ComparisonType::SAME_VALUE_ZERO) {
         result = IndexOfElements(glue, elements, [this](GateRef curValue) {
-            return DoubleIsNAN(GetDoubleOfTDouble(curValue));
+            return BitAnd(TaggedIsDouble(curValue), DoubleIsNAN(GetDoubleOfTDouble(curValue)));
         }, fromIndex, len, options);
     }
     Jump(&exit);

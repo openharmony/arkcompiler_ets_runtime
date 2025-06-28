@@ -165,3 +165,19 @@ print('======== Testing with non-generic ElementsKind ========');
         }
     }
 }
+
+print('======== Regression test ========');
+{
+    const arr = [0, -0];
+    const res1 = arr.indexOf(NaN);
+    const res2 = arr.lastIndexOf(NaN);
+    const res3 = arr.includes(NaN);
+    print(`NaN with [0, -0]: indexOf => ${res1}, lastIndexOf => ${res2}, includes => ${res3}`);
+}
+{
+    const arr = [0, -0, 0n, "NaN", {}];
+    const res1 = arr.indexOf(NaN);
+    const res2 = arr.lastIndexOf(NaN);
+    const res3 = arr.includes(NaN);
+    print(`NaN with [0, -0, 0n, "NaN", {}]: indexOf => ${res1}, lastIndexOf => ${res2}, includes => ${res3}`);
+}
