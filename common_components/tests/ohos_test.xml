@@ -63,4 +63,14 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Gc_Request_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Task_Queue_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>
