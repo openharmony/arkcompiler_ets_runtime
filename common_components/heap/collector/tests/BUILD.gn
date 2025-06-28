@@ -39,12 +39,60 @@ host_unittest_action("Collector_Test") {
   ]
 }
 
+host_unittest_action("Task_Queue_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "task_queue_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Gc_Request_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_request_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
 group("unittest") {
   testonly = true
 
   # deps file
   deps = [
     ":Collector_Test",
+    ":Task_Queue_Test",
+    ":Gc_Request_Test",
   ]
 }
 
@@ -54,5 +102,7 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Collector_TestAction",
+    ":Task_Queue_TestAction",
+    ":Gc_Request_TestAction",
   ]
 }

@@ -239,6 +239,7 @@ group("ark_unittest") {
       "common_components/heap/allocator/tests:host_unittest",
       "common_components/mutator/tests:host_unittest",
       "common_components/heap/barrier/tests:unittest",
+      "common_components/heap/collector/tests:host_unittest",
     ]
   }
 }
