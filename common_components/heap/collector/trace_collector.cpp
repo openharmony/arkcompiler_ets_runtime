@@ -27,24 +27,6 @@ namespace common {
 const size_t TraceCollector::MAX_MARKING_WORK_SIZE = 16; // fork task if bigger
 const size_t TraceCollector::MIN_MARKING_WORK_SIZE = 8;  // forbid forking task if smaller
 
-// Fill gc roots entry to buckets
-void StaticRootTable::RegisterRoots(StaticRootArray* addr, uint32_t size)
-{
-    std::lock_guard<std::mutex> lock(gcRootsLock_);
-    gcRootsBuckets_.insert(std::pair<StaticRootArray*, uint32_t>(addr, size));
-    totalRootsCount_ += size;
-}
-
-void StaticRootTable::UnregisterRoots(StaticRootArray* addr, uint32_t size)
-{
-    std::lock_guard<std::mutex> lock(gcRootsLock_);
-    auto iter = gcRootsBuckets_.find(addr);
-    if (iter != gcRootsBuckets_.end()) {
-        gcRootsBuckets_.erase(iter);
-        totalRootsCount_ -= size;
-    }
-}
-
 void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
 {
     std::lock_guard<std::mutex> lock(gcRootsLock_);
@@ -416,7 +398,7 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
         MutatorManager::Instance().VisitAllMutators(func);
         SatbBuffer::Instance().GetRetiredObjects(remarkStack);
 
-        while (!remarkStack.empty()) {
+        while (!remarkStack.empty()) { // LCOV_EXCL_BR_LINE
             BaseObject* obj = remarkStack.back();
             remarkStack.pop_back();
             if (Heap::IsHeapAddress(obj)) {
@@ -459,61 +441,9 @@ void TraceCollector::MarkAwaitingJitFort()
     reinterpret_cast<RegionSpace&>(theAllocator_).MarkAwaitingJitFort();
 }
 
-// no need to do resurrection with write barrier and satb-buffer, because write barrier affects only live objects
-// which are not to be resurrected.
-void TraceCollector::DoResurrection(WorkStack& workStack)
-{
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoResurrection", "");
-    workStack.clear();
-    RootVisitor func = [&workStack, this](ObjectRef& ref) {
-        RefField<>& refField = reinterpret_cast<RefField<>&>(ref);
-        RefField<> tmpField(refField);
-        BaseObject* finalizerObj = tmpField.GetTargetObject();
-        if (!IsMarkedObject(finalizerObj)) {
-            if (!MarkObject(finalizerObj)) {
-                DLOG(TRACE, "resurrectable obj @%p:%p", &ref, finalizerObj);
-                workStack.push_back(finalizerObj);
-            }
-        }
-        RefField<> newField = GetAndTryTagRefField(finalizerObj);
-        if (tmpField.GetFieldValue() != newField.GetFieldValue() &&
-            refField.CompareExchange(tmpField.GetFieldValue(), newField.GetFieldValue())) {
-            DLOG(FIX, "tag finalizer %p@%p -> %#zx", finalizerObj, &ref, newField.GetFieldValue());
-        }
-    };
-    snapshotFinalizerNum_ = collectorResources_.GetFinalizerProcessor().VisitFinalizers(func);
-
-    size_t resurrectdObjects = 0;
-    TraceCollector::WeakStack weakStack;
-    while (!workStack.empty()) {
-        BaseObject* obj = workStack.back();
-        workStack.pop_back();
-        auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
-        region->AddLiveByteCount(obj->GetSize());
-        // skip if the object already marked.
-
-        ++resurrectdObjects;
-        ResurrectObject(obj);
-
-        // try to copy object child refs into work stack.
-        if (obj->HasRefField()) {
-            TraceObjectRefFields(obj, workStack, weakStack);
-        }
-    }
-    markedObjectCount_.fetch_add(resurrectdObjects, std::memory_order_relaxed);
-    MergeWeakStack(weakStack);
-    VLOG(DEBUG, "resurrected objects %zu", resurrectdObjects);
-}
-
 void TraceCollector::Init(const RuntimeParam& param) {}
 
 void TraceCollector::Fini() { Collector::Fini(); }
-
-void TraceCollector::EnumFinalizerProcessorRoots(RootSet& rootSet) const
-{
-    RootVisitor visitor = [this, &rootSet](ObjectRef& root) { EnumAndTagRawRoot(root, rootSet); };
-    collectorResources_.GetFinalizerProcessor().VisitGCRoots(visitor);
-}
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
 void TraceCollector::DumpHeap(const CString& tag)
@@ -599,16 +529,6 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
     }
 
     VLOG(DEBUG, "Total roots: %zu(exclude stack roots)", rootSet.size());
-}
-
-void TraceCollector::VisitStaticRoots(const RefFieldVisitor& visitor) const
-{
-    Heap::GetHeap().VisitStaticRoots(visitor);
-}
-
-void TraceCollector::VisitFinalizerRoots(const RootVisitor& visitor) const
-{
-    collectorResources_.GetFinalizerProcessor().VisitGCRoots(visitor);
 }
 
 void TraceCollector::UpdateGCStats()

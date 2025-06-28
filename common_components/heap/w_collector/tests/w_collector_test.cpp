@@ -74,7 +74,6 @@ HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest1)
     new (obj) BaseObject();
 
     EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
-    EXPECT_FALSE(wcollector->ResurrectObject(obj));
 }
 
 HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
@@ -96,82 +95,6 @@ HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
     EXPECT_FALSE(isMarked);
 
     EXPECT_TRUE(wcollector->IsUnmovableFromObject(obj));
-    EXPECT_TRUE(wcollector->ResurrectObject(obj));
-}
-
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest0)
-{
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
-
-    new (obj) BaseObject();
-
-    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
-
-    obj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
-    EXPECT_TRUE(obj->IsForwarded());
-
-    wcollector->MarkNewObject(obj);
-    EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
-}
-
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest1)
-{
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
-
-    new (obj) BaseObject();
-
-    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-
-    obj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
-    EXPECT_TRUE(obj->IsForwarded());
-
-    wcollector->MarkNewObject(obj);
-    EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
-}
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest2)
-{
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
-
-    new (obj) BaseObject();
-
-    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
-
-    obj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
-    EXPECT_TRUE(obj->IsForwarded());
-
-    wcollector->MarkNewObject(obj);
-    EXPECT_TRUE(RegionSpace::IsMarkedObject(obj));
-}
-
-HWTEST_F_L0(WCollectorTest, MarkNewObjectTest3)
-{
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
-
-    new (obj) BaseObject();
-
-    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_FINAL_MARK);
-
-    obj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
-    EXPECT_TRUE(obj->IsForwarded());
-
-    wcollector->MarkNewObject(obj);
-    EXPECT_FALSE(RegionSpace::IsMarkedObject(obj));
 }
 
 HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0)

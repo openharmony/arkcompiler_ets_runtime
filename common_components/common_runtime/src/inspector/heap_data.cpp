@@ -102,36 +102,6 @@ void ArkHeapData::DumpHeap()
     }
 }
 
-bool ArkHeapData::DumpHeap(int fd)
-{
-    int copyfd = dup(fd);
-    if (copyfd == -1) {
-        LOG_COMMON(ERROR) << "Failed to open heap dump file, stop dumping heap info.";
-        return false;
-    }
-    fp = fdopen(copyfd, "wb");
-    if (fp == nullptr) {
-        close(copyfd);
-        LOG_COMMON(ERROR) << "Failed to open heap dump file, stop dumping heap info.";
-        return false;
-    }
-
-    ScopedStopTheWorld scopedStopTheWorld("dump-heap");
-    ProcessHeap();
-    WriteHeap();
-
-    // fclose will close fd
-    // if fclose success, no need to close fd.
-    // if fclose failed, close fd to prevent resource leakage.
-    int ret = fclose(fp);
-    if (ret) {
-        close(copyfd);
-        LOG_COMMON(ERROR) << "Fail to close file when dump heap data finished";
-        return false;
-    }
-    return true;
-}
-
 void ArkHeapData::ProcessHeapObject(BaseObject* obj)
 {
     if (obj == nullptr) {

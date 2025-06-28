@@ -95,11 +95,8 @@ public:
     size_t GetAccumulatedFreeSize() const override;
     HeapAddress GetStartAddress() const override;
     HeapAddress GetSpaceEndAddress() const override;
-    void RegisterStaticRoots(uintptr_t addr, uint32_t) override;
-    void UnregisterStaticRoots(uintptr_t addr, uint32_t) override;
     void VisitStaticRoots(const RefFieldVisitor& visitor) override;
     bool ForEachObject(const std::function<void(BaseObject*)>&, bool) override;
-    ssize_t GetHeapPhysicalMemorySize() const override;
     void InstallBarrier(const GCPhase phase) override;
     FinalizerProcessor& GetFinalizerProcessor() override;
     CollectorResources& GetCollectorResources() override;
@@ -112,20 +109,6 @@ public:
     size_t GetNotifiedNativeSize() override;
     void SetNativeHeapThreshold(size_t newThreshold) override;
     size_t GetNativeHeapThreshold() override;
-    class ScopedFileHandler {
-    public:
-        ScopedFileHandler(const char* fileName, const char* mode) { file = fopen(fileName, mode); }
-        ~ScopedFileHandler()
-        {
-            if (file != nullptr) {
-                fclose(file);
-            }
-        }
-        FILE* GetFile() const { return file; }
-
-    private:
-        FILE* file = nullptr;
-    };
 
 private:
     // allocator is actually a subspace in heap
@@ -297,98 +280,7 @@ HeapAddress HeapImpl::GetSpaceEndAddress() const { return theSpace_->GetSpaceEnd
 
 Heap& Heap::GetHeap() { return *g_heapInstance; }
 
-void HeapImpl::RegisterStaticRoots(uintptr_t addr, uint32_t size)
-{
-    staticRootTable_.RegisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
-}
-
-void HeapImpl::UnregisterStaticRoots(uintptr_t addr, uint32_t size)
-{
-    staticRootTable_.UnregisterRoots(reinterpret_cast<StaticRootTable::StaticRootArray*>(addr), size);
-}
-
 void HeapImpl::VisitStaticRoots(const RefFieldVisitor& visitor) { staticRootTable_.VisitRoots(visitor); }
-
-#if defined(_WIN64)
-ssize_t HeapImpl::GetHeapPhysicalMemorySize() const
-{
-    PROCESS_MEMORY_COUNTERS memCounter;
-    HANDLE hProcess = GetCurrentProcess();
-    if (GetProcessMemoryInfo(hProcess, &memCounter, sizeof(memCounter))) {
-        size_t physicalMemorySize = memCounter.WorkingSetSize;
-        if (physicalMemorySize > std::numeric_limits<ssize_t>::max()) {
-            LOG_COMMON(ERROR) << "PhysicalMemorySize is too large";
-            CloseHandle(hProcess);
-            return -2; // -2: Return value of exception.
-        }
-        CloseHandle(hProcess);
-        return static_cast<ssize_t>(physicalMemorySize);
-    } else {
-        LOG_COMMON(ERROR) << "GetHeapPhysicalMemorySize fail";
-        CloseHandle(hProcess);
-        return -2; // -2: Return value of exception.
-    }
-    return 0;
-}
-
-#elif defined(__APPLE__)
-ssize_t HeapImpl::GetHeapPhysicalMemorySize() const
-{
-    struct task_basic_info t_info;
-    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
-    if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count) != KERN_SUCCESS)
-        return -2;  // -2: Return value of exception.
-    return t_info.resident_size;
-}
-
-#else
-ssize_t HeapImpl::GetHeapPhysicalMemorySize() const
-{
-    CString smapsFile = CString("/proc/") + CString(GetPid()) + "/smaps";
-    ScopedFileHandler fileHandler(smapsFile.Str(), "r");
-    FILE* file = fileHandler.GetFile();
-    if (file == nullptr) {
-        LOG_COMMON(ERROR) << "GetHeapPhysicalMemorySize(): fail to open the file";
-        return -1;
-    }
-    const int bufSize = 256;
-    char buf[bufSize] = { '\0' };
-    while (fgets(buf, bufSize, file) != nullptr) {
-        uint64_t startAddr = 0;
-        uint64_t endAddr = 0;
-        // expect 2 parameters are both written.
-        constexpr int expectResult = 2;
-        int ret = sscanf_s(buf, "%lx-%lx rw-p", &startAddr, &endAddr);
-        if (ret == expectResult && startAddr <= GetHeap().GetStartAddress() && endAddr >= GetHeap().GetStartAddress()) {
-            ssize_t physicalMemorySize = 0;
-            uint64_t tmpStartAddr = endAddr;
-            do {
-                bool getPss = false;
-                if (tmpStartAddr != endAddr) {
-                    LOG_COMMON(ERROR) << "GetHeapPhysicalMemorySize(): fail to read the file";
-                    return -2; // -2: Return value of exception.
-                }
-                do {
-                    (void)fgets(buf, bufSize, file);
-                    ssize_t size = 0;
-                    if (sscanf_s(buf, "Pss:%zdKB", &size) == 1) {
-                        physicalMemorySize += size;
-                        getPss = true;
-                    }
-                } while (sscanf_s(buf, "%lx-%lx", &startAddr, &endAddr) != 2); // expect 2 parameters are both written.
-                if (!getPss) {
-                    LOG_COMMON(ERROR) << "GetHeapPhysicalMemorySize(): fail to read pss value";
-                    return -2; // -2: Return value of exception.
-                }
-                tmpStartAddr = endAddr;
-            } while (endAddr <= GetHeap().GetSpaceEndAddress());
-            return physicalMemorySize * KB;
-        }
-    }
-    LOG_COMMON(ERROR) << "GetHeapPhysicalMemorySize fail";
-    return -2; // -2: Return value of exception.
-}
-#endif
 
 FinalizerProcessor& HeapImpl::GetFinalizerProcessor() { return collectorResources_.GetFinalizerProcessor(); }
 

@@ -89,8 +89,6 @@ public:
 
     StaticRootTable() { totalRootsCount_ = 0; }
     ~StaticRootTable() = default;
-    void RegisterRoots(StaticRootArray* addr, uint32_t size);
-    void UnregisterRoots(StaticRootArray* addr, uint32_t size);
     void VisitRoots(const RefFieldVisitor& visitor);
 
 private:
@@ -201,18 +199,6 @@ public:
 
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionSpace::IsResurrectedObject(obj); }
 
-    virtual bool ResurrectObject(BaseObject* obj)
-    {
-        bool resurrected = RegionSpace::ResurrentObject(obj);
-        if (!resurrected) {
-            reinterpret_cast<RegionSpace&>(theAllocator_).CountLiveObject(obj);
-            if (!fixReferences_ && RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsFromRegion()) {
-                VLOG(DEBUG, "resurrection tag w-obj %zu", obj->GetSize());
-            }
-        }
-        return resurrected;
-    }
-
     Allocator& GetAllocator() const { return theAllocator_; }
 
     bool IsHeapMarked() const { return collectorResources_.IsHeapMarked(); }
@@ -297,8 +283,6 @@ protected:
     virtual void ProcessStringTable() {}
 
     virtual void ProcessFinalizers() {}
-    // designed to mark resurrected finalizer, should not be call in stw gc
-    virtual void DoResurrection(WorkStack& workStack);
     virtual void RemarkAndPreforwardStaticRoots(WorkStack& workStack)
     {
         LOG_COMMON(FATAL) << "Unresolved fatal";
@@ -317,12 +301,6 @@ protected:
     void TracingImpl(WorkStack& workStack, bool parallel);
 
     bool AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue, size_t threadCount);
-    virtual void EnumAndTagRawRoot(ObjectRef& root, RootSet& rootSet) const
-    {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
-    }
-
 private:
     void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
     void ConcurrentRemark(WorkStack& remarkStack, bool parallel);
@@ -330,10 +308,6 @@ private:
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;
     void EnumStaticRoots(RootSet& rootSet) const;
-    void EnumFinalizerProcessorRoots(RootSet& rootSet) const;
-
-    void VisitStaticRoots(const RefFieldVisitor& visitor) const;
-    void VisitFinalizerRoots(const RootVisitor& visitor) const;
 };
 } // namespace common
 

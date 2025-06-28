@@ -55,18 +55,6 @@ bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
     return marked;
 }
 
-bool WCollector::ResurrectObject(BaseObject* obj)
-{
-    bool resurrected = RegionSpace::ResurrentObject(obj);
-    if (!resurrected) {
-        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        (void)region;
-        DLOG(TRACE, "resurrect region %p@%#zx obj %p<%p>(%zu), live bytes %u", region, region->GetRegionStart(), obj,
-             obj->GetTypeInfo(), obj->GetSize(), region->GetLiveByteCount());
-    }
-    return resurrected;
-}
-
 // this api updates current pointer as well as old pointer, caller should take care of this.
 template<bool copy>
 bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseObject*& fromObj,
@@ -114,6 +102,7 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
 
     return false;
 }
+
 bool WCollector::TryUpdateRefField(BaseObject* obj, RefField<>& field, BaseObject*& newRef) const
 {
     BaseObject* oldRef = nullptr;
@@ -125,6 +114,7 @@ bool WCollector::TryForwardRefField(BaseObject* obj, RefField<>& field, BaseObje
     BaseObject* oldRef = nullptr;
     return TryUpdateRefFieldImpl<true>(obj, field, oldRef, newRef);
 }
+
 // this api untags current pointer as well as old pointer, caller should take care of this.
 bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const
 {
@@ -201,32 +191,6 @@ void WCollector::EnumRefFieldRoot(RefField<>& field, RootSet& rootSet) const
              latest->GetTypeInfo(), latest->GetSize());
     }
     rootSet.push_back(latest);
-}
-
-void WCollector::EnumAndTagRawRoot(ObjectRef& ref, RootSet& rootSet) const
-{
-    RefField<>& refField = reinterpret_cast<RefField<>&>(ref);
-    RefField<> oldField(refField);
-    LOGF_CHECK(!IsOldPointer(oldField)) << "EnumAndTagRawRoot failed: Invalid root: " << oldField.GetFieldValue();
-    if (IsCurrentPointer(oldField)) {
-        rootSet.push_back(oldField.GetTargetObject());
-        return;
-    }
-    BaseObject* root = oldField.GetTargetObject();
-    if (Heap::IsHeapAddress(root)) {
-        CHECK_CC(root->IsValidObject());
-        RefField<> newField = GetAndTryTagRefField(root);
-        if (oldField.GetFieldValue() == newField.GetFieldValue()) {
-            DLOG(ENUM, "enum raw root @%p: %p(%zu)", &ref, root, root->GetSize());
-        } else if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
-            DLOG(ENUM, "enum static ref@%p: %#zx=>%#zx -> %p<%p>(%zu)", &refField, oldField.GetFieldValue(),
-                 newField.GetFieldValue(), root, root->GetTypeInfo(), root->GetSize());
-        } else {
-            DLOG(ENUM, "enum static ref@%p: %#zx -> %p<%p>(%zu)", &refField, oldField.GetFieldValue(), root,
-                 root->GetTypeInfo(), root->GetSize());
-        }
-        rootSet.push_back(root);
-    }
 }
 
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
@@ -410,20 +374,10 @@ void WCollector::PreforwardStaticWeakRoots()
     }
 }
 
-void WCollector::PreforwardFinalizerProcessorRoots()
-{
-    RootVisitor visitor = [this](ObjectRef& root) { ForwardUpdateRawRef(root); };
-    collectorResources_.GetFinalizerProcessor().VisitRawPointers(visitor);
-    AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
-    if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion();
-    }
-}
-
 void WCollector::PreforwardConcurrencyModelRoots()
 {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
+    LOG_COMMON(FATAL) << "Unresolved fatal";
+    UNREACHABLE_CC();
 }
 
 void WCollector::EnumRoots(WorkStack& workStack)
@@ -694,14 +648,6 @@ void WCollector::EnumRootsFlip(WorkStack& rootSet)
     MutatorManager::Instance().FlipMutators("wgc-enumroot", enumGlobalRoot, &enumMutatorRoot);
 }
 
-void WCollector::MarkNewObject(BaseObject* obj)
-{
-    GCPhase mutatorPhase = Mutator::GetMutator()->GetMutatorPhase();
-    if (UNLIKELY_CC(mutatorPhase == GCPhase::GC_PHASE_ENUM) || UNLIKELY_CC(mutatorPhase == GCPhase::GC_PHASE_MARK) ||
-        UNLIKELY_CC(mutatorPhase == GCPhase::GC_PHASE_REMARK_SATB)) {
-        MarkObject(obj);
-    }
-}
 void WCollector::ProcessStringTable()
 {
 #ifdef GC_STW_STRINGTABLE

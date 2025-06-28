@@ -404,12 +404,6 @@ void MutatorManager::EnsureCpuProfileFinish(std::list<Mutator*> &undoneMutators)
     }
 }
 
-void MutatorManager::TransitionAllMutatorsToCpuProfile()
-{
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
-}
-
 void MutatorManager::DumpMutators(uint32_t timeoutTimes)
 {
     constexpr size_t bufferSize = 4096;

@@ -185,8 +185,8 @@ bool TraceBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field
 void TraceBarrier::CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
                                    HeapAddress srcField, MIndex srcSize) const
 {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
+    LOG_COMMON(FATAL) << "Unresolved fatal";
+    UNREACHABLE_CC();
 }
 
 } // namespace common

@@ -32,11 +32,10 @@ public:
     enum class GCTaskType : uint32_t {
         GC_TASK_INVALID = 0,
         GC_TASK_TERMINATE_GC = 1,  // terminate gc
-        GC_TASK_TIMEOUT_GC = 2,    // timeout gc
-        GC_TASK_INVOKE_GC = 3,     // invoke gc
-        GC_TASK_DUMP_HEAP = 4,     // dump heap
-        GC_TASK_DUMP_HEAP_OOM = 5, // dump heap after oom
-        GC_TASK_DUMP_HEAP_IDE = 6, // dump heap for IDE
+        GC_TASK_INVOKE_GC = 2,     // invoke gc
+        GC_TASK_DUMP_HEAP = 3,     // dump heap
+        GC_TASK_DUMP_HEAP_OOM = 4, // dump heap after oom
+        GC_TASK_DUMP_HEAP_IDE = 5, // dump heap for IDE
     };
 
     enum GCTaskIndex : uint64_t {
@@ -104,8 +103,6 @@ public:
     {
         if (prio == PRIO_TERMINATE) {
             return GCRunner(GCTaskType::GC_TASK_TERMINATE_GC);
-        } else if (prio == PRIO_TIMEOUT) {
-            return GCRunner(GCTaskType::GC_TASK_TIMEOUT_GC);
         } else if (prio - PRIO_INVOKE_GC < GC_REASON_MAX) {
             return GCRunner(GCTaskType::GC_TASK_INVOKE_GC, static_cast<GCReason>(prio - PRIO_INVOKE_GC));
         } else {
@@ -119,8 +116,6 @@ public:
     {
         if (taskType_ == GCTaskType::GC_TASK_TERMINATE_GC) {
             return PRIO_TERMINATE;
-        } else if (taskType_ == GCTaskType::GC_TASK_TIMEOUT_GC) {
-            return PRIO_TIMEOUT;
         } else if (taskType_ == GCTaskType::GC_TASK_INVOKE_GC) {
             return PRIO_INVOKE_GC + gcReason_;
         }
@@ -137,7 +132,7 @@ public:
     }
 
     // Only for asyn gc task queues,
-    // the TaskType::GC_TASK_TIMEOUT_GC and TaskType::GC_TASK_TERMINATE_GC gc task will remove all others
+    // the TaskType::GC_TASK_TERMINATE_GC gc task will remove all others
     inline bool IsOverriding() const { return (taskType_ != GCTaskType::GC_TASK_INVOKE_GC); }
 
     inline GCReason GetGCReason() const { return gcReason_; }

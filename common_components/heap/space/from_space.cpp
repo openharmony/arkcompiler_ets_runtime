@@ -65,15 +65,15 @@ void FromSpace::ExemptFromRegions()
                 ExemptFromRegion(del);
             }
             floatingGarbage += (del->GetRegionSize() - del->GetLiveByteCount());
-        } else if (rawPtrCnt > 0) {
+        } else if (rawPtrCnt > 0) { // LCOV_EXCL_BR_LINE
             RegionDesc* del = fromRegion;
             DLOG(REGION, "region %p @0x%zx+%zu pinned by forwarding: %zu units, %u live bytes rawPtr cnt %u",
                 del, del->GetRegionStart(), del->GetRegionAllocatedSize(),
                 del->GetUnitCount(), del->GetLiveByteCount(), rawPtrCnt);
 
             fromRegion = fromRegion->GetNextRegion();
-            if (fromRegionList_.TryDeleteRegion(del, RegionDesc::RegionType::FROM_REGION,
-                                                RegionDesc::RegionType::RAW_POINTER_REGION)) {
+            if (fromRegionList_.TryDeleteRegion(del, RegionDesc::RegionType::FROM_REGION, // LCOV_EXCL_BR_LINE
+                                                RegionDesc::RegionType::RAW_POINTER_REGION)) { // LCOV_EXCL_BR_LINE
                 heap_.AddRawPointerRegion(del);
             }
             floatingGarbage += (del->GetRegionSize() - del->GetLiveByteCount());

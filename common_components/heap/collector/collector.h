@@ -61,9 +61,6 @@ public:
 
     virtual void SetGCPhase(const GCPhase phase) { gcPhase_.store(phase, std::memory_order_release); }
 
-    // determine how we treat new object during gc.
-    virtual void MarkNewObject(BaseObject*) {}
-
     virtual void FixObjectRefFields(BaseObject*) const {}
 
     virtual void RunGarbageCollection(uint64_t, GCReason) = 0;
@@ -84,11 +81,6 @@ public:
     virtual bool TryUpdateRefField(BaseObject*, RefField<>&, BaseObject*&) const = 0;
     virtual bool TryForwardRefField(BaseObject*, RefField<>&, BaseObject*&) const = 0;
     virtual bool TryUntagRefField(BaseObject*, RefField<>&, BaseObject*&) const = 0;
-    virtual bool TryTagRefField(BaseObject*, RefField<>&, BaseObject*)
-    {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
-    }
     virtual RefField<> GetAndTryTagRefField(BaseObject*) const = 0;
 
     virtual bool IsOldPointer(RefField<>&) const = 0;
