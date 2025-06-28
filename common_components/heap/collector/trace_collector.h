@@ -298,18 +298,18 @@ protected:
     virtual void ProcessFinalizers() {}
     // designed to mark resurrected finalizer, should not be call in stw gc
     virtual void DoResurrection(WorkStack& workStack);
-    virtual void ReMarkAndPreforwardStaticRoots(WorkStack& workStack)
+    virtual void RemarkAndPreforwardStaticRoots(WorkStack& workStack)
     {
         LOG_COMMON(FATAL) << "Unresolved fatal";
         UNREACHABLE_CC();
     }
 
-    void MergeMutatorRoots(WorkStack& workStack);
+    void MergeAllocBufferRoots(WorkStack& workStack);
     void EnumerateAllRoots(WorkStack& workStack);
     void PushRootInWorkStack(RootSet *dst, RootSet *src);
 
     void TraceRoots(WorkStack& workStack);
-    void ReMark(WorkStack& workStack);
+    void Remark(WorkStack& workStack);
     bool MarkSatbBuffer(WorkStack& workStack);
 
     // concurrent marking.
@@ -324,7 +324,7 @@ protected:
 
 private:
     void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
-    void ConcurrentReMark(WorkStack& remarkStack, bool parallel);
+    void ConcurrentRemark(WorkStack& remarkStack, bool parallel);
     void MarkAwaitingJitFort();
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;

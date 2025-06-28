@@ -97,8 +97,12 @@
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
       common::BaseRuntime::*;
-      common::VisitDynamicRoots*;
-      common::VisitDynamicWeakRoots*;
+      common::VisitDynamicGlobalRoots*;
+      common::VisitDynamicWeakGlobalRoots*;
+      common::VisitDynamicLocalRoots*;
+      common::VisitDynamicWeakLocalRoots*;
+      common::VisitDynamicThreadRoot*;
+      common::VisitDynamicWeakThreadRoot*;
       common::BaseObject::*;
       common::VisitJSThread*;
       common::SynchronizeGCPhaseToJSThread*;

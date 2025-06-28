@@ -191,7 +191,7 @@ private:
 
     void TraceHeap(WorkStack& workStack);
     void PostTrace();
-    void ReMarkAndPreforwardStaticRoots(WorkStack& workStack) override;
+    void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
     void Preforward();
     void PreforwardStaticWeakRoots();
     void PreforwardConcurrencyModelRoots();
@@ -199,6 +199,9 @@ private:
 
     void PrepareFix();
     void FixHeap(); // roots and ref-fields
+    WeakRefFieldVisitor GetWeakRefFieldVisitor();
+    void PreforwardFlip(WorkStack& workStack);
+    void EnumRootsFlip(WorkStack& workStack);
 
     CopyTable fwdTable_;
 

@@ -1319,16 +1319,16 @@ void HeapSnapshot::HandleCMCGCRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedT
             LogLeakedLocalHandleBackTrace(refField);
             NewRootEdge(syntheticRoot, JSTaggedValue(refField.GetFieldValue()), values, rootEdges);
         };
-        common::VisitRoots(visitorWithDetect, false);
+        common::VisitRoots(visitorWithDetect);
         buffer << "======================== End of Local Handle Leak Detection Result =======================";
         heapProfiler->WriteToLeakStackTraceFd(buffer);
         heapProfiler->CloseLeakStackTraceFd();
     } else {
-        common::VisitRoots(visitor, false);
+        common::VisitRoots(visitor);
     }
     heapProfiler->ClearHandleBackTrace();
 #else
-    common::VisitRoots(visitor, false);
+    common::VisitRoots(visitor);
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }
 

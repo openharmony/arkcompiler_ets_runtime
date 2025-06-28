@@ -26,6 +26,8 @@
 #include "common_interfaces/thread/thread_holder.h"
 
 namespace common {
+class Mutator;
+using FlipFunction = std::function<void(Mutator&)>;
 class Mutator {
 public:
     using SuspensionType = MutatorBase::SuspensionType;
@@ -165,9 +167,9 @@ public:
         return mutatorBase_.HasSuspensionRequest(flag);
     }
 
-    void SetCallbackRequest()
+    void SetFinalizeRequest()
     {
-        mutatorBase_.SetCallbackRequest();
+        mutatorBase_.SetFinalizeRequest();
     }
 
     // Ensure that mutator phase is changed only once by mutator itself or GC
@@ -204,6 +206,46 @@ public:
     {
         // tid changed after fork, so we re-initialize it.
         InitTid();
+    }
+
+    void SetFlipFunction(FlipFunction *flipFunction)
+    {
+        flipFunction_ = flipFunction;
+    }
+
+    bool TryRunFlipFunction()
+    {
+        while (true) {
+            uint32_t oldFlag = mutatorBase_.GetSuspensionFlag();
+            if ((oldFlag & SuspensionType::SUSPENSION_FOR_PENDING_CALLBACK) != 0) {
+                uint32_t newFlag =
+                    MutatorBase::ConstructSuspensionFlag(oldFlag, SuspensionType::SUSPENSION_FOR_PENDING_CALLBACK,
+                                                         SuspensionType::SUSPENSION_FOR_RUNNING_CALLBACK);
+                if (mutatorBase_.CASSetSuspensionFlag(oldFlag, newFlag)) {
+                    ASSERT(flipFunction_);
+                    (*flipFunction_)(*this);
+                    flipFunction_ = nullptr;
+                    std::unique_lock<std::mutex> lock(flipFunctionMtx_);
+                    mutatorBase_.ClearSuspensionFlag(SuspensionType::SUSPENSION_FOR_RUNNING_CALLBACK);
+                    flipFunctionCV_.notify_all();
+                    return true;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    void WaitFlipFunctionFinish()
+    {
+        while (true) {
+            std::unique_lock<std::mutex> lock(flipFunctionMtx_);
+            if (HasSuspensionRequest(SuspensionType::SUSPENSION_FOR_RUNNING_CALLBACK)) {
+                flipFunctionCV_.wait(lock);
+            } else {
+                return;
+            }
+        }
     }
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
@@ -305,7 +347,9 @@ private:
 #endif
 
     ObjectRef rawObject_{ nullptr };
-
+    std::mutex flipFunctionMtx_;
+    std::condition_variable flipFunctionCV_;
+    FlipFunction* flipFunction_ {nullptr};
     SatbBuffer::TreapNode* satbNode_ = nullptr;
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     GCInfos gcInfos_;

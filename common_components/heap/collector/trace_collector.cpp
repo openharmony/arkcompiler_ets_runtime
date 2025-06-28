@@ -247,7 +247,7 @@ void TraceCollector::EnumConcurrencyModelRoots(RootSet& rootSet) const
 void TraceCollector::EnumStaticRoots(RootSet& rootSet) const
 {
     const RefFieldVisitor& visitor = [&rootSet, this](RefField<>& root) { EnumRefFieldRoot(root, rootSet); };
-    VisitRoots(visitor, true);
+    VisitRoots(visitor);
 }
 
 class MergeMutatorRootsScope {
@@ -271,7 +271,7 @@ private:
     bool worldStopped_;
 };
 
-void TraceCollector::MergeMutatorRoots(WorkStack& workStack)
+void TraceCollector::MergeAllocBufferRoots(WorkStack& workStack)
 {
     // hold mutator list lock to freeze mutator liveness, otherwise may access dead mutator fatally
     MergeMutatorRootsScope lockScope;
@@ -384,13 +384,13 @@ void TraceCollector::TraceRoots(WorkStack &tempStack)
     }
 }
 
-void TraceCollector::ReMark(WorkStack &workStack)
+void TraceCollector::Remark(WorkStack &workStack)
 {
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ReMark[STW]", "");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Remark[STW]", "");
     COMMON_PHASE_TIMER("STW re-marking");
-    ReMarkAndPreforwardStaticRoots(workStack);
-    ConcurrentReMark(workStack, maxWorkers > 0);
+    RemarkAndPreforwardStaticRoots(workStack);
+    ConcurrentRemark(workStack, maxWorkers > 0);
     TracingImpl(workStack, maxWorkers > 0);
     MarkAwaitingJitFort();
     ProcessWeakReferences();
@@ -448,7 +448,7 @@ void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStac
     });
 }
 
-void TraceCollector::ConcurrentReMark(WorkStack& remarkStack, bool parallel)
+void TraceCollector::ConcurrentRemark(WorkStack& remarkStack, bool parallel)
 {
     LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
 }
@@ -590,8 +590,8 @@ void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSe
     // Only one root task, no need to post task.
     EnumStaticRoots(rootSets[0]);
     {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MergeMutatorRoots", "");
-        MergeMutatorRoots(rootSet);
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MergeAllocBufferRoots", "");
+        MergeAllocBufferRoots(rootSet);
     }
     for (size_t i = 0; i < threadCount; ++i) {
         rootSet.insert(rootSets[i]);

@@ -27,8 +27,14 @@ namespace common {
 // Roots in BaseRuntime
 PUBLIC_API void VisitBaseRoots(const RefFieldVisitor &visitor);
 // Dynamic VM Roots scanning
-PUBLIC_API void VisitDynamicRoots(const RefFieldVisitor &visitor, bool isMark);
-PUBLIC_API void VisitDynamicWeakRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void VisitDynamicGlobalRoots(const RefFieldVisitor &visitor);
+PUBLIC_API void VisitDynamicWeakGlobalRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void VisitDynamicLocalRoots(const RefFieldVisitor &visitor);
+PUBLIC_API void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc);
+
+// Visit roots of specific local thread.
+PUBLIC_API void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm);
+PUBLIC_API void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm);
 
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);
