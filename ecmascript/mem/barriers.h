@@ -21,6 +21,7 @@
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
 #include "common_interfaces/base_runtime.h"
+#include "common_interfaces/thread/mutator_base.h"
 
 namespace panda::ecmascript {
 class Region;
@@ -192,6 +193,10 @@ public:
     static void PUBLIC_API CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
     static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj,
                                                         void* src, void* dst, size_t count);
+    static bool ShouldProcessSATB(common::GCPhase gcPhase);
+    static bool ShouldGetGCReason(common::GCPhase gcPhase);
+    static bool ShouldUpdateRememberSet(BaseObject* ref, common::GCPhase gcPhase);
+
 private:
     static inline JSTaggedType GetTaggedValueForRB(const JSThread *thread, const void *obj, size_t offset,
                                                    const JSTaggedValue &value)
