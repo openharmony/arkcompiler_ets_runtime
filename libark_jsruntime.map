@@ -112,6 +112,14 @@
       panda::RegisterVisitStaticRootsHook*;
       panda::RegisterUpdateStaticRootsHook*;
       panda::RegisterSweepStaticRootsHook*;
+      panda::InterOpCoroutineToNative*;
+      panda::InterOpCoroutineToRunning*;
+      panda::RegisterInterOpCoroutineToNativeHook*;
+      panda::RegisterInterOpCoroutineToRunningHook*;
+      panda::RegisterUnmarkAllXRefsHook*;
+      panda::RegisterSweepUnmarkedXRefsHook*;
+      panda::RegisterAddXRefToStaticRootsHook*;
+      panda::RegisterRemoveXRefFromStaticRootsHook*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::Log::*;
