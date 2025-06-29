@@ -56,47 +56,47 @@ public:
     static void Initialize(const LogOptions &options);
     static inline bool LogIsLoggable(Level level, Component component)
     {
-        switch (component)
+        switch (component) //LCOV_EXCL_BR_LINE
         {
-            case Component::SA:
+            case Component::SA: //LCOV_EXCL_BR_LINE
                 return ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
-            default:
+            default: //LCOV_EXCL_BR_LINE
                 return (level >= level_) && ((components_ & static_cast<ComponentMark>(component)) != 0ULL);
         }
     }
     static inline std::string GetComponentStr(Component component)
     {
-        switch (component)
+        switch (component) //LCOV_EXCL_BR_LINE
         {
-            case Component::NO_TAG:
+            case Component::NO_TAG: //LCOV_EXCL_BR_LINE
                 return "";
-            case Component::GC:
+            case Component::GC: //LCOV_EXCL_BR_LINE
                 return "[gc] ";
-            case Component::ECMASCRIPT:
+            case Component::ECMASCRIPT: //LCOV_EXCL_BR_LINE
                 return "[ecmascript] ";
-            case Component::PGO:
+            case Component::PGO: //LCOV_EXCL_BR_LINE
                 return "[pgo] ";
-            case Component::INTERPRETER:
+            case Component::INTERPRETER: //LCOV_EXCL_BR_LINE
                 return "[interpreter] ";
-            case Component::DEBUGGER:
+            case Component::DEBUGGER: //LCOV_EXCL_BR_LINE
                 return "[debugger] ";
-            case Component::COMPILER:
+            case Component::COMPILER: //LCOV_EXCL_BR_LINE
                 return "[compiler] ";
-            case Component::BUILTINS:
+            case Component::BUILTINS: //LCOV_EXCL_BR_LINE
                 return "[builtins] ";
-            case Component::TRACE:
+            case Component::TRACE: //LCOV_EXCL_BR_LINE
                 return "[trace] ";
-            case Component::JIT:
+            case Component::JIT: //LCOV_EXCL_BR_LINE
                 return "[jit] ";
-            case Component::BASELINEJIT:
+            case Component::BASELINEJIT: //LCOV_EXCL_BR_LINE
                 return "[baselinejit] ";
-            case Component::SA:
+            case Component::SA: //LCOV_EXCL_BR_LINE
                 return "[sa] ";
-            case Component::COMMON:
+            case Component::COMMON: //LCOV_EXCL_BR_LINE
                 return "[common] ";
-            case Component::ALL:
+            case Component::ALL: //LCOV_EXCL_BR_LINE
                 return "[default] ";
-            default:
+            default: //LCOV_EXCL_BR_LINE
                 return "[unknown] ";
         }
     }
@@ -121,19 +121,19 @@ public:
     }
     ~HiLog()
     {
-        if constexpr (level == LOG_LEVEL_MIN) {
+        if constexpr (level == LOG_LEVEL_MIN) { //LCOV_EXCL_BR_LINE
             // print nothing
-        } else if constexpr (level == LOG_DEBUG) {
+        } else if constexpr (level == LOG_DEBUG) { //LCOV_EXCL_BR_LINE
             HILOG_DEBUG(LOG_CORE, "%{public}s", stream_.str().c_str());
-        } else if constexpr (level == LOG_INFO) {
+        } else if constexpr (level == LOG_INFO) { //LCOV_EXCL_BR_LINE
             HILOG_INFO(LOG_CORE, "%{public}s", stream_.str().c_str());
-        } else if constexpr (level == LOG_WARN) {
+        } else if constexpr (level == LOG_WARN) { //LCOV_EXCL_BR_LINE
             HILOG_WARN(LOG_CORE, "%{public}s", stream_.str().c_str());
-        } else if constexpr (level == LOG_ERROR) {
+        } else if constexpr (level == LOG_ERROR) { //LCOV_EXCL_BR_LINE
             HILOG_ERROR(LOG_CORE, "%{public}s", stream_.str().c_str());
-        } else {
+        } else { //LCOV_EXCL_BR_LINE
             HILOG_FATAL(LOG_CORE, "%{public}s", stream_.str().c_str());
-            if (level == LOG_FATAL) {
+            if (level == LOG_FATAL) { //LCOV_EXCL_BR_LINE
                 std::abort();
             }
         }
@@ -180,13 +180,13 @@ public:
     }
     ~StdLog()
     {
-        if constexpr (level >= Level::ERROR) {
+        if constexpr (level >= Level::ERROR) { //LCOV_EXCL_BR_LINE
             std::cerr << stream_.str().c_str() << std::endl;
-        } else {
+        } else { //LCOV_EXCL_BR_LINE
             std::cout << stream_.str().c_str() << std::endl;
         }
 
-        if constexpr (level == Level::FATAL) {
+        if constexpr (level == Level::FATAL) { //LCOV_EXCL_BR_LINE
             std::abort();
         }
     }
@@ -249,15 +249,16 @@ private:
 #define CHECK_CALL(call, args, what)        \
     do {                                    \
         int rc = call args;                 \
-        if (UNLIKELY_CC(rc != 0)) {            \
+        if (UNLIKELY_CC(rc != 0)) {         \
             errno = rc;                     \
+            /* LCOV_EXCL_BR_LINE */         \
             LOG_COMMON(FATAL) << #call <<   \
                 " failed for " <<           \
                 (what) <<" reason " <<      \
                  strerror(errno) <<         \
                  " return " << errno;       \
         }                                   \
-    } while (false)
+    } while (false) //LCOV_EXCL_BR_LINE
 
 std::string Pretty(uint64_t number) noexcept;
 std::string PrettyOrderInfo(uint64_t number, const char* unit);

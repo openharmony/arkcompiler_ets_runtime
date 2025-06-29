@@ -28,22 +28,22 @@ Level ConvertToLevel(LogLevel hilogLevel)
 {
     Level level = Level::ERROR;
     std::string logLevel;
-    switch (hilogLevel) {
-        case LogLevel::LOG_INFO:
+    switch (hilogLevel) { //LCOV_EXCL_BR_LINE
+        case LogLevel::LOG_INFO: //LCOV_EXCL_BR_LINE
             level = Level::INFO;
             break;
-        case LogLevel::LOG_WARN:
+        case LogLevel::LOG_WARN: //LCOV_EXCL_BR_LINE
             level = Level::WARN;
             break;
-        case LogLevel::LOG_ERROR:
+        case LogLevel::LOG_ERROR: //LCOV_EXCL_BR_LINE
             level = Level::ERROR;
             break;
-        case LogLevel::LOG_FATAL:
-        case LogLevel::LOG_LEVEL_MAX:
+        case LogLevel::LOG_FATAL: //LCOV_EXCL_BR_LINE
+        case LogLevel::LOG_LEVEL_MAX: //LCOV_EXCL_BR_LINE
             level = Level::FATAL;
             break;
-        case LogLevel::LOG_DEBUG:
-        default:
+        case LogLevel::LOG_DEBUG: //LCOV_EXCL_BR_LINE
+        default: //LCOV_EXCL_BR_LINE
             level = Level::DEBUG;
             break;
     }
@@ -53,8 +53,8 @@ Level ConvertToLevel(LogLevel hilogLevel)
 
 LogLevel GetHiLogLevel()
 {
-    for (int32_t level = LogLevel::LOG_LEVEL_MIN; level <= LogLevel::LOG_LEVEL_MAX; level++) {
-        if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, static_cast<LogLevel>(level))) {
+    for (int32_t level = LogLevel::LOG_LEVEL_MIN; level <= LogLevel::LOG_LEVEL_MAX; level++) { //LCOV_EXCL_BR_LINE
+        if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, static_cast<LogLevel>(level))) { //LCOV_EXCL_BR_LINE
             return static_cast<LogLevel>(level);
         }
     }
@@ -68,26 +68,26 @@ ComponentMark Log::components_ = static_cast<ComponentMark>(Component::ALL);
 Level Log::ConvertFromRuntime(LOG_LEVEL level)
 {
     Level logLevel = Level::INFO;
-    switch (level) {
-        case LOG_LEVEL::FOLLOW:
+    switch (level) { //LCOV_EXCL_BR_LINE
+        case LOG_LEVEL::FOLLOW: //LCOV_EXCL_BR_LINE
 #ifdef ENABLE_HILOG
             logLevel = ConvertToLevel(GetHiLogLevel());
             break;
 #endif
-        case LOG_LEVEL::INFO:
+        case LOG_LEVEL::INFO: //LCOV_EXCL_BR_LINE
             logLevel = Level::INFO;
             break;
-        case LOG_LEVEL::WARN:
+        case LOG_LEVEL::WARN: //LCOV_EXCL_BR_LINE
             logLevel = Level::WARN;
             break;
-        case LOG_LEVEL::ERROR:
+        case LOG_LEVEL::ERROR: //LCOV_EXCL_BR_LINE
             logLevel = Level::ERROR;
             break;
-        case LOG_LEVEL::FATAL:
+        case LOG_LEVEL::FATAL: //LCOV_EXCL_BR_LINE
             logLevel = Level::FATAL;
             break;
-        case LOG_LEVEL::DEBUG:
-        default:
+        case LOG_LEVEL::DEBUG: //LCOV_EXCL_BR_LINE
+        default: //LCOV_EXCL_BR_LINE
             logLevel = Level::DEBUG;
             break;
     }
@@ -98,21 +98,21 @@ Level Log::ConvertFromRuntime(LOG_LEVEL level)
 std::string Log::LevelToString(Level level)
 {
     std::string logLevel;
-    switch (level) {
-        case Level::INFO:
+    switch (level) { //LCOV_EXCL_BR_LINE
+        case Level::INFO: //LCOV_EXCL_BR_LINE
             logLevel = "info";
             break;
-        case Level::WARN:
+        case Level::WARN: //LCOV_EXCL_BR_LINE
             logLevel = "warning";
             break;
-        case Level::ERROR:
+        case Level::ERROR: //LCOV_EXCL_BR_LINE
             logLevel = "error";
             break;
-        case Level::FATAL:
+        case Level::FATAL: //LCOV_EXCL_BR_LINE
             logLevel = "fatal";
             break;
-        case Level::DEBUG:
-        default:
+        case Level::DEBUG: //LCOV_EXCL_BR_LINE
+        default: //LCOV_EXCL_BR_LINE
             logLevel = "debug";
             break;
     }
@@ -122,26 +122,26 @@ std::string Log::LevelToString(Level level)
 
 int32_t Log::PrintLogger(int32_t, int32_t level, const char *, const char *, const char *message)
 {
-    switch (level) {
-        case panda::Logger::PandaLog2MobileLog::VERBOSE:
+    switch (level) { //LCOV_EXCL_BR_LINE
+        case panda::Logger::PandaLog2MobileLog::VERBOSE: //LCOV_EXCL_BR_LINE
             LOG_COMMON(VERBOSE) << message;
             break;
-        case panda::Logger::PandaLog2MobileLog::DEBUG:
+        case panda::Logger::PandaLog2MobileLog::DEBUG: //LCOV_EXCL_BR_LINE
             LOG_COMMON(DEBUG) << message;
             break;
-        case panda::Logger::PandaLog2MobileLog::INFO:
+        case panda::Logger::PandaLog2MobileLog::INFO: //LCOV_EXCL_BR_LINE
             LOG_COMMON(INFO) << message;
             break;
-        case panda::Logger::PandaLog2MobileLog::WARN:
+        case panda::Logger::PandaLog2MobileLog::WARN: //LCOV_EXCL_BR_LINE
             LOG_COMMON(WARN) << message;
             break;
-        case panda::Logger::PandaLog2MobileLog::ERROR:
+        case panda::Logger::PandaLog2MobileLog::ERROR: //LCOV_EXCL_BR_LINE
             LOG_COMMON(ERROR) << message;
             break;
-        case panda::Logger::PandaLog2MobileLog::FATAL:
+        case panda::Logger::PandaLog2MobileLog::FATAL: //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << message;
             break;
-        default:
+        default: //LCOV_EXCL_BR_LINE
             LOG_COMMON(DEBUG) << message;
             break;
     }

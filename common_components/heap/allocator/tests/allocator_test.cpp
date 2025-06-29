@@ -32,7 +32,6 @@ public:
     HeapAddress AllocateNoGC(size_t size, AllocType allocType) override { return 0; }
     bool ForEachObject(const std::function<void(BaseObject*)>&, bool safe) const override { return true; }
     size_t ReclaimGarbageMemory(bool releaseAll) override { return 0; }
-    void FeedHungryBuffers() override {}
     size_t LargeObjectSize() const override { return 0; }
     size_t GetAllocatedBytes() const override { return 0; }
     void Init(const RuntimeParam& param) override {}

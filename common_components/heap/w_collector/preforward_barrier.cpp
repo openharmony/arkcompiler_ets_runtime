@@ -150,7 +150,7 @@ bool PreforwardBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& 
 void PreforwardBarrier::CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
                                         HeapAddress srcField, MIndex srcSize) const
 {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
+    LOG_COMMON(FATAL) << "Unresolved fatal";
+    UNREACHABLE_CC();
 }
 } // namespace common

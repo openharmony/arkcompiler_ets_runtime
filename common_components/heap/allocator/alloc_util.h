@@ -32,15 +32,15 @@ constexpr T AllocUtilRndDown(T x, size_t n)
 
 #ifdef _WIN64
 #define ALLOCUTIL_MEM_UNMAP(address, sizeInBytes) \
-    if (!VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE)) { \
+    if (!VirtualFree(reinterpret_cast<void*>(address), 0, MEM_RELEASE)) {     \
         LOG_COMMON(FATAL) << "VirtualFree failed. Process terminating.";      \
-        UNREACHABLE_CC();                                                    \
+        UNREACHABLE_CC();                                                     \
     }
 #else
 #define ALLOCUTIL_MEM_UNMAP(address, sizeInBytes) \
-    if (munmap(reinterpret_cast<void*>(address), sizeInBytes) != EOK) { \
+    if (munmap(reinterpret_cast<void*>(address), sizeInBytes) != EOK) {     \
         LOG_COMMON(FATAL) << "munmap failed. Process terminating.";         \
-        UNREACHABLE_CC();                                                  \
+        UNREACHABLE_CC();                                                   \
     }
 #endif
 

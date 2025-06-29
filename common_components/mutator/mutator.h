@@ -70,12 +70,6 @@ public:
     }
 
     static Mutator* GetMutator() noexcept;
-    void StackGuardExpand() const;
-    void StackGuardRecover() const;
-
-    bool IsStackAddr(uintptr_t addr);
-    void RecordStackPtrs(std::set<BaseObject**>& resSet);
-    intptr_t FixExtendedStack(intptr_t frameBase = 0, uint32_t adjustedSize = 0, void* ip = nullptr);
 
     void InitTid()
     {
@@ -311,10 +305,7 @@ public:
     }
 
 protected:
-    // for managed stack
-    void VisitStackRoots(const RootVisitor& func);
     // for exception ref
-    void VisitExceptionRoots(const RootVisitor& func);
     void VisitRawObjects(const RootVisitor& func);
     void CreateCurrentGCInfo();
 

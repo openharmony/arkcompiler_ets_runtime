@@ -158,7 +158,6 @@ public:
     void TransitionAllMutatorsToGCPhase(GCPhase phase);
 
     void EnsureCpuProfileFinish(std::list<Mutator*> &undoneMutators);
-    void TransitionAllMutatorsToCpuProfile();
 
     template<class STWFunction>
     void FlipMutators(const char* reason, STWFunction&& stwFunction, FlipFunction *flipFunction);

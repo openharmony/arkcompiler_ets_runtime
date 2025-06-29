@@ -135,13 +135,7 @@ public:
 
     virtual bool ForEachObject(const std::function<void(BaseObject*)>&, bool safe) = 0;
 
-    virtual void RegisterStaticRoots(uintptr_t, uint32_t) = 0;
-
-    virtual void UnregisterStaticRoots(uintptr_t, uint32_t) = 0;
-
     virtual void VisitStaticRoots(const RefFieldVisitor& visitor) = 0;
-
-    virtual ssize_t GetHeapPhysicalMemorySize() const = 0;
 
     virtual FinalizerProcessor& GetFinalizerProcessor() = 0;
 

@@ -159,17 +159,6 @@ void MutatorBase::SuspendForStw()
 void Mutator::CreateCurrentGCInfo() { gcInfos_.CreateCurrentGCInfo(); }
 #endif
 
-void Mutator::VisitStackRoots(const RootVisitor& func)
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
-
-void Mutator::VisitExceptionRoots(const RootVisitor& func)
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
 
 void Mutator::VisitRawObjects(const RootVisitor& func)
 {
@@ -181,36 +170,6 @@ void Mutator::VisitRawObjects(const RootVisitor& func)
 Mutator* Mutator::GetMutator() noexcept
 {
     return ThreadLocal::GetMutator();
-}
-
-void Mutator::StackGuardExpand() const
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
-
-void Mutator::StackGuardRecover() const
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
-
-bool Mutator::IsStackAddr(uintptr_t addr)
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
-
-void Mutator::RecordStackPtrs(std::set<BaseObject**>& resSet)
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
-}
-
-intptr_t Mutator::FixExtendedStack(intptr_t frameBase, uint32_t adjustedSize __attribute__((unused)), void* ip)
-{
-    LOG_COMMON(FATAL) << "Unresolved fatal";
-    UNREACHABLE_CC();
 }
 
 inline void CheckAndPush(BaseObject* obj, std::set<BaseObject*>& rootSet, std::stack<BaseObject*>& rootStack)
