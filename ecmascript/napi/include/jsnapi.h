@@ -303,6 +303,16 @@ public:
         return aotCompileStatusMap_;
     }
 
+    void SetEnableWarmStartupSmartGC(bool value)
+    {
+        enableWarmStartupSmartGC_ = value;
+    }
+
+    bool GetEnableWarmStartupSmartGC() const
+    {
+        return enableWarmStartupSmartGC_;
+    }
+
 private:
     std::string GetGcType() const
     {
@@ -460,6 +470,7 @@ private:
     bool enableBaselineJIT_ {false};
     bool enableLargeHeap_ {false};
     std::map<std::string, int32_t> aotCompileStatusMap_;
+    bool enableWarmStartupSmartGC_ {false};
     friend JSNApi;
 };
 

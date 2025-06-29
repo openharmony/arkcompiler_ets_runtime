@@ -5741,8 +5741,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", jit: " << option.GetEnableJIT()
                     << ", baseline jit: " << option.GetEnableBaselineJIT()
                     << ", bundle name: " <<  option.GetBundleName();
-
-    vm->PostFork();
+    jsOption.SetEnableWarmStartupSmartGC(option.GetEnableWarmStartupSmartGC());
+    vm->PostFork(jsOption);
 }
 
 void JSNApi::AddWorker(EcmaVM *hostVm, EcmaVM *workerVm)

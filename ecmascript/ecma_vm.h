@@ -841,7 +841,7 @@ public:
     }
 
     void PreFork();
-    void PostFork();
+    void PostFork(const JSRuntimeOptions &option);
 
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);

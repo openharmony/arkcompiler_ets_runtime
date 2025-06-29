@@ -96,7 +96,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             if (mainVM->IsPreForked() && !mainVM->IsPostForked()) {
                 LOG_ECMA(ERROR) << "create ecmavm after pre fork, but not post pork";
                 ASSERT(!DaemonThread::GetInstance()->IsRunning());
-                mainVM->PostFork();
+                mainVM->PostFork(options);
             }
         }
     }

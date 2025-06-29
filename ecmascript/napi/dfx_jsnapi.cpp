@@ -604,6 +604,38 @@ void DFXJSNApi::NotifyHighSensitive(EcmaVM *vm, bool isStart)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyHighSensitive(isStart);
 }
 
+void DFXJSNApi::NotifyWarmStart(EcmaVM *vm)
+{
+    LOG_ECMA(INFO) << "SmartGC: app warm start gc";
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    if (AllowWarmStartGcRestrain(vm)) {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyWarmStartup();
+    }
+}
+
+bool DFXJSNApi::AllowWarmStartGcRestrain(EcmaVM *vm)
+{
+    common::GCPhase gcPhase = vm->GetJSThread()->GetCMCGCPhase();
+    if (gcPhase > common::GCPhase::GC_PHASE_IDLE) {
+        LOG_ECMA(WARN) << "SmartGC: app warm start gc, but gc phase more than GC_PHASE_IDLE, skip";
+        return false;
+    }
+
+    bool hasFinishedMark = vm->GetJSThread()->IsConcurrentMarkingOrFinished();
+    if (hasFinishedMark) {
+        LOG_ECMA(WARN) << "SmartGC: app warm start gc, but gc mark is concurrent marking or finished, skip";
+        return false;
+    }
+    ecmascript::StartupStatus status = const_cast<ecmascript::Heap *>(vm->GetHeap())->GetStartupStatus();
+    bool isGcRestraining = (status == ecmascript::StartupStatus::ON_STARTUP ||
+                            status == ecmascript::StartupStatus::JUST_FINISH_STARTUP);
+    if (isGcRestraining) {
+        LOG_ECMA(WARN) << "SmartGC: app warm start gc, but it is already in GC restraining now, skip";
+        return false;
+    }
+    return true;
+}
+
 bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

@@ -164,7 +164,7 @@ void EcmaVM::PreFork()
     Jit::GetInstance()->PreFork();
 }
 
-void EcmaVM::PostFork()
+void EcmaVM::PostFork(const JSRuntimeOptions &option)
 {
     if (Runtime::GetInstance()->GetEnableLargeHeap()) {
         // when enable large heap, reset some heap param which has initialized in appspawn
@@ -201,8 +201,13 @@ void EcmaVM::PostFork()
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
-    heap_->NotifyPostFork();
-    heap_->NotifyFinishColdStartSoon();
+    if (option.GetEnableWarmStartupSmartGC()) {
+        LOG_ECMA(WARN) << "SmartGC: process is start by premake/preload, skip cold start smrt gc."
+                       << " replace with warm startup smart gc later";
+    } else {
+        heap_->NotifyPostFork();
+        heap_->NotifyFinishColdStartSoon();
+    }
 #endif
     DaemonThread::GetInstance()->EnsureRunning();
 }
