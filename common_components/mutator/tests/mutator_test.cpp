@@ -24,6 +24,14 @@ class MutatorTest : public BaseTestWithScope {
 protected:
     void SetUp() override {}
     void TearDown() override {}
+    static void SetUpTestCase()
+    {
+        BaseRuntime::GetInstance()->Init();
+    }
+    static void TearDownTestCase()
+    {
+        BaseRuntime::GetInstance()->Fini();
+    }
 };
 
 HWTEST_F_L0(MutatorTest, GetThreadLocalData_Test1)
@@ -41,7 +49,7 @@ HWTEST_F_L0(MutatorTest, TransitionGCPhase_Test1)
 
     MutatorBase::SuspensionType  flag = MutatorBase::SuspensionType::SUSPENSION_FOR_GC_PHASE;
     mutatorBase->SetSuspensionFlag(flag);
-    BaseRuntime::GetInstance()->Init();
+
     ret = mutatorBase->TransitionGCPhase(false);
     EXPECT_TRUE(ret == true);
 
@@ -49,6 +57,34 @@ HWTEST_F_L0(MutatorTest, TransitionGCPhase_Test1)
     EXPECT_TRUE(ret == true);
     ret = mutatorBase->TransitionGCPhase(false);
     EXPECT_TRUE(ret == true);
+    delete mutatorBase;
+}
+
+HWTEST_F_L0(MutatorTest, HandleSuspensionRequest_Test0)
+{
+    MutatorBase *mutatorBase = new MutatorBase();
+    mutatorBase->Init();
+
+    MutatorBase::SuspensionType  flag = MutatorBase::SuspensionType::SUSPENSION_FOR_STW;
+    mutatorBase->SetSuspensionFlag(flag);
+
+    mutatorBase->HandleSuspensionRequest();
+    EXPECT_TRUE(mutatorBase->InSaferegion() == false);
+
+    flag = MutatorBase::SuspensionType::SUSPENSION_FOR_GC_PHASE;
+    mutatorBase->SetSuspensionFlag(flag);
+    mutatorBase->HandleSuspensionRequest();
+    EXPECT_TRUE(mutatorBase->InSaferegion() == false);
+    delete mutatorBase;
+}
+
+HWTEST_F_L0(MutatorTest, SuspendForStw_Test0)
+{
+    MutatorBase *mutatorBase = new MutatorBase();
+    mutatorBase->Init();
+
+    mutatorBase->SuspendForStw();
+    EXPECT_TRUE(mutatorBase->InSaferegion() == false);
     delete mutatorBase;
 }
 }  // namespace common::test

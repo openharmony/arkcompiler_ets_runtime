@@ -48,6 +48,16 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Thread_Holder_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Trace_Collector_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="W_Collector_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>

@@ -39,6 +39,29 @@ host_unittest_action("Collector_Test") {
   ]
 }
 
+host_unittest_action("Trace_Collector_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "trace_collector_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
 host_unittest_action("Task_Queue_Test") {
   module_out_path = module_output_path
 
@@ -91,6 +114,7 @@ group("unittest") {
   # deps file
   deps = [
     ":Collector_Test",
+    ":Trace_Collector_Test",
     ":Task_Queue_Test",
     ":Gc_Request_Test",
   ]
@@ -102,7 +126,9 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Collector_TestAction",
+    ":Trace_Collector_TestAction",
     ":Task_Queue_TestAction",
     ":Gc_Request_TestAction",
   ]
 }
+
