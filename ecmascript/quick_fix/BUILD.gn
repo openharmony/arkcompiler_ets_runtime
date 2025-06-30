@@ -27,16 +27,8 @@ ohos_executable("quick_fix") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = []
-  external_deps = []
-
-  if (defined(ark_hybrid) && ark_hybrid) {
-    external_deps += [ "runtime_core:libarkruntime" ]
-  } else {
-    deps = [ "$js_root:libark_jsruntime" ]
-  }
-
-  external_deps += [
+  deps = [ "$js_root:libark_jsruntime" ]
+  external_deps = [
     "runtime_core:arkfile_header_deps",
     "runtime_core:libarkbase_static",
   ]

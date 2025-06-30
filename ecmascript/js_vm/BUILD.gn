@@ -37,15 +37,8 @@ ohos_executable("ark_js_vm") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = []
   external_deps = []
-
-  if (defined(ark_hybrid) && ark_hybrid) {
-    external_deps += [ "runtime_core:libarkruntime" ]
-  } else {
-    deps += [ "$js_root:libark_jsruntime" ]
-  }
-
+  deps = [ "$js_root:libark_jsruntime" ]
   if (ark_standalone_build) {
     if (run_with_qemu && is_ohos) {
       deps += [

@@ -64,7 +64,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 #endif
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetSize();
-#if defined(ARK_USE_CMC_GC) || defined(USE_CMC_GC)
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     EXPECT_EQ(objectSize, 24U);
 #else
     EXPECT_EQ(objectSize, 16U);

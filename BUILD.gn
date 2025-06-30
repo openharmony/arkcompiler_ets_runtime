@@ -270,8 +270,8 @@ config("ark_jsruntime_public_config") {
     configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
   }
 
-  if (ark_use_cmc_gc) {
-    defines += [ "ARK_USE_CMC_GC" ]
+  if (ark_hybrid) {
+    defines += [ "ARK_HYBRID" ]
 
     if (current_cpu == "amd64" || current_cpu == "x64" ||
         current_cpu == "x86_64") {
@@ -353,16 +353,16 @@ config("ark_jsruntime_common_config") {
 
   if (ets_runtime_enable_cmc_gc) {
     print("########## ets_runtime enable cmc-gc ##############")
-    defines += [ "ARK_USE_CMC_GC" ]
+    defines += [ "ARK_HYBRID" ]
     defines += [ "USE_CMC_GC" ]
     defines += [ "USE_READ_BARRIER" ]
     if (ets_runtime_enable_cmc_rb_dfx) {
-      defines += [ "ENABLE_CMC_RB_DFX" ]
-      print("########## ets_runtime enable cmc RB-DFX ##############")
+        defines += [ "ENABLE_CMC_RB_DFX" ]
+        print("########## ets_runtime enable cmc RB-DFX ##############")
     }
     if (ets_runtime_enable_cmc_verify) {
-      defines += [ "ENABLE_CMC_VERIFY" ]
-      print("########## ets_runtime enable cmc heap-verify ##############")
+        defines += [ "ENABLE_CMC_VERIFY" ]
+        print("########## ets_runtime enable cmc heap-verify ##############")
     }
   } else {
     print("########## ets_runtime disable cmc-gc ##############")
@@ -1537,61 +1537,6 @@ config("arkjs_runtime_lto_link_config") {
   }
 }
 
-ohos_static_library("libark_jsruntime_sources") {
-  stack_protector_ret = false
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
-
-  deps = [ ":libark_jsruntime_static" ]
-
-  external_deps = []
-  if (is_arkui_x && target_os == "ios") {
-    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
-  } else {
-    external_deps += [ "bounds_checking_function:libsec_shared" ]
-  }
-
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:libarkfile_runtime_static" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
-  }
-
-  all_dependent_configs = [ ":ark_jsruntime_public_config" ]
-  public_configs = [ ":ark_jsruntime_public_config" ]
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  if (!enable_ark_intl) {
-    external_deps += [ "i18n:intl_util" ]
-  }
-
-  if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:static_icui18n",
-      "$ark_third_party_root/icu/icu4c:static_icuuc",
-    ]
-  } else {
-    public_external_deps = [
-      "icu:shared_icui18n",
-      "icu:shared_icuuc",
-    ]
-  }
-
-  configs = [
-    ":ark_jsruntime_common_config",
-    ":arkjs_runtime_lto_link_config",
-  ]
-
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-}
-
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
   if (enable_sanitize) {
@@ -1630,11 +1575,7 @@ ohos_shared_library("libark_jsruntime") {
     external_deps += [ "i18n:intl_util" ]
   }
 
-  if (ark_hybrid) {
-    install_enable = false
-  } else {
-    install_enable = true
-  }
+  install_enable = true
 
   if (!is_mingw && !is_mac) {
     output_extension = "so"
@@ -1659,7 +1600,6 @@ ohos_shared_library("libark_jsruntime") {
       "runtime_core:arkplatform_header",
     ]
   }
-
   innerapi_tags = [ "platformsdk_indirect" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
