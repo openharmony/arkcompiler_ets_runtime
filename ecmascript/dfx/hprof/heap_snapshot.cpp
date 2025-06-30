@@ -1328,7 +1328,7 @@ void HeapSnapshot::HandleCMCGCRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedT
     }
     heapProfiler->ClearHandleBackTrace();
 #else
-    common::VisitRoots(visitor, false);
+    common::UpdateRoots(visitor);
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }
 

@@ -27,6 +27,10 @@
 #include "common_components/mutator/mutator_manager.h"
 
 namespace common {
+
+template <typename T>
+using CArrayList = std::vector<T>;
+
 class GlobalWorkStackQueue;
 
 // number of nanoseconds in a microsecond.
@@ -181,24 +185,28 @@ public:
         return obj->IsToVersion();
     }
 
-    virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const
-    {
-        bool marked = RegionSpace::MarkObject(obj);
-        if (!marked) {
-            reinterpret_cast<RegionSpace&>(theAllocator_).CountLiveObject(obj);
-            if (!fixReferences_ && RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsFromRegion()) {
-                DLOG(TRACE, "marking tag w-obj %p<cls %p>+%zu", obj, obj->GetTypeInfo(), obj->GetSize());
-            }
-        }
-        return marked;
-    }
+    virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const = 0;
 
-    virtual void EnumRefFieldRoot(RefField<>& ref, RootSet& rootSet) const {}
-    virtual void TraceObjectRefFields(BaseObject* obj, WorkStack& workStack, WeakStack& weakStack)
-    {
-        LOG_COMMON(FATAL) << "Unresolved fatal";
-        UNREACHABLE_CC();
-    }
+    // avoid std::function allocation for each object trace
+    class TraceRefFieldVisitor {
+    public:
+        TraceRefFieldVisitor() : closure_(std::make_shared<BaseObject *>(nullptr)) {}
+
+        template <typename Functor>
+        void SetVisitor(Functor &&f)
+        {
+            visitor_ = std::forward<Functor>(f);
+        }
+        const auto &GetRefFieldVisitor() const { return visitor_; }
+        void SetTraceRefFieldArgs(BaseObject *obj) { *closure_ = obj; }
+        const auto &GetClosure() const { return closure_; }
+
+    private:
+        common::RefFieldVisitor visitor_;
+        std::shared_ptr<BaseObject *> closure_;
+    };
+    virtual TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) = 0;
+    virtual void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) = 0;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     virtual void TraceObjectXRef(BaseObject* obj, WorkStack& workStack)
     {
@@ -285,8 +293,6 @@ protected:
     inline void SetGCReason(const GCReason reason) { gcReason_ = reason; }
 
     Taskpool *GetThreadPool() const { return collectorResources_.GetThreadPool(); }
-    // enum all roots.
-    void EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet);
 
     // let finalizerProcessor process finalizers, and mark resurrected if in stw gc
     virtual void ProcessWeakReferences() {}
@@ -300,11 +306,12 @@ protected:
     }
 
     void MergeAllocBufferRoots(WorkStack& workStack);
-    void EnumerateAllRoots(WorkStack& workStack);
-    void PushRootInWorkStack(RootSet *dst, RootSet *src);
 
-    void TraceRoots(WorkStack& workStack);
-    void Remark(WorkStack& workStack);
+    bool PushRootToWorkStack(RootSet *workStack, BaseObject *obj);
+    void PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots);
+    void TraceRoots(const CArrayList<BaseObject *> &collectedRoots);
+    void Remark();
+
     bool MarkSatbBuffer(WorkStack& workStack);
 
     // concurrent marking.
@@ -317,7 +324,6 @@ private:
     void MarkAwaitingJitFort();
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;
-    void EnumStaticRoots(RootSet& rootSet) const;
 };
 } // namespace common
 

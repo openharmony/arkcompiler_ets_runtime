@@ -126,4 +126,49 @@ size_t HeuristicGCPolicy::GetNativeHeapThreshold() const
     return nativeHeapThreshold_.load(std::memory_order_relaxed);
 }
 
+void HeuristicGCPolicy::RecordAliveSizeAfterLastGC(size_t aliveBytes)
+{
+    aliveSizeAfterGC_ = aliveBytes;
+}
+
+void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
+{
+    if (isBackground) {
+        size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+        if (allocated > aliveSizeAfterGC_ && (allocated - aliveSizeAfterGC_) > BACKGROUND_LIMIT &&
+            allocated > MIN_BACKGROUND_GC_SIZE) {
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_BACKGROUND, true);
+        }
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::BACKGROUND);
+    } else {
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
+    }
+}
+
+bool HeuristicGCPolicy::CheckAndTriggerHintGC(MemoryReduceDegree degree)
+{
+    if (UNLIKELY_CC(ShouldRestrainGCOnStartup())) {
+        return false;
+    }
+    size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+
+    size_t stepAfterLastGC = 0;
+    if (degree == MemoryReduceDegree::LOW) {
+        stepAfterLastGC = LOW_DEGREE_STEP_IN_IDLE;
+    } else {
+        stepAfterLastGC = HIGH_DEGREE_STEP_IN_IDLE;
+    }
+    if (aliveSizeAfterGC_ == 0) {
+        return false;
+    }
+    size_t expectHeapSize = std::max(static_cast<size_t>(aliveSizeAfterGC_ * IDLE_MIN_INC_RATIO),
+        aliveSizeAfterGC_ + stepAfterLastGC);
+    if (expectHeapSize < allocated) {
+        DLOG(ALLOC, "request heu gc by hint: allocated %zu, expectHeapSize %zu, aliveSizeAfterGC %zu",
+             allocated, expectHeapSize, aliveSizeAfterGC_);
+        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_HINT, true);
+        return true;
+    }
+    return false;
+}
 } // namespace common
