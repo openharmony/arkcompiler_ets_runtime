@@ -410,7 +410,7 @@ void JSPandaFile::ClearNameMap()
     }
 }
 
-void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint32_t>> &indexes)
+void JSPandaFile::GetClassAndMethodIndexes(ClassTranslateWork &indexes)
 {
     // Each thread gets 128 classes each time. If less than 128, it gets 2 classes.
     indexes.clear();
@@ -419,8 +419,7 @@ void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint3
         return;
     }
     uint32_t cnts = ASYN_TRANSLATE_CLSSS_COUNT;
-    uint32_t minCount = (common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1) * ASYN_TRANSLATE_CLSSS_COUNT;
-    if (numClasses_ - classIndex_ < minCount) {
+    if (numClasses_ - classIndex_ < ASYN_TRANSLATE_CLSSS_COUNT) {
         cnts = ASYN_TRANSLATE_CLSSS_MIN_COUNT;
     }
     for (uint32_t i = 0; i < cnts; i++) {
@@ -446,15 +445,15 @@ void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint3
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    jsPandaFile_->TranslateClass(thread_, *methodNamePtr_);
+    jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_);
     jsPandaFile_->ReduceTaskCount();
     return true;
 }
 
-void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
+void JSPandaFile::TranslateClassInMainThread(JSThread *thread, const CString &methodName)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClass", "");
-    std::vector<std::pair<uint32_t, uint32_t>> indexes;
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClassInMainThread", "");
+    ClassTranslateWork indexes;
     indexes.reserve(ASYN_TRANSLATE_CLSSS_COUNT);
     do {
         GetClassAndMethodIndexes(indexes);
@@ -465,11 +464,32 @@ void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
     } while (!indexes.empty());
 }
 
-void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr)
+void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &methodName,
+                                            CurClassTranslateWork &curTranslateWorks)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClassInSubThread", "");
+    ClassTranslateWork &indexes = curTranslateWorks.second;
+    indexes.reserve(ASYN_TRANSLATE_CLSSS_COUNT);
+    do {
+        GetClassAndMethodIndexes(indexes);
+        uint32_t size = indexes.size();
+        for (uint32_t i = 0; i < size; i++) {
+            // Stop the ongoning translating work, and leave it to the main thead to avoid waiting too long.
+            if (waitingFinish_.load(std::memory_order_acquire)) {
+                curTranslateWorks.first = i;
+                return;
+            }
+            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+        }
+    } while (!indexes.empty());
+}
+
+void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
+                                           CurClassTranslateWork &curTranslateWorks)
 {
     IncreaseTaskCount();
     common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr));
+        std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks));
 }
 
 void JSPandaFile::IncreaseTaskCount()
@@ -482,6 +502,7 @@ void JSPandaFile::WaitTranslateClassTaskFinished()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
     while (runningTaskCount_ > 0) {
+        waitingFinish_.store(true, std::memory_order_release);
         waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
     }
 }
@@ -508,14 +529,36 @@ void JSPandaFile::SetAllMethodLiteralToMap()
     }
 }
 
+void JSPandaFile::CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
+                                               const AllClassTranslateWork &remainingTranslateWorks)
+{
+    WaitTranslateClassTaskFinished();
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "TranslateRemainingClasses", "");
+    for (const auto &[startIndex, indexes]: remainingTranslateWorks) {
+        auto size = indexes.size();
+        for (uint32_t i = startIndex; i < size; i++) {
+            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+        }
+    }
+}
+
 void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
 {
+    auto numThreads = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    AllClassTranslateWork remainingTranslateWorks(numThreads);
     const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
-    for (uint32_t i = 0; i < common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
-        PostInitializeMethodTask(thread, methodNamePtr);
+    bool useTaskpool = numClasses_ >= USING_TASKPOOL_MIN_CLASS_COUNT;
+    if LIKELY(useTaskpool) {
+        for (uint32_t i = 0; i < numThreads; i++) {
+            PostInitializeMethodTask(thread, methodNamePtr, remainingTranslateWorks[i]);
+        }
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
+        TranslateClassInMainThread(thread, methodName);
+        CheckOngoingClassTranslating(thread, methodName, remainingTranslateWorks);
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
+    } else {
+        TranslateClassInMainThread(thread, methodName);
     }
-    TranslateClass(thread, methodName);
-    WaitTranslateClassTaskFinished();
     SetAllMethodLiteralToMap();
 }
 

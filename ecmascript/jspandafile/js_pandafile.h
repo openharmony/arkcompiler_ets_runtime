@@ -98,16 +98,22 @@ public:
     static constexpr int32_t PF_OFFSET = 0;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_COUNT = 128;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_MIN_COUNT = 2;
+    static constexpr uint32_t USING_TASKPOOL_MIN_CLASS_COUNT = 4;
     static constexpr uint32_t DEFAULT_MAIN_METHOD_INDEX = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
+    using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
+    using CurClassTranslateWork = std::pair<uint32_t, ClassTranslateWork>;
+    using AllClassTranslateWork = std::vector<CurClassTranslateWork>;
+
     class TranslateClassesTask : public common::Task {
     public:
         TranslateClassesTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile,
-            const std::shared_ptr<CString> &methodNamePtr)
-            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr) {};
+                             const std::shared_ptr<CString> &methodNamePtr, CurClassTranslateWork &curTranslateWorks)
+            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr),
+              curTranslateWorks_(curTranslateWorks){};
         ~TranslateClassesTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -118,6 +124,7 @@ public:
         JSThread *thread_ {nullptr};
         JSPandaFile *jsPandaFile_ {nullptr};
         std::shared_ptr<CString> methodNamePtr_;
+        CurClassTranslateWork &curTranslateWorks_;
     };
 
     inline const CString &GetJSPandaFileDesc() const
@@ -500,9 +507,16 @@ private:
 
     void IncreaseTaskCount();
 
-    void TranslateClass(JSThread *thread, const CString &methodName);
+    void TranslateClassInMainThread(JSThread *thread, const CString &methodName);
 
-    void PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr);
+    void TranslateClassInSubThread(JSThread *thread, const CString &methodName,
+                                   CurClassTranslateWork &curTranslateWorks);
+
+    void CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
+                                      const AllClassTranslateWork &remainingTranslateWorks);
+
+    void PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
+                                  CurClassTranslateWork &curTranslateWorks);
 
     void ReduceTaskCount();
 
@@ -548,6 +562,8 @@ private:
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
     friend class JSPandaFileSnapshot;
+    // This tag shows if main thread is waiting for the sub-threads to finish translate class tasks.
+    std::atomic<bool> waitingFinish_ {false};
 };
 }  // namespace ecmascript
 }  // namespace panda
