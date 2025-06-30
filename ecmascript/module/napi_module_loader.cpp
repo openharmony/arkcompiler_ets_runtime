@@ -21,18 +21,18 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
 namespace panda::ecmascript {
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
                                                                             CString &modulePath,
-                                                                            CString &abcFilePath,
-                                                                            bool isHybrid)
+                                                                            CString &abcFilePath)
 {
     LOG_ECMA(INFO) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
                    "," << "modulePath:" << modulePath;
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (!modulePath.empty()) {
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
-            abcFilePath, requestPath, false, isHybrid, ExecuteTypes::NAPI);
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile<isHybrid>(thread,
+            abcFilePath, requestPath, false, ExecuteTypes::NAPI);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;
@@ -48,11 +48,15 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
                                                                  curJsPandaFile.get());
     return nameSp;
 }
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo<ForHybridApp::Normal>(EcmaVM *vm,
+    CString &requestPath, CString &modulePath, CString &abcFilePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(EcmaVM *vm,
+    CString &requestPath, CString &modulePath, CString &abcFilePath);
 
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
                                                               const CString& moduleName,
-                                                              CString& abcFilePath,
-                                                              bool isHybrid)
+                                                              CString& abcFilePath)
 {
     JSThread *thread = vm->GetJSThread();
     CString path = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG);
@@ -61,22 +65,27 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
         path += moduleName;
         CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path, requestPath);
         LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadFilePathWithinModule: Concated recordName " << recordNameStr;
-        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
+        return LoadModuleNameSpaceFromFile<isHybrid>(thread, recordNameStr, abcFilePath);
     }
     CString abcModuleName = ModulePathHelper::GetModuleNameWithBaseFile(abcFilePath);
     CString srcPrefix = base::ConcatToCString(abcModuleName, ModulePathHelper::PHYCICAL_FILE_PATH);
     path += abcModuleName;
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
-        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, path, isHybrid);
+        return LoadFilePathWithinModule<isHybrid>(thread, abcFilePath, srcPrefix, requestPath, path);
     }
-    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, path, abcFilePath, isHybrid);
+    return LoadModuleNameSpaceWithModuleInfo<isHybrid>(vm, requestPath, path, abcFilePath);
 }
 
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(EcmaVM *vm,
+    CString requestPath, const CString& moduleName, CString& abcFilePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(EcmaVM *vm,
+    CString requestPath, const CString& moduleName, CString& abcFilePath);
+
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm,
                                                               CString requestPath,
-                                                              CString modulePath,
-                                                              bool isHybrid)
+                                                              CString modulePath)
 {
     JSThread *thread = vm->GetJSThread();
     CString moduleName = ModulePathHelper::GetModuleNameWithPath(modulePath);
@@ -84,26 +93,35 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm,
     CString srcPrefix = base::ConcatToCString(moduleName, ModulePathHelper::PHYCICAL_FILE_PATH);
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
-        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath, isHybrid);
+        return LoadFilePathWithinModule<isHybrid>(thread, abcFilePath, srcPrefix, requestPath, modulePath);
     }
-    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, modulePath, abcFilePath, isHybrid);
+    return LoadModuleNameSpaceWithModuleInfo<isHybrid>(vm, requestPath, modulePath, abcFilePath);
 }
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Normal>(EcmaVM *vm,
+    CString requestPath, CString modulePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace<ForHybridApp::Hybrid>(EcmaVM *vm,
+    CString requestPath, CString modulePath);
 
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thread, const CString& abcFilePath,
-    const CString& srcPrefix, const CString& requestPath, const CString& modulePath, bool isHybrid)
+    const CString& srcPrefix, const CString& requestPath, const CString& modulePath)
 {
     if (requestPath.size() > srcPrefix.size()) {
         // Sub after moduleName/src/main/
         CString fileName = requestPath.substr(srcPrefix.size() + 1);
         CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, modulePath, fileName);
         LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadFilePathWithinModule: Concated recordName " << recordNameStr;
-        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath, isHybrid);
+        return LoadModuleNameSpaceFromFile<isHybrid>(thread, recordNameStr, abcFilePath);
     } else {
         CString msg = "cannot find record '" + requestPath + "' in basefileName " + abcFilePath + "," +
             "from napi load module";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 }
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule<ForHybridApp::Normal>(JSThread *thread,
+    const CString& abcFilePath, const CString& srcPrefix, const CString& requestPath, const CString& modulePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule<ForHybridApp::Hybrid>(JSThread *thread,
+    const CString& abcFilePath, const CString& srcPrefix, const CString& requestPath, const CString& modulePath);
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
     const CString &requestPath, const CString &modulePath, const JSPandaFile *pandaFile)
@@ -119,15 +137,15 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
     return LoadModuleNameSpaceFromFile(thread, entryPoint, abcFilePath);
 }
 
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
-    JSThread *thread, const CString &entryPoint, const CString &abcFilePath, bool isHybrid)
+    JSThread *thread, const CString &entryPoint, const CString &abcFilePath)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile<isHybrid>(thread,
                                                            abcFilePath,
                                                            entryPoint,
                                                            false,
-                                                           isHybrid,
                                                            ExecuteTypes::NAPI);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (jsPandaFile == nullptr) {
@@ -150,6 +168,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
     return ecmascript::NapiModuleLoader::GetModuleNameSpace(
         thread, entryPoint, abcFilePath);
 }
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile<ForHybridApp::Normal>(
+    JSThread *thread, const CString &entryPoint, const CString &abcFilePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile<ForHybridApp::Hybrid>(
+    JSThread *thread, const CString &entryPoint, const CString &abcFilePath);
 
 JSHandle<JSTaggedValue> NapiModuleLoader::GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
     const CString &abcFilePath)
