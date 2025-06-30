@@ -181,6 +181,9 @@ public:
             size_t size = GetAllocatedBytes();
             double cachedRatio = 1 - BaseRuntime::GetInstance()->GetHeapParam().heapUtilization;
             size_t targetCachedSize = static_cast<size_t>(size * cachedRatio);
+            if (targetCachedSize > maxGarbageCacheSize_) {
+                targetCachedSize = maxGarbageCacheSize_;
+            }
             return regionManager_.ReleaseGarbageRegions(targetCachedSize);
         }
     }
@@ -390,6 +393,7 @@ private:
 
     FromSpace fromSpace_;
     ToSpace toSpace_;
+    uint64_t maxGarbageCacheSize_ { 16 * MB };
 };
 
 using RegionalHeap = RegionSpace;

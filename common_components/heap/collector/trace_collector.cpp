@@ -684,7 +684,7 @@ void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, si
 
 void TraceCollector::ReclaimGarbageMemory(GCReason reason)
 {
-    if (reason == GC_REASON_OOM) {
+    if (reason != GC_REASON_YOUNG) {
         Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(true);
     } else {
         Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(false);

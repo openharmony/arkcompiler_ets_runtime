@@ -87,6 +87,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
 #else
     "--enable-cmc-gc:                      Enable cmc gc. Default: 'false'\n"
 #endif
+    "--cmc-max-garbage-cache-size:         Max size of cmc gc garbage cache.. Default: 16M\n"
     "--enable-cmc-gc-concurrent-root-marking:         Enable concurrent root marking in cmc gc. Default: 'true'\n"
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
@@ -258,6 +259,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-loading-stubs-log", required_argument, nullptr, OPTION_ENABLE_LOADING_STUBS_LOG},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-cmc-gc", required_argument, nullptr, OPTION_ENABLE_CMC_GC},
+        {"cmc-max-garbage-cache-size", required_argument, nullptr, OPTION_MAX_GARBAGE_CACHE_SIZE},
         {"enable-cmc-gc-concurrent-root-marking", required_argument, nullptr,
          OPTION_ENABLE_CMC_GC_CONCURRENT_ROOT_MARKING},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
@@ -621,6 +623,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableCMCGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_MAX_GARBAGE_CACHE_SIZE:
+                ret = ParseUint64Param("cmc-max-garbage-cache-size", &argUInt64);
+                if (ret) {
+                    SetCMCMaxGarbageCacheSize(argUInt64);
                 } else {
                     return false;
                 }
@@ -1740,6 +1750,11 @@ JSRuntimeOptions::JSRuntimeOptions()
 void JSRuntimeOptions::SetConfigHeapSize(size_t configHeapSize)
 {
     common::BaseRuntimeParam::SetConfigHeapSize(param_, configHeapSize);
+}
+
+void JSRuntimeOptions::SetConfigMaxGarbageCacheSize(uint64_t maxGarbageCacheSize)
+{
+    common::BaseRuntimeParam::SetMaxGarbageCacheSize(param_, maxGarbageCacheSize);
 }
 
 void JSRuntimeOptions::SetMemConfigProperty(const std::string &configProperty)

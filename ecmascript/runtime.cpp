@@ -86,6 +86,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             LOG_ECMA(INFO) << "start run with cmc gc";
             // SetConfigHeapSize for cmc gc, pc and persist config may change heap size.
             const_cast<JSRuntimeOptions &>(options).SetConfigHeapSize(MemMapAllocator::GetInstance()->GetCapacity());
+            const_cast<JSRuntimeOptions &>(options).SetConfigMaxGarbageCacheSize(g_maxGarbageCacheSize);
             common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
         }
         DaemonThread::CreateNewInstance();
@@ -172,6 +173,8 @@ void Runtime::InitGCConfig(const JSRuntimeOptions &options)
     g_isEnableCMCGC = IsEnableCMCGC(defaultValue);
     if (g_isEnableCMCGC) {
         g_maxRegularHeapObjectSize = 32_KB;
+        uint64_t defaultSize = options.GetCMCMaxGarbageCacheSize();
+        g_maxGarbageCacheSize = GetCMCMaxGarbageCacheSize(defaultSize);
     }
     g_isEnableCMCGCConcurrentRootMarking = options.IsEnableCMCGCConcurrentRootMarking();
 }

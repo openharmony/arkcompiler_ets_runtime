@@ -271,6 +271,7 @@ void RegionSpace::Init(const RuntimeParam& param)
     MemoryMap::Option opt = MemoryMap::DEFAULT_OPTIONS;
     opt.tag = "region_heap";
     size_t heapSize = param.heapParam.heapSize * KB;
+    maxGarbageCacheSize_ = param.gcParam.maxGarbageCacheSize;
     size_t totalSize = RegionManager::GetHeapMemorySize(heapSize);
     size_t regionNum = RegionManager::GetHeapUnitCount(heapSize);
 #if defined(COMMON_ASAN_SUPPORT)
