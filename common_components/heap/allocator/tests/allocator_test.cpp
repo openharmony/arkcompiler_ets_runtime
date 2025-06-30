@@ -43,6 +43,7 @@ public:
 #ifndef NDEBUG
     bool IsHeapObject(HeapAddress) const override { return false; }
 #endif
+    void FeedHungryBuffers() override {}
 };
 class AllocatorTest : public common::test::BaseTestWithScope {
 };
