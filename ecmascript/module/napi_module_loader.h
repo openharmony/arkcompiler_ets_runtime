@@ -20,39 +20,35 @@
 namespace panda::ecmascript {
 class NapiModuleLoader {
 public:
-    template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
                                                        const CString& moduleName,
-                                                       CString &abcFilePath);
-    
-    template<ForHybridApp isHybrid = ForHybridApp::Normal>
+                                                       CString &abcFilePath,
+                                                       bool isHybrid = false);
     static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm,
                                                        CString requestPath,
-                                                       CString modulePath);
+                                                       CString modulePath,
+                                                       bool isHybrid = false);
 
     static JSHandle<JSTaggedValue> GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
                                                       const CString &abcFilePath);
-
-    template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
-                                                               const CString &abcFilePath);
+                                                               const CString &abcFilePath, bool isHybrid = false);
 private:
-    template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm,
                                                                      CString &requestPath,
                                                                      CString &modulePath,
-                                                                     CString &abcFilePath);
-    
+                                                                     CString &abcFilePath,
+                                                                     bool isHybrid = false);
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
                                                                const CString &requestPath,
                                                                const CString &modulePath,
                                                                const JSPandaFile *pandaFile);
-    
-    template<ForHybridApp isHybrid = ForHybridApp::Normal>
+                                                               
     static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, const CString& abcFilePath,
                                                             const CString& srcPrefix,
                                                             const CString& requestPath,
-                                                            const CString& modulePath);
+                                                            const CString& modulePath,
+                                                            bool isHybrid = false);
 };
 }
 
