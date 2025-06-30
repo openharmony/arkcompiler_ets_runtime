@@ -17,7 +17,7 @@
 #define ECMASCRIPT_BASE_CONFIG_H
 
 #include "common_components/base/config.h"
-#include "base/common.h"
+#include "common_interfaces/base/common.h"
 #include <cstdint>
 
 namespace panda::ecmascript {
