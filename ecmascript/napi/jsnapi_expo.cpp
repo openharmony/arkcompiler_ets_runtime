@@ -6150,10 +6150,9 @@ void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
     ecmascript::ModuleLogger::SetModuleLoggerTask(vm);
 }
 
-void JSNApi::SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc)
+void JSNApi::SetReleaseSecureMemCallback(ReleaseSecureMemCallback releaseSecureMemFunc)
 {
-    CROSS_THREAD_CHECK(vm);
-    // register release sucere mem func to ark_js_runtime
+    // register release secure mem func to ark_js_runtime
     ecmascript::Runtime::GetInstance()->SetReleaseSecureMemCallback(releaseSecureMemFunc);
 }
 

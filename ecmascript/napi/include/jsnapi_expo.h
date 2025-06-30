@@ -1799,7 +1799,7 @@ public:
     static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
-    static void SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc);
+    static void SetReleaseSecureMemCallback(ReleaseSecureMemCallback releaseSecureMemFunc);
     static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void PandaFileSerialize(const EcmaVM *vm);

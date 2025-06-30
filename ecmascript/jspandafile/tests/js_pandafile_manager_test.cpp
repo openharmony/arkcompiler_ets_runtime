@@ -52,6 +52,13 @@ public:
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
+    static void FakeReleaseSecureMemCallback(void* mapper)
+    {
+        if (mapper != nullptr) {
+            *reinterpret_cast<uint8_t *>(mapper) = 10; // 10: random number
+        }
+    }
+
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
@@ -384,5 +391,45 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFileByBufferFiles)
     abcBufferCache->DeleteAbcBufferFromCache(CString(fileName));
     jsPandaFile = pfManager->LoadJSPandaFile(thread, CString(fileName), "");
     EXPECT_TRUE(jsPandaFile != nullptr);
+}
+
+HWTEST_F_L0(JSPandaFileManagerTest, ReleaseSecureMem)
+{
+    JSNApi::SetReleaseSecureMemCallback(FakeReleaseSecureMemCallback);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__JSPandaFileManagerTest3.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    uint8_t *fileMapper = new uint8_t[1];
+    *fileMapper = 1;
+    uint8_t *secondFileMapper = new uint8_t[1];
+    uint8_t *buffer = new uint8_t[1];
+    pf->SetFileMapper(fileMapper);
+    {
+        // first fileMapper doesn't need to release
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, pf.get(), reinterpret_cast<void *>(fileMapper)); // 3: random number
+    }
+    EXPECT_EQ(*fileMapper, 1);
+    {
+        // second secondFileMapper need to release
+        AbcBufferCacheScope bufferScope(
+            thread, CString(fileName), buffer, 3, pf.get(), reinterpret_cast<void *>(secondFileMapper));
+    }
+    EXPECT_EQ(*secondFileMapper, 10);
+    // when pandafile released, release corresponding fileMapper.
+    EXPECT_EQ(*fileMapper, 1);
+    pf.reset();
+    EXPECT_EQ(*fileMapper, 10);
+
+    delete[] buffer;
+    delete[] fileMapper;
+    delete[] secondFileMapper;
 }
 }  // namespace panda::test
