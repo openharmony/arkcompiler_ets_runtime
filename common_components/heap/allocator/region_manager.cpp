@@ -247,11 +247,13 @@ static const char *RegionDescRegionTypeToString(RegionDesc::RegionType type)
     static constexpr const char *enumStr[] = {
         [static_cast<uint8_t>(RegionDesc::RegionType::FREE_REGION)] = "FREE_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::THREAD_LOCAL_REGION)] = "THREAD_LOCAL_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION)] = "THREAD_LOCAL_OLD_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_FULL_REGION)] = "RECENT_FULL_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::FROM_REGION)] = "FROM_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::LONE_FROM_REGION)] = "LONE_FROM_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::EXEMPTED_FROM_REGION)] = "EXEMPTED_FROM_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::TO_REGION)] = "TO_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::OLD_REGION)] = "OLD_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::FULL_PINNED_REGION)] = "FULL_PINNED_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_PINNED_REGION)] = "RECENT_PINNED_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::FIXED_PINNED_REGION)] = "FIXED_PINNED_REGION",
@@ -264,6 +266,7 @@ static const char *RegionDescRegionTypeToString(RegionDesc::RegionType type)
         [static_cast<uint8_t>(RegionDesc::RegionType::READ_ONLY_REGION)] = "READ_ONLY_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::APPSPAWN_REGION)] = "APPSPAWN_REGION",
     };
+    ASSERT_LOGF(type < RegionDesc::RegionType::END_OF_REGION_TYPE, "Invalid region type");
     return enumStr[static_cast<uint8_t>(type)];
 }
 

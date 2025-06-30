@@ -37,7 +37,7 @@ Address HeapAllocator::AllocateInNonmove(size_t size, LanguageType language)
 
 Address HeapAllocator::AllocateInOld(size_t size, LanguageType language)
 {
-    auto address = HeapManager::Allocate(size);
+    auto address = HeapManager::Allocate(size, AllocType::MOVEABLE_OLD_OBJECT);
     BaseObject::Cast(address)->SetLanguageType(language);
     return address;
 }
@@ -68,6 +68,11 @@ uintptr_t HeapAllocator::AllocateLargeJitFortRegion(size_t size, LanguageType la
 Address HeapAllocator::AllocateNoGC(size_t size)
 {
     return HeapManager::Allocate(size, AllocType::MOVEABLE_OBJECT, false);
+}
+
+Address HeapAllocator::AllocateOldNoGC(size_t size)
+{
+    return HeapManager::Allocate(size, AllocType::MOVEABLE_OLD_OBJECT, false);
 }
 
 Address HeapAllocator::AllocatePinNoGC(size_t size)

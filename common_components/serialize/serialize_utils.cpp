@@ -25,6 +25,7 @@ SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
     RegionDesc::RegionType type = info->GetRegionType();
     switch (type) {
         case RegionDesc::RegionType::THREAD_LOCAL_REGION:
+        case RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION:
         case RegionDesc::RegionType::RECENT_FULL_REGION:
         case RegionDesc::RegionType::FROM_REGION:
         case RegionDesc::RegionType::LONE_FROM_REGION:

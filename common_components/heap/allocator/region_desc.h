@@ -447,6 +447,7 @@ public:
         FREE_REGION,
 
         THREAD_LOCAL_REGION,
+        THREAD_LOCAL_OLD_REGION,
         RECENT_FULL_REGION,
         FROM_REGION,
         LONE_FROM_REGION,
@@ -473,6 +474,8 @@ public:
         GARBAGE_REGION,
         READ_ONLY_REGION,
         APPSPAWN_REGION,
+
+        END_OF_REGION_TYPE
     };
 
     static void Initialize(size_t nUnit, uintptr_t regionInfoAddr, uintptr_t heapAddress)
@@ -594,8 +597,8 @@ public:
 
     void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
-    void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeTrace(const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
@@ -777,12 +780,14 @@ public:
     bool IsInRecentSpace() const
     {
         RegionType type = GetRegionType();
+        // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION;
     }
 
     bool IsInYoungSpace() const
     {
         RegionType type = GetRegionType();
+        // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION ||
             type == RegionType::FROM_REGION || type == RegionType::EXEMPTED_FROM_REGION;
     }
@@ -802,7 +807,7 @@ public:
     bool IsInOldSpace() const
     {
         RegionType type = GetRegionType();
-        return type == RegionType::OLD_REGION;
+        return type == RegionType::OLD_REGION || type == RegionType::THREAD_LOCAL_OLD_REGION;
     }
 
     int32_t IncRawPointerObjectCount()
@@ -873,7 +878,8 @@ public:
     
     bool IsThreadLocalRegion() const
     {
-        return GetRegionType()  == RegionType::THREAD_LOCAL_REGION;
+        return GetRegionType() == RegionType::THREAD_LOCAL_REGION ||
+               GetRegionType() == RegionType::THREAD_LOCAL_OLD_REGION;
     }
 
     bool IsPinnedRegion() const
