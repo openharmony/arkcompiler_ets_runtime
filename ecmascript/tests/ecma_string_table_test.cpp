@@ -295,9 +295,11 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
 {
     EcmaVM* vm = thread->GetEcmaVM();
     auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
-    uint32_t key1 = 0x11111111;
-    uint32_t key2 = 0x11110000;
-    uint32_t key3 = 0x11110010;
+    constexpr uint32_t ROOT_SIZE = common::TrieMapConfig::ROOT_BIT;
+    constexpr uint32_t ROOT_ID = 5;
+    uint32_t key1 = ((0b11111001) << ROOT_SIZE) | ROOT_ID;
+    uint32_t key2 = ((0b11000000) << ROOT_SIZE) | ROOT_ID;
+    uint32_t key3 = ((0b11010000) << ROOT_SIZE) | ROOT_ID;
     JSHandle<EcmaString> value1(thread, *vm->GetFactory()->NewFromASCII("value1"));
     JSHandle<EcmaString> value2(thread, *vm->GetFactory()->NewFromASCII("value2"));
     JSHandle<EcmaString> value3(thread, *vm->GetFactory()->NewFromASCII("value3"));
@@ -335,15 +337,15 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
       └── Indirect (----)
             Children: [0, 1]
             └── Child[0]:
-            └── Entry [key=286326784, value=0x2bafc81e50]
+            └── Entry [key2, value=0x2bafc81e50]
             └── Child[2]:
-            └── Entry [key=286326800, value=0x2bafc01dd0]
+            └── Entry [key3, value=0x2bafc01dd0]
                   └── Overflow ->  └── Entry [key=286326800, value=0x2bafc01db8]
       └── Child[1]:
-            └── Entry [key=286331153, value=0x2bafc81e38]
+            └── Entry [key1, value=0x2bafc81e38]
     */
     // Verify structure after expansion
-    common::HashTrieMapIndirect* root = map->GetRoot().load();
+    common::HashTrieMapIndirect* root = map->GetRoot(ROOT_ID).load();
     ASSERT_TRUE(root->children_[0x0].load() != nullptr); // Check first collision level
 
     common::HashTrieMapIndirect* level1 = root->children_[0x0].

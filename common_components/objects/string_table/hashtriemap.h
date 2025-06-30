@@ -28,8 +28,12 @@ class TaggedObject;
 namespace common {
 class TrieMapConfig {
 public:
+    static constexpr uint32_t ROOT_BIT = 11U;
+    static constexpr uint32_t ROOT_SIZE = (1 << ROOT_BIT);
+    static constexpr uint32_t ROOT_BIT_MASK = ROOT_SIZE - 1U;
+
     static constexpr uint32_t N_CHILDREN_LOG2 = 3U;
-    static constexpr uint32_t TOTAL_HASH_BITS = 32U;
+    static constexpr uint32_t TOTAL_HASH_BITS = 32U - ROOT_BIT;
 
     static constexpr uint32_t N_CHILDREN = 1 << N_CHILDREN_LOG2;
     static constexpr uint32_t N_CHILDREN_MASK = N_CHILDREN - 1U;
@@ -160,16 +164,88 @@ public:
     using Indirect = HashTrieMapIndirect;
     using Entry = HashTrieMapEntry;
     using LoadResult = HashTrieMapLoadResult;
-    HashTrieMap()
-    {
-        root_.store(new Indirect(nullptr), std::memory_order_relaxed);
-    }
+    HashTrieMap() {}
 
     ~HashTrieMap()
     {
         Clear();
     };
+    
+#if ECMASCRIPT_ENABLE_TRACE_STRING_TABLE
+    class StringTableTracer {
+    public:
+        static constexpr uint32_t DUMP_THRESHOLD = 40000;
+        static StringTableTracer& GetInstance()
+        {
+            static StringTableTracer tracer;
+            return tracer;
+        }
+        
+        NO_COPY_SEMANTIC_CC(StringTableTracer);
+        NO_MOVE_SEMANTIC_CC(StringTableTracer);
+    
+        void TraceFindSuccess(uint32_t hashShift)
+        {
+            totalDepth_.fetch_add(hashShift / TrieMapConfig::N_CHILDREN_LOG2 + 1, std::memory_order_relaxed);
+            uint64_t currentSuccess = totalSuccessNum_.fetch_add(1, std::memory_order_relaxed) + 1;
 
+            if (currentSuccess >= lastDumpPoint_.load(std::memory_order_relaxed) + DUMP_THRESHOLD) {
+                DumpWithLock(currentSuccess);
+            }
+        }
+    
+        void TraceFindFail()
+        {
+            totalFailNum_.fetch_add(1, std::memory_order_relaxed);
+        }
+    
+    private:
+        StringTableTracer() = default;
+    
+        void DumpWithLock(uint64_t triggerPoint)
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            
+            if (triggerPoint >= lastDumpPoint_.load(std::memory_order_relaxed) + DUMP_THRESHOLD) {
+                lastDumpPoint_ = triggerPoint;
+                DumpInfo();
+            }
+        }
+    
+        void DumpInfo() const
+        {
+            uint64_t depth = totalDepth_.load(std::memory_order_relaxed);
+            uint64_t success = totalSuccessNum_.load(std::memory_order_relaxed);
+            uint64_t fail = totalFailNum_.load(std::memory_order_relaxed);
+            
+            double avgDepth = (static_cast<double>(depth) / success);
+    
+            LOG_COMMON(INFO) << "------------------------------------------------------------"
+                           << "---------------------------------------------------------";
+            LOG_COMMON(INFO) << "StringTableTotalSuccessFindNum: " << success;
+            LOG_COMMON(INFO) << "StringTableTotalInsertNum: " << fail;
+            LOG_COMMON(INFO) << "StringTableAverageDepth: " << avgDepth;
+            LOG_COMMON(INFO) << "------------------------------------------------------------"
+                           << "---------------------------------------------------------";
+        }
+    
+        std::mutex mu_;
+        std::atomic<uint64_t> totalDepth_{0};
+        std::atomic<uint64_t> totalSuccessNum_{0};
+        std::atomic<uint64_t> totalFailNum_{0};
+        std::atomic<uint64_t> lastDumpPoint_{0};
+    };
+    
+    void TraceFindSuccessDepth(uint32_t hashShift)
+    {
+        StringTableTracer::GetInstance().TraceFindSuccess(hashShift);
+    }
+
+    void TraceFindFail()
+    {
+        StringTableTracer::GetInstance().TraceFindFail();
+    }
+#endif
     template <typename ReadBarrier>
     LoadResult Load(ReadBarrier&& readBarrier, const uint32_t key, BaseString* value);
 
@@ -192,6 +268,32 @@ public:
     template <typename LoaderCallback, typename EqualsCallback>
     BaseString* LoadOrStoreForJit(ThreadHolder* holder, const uint32_t key, LoaderCallback loaderCallback,
                                   EqualsCallback equalsCallback);
+    
+    static void ProcessHash(uint32_t &hash)
+    {
+        hash >>= TrieMapConfig::ROOT_BIT;
+    }
+
+    Indirect* GetRootAndProcessHash(uint32_t &hash)
+    {
+        uint32_t rootID = (hash & TrieMapConfig::ROOT_BIT_MASK);
+        hash >>= TrieMapConfig::ROOT_BIT;
+        auto root = root_[rootID].load(std::memory_order_acquire);
+        if (root != nullptr) {
+            return root;
+        } else {
+            Indirect* expected = nullptr;
+            Indirect* newRoot = new Indirect(nullptr);
+            
+            if (root_[rootID].compare_exchange_strong(expected, newRoot,
+                                                      std::memory_order_release, std::memory_order_acquire)) {
+                return newRoot;
+            } else {
+                delete newRoot;
+                return expected;
+            }
+        }
+    }
 
     // All other threads have stopped due to the gc and Clear phases.
     // Therefore, the operations related to atoms in ClearNodeFromGc and Clear use std::memory_order_relaxed,
@@ -212,23 +314,28 @@ public:
     template <typename ReadBarrier>
     void Range(ReadBarrier&& readBarrier, bool& isValid)
     {
-        Iter(std::forward<ReadBarrier>(readBarrier), root_.load(std::memory_order_relaxed), isValid);
+        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
+            Iter(std::forward<ReadBarrier>(readBarrier), root_[i].load(std::memory_order_relaxed), isValid);
+        }
     }
 
     void Clear()
     {
-        // The atom replaces the root node with nullptr and obtains the old root node
-        Indirect* oldRoot = root_.exchange(nullptr, std::memory_order_relaxed);
-        if (oldRoot != nullptr) {
-            // Clear the entire HashTreeMap based on the Indirect destructor
-            delete oldRoot;
+        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
+            // The atom replaces the root node with nullptr and obtains the old root node
+            Indirect* oldRoot = root_[i].exchange(nullptr, std::memory_order_relaxed);
+            if (oldRoot != nullptr) {
+                // Clear the entire HashTreeMap based on the Indirect destructor
+                delete oldRoot;
+            }
         }
     }
 
     // ut used
-    const std::atomic<Indirect*>& GetRoot() const
+    const std::atomic<Indirect*>& GetRoot(uint32_t index) const
     {
-        return root_;
+        ASSERT(index < TrieMapConfig::ROOT_SIZE);
+        return root_[index];
     }
 
     void IncreaseInuseCount()
@@ -269,7 +376,7 @@ public:
         isSweeping = false;
         GetMutex().Unlock();
     }
-    std::atomic<Indirect*> root_;
+    std::atomic<Indirect*> root_[TrieMapConfig::ROOT_SIZE] = {};
 private:
     Mutex mu_;
     std::vector<Entry*> waitFreeEntries_{};
