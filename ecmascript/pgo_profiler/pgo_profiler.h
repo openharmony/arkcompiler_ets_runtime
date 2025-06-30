@@ -235,6 +235,7 @@ private:
                                      int32_t bcOffset,
                                      JSHClass* receiver,
                                      JSHClass* hold);
+    bool IsTypedArrayRootHClass(JSType jsType, OnHeapMode mode, JSHClass *receiver);
     bool AddBuiltinsInfo(ApEntityId abcId,
                          const CString& recordName,
                          EntityId methodId,

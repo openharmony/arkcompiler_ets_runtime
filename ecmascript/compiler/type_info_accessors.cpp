@@ -1338,6 +1338,8 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
             types_.emplace_back(temp.GetReceiverType());
         } else if (temp.GetReceiverType().IsGlobalsType()) {
             types_.emplace_back(temp.GetReceiverType());
+        } else if (temp.GetReceiverType().IsInvalidType()) {
+            types_.emplace_back(temp.GetReceiverType());
         }
     }
 }
@@ -1345,7 +1347,7 @@ void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 bool AccBuiltinObjTypeInfoAccessor::CheckDuplicatedBuiltinType(ProfileType newType) const
 {
     for (auto &type : types_) {
-        if (type.GetBuiltinsType() == newType.GetBuiltinsType()) {
+        if (type.IsBuiltinsType() && type.GetBuiltinsType() == newType.GetBuiltinsType()) {
             if (type.IsBuiltinsArray()) {
                 // When array elementsKind switch on, we should check elementsKind too.
                 return (type.GetElementsKindBeforeTransition() == newType.GetElementsKindBeforeTransition() &&

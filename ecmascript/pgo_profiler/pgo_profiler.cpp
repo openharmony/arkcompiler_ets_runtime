@@ -1761,6 +1761,27 @@ void PGOProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordN
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
 }
 
+bool PGOProfiler::IsTypedArrayRootHClass(JSType jsType, OnHeapMode mode, JSHClass *receiver)
+{
+    // The onHeap tag is used to describe the location where array data is stored.
+    // When the target of load/store is not an element, onHeap is none.
+    // At this point, it is necessary to query the hclass in two lists.
+    if (OnHeap::IsOnHeap(mode) || OnHeap::IsNone(mode)) {
+        JSHClass* rootHClass = GetCurrentGlobalEnv()->GetBuildinTypedArrayHClassByJSType(jsType, OnHeapMode::ON_HEAP);
+        if (rootHClass != nullptr && rootHClass == receiver) {
+            return true;
+        }
+    }
+    if (OnHeap::IsNotOnHeap(mode) || OnHeap::IsNone(mode)) {
+        JSHClass* rootHClass =
+            GetCurrentGlobalEnv()->GetBuildinTypedArrayHClassByJSType(jsType, OnHeapMode::NOT_ON_HEAP);
+        if (rootHClass != nullptr && rootHClass == receiver) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool PGOProfiler::AddBuiltinsInfo(
     ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
     JSHClass *transitionHClass, OnHeapMode onHeap, bool everOutOfBounds)
@@ -1776,7 +1797,9 @@ bool PGOProfiler::AddBuiltinsInfo(
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     } else if (receiver->IsTypedArray()) {
         JSType jsType = receiver->GetObjectType();
-        auto profileType = ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap, everOutOfBounds);
+        auto profileType = IsTypedArrayRootHClass(jsType, onHeap, receiver) ?
+                           ProfileType::CreateBuiltinsTypedArray(abcId, jsType, onHeap, everOutOfBounds) :
+                           ProfileType::CreateInvalid(abcId);
         PGOObjectInfo info(profileType);
         recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     } else {

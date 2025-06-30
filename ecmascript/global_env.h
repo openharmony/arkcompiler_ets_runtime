@@ -23,6 +23,7 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/global_env_fields.h"
+#include "ecmascript/on_heap.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
@@ -280,6 +281,19 @@ public:
 #undef GLOBAL_ENV_BUILTIN_ACCESSORS6_IMPL
 #undef GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL
 #undef GLOBAL_ENV_FIELD_ACCESSORS
+
+    GlobalEnvField GetBuildinTypedArrayHClassIndex(JSType jSType, OnHeapMode mode);
+
+    inline JSHClass* GetBuildinTypedArrayHClassByJSType(JSType jSType, OnHeapMode mode)
+    {
+        GlobalEnvField buildinTypedArrayHClassIndex = GetBuildinTypedArrayHClassIndex(jSType, mode);
+        if (buildinTypedArrayHClassIndex == GlobalEnvField::INVALID) {
+            return nullptr;
+        }
+        auto index = static_cast<size_t>(buildinTypedArrayHClassIndex);
+        JSHandle<JSTaggedValue> result = GetGlobalEnvObjectByIndex(index);
+        return reinterpret_cast<JSHClass *>(result->GetRawData());
+    }
 
     static constexpr size_t HEADER_SIZE = BaseEnv::DATA_OFFSET;
     static constexpr size_t DATA_SIZE = HEADER_SIZE + FINAL_INDEX * JSTaggedValue::TaggedTypeSize();

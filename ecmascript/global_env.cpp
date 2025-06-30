@@ -118,4 +118,77 @@ void GlobalEnv::ClearCache(JSThread *thread) const
 {
     builtins::StringSplitResultCache::ClearCache(thread, GetStringSplitResultCache());
 }
+
+GlobalEnvField GetBuildinTypedArrayHClassOnHeapIndex(JSType jSType)
+{
+    switch (jSType) {
+        case JSType::JS_INT8_ARRAY:
+            return GlobalEnvField::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_UINT8_ARRAY:
+            return GlobalEnvField::UINT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            return GlobalEnvField::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_INT16_ARRAY:
+            return GlobalEnvField::INT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_UINT16_ARRAY:
+            return GlobalEnvField::UINT16_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_INT32_ARRAY:
+            return GlobalEnvField::INT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_UINT32_ARRAY:
+            return GlobalEnvField::UINT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_FLOAT32_ARRAY:
+            return GlobalEnvField::FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_FLOAT64_ARRAY:
+            return GlobalEnvField::FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_BIGINT64_ARRAY:
+            return GlobalEnvField::BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        case JSType::JS_BIGUINT64_ARRAY:
+            return GlobalEnvField::BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
+        default:
+            return GlobalEnvField::INVALID;
+    }
+    return GlobalEnvField::INVALID;
+}
+
+GlobalEnvField GetBuildinTypedArrayHClassIndex(JSType jSType)
+{
+    switch (jSType) {
+        case JSType::JS_INT8_ARRAY:
+            return GlobalEnvField::INT8_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_UINT8_ARRAY:
+            return GlobalEnvField::UINT8_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            return GlobalEnvField::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_INT16_ARRAY:
+            return GlobalEnvField::INT16_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_UINT16_ARRAY:
+            return GlobalEnvField::UINT16_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_INT32_ARRAY:
+            return GlobalEnvField::INT32_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_UINT32_ARRAY:
+            return GlobalEnvField::UINT32_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_FLOAT32_ARRAY:
+            return GlobalEnvField::FLOAT32_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_FLOAT64_ARRAY:
+            return GlobalEnvField::FLOAT64_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_BIGINT64_ARRAY:
+            return GlobalEnvField::BIGINT64_ARRAY_ROOT_HCLASS_INDEX;
+        case JSType::JS_BIGUINT64_ARRAY:
+            return GlobalEnvField::BIGUINT64_ARRAY_ROOT_HCLASS_INDEX;
+        default:
+            return GlobalEnvField::INVALID;
+    }
+    return GlobalEnvField::INVALID;
+}
+
+GlobalEnvField GlobalEnv::GetBuildinTypedArrayHClassIndex(JSType jSType, OnHeapMode mode)
+{
+    if (OnHeap::IsOnHeap(mode)) {
+        return GetBuildinTypedArrayHClassOnHeapIndex(jSType);
+    } else if (OnHeap::IsNotOnHeap(mode)) {
+        return ::panda::ecmascript::GetBuildinTypedArrayHClassIndex(jSType);
+    } else {
+        return GlobalEnvField::INVALID;
+    }
+}
 }  // namespace panda::ecmascript
