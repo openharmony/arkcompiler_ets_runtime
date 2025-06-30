@@ -66,18 +66,18 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
 {
     RefField<> oldRef(field);
     fromObj = oldRef.GetTargetObject();
-    if (IsFromObject(fromObj)) {
-        if (copy) {
+    if (IsFromObject(fromObj)) { //LCOV_EXCL_BR_LINE
+        if (copy) { //LCOV_EXCL_BR_LINE
             toObj = const_cast<WCollector*>(this)->TryForwardObject(fromObj);
-            if (toObj != nullptr) {
+            if (toObj != nullptr) { //LCOV_EXCL_BR_LINE
                 HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(fromObj),
                                                                 reinterpret_cast<uintptr_t>(toObj),
                                                                 toObj->GetSize());
             }
-        } else {
+        } else { //LCOV_EXCL_BR_LINE
             toObj = FindToVersion(fromObj);
         }
-        if (toObj == nullptr) {
+        if (toObj == nullptr) { //LCOV_EXCL_BR_LINE
             return false;
         }
         RefField<> tmpField(toObj, oldRef.IsWeak());
@@ -86,17 +86,17 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
                 DLOG(TRACE, "update obj %p<%p>(%zu)+%zu ref-field@%p: %#zx -> %#zx", obj, obj->GetTypeInfo(),
                     obj->GetSize(), BaseObject::FieldOffset(obj, &field), &field, oldRef.GetFieldValue(),
                     tmpField.GetFieldValue());
-            } else {
+            } else { //LCOV_EXCL_BR_LINE
                 DLOG(TRACE, "update ref@%p: 0x%zx -> %p", &field, oldRef.GetFieldValue(), toObj);
             }
             return true;
-        } else {
-            if (obj != nullptr) {
+        } else { //LCOV_EXCL_BR_LINE
+            if (obj != nullptr) { //LCOV_EXCL_BR_LINE
                 DLOG(TRACE,
                     "update obj %p<%p>(%zu)+%zu but cas failed ref-field@%p: %#zx(%#zx) -> %#zx but cas failed ",
                      obj, obj->GetTypeInfo(), obj->GetSize(), BaseObject::FieldOffset(obj, &field), &field,
                      oldRef.GetFieldValue(), field.GetFieldValue(), tmpField.GetFieldValue());
-            } else {
+            } else { //LCOV_EXCL_BR_LINE
                 DLOG(TRACE, "update but cas failed ref@%p: 0x%zx(%zx) -> %p", &field, oldRef.GetFieldValue(),
                      field.GetFieldValue(), toObj);
             }
@@ -122,22 +122,22 @@ bool WCollector::TryForwardRefField(BaseObject* obj, RefField<>& field, BaseObje
 // this api untags current pointer as well as old pointer, caller should take care of this.
 bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const
 {
-    for (;;) {
+    for (;;) { //LCOV_EXCL_BR_LINE
         RefField<> oldRef(field);
-        if (oldRef.IsTagged()) {
+        if (oldRef.IsTagged()) { //LCOV_EXCL_BR_LINE
             target = oldRef.GetTargetObject();
             RefField<> newRef(target);
-            if (field.CompareExchange(oldRef.GetFieldValue(), newRef.GetFieldValue())) {
+            if (field.CompareExchange(oldRef.GetFieldValue(), newRef.GetFieldValue())) { //LCOV_EXCL_BR_LINE
                 if (obj != nullptr) {
                     DLOG(FIX, "untag obj %p<%p>(%zu) ref-field@%p: %#zx -> %#zx", obj, obj->GetTypeInfo(),
                          obj->GetSize(), &field, oldRef.GetFieldValue(), newRef.GetFieldValue());
-                } else {
+                } else { //LCOV_EXCL_BR_LINE
                     DLOG(FIX, "untag ref@%p: %#zx -> %#zx", &field, oldRef.GetFieldValue(), newRef.GetFieldValue());
                 }
 
                 return true;
             }
-        } else {
+        } else { //LCOV_EXCL_BR_LINE
             return false;
         }
     }

@@ -21,141 +21,129 @@
 
 using namespace common;
 
-uint64_t fakeCurrentTime = 0;
-
 namespace common {
-uint64_t TimeUtil::NanoSeconds()
-{
-    return fakeCurrentTime;
-}
-} // namespace panda
-
 class GCRequestTest : public common::test::BaseTestWithScope {
-protected:
-    void SetUp() override
-    {
-        fakeCurrentTime = 0;
-    }
-
-    void SetPrevRequestTime(GCRequest& req, uint64_t time)
-    {
-        req.SetPrevRequestTime(time);
-    }
-
-    void SetMinInterval(GCRequest& req, uint64_t intervalNs)
-    {
-        req.SetMinInterval(intervalNs);
-    }
 };
 
-void SetLastGCFinishTime(uint64_t time)
-{
-    GCStats::SetPrevGCFinishTime(time);
-}
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Heu_Test1) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(now);
+    GCRequest req = { GC_REASON_HEU, "heuristic", false, true, 0, 0 };
+    req.SetMinInterval(now + 1000);
 
-
-bool ShouldBeIgnoredWithReason(GCReason reason, uint64_t minIntervalNs, uint64_t prevReqTime, uint64_t now,
-                               uint64_t lastGCFinishTime = 0)
-{
-    fakeCurrentTime = now;
-    SetLastGCFinishTime(lastGCFinishTime);
-
-    GCRequest req = {
-        reason,
-        "", // name
-        false, // isSync
-        false, // isConcurrent
-        minIntervalNs,
-        prevReqTime
-    };
-
-    return req.ShouldBeIgnored();
-}
-
-
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Heu_ReturnsTrue_IfFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_HEU,
-        1000,          // minIntervalNs
-        fakeCurrentTime - 500, // prevReqTime < now - minInterval
-        fakeCurrentTime
-    );
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_ReturnsTrue_IfFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_NATIVE,
-        1000,
-        fakeCurrentTime - 500,
-        fakeCurrentTime,
-        fakeCurrentTime - 500 // lastGCFinishTime
-    );
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_ReturnsFalse_IfNotFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_NATIVE,
-        1000,
-        fakeCurrentTime - 1500,
-        fakeCurrentTime,
-        fakeCurrentTime - 1500
-    );
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_OOM_ReturnsTrue_IfFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_OOM,
-        1000,
-        fakeCurrentTime - 500,
-        fakeCurrentTime
-    );
+    bool result = req.ShouldBeIgnored();
     EXPECT_TRUE(result);
 }
 
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_OOM_ReturnsFalse_IfNotFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_OOM,
-        1000,
-        fakeCurrentTime - 1500,
-        fakeCurrentTime
-    );
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Heu_Test2) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(1000);
+    GCRequest req = { GC_REASON_HEU, "heuristic", false, true, 0, 0 };
+    req.SetMinInterval(1000);
+
+    bool result = req.ShouldBeIgnored();
     EXPECT_FALSE(result);
 }
 
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Force_ReturnsTrue_IfFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_FORCE,
-        1000,
-        fakeCurrentTime - 500,
-        fakeCurrentTime
-    );
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Young_Test1) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(now);
+    GCRequest req = { GC_REASON_YOUNG, "young", false, true, 0, 0 };
+    req.SetMinInterval(now + 1000);
+
+    bool result = req.ShouldBeIgnored();
     EXPECT_TRUE(result);
 }
 
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Force_ReturnsFalse_IfNotFrequent) {
-    bool result = ShouldBeIgnoredWithReason(
-        GC_REASON_FORCE,
-        1000,
-        fakeCurrentTime - 1500,
-        fakeCurrentTime
-    );
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Young_Test2) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(1000);
+    GCRequest req = { GC_REASON_YOUNG, "young", false, true, 0, 0 };
+    req.SetMinInterval(1000);
+
+    bool result = req.ShouldBeIgnored();
     EXPECT_FALSE(result);
 }
 
-HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_User_ReturnsFalse) {
-    fakeCurrentTime = 1000;
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_Test1) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(now);
+    GCRequest req = { GC_REASON_NATIVE, "native", false, true, 0, 0 };
+    req.SetMinInterval(now + 1000);
 
-    GCRequest req = {
-        GC_REASON_USER,
-        "",
-        false,
-        false,
-        0,
-        0
-    };
-
-    EXPECT_FALSE(req.ShouldBeIgnored());
+    bool result = req.ShouldBeIgnored();
+    EXPECT_TRUE(result);
 }
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_Test2) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCStats::SetPrevGCFinishTime(1000);
+    GCRequest req = { GC_REASON_NATIVE, "native", false, true, 0, 0 };
+    req.SetMinInterval(1000);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Oom_Test1) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCRequest req = { GC_REASON_OOM, "oom", false, true, 0, 0 };
+    req.SetMinInterval(now + 1000);
+    req.SetPrevRequestTime(now);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Oom_Test2) {
+    GCRequest req = { GC_REASON_OOM, "oom", false, true, 0, 0 };
+    req.SetMinInterval(0);
+    req.SetPrevRequestTime(1000);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Oom_Test3) {
+    GCRequest req = { GC_REASON_OOM, "oom", false, true, 0, 0 };
+    req.SetMinInterval(1000);
+    req.SetPrevRequestTime(1000);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Force_Test1) {
+    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
+    GCRequest req = { GC_REASON_FORCE, "force", false, true, 0, 0 };
+    req.SetMinInterval(now + 1000);
+    req.SetPrevRequestTime(now);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Force_Test2) {
+    GCRequest req = { GC_REASON_FORCE, "force", false, true, 0, 0 };
+    req.SetMinInterval(0);
+    req.SetPrevRequestTime(1000);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Force_Test3) {
+    GCRequest req = { GC_REASON_FORCE, "force", false, true, 0, 0 };
+    req.SetMinInterval(1000);
+    req.SetPrevRequestTime(1000);
+
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_User_Test1) {
+    GCRequest req = { GC_REASON_USER, "user", false, true, 0, 0 };
+    bool result = req.ShouldBeIgnored();
+    EXPECT_FALSE(result);
+}
+} // namespace common::test

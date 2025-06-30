@@ -49,4 +49,43 @@ HWTEST_F_L0(CollectorResourcesTest, RequestHeapDumpTest) {
         GCTask::GCTaskType::GC_TASK_INVALID);
     EXPECT_TRUE(Heap::GetHeap().IsGCEnabled());
 }
+
+HWTEST_F_L0(CollectorResourcesTest, RequestGC) {
+    GCRequest gcRequests = { GC_REASON_BACKUP, "backup", true, false, 0, 0 };
+    Heap::GetHeap().EnableGC(false);
+    EXPECT_TRUE(!Heap::GetHeap().GetCollectorResources().IsGCActive());
+    GCReason reason = gcRequests.reason;
+    Heap::GetHeap().GetCollectorResources().RequestGC(reason, true);
+}
+
+HWTEST_F_L0(CollectorResourcesTest, RequestGCAndWaitTest) {
+    GCRequest gcRequests = { GC_REASON_USER, "user", false, false, 0, 0 };
+    GCReason reason = gcRequests.reason;
+    Heap::GetHeap().EnableGC(true);
+    EXPECT_TRUE(Heap::GetHeap().GetCollectorResources().IsGCActive());
+    Heap::GetHeap().GetCollectorResources().RequestGC(reason, false);
+    EXPECT_TRUE(!gcRequests.IsSyncGC());
+}
+
+HWTEST_F_L0(CollectorResourcesTest, GetGCThreadCountTest0) {
+    uint32_t res = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(false);
+    EXPECT_EQ(res, 2u);
+}
+
+HWTEST_F_L0(CollectorResourcesTest, GetGCThreadCountTest1) {
+    Heap::GetHeap().GetCollectorResources().Fini();
+    uint32_t res = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(false);
+    EXPECT_EQ(res, 1u);
+}
+
+HWTEST_F_L0(CollectorResourcesTest, StartRuntimeThreadsTest) {
+    Heap::GetHeap().GetCollectorResources().Fini();
+    Heap::GetHeap().GetCollectorResources().StartRuntimeThreads();
+    EXPECT_TRUE(Heap::GetHeap().GetCollectorResources().GetFinalizerProcessor().IsRunning());
+}
+
+HWTEST_F_L0(CollectorResourcesTest, StopRuntimeThreadsTest) {
+    Heap::GetHeap().GetCollectorResources().StopRuntimeThreads();
+    EXPECT_FALSE(Heap::GetHeap().GetCollectorResources().GetFinalizerProcessor().IsRunning());
+}
 } // namespace common::test

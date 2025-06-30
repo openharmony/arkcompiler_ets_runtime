@@ -91,7 +91,6 @@ host_unittest_action("Region_Space_Test") {
 
   sources = [
     # test file
-    "treap_test.cpp",
     "region_space_test.cpp",
   ]
 
@@ -139,10 +138,10 @@ group("unittest") {
   # deps file
   deps = [
     ":Allocator_Test",
-    ":Region_Manager_Test",
     ":Treap_Test",
     ":Region_Space_Test",
     ":Heap_Allocator_Test",
+    ":Region_Manager_Test"
   ]
 }
 
@@ -152,9 +151,9 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Allocator_TestAction",
-    ":Region_Manager_TestAction",
     ":Treap_TestAction",
     ":Region_Space_TestAction",
-    ":Heap_Allocator_Test",
+    ":Heap_Allocator_TestAction",
+    ":Region_Manager_TestAction"
   ]
 }

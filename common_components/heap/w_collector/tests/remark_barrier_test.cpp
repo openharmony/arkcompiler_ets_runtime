@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/w_collector/enum_barrier.h"
+#include "common_components/heap/w_collector/remark_barrier.h"
 #include "common_components/heap/w_collector/tests/mock_barrier_collector.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
@@ -23,7 +23,7 @@
 using namespace common;
 
 namespace common::test {
-class EnumBarrierTest : public common::test::BaseTestWithScope {
+class RemarkBarrierTest : public BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
@@ -43,152 +43,65 @@ protected:
     }
 };
 
-HWTEST_F_L0(EnumBarrierTest, ReadRefField_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, ReadRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject* resultObj = enumBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj != nullptr);
+    BaseObject *resultObj = remarkBarrier->ReadRefField(obj, field);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(EnumBarrierTest, ReadRefField_TEST2)
+HWTEST_F_L0(RemarkBarrierTest, ReadRefField_TEST2)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject* resultObj = enumBarrier->ReadRefField(nullptr, field);
-    ASSERT_TRUE(resultObj != nullptr);
+    BaseObject *resultObj = remarkBarrier->ReadRefField(nullptr, field);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(EnumBarrierTest, ReadStaticRef_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, ReadStaticRef_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject* resultObj = enumBarrier->ReadStaticRef(field);
-    ASSERT_TRUE(resultObj != nullptr);
+    BaseObject *resultObj = remarkBarrier->ReadStaticRef(field);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(EnumBarrierTest, WriteRefField_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, ReadStringTableStaticRef_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* oldObj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t oldSize = 100;
-    oldObj->SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
-    RefField<false> field(oldObj);
-    MAddress oldAddress = field.GetFieldValue();
-
-    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
-    constexpr size_t newSize = 200;
-    newObj->SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
-    enumBarrier->WriteRefField(oldObj, field, newObj);
-    MAddress newAddress = field.GetFieldValue();
-    EXPECT_NE(newAddress, oldAddress);
-}
-
-HWTEST_F_L0(EnumBarrierTest, WriteRefField_TEST2)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
-    constexpr size_t oldSize = 100;
-    oldObj->SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
     RefField<false> field(nullptr);
-    MAddress oldAddress = field.GetFieldValue();
 
-    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
-    constexpr size_t newSize = 200;
-    newObj->SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
-    enumBarrier->WriteRefField(oldObj, field, newObj);
-    MAddress newAddress = field.GetFieldValue();
-    EXPECT_NE(newAddress, oldAddress);
+    BaseObject* resultObj = remarkBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj == nullptr);
 }
 
-HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, ReadStruct_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-#ifndef ARK_USE_SATB_BARRIER
-    constexpr uint64_t TAG_BITS_SHIFT = 48;
-    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
-    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
-    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
-    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
-
-    RefField<> field(MAddress(0));
-    enumBarrier->WriteBarrier(nullptr, field, nullptr);
-    BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
-    enumBarrier->WriteBarrier(obj, field, obj);
-    EXPECT_TRUE(obj != nullptr);
-#endif
-}
-
-HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST2)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-#ifdef ARK_USE_SATB_BARRIER
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    RefField<false> normalField(obj);
-    enumBarrier->WriteBarrier(obj, normalField, obj);
-    EXPECT_TRUE(obj != nullptr);
-
-    HeapAddress weakAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* weakObj = reinterpret_cast<BaseObject*>(weakAddr);
-    RefField<false> weakField(MAddress(0));
-    enumBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
-    EXPECT_TRUE(weakObj != nullptr);
-
-    HeapAddress nonTaggedAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* nonTaggedObj = reinterpret_cast<BaseObject*>(nonTaggedAddr);
-    RefField<false> nonTaggedField(&nonTaggedObj);
-    enumBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
-    EXPECT_TRUE(nonTaggedObj != nullptr);
-#endif
-}
-
-HWTEST_F_L0(EnumBarrierTest, ReadStruct_TEST1)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -198,16 +111,121 @@ HWTEST_F_L0(EnumBarrierTest, ReadStruct_TEST1)
     srcBuffer[0] = 1;
     HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
     HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    enumBarrier->ReadStruct(dst, obj, src, size);
+    remarkBarrier->ReadStruct(dst, obj, src, size);
     EXPECT_EQ(dstBuffer[0], 1);
     EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
 }
 
-HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, WriteRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
+    constexpr size_t oldSize = 100;
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+
+    RefField<false> field(oldObj);
+    BaseObject *target = field.GetTargetObject();
+    EXPECT_TRUE(target != nullptr);
+
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
+    constexpr size_t newSize = 200;
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+
+    remarkBarrier->WriteRefField(oldObj, field, newObj);
+
+    MAddress newAddress = field.GetFieldValue();
+    MAddress expectedAddress = RefField<>(newObj).GetFieldValue();
+    EXPECT_EQ(newAddress, expectedAddress);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteRefField_TEST2)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
+    constexpr size_t oldSize = 100;
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+
+    RefField<false> field(MAddress(0));
+    BaseObject *target = field.GetTargetObject();
+    EXPECT_TRUE(target == nullptr);
+
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
+    constexpr size_t newSize = 200;
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+
+    remarkBarrier->WriteRefField(oldObj, field, newObj);
+
+    MAddress newAddress = field.GetFieldValue();
+    MAddress expectedAddress = RefField<>(newObj).GetFieldValue();
+    EXPECT_EQ(newAddress, expectedAddress);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST1)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+
+    RefField<> field(MAddress(0));
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    addr |= TAG_HEAP_OBJECT_MASK;
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    remarkBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST2)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+#ifdef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> normalField(obj);
+    remarkBarrier->WriteBarrier(obj, normalField, obj);
+    EXPECT_TRUE(obj != nullptr);
+
+    BaseObject weakObj;
+    RefField<false> weakField(MAddress(0));
+    remarkBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
+    EXPECT_TRUE(weakObj != nullptr);
+
+    BaseObject nonTaggedObj;
+    RefField<false> nonTaggedField(&nonTaggedObj);
+    remarkBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
+    EXPECT_TRUE(nonTaggedObj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteStruct_TEST1)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     auto objPtr = std::make_unique<BaseObject>();
     constexpr size_t size = 16;
@@ -216,33 +234,16 @@ HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST1)
     srcBuffer[0] = 1;
     HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer.get());
     HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer.get());
-    enumBarrier->WriteStruct(objPtr.get(), dst, size, src, size);
+    remarkBarrier->WriteStruct(objPtr.get(), dst, size, src, size);
     EXPECT_EQ(dstBuffer[0], 1);
     EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
 }
 
-HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST2)
+HWTEST_F_L0(RemarkBarrierTest, AtomicReadRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-    constexpr size_t size = 16;
-    auto srcBuffer = std::make_unique<uint8_t[]>(size);
-    auto dstBuffer = std::make_unique<uint8_t[]>(size);
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer.get());
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer.get());
-    enumBarrier->WriteStruct(nullptr, dst, size, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
-}
-
-HWTEST_F_L0(EnumBarrierTest, AtomicReadRefField_TEST1)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -251,16 +252,16 @@ HWTEST_F_L0(EnumBarrierTest, AtomicReadRefField_TEST1)
     EXPECT_EQ(obj->GetSizeForwarded(), size);
     RefField<true> field(obj);
 
-    BaseObject* resultObj = nullptr;
-    resultObj = enumBarrier->AtomicReadRefField(obj, field, std::memory_order_seq_cst);
+    BaseObject *resultObj = nullptr;
+    resultObj = remarkBarrier->AtomicReadRefField(obj, field, std::memory_order_seq_cst);
     ASSERT_TRUE(resultObj != nullptr);
 }
 
-HWTEST_F_L0(EnumBarrierTest, AtomicWriteRefField_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, AtomicWriteRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -279,15 +280,15 @@ HWTEST_F_L0(EnumBarrierTest, AtomicWriteRefField_TEST1)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    enumBarrier->AtomicWriteRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
+    remarkBarrier->AtomicWriteRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(EnumBarrierTest, AtomicWriteRefField_TEST2)
+HWTEST_F_L0(RemarkBarrierTest, AtomicWriteRefField_TEST2)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -306,15 +307,15 @@ HWTEST_F_L0(EnumBarrierTest, AtomicWriteRefField_TEST2)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    enumBarrier->AtomicWriteRefField(nullptr, oldField, newObj, std::memory_order_relaxed);
+    remarkBarrier->AtomicWriteRefField(nullptr, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(EnumBarrierTest, AtomicSwapRefField_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, AtomicSwapRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -333,61 +334,16 @@ HWTEST_F_L0(EnumBarrierTest, AtomicSwapRefField_TEST1)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    BaseObject* resultObj = nullptr;
-    resultObj = enumBarrier->AtomicSwapRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
-    ASSERT_TRUE(resultObj != nullptr);
+    BaseObject *resultObj = nullptr;
+    resultObj = remarkBarrier->AtomicSwapRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), newField.GetFieldValue());
 }
 
-HWTEST_F_L0(EnumBarrierTest, CompareAndSwapRefField_TEST1)
+HWTEST_F_L0(RemarkBarrierTest, CompareAndSwapRefField_TEST1)
 {
     MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
-    constexpr size_t oldSize = 100;
-    oldObj->SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
-    RefField<true> oldField(oldObj);
-    MAddress oldAddress = oldField.GetFieldValue();
-    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
-    constexpr size_t newSize = 200;
-    newObj->SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
-    RefField<true> newField(newObj);
-    MAddress neWAddress = newField.GetFieldValue();
-    EXPECT_NE(oldAddress, neWAddress);
-    bool result = enumBarrier->CompareAndSwapRefField(oldObj, oldField, oldObj, newObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
-    ASSERT_TRUE(result);
-}
-
-HWTEST_F_L0(EnumBarrierTest, CompareAndSwapRefField_TEST2)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
-
-    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
-    constexpr size_t oldSize = 100;
-    oldObj->SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
-    RefField<true> oldField(oldObj);
-
-    bool result = enumBarrier->CompareAndSwapRefField(oldObj, oldField, oldObj, oldObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
-    ASSERT_TRUE(result);
-}
-
-HWTEST_F_L0(EnumBarrierTest, CompareAndSwapRefField_TEST3)
-{
-    MockCollector collector;
-    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
-    ASSERT_TRUE(enumBarrier != nullptr);
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -406,9 +362,54 @@ HWTEST_F_L0(EnumBarrierTest, CompareAndSwapRefField_TEST3)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = enumBarrier->CompareAndSwapRefField(oldObj, newField, oldObj, newObj,
-        std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = remarkBarrier->CompareAndSwapRefField(
+        oldObj, oldField, oldObj, newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
+    ASSERT_TRUE(result);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, CompareAndSwapRefField_TEST2)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
+    constexpr size_t oldSize = 100;
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
+
+    bool result = remarkBarrier->CompareAndSwapRefField(
+        oldObj, oldField, oldObj, oldObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
+    ASSERT_TRUE(result);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, CompareAndSwapRefField_TEST3)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
+    constexpr size_t oldSize = 100;
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
+    MAddress oldAddress = oldField.GetFieldValue();
+
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
+    constexpr size_t newSize = 200;
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
+    MAddress neWAddress = newField.GetFieldValue();
+    EXPECT_NE(oldAddress, neWAddress);
+
+    bool result = remarkBarrier->CompareAndSwapRefField(
+        oldObj, newField, oldObj, newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_FALSE(result);
 }
-
-} // namespace common::test
+}  // namespace common::test

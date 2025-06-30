@@ -13,126 +13,160 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/heap.h"
 #include "common_components/heap/w_collector/trace_barrier.h"
+#include "common_components/heap/w_collector/tests/mock_barrier_collector.h"
+#include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
+#include "common_components/heap/heap_manager.h"
+#include "common_interfaces/base_runtime.h"
 
 using namespace common;
 
 namespace common::test {
 class TraceBarrierTest : public BaseTestWithScope {
 protected:
+    static void SetUpTestCase()
+    {
+        BaseRuntime::GetInstance()->Init();
+    }
+
+    static void TearDownTestCase() {}
+
     void SetUp() override
     {
-        Collector &collector = Heap::GetHeap().GetCollector();
-        traceBarrier_ = std::make_unique<TraceBarrier>(collector);
+        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::GC_THREAD);
     }
 
     void TearDown() override
-    {}
-
-    std::unique_ptr<TraceBarrier> traceBarrier_{nullptr};
+    {
+        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::GC_THREAD);
+    }
 };
 
 HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject obj;
-    RefField<false> field(&obj);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
 
-    BaseObject *resultObj = traceBarrier_->ReadRefField(&obj, field);
-    ASSERT_TRUE(resultObj != nullptr);
-    EXPECT_EQ(resultObj, &obj);
+    BaseObject *resultObj = traceBarrier->ReadRefField(obj, field);
+    EXPECT_EQ(resultObj, obj);
 }
 
 HWTEST_F_L0(TraceBarrierTest, ReadRefField_TEST2)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject obj;
-    RefField<false> field(&obj);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
 
-    BaseObject *resultObj = traceBarrier_->ReadRefField(nullptr, field);
-    ASSERT_TRUE(resultObj != nullptr);
-    EXPECT_EQ(resultObj, &obj);
+    BaseObject *resultObj = traceBarrier->ReadRefField(nullptr, field);
+    EXPECT_EQ(resultObj, obj);
 }
 
 HWTEST_F_L0(TraceBarrierTest, ReadStaticRef_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject obj;
-    RefField<false> field(&obj);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
 
-    BaseObject *resultObj = traceBarrier_->ReadStaticRef(field);
-    ASSERT_TRUE(resultObj != nullptr);
-    EXPECT_EQ(resultObj, &obj);
+    BaseObject *resultObj = traceBarrier->ReadStaticRef(field);
+    EXPECT_EQ(resultObj, obj);
 }
 
 HWTEST_F_L0(TraceBarrierTest, ReadStruct_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject obj;
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     constexpr size_t size = 16;
     uint8_t srcBuffer[size] = {};
     uint8_t dstBuffer[size] = {};
     srcBuffer[0] = 1;
     HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
     HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    traceBarrier_->ReadStruct(dst, &obj, src, size);
+    traceBarrier->ReadStruct(dst, obj, src, size);
     EXPECT_EQ(dstBuffer[0], 1);
     EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
 }
 
 HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<false> field(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+
+    RefField<false> field(oldObj);
     BaseObject *target = field.GetTargetObject();
     EXPECT_TRUE(target != nullptr);
-    MAddress oldAddress = field.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    traceBarrier_->WriteRefField(&oldObj, field, &newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+
+    traceBarrier->WriteRefField(oldObj, field, newObj);
+
     MAddress newAddress = field.GetFieldValue();
-    EXPECT_NE(newAddress, oldAddress);
+    MAddress expectedAddress = RefField<>(newObj).GetFieldValue();
+    EXPECT_EQ(newAddress, expectedAddress);
 }
 
 HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST2)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<> field(MAddress(0));
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+
+    RefField<false> field(MAddress(0));
     BaseObject *target = field.GetTargetObject();
     EXPECT_TRUE(target == nullptr);
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<false> newField(&newObj);
-    traceBarrier_->WriteRefField(&oldObj, field, &newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+
+    traceBarrier->WriteRefField(oldObj, field, newObj);
+
     MAddress newAddress = field.GetFieldValue();
-    EXPECT_EQ(newField.GetFieldValue(), newAddress);
+    MAddress expectedAddress = RefField<>(newObj).GetFieldValue();
+    EXPECT_EQ(newAddress, expectedAddress);
 }
 
 HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
 #ifndef ARK_USE_SATB_BARRIER
     constexpr uint64_t TAG_BITS_SHIFT = 48;
@@ -142,179 +176,209 @@ HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST1)
     constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
 
     RefField<> field(MAddress(0));
-    traceBarrier_->WriteBarrier(nullptr, field, nullptr);
+    traceBarrier->WriteBarrier(nullptr, field, nullptr);
     BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
-    traceBarrier_->WriteBarrier(obj, field, obj);
+    traceBarrier->WriteBarrier(obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }
 
-HWTEST_F_L0(TraceBarrierTest, WriteStaticRef_TEST1)
+HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST2)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
-    constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<false> field(&oldObj);
-    MAddress oldAddress = field.GetFieldValue();
+#ifdef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> normalField(obj);
+    traceBarrier->WriteBarrier(obj, normalField, obj);
+    EXPECT_TRUE(obj != nullptr);
 
-    BaseObject newObj;
-    constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    traceBarrier_->WriteStaticRef(field, &newObj);
-    MAddress newAddress = field.GetFieldValue();
-    EXPECT_NE(newAddress, oldAddress);
+    BaseObject weakObj;
+    RefField<false> weakField(MAddress(0));
+    traceBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
+    EXPECT_TRUE(weakObj != nullptr);
+
+    BaseObject nonTaggedObj;
+    RefField<false> nonTaggedField(&nonTaggedObj);
+    traceBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
+    EXPECT_TRUE(nonTaggedObj != nullptr);
+#endif
 }
 
 HWTEST_F_L0(TraceBarrierTest, AtomicReadRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject obj;
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     constexpr size_t size = 100;
-    obj.SetSizeForwarded(size);
-    EXPECT_EQ(obj.GetSizeForwarded(), size);
-    RefField<true> field(&obj);
+    obj->SetSizeForwarded(size);
+    EXPECT_EQ(obj->GetSizeForwarded(), size);
+    RefField<true> field(obj);
 
     BaseObject *resultObj = nullptr;
-    resultObj = traceBarrier_->AtomicReadRefField(&obj, field, std::memory_order_seq_cst);
+    resultObj = traceBarrier->AtomicReadRefField(obj, field, std::memory_order_seq_cst);
     ASSERT_TRUE(resultObj != nullptr);
 }
 
 HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
     MAddress oldAddress = oldField.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<true> newField(&newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    traceBarrier_->AtomicWriteRefField(&oldObj, oldField, &newObj, std::memory_order_relaxed);
+    traceBarrier->AtomicWriteRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
 HWTEST_F_L0(TraceBarrierTest, AtomicWriteRefField_TEST2)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
     MAddress oldAddress = oldField.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<true> newField(&newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    traceBarrier_->AtomicWriteRefField(nullptr, oldField, &newObj, std::memory_order_relaxed);
+    traceBarrier->AtomicWriteRefField(nullptr, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
 HWTEST_F_L0(TraceBarrierTest, AtomicSwapRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
     MAddress oldAddress = oldField.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<true> newField(&newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
     BaseObject *resultObj = nullptr;
-    resultObj = traceBarrier_->AtomicSwapRefField(&oldObj, oldField, &newObj, std::memory_order_relaxed);
-    ASSERT_TRUE(resultObj != nullptr);
+    resultObj = traceBarrier->AtomicSwapRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), newField.GetFieldValue());
 }
 
 HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST1)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
     MAddress oldAddress = oldField.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<true> newField(&newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(
-        &oldObj, oldField, &oldObj, &newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier->CompareAndSwapRefField(
+        oldObj, oldField, oldObj, newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
 }
 
 HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST2)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(
-        &oldObj, oldField, &oldObj, &oldObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier->CompareAndSwapRefField(
+        oldObj, oldField, oldObj, oldObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
 }
 
 HWTEST_F_L0(TraceBarrierTest, CompareAndSwapRefField_TEST3)
 {
-    ASSERT_TRUE(traceBarrier_ != nullptr);
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
 
-    BaseObject oldObj;
+    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     constexpr size_t oldSize = 100;
-    oldObj.SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj.GetSizeForwarded(), oldSize);
-    RefField<true> oldField(&oldObj);
+    oldObj->SetSizeForwarded(oldSize);
+    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
+    RefField<true> oldField(oldObj);
     MAddress oldAddress = oldField.GetFieldValue();
 
-    BaseObject newObj;
+    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
     constexpr size_t newSize = 200;
-    newObj.SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj.GetSizeForwarded(), newSize);
-    RefField<true> newField(&newObj);
+    newObj->SetSizeForwarded(newSize);
+    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
+    RefField<true> newField(newObj);
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = traceBarrier_->CompareAndSwapRefField(
-        &oldObj, newField, &oldObj, &newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
+    bool result = traceBarrier->CompareAndSwapRefField(
+        oldObj, newField, oldObj, newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_FALSE(result);
 }
 }  // namespace common::test
