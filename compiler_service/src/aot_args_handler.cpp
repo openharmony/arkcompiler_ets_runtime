@@ -23,6 +23,7 @@
 #include "aot_args_list.h"
 #include "aot_compiler_constants.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/file.h"
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
@@ -297,8 +298,12 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
 
 bool StaticFrameworkAOTArgsParser::IsFileExists(const std::string &fileName)
 {
-    std::ifstream inFile(fileName);
-    return inFile.good();
+    std::string realPath;
+    if (!panda::ecmascript::RealPath(fileName, realPath)) {
+        LOG_SA(ERROR) << "get real path failed:" << fileName;
+        return false;
+    }
+    return panda::ecmascript::FileExist(realPath.c_str());
 }
 
 int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap,

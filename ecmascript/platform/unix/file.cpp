@@ -15,8 +15,6 @@
 
 #include "ecmascript/platform/file.h"
 
-
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {
@@ -164,18 +162,6 @@ bool FileExist(const char *filename)
 int Unlink(const char *filename)
 {
     return unlink(filename);
-}
-
-bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
-{
-    UnloadNativeModuleCallback unloadNativeModuleCallback = thread->GetEcmaVM()->GetUnloadNativeModuleCallback();
-    if (unloadNativeModuleCallback == nullptr) {
-        LOG_ECMA(ERROR) << "unloadNativeModuleCallback is nullptr";
-        return false;
-    }
-
-    CString soName = base::PathHelper::GetStrippedModuleName(module->GetEcmaModuleRecordNameString());
-    return unloadNativeModuleCallback(soName.c_str());
 }
 
 void *LoadLib(const std::string &libname)
