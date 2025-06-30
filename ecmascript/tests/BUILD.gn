@@ -3625,7 +3625,6 @@ group("unittest") {
       ":JS_FinalizationRegistry_Test",
       ":JS_GlueRegs_Test",
       ":JS_Handle_Test",
-      ":JS_ObjectFactory_Test",
       ":JS_Object_Test",
       ":JS_TaggedArray_Test",
       ":JS_ThreadState_Test",
