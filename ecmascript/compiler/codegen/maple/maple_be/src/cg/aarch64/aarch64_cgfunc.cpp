@@ -4611,6 +4611,7 @@ RegOperand *AArch64CGFunc::SelectHeapConstant(IntrinsicopNode &node, Operand &op
 RegOperand *AArch64CGFunc::SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1)
 {
     RegOperand &destReg = CreateRegisterOperandOfType(PTY_i64);
+    RegOperand &tmpReg = CreateRegisterOperandOfType(PTY_i64);
     MOperator mOp = MOP_tagged_is_heapobject;
     if (opnd0.IsImmediate()) {
         uint64 value = static_cast<uint64>(static_cast<ImmOperand &>(opnd0).GetValue());
@@ -4623,7 +4624,17 @@ RegOperand *AArch64CGFunc::SelectTaggedIsHeapObject(IntrinsicopNode &node, Opera
             GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, value));
         }
     } else {
-        GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1));
+        ImmOperand &heapObjectTagMask = static_cast<ImmOperand&>(opnd1);
+        CHECK_FATAL(static_cast<uint64_t>(heapObjectTagMask.GetValue()) == 0xFFFF000000000006,
+            "unexpected heap object tag mask");
+        ImmOperand &immValue6 = CreateImmOperand(6, k16BitSize, false);
+        Insn &movInsn1 = GetInsnBuilder()->BuildInsn(MOP_xmovri64, tmpReg, immValue6);
+        GetCurBB()->AppendInsn(movInsn1);
+        ImmOperand &immValue = CreateImmOperand(65535, k16BitSize, false); // 65535: 0xFFFF, top 16 bits
+        BitShiftOperand *lslOpnd = GetLogicalShiftLeftOperand(48, true); // 48: left shift 48 bits
+        Insn &movInsn2 = GetInsnBuilder()->BuildInsn(MOP_xmovkri16, tmpReg, immValue, *lslOpnd);
+        GetCurBB()->AppendInsn(movInsn2);
+        GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, tmpReg));
     }
     return &destReg;
 }

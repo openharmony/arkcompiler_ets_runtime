@@ -1458,21 +1458,12 @@ void CsetCbzToBeqOptAArch64::IntrinsicOptimize(BB &bb, Insn *preInsn, Insn &insn
         AArch64CGFunc &aarch64cgFunc = static_cast<AArch64CGFunc&>(cgFunc);
         RegOperand &destReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnFirstOpnd));
         RegOperand &srcReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnSecondOpnd));
-        // 0xffff000000000006
-        ImmOperand &immValue6 = aarch64cgFunc.CreateImmOperand(6, k16BitSize, false);
-        Insn &movInsn1 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovri64, destReg, immValue6);
-        bb.InsertInsnBefore(insn, movInsn1);
-
-        ImmOperand &immValue = aarch64cgFunc.CreateImmOperand(65535, k16BitSize, false);
-        BitShiftOperand *lslOpnd = aarch64cgFunc.GetLogicalShiftLeftOperand(48, true);
-        Insn &movInsn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovkri16, destReg, immValue, *lslOpnd);
-        bb.InsertInsnBefore(insn, movInsn2);
-
-        Insn &insn3 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, destReg);
-        bb.InsertInsnBefore(insn, insn3);
+        RegOperand &tmpReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnThirdOpnd));
+        Insn &insn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, tmpReg);
+        bb.InsertInsnBefore(insn, insn);
         ImmOperand &immValueZero = aarch64cgFunc.CreateImmOperand(0, k16BitSize, false);
-        Insn &insn4 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, immValueZero);
-        bb.InsertInsnBefore(insn, insn4);
+        Insn &insn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, immValueZero);
+        bb.InsertInsnBefore(insn, insn2);
         MOperator jmpOperator = SelectMOperator(CC_EQ, reverse);
         CHECK_FATAL((jmpOperator != MOP_undef), "unknown condition code");
         Insn &newInsn = cgFunc.GetInsnBuilder()->BuildInsn(jmpOperator, rflag, label);

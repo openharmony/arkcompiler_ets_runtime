@@ -922,13 +922,11 @@ DEFINE_MOP(MOP_tagged_object_is_string, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS,
 DEFINE_MOP(MOP_is_cow_array, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32},ISINTRINSIC,kLtAlu,"__is_cow_array","0,1,2",6)
 
 /*
- * mov dest, 6
- * movk dest, dest 65535 LSL 48
- * and dest, src, dest
+ * and dest, src, tmp (heap_object_mask_constant)
  * cmp dest, 0
  * cset dest, eq
  */
-DEFINE_MOP(MOP_tagged_is_heapobject, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__tagged_is_heapobject","0,1,2",5)
+DEFINE_MOP(MOP_tagged_is_heapobject, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS},ISINTRINSIC,kLtAlu,"__tagged_is_heapobject","0,1,2",5)
 
 /*
  * ldr dest, [src, #8] // 8: JSHClass::BIT_FIELD_OFFSET

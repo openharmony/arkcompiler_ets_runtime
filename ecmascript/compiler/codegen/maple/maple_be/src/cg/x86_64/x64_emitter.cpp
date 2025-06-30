@@ -1494,8 +1494,6 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             break;
         }
         case x64::MOP_tagged_is_heapobject: {
-            ImmOpnd taggedObjectMask = TransferImm(&insn.GetOperand(kInsnFourthOpnd));
-            assmbler.Movabs(taggedObjectMask, TransferReg(opnd1)); // tmpReg
             auto &srcReg = insn.GetOperand(kInsnThirdOpnd);
             assmbler.Test(kQ, TransferReg(opnd1), TransferReg(&srcReg));
             assmbler.Sete(TransferReg(opnd0));

@@ -540,7 +540,7 @@ DEFINE_MOP(MOP_sqrtd_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"s
 /* intrinsic operation */
 DEFINE_MOP(MOP_heap_const, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},0,kLtAlu,"__heap_constant","0,1,1",1)
 DEFINE_MOP(MOP_get_heap_const_table, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},0,kLtAlu,"__get_heap_constant_table","0,1,2,3",2)
-DEFINE_MOP(MOP_tagged_is_heapobject, {&OpndDesc::Reg8ID, &OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},0,kLtAlu,"__tagged_is_heapobject","0,1,2,3",3)
+DEFINE_MOP(MOP_tagged_is_heapobject, {&OpndDesc::Reg8ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS},0,kLtAlu,"__tagged_is_heapobject","0,1,2,3",3)
 DEFINE_MOP(MOP_has_pending_exception, {&OpndDesc::Reg8ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},0,kLtAlu,"__has_pending_exception","0,1,2,3",2)
 DEFINE_MOP(MOP_is_stable_elements, {&OpndDesc::Reg32ID, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32},0,kLtAlu,"__is_stable_elements","0,1,2,3",2)
 DEFINE_MOP(MOP_tagged_object_is_string, {&OpndDesc::Reg8ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Imm32, &OpndDesc::Reg32ID, &OpndDesc::Reg64ID},ISINTRINSIC,kLtAlu,"__tagged_object_is_string","0,1,2,3,4",3)
