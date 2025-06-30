@@ -34,7 +34,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     EcmaVM *vm = thread->GetEcmaVM();
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate, executeType);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate, false, executeType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
@@ -430,7 +430,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
-            filename, recordName, false, ExecuteTypes::STATIC);
+            filename, recordName, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
@@ -478,7 +478,7 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
-            abcFilePath, entry, false, ExecuteTypes::STATIC);
+            abcFilePath, entry, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_URI_ERROR);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "When the route jump, loading panda file failed. Current file is " << abcFilePath;
@@ -522,7 +522,7 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     }
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
-            abcFilePath, entry, false, ExecuteTypes::STATIC);
+            abcFilePath, entry, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "When checking if module is in abc file, loading panda file failed. Current file is " <<

@@ -3536,8 +3536,9 @@ HWTEST_F_L0(JSNApiSplTest, JSNApi_SetHostResolveBufferTracker)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    std::function<bool(std::string dirPath, uint8_t * *buff, size_t * buffSize, std::string &errorMsg)> cb =
-        [](const std::string &inputPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg) -> bool {
+    std::function<bool(std::string dirPath, bool isHybrid, uint8_t * *buff, size_t * buffSize, std::string &errorMsg)>
+        cb = [](const std::string &inputPath, bool isHybrid,
+                uint8_t **buff, size_t *buffSize, std::string &errorMsg) -> bool {
         if (inputPath.empty() || buff == nullptr || buffSize == nullptr) {
             return false;
         }
