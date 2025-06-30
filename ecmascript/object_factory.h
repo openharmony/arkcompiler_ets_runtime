@@ -424,6 +424,7 @@ public:
     JSHandle<ProtoChangeDetails> NewProtoChangeDetails();
 
     JSHandle<MarkerCell> NewMarkerCell();
+    template <MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE>
     JSHandle<BigInt> NewBigInt(uint32_t length);
     // use for copy properties keys's array to another array
     JSHandle<TaggedArray> ExtendArray(const JSHandle<TaggedArray> &old, uint32_t length,

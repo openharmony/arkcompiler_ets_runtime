@@ -23,7 +23,7 @@
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -1296,7 +1296,7 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject4)
     JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a bigint
-    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt(TEST_NUMBER));
+    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt<>(TEST_NUMBER));
 
     // 3. compare heapobject not ecmaobject with bigint
     bool res = JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()), testBigInt);
@@ -1353,7 +1353,7 @@ HWTEST_F_L0(JSTaggedValueTest, EqualBigInt0)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a bigint
-    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt(TEST_NUMBER));
+    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt<>(TEST_NUMBER));
 
     // 2. create a heapobject which is not ecmaobject
     JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);

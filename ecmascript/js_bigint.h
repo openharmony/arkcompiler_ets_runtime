@@ -44,6 +44,7 @@ public:
     static constexpr uint32_t HALFUINT32VALUE = 1U << HALFDATEBITS;
     static constexpr uint32_t HALFDATEMASK = HALFUINT32VALUE - 1;
     CAST_CHECK(BigInt, IsBigInt);
+    template <MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE>
     static JSHandle<BigInt> CreateBigint(JSThread *thread, uint32_t size);
 
     static bool Equal(const JSTaggedValue &x, const JSTaggedValue &y);

@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/dynamic_type_converter.h"
-#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "common_interfaces/objects/base_object_dispatcher.h"
