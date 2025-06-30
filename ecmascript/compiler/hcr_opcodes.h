@@ -64,7 +64,7 @@ namespace panda::ecmascript::kungfu {
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)                 \
-    V(LoadHClass, LOAD_HCLASS, GateFlags::NO_WRITE, 0, 1, 2)
+    V(LoadHClassOpcode, LOAD_HCLASS_OPCODE, GateFlags::NO_WRITE, 0, 1, 2)
 
 #define HCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                              \
     V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)            \

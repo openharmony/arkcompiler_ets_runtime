@@ -68,7 +68,7 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
                     needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx);
                     break;
                 }
-                case OpCode::LOAD_HCLASS: {
+                case OpCode::LOAD_HCLASS_OPCODE: {
                     needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx, true);
                     break;
                 }

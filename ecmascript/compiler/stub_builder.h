@@ -407,11 +407,7 @@ public:
     void SetExtraLengthOfTaggedArray(GateRef glue, GateRef array, GateRef len);
     // object operation
     GateRef IsJSHClass(GateRef glue, GateRef obj);
-#ifndef NDEBUG
-    GateRef LoadHClassWithLineASM(GateRef glue, GateRef object, int line);
-#else
-    GateRef LoadHClass(GateRef glue, GateRef object);
-#endif
+    GateRef LoadHclassImpl(GateRef glue, GateRef object, int line);
 
     void CanNotConvertNotValidObject(GateRef glue, GateRef obj);
     void IsNotValidObject(GateRef flag);
