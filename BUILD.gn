@@ -1816,7 +1816,7 @@ ohos_prebuilt_etc("app_aot_jit_enable_list") {
 
 ohos_prebuilt_etc("app_startup_snapshot") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_startup_snapshot.conf"
+  source = "$js_root/ecmascript/ohos/app_startup_snapshot.json"
 
   # Set the subsystem name
   part_name = "ets_runtime"
