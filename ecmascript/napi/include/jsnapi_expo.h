@@ -90,6 +90,11 @@ enum class QueueType : uint8_t {
 }
 }  // namespace ecmascript
 
+enum class ForHybridApp {
+    Normal,
+    Hybrid
+};
+
 struct HmsMap {
     std::string originalPath;
     std::string targetPath;
@@ -1661,8 +1666,13 @@ public:
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file);
+    template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                             const std::string &module_path, bool isHybrid = false);
+                                                             const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForNormalApp(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
@@ -1751,7 +1761,9 @@ public:
     static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
+    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath,
+                                            uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
+    static void SetHostResolveBufferTrackerForHybridApp(EcmaVM *vm, std::function<bool(std::string dirPath,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
