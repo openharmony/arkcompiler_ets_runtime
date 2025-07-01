@@ -298,7 +298,10 @@ void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
     GetJitDfx()->SetTriggerCount(tier);
 
     {
-        JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
+        {
+            ThreadNativeScope scope(vm->GetJSThread());
+            JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
+        }
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(),
             // avoid check fail when enable multi-thread check
@@ -342,6 +345,8 @@ uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
 
 void Jit::InstallTasks(JSThread *jsThread)
 {
+    // Install tasks is only possible for JSThread in running state
+    ASSERT(jsThread->IsJSThread() && jsThread->IsInRunningState());
     std::deque<std::shared_ptr<JitTask>> taskQueue;
     {
         LockHolder holder(threadTaskInfoLock_);
