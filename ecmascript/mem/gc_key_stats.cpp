@@ -17,6 +17,7 @@
 
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
+#include "dfx_signal_handler.h"
 #endif
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -124,7 +125,8 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
         "PROCESS_NAME", PGOProfilerManager::GetInstance()->GetBundleName(),
         "LIMITSIZE", limitSize,
         "ACTIVE_MEMORY", activeMemory,
-        "TYPE", type);
+        "TYPE", type,
+        "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId());
     if (ret != 0) {
         LOG_GC(ERROR) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;
     }
