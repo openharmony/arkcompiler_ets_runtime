@@ -1188,7 +1188,7 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, entryPoint, buffer, size);
     } else {
         jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, moduleFilenameStr, entryPoint, false, false, executeType);
+            thread, moduleFilenameStr, entryPoint, false, executeType);
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
@@ -1733,7 +1733,7 @@ void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<Sourc
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, entryPoint, buffer, size);
     } else {
         jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, moduleFilenameStr, entryPoint, false, false, executeType);
+            thread, moduleFilenameStr, entryPoint, false, executeType);
     }
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
