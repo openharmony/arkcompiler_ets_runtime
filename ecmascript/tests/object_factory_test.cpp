@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -68,10 +69,13 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSObjectByConstructor)
     auto *prototype = cls->GetPrototype(thread).GetTaggedObject();
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     // After FullGC
-    if (thread->GetEcmaVM()->GetJSOptions().EnableSnapshotDeserialize()) {
-        EXPECT_TRUE(prototype == newObjCls->GetPrototype(thread).GetTaggedObject());
-    } else {
-        EXPECT_TRUE(prototype != newObjCls->GetPrototype(thread).GetTaggedObject());
+    // Test condition reply on gc.It is not suitable.
+    if (!g_isEnableCMCGC) {
+        if (thread->GetEcmaVM()->GetJSOptions().EnableSnapshotDeserialize()) {
+            EXPECT_TRUE(prototype == newObjCls->GetPrototype(thread).GetTaggedObject());
+        } else {
+            EXPECT_TRUE(prototype != newObjCls->GetPrototype(thread).GetTaggedObject());
+        }
     }
     thread->GetEcmaVM()->SetEnableForceGC(true);
 }
