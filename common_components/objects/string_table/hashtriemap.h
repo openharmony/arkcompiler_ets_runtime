@@ -52,42 +52,51 @@ class HashTrieMapIndirect;
 
 class HashTrieMapNode {
 public:
-    explicit HashTrieMapNode(bool isEntry) : isEntry_(isEntry) {}
+    static constexpr uint64_t POINTER_LENGTH = 63;
+    static constexpr uint64_t ENTRY_TAG_MASK = 1ULL << POINTER_LENGTH;
+
+    using Pointer = BitField<uint64_t, 0, POINTER_LENGTH>;
+    using EntryBit = Pointer::NextFlag;
+
+    explicit HashTrieMapNode() {}
 
     bool IsEntry() const
     {
-        return isEntry_;
+        uint64_t bitField = *reinterpret_cast<const uint64_t *>(this);
+        return EntryBit::Decode(bitField);
     }
 
     HashTrieMapEntry* AsEntry();
     HashTrieMapIndirect* AsIndirect();
-
-private:
-    const bool isEntry_;
 };
 
 class HashTrieMapEntry final : public HashTrieMapNode {
 public:
-    HashTrieMapEntry(uint32_t k, BaseString* v) : HashTrieMapNode(true), key_(k), value_(v), overflow_(nullptr) {}
+    HashTrieMapEntry(BaseString* v) : overflow_(nullptr)
+    {
+        bitField_ = (ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v));
+    }
 
+    template <TrieMapConfig::SlotBarrier SlotBarrier>
     uint32_t Key() const
     {
-        return key_;
+        return Value<SlotBarrier>()->GetRawHashcode();
     }
 
     template <TrieMapConfig::SlotBarrier SlotBarrier>
     BaseString* Value() const
     {
+        auto value = reinterpret_cast<BaseString *>(Pointer::Decode(bitField_));
         if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
-            return value_;
+            return value;
         }
         return reinterpret_cast<BaseString*>(Heap::GetBarrier().ReadStringTableStaticRef(
-            *reinterpret_cast<RefField<false>*>((void*)(&value_))));
+            *reinterpret_cast<RefField<false>*>((void*)(&value))));
     }
 
     void SetValue(BaseString* v)
     {
-        value_ = v;
+        bitField_ = ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v);
     }
 
     std::atomic<HashTrieMapEntry*>& Overflow()
@@ -96,21 +105,20 @@ public:
     }
 
 private:
-    uint32_t key_;
-    BaseString* value_;
+    uint64_t bitField_;
     std::atomic<HashTrieMapEntry*> overflow_;
 };
 
 class HashTrieMapIndirect final : public HashTrieMapNode {
 public:
-    std::array<std::atomic<HashTrieMapNode*>, TrieMapConfig::INDIRECT_SIZE> children_{};
-    HashTrieMapIndirect* parent_;
+    std::array<std::atomic<uint64_t>, TrieMapConfig::INDIRECT_SIZE> children_{};
 
-    explicit HashTrieMapIndirect(HashTrieMapIndirect* p = nullptr) : HashTrieMapNode(false), parent_(p) {};
+    explicit HashTrieMapIndirect() {}
 
     ~HashTrieMapIndirect()
     {
-        for (std::atomic<HashTrieMapNode*>& child : children_) {
+        for (std::atomic<uint64_t>& temp : children_) {
+            auto &child = reinterpret_cast<std::atomic<HashTrieMapNode*>&>(temp);
             HashTrieMapNode* node = child.exchange(nullptr, std::memory_order_relaxed);
             if (node == nullptr) {
                 continue;
@@ -134,6 +142,11 @@ public:
             delete e;
         }
     }
+
+    std::atomic<HashTrieMapNode*>& GetChild(size_t index)
+    {
+        return reinterpret_cast<std::atomic<HashTrieMapNode*>&>(children_[index]);
+    }
 };
 
 struct HashTrieMapLoadResult {
@@ -145,13 +158,13 @@ struct HashTrieMapLoadResult {
 
 inline HashTrieMapEntry* HashTrieMapNode::AsEntry()
 {
-    ASSERT(isEntry_ && "HashTrieMap: called entry on non-entry node");
+    ASSERT(IsEntry() && "HashTrieMap: called entry on non-entry node");
     return static_cast<HashTrieMapEntry*>(this);
 }
 
 inline HashTrieMapIndirect* HashTrieMapNode::AsIndirect()
 {
-    ASSERT(!isEntry_ && "HashTrieMap: called indirect on entry node");
+    ASSERT(!IsEntry() && "HashTrieMap: called indirect on entry node");
     return static_cast<HashTrieMapIndirect*>(this);
 }
 
@@ -283,7 +296,7 @@ public:
             return root;
         } else {
             Indirect* expected = nullptr;
-            Indirect* newRoot = new Indirect(nullptr);
+            Indirect* newRoot = new Indirect();
             
             if (root_[rootID].compare_exchange_strong(expected, newRoot,
                                                       std::memory_order_release, std::memory_order_acquire)) {
@@ -383,7 +396,8 @@ private:
     std::atomic<uint32_t> inuseCount_{0};
     bool isSweeping{false};
     template <bool IsLock>
-    Node* Expand(Entry* oldEntry, Entry* newEntry, uint32_t newHash, uint32_t hashShift, Indirect* parent);
+    Node* Expand(Entry* oldEntry, Entry* newEntry,
+        uint32_t oldHash, uint32_t newHash, uint32_t hashShift, Indirect* parent);
     template <typename ReadBarrier>
     void Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid);
     bool CheckWeakRef(const WeakRefFieldVisitor& visitor, Entry* entry);
