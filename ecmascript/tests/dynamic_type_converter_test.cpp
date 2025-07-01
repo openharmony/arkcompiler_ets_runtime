@@ -16,7 +16,7 @@
 #include "common_interfaces/objects/base_type.h"
 #include "ecmascript/dynamic_type_converter.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tests/test_helper.h"
@@ -289,7 +289,7 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test1)
         }
         JSTaggedValue bigIntValue(bigInt);
         auto result = dynTypeConverter_.UnWrapTagged(bigIntValue);
-        
+
         EXPECT_TRUE(std::holds_alternative<common::BaseBigInt>(result));
         const common::BaseBigInt& baseBigInt = std::get<common::BaseBigInt>(result);
 

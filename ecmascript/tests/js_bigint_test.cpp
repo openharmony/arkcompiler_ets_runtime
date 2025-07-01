@@ -15,7 +15,7 @@
 
 #include <climits>
 
-#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;

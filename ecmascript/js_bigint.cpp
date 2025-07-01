@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
 class ObjectFactory;
@@ -65,7 +66,8 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
 
 JSHandle<BigInt> BigInt::CreateUint64MaxBigInt(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 3); // 3:The number of digits in an object of type BigInt
+    JSHandle<BigInt> bigint = CreateBigint<MemSpaceType::SHARED_READ_ONLY_SPACE>(
+        thread, 3); // 3:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0);
@@ -75,7 +77,8 @@ JSHandle<BigInt> BigInt::CreateUint64MaxBigInt(JSThread *thread)
 
 JSHandle<BigInt> BigInt::CreateInt64MaxBigInt(JSThread *thread)
 {
-    JSHandle<BigInt> bigint = CreateBigint(thread, 2); // 2:The number of digits in an object of type BigInt
+    JSHandle<BigInt> bigint = CreateBigint<MemSpaceType::SHARED_READ_ONLY_SPACE>(
+        thread, 2); // 2:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX
@@ -190,17 +193,6 @@ CString BigIntHelper::GetBinary(const BigInt *bigint)
     }
     DeZero(res);
     return res;
-}
-
-JSHandle<BigInt> BigInt::CreateBigint(JSThread *thread, uint32_t length)
-{
-    if (length > MAXSIZE) {
-        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
-    }
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<BigInt> bigint = factory->NewBigInt(length);
-    return bigint;
 }
 
 // 6.1.6.2.13

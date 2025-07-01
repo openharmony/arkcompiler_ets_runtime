@@ -3634,20 +3634,6 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t icSlotSize)
     return array;
 }
 
-JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
-{
-    NewObjectHook();
-    ASSERT(length > 0);
-    size_t size = BigInt::ComputeSize(length);
-    auto header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
-        JSHClass::Cast(thread_->GlobalConstants()->GetBigIntClass().GetTaggedObject()), size);
-    JSHandle<BigInt> bigint(thread_, header);
-    bigint->SetLength(length);
-    bigint->SetSign(false);
-    bigint->InitializationZero();
-    return bigint;
-}
-
 // static
 void ObjectFactory::NewObjectHook() const
 {
