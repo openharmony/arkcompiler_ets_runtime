@@ -310,6 +310,8 @@ group("fuzztest") {
     "loadpatchlong_fuzzer:fuzztest",
     "mapiteratorefget_fuzzer:fuzztest",
     "maprefgetsetkeyvaluesize_fuzzer:fuzztest",
+    "mergeapfiles_fuzzer:fuzztest",
+    "mergeapfilesformerger_fuzzer:fuzztest",
     "mergewithexistprofile_fuzzer:fuzztest",
     "nativepointernew1_fuzzer:fuzztest",
     "nativepointernew2_fuzzer:fuzztest",
