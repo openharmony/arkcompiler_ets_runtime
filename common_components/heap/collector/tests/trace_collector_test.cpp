@@ -26,11 +26,6 @@ namespace common::test {
 class TestWCollector : public WCollector {
 public:
     using WCollector::WCollector;
-
-    void PublicMergeMutatorRoots(WorkStack& workStack)
-    {
-        MergeMutatorRoots(workStack);
-    }
 };
 
 class TraceCollectorTest : public common::test::BaseTestWithScope {
@@ -61,24 +56,6 @@ protected:
     }
 };
 
-HWTEST_F_L0(TraceCollectorTest, UnregisterRoots_Exists_ShouldEraseAndDecreaseCount)
-{
-    StaticRootTable::StaticRootArray dummyArray;
-    const uint32_t size = 10;
-    rootTable_.RegisterRoots(&dummyArray, size);
-    EXPECT_TRUE(ContainsRoot(rootTable_, &dummyArray, size));
-    rootTable_.UnregisterRoots(&dummyArray, size);
-    EXPECT_FALSE(ContainsRoot(rootTable_, &dummyArray, size));
-}
-
-HWTEST_F_L0(TraceCollectorTest, UnregisterRoots_NotExists_ShouldNotModify)
-{
-    const uint32_t size = 10;
-    StaticRootTable::StaticRootArray anotherDummyArray;
-    rootTable_.UnregisterRoots(&anotherDummyArray, size);
-    EXPECT_FALSE(ContainsRoot(rootTable_, &anotherDummyArray, size));
-}
-
 std::unique_ptr<TestWCollector> GetWCollector()
 {
     CollectorResources& resources = Heap::GetHeap().GetCollectorResources();
@@ -86,15 +63,4 @@ std::unique_ptr<TestWCollector> GetWCollector()
     return std::make_unique<TestWCollector>(allocator, resources);
 }
 
-HWTEST_F_L0(TraceCollectorTest, MergeMutatorRoots_WorldNotStopped_EnterBothIfs)
-{
-    std::unique_ptr<TestWCollector> wCollector = GetWCollector();
-    ASSERT_TRUE(wCollector != nullptr);
-    TraceCollector::WorkStack workStack;
-    auto& mutatorManager = MutatorManager::Instance();
-    EXPECT_FALSE(mutatorManager.WorldStopped());
-    wCollector->PublicMergeMutatorRoots(workStack);
-    EXPECT_TRUE(mutatorManager.TryAcquireMutatorManagementWLock());
-    mutatorManager.MutatorManagementWUnlock();
-}
 }

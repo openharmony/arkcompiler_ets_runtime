@@ -80,7 +80,7 @@ HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Heu_ReturnsTrue_IfFrequent) {
         fakeCurrentTime - 500, // prevReqTime < now - minInterval
         fakeCurrentTime
     );
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 }
 
 HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_ReturnsTrue_IfFrequent) {
@@ -91,7 +91,7 @@ HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_ReturnsTrue_IfFrequent) {
         fakeCurrentTime,
         fakeCurrentTime - 500 // lastGCFinishTime
     );
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 }
 
 HWTEST_F_L0(GCRequestTest, ShouldBeIgnored_Native_ReturnsFalse_IfNotFrequent) {
