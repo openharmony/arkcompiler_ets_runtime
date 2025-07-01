@@ -394,6 +394,9 @@ public:
 
     static void InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func);
 
+    static void ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunction> &oldFunc,
+                                const JSHandle<JSFunction> &newFunc);
+
     bool IsSendableOrConcurrentFunction(JSThread *thread) const;
     bool IsSharedFunction() const;
 

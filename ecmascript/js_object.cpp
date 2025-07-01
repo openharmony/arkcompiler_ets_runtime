@@ -269,6 +269,48 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 }
 
+JSHandle<JSTaggedValue> JSObject::FindFuncInObjectForHook(JSThread *thread, JSHandle<JSTaggedValue> object,
+                                                          const std::string &className, const std::string &funcName)
+{
+    JSHandle<JSTaggedValue> notFound(thread, thread->GlobalConstants()->GetUndefined());
+    JSHandle<JSTaggedValue> targetObject = object;
+
+    if (targetObject->IsJSFunction()) {
+        if (!className.empty()) {
+            return notFound;
+        }
+        JSFunction *function = JSFunction::Cast(targetObject->GetTaggedObject());
+        if (!function->IsClassConstructor()) {
+            // Compare method names when exporting functions directly
+            Method *method = Method::Cast(function->GetMethod(thread));
+            if (method->ParseFunctionNameView(thread).first == funcName) {
+                return targetObject;
+            } else {
+                return notFound;
+            }
+        }
+        // Finding non-static function in a class is only supported.
+        targetObject = JSHandle<JSTaggedValue>(thread, function->GetProtoOrHClass(thread));
+    }
+
+    // When exporting namespace/classes/functions, first look up class in namespace
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> classNameKey(factory->NewFromUtf8(className));
+    JSHandle<JSTaggedValue> targetClass = JSObject::GetProperty(thread, targetObject, classNameKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, notFound);
+    if (!targetClass->IsUndefined()) {
+        JSTaggedValue value = JSFunction::Cast(targetClass->GetTaggedObject())->GetProtoOrHClass(thread);
+        targetObject = JSHandle<JSTaggedValue>(thread, value);
+    }
+    
+    // Three cases, one is export namesapce/function, two is export namesapce/class/function,
+    // three is export classs/function, then according to the function name to find function
+    JSHandle<JSTaggedValue> funcNameKey(factory->NewFromUtf8(funcName));
+    JSHandle<JSTaggedValue> targetFunc = JSObject::GetProperty(thread, targetObject, funcNameKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, notFound);
+    return targetFunc;
+}
+
 bool JSObject::AttributesUnchanged(const JSThread *thread,
                                    const JSHandle<JSObject> &obj)
 {

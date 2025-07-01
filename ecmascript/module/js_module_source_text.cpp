@@ -2239,4 +2239,35 @@ void SourceTextModule::RestoreMutableFields(JSThread* thread, JSHandle<SourceTex
     module->SetException(thread, fields.Exception);
     module->SetNamespace(thread, fields.Namespace);
 }
+
+JSHandle<JSTaggedValue> SourceTextModule::FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
+                                                                  const std::string &className,
+                                                                  const std::string &funcName)
+{
+    DisallowGarbageCollection no_gc;
+    JSHandle<JSTaggedValue> functionFound(thread, thread->GlobalConstants()->GetUndefined());
+
+    auto *moduleManager = thread->GetModuleManager();
+    CString referencing(recordName.c_str(), recordName.length());
+    if (!moduleManager->IsLocalModuleLoaded(referencing)) {
+        return functionFound;
+    }
+
+    auto module = moduleManager->HostGetImportedModule(referencing);
+    JSHandle<JSTaggedValue> dictionary = JSHandle<JSTaggedValue>(thread, module->GetNameDictionary(thread));
+    if (dictionary->IsUndefined()) {
+        return functionFound;
+    }
+    JSHandle<TaggedArray> exportArray = JSHandle<TaggedArray>(thread, dictionary.GetTaggedValue());
+    size_t arrLen = exportArray->GetLength();
+    JSMutableHandle<JSTaggedValue> exportEntity(thread, thread->GlobalConstants()->GetUndefined());
+    for (size_t idx = 0; idx < arrLen; idx++) {
+        exportEntity.Update(exportArray->Get(thread, idx));
+        functionFound = JSObject::FindFuncInObjectForHook(thread, exportEntity, className, funcName);
+        if (!functionFound->IsUndefined()) {
+            break;
+        }
+    }
+    return functionFound;
+}
 } // namespace panda::ecmascript

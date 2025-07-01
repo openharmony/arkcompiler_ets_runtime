@@ -32,6 +32,9 @@
 namespace panda {
 namespace ecmascript {
 class EcmaVM;
+class JSTaggedValue;
+template<typename T>
+class JSHandle;
 class Stream;
 class Progress;
 struct ProfileInfo;
@@ -45,6 +48,7 @@ class JSValueRef;
 template<typename T>
 class Local;
 using EcmaVM = ecmascript::EcmaVM;
+using JSTaggedValue = ecmascript::JSTaggedValue;
 using Stream = ecmascript::Stream;
 using Progress = ecmascript::Progress;
 using ProfileInfo = ecmascript::ProfileInfo;
@@ -164,6 +168,12 @@ public:
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
     static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static void SetJsRawHeapCropLevel(CropLevel level);
+
+    static ecmascript::JSHandle<JSTaggedValue> FindFunctionForHook(const EcmaVM *vm,
+        const std::string &recordName, const std::string &className, const std::string &funcName);
+    static void ReplaceFunctionForHook(const EcmaVM *vm, ecmascript::JSHandle<JSTaggedValue> &target,
+        ecmascript::JSHandle<JSTaggedValue> &hook, ecmascript::JSHandle<JSTaggedValue> &backup);
+    static bool LoadHookModule(const EcmaVM *vm);
 };
 }
 #endif
