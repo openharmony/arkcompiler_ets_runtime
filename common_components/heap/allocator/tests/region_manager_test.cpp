@@ -39,7 +39,17 @@ protected:
     size_t totalUnits_ = SIZE_MAX_TEST;
     size_t heapSize_;
     Mutator* mutator_ = nullptr;
-    bool isInit_ = false;
+
+    static void SetUpTestCase()
+    {
+        BaseRuntime::GetInstance()->Init();
+    }
+
+    static void TearDownTestCase()
+    {
+        BaseRuntime::GetInstance()->Fini();
+    }
+
     void SetUp() override
     {
         heapSize_ = totalUnits_ * RegionDesc::UNIT_SIZE;
@@ -58,15 +68,14 @@ protected:
 
     void TearDown() override
     {
-        if (isInit_) {
-            BaseRuntime::GetInstance()->Fini();
+        if (mutator_) {
+            delete mutator_;
+            mutator_ = nullptr;
         }
-    }
-
-    void InitializeBaseRuntime()
-    {
-        BaseRuntime::GetInstance()->Init();
-        isInit_ = true;
+        if (regionMemory_) {
+            free(regionMemory_);
+            regionMemory_ = nullptr;
+        }
     }
 };
 
@@ -284,7 +293,6 @@ HWTEST_F_L0(RegionManagerTest, TakeRegion1)
 {
     ASSERT_NE(mutator_, nullptr);
     mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    InitializeBaseRuntime();
     RegionManager manager;
     size_t nUnit = 1;
     manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
@@ -293,5 +301,28 @@ HWTEST_F_L0(RegionManagerTest, TakeRegion1)
     auto size = manager.CollectRegion(garbageRegion);
     RegionDesc* region = manager.TakeRegion(16, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, false);
     EXPECT_GT(manager.GetDirtyUnitCount(), 0);
+}
+
+HWTEST_F_L0(RegionManagerTest, TakeRegion2)
+{
+    ASSERT_NE(mutator_, nullptr);
+    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    RegionManager manager;
+    size_t nUnit = 1;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    RegionDesc* garbageRegion = RegionDesc::InitRegion(SIZE_HALF_MAX_TEST, nUnit,
+        RegionDesc::UnitRole::SMALL_SIZED_UNITS);
+    auto size = manager.CollectRegion(garbageRegion);
+    RegionDesc* region = manager.TakeRegion(16, RegionDesc::UnitRole::SMALL_SIZED_UNITS, true, false);
+    EXPECT_NE(region, nullptr);
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocPinnedFromFreeList)
+{
+    ASSERT_NE(mutator_, nullptr);
+    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    EXPECT_EQ(manager.AllocPinnedFromFreeList(0), 0);
 }
 }

@@ -103,4 +103,56 @@ HWTEST_F_L0(CopyBarrierTest, AtomicWriteRefField_TEST2) {
     copyBarrier->AtomicWriteRefField(nullptr, oldField, &newObj, std::memory_order_relaxed);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
+
+HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST1) {
+    Collector& collector = Heap::GetHeap().GetCollector();
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    BaseObject obj;
+    RefField<false> field(&obj);
+
+    BaseObject* resultObj = copyBarrier->ReadRefField(&obj, field);
+    ASSERT_TRUE(resultObj != nullptr);
+    EXPECT_EQ(resultObj, &obj);
+}
+
+HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST2) {
+    Collector& collector = Heap::GetHeap().GetCollector();
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    BaseObject obj;
+    RefField<false> field(&obj);
+
+    BaseObject* resultObj = copyBarrier->ReadRefField(nullptr, field);
+    ASSERT_TRUE(resultObj != nullptr);
+    EXPECT_EQ(resultObj, &obj);
+}
+
+HWTEST_F_L0(CopyBarrierTest, ReadStaticRef_TEST1) {
+    Collector& collector = Heap::GetHeap().GetCollector();
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    BaseObject obj;
+    RefField<false> field(&obj);
+
+    BaseObject* resultObj = copyBarrier->ReadStaticRef(field);
+    ASSERT_TRUE(resultObj != nullptr);
+    EXPECT_EQ(resultObj, &obj);
+}
+
+HWTEST_F_L0(CopyBarrierTest, AtomicReadRefField_TEST1) {
+    Collector& collector = Heap::GetHeap().GetCollector();
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    BaseObject obj;
+    RefField<true> field(&obj);
+
+    BaseObject* resultObj = nullptr;
+    resultObj = copyBarrier->AtomicReadRefField(&obj, field, std::memory_order_seq_cst);
+    ASSERT_TRUE(resultObj != nullptr);
+}
 }  // namespace common::test

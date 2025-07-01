@@ -363,4 +363,19 @@ HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion4)
     EXPECT_EQ(region4->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
     EXPECT_EQ(region4->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
+
+HWTEST_F_L0(RegionSpaceTest, CopyRegion1)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    theAllocator.AssembleSmallGarbageCandidates();
+    RegionDesc* region = theAllocator.GetRegionManager().TakeRegion(
+        16, RegionDesc::UnitRole::SMALL_SIZED_UNITS, true, false);
+    region->SetRegionType(RegionDesc::RegionType::FROM_REGION);
+    ASSERT(region->IsFromRegion());
+    region->AddLiveByteCount(1);
+    theAllocator.CopyRegion(region);
+    EXPECT_NE(theAllocator.FromSpaceSize(), 0);
+}
 }
