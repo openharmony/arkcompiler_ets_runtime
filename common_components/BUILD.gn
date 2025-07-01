@@ -416,6 +416,7 @@ ohos_shared_library("libark_common_components_test") {
     external_deps += [
       "zlib:libz",
     ]
+    external_deps += hiviewdfx_ext_deps
   }
 
   ldflags = []
