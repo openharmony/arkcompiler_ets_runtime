@@ -89,9 +89,8 @@ bool IdleBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field,
 
 void IdleBarrier::UpdateRememberSet(BaseObject* object, BaseObject* ref) const
 {
-    if (!Heap::IsHeapAddress(ref) || object == nullptr) {
-        return;
-    }
+    ASSERT(Heap::IsHeapAddress(ref));
+    ASSERT(object != nullptr);
     RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)object));
     RegionDesc* refRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)ref));
     if ((!objRegion->IsInYoungSpace() && refRegion->IsInYoungSpace()) ||
@@ -106,12 +105,17 @@ void IdleBarrier::UpdateRememberSet(BaseObject* object, BaseObject* ref) const
 void IdleBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     DLOG(BARRIER, "write obj %p ref@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
-    UpdateRememberSet(obj, ref);
+    if (Heap::IsTaggedObject((HeapAddress)ref)) {
+        UpdateRememberSet(obj, ref);
+    }
     field.SetTargetObject(ref);
 }
 
 void IdleBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
+    if (!Heap::IsTaggedObject((HeapAddress)ref)) {
+        return;
+    }
     UpdateRememberSet(obj, ref);
     DLOG(BARRIER, "write obj %p ref@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
 }

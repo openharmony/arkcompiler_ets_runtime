@@ -87,18 +87,22 @@ public:
             << "memset_s fail";
     }
 
-    void VisitAllMarkedCard(const std::function<void(BaseObject*)>& func, HeapAddress regionStart)
+    void VisitAllMarkedCardBefore(const std::function<void(BaseObject*)>& func,
+                                            HeapAddress regionStart, HeapAddress end)
     {
         for (size_t i = 0; i < cardCnt.load(); i++) {
             uint64_t card = cardTable[i].load();
-            for (size_t j = 0; j < kBitsPerWord; j++) {
-                uint64_t mask = static_cast<uint64_t>(1) << j;
-                if ((card & mask) == 0) {
-                    continue;
+            size_t index = kBitsPerWord;
+            while (card != 0) {
+                index = static_cast<size_t>(__builtin_ctzll(card));
+                ASSERT(index < kBitsPerWord);
+                HeapAddress offset = static_cast<HeapAddress>((i * kBitsPerWord) * kBitsPerByte + index * kBitsPerByte);
+                HeapAddress obj = regionStart + offset;
+                if (obj >= end) {
+                    return;
                 }
-                BaseObject* obj = reinterpret_cast<BaseObject*>(regionStart +
-                    static_cast<HeapAddress>((i * kBitsPerWord) * kBitsPerByte + j * kBitsPerByte));
-                func(obj);
+                func(reinterpret_cast<BaseObject*>(obj));
+                card &= ~(static_cast<uint64_t>(1) << index);
             }
         }
     }

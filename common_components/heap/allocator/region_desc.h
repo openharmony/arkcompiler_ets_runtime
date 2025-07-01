@@ -320,7 +320,6 @@ public:
         if (IsLargeRegion()) {
             return MarkObjectForLargeRegion(obj);
         }
-        // top1 issue
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
         bool marked = GetOrAllocMarkBitmap()->MarkBits(offset);
         DCHECK_CC(IsMarkedObject(obj));
@@ -416,13 +415,7 @@ public:
     bool MarkRSetCardTable(BaseObject* obj)
     {
         size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        return metadata.regionRSet->MarkCardTable(offset);
-    }
-
-    bool IsInRSet(BaseObject* obj)
-    {
-        size_t offset = GetAddressOffset(reinterpret_cast<HeapAddress>(obj));
-        return metadata.regionRSet->IsMarkedCard(offset);
+        return GetRSet()->MarkCardTable(offset);
     }
 
     ALWAYS_INLINE_CC size_t GetAddressOffset(HeapAddress address)
@@ -597,9 +590,11 @@ public:
 
     void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
-    void VisitAllObjectsBeforeTrace(const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
+
+    void VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func);
+    void VisitRememberSetBeforeFix(const std::function<void(BaseObject*)>& func);
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
     // reset so that this region can be reused for allocation

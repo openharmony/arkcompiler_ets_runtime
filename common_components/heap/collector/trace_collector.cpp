@@ -349,7 +349,7 @@ void TraceCollector::TraceRoots(WorkStack &tempStack)
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
         auto func = [this, &workStack](BaseObject *object) { MarkRememberSetImpl(object, workStack); };
         RegionSpace &space = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator());
-        space.VisitRememberSet(func);
+        space.MarkRememberSet(func);
     }
 
     COMMON_PHASE_TIMER("TraceRoots");
@@ -416,7 +416,6 @@ bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 
 void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStack)
 {
-    // in Young GC: maybe we can skip the object if it has no ref to young space
     object->ForEachRefField([this, &workStack, &object](RefField<>& field) {
         BaseObject* targetObj = field.GetTargetObject();
         if (Heap::IsHeapAddress(targetObj)) {

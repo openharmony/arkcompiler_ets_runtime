@@ -174,7 +174,6 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
     // step 1. copy from src to dst directly.
     if (thread->NeedReadBarrier()) {
         CopyObjectPrimitive<true, maybeOverlap>(thread, dstAddr, srcAddr, count);
-        return;
     } else {
         CopyObjectPrimitive<false, maybeOverlap>(thread, dstAddr, srcAddr, count);
     }

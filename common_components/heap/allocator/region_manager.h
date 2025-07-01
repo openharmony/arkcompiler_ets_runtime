@@ -432,7 +432,11 @@ public:
     void PrepareForward()
     {
         AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
-            RegionDesc* region = regionBuffer.GetRegion();
+            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetCopyLine();
+            }
+            region = regionBuffer.GetRegion<AllocBufferType::OLD>();
             if (region != RegionDesc::NullRegion()) {
                 region->SetCopyLine();
             }
@@ -443,7 +447,11 @@ public:
     void PrepareFix()
     {
         AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
-            RegionDesc* region = regionBuffer.GetRegion();
+            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetFixLine();
+            }
+            region = regionBuffer.GetRegion<AllocBufferType::OLD>();
             if (region != RegionDesc::NullRegion()) {
                 region->SetFixLine();
             }
@@ -500,7 +508,7 @@ public:
         readOnlyRegionList_.VisitAllRegions(visitor);
     }
 
-    void VisitRememberSet(const std::function<void(BaseObject*)>& func);
+    void MarkRememberSet(const std::function<void(BaseObject*)>& func);
     void ClearRSet();
 
     void MarkJitFortMemInstalled(BaseObject *obj)

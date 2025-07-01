@@ -105,22 +105,14 @@ public:
         ClearGCInfo(oldRegionList_);
     }
 
-    void VisitRememberSet(const std::function<void(BaseObject*)>& func)
+    void MarkRememberSet(const std::function<void(BaseObject*)>& func)
     {
         auto visitFunc = [&func](RegionDesc* region) {
-            region->VisitAllObjects([&region, &func](BaseObject* obj) {
-                if (region->IsInRSet(obj)) {
-                    func(obj);
-                }
-            });
+            region->VisitRememberSet(func);
         };
 
         auto visitRecentFunc = [&func](RegionDesc* region) {
-            region->VisitAllObjectsBeforeTrace([&region, &func](BaseObject* obj) {
-                if (region->IsInRSet(obj)) {
-                    func(obj);
-                }
-            });
+            region->VisitRememberSetBeforeTrace(func);
         };
 
         // Need to visit objects allocated before current GC iteration, traceline is used to distinguish them.
