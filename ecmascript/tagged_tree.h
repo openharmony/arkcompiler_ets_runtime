@@ -60,32 +60,32 @@ public:
 
     inline uint32_t NumberOfElements() const
     {
-        return Get(NUMBER_OF_ELEMENTS_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_ELEMENTS_INDEX).GetInt();
     }
 
     inline uint32_t NumberOfDeletedElements() const
     {
-        return Get(NUMBER_OF_HOLE_ENTRIES_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_HOLE_ENTRIES_INDEX).GetInt();
     }
 
     inline int Capacity() const
     {
-        return Get(CAPACITY_INDEX).GetInt();
+        return GetPrimitive(CAPACITY_INDEX).GetInt();
     }
 
-    inline JSTaggedValue GetKey(int entry) const
+    inline JSTaggedValue GetKey(const JSThread *thread, int entry) const
     {
         if (entry < 0) {
             return JSTaggedValue::Hole();
         }
         int index = EntryToIndex(entry);
-        return GetElement(index);
+        return GetElement(thread, index);
     }
 
-    inline JSTaggedValue GetValue(int entry) const
+    inline JSTaggedValue GetValue(const JSThread *thread, int entry) const
     {
         int index = static_cast<int>(EntryToIndex(entry) + Derived::ENTRY_VALUE_INDEX);
-        return GetElement(index);
+        return GetElement(thread, index);
     }
 
     inline TreeColor GetColor(int entry) const
@@ -94,7 +94,7 @@ public:
             return TreeColor::BLACK;
         }
         int index = static_cast<int>(EntryToIndex(entry) + Derived::ENTRY_COLOR_INDEX);
-        JSTaggedValue color = GetElement(index);
+        JSTaggedValue color = GetPrimitive(index);
         return color.GetInt() == TreeColor::RED ? TreeColor::RED : TreeColor::BLACK;
     }
 
@@ -125,7 +125,7 @@ public:
 
     inline int GetRootEntries() const
     {
-        return Get(ROOT_INDEX).GetInt();
+        return GetPrimitive(ROOT_INDEX).GetInt();
     }
 
     static int FindEntry(JSThread *thread, const JSHandle<Derived> &tree, const JSHandle<JSTaggedValue> &key);
@@ -150,9 +150,9 @@ public:
         Set(thread, COMPARE_FUNCTION_INDEX, fn);
     }
 
-    inline JSTaggedValue GetCompare() const
+    inline JSTaggedValue GetCompare(const JSThread *thread) const
     {
-        return Get(COMPARE_FUNCTION_INDEX);
+        return Get(thread, COMPARE_FUNCTION_INDEX);
     }
 
     inline int GetMinimum(int entry) const
@@ -178,7 +178,7 @@ public:
     inline int GetParent(int entry) const
     {
         int index = static_cast<int>(EntryToIndex(entry) + Derived::ENTRY_PARENT_INDEX);
-        JSTaggedValue parent = GetElement(index);
+        JSTaggedValue parent = GetPrimitive(index);
         return parent.GetInt();
     }
 
@@ -188,7 +188,7 @@ public:
             return JSTaggedValue::Hole();
         }
         int index = static_cast<int>(EntryToIndex(parent) + Derived::ENTRY_LEFT_CHILD_INDEX);
-        return Get(index);
+        return GetPrimitive(index);
     }
 
     inline JSTaggedValue GetRightChild(int parent) const
@@ -197,7 +197,7 @@ public:
             return JSTaggedValue::Hole();
         }
         int index = static_cast<int>(EntryToIndex(parent) + Derived::ENTRY_RIGHT_CHILD_INDEX);
-        return Get(index);
+        return GetPrimitive(index);
     }
 
     inline int GetLeftChildIndex(int parent) const
@@ -206,7 +206,7 @@ public:
             return -1;
         }
         int index = static_cast<int>(EntryToIndex(parent) + Derived::ENTRY_LEFT_CHILD_INDEX);
-        JSTaggedValue child = Get(index);
+        JSTaggedValue child = GetPrimitive(index);
         return child.IsHole() ? -1 : child.GetInt();
     }
 
@@ -216,21 +216,21 @@ public:
             return -1;
         }
         int index = static_cast<int>(EntryToIndex(parent) + Derived::ENTRY_RIGHT_CHILD_INDEX);
-        JSTaggedValue child = Get(index);
+        JSTaggedValue child = GetPrimitive(index);
         return child.IsHole() ? -1 : child.GetInt();
     }
 
 protected:
-    inline JSTaggedValue GetElement(int index) const
+    inline JSTaggedValue GetElement(const JSThread *thread, int index) const
     {
         ASSERT(index >= 0 && index < static_cast<int>(GetLength()));
-        return Get(index);
+        return Get(thread, index);
     }
 
     // get root
-    inline JSTaggedValue GetRootKey() const
+    inline JSTaggedValue GetRootKey(const JSThread *thread) const
     {
-        return GetKey(GetRootEntries());
+        return GetKey(thread, GetRootEntries());
     }
 
     inline int EntryToIndex(uint32_t entry) const
@@ -293,9 +293,9 @@ protected:
     void InsertRebalance(const JSThread *thread, int index);
     void DeleteRebalance(const JSThread *thread, int index);
 
-    inline bool IsValidIndex(int entry) const
+    inline bool IsValidIndex(const JSThread *thread, int entry) const
     {
-        return entry != GetRootEntries() && !GetKey(entry).IsHole();
+        return entry != GetRootEntries() && !GetKey(thread, entry).IsHole();
     }
 
     inline int GetLeftBrother(int entry) const
@@ -375,18 +375,18 @@ protected:
 
     inline void CopyEntry(const JSThread *thread, int parent, const JSHandle<Derived> &newTree, int index)
     {
-        newTree->SetKey(thread, index, GetKey(parent));
+        newTree->SetKey(thread, index, GetKey(thread, parent));
         newTree->SetColor(thread, index, GetColor(parent));
     }
 
     inline void CopyData(const JSThread *thread, int dst, int src)
     {
-        SetKey(thread, dst, GetKey(src));
+        SetKey(thread, dst, GetKey(thread, src));
     }
     inline void CopyAllData(const JSThread *thread, int parent, const JSHandle<Derived> &newTree, int index)
     {
-        newTree->SetKey(thread, index, GetKey(parent));
-        newTree->SetValue(thread, index, GetValue(parent));
+        newTree->SetKey(thread, index, GetKey(thread, parent));
+        newTree->SetValue(thread, index, GetValue(thread, parent));
         newTree->SetColor(thread, index, GetColor(parent));
         newTree->SetParent(thread, index, JSTaggedValue(GetParent(parent)));
         newTree->SetRightChild(thread, index, GetRightChild(parent));
@@ -432,7 +432,7 @@ public:
                                     const JSHandle<JSTaggedValue> &key)
     {
         int index = RBTree::FindEntry(thread, map, key);
-        return index == -1 ? JSTaggedValue::Undefined() : map->GetValue(index);
+        return index == -1 ? JSTaggedValue::Undefined() : map->GetValue(thread, index);
     }
 
     static JSTaggedValue Delete(JSThread *thread, const JSHandle<TaggedTreeMap> &map, int entry);
@@ -443,15 +443,15 @@ public:
     static JSTaggedValue GetHigherKey(JSThread *thread, const JSHandle<TaggedTreeMap> &map,
                                       const JSHandle<JSTaggedValue> &key);
 
-    inline JSTaggedValue GetFirstKey() const
+    inline JSTaggedValue GetFirstKey(const JSThread *thread) const
     {
-        JSTaggedValue key = GetKey(GetMinimum(GetRootEntries()));
+        JSTaggedValue key = GetKey(thread, GetMinimum(GetRootEntries()));
         return Transform(key);
     }
 
-    inline JSTaggedValue GetLastKey() const
+    inline JSTaggedValue GetLastKey(const JSThread *thread) const
     {
-        JSTaggedValue key = GetKey(GetMaximum(GetRootEntries()));
+        JSTaggedValue key = GetKey(thread, GetMaximum(GetRootEntries()));
         return Transform(key);
     }
 
@@ -470,12 +470,12 @@ public:
     inline void CopyEntry(const JSThread *thread, int parent, const JSHandle<TaggedTreeMap> &newMap, int index)
     {
         RBTree::CopyEntry(thread, parent, newMap, index);
-        newMap->SetValue(thread, index, GetValue(parent));
+        newMap->SetValue(thread, index, GetValue(thread, parent));
     }
     inline void CopyData(const JSThread *thread, int dst, int src)
     {
         RBTree::CopyData(thread, dst, src);
-        SetValue(thread, dst, GetValue(src));
+        SetValue(thread, dst, GetValue(thread, src));
     }
 
     inline void RemoveEntry(const JSThread *thread, int index)
@@ -502,15 +502,15 @@ public:
     static JSTaggedValue GetHigherKey(JSThread *thread, const JSHandle<TaggedTreeSet> &set,
                                       const JSHandle<JSTaggedValue> &key);
 
-    inline JSTaggedValue GetFirstKey() const
+    inline JSTaggedValue GetFirstKey(const JSThread *thread) const
     {
-        JSTaggedValue key = GetKey(GetMinimum(GetRootEntries()));
+        JSTaggedValue key = GetKey(thread, GetMinimum(GetRootEntries()));
         return Transform(key);
     }
 
-    inline JSTaggedValue GetLastKey() const
+    inline JSTaggedValue GetLastKey(const JSThread *thread) const
     {
-        JSTaggedValue key = GetKey(GetMaximum(GetRootEntries()));
+        JSTaggedValue key = GetKey(thread, GetMaximum(GetRootEntries()));
         return Transform(key);
     }
 
@@ -529,13 +529,13 @@ public:
     inline void CopyEntry(const JSThread *thread, int parent, const JSHandle<TaggedTreeSet> &newMap, int index)
     {
         RBTree::CopyEntry(thread, parent, newMap, index);
-        newMap->SetValue(thread, index, GetValue(parent));
+        newMap->SetValue(thread, index, GetValue(thread, parent));
     }
 
     inline void CopyData(const JSThread *thread, int dst, int src)
     {
         RBTree::CopyData(thread, dst, src);
-        SetValue(thread, dst, GetValue(src));
+        SetValue(thread, dst, GetValue(thread, src));
     }
 
     inline void RemoveEntry(const JSThread *thread, int index)

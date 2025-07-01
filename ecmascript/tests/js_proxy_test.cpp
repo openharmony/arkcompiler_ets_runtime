@@ -262,7 +262,7 @@ HWTEST_F_L0(JSProxyTest, DeleteProperty)
     EXPECT_TRUE(JSProxy::DeleteProperty(thread, proxyHandle, key));
     PropertyDescriptor resDesc(thread);
     JSProxy::GetOwnProperty(thread, proxyHandle, key, resDesc);
-    EXPECT_TRUE(JSTaggedValue::SameValue(resDesc.GetValue().GetTaggedValue(), JSTaggedValue::Undefined()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, resDesc.GetValue().GetTaggedValue(), JSTaggedValue::Undefined()));
 
     // 2. handler has "deleteProperty"
     EcmaVM *vm = thread->GetEcmaVM();
@@ -295,7 +295,7 @@ HWTEST_F_L0(JSProxyTest, GetPrototypeOf)
     EXPECT_TRUE(targetHandle->IsECMAObject());
     JSObject::SetPrototype(thread, JSHandle<JSObject>(targetHandle), proto);
     EXPECT_TRUE(
-        JSTaggedValue::SameValue(JSTaggedValue::GetPrototype(thread, targetHandle), proto.GetTaggedValue()));
+        JSTaggedValue::SameValue(thread, JSTaggedValue::GetPrototype(thread, targetHandle), proto.GetTaggedValue()));
 
     JSHandle<JSTaggedValue> handlerHandle(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass), hclass));
     EXPECT_TRUE(handlerHandle->IsECMAObject());
@@ -303,7 +303,7 @@ HWTEST_F_L0(JSProxyTest, GetPrototypeOf)
     JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
     EXPECT_TRUE(*proxyHandle != nullptr);
 
-    EXPECT_TRUE(JSTaggedValue::SameValue(JSProxy::GetPrototype(thread, proxyHandle), proto.GetTaggedValue()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, JSProxy::GetPrototype(thread, proxyHandle), proto.GetTaggedValue()));
 
     // 2. handler has "GetPrototypeOf"
     EcmaVM *vm = thread->GetEcmaVM();
@@ -314,7 +314,7 @@ HWTEST_F_L0(JSProxyTest, GetPrototypeOf)
 
     JSHandle<JSProxy> proxyHandle2 = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
     EXPECT_TRUE(*proxyHandle2 != nullptr);
-    EXPECT_TRUE(JSTaggedValue::SameValue(JSProxy::GetPrototype(thread, proxyHandle2), JSTaggedValue::Null()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, JSProxy::GetPrototype(thread, proxyHandle2), JSTaggedValue::Null()));
 }
 
 JSTaggedValue HandlerSetPrototype([[maybe_unused]] EcmaRuntimeCallInfo *argv)
@@ -340,7 +340,7 @@ HWTEST_F_L0(JSProxyTest, SetPrototypeOf)
 
     JSProxy::SetPrototype(thread, proxyHandle, proto);
     EXPECT_TRUE(
-        JSTaggedValue::SameValue(JSTaggedValue::GetPrototype(thread, targetHandle), proto.GetTaggedValue()));
+        JSTaggedValue::SameValue(thread, JSTaggedValue::GetPrototype(thread, targetHandle), proto.GetTaggedValue()));
 
     // 2. handler has "SetPrototypeOf"
     EcmaVM *vm = thread->GetEcmaVM();
@@ -476,7 +476,7 @@ HWTEST_F_L0(JSProxyTest, OwnPropertyKeys)
     EXPECT_TRUE(*proxyHandle != nullptr);
     JSHandle<TaggedArray> res = JSProxy::OwnPropertyKeys(thread, proxyHandle);
 
-    EXPECT_TRUE(JSTaggedValue::SameValue(res->Get(0), key.GetTaggedValue()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, res->Get(thread, 0), key.GetTaggedValue()));
 
     // 2. handler has "OwnPropertyKeys"
     EcmaVM *vm = thread->GetEcmaVM();
@@ -488,7 +488,8 @@ HWTEST_F_L0(JSProxyTest, OwnPropertyKeys)
     JSHandle<JSProxy> proxyHandle2 = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
     EXPECT_TRUE(*proxyHandle2 != nullptr);
     JSHandle<TaggedArray> res2 = JSProxy::OwnPropertyKeys(thread, proxyHandle2);
-    EXPECT_TRUE(res2->GetLength() == 0U || !JSTaggedValue::SameValue(res2->Get(0), key.GetTaggedValue()));
+    EXPECT_TRUE(res2->GetLength() == 0U ||
+                !JSTaggedValue::SameValue(thread, res2->Get(thread, 0), key.GetTaggedValue()));
 }
 
 JSTaggedValue HandlerCall([[maybe_unused]] EcmaRuntimeCallInfo *argv)
@@ -521,7 +522,7 @@ HWTEST_F_L0(JSProxyTest, Call)
         EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(proxyHandle),
         JSHandle<JSTaggedValue>(proxyHandle), undefined, 0);
     JSTaggedValue res = JSProxy::CallInternal(info);
-    EXPECT_TRUE(JSTaggedValue::SameValue(res, JSTaggedValue::True()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, res, JSTaggedValue::True()));
 
     // 2. handler has "Call"
     JSHandle<JSTaggedValue> funcKey = thread->GlobalConstants()->GetHandledApplyString();
@@ -535,7 +536,7 @@ HWTEST_F_L0(JSProxyTest, Call)
         EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(proxyHandle2),
         JSHandle<JSTaggedValue>(proxyHandle2), undefined, 0);
     JSTaggedValue res2 = JSProxy::CallInternal(runtimeInfo);
-    EXPECT_TRUE(JSTaggedValue::SameValue(res2, JSTaggedValue::False()));
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, res2, JSTaggedValue::False()));
 }
 
 JSTaggedValue HandlerConstruct([[maybe_unused]] EcmaRuntimeCallInfo *argv)

@@ -62,14 +62,15 @@ public:
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
         {
+            JSThread *thread = argv->GetThread();
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             JSHandle<JSTaggedValue> vector = GetCallArg(argv, 2); // 2 means the secode arg
             if (!vector->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIVector::Cast(vector.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    JSTaggedValue result = elements->Get(key->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    JSTaggedValue result = elements->Get(thread, key->GetInt());
                     EXPECT_EQ(result, value.GetTaggedValue());
                 }
             }
@@ -151,7 +152,7 @@ HWTEST_F_L0(ContainersVectorTest, VectorConstructor)
     
     JSHandle<JSAPIVector> setHandle(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(setHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
@@ -591,7 +592,7 @@ HWTEST_F_L0(ContainersVectorTest, CloneAndConvertToArrayAndCopyToArray)
         JSHandle<JSTaggedValue> handleArr(thread, arr);
         JSHandle<TaggedArray> taggedArr = JSArray::ToTaggedArray(thread, handleArr);
         for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
-            JSTaggedValue result = taggedArr->Get(i);
+            JSTaggedValue result = taggedArr->Get(thread, i);
             EXPECT_EQ(result, JSTaggedValue(i));
         }
     }
@@ -798,7 +799,7 @@ HWTEST_F_L0(ContainersVectorTest, ToStringAndGetLastIndexFromAndGetIndexFrom)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersVector::GetLastIndexFrom(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(1)));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, JSTaggedValue(1)));
     }
     // getIndexFrom
     {
@@ -811,7 +812,7 @@ HWTEST_F_L0(ContainersVectorTest, ToStringAndGetLastIndexFromAndGetIndexFrom)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersVector::GetIndexFrom(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(-1)));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, JSTaggedValue(-1)));
     }
     // getIndexFrom
     {
@@ -824,7 +825,7 @@ HWTEST_F_L0(ContainersVectorTest, ToStringAndGetLastIndexFromAndGetIndexFrom)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersVector::GetIndexFrom(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(-1)));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, JSTaggedValue(-1)));
     }
 }
 
@@ -864,7 +865,7 @@ HWTEST_F_L0(ContainersVectorTest, ProxyOfGetSizeSetLength)
         JSTaggedValue result = ContainersVector::GetSize(callInfo);
         TestHelper::TearDownFrame(thread, prev1);
 
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(NODE_NUMBERS * 2)));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, JSTaggedValue(NODE_NUMBERS * 2)));
     }
 
     // SetLength
@@ -879,7 +880,7 @@ HWTEST_F_L0(ContainersVectorTest, ProxyOfGetSizeSetLength)
         JSTaggedValue result = ContainersVector::GetSize(callInfo);
         TestHelper::TearDownFrame(thread, prev1);
 
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(NODE_NUMBERS / 2)));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, JSTaggedValue(NODE_NUMBERS / 2)));
     }
 }
 

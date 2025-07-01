@@ -37,7 +37,7 @@ JSTaggedValue JSAPIQueueIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIQueueIterator> iter(input);
-    JSHandle<JSTaggedValue> queue(thread, iter->GetIteratedQueue());
+    JSHandle<JSTaggedValue> queue(thread, iter->GetIteratedQueue(thread));
     if (queue->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();

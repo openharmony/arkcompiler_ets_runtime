@@ -97,13 +97,13 @@ HWTEST_F_L0(JSDataViewTest, SetDataView)
     // Call "SetDataView" function through "NewJSDataView" function of "object_factory.cpp"
     JSHandle<JSDataView> handleDataView = factory->NewJSDataView(handleArrayBuf, offsetDataView,
         lengthDataView);
-    EXPECT_TRUE(handleDataView->GetDataView().IsTrue());
+    EXPECT_TRUE(handleDataView->GetDataView(thread).IsTrue());
 
     // Call "SetDataView" function in this HWTEST_F_L0.
     handleDataView->SetDataView(thread, JSTaggedValue::False());
-    EXPECT_TRUE(handleDataView->GetDataView().IsFalse());
+    EXPECT_TRUE(handleDataView->GetDataView(thread).IsFalse());
     handleDataView->SetDataView(thread, JSTaggedValue::True());
-    EXPECT_TRUE(handleDataView->GetDataView().IsTrue());
+    EXPECT_TRUE(handleDataView->GetDataView(thread).IsTrue());
 }
 
 /*
@@ -136,13 +136,13 @@ HWTEST_F_L0(JSDataViewTest, SetViewedArrayBuffer)
     JSHandle<JSDataView> handleDataView = factory->NewJSDataView(handleArrayBuf1, offsetDataView,
         lengthDataView);
     JSHandle<JSTaggedValue> handleTagValDataViewFrom1(thread, handleArrayBuf1.GetTaggedValue());
-    JSHandle<JSTaggedValue> handleTagValDataViewTo1(thread, handleDataView->GetViewedArrayBuffer());
+    JSHandle<JSTaggedValue> handleTagValDataViewTo1(thread, handleDataView->GetViewedArrayBuffer(thread));
     EXPECT_TRUE(JSTaggedValue::Equal(thread, handleTagValDataViewFrom1, handleTagValDataViewTo1));
 
     // Call "SetViewedArrayBuffer" function in this HWTEST_F_L0.
     handleDataView->SetViewedArrayBuffer(thread, handleArrayBuf2.GetTaggedValue());
     JSHandle<JSTaggedValue> handleTagValDataViewFrom2(thread, handleArrayBuf2.GetTaggedValue());
-    JSHandle<JSTaggedValue> handleTagValDataViewTo2(thread, handleDataView->GetViewedArrayBuffer());
+    JSHandle<JSTaggedValue> handleTagValDataViewTo2(thread, handleDataView->GetViewedArrayBuffer(thread));
     EXPECT_TRUE(JSTaggedValue::Equal(thread, handleTagValDataViewFrom2, handleTagValDataViewTo2));
     EXPECT_FALSE(JSTaggedValue::Equal(thread, handleTagValDataViewFrom1, handleTagValDataViewFrom2));
 }

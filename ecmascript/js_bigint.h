@@ -151,7 +151,7 @@ public:
     inline uint32_t GetDigit(uint32_t index) const
     {
         ASSERT(index < GetLength());
-        return Barriers::GetValue<uint32_t>(GetData(), sizeof(uint32_t) * index);
+        return Barriers::GetPrimitive<uint32_t>(GetData(), sizeof(uint32_t) * index);
     }
 
     inline void SetDigit(uint32_t index, uint32_t digit)

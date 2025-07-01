@@ -168,9 +168,9 @@ HWTEST_F_L0(ContainersTreeSetTest, TreeSetConstructor)
     ASSERT_TRUE(result.IsJSAPITreeSet());
     JSHandle<JSAPITreeSet> setHandle(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(setHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
-    int size = setHandle->GetSize();
+    int size = setHandle->GetSize(thread);
     ASSERT_EQ(size, 0);
 
     // test TreeSetConstructor exception
@@ -195,9 +195,9 @@ HWTEST_F_L0(ContainersTreeSetTest, AddAndHas)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
 
     // test add string
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -216,9 +216,9 @@ HWTEST_F_L0(ContainersTreeSetTest, AddAndHas)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
 
     for (int i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -263,7 +263,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Remove)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
@@ -277,7 +277,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Remove)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(rvalue.IsTrue());
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - REMOVE_SIZE);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - REMOVE_SIZE);
 
     for (int i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -312,9 +312,9 @@ HWTEST_F_L0(ContainersTreeSetTest, Remove)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - REMOVE_SIZE + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - REMOVE_SIZE + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2 - REMOVE_SIZE);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2 - REMOVE_SIZE);
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -330,7 +330,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Remove)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(rvalue.IsTrue());
     }
-    EXPECT_EQ(tset->GetSize(), (NODE_NUMBERS - REMOVE_SIZE) * 2);
+    EXPECT_EQ(tset->GetSize(thread), (NODE_NUMBERS - REMOVE_SIZE) * 2);
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
@@ -366,7 +366,7 @@ HWTEST_F_L0(ContainersTreeSetTest, GetFirstValueAndGetLastValue)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
     // test getFirstValue
     {
@@ -408,9 +408,9 @@ HWTEST_F_L0(ContainersTreeSetTest, GetFirstValueAndGetLastValue)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
 
     // test getFirstValue
     {
@@ -454,7 +454,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Clear)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
     // test clear
     {
@@ -465,7 +465,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Clear)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersTreeSet::Clear(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(tset->GetSize(), 0);
+        EXPECT_EQ(tset->GetSize(thread), 0);
     }
     for (int i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -496,9 +496,9 @@ HWTEST_F_L0(ContainersTreeSetTest, Clear)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
     // test clear
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -508,7 +508,7 @@ HWTEST_F_L0(ContainersTreeSetTest, Clear)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersTreeSet::Clear(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(tset->GetSize(), 0);
+        EXPECT_EQ(tset->GetSize(thread), 0);
     }
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -541,7 +541,7 @@ HWTEST_F_L0(ContainersTreeSetTest, GetLowerValueAndGetHigherValue)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
 
     // test getLowerValue
@@ -597,9 +597,9 @@ HWTEST_F_L0(ContainersTreeSetTest, GetLowerValueAndGetHigherValue)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
 
     // test getLowerValue
     // using to compare the result of GetLowerValue
@@ -642,7 +642,7 @@ HWTEST_F_L0(ContainersTreeSetTest, GetLowerValueAndGetHigherValue)
         if (i == NODE_NUMBERS - 1) {
             EXPECT_EQ(result, JSTaggedValue::Undefined());
         } else {
-            EXPECT_TRUE(JSTaggedValue::SameValue(result, resultKey.GetTaggedValue()));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, resultKey.GetTaggedValue()));
         }
     }
 }
@@ -662,7 +662,7 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
 
     // test popFirst
@@ -675,7 +675,7 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::PopFirst(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue(0));
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - 1);
     }
     // test popLast
     {
@@ -687,7 +687,7 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::PopLast(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue(NODE_NUMBERS - 1));
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - 2); // 2 means two elements
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - 2); // 2 means two elements
     }
 
     // test add string
@@ -707,9 +707,9 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i - 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i - 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2 - 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2 - 2);
 
     // test popFirst
     {
@@ -721,7 +721,7 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::PopFirst(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue(1));
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2 - 3); // 3 means three elements
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2 - 3); // 3 means three elements
     }
     // test popLast
     {
@@ -736,7 +736,7 @@ HWTEST_F_L0(ContainersTreeSetTest, PopFirstAndPopLast)
         JSTaggedValue result = ContainersTreeSet::PopLast(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, key.GetTaggedValue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2 - 4); // 4 means four elements
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2 - 4); // 4 means four elements
     }
 }
 
@@ -755,7 +755,7 @@ HWTEST_F_L0(ContainersTreeSetTest, IsEmpty)
         JSTaggedValue result = ContainersTreeSet::IsEmpty(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), 0);
+        EXPECT_EQ(tset->GetSize(thread), 0);
     }
 
     // add elements
@@ -769,7 +769,7 @@ HWTEST_F_L0(ContainersTreeSetTest, IsEmpty)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
     // test isEmpty
     {
@@ -781,7 +781,7 @@ HWTEST_F_L0(ContainersTreeSetTest, IsEmpty)
         JSTaggedValue result = ContainersTreeSet::IsEmpty(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsFalse());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
     }
 }
 
@@ -800,7 +800,7 @@ HWTEST_F_L0(ContainersTreeSetTest, KeysAndValuesAndEntries)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
 
     // test values
@@ -841,9 +841,9 @@ HWTEST_F_L0(ContainersTreeSetTest, KeysAndValuesAndEntries)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
     {
         JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
         for (int i = 0; i < NODE_NUMBERS; i++) {
@@ -858,7 +858,7 @@ HWTEST_F_L0(ContainersTreeSetTest, KeysAndValuesAndEntries)
             result.Update(JSAPITreeSetIterator::Next(callInfo));
             TestHelper::TearDownFrame(thread, prev);
             JSHandle<JSTaggedValue> itRes = JSIterator::IteratorValue(thread, result);
-            EXPECT_TRUE(JSTaggedValue::SameValue(key, itRes));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, key, itRes));
         }
     }
     // test entries
@@ -899,8 +899,10 @@ HWTEST_F_L0(ContainersTreeSetTest, KeysAndValuesAndEntries)
             result.Update(JSAPITreeSetIterator::Next(callInfo));
             TestHelper::TearDownFrame(thread, prev);
             entries.Update(JSIterator::IteratorValue(thread, result).GetTaggedValue());
-            EXPECT_TRUE(JSTaggedValue::SameValue(key, JSObject::GetProperty(thread, entries, first).GetValue()));
-            EXPECT_TRUE(JSTaggedValue::SameValue(key, JSObject::GetProperty(thread, entries, second).GetValue()));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, key,
+                JSObject::GetProperty(thread, entries, first).GetValue()));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, key,
+                JSObject::GetProperty(thread, entries, second).GetValue()));
         }
     }
 }
@@ -920,7 +922,7 @@ HWTEST_F_L0(ContainersTreeSetTest, ForEach)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
 
     // test foreach function with TestForEachFunc;
@@ -940,8 +942,8 @@ HWTEST_F_L0(ContainersTreeSetTest, ForEach)
         TestHelper::TearDownFrame(thread, prev);
     }
 
-    EXPECT_EQ(dset->GetSize(), NODE_NUMBERS / 2);
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS / 2);
+    EXPECT_EQ(dset->GetSize(thread), NODE_NUMBERS / 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS / 2);
     for (int i = 0; i < NODE_NUMBERS; i += 2) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -970,9 +972,9 @@ HWTEST_F_L0(ContainersTreeSetTest, ForEach)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS / 2 + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS / 2 + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS / 2 + NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS / 2 + NODE_NUMBERS);
     {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
@@ -986,8 +988,8 @@ HWTEST_F_L0(ContainersTreeSetTest, ForEach)
         ContainersTreeSet::ForEach(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    EXPECT_EQ(dset->GetSize(), NODE_NUMBERS + 2);
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS - 2);
+    EXPECT_EQ(dset->GetSize(thread), NODE_NUMBERS + 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS - 2);
     for (int i = 0; i < NODE_NUMBERS; i += 2) {
         std::string ikey = myKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
@@ -1021,9 +1023,9 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionTest)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
 
     // test add string
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -1041,9 +1043,9 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionTest)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
 
     // test sort
     auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -1066,7 +1068,7 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionTest)
         result.Update(JSAPITreeSetIterator::Next(callInfo));
         TestHelper::TearDownFrame(thread, prev);
         JSHandle<JSTaggedValue> itRes = JSIterator::IteratorValue(thread, result);
-        EXPECT_TRUE(JSTaggedValue::SameValue(key, itRes));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, key, itRes));
     }
     for (int i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -1099,9 +1101,9 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionApi20Test)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), i + 1);
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS);
 
     // test add string
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -1119,9 +1121,9 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionApi20Test)
         JSTaggedValue result = ContainersTreeSet::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_TRUE(result.IsTrue());
-        EXPECT_EQ(tset->GetSize(), NODE_NUMBERS + i + 1);
+        EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS + i + 1);
     }
-    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS * 2);
+    EXPECT_EQ(tset->GetSize(thread), NODE_NUMBERS * 2);
 
     // test sort
     auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -1144,7 +1146,7 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionApi20Test)
         result.Update(JSAPITreeSetIterator::Next(callInfo));
         TestHelper::TearDownFrame(thread, prev);
         JSHandle<JSTaggedValue> itRes = JSIterator::IteratorValue(thread, result);
-        EXPECT_TRUE(JSTaggedValue::SameValue(key, itRes));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, key, itRes));
     }
     for (int i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

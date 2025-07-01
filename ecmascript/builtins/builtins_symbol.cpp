@@ -70,7 +70,7 @@ JSTaggedValue BuiltinsSymbol::ToString(EcmaRuntimeCallInfo *argv)
     // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
     if (valueHandle->IsJSPrimitiveRef()) {
         // Let sym be the value of s's [[SymbolData]] internal slot.
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue(thread);
         if (primitive.IsSymbol()) {
             return SymbolDescriptiveString(thread, primitive);
         }
@@ -89,14 +89,14 @@ JSTaggedValue BuiltinsSymbol::SymbolDescriptiveString(JSThread *thread, JSTagged
 
     // Let desc be sym’s [[Description]] value.
     auto symbolObject = reinterpret_cast<JSSymbol *>(sym.GetTaggedObject());
-    JSHandle<JSTaggedValue> descHandle(thread, symbolObject->GetDescription());
+    JSHandle<JSTaggedValue> descHandle(thread, symbolObject->GetDescription(thread));
 
     // If desc is undefined, let desc be the empty string.
     JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
     auto constants = thread->GlobalConstants();
     if (descHandle->IsUndefined()) {
         JSHandle<EcmaString> leftHandle = JSHandle<EcmaString>::Cast(constants->GetHandledSymbolLeftParentheses());
-        JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(')'));
+        JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(thread, ')'));
         JSHandle<EcmaString> str = factory->ConcatFromString(leftHandle, rightHandle);
         return str.GetTaggedValue();
     }
@@ -104,7 +104,7 @@ JSTaggedValue BuiltinsSymbol::SymbolDescriptiveString(JSThread *thread, JSTagged
     ASSERT(descHandle->IsString());
     // Return the result of concatenating the strings "Symbol(", desc, and ")".
     JSHandle<EcmaString> leftHandle = JSHandle<EcmaString>::Cast(constants->GetHandledSymbolLeftParentheses());
-    JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(')'));
+    JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(thread, ')'));
     JSHandle<EcmaString> stringLeft =
         factory->ConcatFromString(leftHandle, JSTaggedValue::ToString(thread, descHandle));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -129,7 +129,7 @@ JSTaggedValue BuiltinsSymbol::ValueOf(EcmaRuntimeCallInfo *argv)
     // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
     if (valueHandle->IsJSPrimitiveRef()) {
         // Let sym be the value of s's [[SymbolData]] internal slot.
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue(thread);
         if (primitive.IsSymbol()) {
             return primitive;
         }
@@ -182,7 +182,7 @@ JSTaggedValue BuiltinsSymbol::KeyFor(EcmaRuntimeCallInfo *argv)
     // 4.Return undefined.
     JSTaggedValue symbolTable = thread->GetEcmaVM()->GetRegisterSymbols();
     auto *table = SymbolTable::Cast(symbolTable.GetTaggedObject());
-    JSTaggedValue key = table->FindSymbol(sym.GetTaggedValue());
+    JSTaggedValue key = table->FindSymbol(thread, sym.GetTaggedValue());
     if (key.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
@@ -206,7 +206,7 @@ JSTaggedValue BuiltinsSymbol::ToPrimitive(EcmaRuntimeCallInfo *argv)
     // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
     if (sym->IsJSPrimitiveRef()) {
         // Let sym be the value of s's [[SymbolData]] internal slot.
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(sym->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(sym->GetTaggedObject())->GetValue(thread);
         if (primitive.IsSymbol()) {
             return primitive;
         }
@@ -232,16 +232,16 @@ JSTaggedValue BuiltinsSymbol::ThisSymbolValue(JSThread *thread, const JSHandle<J
 {
     BUILTINS_API_TRACE(thread, Symbol, ThisSymbolValue);
     if (value->IsSymbol()) {
-        JSTaggedValue desValue = JSSymbol::Cast(value->GetTaggedObject())->GetDescription();
+        JSTaggedValue desValue = JSSymbol::Cast(value->GetTaggedObject())->GetDescription(thread);
         return desValue;
     }
 
     // If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
     if (value->IsJSPrimitiveRef()) {
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(value->GetTaggedObject())->GetValue(thread);
         if (primitive.IsSymbol()) {
             // Return the value of s's [[SymbolData]] internal slot.
-            JSTaggedValue primitiveDesValue = JSSymbol::Cast(primitive.GetTaggedObject())->GetDescription();
+            JSTaggedValue primitiveDesValue = JSSymbol::Cast(primitive.GetTaggedObject())->GetDescription(thread);
             return primitiveDesValue;
         }
     }

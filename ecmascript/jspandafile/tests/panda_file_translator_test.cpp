@@ -87,15 +87,15 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     pfManager->AddJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program1 = pfManager->GenerateProgram(vm, pf.get(), std::string_view("func"));
-    JSHandle<JSFunction> mainFunc1(thread, program1->GetMainFunction());
+    JSHandle<JSFunction> mainFunc1(thread, program1->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName1 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc1));
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName1)).ToCString().c_str(), "func");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName1)).ToCString(thread).c_str(), "func");
 
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
     JSHandle<ecmascript::Program> program2 = pfManager->GenerateProgram(vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
-    JSHandle<JSFunction> mainFunc2(thread, program2->GetMainFunction());
+    JSHandle<JSFunction> mainFunc2(thread, program2->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName2 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc2));
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName2)).ToCString().c_str(), "func_main_0");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName2)).ToCString(thread).c_str(), "func_main_0");
 
     pfManager->RemoveJSPandaFile(pf.get());
 }

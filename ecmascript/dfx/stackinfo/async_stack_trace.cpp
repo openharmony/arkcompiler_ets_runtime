@@ -83,8 +83,8 @@ bool AsyncStackTrace::InsertAsyncTaskStacks(const JSHandle<JSPromise> &promise, 
 bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {
     if (PromiseReaction.IsPromiseReaction()) {
-        JSTaggedValue promiseCapability = PromiseReaction::Cast(PromiseReaction)->GetPromiseCapability();
-        JSTaggedValue promise = PromiseCapability::Cast(promiseCapability)->GetPromise();
+        JSTaggedValue promiseCapability = PromiseReaction::Cast(PromiseReaction)->GetPromiseCapability(jsThread_);
+        JSTaggedValue promise = PromiseCapability::Cast(promiseCapability)->GetPromise(jsThread_);
         uint32_t asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
         auto stackIt = asyncTaskStacks_.find(asyncTaskId);
         if (stackIt != asyncTaskStacks_.end()) {

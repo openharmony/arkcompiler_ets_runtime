@@ -53,17 +53,17 @@ HWTEST_F_L0(JSAPIQueueTest, AddAndHasAndSetAndGet)
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     std::string queueValue("queuevalue");
     JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
-    EXPECT_EQ(jsQueue->GetSize(), DEFAULT_LENGTH);
+    EXPECT_EQ(jsQueue->GetSize(thread), DEFAULT_LENGTH);
     EXPECT_EQ(JSAPIQueue::GetArrayLength(thread, jsQueue), DEFAULT_LENGTH);
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // test Set, Has and Get
     std::string ivalue = queueValue + std::to_string(10);
     value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-    EXPECT_FALSE(jsQueue->Has(value.GetTaggedValue()));
+    EXPECT_FALSE(jsQueue->Has(thread, value.GetTaggedValue()));
     jsQueue->Set(thread, 0, value.GetTaggedValue());
     EXPECT_EQ(jsQueue->Get(thread, 0), value.GetTaggedValue());
-    EXPECT_TRUE(jsQueue->Has(value.GetTaggedValue()));
+    EXPECT_TRUE(jsQueue->Has(thread, value.GetTaggedValue()));
 
     // test Get exception
     JSTaggedValue result = jsQueue->Get(thread, DEFAULT_LENGTH);
@@ -93,13 +93,13 @@ HWTEST_F_L0(JSAPIQueueTest, PopFirstAndGetFirst)
     EXPECT_EQ(JSAPIQueue::GetArrayLength(thread, jsQueue), DEFAULT_LENGTH);
     std::string firstValue = queueValue + std::to_string(0U);
     value.Update(factory->NewFromStdString(firstValue).GetTaggedValue());
-    EXPECT_TRUE(JSTaggedValue::SameValue(
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread,
                 JSHandle<JSTaggedValue>(thread, JSAPIQueue::GetFirst(thread, jsQueue)), value));
     // test Pop
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         std::string ivalue = queueValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        EXPECT_TRUE(JSTaggedValue::SameValue(
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread,
             JSHandle<JSTaggedValue>(thread, JSAPIQueue::Pop(thread, jsQueue)), value));
         EXPECT_EQ(JSAPIQueue::GetArrayLength(thread, jsQueue), (DEFAULT_LENGTH - i - 1U));
     }
@@ -116,8 +116,9 @@ HWTEST_F_L0(JSAPIQueueTest, OwnKeys)
     JSHandle<TaggedArray> arrayKey = JSAPIQueue::OwnKeys(thread, jsQueue);
     EXPECT_EQ(arrayKey->GetLength(), DEFAULT_LENGTH);
     for (int32_t i = 0; i < static_cast<int32_t>(DEFAULT_LENGTH); i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(arrayKey->Get(i).GetTaggedObject())));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                        *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+                                                        EcmaString::Cast(arrayKey->Get(thread, i).GetTaggedObject())));
     }
 }
 
@@ -129,12 +130,12 @@ HWTEST_F_L0(JSAPIQueueTest, GetNextPosition)
     std::string queueValue("queuevalue");
     JSHandle<JSAPIQueue> jsQueue = TestCommon(value, queueValue, DEFAULT_LENGTH);
     // test GetNextPosition
-    EXPECT_EQ(jsQueue->GetSize(), DEFAULT_LENGTH);
+    EXPECT_EQ(jsQueue->GetSize(thread), DEFAULT_LENGTH);
     for (uint32_t i = 0; i < DEFAULT_LENGTH;) {
         std::string ivalue = queueValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         EXPECT_EQ(jsQueue->Get(thread, i), value.GetTaggedValue());
-        i = jsQueue->GetNextPosition(i);
+        i = jsQueue->GetNextPosition(thread, i);
     }
 }
 
@@ -217,10 +218,10 @@ HWTEST_F_L0(JSAPIQueueTest, GrowCapacity)
 {
     JSHandle<JSAPIQueue> jsQueue = CreateQueue(0);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
-    JSHandle<TaggedArray> element(thread, jsQueue->GetElements());
+    JSHandle<TaggedArray> element(thread, jsQueue->GetElements(thread));
     EXPECT_EQ(element->GetLength(), 0U);
     JSAPIQueue::Add(thread, jsQueue, value);
-    JSHandle<TaggedArray> newElement(thread, jsQueue->GetElements());
+    JSHandle<TaggedArray> newElement(thread, jsQueue->GetElements(thread));
     EXPECT_EQ(newElement->GetLength(), static_cast<uint32_t>(JSAPIQueue::DEFAULT_CAPACITY_LENGTH));
 }
 }  // namespace panda::test

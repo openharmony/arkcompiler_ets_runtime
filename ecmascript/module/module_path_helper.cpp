@@ -1077,9 +1077,9 @@ CString ModulePathHelper::GetBundleNameWithRecordName(EcmaVM *vm, const CString 
 }
 
 // this function convert for ESModule name string(Utf8)
-CString ModulePathHelper::Utf8ConvertToString(JSTaggedValue str)
+CString ModulePathHelper::Utf8ConvertToString(JSThread *thread, JSTaggedValue str)
 {
-    return EcmaStringAccessor(str).Utf8ConvertToString();
+    return EcmaStringAccessor(str).Utf8ConvertToString(thread);
 }
 
 // check if input is ohmurl's ets/ts/js

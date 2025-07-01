@@ -398,7 +398,8 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     }
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
-    Method *method = mainFunc->GetCallTarget();
+    JSThread *thread = vm_->GetJSThread();
+    Method *method = mainFunc->GetCallTarget(thread);
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
     method->SetFpDelta(fpDelta);
@@ -408,7 +409,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     PrintAOTEntry(jsPandaFile, method, mainEntry);
 #endif
 
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     ASSERT(methodLiteral != nullptr);
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(isFastCall);
@@ -441,7 +442,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction 
         *canFastCall = entry.isFastCall_;
     }
 
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    MethodLiteral *methodLiteral = method->GetMethodLiteral(vm_->GetJSThread());
     ASSERT(methodLiteral != nullptr);
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(entry.isFastCall_);
@@ -588,27 +589,29 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
     JSMutableHandle<TaggedArray> cpList(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < aiDataLen; i += AOTSnapshotConstants::SNAPSHOT_DATA_ITEM_SIZE) {
         // handle file info
-        fileInfo.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::PANDA_INFO_ID)));
+        fileInfo.Update(
+            aiData->Get(thread, i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::PANDA_INFO_ID)));
         auto nameOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::NAME_ID);
         auto indexOffset = SnapshotGlobalData::Cast(SnapshotGlobalData::CP_PANDA_INFO_ITEM::INDEX_ID);
-        CString fileNameCStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToCString();
-        std::string fileNameStr = EcmaStringAccessor(fileInfo->Get(nameOffset)).ToStdString();
-        uint32_t fileIndex = static_cast<uint32_t>(fileInfo->Get(indexOffset).GetInt());
+        CString fileNameCStr = EcmaStringAccessor(fileInfo->Get(thread, nameOffset)).ToCString(thread);
+        std::string fileNameStr = EcmaStringAccessor(fileInfo->Get(thread, nameOffset)).ToStdString(thread);
+        uint32_t fileIndex = static_cast<uint32_t>(fileInfo->Get(thread, indexOffset).GetInt());
         // handle constant pool
-        cpList.Update(aiData->Get(i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID)));
+        cpList.Update(aiData->Get(thread, i + SnapshotGlobalData::Cast(SnapshotGlobalData::CP_TOP_ITEM::CP_ARRAY_ID)));
         uint32_t cpLen = cpList->GetLength();
         ASSERT(cpLen % AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE == 0);
         auto &PandaCpInfoInserted = fileNameToMulCpMap.try_emplace(fileNameCStr).first->second;
         PandaCpInfoInserted.fileIndex_ = fileIndex;
         MultiConstantPoolMap& cpMap = PandaCpInfoInserted.multiCpsMap_;
         if (cpLen > 0) {
-            JSTaggedValue cp = cpList->Get(AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE - 1);  // first constpool
+            JSTaggedValue cp = cpList->Get(thread,
+                AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE - 1);  // first constpool
             vm_->LoadProtoTransitionTable(cp);
         }
         JSMutableHandle<ConstantPool> cpHandle(thread, JSTaggedValue::Undefined());
         for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
-            int32_t constantPoolID = cpList->Get(pos).GetInt();
-            cpHandle.Update(cpList->Get(pos + 1));
+            int32_t constantPoolID = cpList->Get(thread, pos).GetInt();
+            cpHandle.Update(cpList->Get(thread, pos + 1));
             vm_->ResetProtoTransitionTableOnConstpool(cpHandle.GetTaggedValue());
             cpMap.insert({constantPoolID, cpHandle.GetTaggedValue()});
             // the arkui framework abc file constpool was patched here
@@ -665,7 +668,7 @@ AOTFileManager::AOTFileManager(EcmaVM *vm) : vm_(vm), factory_(vm->GetFactory())
 JSTaggedValue AOTFileManager::GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString relativePath = ConvertToString(relativePathVal);
+    CString relativePath = ConvertToString(thread, relativePathVal);
     CString absPath;
     if (!GetAbsolutePath(relativePath, absPath)) {
         LOG_FULL(FATAL) << "Get Absolute Path failed";

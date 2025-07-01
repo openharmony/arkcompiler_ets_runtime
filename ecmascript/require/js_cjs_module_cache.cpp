@@ -21,7 +21,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thr
                                                              const JSHandle<JSTaggedValue> &key,
                                                              const JSHandle<JSTaggedValue> &value)
 {
-    int entry = dictionary->FindEntry(key.GetTaggedValue());
+    int entry = dictionary->FindEntry(thread, key.GetTaggedValue());
     if (entry != -1) {
         return ResetModule(thread, dictionary, key, value);
     }
@@ -30,8 +30,8 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thr
     JSHandle<CjsModuleCache> newDictionary(HashTable::GrowHashTable(thread, dictionary));
 
     // Compute the key object.
-    uint32_t hash = Hash(key.GetTaggedValue());
-    entry = newDictionary->FindInsertIndex(hash);
+    uint32_t hash = Hash(thread, key.GetTaggedValue());
+    entry = newDictionary->FindInsertIndex(thread, hash);
     newDictionary->SetEntry(thread, entry, key, value);
     newDictionary->IncreaseEntries(thread);
 
@@ -43,7 +43,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::ResetModule(const JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const JSHandle<JSTaggedValue> &value)
 {
-    int entry = dictionary->FindEntry(key.GetTaggedValue());
+    int entry = dictionary->FindEntry(thread, key.GetTaggedValue());
     ASSERT(entry != -1);
     if (entry == -1) {
         LOG_FULL(FATAL) << "CjsModuleCache::ResetModule Failed";

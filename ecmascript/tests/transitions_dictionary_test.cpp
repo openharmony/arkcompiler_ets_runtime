@@ -50,12 +50,12 @@ HWTEST_F_L0(TransitionsDictionaryTest, Hash)
     // test when key is string.
     JSHandle<JSTaggedValue> key1(factory->NewFromStdString("k"));
     JSHandle<JSTaggedValue> metaData1(thread, JSTaggedValue(1)); // test metaData : 1
-    int hash = TransitionsDictionary::Hash(key1.GetTaggedValue(), metaData1.GetTaggedValue());
+    int hash = TransitionsDictionary::Hash(thread, key1.GetTaggedValue(), metaData1.GetTaggedValue());
     // "k" : 107, hashSeed : 0, shift : 5, metaData : 1
     EXPECT_EQ(hash, 108); // 108 : (0 << 5) - 0 + 107 + 1
 
     JSHandle<JSTaggedValue> key2(factory->NewFromStdString("key"));
-    hash = TransitionsDictionary::Hash(key2.GetTaggedValue(), metaData1.GetTaggedValue());
+    hash = TransitionsDictionary::Hash(thread, key2.GetTaggedValue(), metaData1.GetTaggedValue());
     EXPECT_EQ(hash, 106080);
 
     // test when key is symbol.
@@ -63,7 +63,7 @@ HWTEST_F_L0(TransitionsDictionaryTest, Hash)
     JSHandle<JSSymbol> privateNameSymbol = factory->NewPrivateNameSymbol(symbolName);
     JSHandle<JSTaggedValue> symbolValue = JSHandle<JSTaggedValue>::Cast(privateNameSymbol);
     JSHandle<JSTaggedValue> metaData2(thread, JSTaggedValue(2)); // test metaData : 2
-    hash = TransitionsDictionary::Hash(symbolValue.GetTaggedValue(), metaData2.GetTaggedValue());
+    hash = TransitionsDictionary::Hash(thread, symbolValue.GetTaggedValue(), metaData2.GetTaggedValue());
     EXPECT_EQ(hash, 117); // 117 : 115 + 2
 }
 
@@ -125,7 +125,7 @@ HWTEST_F_L0(TransitionsDictionaryTest, Get_Set_Attributes)
 
     for (int index = 0; index < numberOfElements; index++) {
         transDic->SetAttributes(thread, index, JSTaggedValue(index));
-        JSTaggedValue value = transDic->GetAttributes(index);
+        JSTaggedValue value = transDic->GetAttributes(thread, index);
         EXPECT_EQ(value, JSTaggedValue(index));
     }
 }
@@ -154,7 +154,7 @@ HWTEST_F_L0(TransitionsDictionaryTest, SetEntry)
                 [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
                     transDic->SetEntry(thread, index, key.GetTaggedValue(), value.GetTaggedValue(),
                                        metaData.GetTaggedValue());
-                    EXPECT_EQ(transDic->GetKey(index), key.GetTaggedValue());
+                    EXPECT_EQ(transDic->GetKey(thread, index), key.GetTaggedValue());
                 });
 }
 
@@ -167,7 +167,7 @@ HWTEST_F_L0(TransitionsDictionaryTest, FindEntry)
     TestCommon(thread, numberOfElements,
                [&](JSThread *thread, int index, JSHandle<JSTaggedValue> &key, JSHandle<JSTaggedValue> &value) {
                    transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-                   int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
+                   int foundEntry = transDic->FindEntry(thread, key.GetTaggedValue(), metaData.GetTaggedValue());
                    EXPECT_EQ(index + 3, foundEntry);  // 3 : table header size
                });
 }
@@ -183,12 +183,12 @@ HWTEST_F_L0(TransitionsDictionaryTest, RemoveElement)
                });
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key7(factory->NewFromStdString("key7")); // test remove element by "key7"
-    int foundEntry = transDic->FindEntry(key7.GetTaggedValue(), metaData.GetTaggedValue());
+    int foundEntry = transDic->FindEntry(thread, key7.GetTaggedValue(), metaData.GetTaggedValue());
     EXPECT_EQ(foundEntry, 7 + 3);
     EXPECT_EQ(transDic->EntriesCount(), 8);
 
     transDic->RemoveElement(thread, foundEntry);
-    foundEntry = transDic->FindEntry(key7.GetTaggedValue(), metaData.GetTaggedValue());
+    foundEntry = transDic->FindEntry(thread, key7.GetTaggedValue(), metaData.GetTaggedValue());
     EXPECT_EQ(foundEntry, -1); // -1 : not found entry
     EXPECT_EQ(transDic->EntriesCount(), 7);
 }
@@ -206,10 +206,10 @@ HWTEST_F_L0(TransitionsDictionaryTest, PutIfAbsent)
         JSHandle<JSTaggedValue> key(factory->NewFromStdString(keyStr));
         JSHandle<JSTaggedValue> value(factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
         transDic = TransitionsDictionary::PutIfAbsent(thread, transDic, key, value, metaData);
-        int foundEntry = transDic->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
+        int foundEntry = transDic->FindEntry(thread, key.GetTaggedValue(), metaData.GetTaggedValue());
         EXPECT_EQ(foundEntry, index + 3);
 
-        JSTaggedValue foundValue = transDic->GetValue(foundEntry);
+        JSTaggedValue foundValue = transDic->GetValue(thread, foundEntry);
         JSTaggedValue weakValue = value->CreateAndGetWeakRef();
         EXPECT_EQ(foundValue, weakValue);
     }

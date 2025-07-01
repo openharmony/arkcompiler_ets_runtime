@@ -50,9 +50,9 @@ HWTEST_F_L0(WeakRefSemiGCTest, ObjectUndefined)
     JSTaggedValue array(ArrayTestCreate(thread));
     array.CreateWeakRef();
     newObj1->SetElements(thread, array);
-    EXPECT_EQ(newObj1->GetElements(), array);
+    EXPECT_EQ(newObj1->GetElements(thread), array);
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::YOUNG_GC);
-    EXPECT_EQ(newObj1->GetElements(), JSTaggedValue::Undefined());
+    EXPECT_EQ(newObj1->GetElements(thread), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(WeakRefSemiGCTest, ObjectKeep)
@@ -62,10 +62,10 @@ HWTEST_F_L0(WeakRefSemiGCTest, ObjectKeep)
     JSTaggedValue value = array.GetTaggedValue();
     value.CreateWeakRef();
     newObj1->SetElements(thread, value);
-    EXPECT_EQ(newObj1->GetElements(), value);
+    EXPECT_EQ(newObj1->GetElements(thread), value);
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::YOUNG_GC);
     value = array.GetTaggedValue();
     value.CreateWeakRef();
-    EXPECT_EQ(newObj1->GetElements(), value);
+    EXPECT_EQ(newObj1->GetElements(thread), value);
 }
 }  // namespace panda::test

@@ -41,31 +41,31 @@ public:
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<Derived> &taggedList);
     void CopyArray(const JSThread *thread, JSHandle<Derived> &taggedList);
     void Clear(const JSThread *thread);
-    JSTaggedValue FindElementByIndex(int index) const;
-    std::pair<int, JSTaggedValue> FindElementByDataIndex(int dataindex) const;
-    int FindIndexByElement(const JSTaggedValue &element);
-    int FindLastIndexByElement(const JSTaggedValue &element);
+    JSTaggedValue FindElementByIndex(const JSThread *thread, int index) const;
+    std::pair<int, JSTaggedValue> FindElementByDataIndex(const JSThread *thread, int dataindex) const;
+    int FindIndexByElement(const JSThread *thread, const JSTaggedValue &element);
+    int FindLastIndexByElement(const JSThread *thread, const JSTaggedValue &element);
     int FindDataIndexByNodeIndex(int index) const;
     void MapNodeIndexToDataIndex(std::vector<int> &nodeIndexMapToDataIndex, int length);
     void RemoveNode(JSThread *thread, int prevDataIndex);
     int FindPrevNodeByIndex(int index) const;
-    int FindPrevNodeByValue(const JSTaggedValue &element);
+    int FindPrevNodeByValue(const JSThread *thread, const JSTaggedValue &element);
     JSTaggedValue RemoveByIndex(JSThread *thread, const int &index);
     inline int Length()
     {
         return NumberOfNodes();
     }
 
-    inline JSTaggedValue GetFirst()
+    inline JSTaggedValue GetFirst(const JSThread *thread)
     {
-        int firstDataIndex = GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
-        return GetElement(firstDataIndex);
+        int firstDataIndex = GetPrimitiveElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
+        return GetElement(thread, firstDataIndex);
     }
 
-    inline JSTaggedValue GetLast()
+    inline JSTaggedValue GetLast(const JSThread *thread)
     {
-        int lastDataIndex = GetElement(TAIL_TABLE_INDEX).GetInt();
-        return GetElement(lastDataIndex);
+        int lastDataIndex = GetPrimitiveElement(TAIL_TABLE_INDEX).GetInt();
+        return GetElement(thread, lastDataIndex);
     }
 
     inline int GetCapacityFromTaggedArray()
@@ -81,22 +81,30 @@ public:
         Set(thread, index, element);
     }
 
-    inline JSTaggedValue GetElement(int index) const
+    inline JSTaggedValue GetElement(const JSThread *thread, int index) const
     {
         if (UNLIKELY((index < 0 || index >= static_cast<int>(GetLength())))) {
             return JSTaggedValue::Undefined();
         }
-        return Get(index);
+        return Get(thread, index);
+    }
+
+    inline JSTaggedValue GetPrimitiveElement(int index) const
+    {
+        if (UNLIKELY((index < 0 || index >= static_cast<int>(GetLength())))) {
+            return JSTaggedValue::Undefined();
+        }
+        return GetPrimitive(index);
     }
 
     inline int NumberOfNodes() const
     {
-        return Get(NUMBER_OF_NODE_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_NODE_INDEX).GetInt();
     }
 
     inline int NumberOfDeletedNodes() const
     {
-        return Get(NUMBER_OF_DELETED_NODES_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_DELETED_NODES_INDEX).GetInt();
     }
 
     inline void SetNumberOfDeletedNodes(const JSThread *thread, int nod)
@@ -111,7 +119,7 @@ public:
 
     int GetNextDataIndex(int dataIndex) const
     {
-        dataIndex = GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+        dataIndex = GetPrimitiveElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
         if (dataIndex != ELEMENTS_START_INDEX) {
             return dataIndex;
         }
@@ -150,16 +158,16 @@ public:
 
     void Clear(const JSThread *thread);
     bool IsEmpty() const;
-    bool Has(const JSTaggedValue &value);
-    JSTaggedValue Get(const int index);
-    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
-    int GetIndexOf(const JSTaggedValue &value);
-    int GetLastIndexOf(const JSTaggedValue &value);
+    bool Has(const JSThread *thread, const JSTaggedValue &value);
+    JSTaggedValue Get(const JSThread *thread, const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const JSThread *thread, const int dataIndex);
+    int GetIndexOf(const JSThread *thread, const JSTaggedValue &value);
+    int GetLastIndexOf(const JSThread *thread, const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
                     const int finalDataIndex);
     JSTaggedValue RemoveByIndex(JSThread *thread, const int &index);
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
-    JSTaggedValue Equal(const JSHandle<TaggedSingleList> &compareList);
+    JSTaggedValue Equal(const JSThread *thread, const JSHandle<TaggedSingleList> &compareList);
     DECL_DUMP()
 };
 
@@ -189,24 +197,24 @@ public:
     static JSTaggedValue RemoveLastFound(JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList,
                                          const JSTaggedValue &element);
     void Clear(const JSThread *thread);
-    JSTaggedValue Get(const int index);
-    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
+    JSTaggedValue Get(const JSThread *thread, const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const JSThread *thread, const int dataIndex);
     int GetPrevNode(const int index);
-    bool Has(const JSTaggedValue &value);
+    bool Has(const JSThread *thread, const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
                     const int finalDataIndex);
     JSTaggedValue RemoveFirst(JSThread *thread);
     JSTaggedValue RemoveLast(JSThread *thread);
     JSTaggedValue RemoveByIndex(JSThread *thread, const int &index);
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
-    int GetIndexOf(const JSTaggedValue &value);
-    int GetLastIndexOf(const JSTaggedValue &value);
+    int GetIndexOf(const JSThread *thread, const JSTaggedValue &value);
+    int GetLastIndexOf(const JSThread *thread, const JSTaggedValue &value);
     int FindPrevNodeByIndexAtLast(const int index) const;
-    int FindPrevNodeByValueAtLast(const JSTaggedValue &element);
+    int FindPrevNodeByValueAtLast(const JSThread *thread, const JSTaggedValue &element);
     DECL_DUMP()
 
 protected:
-    inline JSTaggedValue FindElementByIndexAtLast(int index) const;
+    inline JSTaggedValue FindElementByIndexAtLast(const JSThread *thread, int index) const;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_LIST_H

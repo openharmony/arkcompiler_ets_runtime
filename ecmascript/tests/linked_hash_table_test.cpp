@@ -77,8 +77,8 @@ HWTEST_F_L0(LinkedHashTableTest, addKeyAndValue)
 
     // test find()
     int entry1 = dictHandle->FindElement(thread, key1.GetTaggedValue());
-    EXPECT_EQ(key1.GetTaggedValue(), dictHandle->GetKey(entry1));
-    EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(entry1));
+    EXPECT_EQ(key1.GetTaggedValue(), dictHandle->GetKey(thread, entry1));
+    EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(thread, entry1));
 
     dictHandle = LinkedHashMap::Set(thread, dictHandle, key2, value2);
     EXPECT_EQ(dictHandle->NumberOfElements(), 2);
@@ -90,7 +90,7 @@ HWTEST_F_L0(LinkedHashTableTest, addKeyAndValue)
     JSHandle<JSTaggedValue> undefinedKey(thread, JSTaggedValue::Undefined());
     dictHandle = LinkedHashMap::Set(thread, dictHandle, undefinedKey, value1);
     int entry2 = dictHandle->FindElement(thread, undefinedKey.GetTaggedValue());
-    EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(entry2));
+    EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(thread, entry2));
 }
 
 HWTEST_F_L0(LinkedHashTableTest, SetaddKeyAndValue)

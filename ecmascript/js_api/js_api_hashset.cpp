@@ -32,11 +32,11 @@ JSTaggedValue JSAPIHashSet::Has(JSThread *thread, JSTaggedValue value)
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     int hash = TaggedNode::Hash(thread, value);
     return JSTaggedValue(!(hashArray->GetNode(thread, hash, value).IsHole()));
 }
@@ -46,11 +46,11 @@ void JSAPIHashSet::Add(JSThread *thread, JSHandle<JSAPIHashSet> hashSet, JSHandl
     if (!TaggedHashArray::IsKey(value.GetTaggedValue())) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         CString errorMsg =
-            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable(thread));
     int hash = TaggedNode::Hash(thread, value.GetTaggedValue());
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
     JSTaggedValue setValue = TaggedHashArray::SetVal(thread, hashArray, hash, value, nullHandle);
@@ -67,7 +67,7 @@ void JSAPIHashSet::Add(JSThread *thread, JSHandle<JSAPIHashSet> hashSet, JSHandl
 
 void JSAPIHashSet::Clear(JSThread *thread)
 {
-    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
+    TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     uint32_t nodeLength = GetSize();
     if (nodeLength > 0) {
         hashArray->Clear(thread);
@@ -81,12 +81,12 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
+            "The type of \"key\" must be not null. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable());
+    JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable(thread));
     uint32_t nodeNum = hashSet->GetSize();
     if (nodeNum == 0) {
         return JSTaggedValue::False();
@@ -100,7 +100,7 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
     uint32_t length = hashArray->GetLength();
     ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
-    JSTaggedValue rootVa = hashArray->Get(index);
+    JSTaggedValue rootVa = hashArray->Get(thread, index);
     if (rootVa.IsRBTreeNode()) {
         uint32_t numTreeNode = RBTreeNode::Count(rootVa);
         if (numTreeNode < TaggedHashArray::UNTREEIFY_THRESHOLD) {

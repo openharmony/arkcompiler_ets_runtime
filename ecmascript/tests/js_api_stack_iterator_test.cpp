@@ -69,7 +69,7 @@ HWTEST_F_L0(JSAPIStackIteratorTest, Next)
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsString());
         }
         else {
-            EXPECT_TRUE(stackIterator->GetIteratedStack().IsUndefined());
+            EXPECT_TRUE(stackIterator->GetIteratedStack(thread).IsUndefined());
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsUndefined());
         }
     }
@@ -144,16 +144,17 @@ HWTEST_F_L0(JSAPIStackIteratorTest, SetIteratedStack)
         JSAPIStack::Push(thread, jsStack2, value);
     }
     JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack1);
-    EXPECT_EQ(stackIterator->GetIteratedStack(), jsStack1.GetTaggedValue());
+    EXPECT_EQ(stackIterator->GetIteratedStack(thread), jsStack1.GetTaggedValue());
 
     stackIterator->SetIteratedStack(thread, jsStack2.GetTaggedValue());
-    JSHandle<JSAPIStack> jsAPIStackTo(thread, JSAPIStack::Cast(stackIterator->GetIteratedStack().GetTaggedObject()));
+    JSHandle<JSAPIStack> jsAPIStackTo(thread,
+                                      JSAPIStack::Cast(stackIterator->GetIteratedStack(thread).GetTaggedObject()));
     EXPECT_EQ(jsAPIStackTo->GetSize(), static_cast<int>(DEFAULT_LENGTH - 1U));
 
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         std::string ivalue = stackValue + std::to_string(i + 2U);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        EXPECT_EQ(jsAPIStackTo->Search(value), static_cast<int>(i));
+        EXPECT_EQ(jsAPIStackTo->Search(thread, value), static_cast<int>(i));
     }
 }
 

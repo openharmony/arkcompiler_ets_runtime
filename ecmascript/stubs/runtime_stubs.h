@@ -137,16 +137,17 @@ public:
     static double FloatCbrt(double x);
     static double FloatCeil(double x);
     static double CallDateNow();
-    static void UpdateFieldType(JSTaggedType hclass, uint64_t value);
+    static void UpdateFieldType(uintptr_t argGlue, JSTaggedType hclass, uint64_t value);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
-    static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
-    static void FinishObjSizeTracking(JSHClass *cls);
-    static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
+    static JSTaggedValue JSHClassFindProtoTransitions(uintptr_t argGlue, JSHClass *cls, JSTaggedValue key,
+                                                      JSTaggedValue proto);
+    static void FinishObjSizeTracking(uintptr_t argGlue, JSHClass *cls);
+    static JSTaggedValue NumberHelperStringToDouble(uintptr_t argGlue, EcmaString *str);
     static int IntLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int DoubleLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y);
-    static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
+    static JSTaggedValue StringToNumber(uintptr_t argGlue, JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
@@ -160,10 +161,12 @@ public:
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
     static void CopyTypedArrayBuffer(uintptr_t argGlue, JSTypedArray *srcArray, JSTypedArray *targetArray,
                                      int32_t srcStartPos, int32_t tarStartPos, int32_t count);
-    static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
-    static void ReverseTypedArray(JSTypedArray *typedArray);
-    static void SortTypedArray(JSTypedArray *typedArray);
-    static inline uintptr_t RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos);
+    static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(JSThread *thread, const JSHandle<JSFunction> &func,
+                                                               uintptr_t nativePc);
+    static void ReverseTypedArray(uintptr_t argGlue, JSTypedArray *typedArray);
+    static void SortTypedArray(uintptr_t argGlue, JSTypedArray *typedArray);
+    static inline uintptr_t RuntimeGetNativePcOfstForBaseline(JSThread *thread, const JSHandle<JSFunction> &func,
+                                                              uint64_t bytecodePos);
     static void ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
                             JSTaggedType *dst, JSTaggedType *src, uint32_t count);
     static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
@@ -178,8 +181,8 @@ public:
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static inline void DumpInfoForMoreLdInfo(JSThread *thread, JSHandle<JSTaggedValue> &receiver, CString &msg);
-    static inline void DumpInfoForLdObjByValue(JSHandle<JSTaggedValue> &profile,
-                                               JSTaggedValue slotId, JSTaggedValue key, CString &msg);
+    static inline void DumpInfoForLdObjByValue(JSThread *thread, JSHandle<JSTaggedValue> &profile, JSTaggedValue slotId,
+                                               JSTaggedValue key, CString &msg);
     static inline JSTaggedValue RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeDec(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeExp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);
@@ -280,7 +283,8 @@ private:
                                                          const JSHandle<JSTaggedValue> &constpool,
                                                          uint16_t methodId, uint16_t literalId, uint16_t length,
                                                          const JSHandle<JSTaggedValue> &module);
-    static inline JSTaggedValue RuntimeLdSendableClass(const JSHandle<JSTaggedValue> &env, uint16_t level);
+    static inline JSTaggedValue RuntimeLdSendableClass(JSThread *thread, const JSHandle<JSTaggedValue> &env,
+                                                       uint16_t level);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base,
@@ -527,7 +531,7 @@ private:
     static inline JSTaggedValue RuntimeUpdateAOTHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
         const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
-    static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
+    static inline bool CheckElementsNumber(const JSThread *thread, JSHandle<TaggedArray> elements, uint32_t len);
     static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,
         JSHandle<JSTaggedValue> presentValue, std::map<uint64_t, JSHandle<JSTaggedValue>> &cachedString);
     static inline JSTaggedValue TryCopyCOWArray(JSThread *thread, JSHandle<JSArray> holderHandler, bool &isCOWArray);

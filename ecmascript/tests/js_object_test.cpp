@@ -405,7 +405,7 @@ HWTEST_F_L0(JSObjectTest, GetOwnPropertyKeys)
     EXPECT_EQ(length, 4U);
     int sum = 0;
     for (uint32_t i = 0; i < length; i++) {
-        JSHandle<JSTaggedValue> key(thread, array->Get(i));
+        JSHandle<JSTaggedValue> key(thread, array->Get(thread, i));
         sum += JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key).GetValue()->GetInt();
     }
     EXPECT_EQ(sum, 10);
@@ -455,7 +455,7 @@ HWTEST_F_L0(JSObjectTest, EnumerableOwnNames)
 
     JSHandle<TaggedArray> names = JSObject::EnumerableOwnNames(thread, obj);
 
-    JSHandle<JSTaggedValue> keyFromNames(thread, JSTaggedValue(names->Get(0)));
+    JSHandle<JSTaggedValue> keyFromNames(thread, JSTaggedValue(names->Get(thread, 0)));
     EXPECT_EQ(JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), keyFromNames).GetValue()->GetInt(), 1);
 
     PropertyDescriptor descNoEnum(thread);
@@ -474,7 +474,7 @@ HWTEST_F_L0(JSObjectTest, EnumerableOwnNames)
 
     JSHandle<TaggedArray> namesNoConfig = JSObject::EnumerableOwnNames(thread, obj);
 
-    JSHandle<JSTaggedValue> keyNoConfig(thread, JSTaggedValue(namesNoConfig->Get(0)));
+    JSHandle<JSTaggedValue> keyNoConfig(thread, JSTaggedValue(namesNoConfig->Get(thread, 0)));
     EXPECT_EQ(JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj), keyNoConfig).GetValue()->GetInt(), 1);
 }
 
@@ -835,7 +835,7 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     }
     ecmaVM->SetEnableForceGC(true);
 
-    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties(thread).GetTaggedObject())->IsDictionaryMode());
 
     number.Update(JSTaggedValue(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
     number.Update(JSTaggedValue::ToString(thread, number).GetTaggedValue());
@@ -843,8 +843,8 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     newkey.Update(JSTaggedValue(newString));
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), newkey, value);
 
-    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
-    NameDictionary *dict = NameDictionary::Cast(obj1->GetProperties().GetTaggedObject());
+    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties(thread).GetTaggedObject())->IsDictionaryMode());
+    NameDictionary *dict = NameDictionary::Cast(obj1->GetProperties(thread).GetTaggedObject());
     EXPECT_EQ(dict->EntriesCount(), static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY + 1));
     EXPECT_EQ(dict->NextEnumerationIndex(thread),
               static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY + 1));
@@ -871,13 +871,13 @@ HWTEST_F_L0(JSObjectTest, DeleteMiddle)
         JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), newkey, value);
     }
 
-    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties(thread).GetTaggedObject())->IsDictionaryMode());
 
     JSMutableHandle<JSTaggedValue> key5(thread, factory->NewFromASCII("x5"));
     JSObject::DeleteProperty(thread, (obj1), key5);
 
-    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
-    NameDictionary *dict = NameDictionary::Cast(obj1->GetProperties().GetTaggedObject());
+    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties(thread).GetTaggedObject())->IsDictionaryMode());
+    NameDictionary *dict = NameDictionary::Cast(obj1->GetProperties(thread).GetTaggedObject());
     EXPECT_EQ(dict->EntriesCount(), 9);
     EXPECT_FALSE(JSObject::HasProperty(thread, obj1, key5));
 }
@@ -894,45 +894,45 @@ HWTEST_F_L0(JSObjectTest, ElementFastToSlow)
 
     // test dictionary [0,1,2,...,2000]
     JSHandle<JSObject> obj1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), keyStr, key2);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key0, key0);
-    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     JSHandle<JSHClass> hclass(thread, obj1->GetJSHClass());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, key1);
-    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj1->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     EXPECT_EQ(obj1->GetJSHClass(), *hclass);
 
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2000, key2000);
-    EXPECT_TRUE(TaggedArray::Cast(obj1->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(TaggedArray::Cast(obj1->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     JSTaggedValue value =
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(obj1), keyStr).GetValue().GetTaggedValue();
     EXPECT_EQ(value, key2.GetTaggedValue());
     // test holey [0,,2]
     JSHandle<JSObject> obj2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key0, key0);
-    EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     JSHandle<JSHClass> hclass2(thread, obj2->GetJSHClass());
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key2, key2);
-    EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj2->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     EXPECT_EQ(obj2->GetJSHClass(), *hclass2);
     // test change attr
     JSHandle<JSObject> obj3 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key0, key0);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key1, key1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj3), key2, key2);
-    EXPECT_TRUE(!TaggedArray::Cast(obj3->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj3->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     PropertyDescriptor desc(thread);
     desc.SetValue(key1);
     desc.SetWritable(false);
     JSObject::DefineOwnProperty(thread, obj3, key1, desc);
-    EXPECT_TRUE(TaggedArray::Cast(obj3->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(TaggedArray::Cast(obj3->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
     // test delete element
     JSHandle<JSObject> obj4 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj4), key0, key0);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj4), key1, key1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj4), key2, key2);
-    EXPECT_TRUE(!TaggedArray::Cast(obj4->GetElements().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(!TaggedArray::Cast(obj4->GetElements(thread).GetTaggedObject())->IsDictionaryMode());
 
     JSHandle<JSTaggedValue> value1001(thread, JSTaggedValue(1001));
     JSHandle<JSObject> obj100 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
@@ -973,24 +973,24 @@ HWTEST_F_L0(JSObjectTest, EnableProtoChangeMarker)
 
     JSHandle<JSHClass> obj1Class(thread, obj1->GetJSHClass());
     JSHandle<JSHClass> obj2Class(thread, obj2->GetJSHClass());
-    JSTaggedValue obj2Marker = obj2Class->GetProtoChangeMarker();
+    JSTaggedValue obj2Marker = obj2Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(obj2Marker.IsProtoChangeMarker());
     bool hasChanged2 = ProtoChangeMarker::Cast(obj2Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(!hasChanged2);
 
-    JSTaggedValue obj1Marker = obj1Class->GetProtoChangeMarker();
+    JSTaggedValue obj1Marker = obj1Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(!obj1Marker.IsProtoChangeMarker());
 
-    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
-    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
-    JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(!listeners1.IsUndefined());
-    JSTaggedValue listeners2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners2.IsUndefined());
     uint32_t index = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
-    JSTaggedValue listenersResult = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(index);
+    JSTaggedValue listenersResult = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(thread, index);
     EXPECT_TRUE(listenersResult == obj2Class.GetTaggedValue());
 }
 
@@ -1044,34 +1044,36 @@ HWTEST_F_L0(JSObjectTest, BuildRegisterTree)
     EXPECT_TRUE(result5Marker->IsProtoChangeMarker());
     EXPECT_TRUE(!(ProtoChangeMarker::Cast(result5Marker->GetTaggedObject())->GetHasChanged()));
 
-    EXPECT_TRUE(obj4Class->GetProtoChangeMarker().IsProtoChangeMarker());
-    EXPECT_TRUE(!obj6Class->GetProtoChangeMarker().IsProtoChangeMarker());
+    EXPECT_TRUE(obj4Class->GetProtoChangeMarker(thread).IsProtoChangeMarker());
+    EXPECT_TRUE(!obj6Class->GetProtoChangeMarker(thread).IsProtoChangeMarker());
 
     JSHandle<JSTaggedValue> result7Marker = JSHClass::EnableProtoChangeMarker(thread, obj7Class);
     EXPECT_TRUE(result7Marker->IsProtoChangeMarker());
     EXPECT_TRUE(!(ProtoChangeMarker::Cast(result7Marker->GetTaggedObject())->GetHasChanged()));
 
-    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
-    JSTaggedValue listeners1Value = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners1Value =
+        ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners1Value != JSTaggedValue(0));
     JSHandle<ChangeListener> listeners1(thread, listeners1Value.GetTaggedObject());
-    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners1->Get(index2) == obj2Class.GetTaggedValue());
+    EXPECT_TRUE(listeners1->Get(thread, index2) == obj2Class.GetTaggedValue());
 
-    JSTaggedValue listeners2Value = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners2Value =
+        ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners2Value != JSTaggedValue(0));
     JSHandle<ChangeListener> listeners2(thread, listeners2Value.GetTaggedObject());
-    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails();
-    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails(thread);
+    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails4.IsProtoChangeDetails());
     EXPECT_TRUE(protoDetails6.IsProtoChangeDetails());
     uint32_t index4 = ProtoChangeDetails::Cast(protoDetails4.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners2->Get(index4) == obj4Class.GetTaggedValue());
+    EXPECT_TRUE(listeners2->Get(thread, index4) == obj4Class.GetTaggedValue());
     uint32_t index6 = ProtoChangeDetails::Cast(protoDetails6.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners2->Get(index6) == obj6Class.GetTaggedValue());
+    EXPECT_TRUE(listeners2->Get(thread, index6) == obj6Class.GetTaggedValue());
 
     EXPECT_TRUE(listeners1->GetEnd() == 1U);
     EXPECT_TRUE(listeners2->GetEnd() == 2U);
@@ -1126,27 +1128,29 @@ HWTEST_F_L0(JSObjectTest, NoticeThroughChain)
 
     JSHClass::NoticeThroughChain(thread, obj2Class);
     JSHClass::UnregisterOnProtoChain(thread, obj2Class);
-    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
-    JSTaggedValue listeners1Value = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners1Value =
+        ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners1Value != JSTaggedValue(0));
     JSHandle<ChangeListener> listeners1(thread, listeners1Value.GetTaggedObject());
-    uint32_t holeIndex = ChangeListener::CheckHole(listeners1);
+    uint32_t holeIndex = ChangeListener::CheckHole(thread, listeners1);
     EXPECT_TRUE(holeIndex == 0U);
 
-    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
-    JSTaggedValue listeners2Value = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners2Value =
+        ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners2Value != JSTaggedValue(0));
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners1->Get(index2).IsHole());
+    EXPECT_TRUE(listeners1->Get(thread, index2).IsHole());
 
-    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker();
+    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(obj6Marker.IsProtoChangeMarker());
     bool hasChanged6 = ProtoChangeMarker::Cast(obj6Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged6);
 
-    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker();
+    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(obj4Marker.IsProtoChangeMarker());
     bool hasChanged4 = ProtoChangeMarker::Cast(obj4Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged4);
@@ -1201,32 +1205,32 @@ HWTEST_F_L0(JSObjectTest, ChangeProtoAndNoticeTheChain)
     JSHandle<JSHClass> obj4Class(thread, obj4->GetJSHClass());
     JSHandle<JSHClass> obj6Class(thread, obj6->GetJSHClass());
 
-    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker();
+    JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(obj6Marker.IsProtoChangeMarker());
     bool hasChanged6 = ProtoChangeMarker::Cast(obj6Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged6);
 
-    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker();
+    JSTaggedValue obj4Marker = obj4Class->GetProtoChangeMarker(thread);
     EXPECT_TRUE(obj4Marker.IsProtoChangeMarker());
     bool hasChanged4 = ProtoChangeMarker::Cast(obj4Marker.GetTaggedObject())->GetHasChanged();
     EXPECT_TRUE(hasChanged4);
 
-    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
-    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails2 = obj2Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails2.IsProtoChangeDetails());
-    JSTaggedValue protoDetails3 = obj3Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails3 = obj3Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails3.IsProtoChangeDetails());
-    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails4 = obj4Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails4.IsProtoChangeDetails());
-    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails6 = obj6Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails6.IsProtoChangeDetails());
 
-    JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners1 != JSTaggedValue(0));
-    JSTaggedValue listeners2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners2 != JSTaggedValue(0));
-    JSTaggedValue listeners3 = ProtoChangeDetails::Cast(protoDetails3.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listeners3 = ProtoChangeDetails::Cast(protoDetails3.GetTaggedObject())->GetChangeListener(thread);
     EXPECT_TRUE(listeners3 != JSTaggedValue(0));
 
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
@@ -1234,10 +1238,10 @@ HWTEST_F_L0(JSObjectTest, ChangeProtoAndNoticeTheChain)
     uint32_t index4 = ProtoChangeDetails::Cast(protoDetails4.GetTaggedObject())->GetRegisterIndex();
     uint32_t index6 = ProtoChangeDetails::Cast(protoDetails6.GetTaggedObject())->GetRegisterIndex();
 
-    JSTaggedValue result2 = ChangeListener::Cast(listeners3.GetTaggedObject())->Get(index2);
-    JSTaggedValue result3 = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(index3);
-    JSTaggedValue result4 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(index4);
-    JSTaggedValue result6 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(index6);
+    JSTaggedValue result2 = ChangeListener::Cast(listeners3.GetTaggedObject())->Get(thread, index2);
+    JSTaggedValue result3 = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(thread, index3);
+    JSTaggedValue result4 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(thread, index4);
+    JSTaggedValue result6 = ChangeListener::Cast(listeners2.GetTaggedObject())->Get(thread, index6);
 
     EXPECT_TRUE(result2 == obj2Class.GetTaggedValue());
     EXPECT_TRUE(result3 == obj3Class.GetTaggedValue());
@@ -1251,14 +1255,14 @@ HWTEST_F_L0(JSObjectTest, NativePointerField)
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     ECMAObject::SetHash(thread, 87, JSHandle<ECMAObject>::Cast(obj));
-    EXPECT_TRUE(obj->GetHash() == 87);
+    EXPECT_TRUE(obj->GetHash(thread) == 87);
 
     ECMAObject::SetNativePointerFieldCount(thread, obj, 1);
     char array[] = "Hello World!";
     ECMAObject::SetNativePointerField(thread, obj, 0, array, nullptr, nullptr);
-    int32_t count = obj->GetNativePointerFieldCount();
+    int32_t count = obj->GetNativePointerFieldCount(thread);
     EXPECT_TRUE(count == 1);
-    void *pointer = obj->GetNativePointerField(0);
+    void *pointer = obj->GetNativePointerField(thread, 0);
     EXPECT_TRUE(pointer == array);
 }
 
@@ -1298,10 +1302,10 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
         JSObject::SetProperty(thread, obj1, keyA, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)));
         JSObject::SetProperty(thread, obj2, keyB, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
 
-        EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
-        EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        EXPECT_TRUE(hc0->GetTransitions(thread).IsTaggedArray());
+        EXPECT_EQ(hc0->FindTransitions(thread, keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
             obj1->GetClass());
-        EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        EXPECT_EQ(hc0->FindTransitions(thread, keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
             obj2->GetClass());
         hca.Update(JSTaggedValue(obj1->GetClass()));
         hcb.Update(JSTaggedValue(obj2->GetClass()));
@@ -1316,9 +1320,9 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     // collect hc1, hc2
     vm->CollectGarbage(TriggerGCType::FULL_GC);
 
-    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+    EXPECT_EQ(hc0->FindTransitions(thread, keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
         hca.GetObject<JSHClass>());
-    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+    EXPECT_EQ(hc0->FindTransitions(thread, keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
         hcb.GetObject<JSHClass>());
 
     JSHandle<JSObject> obj3 = factory->NewJSObject(hc0);
@@ -1330,10 +1334,10 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     JSObject::SetProperty(thread, obj3, keyA, JSHandle<JSTaggedValue>(thread, JSTaggedValue(5)));
     JSObject::SetProperty(thread, obj4, keyB, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)));
 
-    EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
-    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+    EXPECT_TRUE(hc0->GetTransitions(thread).IsTaggedArray());
+    EXPECT_EQ(hc0->FindTransitions(thread, keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
         obj3->GetClass());
-    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+    EXPECT_EQ(hc0->FindTransitions(thread, keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
         obj4->GetClass());
     EXPECT_EQ(obj3->GetClass(), hca.GetObject<JSHClass>());
     EXPECT_EQ(obj4->GetClass(), hcb.GetObject<JSHClass>());

@@ -18,10 +18,9 @@
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
-void MegaICCache::Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handler,
-                      [[maybe_unused]] JSThread *thread)
+void MegaICCache::Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handler, JSThread *thread)
 {
-    int hash = PrimaryHash(jsHclass, key);
+    int hash = PrimaryHash(thread, jsHclass, key);
     PropertyKey &primaryProp = primary_[hash];
     if (primaryProp.key_ != JSTaggedValue::Hole()) {
         JSHClass* oldHclass = primaryProp.hclass_;

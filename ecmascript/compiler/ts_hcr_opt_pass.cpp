@@ -147,7 +147,7 @@ GateRef TSHCROptPass::ConvertConstSingleCharToInt32(GateRef gate)
         return Circuit::NullGate();
     }
     ASSERT(EcmaStringAccessor(str).GetLength() == 1);
-    uint16_t strToInt = EcmaStringAccessor(str).Get(0);
+    uint16_t strToInt = EcmaStringAccessor(str).Get(compilationEnv_->GetJSThread(), 0);
     return builder_.Int32(strToInt);
 }
 

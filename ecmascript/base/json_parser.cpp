@@ -488,7 +488,7 @@ JSTaggedValue JsonParser<T>::SetPropertyByValue(const JSHandle<JSTaggedValue> &r
     if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
         IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
         uint32_t index = 0;
-        if (stringAccessor.ToElementIndex(&index)) {
+        if (stringAccessor.ToElementIndex(thread_, &index)) {
             return ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>(thread_,
                 receiver.GetTaggedValue(), index, value.GetTaggedValue());
         }
@@ -1110,7 +1110,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
     } else if (stringAccessor.IsSlicedString()) {
         auto *sliced = static_cast<SlicedEcmaString *>(*strHandle);
         slicedOffset = sliced->GetStartIndex();
-        sourceString_ = JSHandle<EcmaString>(thread_, EcmaString::Cast(sliced->GetParent()));
+        sourceString_ = JSHandle<EcmaString>(thread_, EcmaString::Cast(sliced->GetParent(thread_)));
     } else {
         auto *flatten = EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle);
         sourceString_ = JSHandle<EcmaString>(thread_, flatten);
@@ -1160,7 +1160,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
             if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
                 int32_t ch = static_cast<int32_t>(utf8Data[0]);
                 JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
-                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(ch));
+                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
             }
             return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
                 sourceString_, offset, strLength));
@@ -1227,7 +1227,7 @@ JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
     ASSERT(str != nullptr);
     uint32_t len = EcmaStringAccessor(str).GetLength();
     CVector<uint16_t> buf(len + 1, 0);
-    EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
+    EcmaStringAccessor(str).WriteToFlatUtf16(thread_, buf.data(), len);
     Text begin = buf.data();
     return Launch(begin, begin + len);
 }
@@ -1364,7 +1364,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
             uint32_t namesLength = ownerNames->GetLength();
             JSMutableHandle<JSTaggedValue> keyName(thread, JSTaggedValue::Undefined());
             for (uint32_t i = 0; i < namesLength; i++) {
-                keyName.Update(ownerNames->Get(i));
+                keyName.Update(ownerNames->Get(thread, i));
                 RecurseAndApply(thread, obj, keyName, receiver, transformType);
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             }

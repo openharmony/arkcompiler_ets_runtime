@@ -36,11 +36,12 @@ public:
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             JSHandle<JSTaggedValue> arrayList = GetCallArg(argv, 2); // 2 means the secode arg
+            JSThread *thread = argv->GetThread();
             if (!arrayList->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIArrayList::Cast(arrayList.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    JSTaggedValue result = elements->Get(key->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    JSTaggedValue result = elements->Get(thread, key->GetInt());
                     EXPECT_EQ(result, value.GetTaggedValue());
                 }
             }
@@ -103,9 +104,9 @@ HWTEST_F_L0(JSAPIArrayListTest, Add)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 10));
         JSAPIArrayList::Add(thread, arrayList, value);
     }
-    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+    JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     for (uint32_t i = 0; i < increasedLength; i++) {
-        EXPECT_EQ(elements->Get(i), JSTaggedValue(i * 10));
+        EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i * 10));
     }
 }
 
@@ -129,14 +130,14 @@ HWTEST_F_L0(JSAPIArrayListTest, Insert)
         JSHandle<JSTaggedValue> insertValue(thread, JSTaggedValue(99 + i));
         JSAPIArrayList::Insert(thread, arrayList, insertValue, insertStartFrom + i);
     }
-    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+    JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     for (uint32_t i = 0; i < basicLength + insertNums; i++) {
         if (i < insertStartFrom) {
-            EXPECT_EQ(elements->Get(i), JSTaggedValue(i * 10));
+            EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i * 10));
         } else if (i >= insertStartFrom && i < insertStartFrom + insertNums) {
-            EXPECT_EQ(elements->Get(i), JSTaggedValue(99 + i - insertStartFrom));
+            EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(99 + i - insertStartFrom));
         } else if (i >= insertStartFrom + insertNums) {
-            EXPECT_EQ(elements->Get(i), JSTaggedValue((i - insertNums) * 10));
+            EXPECT_EQ(elements->Get(thread, i), JSTaggedValue((i - insertNums) * 10));
         }
     }
 
@@ -162,16 +163,16 @@ HWTEST_F_L0(JSAPIArrayListTest, Clear)
 {
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
     EXPECT_TRUE(JSAPIArrayList::IsEmpty(arrayList));
-    EXPECT_EQ(arrayList->GetLength(), JSTaggedValue(0));
+    EXPECT_EQ(arrayList->GetLength(), 0);
 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(99));
     JSAPIArrayList::Add(thread, arrayList, value);
     EXPECT_FALSE(JSAPIArrayList::IsEmpty(arrayList));
-    EXPECT_EQ(arrayList->GetLength(), JSTaggedValue(1));
+    EXPECT_EQ(arrayList->GetLength(), 1);
 
     JSAPIArrayList::Clear(thread, arrayList);
     EXPECT_TRUE(JSAPIArrayList::IsEmpty(arrayList));
-    EXPECT_EQ(arrayList->GetLength(), JSTaggedValue(0));
+    EXPECT_EQ(arrayList->GetLength(), 0);
 }
 
 /**
@@ -189,11 +190,11 @@ HWTEST_F_L0(JSAPIArrayListTest, Clone)
         JSAPIArrayList::Add(thread, arrayList, value);
     }
     JSHandle<JSAPIArrayList> newArrayList = JSAPIArrayList::Clone(thread, arrayList);
-    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
-    JSHandle<TaggedArray> newElements(thread, newArrayList->GetElements());
+    JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
+    JSHandle<TaggedArray> newElements(thread, newArrayList->GetElements(thread));
     for (uint32_t i = 0; i < length; i++) {
-        EXPECT_EQ(elements->Get(i), JSTaggedValue(i));
-        EXPECT_EQ(newElements->Get(i), JSTaggedValue(i));
+        EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i));
+        EXPECT_EQ(newElements->Get(thread, i), JSTaggedValue(i));
     }
 }
 
@@ -325,10 +326,10 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByIndex_Remove)
             // Delete elements with indexes between [0, 55].
             JSAPIArrayList::RemoveByIndex(thread, arrayList, 0);
         }
-        JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+        JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         for (uint32_t i = 0; i < addElementNums - removeElementNums; i++) {
             // The value of the corresponding index [0, 199] is [56, 255].
-            EXPECT_EQ(elements->Get(i), JSTaggedValue(i + removeElementNums));
+            EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i + removeElementNums));
         }
     }
 
@@ -340,11 +341,11 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByIndex_Remove)
             // Delete 44 elements whose element values are in [56, 99].
             JSAPIArrayList::Remove(thread, arrayList, value);
         }
-        JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+        JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         for (uint32_t i = 0; i < addElementNums - 100 - 1; i++) {
 
             // The value of the corresponding index [0, 155] is [100, 255].
-            EXPECT_EQ(elements->Get(i), JSTaggedValue(i + 100));
+            EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i + 100));
         }
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(addElementNums));
         bool result = JSAPIArrayList::Remove(thread, arrayList, value);
@@ -375,20 +376,20 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRange)
 
         // Remove the value between 50 and 100 of the index element.
         JSAPIArrayList::RemoveByRange(thread, arrayList, fromIndexValue, toIndexValue);
-        uint32_t length = arrayList->GetLength().GetArrayLength();
-        JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+        uint32_t length = arrayList->GetLength();
+        JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         for (uint32_t i = 0; i < length - (toIndex - formIndex); i++) {
             // The value of the corresponding index [0, 100] is [0, 49] ∪ [100, 149].
             if (i >= 0 && i < 50) {
-                EXPECT_EQ(elements->Get(i), JSTaggedValue(i));
+                EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i));
             } else if (i > 50) {
-                EXPECT_EQ(elements->Get(i), JSTaggedValue(i + 50));
+                EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i + 50));
             }
         }
 
         // throw error test
         uint32_t smallIndex = -1;
-        uint32_t bigIndex = arrayList->GetLength().GetArrayLength() + 10;
+        uint32_t bigIndex = arrayList->GetLength() + 10;
         uint32_t zeroIndex = 0;
         JSHandle<JSTaggedValue> smallIndexValue(thread, JSTaggedValue(smallIndex));
         JSHandle<JSTaggedValue> bigIndexValue(thread, JSTaggedValue(bigIndex));
@@ -435,7 +436,7 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRangeAndGetHeapUsedSize)
     JSAPIArrayList::RemoveByRange(thread, arrayList, fromIndexValue, toIndexValue);
     // test heap is normal after RemoveByRange, GetLiveObjectSize will iterate heap
     instance->GetHeap()->GetLiveObjectSize();
-    EXPECT_EQ(arrayList->GetLength().GetInt(), 8); // 8: new length
+    EXPECT_EQ(arrayList->GetLength(), 8); // 8: new length
 }
 
 /**
@@ -451,10 +452,10 @@ HWTEST_F_L0(JSAPIArrayListTest, ReplaceAllElements)
     EXPECT_EQ(result.GetTaggedValue(), JSTaggedValue::Undefined());
 
     // Recheck the results after replace.
-    uint32_t length = arrayList->GetLength().GetArrayLength();
-    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+    uint32_t length = arrayList->GetLength();
+    JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     for (uint32_t i = 0; i < length; i++) {
-        EXPECT_EQ(elements->Get(i), JSTaggedValue(i));
+        EXPECT_EQ(elements->Get(thread, i), JSTaggedValue(i));
     }
 }
 
@@ -479,15 +480,15 @@ HWTEST_F_L0(JSAPIArrayListTest, SubArrayList)
     JSTaggedValue subArrayListValue =
         JSAPIArrayList::SubArrayList(thread, arrayList, fromIndexValue, toIndexValue);
     JSHandle<JSAPIArrayList> subArrayList(thread, subArrayListValue);
-    JSHandle<TaggedArray> subElements(thread, subArrayList->GetElements());
-    for (uint32_t i = 0; i < subArrayList->GetLength().GetArrayLength(); i++) {
+    JSHandle<TaggedArray> subElements(thread, subArrayList->GetElements(thread));
+    for (uint32_t i = 0; i < subArrayList->GetLength(); i++) {
         // The element value interval of substring is [50, 100]
-        EXPECT_EQ(subElements->Get(i), JSTaggedValue(i + formIndex));
+        EXPECT_EQ(subElements->Get(thread, i), JSTaggedValue(i + formIndex));
     }
 
     // throw error test
     uint32_t smallIndex = -1;
-    uint32_t bigIndex = arrayList->GetLength().GetArrayLength() + 10;
+    uint32_t bigIndex = arrayList->GetLength() + 10;
     uint32_t zeroIndex = 0;
     JSHandle<JSTaggedValue> smallIndexValue(thread, JSTaggedValue(smallIndex));
     JSHandle<JSTaggedValue> bigIndexValue(thread, JSTaggedValue(bigIndex));
@@ -514,13 +515,13 @@ HWTEST_F_L0(JSAPIArrayListTest, SubArrayList)
     EXPECT_EXCEPTION();
 
     // newLength == 0
-    uint32_t arrayLength = arrayList->GetLength().GetArrayLength();
+    uint32_t arrayLength = arrayList->GetLength();
     JSHandle<JSTaggedValue> fromIndexValue0(thread, JSTaggedValue(arrayLength - 1));
     JSHandle<JSTaggedValue> toIndexValue0(thread, JSTaggedValue(arrayLength));
     JSTaggedValue newSubArrayListValue =
         JSAPIArrayList::SubArrayList(thread, arrayList, fromIndexValue0, toIndexValue0);
     JSHandle<JSAPIArrayList> newSubArrayList(thread, newSubArrayListValue);
-    int newLength = static_cast<int>(newSubArrayList->GetLength().GetArrayLength());
+    int newLength = static_cast<int>(newSubArrayList->GetLength());
     EXPECT_EQ(newLength, 1);
 }
 
@@ -561,7 +562,7 @@ HWTEST_F_L0(JSAPIArrayListTest, Get_Set_Has)
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
 
     // test Has of empty arraylist
-    EXPECT_FALSE(arrayList->Has(JSTaggedValue(0)));
+    EXPECT_FALSE(arrayList->Has(thread, JSTaggedValue(0)));
 
     uint32_t elementsNum = 256;
     for (uint32_t i = 0; i < elementsNum; i++) {
@@ -572,9 +573,9 @@ HWTEST_F_L0(JSAPIArrayListTest, Get_Set_Has)
         JSHandle<JSTaggedValue> getValue(thread, arrayList->Get(thread, i));
         EXPECT_EQ(getValue.GetTaggedValue(), JSTaggedValue(i * 10));
 
-        bool isHas = arrayList->Has(JSTaggedValue(i * 10));
+        bool isHas = arrayList->Has(thread, JSTaggedValue(i * 10));
         EXPECT_EQ(isHas, true);
-        EXPECT_FALSE(arrayList->Has(JSTaggedValue(-(i + 1))));
+        EXPECT_FALSE(arrayList->Has(thread, JSTaggedValue(-(i + 1))));
     }
 
     // test Get exception
@@ -603,10 +604,11 @@ HWTEST_F_L0(JSAPIArrayListTest, OwnKeys)
         JSAPIArrayList::Add(thread, arrayList, value);
     }
     JSHandle<TaggedArray> keys = JSAPIArrayList::OwnKeys(thread, arrayList);
-    uint32_t length = arrayList->GetLength().GetArrayLength();
+    uint32_t length = arrayList->GetLength();
     for (uint32_t i = 0; i < length; i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(keys->Get(i).GetTaggedObject())));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
+                                                        *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+                                                        EcmaString::Cast(keys->Get(thread, i).GetTaggedObject())));
     }
 }
 

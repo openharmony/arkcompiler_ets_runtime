@@ -75,108 +75,110 @@ public:
     //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template<bool needReadBarrier, bool maybeOverlap>
-    static void CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count);
+    static void CopyObjectPrimitive(const JSThread *thread, JSTaggedValue* dst, const JSTaggedValue* src,
+        size_t count);
     static void SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                       bool isPrimitive = false);
 
     template<class T>
-    static inline T GetValue(const void *obj, size_t offset)
+    static inline T GetPrimitive(const void *obj, size_t offset)
     {
         auto *addr = reinterpret_cast<T *>(ToUintPtr(obj) + offset);
         return *addr;
     }
 
-    static inline ARK_INLINE TaggedObject* GetTaggedObject(const void* obj, size_t offset)
+    static inline ARK_INLINE TaggedObject* GetTaggedObject(const JSThread *thread,
+        const void* obj, size_t offset)
     {
-        return JSTaggedValue(GetTaggedValue(obj, offset)).GetTaggedObject();
+        return JSTaggedValue(GetTaggedValue(thread, obj, offset)).GetTaggedObject();
     }
 
-    static inline JSTaggedType GetTaggedValue(const void *obj, size_t offset)
+    static inline JSTaggedType GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
     {
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
         if (UNLIKELY(g_isEnableCMCGC)) {
-            return GetTaggedValueForRB(obj, offset, value);
+            return GetTaggedValueForRB(thread, obj, offset, value);
         }
 
         return value.GetRawData();
     }
 
-    static inline JSTaggedType GetTaggedValue(uintptr_t slotAddress)
+    static inline JSTaggedType GetTaggedValue(const JSThread *thread, uintptr_t slotAddress)
     {
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
         if (UNLIKELY(g_isEnableCMCGC)) {
-            return GetTaggedValueForRB(slotAddress, value);
+            return GetTaggedValueForRB(thread, slotAddress, value);
         }
 
         return value.GetRawData();
     }
 
-    static inline JSTaggedType GetTaggedValueAtomic(const void *obj, size_t offset)
+    static inline JSTaggedType GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset)
     {
         JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
             offset)->load(std::memory_order_acquire);
         if (UNLIKELY(g_isEnableCMCGC)) {
-            return GetTaggedValueAtomicForRB(obj, offset, value);
+            return GetTaggedValueAtomicForRB(thread, obj, offset, value);
         }
 
         return value.GetRawData();
     }
 
     template <RBMode mode = RBMode::DEFAULT_RB>
-    static inline ARK_INLINE TaggedObject* GetTaggedObject(const void* obj, size_t offset)
+    static inline ARK_INLINE TaggedObject *GetTaggedObject(const JSThread *thread, const void *obj, size_t offset)
     {
-        return JSTaggedValue(GetTaggedValue<mode>(obj, offset)).GetTaggedObject();
+        return JSTaggedValue(GetTaggedValue<mode>(thread, obj, offset)).GetTaggedObject();
     }
 
     template <RBMode mode>
-    static inline JSTaggedType GetTaggedValue(const void *obj, size_t offset)
+    static inline JSTaggedType GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
     {
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
         if constexpr (mode == RBMode::DEFAULT_RB) {
             if (UNLIKELY(g_isEnableCMCGC)) {
-                return GetTaggedValueForRB(obj, offset, value);
+                return GetTaggedValueForRB(thread, obj, offset, value);
             }
         } else if constexpr (mode == RBMode::FAST_CMC_RB) {
-            return GetTaggedValueForRB(obj, offset, value);
+            return GetTaggedValueForRB(thread, obj, offset, value);
         }
 
         return value.GetRawData();
     }
 
     template <RBMode mode>
-    static inline JSTaggedType GetTaggedValue(uintptr_t slotAddress)
+    static inline JSTaggedType GetTaggedValue(const JSThread *thread, uintptr_t slotAddress)
     {
         JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(slotAddress);
         if constexpr (mode == RBMode::DEFAULT_RB) {
             if (UNLIKELY(g_isEnableCMCGC)) {
-                return GetTaggedValueForRB(slotAddress, value);
+                return GetTaggedValueForRB(thread, slotAddress, value);
             }
         } else if constexpr (mode == RBMode::FAST_CMC_RB) {
-            return GetTaggedValueForRB(slotAddress, value);
+            return GetTaggedValueForRB(thread, slotAddress, value);
         }
 
         return value.GetRawData();
     }
 
     template <RBMode mode>
-    static inline JSTaggedType GetTaggedValueAtomic(const void *obj, size_t offset)
+    static inline JSTaggedType GetTaggedValueAtomic(const JSThread *thread, const void *obj, size_t offset)
     {
         JSTaggedValue value =  reinterpret_cast<volatile std::atomic<JSTaggedValue> *>(ToUintPtr(obj) +
             offset)->load(std::memory_order_acquire);
         if constexpr (mode == RBMode::DEFAULT_RB) {
             if (UNLIKELY(g_isEnableCMCGC)) {
-                return GetTaggedValueAtomicForRB(obj, offset, value);
+                return GetTaggedValueAtomicForRB(thread, obj, offset, value);
             }
         } else if constexpr (mode == RBMode::FAST_CMC_RB) {
-            return GetTaggedValueAtomicForRB(obj, offset, value);
+            return GetTaggedValueAtomicForRB(thread, obj, offset, value);
         }
 
         return value.GetRawData();
     }
 
-    static inline JSTaggedType UpdateSlot(void *obj, size_t offset)
+    static inline JSTaggedType UpdateSlot(const JSThread *thread, void *obj, size_t offset)
     {
-        JSTaggedType value = GetTaggedValue(obj, offset);
+        JSTaggedType value = GetTaggedValue(thread, obj, offset);
         *reinterpret_cast<JSTaggedType *>(ToUintPtr(obj) + offset) = value;
         return value;
     }
@@ -191,7 +193,8 @@ public:
     static void PUBLIC_API CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj,
                                                         void* src, void* dst, size_t count);
 private:
-    static inline JSTaggedType GetTaggedValueForRB(const void *obj, size_t offset, const JSTaggedValue &value)
+    static inline JSTaggedType GetTaggedValueForRB(const JSThread *thread, const void *obj, size_t offset,
+                                                   const JSTaggedValue &value)
     {
         if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
@@ -207,7 +210,8 @@ private:
         return value.GetRawData();
     }
 
-    static inline JSTaggedType GetTaggedValueForRB(uintptr_t slotAddress, const JSTaggedValue &value)
+    static inline JSTaggedType GetTaggedValueForRB(const JSThread *thread, uintptr_t slotAddress,
+                                                   const JSTaggedValue &value)
     {
         if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX
@@ -222,7 +226,8 @@ private:
         return value.GetRawData();
     }
 
-    static inline JSTaggedType GetTaggedValueAtomicForRB(const void *obj, size_t offset, const JSTaggedValue &value)
+    static inline JSTaggedType GetTaggedValueAtomicForRB(const JSThread *thread, const void *obj, size_t offset,
+                                                         const JSTaggedValue &value)
     {
         if (value.IsHeapObject()) {
 #ifdef ENABLE_CMC_RB_DFX

@@ -256,7 +256,7 @@ HWTEST_F_L0(BuiltinsSendableArrayBufferTest, IsDetachBuffer1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<ByteArray> byteArray = factory->NewByteArray(5, 8);
-    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(byteArray.GetTaggedValue());
+    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, byteArray.GetTaggedValue());
     ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue(false).GetRawData());
 }
 
@@ -267,7 +267,7 @@ HWTEST_F_L0(BuiltinsSendableArrayBufferTest, IsDetachBuffer2)
     JSHandle<JSSendableArrayBuffer> arrBuf(
         thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     arrBuf->SetArrayBufferData(thread, JSTaggedValue::Null());
-    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(tagged);
+    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, tagged);
     ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue(true).GetRawData());
 }
 
@@ -278,7 +278,7 @@ HWTEST_F_L0(BuiltinsSendableArrayBufferTest, IsDetachBuffer3)
     JSHandle<JSSendableArrayBuffer> arrBuf(
         thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
     arrBuf->SetArrayBufferData(thread, JSTaggedValue(1));
-    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(tagged);
+    bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, tagged);
     ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue(false).GetRawData());
 }
 

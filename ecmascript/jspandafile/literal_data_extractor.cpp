@@ -64,7 +64,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
-                if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
+                if (JSTaggedValue::ToElementIndex(thread, jt, &elementIndex) && ppos % pairSize == 0) {
                     flag = true;
                 }
                 break;
@@ -441,7 +441,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                 jt = JSTaggedValue(str);
                 uint32_t elementIndex = 0;
-                if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
+                if (JSTaggedValue::ToElementIndex(thread, jt, &elementIndex) && ppos % pairSize == 0) {
                     flag = true;
                 }
                 break;
@@ -478,7 +478,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 int entryIndex = 0;
                 bool needSetAotFlag = (isLoadedAOT && (epos % pairSize == 0) && !flag);
                 if (needSetAotFlag) {
-                    entryIndex = entryIndexes->GetObjectFromCache(pos++).GetInt();
+                    entryIndex = entryIndexes->GetObjectFromCache(thread, pos++).GetInt();
                     // -1 : this jsfunction is a large function
                     if (entryIndex == -1) {
                         needSetAotFlag = false;
@@ -611,7 +611,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     int entryIndex = 0;
                     bool needSetAotFlag = isLoadedAOT;
                     if (isLoadedAOT) {
-                        entryIndex = entryIndexes->GetObjectFromCache(index++).GetInt();
+                        entryIndex = entryIndexes->GetObjectFromCache(thread, index++).GetInt();
                         if (entryIndex == -1) {
                             needSetAotFlag = false;
                         }

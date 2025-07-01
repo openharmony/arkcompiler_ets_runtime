@@ -440,18 +440,18 @@ public:
         return sizeof(Method);
     }
 
-    const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
-    uint32_t PUBLIC_API GetCodeSize() const;
-    MethodLiteral *PUBLIC_API GetMethodLiteral() const;
+    const JSPandaFile *PUBLIC_API GetJSPandaFile(const JSThread *thread) const;
+    uint32_t PUBLIC_API GetCodeSize(const JSThread *thread) const;
+    MethodLiteral *PUBLIC_API GetMethodLiteral(const JSThread *thread) const;
 
-    const char *PUBLIC_API GetMethodName() const;
+    const char *PUBLIC_API GetMethodName(const JSThread *thread) const;
     const char *PUBLIC_API GetMethodName(const JSPandaFile *file) const;
-    std::string PUBLIC_API ParseFunctionName() const;
-    std::pair<std::string_view, bool> PUBLIC_API ParseFunctionNameView() const;
-    const CString PUBLIC_API GetRecordNameStr() const;
+    std::string PUBLIC_API ParseFunctionName(const JSThread *thread) const;
+    std::pair<std::string_view, bool> PUBLIC_API ParseFunctionNameView(const JSThread *thread) const;
+    const CString PUBLIC_API GetRecordNameStr(const JSThread *thread) const;
 
-    uint32_t FindCatchBlock(uint32_t pc) const;
-    bool HasCatchBlock() const;
+    uint32_t FindCatchBlock(const JSThread *thread, uint32_t pc) const;
+    bool HasCatchBlock(const JSThread *thread) const;
 
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455

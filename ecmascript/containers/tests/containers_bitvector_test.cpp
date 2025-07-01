@@ -144,8 +144,8 @@ HWTEST_F_L0(ContainersBitVectorTest, BitVectorConstructor)
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result.IsJSAPIBitVector());
     JSHandle<JSAPIBitVector> bitVector(thread, result);
-    JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(bitVector));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(bitVector));
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int length = bitVector->GetLength();
     ASSERT_EQ(length, 10);
@@ -593,7 +593,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_001)
         JSTaggedValue result = ContainersBitVector::GetBitsByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
 
-        JSHandle<JSNativePointer> np(thread, JSAPIBitVector::Cast(result.GetTaggedObject())->GetNativePointer());
+        JSHandle<JSNativePointer> np(
+            thread, JSAPIBitVector::Cast(result.GetTaggedObject())
+                        ->GetNativePointer(thread));
         auto elements =
             reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
         EXPECT_EQ((*elements)[0].test(0), 1);
@@ -658,7 +660,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_003)
         JSTaggedValue result = ContainersBitVector::GetBitsByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
 
-        JSHandle<JSNativePointer> np(thread, JSAPIBitVector::Cast(result.GetTaggedObject())->GetNativePointer());
+        JSHandle<JSNativePointer> np(
+            thread, JSAPIBitVector::Cast(result.GetTaggedObject())
+                        ->GetNativePointer(thread));
         auto elements =
             reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
         EXPECT_EQ((*elements)[0].test(0), 0);
@@ -673,7 +677,9 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_003)
         JSTaggedValue result = ContainersBitVector::GetBitsByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
 
-        JSHandle<JSNativePointer> np(thread, JSAPIBitVector::Cast(result.GetTaggedObject())->GetNativePointer());
+        JSHandle<JSNativePointer> np(
+            thread, JSAPIBitVector::Cast(result.GetTaggedObject())
+                        ->GetNativePointer(thread));
         auto elements =
             reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
         EXPECT_EQ((*elements)[0].test(0), 1);

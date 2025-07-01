@@ -195,14 +195,14 @@ JSTaggedValue BuiltinsSet::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
 
     // 6.Let entries be the List that is the value of S’s [[SetData]] internal slot.
-    JSMutableHandle<LinkedHashSet> hashSet(thread, set->GetLinkedSet());
+    JSMutableHandle<LinkedHashSet> hashSet(thread, set->GetLinkedSet(thread));
     const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // 7.Repeat for each e that is an element of entries, in original insertion order
     while (index < totalElements) {
-        JSHandle<JSTaggedValue> key(thread, hashSet->GetKey(index++));
+        JSHandle<JSTaggedValue> key(thread, hashSet->GetKey(thread, index++));
         // a. If e is not empty, then
         if (!key->IsHole()) {
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(
@@ -214,11 +214,11 @@ JSTaggedValue BuiltinsSet::ForEach(EcmaRuntimeCallInfo *argv)
             // ii. ReturnIfAbrupt(funcResult).
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ret);
             // Maybe add or delete
-            JSTaggedValue nextTable = hashSet->GetNextTable();
+            JSTaggedValue nextTable = hashSet->GetNextTable(thread);
             while (!nextTable.IsHole()) {
-                index -= hashSet->GetDeletedElementsAt(index);
+                index -= hashSet->GetDeletedElementsAt(thread, index);
                 hashSet.Update(nextTable);
-                nextTable = hashSet->GetNextTable();
+                nextTable = hashSet->GetNextTable(thread);
             }
             totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
         }
@@ -244,7 +244,7 @@ JSTaggedValue BuiltinsSet::GetSize(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSSet", JSTaggedValue::Exception());
     }
     JSSet* jsSet = JSSet::Cast(self.GetTaggedValue().GetTaggedObject());
-    uint32_t count = jsSet->GetSize();
+    uint32_t count = jsSet->GetSize(thread);
     return JSTaggedValue(count);
 }
 

@@ -194,8 +194,8 @@ public:
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj,
                                          bool needNativeStack, uint32_t depth = UINT32_MAX);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
-    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
-                                        bool enableStackSourceFile = true);
+    static std::string BuildMethodTrace(const JSThread *thread, Method *method, uint32_t pcOffset,
+                                        LastBuilderCache &lastCache, bool enableStackSourceFile = true);
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
     static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0, JSThread *thread = nullptr);

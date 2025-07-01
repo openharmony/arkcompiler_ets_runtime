@@ -67,10 +67,10 @@ public:
     static JSHandle<JSTaggedValue> UnwrapRelativeTimeFormat(JSThread *thread, const JSHandle<JSTaggedValue> &rtf);
 
     // Get icu formatter from icu field
-    icu::RelativeDateTimeFormatter *GetIcuRTFFormatter() const
+    icu::RelativeDateTimeFormatter *GetIcuRTFFormatter(JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::RelativeDateTimeFormatter *>(result);
     }
 

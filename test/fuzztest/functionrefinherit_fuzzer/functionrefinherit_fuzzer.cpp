@@ -42,10 +42,10 @@ void FunctionRefInheritFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
         JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
         Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
-        JSHandle<JSTaggedValue> setPrototype(thread, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
-        JSHandle<JSTaggedValue> mapPrototype(thread, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
+        JSHandle<JSTaggedValue> setPrototype(thread, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype(thread));
+        JSHandle<JSTaggedValue> mapPrototype(thread, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype(thread));
         JSHandle<JSTaggedValue> mapPrototypeProto(thread, JSTaggedValue::GetPrototype(thread, mapPrototype));
-        JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
+        JSTaggedValue::SameValue(thread, setPrototype, mapPrototypeProto);
         mapLocal->Inherit(vm, setLocal);
     }
     JSNApi::DestroyJSVM(vm);

@@ -156,10 +156,10 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SupportedLocalesOf)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
-    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 // Intl.Segmenter.prototype.resolvedOptions
@@ -182,11 +182,11 @@ HWTEST_F_L0(BuiltinsSegmenterTest, ResolvedOptions)
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
     // judge whether the properties of the object are the same as those of jsdatetimeformat tag
     JSHandle<JSTaggedValue> localeKey = globalConst->GetHandledLocaleString();
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), locale), true);
     JSHandle<JSTaggedValue> granularityKey = globalConst->GetHandledGranularityString();
     JSHandle<JSTaggedValue> defaultGranularityValue(factory->NewFromASCII("grapheme"));
-    EXPECT_EQ(JSTaggedValue::SameValue(
+    EXPECT_EQ(JSTaggedValue::SameValue(thread,
         JSObject::GetProperty(thread, resultObj, granularityKey).GetValue(), defaultGranularityValue), true);
 }
 
@@ -228,11 +228,12 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_001)
     std::vector<JSHandle<JSTaggedValue>> outValues;
     SegmentsPrototypeCommon(thread, result, outValues);
 
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString(thread).c_str(),
                  "这句话是中文。");
     EXPECT_EQ(outValues[1]->GetRawData(), JSTaggedValue(0).GetRawData());   // 1:index value
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString().c_str(), // 2: input value
-                 "这句话是中文。这句还是中文！");
+    EXPECT_STREQ(
+        EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString(thread).c_str(),  // 2: input value
+        "这句话是中文。这句还是中文！");
     EXPECT_TRUE(outValues[3]->IsUndefined()); // 2: word link value
 }
 
@@ -255,10 +256,10 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentsPrototypeContaining_002)
 
     std::vector<JSHandle<JSTaggedValue>> outValues;
     SegmentsPrototypeCommon(thread, result, outValues);
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[0])).ToCString(thread).c_str(),
                  "joie");
     EXPECT_EQ(outValues[1]->GetRawData(), JSTaggedValue(7).GetRawData());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(outValues[2])).ToCString(thread).c_str(),
                  "Que ma joie demeure");
     EXPECT_EQ(outValues[3]->GetRawData(), JSTaggedValue::True().GetRawData());
 }
@@ -337,7 +338,7 @@ HWTEST_F_L0(BuiltinsSegmenterTest, SegmentIteratorNext)
     EXPECT_TRUE(value1->IsJSObject());
     JSHandle<JSTaggedValue> segmentKey = globalConst->GetHandledSegmentString();
     JSHandle<JSTaggedValue> segmentValue(JSObject::GetProperty(thread, value1, segmentKey).GetValue());
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(segmentValue)).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(segmentValue)).ToCString(thread).c_str(),
                  "Que ma joie demeure.");
     EXPECT_FALSE(done1->ToBoolean());
 

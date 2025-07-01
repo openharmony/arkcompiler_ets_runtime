@@ -120,12 +120,12 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::Locale *GetIcuLocale() const;
+    icu::Locale *GetIcuLocale(const JSThread *thread) const;
     static void SetIcuLocale(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
         const icu::Locale &icuLocale, const NativePointerCallback &callback);
     static void FreeIcuLocale(void *env, void *pointer, void *data);
 
-    icu::SimpleDateFormat *GetIcuSimpleDateFormat() const;
+    icu::SimpleDateFormat *GetIcuSimpleDateFormat(const JSThread *thread) const;
     static void SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
         const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const NativePointerCallback &callback);
     static void FreeSimpleDateFormat(void *env, void *pointer, void *data);
@@ -189,7 +189,8 @@ private:
 
     static std::string ToTitleCaseTimezonePosition(const std::string &input);
 
-    static std::unique_ptr<icu::DateIntervalFormat> ConstructDateIntervalFormat(const JSHandle<JSDateTimeFormat> &dtf);
+    static std::unique_ptr<icu::DateIntervalFormat> ConstructDateIntervalFormat(const JSThread *thread,
+                                                                                const JSHandle<JSDateTimeFormat> &dtf);
 
     static std::string ConstructGMTTimeZoneID(const std::string &input);
 

@@ -58,7 +58,7 @@ JSTaggedValue BuiltinsSharedArrayBuffer::IsSharedArrayBuffer(EcmaRuntimeCallInfo
     }
     // 2. Let bufferData be obj.[[ArrayBufferData]].
     JSHandle<JSArrayBuffer> buffer(arg);
-    JSTaggedValue bufferdata = buffer->GetArrayBufferData();
+    JSTaggedValue bufferdata = buffer->GetArrayBufferData(argv->GetThread());
     // 3. If bufferData is null, return false.
     if (bufferdata.IsNull()) {
         return BuiltinsSharedArrayBuffer::GetTaggedBoolean(false);
@@ -70,13 +70,13 @@ JSTaggedValue BuiltinsSharedArrayBuffer::IsSharedArrayBuffer(EcmaRuntimeCallInfo
     return BuiltinsSharedArrayBuffer::GetTaggedBoolean(true);
 }
 
-bool BuiltinsSharedArrayBuffer::IsShared(JSTaggedValue arrayBuffer)
+bool BuiltinsSharedArrayBuffer::IsShared(JSThread *thread, JSTaggedValue arrayBuffer)
 {
     if (!arrayBuffer.IsSharedArrayBuffer()) {
         return false;
     }
     JSArrayBuffer *buffer = JSArrayBuffer::Cast(arrayBuffer.GetTaggedObject());
-    JSTaggedValue dataSlot = buffer->GetArrayBufferData();
+    JSTaggedValue dataSlot = buffer->GetArrayBufferData(thread);
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return false.
     if (dataSlot.IsNull()) {
         return false;
@@ -167,7 +167,7 @@ JSTaggedValue BuiltinsSharedArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "don't have internal slot", JSTaggedValue::Exception());
     }
     // 4. If IsSharedArrayBuffer(O) is false, throw a TypeError exception.
-    if (!IsShared(thisHandle.GetTaggedValue())) {
+    if (!IsShared(thread, thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "this value not IsSharedArrayBuffer", JSTaggedValue::Exception());
     }
     // 5. Let len be the value of O’s [[ArrayBufferByteLength]] internal slot.
@@ -222,11 +222,11 @@ JSTaggedValue BuiltinsSharedArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "don't have bufferdata internal slot", JSTaggedValue::Exception());
     }
     // 18. If IsSharedArrayBuffer(new) is false, throw a TypeError exception.
-    if (!IsShared(newArrBuf.GetTaggedValue())) {
+    if (!IsShared(thread, newArrBuf.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "new arrayBuffer not IsSharedArrayBuffer", JSTaggedValue::Exception());
     }
     // 19. If SameValue(new, O) is true, throw a TypeError exception.
-    if (JSTaggedValue::SameValue(newArrBuf.GetTaggedValue(), thisHandle.GetTaggedValue())) {
+    if (JSTaggedValue::SameValue(thread, newArrBuf.GetTaggedValue(), thisHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "value of new arraybuffer and this is same", JSTaggedValue::Exception());
     }
     JSHandle<JSArrayBuffer> newJsShaArrBuf(newArrBuf);
@@ -237,9 +237,9 @@ JSTaggedValue BuiltinsSharedArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     }
     if (newLen > 0) {
         // 23. Let fromBuf be the value of O’s [[ArrayBufferData]] internal slot.
-        JSTaggedValue from = shaArrBuf->GetArrayBufferData();
+        JSTaggedValue from = shaArrBuf->GetArrayBufferData(thread);
         // 24. Let toBuf be the value of new’s [[ArrayBufferData]] internal slot.
-        JSTaggedValue to = newJsShaArrBuf->GetArrayBufferData();
+        JSTaggedValue to = newJsShaArrBuf->GetArrayBufferData(thread);
         // 25. Perform CopyDataBlockBytes(toBuf, fromBuf, first, newLen).
         JSArrayBuffer::CopyDataBlockBytes(to, from, first, newLen);
     }

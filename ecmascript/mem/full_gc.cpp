@@ -245,12 +245,13 @@ void FullGC::UpdateRecordJSWeakMap(uint32_t threadId)
             break;
         }
         JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSTaggedValue maybeMap = weakMap->GetLinkedMap();
+        JSThread *thread = heap_->GetJSThread();
+        JSTaggedValue maybeMap = weakMap->GetLinkedMap(thread);
         if (maybeMap.IsUndefined()) {
             continue;
         }
         LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(visitor);
+        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 }  // namespace panda::ecmascript

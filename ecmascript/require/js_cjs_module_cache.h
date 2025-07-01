@@ -54,7 +54,7 @@ public:
         return ENTRY_SIZE;
     }
 
-    static inline bool IsMatch(const JSTaggedValue &fileName, const JSTaggedValue &other)
+    static inline bool IsMatch(const JSThread *thread, const JSTaggedValue &fileName, const JSTaggedValue &other)
     {
         if (fileName.IsHole() || fileName.IsUndefined()) {
             return false;
@@ -62,14 +62,14 @@ public:
 
         auto *nameString = static_cast<EcmaString *>(fileName.GetTaggedObject());
         auto *otherString = static_cast<EcmaString *>(other.GetTaggedObject());
-        return EcmaStringAccessor::StringsAreEqual(nameString, otherString);
+        return EcmaStringAccessor::StringsAreEqual(thread, nameString, otherString);
     }
 
-    static inline uint32_t Hash(const JSTaggedValue &key)
+    static inline uint32_t Hash(const JSThread *thread, const JSTaggedValue &key)
     {
         ASSERT(key.IsString());
         EcmaString *nameStr = static_cast<EcmaString *>(key.GetTaggedObject());
-        return EcmaStringAccessor(nameStr).GetHashcode();
+        return EcmaStringAccessor(nameStr).GetHashcode(thread);
     }
 
     static const int DEFAULT_ELEMENTS_NUMBER = 64;
@@ -79,39 +79,39 @@ public:
         return HashTable::Create(thread, numberOfElements);
     }
 
-    inline int FindEntry(const JSTaggedValue &key)
+    inline int FindEntry(const JSThread *thread, const JSTaggedValue &key)
     {
         int size = Size();
         int count = 1;
         JSTaggedValue keyValue;
-        uint32_t hash = Hash(key);
+        uint32_t hash = Hash(thread, key);
 
         for (uint32_t entry = GetFirstPosition(hash, size);; entry = GetNextPosition(entry, count++, size)) {
-            keyValue = GetKey(entry);
+            keyValue = GetKey(thread, entry);
             if (keyValue.IsHole()) {
                 continue;
             }
             if (keyValue.IsUndefined()) {
                 return -1;
             }
-            if (IsMatch(key, keyValue)) {
+            if (IsMatch(thread, key, keyValue)) {
                 return entry;
             }
         }
         return -1;
     }
 
-    inline bool ContainsModule(const JSTaggedValue &key)
+    inline bool ContainsModule(const JSThread *thread, const JSTaggedValue &key)
     {
-        int entry = FindEntry(key);
+        int entry = FindEntry(thread, key);
         return entry != -1;
     }
 
-    inline JSTaggedValue GetModule(const JSTaggedValue &key)
+    inline JSTaggedValue GetModule(const JSThread *thread, const JSTaggedValue &key)
     {
-        int entry = FindEntry(key);
+        int entry = FindEntry(thread, key);
         ASSERT(entry != -1);
-        return GetValue(entry);
+        return GetValue(thread, entry);
     }
 
     inline void SetEntry(const JSThread *thread, int entry,
@@ -132,7 +132,8 @@ public:
                                                 const JSHandle<CjsModuleCache> &dictionary,
                                                 const JSHandle<JSTaggedValue> &key,
                                                 const JSHandle<JSTaggedValue> &value);
-    static int ComputeCompactSize([[maybe_unused]] const JSHandle<CjsModuleCache> &table, int computeHashTableSize,
+    static int ComputeCompactSize([[maybe_unused]] const JSThread *thread,
+        [[maybe_unused]] const JSHandle<CjsModuleCache> &table, int computeHashTableSize,
         [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
     {
         return computeHashTableSize;

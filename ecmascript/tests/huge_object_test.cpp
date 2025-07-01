@@ -53,7 +53,7 @@ HWTEST_F_L0(HugeObjectTest, LargeArrayKeep)
     EXPECT_EQ(*arrayHandle, reinterpret_cast<TaggedObject *>(array));
     ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);   // Trigger GC.
     ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);  // Trigger GC.
-    EXPECT_EQ(*newObj, array->Get(0).GetTaggedObject());
+    EXPECT_EQ(*newObj, array->Get(thread, 0).GetTaggedObject());
     EXPECT_EQ(*arrayHandle, reinterpret_cast<TaggedObject *>(array));
 }
 

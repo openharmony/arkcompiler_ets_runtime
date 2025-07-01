@@ -42,7 +42,7 @@ JSHandle<JSTaggedValue> JSAsyncFromSyncIterator::CreateAsyncFromSyncIterator(JST
 
     // 4.Let iteratorRecord be the Record {[[Iterator]]: asyncIterator, [[NextMethod]]: nextMethod, [[Done]]: false}.
     JSHandle<AsyncIteratorRecord> iteratorRecord = factory->NewAsyncIteratorRecord(tmpAsyncIterator, nextMethod, false);
-    return JSHandle<JSTaggedValue>(thread, iteratorRecord->GetIterator());
+    return JSHandle<JSTaggedValue>(thread, iteratorRecord->GetIterator(thread));
 }
 
 JSTaggedValue JSAsyncFromSyncIterator::AsyncFromSyncIteratorContinuation(JSThread *thread,
@@ -83,7 +83,7 @@ JSTaggedValue JSAsyncFromSyncIterator::AsyncFromSyncIteratorContinuation(JSThrea
                                                   JSHandle<JSTaggedValue>::Cast(onFulfilled),
                                                   onFulRejected, promiseCapability);
     // 12.Return promiseCapability.[[Promise]].
-    return promiseCapability->GetPromise();
+    return promiseCapability->GetPromise(thread);
 }
 
 JSTaggedValue JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction(EcmaRuntimeCallInfo *argv)
@@ -95,7 +95,7 @@ JSTaggedValue JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction(EcmaRunti
 
     // 2.Return ! CreateIterResultObject(value, F.[[Done]]).
     JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, 0);
-    bool done = unwarpFunction->GetDone().ToBoolean();
+    bool done = unwarpFunction->GetDone(thread).ToBoolean();
     return JSIterator::CreateIterResultObject(thread, value, done).GetTaggedValue();
 }
 }  // namespace panda::ecmascript

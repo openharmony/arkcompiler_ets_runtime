@@ -59,7 +59,7 @@ HWTEST_F_L0(BuiltinsNumberTest, NumberConstructor)
     JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
     ASSERT_TRUE(value.IsECMAObject());
     JSPrimitiveRef *ref = JSPrimitiveRef::Cast(value.GetTaggedObject());
-    ASSERT_EQ(ref->GetValue().GetDouble(), 5.0);
+    ASSERT_EQ(ref->GetValue(thread).GetDouble(), 5.0);
 }
 
 // Number.isFinite(-10)
@@ -211,7 +211,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString1)
     ASSERT_TRUE(result1.IsString());
     JSHandle<EcmaString> res1(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
     JSHandle<EcmaString> correctResult1 = factory->NewFromASCII("234.312256641535441");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res1, *correctResult1));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res1, *correctResult1));
     TestHelper::TearDownFrame(thread, prev);
 
     // (15).toString(4)
@@ -225,7 +225,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString1)
     ASSERT_TRUE(result2.IsString());
     JSHandle<EcmaString> res2(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
     JSHandle<EcmaString> correctResult2 = factory->NewFromASCII("33");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res2, *correctResult2));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res2, *correctResult2));
     TestHelper::TearDownFrame(thread, prev);
 
     // (5).toString(8)
@@ -239,7 +239,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString1)
     ASSERT_TRUE(result3.IsString());
     JSHandle<EcmaString> res3(thread, reinterpret_cast<EcmaString *>(result3.GetRawData()));
     JSHandle<EcmaString> correctResult3 = factory->NewFromASCII("5");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res3, *correctResult3));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res3, *correctResult3));
     TestHelper::TearDownFrame(thread, prev);
 
     // (0).toString(8)
@@ -253,7 +253,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString1)
     ASSERT_TRUE(result4.IsString());
     JSHandle<EcmaString> res4(thread, reinterpret_cast<EcmaString *>(result4.GetRawData()));
     JSHandle<EcmaString> correctResult4 = factory->NewFromASCII("0");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res4, *correctResult4));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res4, *correctResult4));
     TestHelper::TearDownFrame(thread, prev);
 }
 HWTEST_F_L0(BuiltinsNumberTest, ToString2)
@@ -270,7 +270,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString2)
     ASSERT_TRUE(result1.IsString());
     JSHandle<EcmaString> res1(thread, reinterpret_cast<EcmaString *>(result1.GetRawData()));
     JSHandle<EcmaString> correctResult1 = factory->NewFromASCII("-1f");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res1, *correctResult1));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res1, *correctResult1));
     TestHelper::TearDownFrame(thread, prev);
 
     // (2).toString(2.5)
@@ -284,7 +284,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToString2)
     ASSERT_TRUE(result2.IsString());
     JSHandle<EcmaString> res2(thread, reinterpret_cast<EcmaString *>(result2.GetRawData()));
     JSHandle<EcmaString> correctResult2 = factory->NewFromASCII("10");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res2, *correctResult2));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res2, *correctResult2));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -308,7 +308,7 @@ HWTEST_F_L0(BuiltinsNumberTest, IsExponential)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> correctResult = factory->NewFromASCII("1.23456e+2");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res, *correctResult));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -332,7 +332,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToFixed)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> correctResult = factory->NewFromASCII("123.4560000000");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res, *correctResult));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -356,7 +356,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToFixed1)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> correctResult = factory->NewFromASCII("123.456000000000003069544618483633");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res, *correctResult));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -381,7 +381,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToFixed2) {
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> correctResult = factory->NewFromASCII("1e+21");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res, *correctResult));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -405,7 +405,7 @@ HWTEST_F_L0(BuiltinsNumberTest, ToPrecision)
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> res(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> correctResult = factory->NewFromASCII("123.45600");
-    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*res, *correctResult));
+    ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *res, *correctResult));
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -467,74 +467,74 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
     // flags of IGNORE_TRAILING
 
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0a");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 0);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0b");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 0);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0o");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 0);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 00x");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 0);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 000.4_");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 0.4);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0010.s ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 10);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0010e2");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 1000);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 0010e+3_0");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::IGNORE_TRAILING), 10000);
 
     // flags of ALLOW_HEX
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0x");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_HEX)));
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0x10 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_HEX), 16);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0x1g");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_HEX + base::IGNORE_TRAILING), 1);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0xh");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(
         base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_HEX + base::IGNORE_TRAILING)));
 
     // flags of ALLOW_OCTAL
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0O");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_OCTAL)));
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0o10 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_OCTAL), 8);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0o1d");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_OCTAL | base::IGNORE_TRAILING),
               1);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0o8");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(
         base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_OCTAL | base::IGNORE_TRAILING)));
 
     // flags of ALLOW_BINARY
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0b");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_BINARY)));
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0b10 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_BINARY), 2);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0b1d");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_BINARY | base::IGNORE_TRAILING),
               1);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0b2");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(
         base::NumberHelper::StringToDouble(sp.begin(), sp.end(), 0, base::ALLOW_BINARY | base::IGNORE_TRAILING)));
 }
@@ -549,80 +549,80 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleRadix)
 
     radix = 0;  // default 10
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 100);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 100.3e2 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 10030);
     radix = 1;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0000 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 0);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0001 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_TRUE(std::isnan(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS)));
     radix = 2;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 4);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  11 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 3);
     radix = 3;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 9);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  21 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 7);
     radix = 4;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 16);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  31 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 13);
     radix = 8;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 64);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  71 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 57);
     radix = 10;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 100);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  0020 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 20);
     radix = 16;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 256);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  1e ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 30);
     radix = 18;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 324);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  1g ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 34);
     radix = 25;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 625);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  1g ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 41);
     radix = 36;
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  100 ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 1296);
     str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("  1z ");
-    sp = EcmaStringAccessor(str).ToUtf8Span(buf);
+    sp = EcmaStringAccessor(str).ToUtf8Span(thread, buf);
     ASSERT_EQ(base::NumberHelper::StringToDouble(sp.begin(), sp.end(), radix, base::NO_FLAGS), 71);
 }
 

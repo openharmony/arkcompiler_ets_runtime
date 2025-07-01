@@ -111,8 +111,8 @@ HWTEST_F_L0(ContainersBufferTest, BufferConstructor)
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result.IsJSAPIBuffer());
     JSHandle<JSAPIFastBuffer> buffer(thread, result);
-    JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(buffer));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(buffer));
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int length = buffer->GetLength();
     ASSERT_EQ(length, JSAPIFastBuffer::DEFAULT_CAPACITY_LENGTH);

@@ -131,7 +131,7 @@ HWTEST_F_L0(ContainersHashMapTest, HashMapConstructor)
     ASSERT_TRUE(result.IsJSAPIHashMap());
     JSHandle<JSAPIHashMap> mapHandle(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(mapHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int size = mapHandle->GetSize();
     ASSERT_EQ(size, 0);
@@ -507,7 +507,7 @@ HWTEST_F_L0(ContainersHashMapTest, Remove)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue rValue = ContainersHashMap::Remove(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(rValue, value.GetTaggedValue()));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, rValue, value.GetTaggedValue()));
         EXPECT_EQ(tMap->GetSize(), NODE_NUMBERS * 2 - 2);
     }
 }
@@ -602,7 +602,7 @@ HWTEST_F_L0(ContainersHashMapTest, SetAll)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashMap::Get(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, value.GetTaggedValue()));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, value.GetTaggedValue()));
     }
     EXPECT_EQ(dMap->GetSize(), 2 * NODE_NUMBERS);
 }
@@ -806,7 +806,7 @@ HWTEST_F_L0(ContainersHashMapTest, Replace)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersHashMap::Get(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(JSTaggedValue::SameValue(result, value.GetTaggedValue()));
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, result, value.GetTaggedValue()));
     }
 }
 

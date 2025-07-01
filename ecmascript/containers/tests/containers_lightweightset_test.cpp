@@ -124,8 +124,8 @@ HWTEST_F_L0(ContainersLightWeightSetTest, LightWeightSetConstructor)
 
     ASSERT_TRUE(result.IsJSAPILightWeightSet());
     JSHandle<JSAPILightWeightSet> mapHandle(thread, result);
-    JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(mapHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(mapHandle));
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int length = mapHandle->GetLength();
     ASSERT_EQ(length, 0);   // 0 means the value

@@ -82,11 +82,12 @@ constexpr uint8_t INTL_INDEX_EIGHT = 8;
 
 class JSIntlIterator : public icu::Locale::Iterator {
 public:
-    JSIntlIterator(const JSHandle<TaggedArray> &data, uint32_t length) : length_(length), curIdx_(0)
+    JSIntlIterator(const JSThread *thread, const JSHandle<TaggedArray> &data, uint32_t length)
+        : length_(length), curIdx_(0)
     {
         for (uint32_t idx = 0; idx < length; idx++) {
-            auto itor = data->Get(idx);
-            std::string str = EcmaStringAccessor(itor).ToStdString();
+            auto itor = data->Get(thread, idx);
+            std::string str = EcmaStringAccessor(itor).ToStdString(thread);
             data_.emplace_back(str);
         }
     }
@@ -174,10 +175,10 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, ICU_FIELD_OFFSET, SIZE)
     DECL_DUMP()
 
-    icu::Locale *GetIcuLocale() const
+    icu::Locale *GetIcuLocale(const JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::Locale *>(result);
     }
 
@@ -250,7 +251,7 @@ public:
         //   i. If values does not contain an element equal to value, throw a RangeError exception.
         JSHandle<EcmaString> valueEStr = JSTaggedValue::ToString(thread, value);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, T::EXCEPTION);
-        std::string valueStr = std::string(ConvertToString(*valueEStr, StringConvertedUsage::LOGICOPERATION));
+        std::string valueStr = std::string(ConvertToString(thread, *valueEStr, StringConvertedUsage::LOGICOPERATION));
         int existIdx = -1;
         if (!enumValues.empty()) {
             size_t strValuesSize = strValues.size();

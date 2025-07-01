@@ -94,7 +94,7 @@ HWTEST_F_L0(BuiltinsWeakSetTest, CreateAndGetSize)
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSWeakSet> weakSetResult(thread,
                                         JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData())));
-    EXPECT_EQ(weakSetResult->GetSize(), 5);
+    EXPECT_EQ(weakSetResult->GetSize(thread), 5);
 }
 
 HWTEST_F_L0(BuiltinsWeakSetTest, AddAndHas)
@@ -119,7 +119,7 @@ HWTEST_F_L0(BuiltinsWeakSetTest, AddAndHas)
         JSTaggedValue result2 = BuiltinsWeakSet::Add(ecmaRuntimeCallInfo);
         EXPECT_TRUE(result2.IsECMAObject());
         jsWeakSet = JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result2.GetRawData()));
-        EXPECT_EQ(jsWeakSet->GetSize(), 1);
+        EXPECT_EQ(jsWeakSet->GetSize(thread), 1);
     }
 
     // test Has()
@@ -151,7 +151,7 @@ void AddCommon(JSThread* thread, JSHandle<JSWeakSet>& weakSet, JSHandle<JSTagged
 
     EXPECT_TRUE(result1.IsECMAObject());
     JSWeakSet *jsWeakSet = JSWeakSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-    EXPECT_EQ(jsWeakSet->GetSize(), i + 1);
+    EXPECT_EQ(jsWeakSet->GetSize(thread), i + 1);
 }
 
 void HasAndDeleteCommon(JSThread* thread, JSHandle<JSWeakSet>& weakSet, JSTaggedValue& lastKey)

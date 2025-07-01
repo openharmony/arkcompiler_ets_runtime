@@ -26,7 +26,7 @@ class JSAPIDequelterator;
 
 void JSAPIDeque::InsertFront(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedArray> elements(thread, deque->GetElements());
+    JSHandle<TaggedArray> elements(thread, deque->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     uint32_t first = deque->GetFirst();
@@ -47,7 +47,7 @@ void JSAPIDeque::InsertFront(JSThread *thread, const JSHandle<JSAPIDeque> &deque
 
 void JSAPIDeque::InsertEnd(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedArray> elements(thread, deque->GetElements());
+    JSHandle<TaggedArray> elements(thread, deque->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     uint32_t first = deque->GetFirst();
@@ -66,37 +66,37 @@ void JSAPIDeque::InsertEnd(JSThread *thread, const JSHandle<JSAPIDeque> &deque, 
     deque->SetLast(last);
 }
 
-JSTaggedValue JSAPIDeque::GetFront()
+JSTaggedValue JSAPIDeque::GetFront(const JSThread *thread)
 {
     if (JSAPIDeque::IsEmpty()) {
         return JSTaggedValue::Undefined();
     }
 
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    return elements->Get(GetFirst());
+    return elements->Get(thread, GetFirst());
 }
 
-JSTaggedValue JSAPIDeque::GetTail()
+JSTaggedValue JSAPIDeque::GetTail(const JSThread *thread)
 {
     if (JSAPIDeque::IsEmpty()) {
         return JSTaggedValue::Undefined();
     }
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     uint32_t last = GetLast();
     ASSERT(capacity != 0);
-    return elements->Get((last + capacity - 1) % capacity);
+    return elements->Get(thread, (last + capacity - 1) % capacity);
 }
 
 JSHandle<TaggedArray> JSAPIDeque::GrowCapacity(JSThread *thread, const JSHandle<JSAPIDeque> &deque,
                                                uint32_t oldCapacity, uint32_t first, uint32_t last)
 {
-    JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, deque->GetElements(thread));
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
-    uint32_t size = deque->GetSize();
+    uint32_t size = deque->GetSize(thread);
     JSHandle<TaggedArray> newElements =
         thread->GetEcmaVM()->GetFactory()->CopyDeque(oldElements, newCapacity, size, first, last);
     deque->SetElements(thread, newElements);
@@ -109,10 +109,10 @@ JSTaggedValue JSAPIDeque::PopFirst(JSThread *thread)
         return JSTaggedValue::Undefined();
     }
     uint32_t first = GetFirst();
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
-    JSTaggedValue firstElement = elements->Get(first);
+    JSTaggedValue firstElement = elements->Get(thread, first);
     ASSERT(capacity != 0);
     elements->Set(thread, first, JSTaggedValue::Hole());
     first = (first + 1) % capacity;
@@ -126,13 +126,13 @@ JSTaggedValue JSAPIDeque::PopLast(JSThread *thread)
         return JSTaggedValue::Undefined();
     }
     uint32_t last = GetLast();
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     ASSERT(capacity != 0);
     elements->Set(thread, last, JSTaggedValue::Hole());
     last = (last + capacity - 1) % capacity;
-    JSTaggedValue lastElement = elements->Get(last);
+    JSTaggedValue lastElement = elements->Get(thread, last);
     SetLast(last);
     return lastElement;
 }
@@ -144,9 +144,9 @@ bool JSAPIDeque::IsEmpty()
     return first == last;
 }
 
-uint32_t JSAPIDeque::GetSize() const
+uint32_t JSAPIDeque::GetSize(const JSThread *thread) const
 {
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t first = GetFirst();
     uint32_t last = GetLast();
@@ -154,24 +154,24 @@ uint32_t JSAPIDeque::GetSize() const
     return (last - first + capacity) % capacity;
 }
 
-JSTaggedValue JSAPIDeque::Get(const uint32_t index)
+JSTaggedValue JSAPIDeque::Get(const JSThread *thread, const uint32_t index)
 {
-    ASSERT(index < GetSize());
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    ASSERT(index < GetSize(thread));
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t first = GetFirst();
     ASSERT(capacity != 0);
     uint32_t curIndex = (first + index) % capacity;
-    return elements->Get(curIndex);
+    return elements->Get(thread, curIndex);
 }
 
 JSTaggedValue JSAPIDeque::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    uint32_t length = static_cast<uint32_t>(GetSize());
+    uint32_t length = static_cast<uint32_t>(GetSize(thread));
     if (index < 0 || index >= length) {
         return JSTaggedValue::False();
     }
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t first = GetFirst();
     ASSERT(capacity != 0);
@@ -180,15 +180,15 @@ JSTaggedValue JSAPIDeque::Set(JSThread *thread, const uint32_t index, JSTaggedVa
     return JSTaggedValue::True();
 }
 
-bool JSAPIDeque::Has(JSTaggedValue value) const
+bool JSAPIDeque::Has(const JSThread *thread, JSTaggedValue value) const
 {
     uint32_t first = GetFirst();
     uint32_t last = GetLast();
-    TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
+    TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t index = first;
     while (index != last) {
-        if (JSTaggedValue::SameValue(elements->Get(index), value)) {
+        if (JSTaggedValue::SameValue(thread, elements->Get(thread, index), value)) {
             return true;
         }
         ASSERT(capacity != 0);
@@ -199,9 +199,9 @@ bool JSAPIDeque::Has(JSTaggedValue value) const
 
 JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
 {
-    uint32_t length = deque->GetSize();
+    uint32_t length = deque->GetSize(thread);
 
-    JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, deque->GetElements(thread));
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
     uint32_t firstIndex = deque->GetFirst();
@@ -217,9 +217,9 @@ JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPI
 
 JSHandle<TaggedArray> JSAPIDeque::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
 {
-    uint32_t length = deque->GetSize();
+    uint32_t length = deque->GetSize(thread);
 
-    JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
+    JSHandle<TaggedArray> oldElements(thread, deque->GetElements(thread));
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
@@ -238,17 +238,17 @@ bool JSAPIDeque::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIDeque> &de
                                 const JSHandle<JSTaggedValue> &key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"key\" can not obtain attributes of no-number type. Received value is: "
-            + ConvertToString(*result);
+            + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    uint32_t length = deque->GetSize();
+    uint32_t length = deque->GetSize(thread);
     if (index >= length) {
         ASSERT(length > 0);
         std::ostringstream oss;
@@ -258,7 +258,7 @@ bool JSAPIDeque::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIDeque> &de
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    deque->Get(index);
+    deque->Get(thread, index);
     return true;
 }
 
@@ -273,7 +273,7 @@ JSTaggedValue JSAPIDeque::GetIteratorObj(JSThread *thread, const JSHandle<JSAPID
 OperationResult JSAPIDeque::GetProperty(JSThread *thread, const JSHandle<JSAPIDeque> &obj,
                                         const JSHandle<JSTaggedValue> &key)
 {
-    int length = static_cast<int>(obj->GetSize());
+    int length = static_cast<int>(obj->GetSize(thread));
     if (length == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
@@ -304,14 +304,14 @@ OperationResult JSAPIDeque::GetProperty(JSThread *thread, const JSHandle<JSAPIDe
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, obj->Get(index), PropertyMetaData(false));
+    return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
 }
 
 bool JSAPIDeque::SetProperty(JSThread *thread, const JSHandle<JSAPIDeque> &obj,
                              const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value)
 {
-    int length = static_cast<int>(obj->GetSize());
+    int length = static_cast<int>(obj->GetSize(thread));
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
         // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt

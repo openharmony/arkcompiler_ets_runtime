@@ -41,13 +41,13 @@ HWTEST_F_L0(JSDateTest, Create)
 {
     double tm = 0.0;
     JSHandle<JSDate> jsDate(thread, JSDateCreate(thread));
-    EXPECT_EQ(jsDate->GetTimeValue(), JSTaggedValue(tm));
-    EXPECT_EQ(jsDate->GetLocalOffset(), JSTaggedValue(JSDate::MAX_DOUBLE));
+    EXPECT_EQ(jsDate->GetTimeValue(thread), JSTaggedValue(tm));
+    EXPECT_EQ(jsDate->GetLocalOffset(thread), JSTaggedValue(JSDate::MAX_DOUBLE));
     tm = 28 * 60 * 60 * 1000;
     jsDate->SetTimeValue(thread, JSTaggedValue(tm));
 
-    [[maybe_unused]] double temp = jsDate->GetTimeValue().GetDouble();
-    EXPECT_EQ(jsDate->GetTimeValue(), JSTaggedValue(tm));
+    [[maybe_unused]] double temp = jsDate->GetTimeValue(thread).GetDouble();
+    EXPECT_EQ(jsDate->GetTimeValue(thread), JSTaggedValue(tm));
 }
 
 HWTEST_F_L0(JSDateTest, MakeTime)

@@ -1117,7 +1117,7 @@ GateRef AllocateNewNumber(GateRef glue, const CompilationEnv *compilationEnv, Ci
 {
     Jit::JitLockHolder lock(compilationEnv, "AllocateNewNumber");
     JSHandle<JSFunction> numberFunctionCT(compilationEnv->GetGlobalEnv()->GetNumberFunction());
-    JSTaggedValue protoOrHClassCT = numberFunctionCT->GetProtoOrHClass();
+    JSTaggedValue protoOrHClassCT = numberFunctionCT->GetProtoOrHClass(compilationEnv->GetJSThread());
     JSHClass *numberHClassCT = JSHClass::Cast(protoOrHClassCT.GetTaggedObject());
     size_t objectSize = numberHClassCT->GetObjectSize();
 
@@ -1978,7 +1978,7 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
         builder_.Bind(&radixIsSpecialInt);
         {
             result = builder_.CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), Gate::InvalidGateRef,
-                { msg, *radix }, gate);
+                { glue, msg, *radix }, gate);
             builder_.Jump(&exit);
         }
     }
@@ -2040,7 +2040,7 @@ void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
         builder_.Bind(&notIntegerStr);
         {
             auto taggedDouble = builder_.CallNGCRuntime(glue, RTSTUB_ID(NumberHelperStringToDouble),
-                                                        Gate::InvalidGateRef, { msg }, gate);
+                                                        Gate::InvalidGateRef, { glue, msg }, gate);
             result = builder_.GetDoubleOfTDouble(taggedDouble);
             builder_.Jump(&exitIntegerStr);
         }

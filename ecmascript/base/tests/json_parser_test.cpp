@@ -26,18 +26,18 @@ class JsonParserTest : public BaseTestWithScope<false> {
 public:
     using TransformType = base::JsonHelper::TransformType;
 
-    void CheckUnsupportedSendableJson(JSHandle<JSTaggedValue> &result) const
+    void CheckUnsupportedSendableJson(JSThread *thread, JSHandle<JSTaggedValue> &result) const
     {
         EXPECT_TRUE(result->IsException());
         JSHandle<JSTaggedValue> exceptionObj(thread, thread->GetException());
         auto messageValue =
             JSTaggedValue::GetProperty(thread, exceptionObj, thread->GlobalConstants()->GetHandledMessageString())
                 .GetValue();
-        EXPECT_EQ(ConvertToString(EcmaString::Cast(messageValue->GetTaggedObject())),
+        EXPECT_EQ(ConvertToString(thread, EcmaString::Cast(messageValue->GetTaggedObject())),
                   MessageString::GetMessageString(GET_MESSAGE_STRING_ID(SendableArrayForJson)).c_str());
     }
 
-    bool CheckSendableConstraint(JSTaggedValue value) const
+    bool CheckSendableConstraint(const JSThread *thread, JSTaggedValue value) const
     {
         if (!value.IsHeapObject()) {
             // tagged value always follow sendable constraint.
@@ -50,48 +50,48 @@ public:
         }
         if (jsHClass->IsExtensible()) {
             LOG_ECMA(ERROR) << "sendable check failed. obj is extensible";
-            value.D();
+            value.D(thread);
             return false;
         }
-        if (!CheckSendableProps(value, obj)) {
+        if (!CheckSendableProps(thread, value, obj)) {
             return false;
         }
         // trace proto chain
-        auto proto = jsHClass->GetPrototype();
+        auto proto = jsHClass->GetPrototype(thread);
         if (!proto.IsNull() && !proto.IsJSShared()) {
             LOG_ECMA(ERROR) << "sendable check failed. proto is not sendable.";
-            value.D();
+            value.D(thread);
             return false;
         }
         return true;
     }
 
-    bool CheckSendableProps(JSTaggedValue value, TaggedObject *obj) const
+    bool CheckSendableProps(const JSThread *thread, JSTaggedValue value, TaggedObject *obj) const
     {
         auto *jsHClass = obj->GetClass();
-        auto layoutValue = jsHClass->GetLayout();
+        auto layoutValue = jsHClass->GetLayout(thread);
         if (layoutValue.IsNull()) {
             return true;
         }
         auto *layoutInfo = LayoutInfo::Cast(layoutValue.GetTaggedObject());
         auto *jsObj = JSObject::Cast(obj);
-        auto *propsValue = TaggedArray::Cast(jsObj->GetProperties());
+        auto *propsValue = TaggedArray::Cast(jsObj->GetProperties(thread));
         if (propsValue->IsDictionaryMode()) {
             for (int idx = 0; idx < static_cast<int>(jsHClass->NumberOfProps()); idx++) {
-                auto attr = layoutInfo->GetAttr(idx);
+                auto attr = layoutInfo->GetAttr(thread, idx);
                 if (attr.IsInlinedProps()) {
                     // Do not check inline props
                     continue;
                 }
                 if (attr.IsWritable()) {
                     LOG_ECMA(ERROR) << "sendable check failed. supposed to be un-writable. idx: " << idx;
-                    value.D();
+                    value.D(thread);
                     return false;
                 }
                 auto val = propsValue->Get(thread, idx - jsHClass->GetInlinedProperties());
-                if (!CheckSendableConstraint(val)) {
+                if (!CheckSendableConstraint(thread, val)) {
                     LOG_ECMA(ERROR) << "sendable check failed. supposed to be sendable. idx: " << idx;
-                    value.D();
+                    value.D(thread);
                     return false;
                 }
             }
@@ -161,7 +161,7 @@ HWTEST_F_L0(JsonParserTest, Parser_002)
     JSHandle<EcmaString> handleStr4(JSTaggedValue::ToString(thread, handleMsg4));
     JSHandle<JSTaggedValue> result4 = parser.Parse(*handleStr4);
     JSHandle<EcmaString> handleEcmaStr(result4);
-    EXPECT_STREQ("string", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    EXPECT_STREQ("string", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 
 /**
@@ -285,9 +285,9 @@ HWTEST_F_L0(JsonParserTest, Parser_008)
         factory->NewFromASCII(R"({"innerEntry": {"x":1, "y":"abc", "str": "innerStr"}, "x": 1, "str": "outerStr"})"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    result->D();
+    result->D(thread);
     EXPECT_FALSE(result->IsException());
-    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
+    EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
 
 /**
@@ -303,8 +303,8 @@ HWTEST_F_L0(JsonParserTest, Parser_009)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({})"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    result->D();
-    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
+    result->D(thread);
+    EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
 
 /**
@@ -320,8 +320,8 @@ HWTEST_F_L0(JsonParserTest, Parser_010)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"([])"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    result->D();
-    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
+    result->D(thread);
+    EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
 
 /**
@@ -337,8 +337,8 @@ HWTEST_F_L0(JsonParserTest, Parser_011)
     JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"([1, 2, 3])"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    result->D();
-    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
+    result->D(thread);
+    EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
 
 /**
@@ -355,7 +355,7 @@ HWTEST_F_L0(JsonParserTest, Parser_012)
         factory->NewFromASCII(R"({"innerEntry": {"array": [1, 2, 3]}, "x": 1, "str": "outerStr"})"));
     JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
     JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
-    result->D();
-    EXPECT_TRUE(CheckSendableConstraint(result.GetTaggedValue()));
+    result->D(thread);
+    EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
 } // namespace panda::test

@@ -39,7 +39,7 @@ JSTaggedValue JSSharedArrayIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // 4.Let a be O.[[IteratedArrayLike]].
     JSHandle<JSSharedArrayIterator> iter(thisObj);
-    JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
+    JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray(thread));
     if (array->IsJSSharedArray()) {
         [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, array);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());

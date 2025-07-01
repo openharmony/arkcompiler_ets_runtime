@@ -65,7 +65,7 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
     JSHandle<JSObject> thisValue(GetThis(msg));
 
     uint32_t tag = 0;
-    if (!JSTaggedValue::ToElementIndex(argv.GetTaggedValue(), &tag) || tag >= ContainerTag::END) {
+    if (!JSTaggedValue::ToElementIndex(thread, argv.GetTaggedValue(), &tag) || tag >= ContainerTag::END) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect input parameters", JSTaggedValue::Exception());
     }
 

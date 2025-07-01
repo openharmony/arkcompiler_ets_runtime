@@ -932,12 +932,12 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
         if (method == nullptr || method->IsNativeWithCallField()) {
             continue;
         }
-        MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
         if (methodLiteral == nullptr) {
             continue;
         }
         if (stackInfo_.count(methodLiteral) == 0) {
-            if (!AddMethodInfo(methodLiteral, method->GetJSPandaFile(), sequenceId)) {
+            if (!AddMethodInfo(methodLiteral, method->GetJSPandaFile(thread), sequenceId)) {
                 continue;
             }
         }
@@ -1008,9 +1008,10 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     static const CString EMPTY_STRING;
     JSTaggedType addr = entry.GetRawData();
     Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
+    JSThread *thread = vm_->GetJSThread();
     if (existNode != nullptr) {
         if (isInFinish || isBinMod) {
-            existNode->SetName(GetString(EntryVisitor::ConvertKey(entry)));
+            existNode->SetName(GetString(EntryVisitor::ConvertKey(thread, entry)));
         }
         existNode->SetLive(true);
         return existNode;
@@ -1020,7 +1021,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     size_t selfsize = (size != 0) ? size : entry.GetTaggedObject()->GetSize();
     const CString *nodeName = &EMPTY_STRING;
     if (isInFinish || isBinMod) {
-        nodeName = GetString(EntryVisitor::ConvertKey(entry));
+        nodeName = GetString(EntryVisitor::ConvertKey(thread, entry));
     }
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::STRING, selfsize,
@@ -1041,7 +1042,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
     size_t selfsize = (size != 0) ? size : stringValue.GetTaggedObject()->GetSize();
     CString strContent;
-    strContent.append(EntryVisitor::ConvertKey(stringValue));
+    strContent.append(EntryVisitor::ConvertKey(vm_->GetJSThread(), stringValue));
     JSTaggedType addr = stringValue.GetRawData();
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::STRING, selfsize,
@@ -1141,7 +1142,7 @@ void HeapSnapshot::FillEdges(bool isSimplify)
             continue;
         }
         std::vector<Reference> referenceResources;
-        value.DumpForSnapshot(referenceResources, isVmMode_);
+        value.DumpForSnapshot(vm_->GetJSThread(), referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
             JSTaggedValue toValue = it.value_;
             if (toValue.IsNumber() && !captureNumericValue_) {
@@ -1191,24 +1192,25 @@ CString HeapSnapshot::ParseFunctionName(TaggedObject *obj, bool isRawHeap)
 {
     CString result;
     JSFunctionBase *func = JSFunctionBase::Cast(obj);
-    Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    JSThread *thread = vm_->GetJSThread();
+    Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     if (methodLiteral == nullptr) {
         if (!isRawHeap) {
             return "JSFunction";
         }
-        JSHandle<JSFunctionBase> funcBase = JSHandle<JSFunctionBase>(vm_->GetJSThread(), obj);
-        auto funcName = JSFunction::GetFunctionName(vm_->GetJSThread(), funcBase);
+        JSHandle<JSFunctionBase> funcBase = JSHandle<JSFunctionBase>(thread, obj);
+        auto funcName = JSFunction::GetFunctionName(thread, funcBase);
         if (funcName->IsString()) {
-            auto name = EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString();
+            auto name = EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString(thread);
             return name.empty() ? "JSFunction" : name;
         }
         return "JSFunction";
     }
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile(thread);
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
     const CString &nameStr = MethodLiteral::ParseFunctionNameToCString(jsPandaFile, methodId);
-    const CString &moduleStr = method->GetRecordNameStr();
+    const CString &moduleStr = method->GetRecordNameStr(thread);
     CString defaultName = "anonymous";
     DebugInfoExtractor *debugExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
@@ -1464,17 +1466,17 @@ Edge *HeapSnapshot::InsertEdgeAt(size_t pos, Edge *edge)
     return edge;
 }
 
-CString EntryVisitor::ConvertKey(JSTaggedValue key)
+CString EntryVisitor::ConvertKey(JSThread *thread, JSTaggedValue key)
 {
     ASSERT(key.GetTaggedObject() != nullptr);
     EcmaString *keyString = EcmaString::Cast(key.GetTaggedObject());
 
     if (key.IsSymbol()) {
         JSSymbol *symbol = JSSymbol::Cast(key.GetTaggedObject());
-        keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
+        keyString = EcmaString::Cast(symbol->GetDescription(thread).GetTaggedObject());
     }
     // convert, expensive but safe
-    return EcmaStringAccessor(keyString).ToCString(StringConvertedUsage::PRINT);
+    return EcmaStringAccessor(keyString).ToCString(thread, StringConvertedUsage::PRINT);
 }
 
 Node *HeapEntryMap::FindOrInsertNode(Node *node)

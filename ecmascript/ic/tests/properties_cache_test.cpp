@@ -69,18 +69,20 @@ HWTEST_F_L0(PropertiesCacheTest, SetAndGet)
     for (int i = 0; i < 10; i++) {
         JSHandle<JSTaggedValue> handleNumKey(thread, JSTaggedValue(1));
         JSHandle<JSTaggedValue> handleStrKey(JSTaggedValue::ToString(thread, handleNumKey));
-        handleProCache->Set(FuncHClass, handleStrKey.GetTaggedValue(), i);
-        EXPECT_EQ(handleProCache->Get(FuncHClass, handleStrKey.GetTaggedValue()), i);
+        handleProCache->Set(thread, FuncHClass, handleStrKey.GetTaggedValue(), i);
+        EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleStrKey.GetTaggedValue()), i);
     }
-    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey10.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
+        handleKey10.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
     // key is symbol
     for (int i = 0; i < 10; i++) {
         handleSymbol->SetHashField(static_cast<uint32_t>(i));
-        handleProCache->Set(FuncHClass, handleSymbol.GetTaggedValue(), i);
-        EXPECT_EQ(handleProCache->Get(FuncHClass, handleSymbol.GetTaggedValue()), i);
+        handleProCache->Set(thread, FuncHClass, handleSymbol.GetTaggedValue(), i);
+        EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleSymbol.GetTaggedValue()), i);
     }
     handleSymbol->SetHashField(static_cast<uint32_t>(10));
-    EXPECT_EQ(handleProCache->Get(FuncHClass, handleSymbol.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
+        handleSymbol.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
     handleProCache->Clear();
 }
 
@@ -101,9 +103,9 @@ HWTEST_F_L0(PropertiesCacheTest, Clear)
     JSHClass *FuncHClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();
     PropertiesCache *handleProCache = thread->GetPropertiesCache();
 
-    handleProCache->Set(FuncHClass, handleKey.GetTaggedValue(), 10);
-    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey.GetTaggedValue()), 10);
+    handleProCache->Set(thread, FuncHClass, handleKey.GetTaggedValue(), 10);
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleKey.GetTaggedValue()), 10);
     handleProCache->Clear();
-    EXPECT_EQ(handleProCache->Get(FuncHClass, handleKey.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleKey.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
 }
 } // namespace panda::test

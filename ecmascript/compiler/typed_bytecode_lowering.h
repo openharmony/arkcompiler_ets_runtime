@@ -280,9 +280,8 @@ private:
     
         auto holderHC = tacc.GetHolderHClass(index);
         auto receiverHC = tacc.GetReceiverHClass(index);
-        bool success = compilationEnv_->GetDependencies()->
-                                        DependOnStableProtoChain(receiverHC,
-                                                                 holderHC);
+        bool success = compilationEnv_->GetDependencies()->DependOnStableProtoChain(compilationEnv_->GetJSThread(),
+                                                                                    receiverHC, holderHC);
         TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
         return success;
     }
@@ -312,10 +311,8 @@ private:
         }
 
         auto receiverHC = tacc.GetReceiverHClass(index);
-        bool success = compilationEnv_->GetDependencies()->
-                                        DependOnStableProtoChain(receiverHC,
-                                                                 nullptr,
-                                                                 globalEnv.GetObject<GlobalEnv>());
+        bool success = compilationEnv_->GetDependencies()->DependOnStableProtoChain(
+            compilationEnv_->GetJSThread(), receiverHC, nullptr, globalEnv.GetObject<GlobalEnv>());
         TraceLazyDeoptNum(__PRETTY_FUNCTION__, success, gate);
         return success;
     }

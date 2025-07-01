@@ -37,40 +37,40 @@ public:
 
     JSPrimitiveRef() = delete;
 
-    bool IsNumber() const
+    bool IsNumber(const JSThread *thread) const
     {
-        return GetValue().IsNumber();
+        return GetValue(thread).IsNumber();
     }
 
-    bool IsBigInt() const
+    bool IsBigInt(const JSThread *thread) const
     {
-        return GetValue().IsBigInt();
+        return GetValue(thread).IsBigInt();
     }
 
-    bool IsInt() const
+    bool IsInt(const JSThread *thread) const
     {
-        return GetValue().IsInt();
+        return GetValue(thread).IsInt();
     }
 
-    bool IsBoolean() const
+    bool IsBoolean(const JSThread *thread) const
     {
-        return GetValue().IsBoolean();
+        return GetValue(thread).IsBoolean();
     }
 
-    bool IsString() const
+    bool IsString(const JSThread *thread) const
     {
-        return GetValue().IsString();
+        return GetValue(thread).IsString();
     }
 
-    bool IsSymbol() const
+    bool IsSymbol(const JSThread *thread) const
     {
-        return GetValue().IsSymbol();
+        return GetValue(thread).IsSymbol();
     }
 
-    uint32_t GetStringLength() const
+    uint32_t GetStringLength(const JSThread *thread) const
     {
-        ASSERT(IsString());
-        return EcmaStringAccessor(GetValue()).GetLength();
+        ASSERT(IsString(thread));
+        return EcmaStringAccessor(GetValue(thread)).GetLength();
     }
 
     // ES6 9.4.3 String Exotic Objects

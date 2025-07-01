@@ -77,14 +77,14 @@ HWTEST_F_L0(MicroJobQueueTest, GetJobQueue)
     handleMicroJobQueue->SetPromiseJobQueue(thread, handlePromiseQueue.GetTaggedValue());
     handleMicroJobQueue->SetScriptJobQueue(thread, handleScriptQueue.GetTaggedValue());
 
-    JSHandle<TaggedQueue> promiseQueue(thread, handleMicroJobQueue->GetPromiseJobQueue());
-    JSHandle<TaggedQueue> scriptQueue(thread, handleMicroJobQueue->GetScriptJobQueue());
+    JSHandle<TaggedQueue> promiseQueue(thread, handleMicroJobQueue->GetPromiseJobQueue(thread));
+    JSHandle<TaggedQueue> scriptQueue(thread, handleMicroJobQueue->GetScriptJobQueue(thread));
 
-    EXPECT_EQ(promiseQueue->Size(), 1U);
-    EXPECT_EQ(scriptQueue->Size(), 0U);
+    EXPECT_EQ(promiseQueue->Size(thread), 1U);
+    EXPECT_EQ(scriptQueue->Size(thread), 0U);
 
-    EXPECT_EQ(promiseQueue->Back().GetInt(), 123);
-    EXPECT_TRUE(scriptQueue->Back().IsHole());
+    EXPECT_EQ(promiseQueue->Back(thread).GetInt(), 123);
+    EXPECT_TRUE(scriptQueue->Back(thread).IsHole());
 }
 
 /**
@@ -100,8 +100,8 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueuePromiseJob)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
-    JSHandle<TaggedQueue> originalPromiseQueue(thread, handleMicrojob->GetPromiseJobQueue());
-    JSHandle<JSTaggedValue> scriptQueue(thread, handleMicrojob->GetScriptJobQueue());
+    JSHandle<TaggedQueue> originalPromiseQueue(thread, handleMicrojob->GetPromiseJobQueue(thread));
+    JSHandle<JSTaggedValue> scriptQueue(thread, handleMicrojob->GetScriptJobQueue(thread));
 
     JSHandle<TaggedArray> arguments = factory->NewTaggedArray(2);
     arguments->Set(thread, 0, JSTaggedValue::Undefined());
@@ -111,16 +111,18 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueuePromiseJob)
     QueueType type = QueueType::QUEUE_PROMISE;
     MicroJobQueue::EnqueueJob(thread, handleMicrojob, type, promiseReactionsJob, arguments);
 
-    JSHandle<TaggedQueue> promiseQueue(thread, handleMicrojob->GetPromiseJobQueue());
-    EXPECT_EQ(JSTaggedValue::SameValue(promiseQueue.GetTaggedValue(), originalPromiseQueue.GetTaggedValue()), false);
-    EXPECT_EQ(JSTaggedValue::SameValue(handleMicrojob->GetScriptJobQueue(), scriptQueue.GetTaggedValue()), true);
+    JSHandle<TaggedQueue> promiseQueue(thread, handleMicrojob->GetPromiseJobQueue(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, promiseQueue.GetTaggedValue(), originalPromiseQueue.GetTaggedValue()),
+              false);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, handleMicrojob->GetScriptJobQueue(thread), scriptQueue.GetTaggedValue()),
+              true);
 
     JSTaggedValue result = promiseQueue->Pop(thread);
     EXPECT_TRUE(result.IsPendingJob());
 
     JSHandle<PendingJob> pendingJob(thread, result);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob->GetJob(), promiseReactionsJob.GetTaggedValue()), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob->GetArguments(), arguments.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob->GetJob(thread), promiseReactionsJob.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob->GetArguments(thread), arguments.GetTaggedValue()), true);
 }
 
 /**
@@ -136,8 +138,8 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueueScriptJob)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
-    JSHandle<JSTaggedValue> promiseQueue(thread, handleMicrojob->GetPromiseJobQueue());
-    JSHandle<TaggedQueue> originalScriptQueue(thread, handleMicrojob->GetScriptJobQueue());
+    JSHandle<JSTaggedValue> promiseQueue(thread, handleMicrojob->GetPromiseJobQueue(thread));
+    JSHandle<TaggedQueue> originalScriptQueue(thread, handleMicrojob->GetScriptJobQueue(thread));
 
     JSHandle<TaggedArray> arguments1 = factory->NewTaggedArray(2);
     JSHandle<JSFunction> promiseReactionsJob(globalEnv->GetPromiseReactionJob());
@@ -151,22 +153,27 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueueScriptJob)
     arguments2->Set(thread, 1, JSTaggedValue::Undefined());
     MicroJobQueue::EnqueueJob(thread, handleMicrojob, type, promiseResolveThenableJob, arguments2);
 
-    JSHandle<TaggedQueue> scriptQueue(thread, handleMicrojob->GetScriptJobQueue());
-    EXPECT_EQ(JSTaggedValue::SameValue(scriptQueue.GetTaggedValue(), originalScriptQueue.GetTaggedValue()), false);
-    EXPECT_EQ(JSTaggedValue::SameValue(handleMicrojob->GetPromiseJobQueue(), promiseQueue.GetTaggedValue()), true);
+    JSHandle<TaggedQueue> scriptQueue(thread, handleMicrojob->GetScriptJobQueue(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, scriptQueue.GetTaggedValue(), originalScriptQueue.GetTaggedValue()),
+              false);
+    EXPECT_EQ(
+        JSTaggedValue::SameValue(thread, handleMicrojob->GetPromiseJobQueue(thread), promiseQueue.GetTaggedValue()),
+        true);
 
     JSTaggedValue result1 = scriptQueue->Pop(thread);
     EXPECT_TRUE(result1.IsPendingJob());
     // FIFO
     JSHandle<PendingJob> pendingJob1(thread, result1);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob1->GetJob(), promiseReactionsJob.GetTaggedValue()), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob1->GetArguments(), arguments1.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob1->GetJob(thread), promiseReactionsJob.GetTaggedValue()),
+              true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob1->GetArguments(thread), arguments1.GetTaggedValue()), true);
 
     JSTaggedValue result2 = scriptQueue->Pop(thread);
     EXPECT_TRUE(result2.IsPendingJob());
     JSHandle<PendingJob> pendingJob2(thread, result2);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob2->GetJob(), promiseResolveThenableJob.GetTaggedValue()), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(pendingJob2->GetArguments(), arguments2.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob2->GetJob(thread), promiseResolveThenableJob.GetTaggedValue()),
+              true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, pendingJob2->GetArguments(thread), arguments2.GetTaggedValue()), true);
 }
 
 /**
@@ -187,7 +194,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
 
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
@@ -206,9 +213,9 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
     if (!thread->HasPendingException()) {
         MicroJobQueue::ExecutePendingJob(thread, handleMicrojob);
     }
-    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise());
+    JSHandle<JSPromise> jsPromise(thread, capbility->GetPromise(thread));
     EXPECT_EQ(jsPromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsPromise->GetPromiseResult(), JSTaggedValue::Undefined()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsPromise->GetPromiseResult(thread), JSTaggedValue::Undefined()), true);
 }
 
 /**
@@ -230,7 +237,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
 
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility1 = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> resolve(thread, capbility1->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, capbility1->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
     fulfillReaction->SetPromiseCapability(thread, capbility1.GetTaggedValue());
@@ -242,7 +249,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     MicroJobQueue::EnqueueJob(thread, handleMicrojob, QueueType::QUEUE_PROMISE, promiseReactionsJob, arguments1);
 
     JSHandle<PromiseCapability> capbility2 = JSPromise::NewPromiseCapability(thread, promiseFunc);
-    JSHandle<JSTaggedValue> reject(thread, capbility2->GetReject());
+    JSHandle<JSTaggedValue> reject(thread, capbility2->GetReject(thread));
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
     rejectReaction->SetPromiseCapability(thread, capbility2.GetTaggedValue());
     rejectReaction->SetHandler(thread, reject.GetTaggedValue());
@@ -256,12 +263,13 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     if (!thread->HasPendingException()) {
         MicroJobQueue::ExecutePendingJob(thread, handleMicrojob);
     }
-    JSHandle<JSPromise> resolvePromise(thread, capbility1->GetPromise());
+    JSHandle<JSPromise> resolvePromise(thread, capbility1->GetPromise(thread));
     EXPECT_EQ(resolvePromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise->GetPromiseResult(), JSTaggedValue::Undefined()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise->GetPromiseResult(thread), JSTaggedValue::Undefined()),
+              true);
 
-    JSHandle<JSPromise> rejectPromise(thread, capbility2->GetPromise());
+    JSHandle<JSPromise> rejectPromise(thread, capbility2->GetPromise(thread));
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(32)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(32)), true);
 }
 } // namespace panda::test

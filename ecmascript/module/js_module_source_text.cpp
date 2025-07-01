@@ -41,7 +41,7 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
     CVector<std::string> exportedNames;
     // 1. Let module be this Source Text Module Record.
     // 2. If exportStarSet contains module, then
-    if (exportStarSet->GetIdx(module.GetTaggedValue()) != TaggedArray::MAX_ARRAY_INDEX) {
+    if (exportStarSet->GetIdx(thread, module.GetTaggedValue()) != TaggedArray::MAX_ARRAY_INDEX) {
         // a. Assert: We've reached the starting point of an import * circularity.
         // b. Return a new empty List.
         return exportedNames;
@@ -51,24 +51,24 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
     JSHandle<TaggedArray> newExportStarSet = TaggedArray::SetCapacity(thread, exportStarSet, len + 1);
     newExportStarSet->Set(thread, len, module.GetTaggedValue());
 
-    JSTaggedValue entryValue = module->GetLocalExportEntries();
+    JSTaggedValue entryValue = module->GetLocalExportEntries(thread);
     // 5. For each ExportEntry Record e in module.[[LocalExportEntries]], do
     AddExportName<LocalExportEntry>(thread, entryValue, exportedNames);
 
     // 6. For each ExportEntry Record e in module.[[IndirectExportEntries]], do
-    entryValue = module->GetIndirectExportEntries();
+    entryValue = module->GetIndirectExportEntries(thread);
     AddExportName<IndirectExportEntry>(thread, entryValue, exportedNames);
 
-    entryValue = module->GetStarExportEntries();
+    entryValue = module->GetStarExportEntries(thread);
     auto globalConstants = thread->GlobalConstants();
     if (!entryValue.IsUndefined()) {
         JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         // 7. For each ExportEntry Record e in module.[[StarExportEntries]], do
         JSHandle<TaggedArray> starExportEntries(thread, entryValue);
         size_t starExportEntriesLen = starExportEntries->GetLength();
         for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
-            ee.Update(starExportEntries->Get(idx));
+            ee.Update(starExportEntries->Get(thread, idx));
             // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             JSHandle<SourceTextModule> requestedModule =
                 GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, ee->GetModuleRequestIndex());
@@ -81,7 +81,8 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
     return exportedNames;
 }
 
-bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &module,
+bool SourceTextModule::CheckCircularImport(JSThread *thread,
+                                           const JSHandle<SourceTextModule> &module,
                                            const JSHandle<JSTaggedValue> &exportName,
                                            ResolvedMultiMap &resolvedMap)
 {
@@ -93,7 +94,7 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
         auto name = iter->second;
         // a. If module and r.[[Module]] are the same Module Record and
         // SameValue(exportName, r.[[ExportName]]) is true, then
-        if (JSTaggedValue::StringCompare(EcmaString::Cast(name.GetTaggedValue().GetTaggedObject()),
+        if (JSTaggedValue::StringCompare(thread, EcmaString::Cast(name.GetTaggedValue().GetTaggedObject()),
                                          EcmaString::Cast(exportName.GetTaggedValue().GetTaggedObject()))) {
             // i. Assert: This is a circular import request.
             // ii. Return true.
@@ -113,7 +114,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // For CJS, if exports is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValueString(exportName, defaultString)) {
+    if (JSTaggedValue::SameValueString(thread, exportName, defaultString)) {
         // bind with a number
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
@@ -123,17 +124,17 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
     if (exports->IsJSObject()) {
         JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
-        TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties().GetTaggedObject());
+        TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties(thread).GetTaggedObject());
         if (!properties->IsDictionaryMode()) {
             JSHandle<JSHClass> jsHclass(thread, exportObject->GetJSHClass());
             // Get layoutInfo and compare the input and output names of files
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout(thread).GetTaggedObject());
             if (layoutInfo->NumberOfElements() != 0) {
                 resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
             }
         } else {
             NameDictionary *dict = NameDictionary::Cast(properties);
-            int entry = dict->FindEntry(exportName.GetTaggedValue());
+            int entry = dict->FindEntry(thread, exportName.GetTaggedValue());
             if (entry != -1) {
                 resolution = JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, entry));
             }
@@ -182,13 +183,13 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
     auto globalConstants = thread->GlobalConstants();
     // Check if circular import request.
     // 2.For each Record { [[Module]], [[ExportName]] } r in resolvedMap, do
-    if (CheckCircularImport(module, exportName, resolvedMap)) {
+    if (CheckCircularImport(thread, module, exportName, resolvedMap)) {
         return globalConstants->GetHandledNull();
     }
     // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolvedMap.
     resolvedMap.emplace(reinterpret_cast<CString *>(GetModuleName(module)), exportName);
     // 4. For each ExportEntry Record e in module.[[LocalExportEntries]], do
-    JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
+    JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries(thread));
     if (!localExportEntriesTv->IsUndefined()) {
         JSHandle<JSTaggedValue> resolution = ResolveLocalExport(thread, localExportEntriesTv, exportName, module);
         if (!resolution->IsUndefined()) {
@@ -196,7 +197,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
         }
     }
     // 5. For each ExportEntry Record e in module.[[IndirectExportEntries]], do
-    JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries());
+    JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries(thread));
     if (!indirectExportEntriesTv->IsUndefined()) {
         JSHandle<JSTaggedValue> resolution = ResolveIndirectExport(thread, indirectExportEntriesTv,
                                                                    exportName, module, resolvedMap);
@@ -207,7 +208,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
     }
     // 6. If SameValue(exportName, "default") is true, then
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValueString(exportName, defaultString)) {
+    if (JSTaggedValue::SameValueString(thread, exportName, defaultString)) {
         // a. Assert: A default export was not explicitly defined by this module.
         // b. Return null.
         // c. NOTE: A default export cannot be provided by an export *.
@@ -216,16 +217,16 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
     // 7. Let starResolution be null.
     JSMutableHandle<JSTaggedValue> starResolution(thread, globalConstants->GetNull());
     // 8. For each ExportEntry Record e in module.[[StarExportEntries]], do
-    JSTaggedValue starExportEntriesTv = module->GetStarExportEntries();
+    JSTaggedValue starExportEntriesTv = module->GetStarExportEntries(thread);
     if (starExportEntriesTv.IsUndefined()) {
         return starResolution;
     }
     JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
     JSHandle<TaggedArray> starExportEntries(thread, starExportEntriesTv);
     size_t starExportEntriesLen = starExportEntries->GetLength();
     for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
-        ee.Update(starExportEntries->Get(idx));
+        ee.Update(starExportEntries->Get(thread, idx));
         // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
         JSHandle<SourceTextModule> requestedModule =
             GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, ee->GetModuleRequestIndex());
@@ -493,15 +494,16 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     return SourceTextModule::UNDEFINED_INDEX;
 }
 
-std::optional<std::set<uint32_t>> SourceTextModule::GetConcurrentRequestedModules(const JSHandle<Method> &method)
+std::optional<std::set<uint32_t>> SourceTextModule::GetConcurrentRequestedModules(JSThread *thread,
+    const JSHandle<Method> &method)
 {
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    const MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile(thread);
+    const MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     ASSERT(methodLiteral != nullptr);
     return methodLiteral->GetConcurrentRequestedModules(jsPandaFile);
 }
 
-void SourceTextModule::DFSModuleInstantiation(JSHandle<SourceTextModule> &module,
+void SourceTextModule::DFSModuleInstantiation(JSThread *thread, JSHandle<SourceTextModule> &module,
                                               CVector<JSHandle<SourceTextModule>> &stack)
 {
     // 1. Assert: module occurs exactly once in stack.
@@ -522,7 +524,7 @@ void SourceTextModule::DFSModuleInstantiation(JSHandle<SourceTextModule> &module
             // iii. Set requiredModule.[[Status]] to "instantiated".
             requiredModule->SetStatus(ModuleStatus::INSTANTIATED);
             // iv. If requiredModule and module are the same Module Record, set done to true.
-            if (JSTaggedValue::SameValue(module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
+            if (JSTaggedValue::SameValue(thread, module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
                 done = true;
             }
         }
@@ -545,14 +547,14 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
         return true;
     }
     module->SetStatus(ModuleStatus::PREINSTANTIATING);
-    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests(thread));
     // 9. For each String required that is an element of module.[[RequestedModules]], do
     if (!moduleRequests.GetTaggedValue().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t moduleRequestsLen = moduleRequests->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
-            required.Update(moduleRequests->Get(idx));
+            required.Update(moduleRequests->Get(thread, idx));
             JSHandle<JSTaggedValue> requiredModule =
                 ModuleResolver::HostResolveImportedModule(thread, module, required, executeType);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -591,8 +593,8 @@ int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<Sourc
     // 8. Append module to stack.
     stack.emplace_back(module);
     // 9. For each String required that is an element of module.[[RequestedModules]], do
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<JSTaggedValue> moduleHdl =
@@ -626,7 +628,7 @@ int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<Sourc
         SourceTextModule::ModuleDeclarationEnvironmentSetup(thread, module);
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-    DFSModuleInstantiation(module, stack);
+    DFSModuleInstantiation(thread, module, stack);
     return index;
 }
 
@@ -634,7 +636,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                                                          const JSHandle<SourceTextModule> &module)
 {
     CheckResolvedBinding(thread, module);
-    if (module->GetImportEntries().IsUndefined()) {
+    if (module->GetImportEntries(thread).IsUndefined()) {
         return;
     }
     ASSERT(!SourceTextModule::IsSharedModule(module));
@@ -642,25 +644,25 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
     // 3. Let realm be module.[[Realm]].
     // 4. Assert: realm is not undefined.
     // 5. Let env be NewModuleEnvironment(realm.[[GlobalEnv]]).
-    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
+    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries(thread));
     size_t importEntriesLen = importEntries->GetLength();
     JSHandle<NameDictionary> map(NameDictionary::Create(thread,
         NameDictionary::ComputeHashTableSize(importEntriesLen)));
     // 6. Set module.[[Environment]] to env.
     module->SetEnvironment(thread, map);
     // 7. Let envRec be env's EnvironmentRecord.
-    JSMutableHandle<JSTaggedValue> envRec(thread, module->GetEnvironment());
+    JSMutableHandle<JSTaggedValue> envRec(thread, module->GetEnvironment(thread));
     ASSERT(!envRec->IsUndefined());
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < importEntriesLen; idx++) {
-        in.Update(importEntries->Get(idx));
-        localName.Update(in->GetLocalName());
-        importName.Update(in->GetImportName());
+        in.Update(importEntries->Get(thread, idx));
+        localName.Update(in->GetLocalName(thread));
+        importName.Update(in->GetImportName(thread));
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
         JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
             GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, in->GetModuleRequestIndex()));
@@ -668,7 +670,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
         ASSERT(importedModule.GetTaggedValue().IsSourceTextModule());
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
-        if (JSTaggedValue::SameValueString(importName, starString)) {
+        if (JSTaggedValue::SameValueString(thread, importName, starString)) {
             // i. Let namespace be ? GetModuleNamespace(importedModule).
             JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, importedModule);
             // ii. Perform ! envRec.CreateImmutableBinding(in.[[LocalName]], true).
@@ -687,7 +689,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             if (resolution->IsNull() || resolution->IsString()) {
                 CString requestMod = ModulePathHelper::ReformatPath(GetModuleName(importedModule.GetTaggedValue()));
                 CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                    ConvertToString(importName.GetTaggedValue());
+                    ConvertToString(thread, importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordNameString().empty()) {
                     CString recordStr = ModulePathHelper::ReformatPath(module->GetEcmaModuleRecordNameString());
                     msg += "' which imported by '" + recordStr + "'";
@@ -717,7 +719,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         return;
     }
     CheckResolvedIndexBinding(thread, module);
-    if (module->GetImportEntries().IsUndefined()) {
+    if (module->GetImportEntries(thread).IsUndefined()) {
         return;
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -726,19 +728,19 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     // 3. Let realm be module.[[Realm]].
     // 4. Assert: realm is not undefined.
     // 5. Let env be NewModuleEnvironment(realm.[[GlobalEnv]]).
-    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
+    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries(thread));
     size_t importEntriesLen = importEntries->GetLength();
     JSHandle<TaggedArray> arr = factory->NewTaggedArray(importEntriesLen);
     // 7. Let envRec be env's EnvironmentRecord.
     JSHandle<TaggedArray> envRec = arr;
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < importEntriesLen; idx++) {
-        in.Update(importEntries->Get(idx));
-        importName.Update(in->GetImportName());
+        in.Update(importEntries->Get(thread, idx));
+        importName.Update(in->GetImportName(thread));
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
         JSHandle<SourceTextModule> importedModule =
             GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, in->GetModuleRequestIndex());
@@ -746,7 +748,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         ASSERT(importedModule.GetTaggedValue().IsSourceTextModule());
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
-        if (JSTaggedValue::SameValueString(importName, starString)) {
+        if (JSTaggedValue::SameValueString(thread, importName, starString)) {
             // need refactor
             envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
             module->SetEnvironment(thread, envRec);
@@ -761,7 +763,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         if (resolution->IsNull() || resolution->IsString()) {
             CString requestMod = ModulePathHelper::ReformatPath(GetModuleName(importedModule.GetTaggedValue()));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                        ConvertToString(importName.GetTaggedValue());
+                        ConvertToString(thread, importName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
                 CString recordStr = ModulePathHelper::ReformatPath(
                     module->GetEcmaModuleRecordNameString());
@@ -787,7 +789,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
     // 2. Assert: module.[[Status]] is not "uninstantiated".
     ASSERT(module->GetStatus() != ModuleStatus::UNINSTANTIATED);
     // 3. Let namespace be module.[[Namespace]].
-    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, module->GetNamespace().GetWeakRawValue());
+    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, module->GetNamespace(thread).GetWeakRawValue());
     // If namespace is undefined, then
     if (moduleNamespace->IsUndefined()) {
         // a. Let exportedNames be ? module.GetExportedNames(« »).
@@ -864,7 +866,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
             status == ModuleStatus::EVALUATED));
     // 3. If module.[[Status]] is either EVALUATING-ASYNC or EVALUATED, set module to module.[[CycleRoot]].
     if (status == ModuleStatus::EVALUATING_ASYNC || status == ModuleStatus::EVALUATED) {
-        module.Update(module->GetCycleRoot());
+        module.Update(module->GetCycleRoot(thread));
     }
     // 4. If module.[[TopLevelCapability]] is not EMPTY, then
     //     a. Return module.[[TopLevelCapability]].[[Promise]].
@@ -937,8 +939,8 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
     index++;
     stack.emplace_back(module);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t requestedModulesLen = requestedModules->GetLength();
         JSHandle<SourceTextModule> requiredModule;
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
@@ -978,12 +980,12 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
                 int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
                 module->SetDFSAncestorIndex(dfsAncIdx);
             } else {
-                requiredModule = JSHandle<SourceTextModule>(thread, requiredModule->GetCycleRoot());
+                requiredModule = JSHandle<SourceTextModule>(thread, requiredModule->GetCycleRoot(thread));
                 requiredModuleStatus = requiredModule->GetStatus();
                 ASSERT(requiredModuleStatus >= ModuleStatus::EVALUATING_ASYNC);
                 if (requiredModuleStatus == ModuleStatus::ERRORED) {
                     errorStack.emplace_back(module);
-                    SetExceptionToModule(thread, module, requiredModule->GetException());
+                    SetExceptionToModule(thread, module, requiredModule->GetException(thread));
                     ModuleMessageHelper::PrintAndThrowError(thread, module);
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
                     return index;
@@ -1038,7 +1040,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
                 requiredModule->SetStatus(ModuleStatus::EVALUATING_ASYNC);
             }
             // vi. If requiredModule and module are the same Module Record, set done to true.
-            if (JSTaggedValue::SameValue(module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
+            if (JSTaggedValue::SameValue(thread, module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
                 done = true;
             }
             // vii. Set requiredModule.[[CycleRoot]] to module.
@@ -1129,11 +1131,11 @@ void SourceTextModule::HandleConcurrentEvaluateResult(JSThread *thread, JSHandle
 int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                        int index, const JSHandle<Method> &method)
 {
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t requestedModulesLen = requestedModules->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
-        auto coRequestedModules = GetConcurrentRequestedModules(method);
+        auto coRequestedModules = GetConcurrentRequestedModules(thread, method);
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             if (coRequestedModules.has_value() && coRequestedModules.value().count(idx) == 0) {
                 // skip the unused module
@@ -1199,7 +1201,7 @@ void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTex
                                       const JSHandle<ImportEntry> &importEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedValue importEntries = module->GetImportEntries();
+    JSTaggedValue importEntries = module->GetImportEntries(thread);
     if (importEntries.IsUndefined()) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, importEntry.GetTaggedValue());
@@ -1220,7 +1222,7 @@ void SourceTextModule::AddLocalExportEntry(JSThread *thread, const JSHandle<Sour
                                            const JSHandle<LocalExportEntry> &exportEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedValue localExportEntries = module->GetLocalExportEntries();
+    JSTaggedValue localExportEntries = module->GetLocalExportEntries(thread);
     if (localExportEntries.IsUndefined()) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
@@ -1236,7 +1238,7 @@ void SourceTextModule::AddIndirectExportEntry(JSThread *thread, const JSHandle<S
                                               size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedValue indirectExportEntries = module->GetIndirectExportEntries();
+    JSTaggedValue indirectExportEntries = module->GetIndirectExportEntries(thread);
     if (indirectExportEntries.IsUndefined()) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
@@ -1251,7 +1253,7 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
                                           const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedValue starExportEntries = module->GetStarExportEntries();
+    JSTaggedValue starExportEntries = module->GetStarExportEntries(thread);
     if (starExportEntries.IsUndefined()) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
         array->Set(thread, idx, exportEntry.GetTaggedValue());
@@ -1264,7 +1266,7 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)
 {
-    JSTaggedValue dictionary = GetNameDictionary();
+    JSTaggedValue dictionary = GetNameDictionary(thread);
     if (dictionary.IsUndefined()) {
         // if module is Errored, throw origin jsError
         this->CheckAndThrowModuleError(thread);
@@ -1280,12 +1282,12 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, 
     }
 
     TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
-    return array->Get(index);
+    return array->Get(thread, index);
 }
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow)
 {
-    JSTaggedValue dictionary = GetNameDictionary();
+    JSTaggedValue dictionary = GetNameDictionary(thread);
     if (dictionary.IsUndefined()) {
         // if module is Errored, throw origin jsError
         this->CheckAndThrowModuleError(thread);
@@ -1301,15 +1303,15 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue k
     }
 
     NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-    int entry = dict->FindEntry(key);
+    int entry = dict->FindEntry(thread, key);
     if (entry != -1) {
-        return dict->GetValue(entry);
+        return dict->GetValue(thread, entry);
     }
 
     // when key is exportName, need to get localName
-    JSTaggedValue exportEntriesTv = GetLocalExportEntries();
+    JSTaggedValue exportEntriesTv = GetLocalExportEntries(thread);
     if (!exportEntriesTv.IsUndefined()) {
-        JSTaggedValue resolution = FindByExport(exportEntriesTv, key, dictionary);
+        JSTaggedValue resolution = FindByExport(thread, exportEntriesTv, key, dictionary);
         if (!resolution.IsHole()) {
             return resolution;
         }
@@ -1326,15 +1328,15 @@ JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHan
     }
     JSTaggedValue value = JSTaggedValue::Hole();
     JSObject *obj = JSObject::Cast(exportObject.GetTaggedValue());
-    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties(thread).GetTaggedObject());
     if (!properties->IsDictionaryMode()) {
         JSHClass *jsHclass = obj->GetJSHClass();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-        PropertyAttributes attr = layoutInfo->GetAttr(index);
-        value = obj->GetProperty(jsHclass, attr);
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout(thread).GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(thread, index);
+        value = obj->GetProperty(thread, jsHclass, attr);
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
-        value = dict->GetValue(index);
+        value = dict->GetValue(thread, index);
     }
     if (UNLIKELY(value.IsAccessor())) {
         return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
@@ -1342,7 +1344,8 @@ JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHan
     return value;
 }
 
-JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
+JSTaggedValue SourceTextModule::FindByExport(JSThread *thread,
+                                             const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                              const JSTaggedValue &dictionary)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1350,14 +1353,14 @@ JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesT
     TaggedArray *exportEntries = TaggedArray::Cast(exportEntriesTv.GetTaggedObject());
     size_t exportEntriesLen = exportEntries->GetLength();
     for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-        LocalExportEntry *ee = LocalExportEntry::Cast(exportEntries->Get(idx).GetTaggedObject());
-        if (!JSTaggedValue::SameValue(ee->GetExportName(), key)) {
+        LocalExportEntry *ee = LocalExportEntry::Cast(exportEntries->Get(thread, idx).GetTaggedObject());
+        if (!JSTaggedValue::SameValue(thread, ee->GetExportName(thread), key)) {
             continue;
         }
-        JSTaggedValue localName = ee->GetLocalName();
-        int entry = dict->FindEntry(localName);
+        JSTaggedValue localName = ee->GetLocalName(thread);
+        int entry = dict->FindEntry(thread, localName);
         if (entry != -1) {
-            return dict->GetValue(entry);
+            return dict->GetValue(thread, entry);
         }
     }
 
@@ -1373,10 +1376,10 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<SourceT
                     module->GetEcmaModuleRecordNameString();
         THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
     }
-    JSTaggedValue localExportEntries = module->GetLocalExportEntries();
+    JSTaggedValue localExportEntries = module->GetLocalExportEntries(thread);
     ASSERT(localExportEntries.IsTaggedArray());
 
-    JSHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
+    JSHandle<JSTaggedValue> data(thread, module->GetNameDictionary(thread));
     if (data->IsUndefined()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         uint32_t size = TaggedArray::Cast(localExportEntries.GetTaggedObject())->GetLength();
@@ -1403,7 +1406,7 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<SourceT
                     module->GetEcmaModuleRecordNameString();
         THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
     }
-    JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
+    JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary(thread));
     if (data->IsUndefined()) {
         data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     }
@@ -1473,15 +1476,17 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         if (resolution->IsResolvedBinding()) {
             JSHandle<ResolvedBinding> resolutionBd = JSHandle<ResolvedBinding>::Cast(resolution);
             JSHandle<ResolvedBinding> starResolutionBd = JSHandle<ResolvedBinding>::Cast(starResolution);
-            if ((!JSTaggedValue::SameValue(resolutionBd->GetModule(), starResolutionBd->GetModule())) ||
-                (!JSTaggedValue::SameValue(
-                    resolutionBd->GetBindingName(), starResolutionBd->GetBindingName()))) {
+            if ((!JSTaggedValue::SameValue(thread, resolutionBd->GetModule(thread),
+                                           starResolutionBd->GetModule(thread))) ||
+                (!JSTaggedValue::SameValue(thread, resolutionBd->GetBindingName(thread),
+                                           starResolutionBd->GetBindingName(thread)))) {
                 return globalConstants->GetHandledAmbiguousString();
             }
         } else {
             JSHandle<ResolvedIndexBinding> resolutionBd = JSHandle<ResolvedIndexBinding>::Cast(resolution);
             JSHandle<ResolvedIndexBinding> starResolutionBd = JSHandle<ResolvedIndexBinding>::Cast(starResolution);
-            if ((!JSTaggedValue::SameValue(resolutionBd->GetModule(), starResolutionBd->GetModule())) ||
+            if ((!JSTaggedValue::SameValue(thread, resolutionBd->GetModule(thread),
+                                           starResolutionBd->GetModule(thread))) ||
                 resolutionBd->GetIndex() != starResolutionBd->GetIndex()) {
                 return globalConstants->GetHandledAmbiguousString();
             }
@@ -1499,10 +1504,10 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
         JSHandle<TaggedArray> exportEntries(thread, exportEntry);
         size_t exportEntriesLen = exportEntries->GetLength();
         for (size_t idx = 0; idx < exportEntriesLen; idx++) {
-            ee.Update(exportEntries->Get(idx));
+            ee.Update(exportEntries->Get(thread, idx));
             // a. Assert: module provides the direct binding for this export.
             // b. Append e.[[ExportName]] to exportedNames.
-            std::string exportName = EcmaStringAccessor(ee->GetExportName()).ToStdString();
+            std::string exportName = EcmaStringAccessor(ee->GetExportName(thread)).ToStdString(thread);
             exportedNames.emplace_back(exportName);
         }
     }
@@ -1533,7 +1538,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
     JSHandle<TaggedArray> localExportEntries(exportEntry);
     size_t localExportEntriesLen = localExportEntries->GetLength();
     for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
-        ee.Update(localExportEntries->Get(idx));
+        ee.Update(localExportEntries->Get(thread, idx));
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         // if module is type of CommonJS or native, export first, check after execution.
         auto moduleType = module->GetTypes();
@@ -1541,7 +1546,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
             return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, exportName));
         }
 
-        if ((JSTaggedValue::SameValueString(ee->GetExportName(), exportName.GetTaggedValue()))) {
+        if ((JSTaggedValue::SameValueString(thread, ee->GetExportName(thread), exportName.GetTaggedValue()))) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module,
@@ -1549,7 +1554,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
             }
             // i. Assert: module provides the direct binding for this export.
             // ii. Return ResolvedBinding Record { [[Module]]: module, [[BindingName]]: e.[[LocalName]] }.
-            localName.Update(ee->GetLocalName());
+            localName.Update(ee->GetLocalName(thread));
             return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, localName));
         }
     }
@@ -1566,13 +1571,13 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
     JSTaggedValue undefined = globalConstants->GetUndefined();
     JSMutableHandle<IndirectExportEntry> ee(thread, undefined);
     JSMutableHandle<JSTaggedValue> importName(thread, undefined);
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
     JSHandle<TaggedArray> indirectExportEntries(exportEntry);
     size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-        ee.Update(indirectExportEntries->Get(idx));
+        ee.Update(indirectExportEntries->Get(thread, idx));
         //  a. If SameValue(exportName, e.[[ExportName]]) is true, then
-        if (JSTaggedValue::SameValueString(exportName.GetTaggedValue(), ee->GetExportName())) {
+        if (JSTaggedValue::SameValueString(thread, exportName.GetTaggedValue(), ee->GetExportName(thread))) {
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             JSHandle<SourceTextModule> requestedModule =
@@ -1580,7 +1585,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             ASSERT(requestedModule.GetTaggedValue().IsSourceTextModule());
             // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolvedMap).
-            importName.Update(ee->GetImportName());
+            importName.Update(ee->GetImportName(thread));
             return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolvedMap);
         }
     }
@@ -1591,7 +1596,7 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
 {
     auto globalConstants = thread->GlobalConstants();
     // 1. For each ExportEntry Record e in module.[[IndirectExportEntries]], do
-    JSTaggedValue indirectExportEntriesTv = module->GetIndirectExportEntries();
+    JSTaggedValue indirectExportEntriesTv = module->GetIndirectExportEntries(thread);
     if (indirectExportEntriesTv.IsUndefined()) {
         return;
     }
@@ -1601,20 +1606,20 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
     JSHandle<TaggedArray> indirectExportEntries(thread, indirectExportEntriesTv);
     size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-        ee.Update(indirectExportEntries->Get(idx));
+        ee.Update(indirectExportEntries->Get(thread, idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
-        exportName.Update(ee->GetExportName());
+        exportName.Update(ee->GetExportName(thread));
         ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> resolution =
             SourceTextModule::ResolveExport(thread, module, exportName, resolvedMap);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests().GetTaggedObject());
-            JSTaggedValue moduleRequest = requestArray->Get(ee->GetModuleRequestIndex());
-            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest));
+            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests(thread).GetTaggedObject());
+            JSTaggedValue moduleRequest = requestArray->Get(thread, ee->GetModuleRequestIndex());
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(thread, moduleRequest));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                          ConvertToString(exportName.GetTaggedValue());
+                          ConvertToString(thread, exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
             CString recordStr = ModulePathHelper::ReformatPath(module->GetEcmaModuleRecordNameString());
                 msg += "' which exported by '" + recordStr + "'";
@@ -1632,7 +1637,7 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
 {
     auto globalConstants = thread->GlobalConstants();
     // 1. For each ExportEntry Record e in module.[[IndirectExportEntries]], do
-    JSTaggedValue indirectExportEntriesTv = module->GetIndirectExportEntries();
+    JSTaggedValue indirectExportEntriesTv = module->GetIndirectExportEntries(thread);
     if (indirectExportEntriesTv.IsUndefined()) {
         return;
     }
@@ -1642,20 +1647,20 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
     JSHandle<TaggedArray> indirectExportEntries(thread, indirectExportEntriesTv);
     size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
-        ee.Update(indirectExportEntries->Get(idx));
+        ee.Update(indirectExportEntries->Get(thread, idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
-        exportName.Update(ee->GetExportName());
+        exportName.Update(ee->GetExportName(thread));
         ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> resolution =
             SourceTextModule::ResolveExport(thread, module, exportName, resolvedMap);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests().GetTaggedObject());
-            JSTaggedValue moduleRequest = requestArray->Get(ee->GetModuleRequestIndex());
-            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest));
+            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests(thread).GetTaggedObject());
+            JSTaggedValue moduleRequest = requestArray->Get(thread, ee->GetModuleRequestIndex());
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(thread, moduleRequest));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                ConvertToString(exportName.GetTaggedValue());
+                ConvertToString(thread, exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
                 CString record = ModulePathHelper::ReformatPath(module->GetEcmaModuleRecordNameString());
                 msg += "' which exported by '" + record + "'";
@@ -1691,7 +1696,7 @@ void SourceTextModule::AddAsyncParentModule(JSThread *thread, JSHandle<SourceTex
                                             JSHandle<SourceTextModule> &parent)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedValue asyncParentModules = module->GetAsyncParentModules();
+    JSTaggedValue asyncParentModules = module->GetAsyncParentModules(thread);
     if (asyncParentModules.IsUndefined()) {
         JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
         array->Set(thread, 0, parent.GetTaggedValue());
@@ -1771,7 +1776,7 @@ void SourceTextModule::GatherAvailableAncestors(JSThread *thread, const JSHandle
                                                 AsyncParentCompletionSet &execList)
 {
     auto globalConstants = thread->GlobalConstants();
-    JSTaggedValue asyncParentModulesValue = module->GetAsyncParentModules();
+    JSTaggedValue asyncParentModulesValue = module->GetAsyncParentModules(thread);
     if (asyncParentModulesValue.IsUndefined()) {
         return;
     }
@@ -1780,9 +1785,9 @@ void SourceTextModule::GatherAvailableAncestors(JSThread *thread, const JSHandle
     size_t asyncParentModulesLen = asyncParentModules->GetLength();
     // 1. For each Cyclic Module Record m of module.[[AsyncParentModules]], do
     for (size_t idx = 0; idx < asyncParentModulesLen; idx++) {
-        JSHandle<SourceTextModule> parentModule(thread, asyncParentModules->Get(idx));
+        JSHandle<SourceTextModule> parentModule(thread, asyncParentModules->Get(thread, idx));
         // a. If execList does not contain m and m.[[CycleRoot]].[[EvaluationError]] is EMPTY, then
-        cycleRoot.Update(parentModule->GetCycleRoot());
+        cycleRoot.Update(parentModule->GetCycleRoot(thread));
         if (execList.find(parentModule) == execList.end() &&
             cycleRoot->GetStatus() != ModuleStatus::ERRORED) {
             // i. Assert: m.[[Status]] is EVALUATING-ASYNC.
@@ -1813,7 +1818,7 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
     //    a. Assert: module.[[EvaluationError]] is not EMPTY.
     //    b. Return UNUSED.
     if (module->GetStatus() == ModuleStatus::ERRORED) {
-        ASSERT(!module->GetException().IsHole());
+        ASSERT(!module->GetException(thread).IsHole());
         return;
     }
     // 2. Assert: module.[[Status]] is EVALUATING-ASYNC.
@@ -1829,9 +1834,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
     //    a. Assert: module.[[CycleRoot]] is module.
     //    b. Perform ! Call(module.[[TopLevelCapability]].[[Resolve]], undefined, « undefined »).
     auto globalConstants = thread->GlobalConstants();
-    JSTaggedValue topLevelCapabilityValue = module->GetTopLevelCapability();
+    JSTaggedValue topLevelCapabilityValue = module->GetTopLevelCapability(thread);
     if (!topLevelCapabilityValue.IsUndefined()) {
-        ASSERT(JSTaggedValue::SameValue(module->GetCycleRoot(), module.GetTaggedValue()));
+        ASSERT(JSTaggedValue::SameValue(thread, module->GetCycleRoot(thread), module.GetTaggedValue()));
         JSHandle<JSPromise> topLevelCapability(thread, JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
         JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
         JSPromise::FulfillPromise(thread, topLevelCapability, undefinedValue);
@@ -1870,9 +1875,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
                 // 2. If m.[[TopLevelCapability]] is not EMPTY, then
                 //    a. Assert: m.[[CycleRoot]] is m.
                 //    b. Perform ! Call(m.[[TopLevelCapability]].[[Resolve]], undefined, « undefined »).
-                JSTaggedValue capabilityValue = m->GetTopLevelCapability();
+                JSTaggedValue capabilityValue = m->GetTopLevelCapability(thread);
                 if (!capabilityValue.IsUndefined()) {
-                    ASSERT(JSTaggedValue::SameValue(m->GetCycleRoot(), m.GetTaggedValue()));
+                    ASSERT(JSTaggedValue::SameValue(thread, m->GetCycleRoot(thread), m.GetTaggedValue()));
                     JSHandle<JSPromise> topLevelCapability(thread,
                         JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
                     JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
@@ -1891,7 +1896,7 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
     //    a. Assert: module.[[EvaluationError]] is not EMPTY.
     //    b. Return UNUSED.
     if (module->GetStatus() == ModuleStatus::ERRORED) {
-        ASSERT(!module->GetException().IsHole());
+        ASSERT(!module->GetException(thread).IsHole());
         return;
     }
     // 2. Assert: module.[[Status]] is EVALUATING-ASYNC.
@@ -1899,7 +1904,7 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
     // 3. Assert: module.[[AsyncEvaluation]] is true.
     ASSERT(module->IsAsyncEvaluating());
     // 4. Assert: module.[[EvaluationError]] is EMPTY.
-    ASSERT(module->GetException().IsHole());
+    ASSERT(module->GetException(thread).IsHole());
     // 5. Set module.[[EvaluationError]] to ThrowCompletion(error).
     module->SetStatus(ModuleStatus::ERRORED);
     // 6. Set module.[[Status]] to EVALUATED.
@@ -1907,13 +1912,13 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
     // 7. For each Cyclic Module Record m of module.[[AsyncParentModules]], do
     //    a. Perform AsyncModuleExecutionRejected(m, error).
     auto globalConstants = thread->GlobalConstants();
-    JSTaggedValue asyncParentModulesValue = module->GetAsyncParentModules();
+    JSTaggedValue asyncParentModulesValue = module->GetAsyncParentModules(thread);
     if (!asyncParentModulesValue.IsUndefined()) {
         JSMutableHandle<SourceTextModule> parentModule(thread, globalConstants->GetUndefined());
         JSHandle<TaggedArray> asyncParentModules(thread, asyncParentModulesValue);
         size_t asyncParentModulesLen = asyncParentModules->GetLength();
         for (size_t idx = 0; idx < asyncParentModulesLen; idx++) {
-            parentModule.Update(asyncParentModules->Get(idx));
+            parentModule.Update(asyncParentModules->Get(thread, idx));
             AsyncModuleExecutionRejected(thread, parentModule, error);
         }
     }
@@ -1921,14 +1926,14 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
     // 8. If module.[[TopLevelCapability]] is not EMPTY, then
     //    a. Assert: module.[[CycleRoot]] is module.
     //    b. Perform ! Call(module.[[TopLevelCapability]].[[Reject]], undefined, « error »).
-    JSTaggedValue topLevelCapabilityValue = module->GetTopLevelCapability();
+    JSTaggedValue topLevelCapabilityValue = module->GetTopLevelCapability(thread);
     if (!topLevelCapabilityValue.IsUndefined()) {
         JSHandle<JSTaggedValue> exceptionHandle(thread, error);
         // if caught exceptionHandle type is JSError
         if (exceptionHandle->IsJSError()) {
             thread->HandleUncaughtException(error);
         }
-        ASSERT(JSTaggedValue::SameValue(module->GetCycleRoot(), module.GetTaggedValue()));
+        ASSERT(JSTaggedValue::SameValue(thread, module->GetCycleRoot(thread), module.GetTaggedValue()));
         JSHandle<JSPromise> topLevelCapability(thread, JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
         JSPromise::RejectPromise(thread, topLevelCapability, exceptionHandle);
         RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -1942,7 +1947,7 @@ JSTaggedValue SourceTextModule::AsyncModuleFulfilledFunc(EcmaRuntimeCallInfo *ar
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSAsyncModuleFulfilledFunction> fulfilledFunc =
         JSHandle<JSAsyncModuleFulfilledFunction>::Cast(base::BuiltinsBase::GetConstructor(argv));
-    JSHandle<SourceTextModule> module(thread, fulfilledFunc->GetModule());
+    JSHandle<SourceTextModule> module(thread, fulfilledFunc->GetModule(thread));
     AsyncModuleExecutionFulfilled(thread, module);
     return JSTaggedValue::Undefined();
 }
@@ -1955,7 +1960,7 @@ JSTaggedValue SourceTextModule::AsyncModuleRejectedFunc(EcmaRuntimeCallInfo *arg
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSAsyncModuleRejectedFunction> rejectedFunc =
         JSHandle<JSAsyncModuleRejectedFunction>::Cast(base::BuiltinsBase::GetConstructor(argv));
-    JSHandle<SourceTextModule> module(thread, rejectedFunc->GetModule());
+    JSHandle<SourceTextModule> module(thread, rejectedFunc->GetModule(thread));
     [[maybe_unused]] JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, 0);
     AsyncModuleExecutionRejected(thread, module, value.GetTaggedValue());
     return JSTaggedValue::Undefined();
@@ -1983,16 +1988,16 @@ void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &cir
                                             CList<CString> &referenceList,
                                             CString &requiredModuleName, bool printOtherCircular)
 {
-    if (module->GetModuleRequests().IsUndefined()) {
+    if (module->GetModuleRequests(thread).IsUndefined()) {
         return;
     }
     auto globalConstants = thread->GlobalConstants();
-    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests(thread));
     size_t moduleRequestsLen = moduleRequests->GetLength();
     JSMutableHandle<JSTaggedValue> required(thread, globalConstants->GetUndefined());
     JSMutableHandle<SourceTextModule> requiredModule(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
-        required.Update(moduleRequests->Get(idx));
+        required.Update(moduleRequests->Get(thread, idx));
         requiredModule.Update(JSHandle<SourceTextModule>::Cast(
             ModuleResolver::HostResolveImportedModule(thread, module, required)));
         RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -2090,14 +2095,14 @@ bool SourceTextModule::CheckAndThrowModuleError(JSThread *thread)
 {
     if (GetStatus() == ModuleStatus::ERRORED) {
         LOG_FULL(ERROR) << "Error found in module:" << GetEcmaModuleRecordNameString();
-        JSHandle<JSTaggedValue> exceptionInfo(thread, GetException());
+        JSHandle<JSTaggedValue> exceptionInfo(thread, GetException(thread));
         if (exceptionInfo->IsJSError()) {
             base::ErrorHelper::PrintJSErrorInfo(thread, exceptionInfo);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, exceptionInfo.GetTaggedValue(), false);
         }
         JSHandle<EcmaString> message = JSTaggedValue::ToString(thread, exceptionInfo);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-        CString str = ConvertToString(*message);
+        CString str = ConvertToString(thread, *message);
         LOG_NO_TAG(ERROR) << str;
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, message.GetTaggedValue(), false);
     }
@@ -2110,7 +2115,7 @@ void SourceTextModule::HandleEvaluateException(JSThread *thread,
     // a. For each module m in stack, do
     auto &options = const_cast<EcmaVM *>(thread->GetEcmaVM())->GetJSOptions();
     if (options.EnableModuleException()) {
-        JSTaggedValue::DesensitizedDump(exception);
+        JSTaggedValue::DesensitizedDump(thread, exception);
     }
     for (auto &mm : stack) {
         // i. Assert: m.[[Status]] is "evaluating".
@@ -2141,7 +2146,7 @@ void SourceTextModule::HandleErrorStack(JSThread *thread, const CVector<JSHandle
 JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(JSThread *thread,
     const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx)
 {
-    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
+    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(thread, idx));
     JSHandle<SourceTextModule> requireModule;
     if (!request->IsHole()) {
         if (request->IsSourceTextModule()) {
@@ -2150,7 +2155,7 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(J
         }
         // current is shared module: resolve or find request module by request string.
         ModuleManager *moduleManager = thread->GetModuleManager();
-        CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
+        CString requestStr = ModulePathHelper::Utf8ConvertToString(thread, request.GetTaggedValue());
         // may return undefined
         requireModule = moduleManager->GetImportedModule(requestStr);
     }
@@ -2168,8 +2173,8 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromCacheOrResolveNewOne(J
     * Because [GetRequestedModuleFromCache] is a fastpath for resolvedModule, but B is not resolved in thread 2.
     * In this case, we need to add resolve new module process.
     */
-    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
-    JSHandle<JSTaggedValue> required(thread, moduleRequests->Get(idx));
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests(thread));
+    JSHandle<JSTaggedValue> required(thread, moduleRequests->Get(thread, idx));
     JSHandle<JSTaggedValue> requiredModule = ModuleResolver::HostResolveImportedModule(thread, module, required);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(SourceTextModule, thread);
     SetRequestedModules(thread, requestedModules, idx, requiredModule, SourceTextModule::IsSharedModule(module));
@@ -2180,7 +2185,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThre
     const JSHandle<SourceTextModule> module, uint32_t idx, const JSHandle<TaggedArray> requestedModules,
     JSHandle<JSTaggedValue> exception)
 {
-    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
+    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(thread, idx));
     if (UNLIKELY(request->IsHole())) {
         // requestModule is hole, means module resolve already have exception.
         // throw original error.
@@ -2208,13 +2213,13 @@ void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<Sou
     MutableFields& fields)
 {
     JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-    fields.TopLevelCapability = module->GetTopLevelCapability();
-    fields.NameDictionary = module->GetNameDictionary();
-    fields.CycleRoot = module->GetCycleRoot();
-    fields.AsyncParentModules = module->GetAsyncParentModules();
-    fields.SendableEnv = module->GetSendableEnv();
-    fields.Exception = module->GetException();
-    fields.Namespace = module->GetNamespace();
+    fields.TopLevelCapability = module->GetTopLevelCapability(thread);
+    fields.NameDictionary = module->GetNameDictionary(thread);
+    fields.CycleRoot = module->GetCycleRoot(thread);
+    fields.AsyncParentModules = module->GetAsyncParentModules(thread);
+    fields.SendableEnv = module->GetSendableEnv(thread);
+    fields.Exception = module->GetException(thread);
+    fields.Namespace = module->GetNamespace(thread);
     module->SetTopLevelCapability(thread, undefinedValue);
     module->SetNameDictionary(thread, undefinedValue);
     module->SetCycleRoot(thread, undefinedValue);

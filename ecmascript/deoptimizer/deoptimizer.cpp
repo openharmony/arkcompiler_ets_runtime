@@ -354,7 +354,7 @@ Method* Deoptimizier::GetMethod(JSTaggedValue &target)
 {
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(target.GetTaggedObject());
     ASSERT(callTarget != nullptr);
-    Method *method = callTarget->GetCallTarget();
+    Method *method = callTarget->GetCallTarget(thread_);
     return method;
 }
 
@@ -391,7 +391,7 @@ bool Deoptimizier::CollectVirtualRegisters(JSTaggedValue callTarget, Method *met
     // [maybe argc] [actual args] [reserved args] [call field virtual regs]
 
     // [maybe argc]
-    bool isFastCall = JSFunctionBase::IsFastCallFromCallTarget(callTarget);
+    bool isFastCall = JSFunctionBase::IsFastCallFromCallTarget(thread_, callTarget);
     if (!isFastCall && declaredNumArgs != actualNumArgs) {
         auto value = JSTaggedValue(actualNumArgs);
         frameWriter->PushValue(value.GetRawData());
@@ -467,7 +467,7 @@ void Deoptimizier::Dump(JSTaggedValue callTarget, kungfu::DeoptType type, size_t
 {
     if (thread_->IsPGOProfilerEnable()) {
         JSFunction *function = JSFunction::Cast(callTarget);
-        auto profileTypeInfo = function->GetProfileTypeInfo();
+        auto profileTypeInfo = function->GetProfileTypeInfo(thread_);
         if (profileTypeInfo.IsUndefined()) {
             SlowRuntimeStub::NotifyInlineCache(thread_, function);
         }
@@ -544,7 +544,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
         JSTaggedValue acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
         if (g_isEnableCMCGC) {
-            base::GCHelper::CopyCallTarget(callTarget.GetTaggedObject());
+            base::GCHelper::CopyCallTarget(thread_, callTarget.GetTaggedObject());
         }
         statePtr->function = callTarget;
         statePtr->acc = acc;
@@ -556,7 +556,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
 
         JSTaggedValue env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
         if (env.IsUndefined()) {
-            statePtr->env = JSFunction::Cast(callTarget.GetTaggedObject())->GetLexicalEnv();
+            statePtr->env = JSFunction::Cast(callTarget.GetTaggedObject())->GetLexicalEnv(thread_);
         } else {
             statePtr->env = env;
         }
@@ -593,8 +593,8 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
 // static
 void Deoptimizier::ResetJitHotness(JSThread *thread, JSFunction *jsFunc)
 {
-    if (jsFunc->GetMachineCode().IsMachineCodeObject()) {
-        JSTaggedValue profileTypeInfoVal = jsFunc->GetProfileTypeInfo();
+    if (jsFunc->GetMachineCode(thread).IsMachineCodeObject()) {
+        JSTaggedValue profileTypeInfoVal = jsFunc->GetProfileTypeInfo(thread);
         if (!profileTypeInfoVal.IsUndefined()) {
             ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
             profileTypeInfo->SetJitHotnessCnt(0);
@@ -603,9 +603,11 @@ void Deoptimizier::ResetJitHotness(JSThread *thread, JSFunction *jsFunc)
             uint16_t threshold = profileTypeInfo->GetJitHotnessThreshold();
             threshold = threshold >= thresholdLimit ? ProfileTypeInfo::JIT_DISABLE_FLAG : threshold * thresholdStep;
             profileTypeInfo->SetJitHotnessThreshold(threshold);
-            ProfileTypeInfoCell::Cast(jsFunc->GetRawProfileTypeInfo())->SetMachineCode(thread, JSTaggedValue::Hole());
-            Method *method = Method::Cast(jsFunc->GetMethod().GetTaggedObject());
-            LOG_JIT(DEBUG) << "reset jit hotness for func: " << method->GetMethodName() << ", threshold:" << threshold;
+            ProfileTypeInfoCell::Cast(jsFunc->GetRawProfileTypeInfo(thread))
+                ->SetMachineCode(thread, JSTaggedValue::Hole());
+            Method *method = Method::Cast(jsFunc->GetMethod(thread).GetTaggedObject());
+            LOG_JIT(DEBUG) << "reset jit hotness for func: " << method->GetMethodName(thread)
+                           << ", threshold:" << threshold;
         }
     }
 }
@@ -615,7 +617,7 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction
                                                     Method *method, kungfu::DeoptType type)
 {
     method->SetDeoptType(type);
-    if (func->GetMachineCode().IsMachineCodeObject()) {
+    if (func->GetMachineCode(thread).IsMachineCodeObject()) {
         Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
     }
     if (func->IsCompiledCode()) {
@@ -637,8 +639,8 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
     for (size_t i = 0; i <= inlineDepth_; i++) {
         JSTaggedValue callTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
         auto func = JSFunction::Cast(callTarget.GetTaggedObject());
-        if (func->GetMachineCode().IsMachineCodeObject()) {
-            MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode().GetTaggedObject());
+        if (func->GetMachineCode(thread_).IsMachineCodeObject()) {
+            MachineCode *machineCode = MachineCode::Cast(func->GetMachineCode(thread_).GetTaggedObject());
             if (type != kungfu::DeoptType::OSRLOOPEXIT &&
                 machineCode->GetOSROffset() != MachineCode::INVALID_OSR_OFFSET) {
                 machineCode->SetOsrDeoptFlag(true);

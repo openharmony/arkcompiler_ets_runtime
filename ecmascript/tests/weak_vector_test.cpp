@@ -63,7 +63,7 @@ HWTEST_F_L0(WeakVectorTest, SetAndGet)
     // set weak value
     for (uint32_t i = 0; i < weakVectorCapacity; i++) {
         weakVector->Set(thread, i, weakValue);
-        EXPECT_EQ(weakVector->Get(i), weakValue);
+        EXPECT_EQ(weakVector->Get(thread, i), weakValue);
     }
 }
 
@@ -100,7 +100,7 @@ HWTEST_F_L0(WeakVectorTest, Grow)
     newWeakVector = newWeakVector->Grow(thread, newWeakVector, newWeakVectorCapacity);
     EXPECT_EQ(newWeakVector->GetCapacity(), newWeakVectorCapacity);
     for (uint32_t i = 0; i < oldWeakVectorCapacity; i++) {
-        EXPECT_EQ(newWeakVector->Get(i), weakValue);
+        EXPECT_EQ(newWeakVector->Get(thread, i), weakValue);
     }
     EXPECT_EQ(newWeakVector->GetEnd(), 0U);
     thread->GetEcmaVM()->SetEnableForceGC(true);  // turn on gc
@@ -136,10 +136,10 @@ HWTEST_F_L0(WeakVectorTest, PushBack)
     EXPECT_EQ(weakVector->GetEnd(), pushWeakVectorCapacity);
 
     for (uint32_t i = 0; i < pushWeakVectorCapacity; i++) {
-        EXPECT_TRUE(weakVector->Get(i).IsHole());
+        EXPECT_TRUE(weakVector->Get(thread, i).IsHole());
     }
     for (uint32_t i = pushWeakVectorCapacity; i < weakVectorCapacity; i++) {
-        EXPECT_EQ(weakVector->Get(i), weakValue);
+        EXPECT_EQ(weakVector->Get(thread, i), weakValue);
     }
 }
 
@@ -170,7 +170,7 @@ HWTEST_F_L0(WeakVectorTest, Delete)
 
     for (uint32_t i = 0; i < weakVectorCapacity; i++) {
         EXPECT_TRUE(weakVector->Delete(thread, i));
-        EXPECT_TRUE(weakVector->Get(i).IsHole());
+        EXPECT_TRUE(weakVector->Get(thread, i).IsHole());
     }
     EXPECT_FALSE(weakVector->Empty());
     EXPECT_EQ(weakVector->GetCapacity(), weakVectorCapacity);

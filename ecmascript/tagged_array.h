@@ -35,21 +35,28 @@ public:
     CAST_CHECK(TaggedArray, IsTaggedArray);
 
     template <RBMode mode = RBMode::DEFAULT_RB>
-    JSTaggedValue Get(uint32_t idx) const
+    JSTaggedValue Get(const JSThread *thread, uint32_t idx) const
     {
         ASSERT(idx < GetLength());
         // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
         //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
         size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
         // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-        return JSTaggedValue(Barriers::GetTaggedValue<mode>(
-            reinterpret_cast<JSTaggedType *>(ToUintPtr(this)), DATA_OFFSET + offset));
+        return JSTaggedValue(Barriers::GetTaggedValue<mode>(thread, reinterpret_cast<JSTaggedType *>(ToUintPtr(this)),
+                                                            DATA_OFFSET + offset));
     }
 
-    JSTaggedValue Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const;
+    JSTaggedValue GetPrimitive(uint32_t idx) const
+    {
+        ASSERT(idx < GetLength());
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+        // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+        return JSTaggedValue(Barriers::GetPrimitive<JSTaggedType>(reinterpret_cast<JSTaggedType *>(ToUintPtr(this)),
+                                                                  DATA_OFFSET + offset));
+    }
 
-    uint32_t GetIdx(const JSTaggedValue &value) const;
-    JSTaggedValue GetBit(uint32_t idx, uint32_t bitOffset) const;
+    uint32_t GetIdx(const JSThread *thread, const JSTaggedValue &value) const;
+    JSTaggedValue GetBit(const JSThread *thread, uint32_t idx, uint32_t bitOffset) const;
 
     template<bool needBarrier = true, typename T = JSTaggedValue>
     inline void Set(const JSThread *thread, uint32_t idx, const T &value);
@@ -89,7 +96,7 @@ public:
 
     bool IsDictionaryMode() const;
 
-    bool HasDuplicateEntry() const;
+    bool HasDuplicateEntry(const JSThread *thread) const;
 
     bool IsYoungAndNotMarking(const JSThread *thread);
 

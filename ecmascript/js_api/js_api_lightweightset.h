@@ -48,19 +48,19 @@ public:
     void AdjustArray(JSThread *thread, JSHandle<TaggedArray> srcArray, uint32_t fromIndex, uint32_t toIndex,
                      bool direction);
     void Clear(JSThread *thread);
-    JSTaggedValue Get(const uint32_t index);
-    JSTaggedValue GetHashAt(int32_t index);
-    JSTaggedValue GetValueAt(int32_t index);
+    JSTaggedValue Get(const JSThread *thread, const uint32_t index);
+    JSTaggedValue GetHashAt(const JSThread *thread, int32_t index);
+    JSTaggedValue GetValueAt(const JSThread *thread, int32_t index);
     JSTaggedValue Remove(JSThread *thread, JSHandle<JSTaggedValue> &value);
     bool Has(const JSThread *thread, const JSHandle<JSTaggedValue> &value);
-    bool HasHash(const JSHandle<JSTaggedValue> &hashCode);
-    bool HasAll(const JSHandle<JSTaggedValue> &value);
+    bool HasHash(const JSThread *thread, const JSHandle<JSTaggedValue> &hashCode);
+    bool HasAll(const JSThread *thread, const JSHandle<JSTaggedValue> &value);
     bool RemoveAt(JSThread *thread, int32_t index);
     void RemoveValue(const JSThread *thread, JSHandle<TaggedArray> &taggedArray,
                      uint32_t index, bool isHash = false);
     bool IsEmpty();
     int32_t GetIndexOf(const JSThread *thread, JSHandle<JSTaggedValue> &value);
-    int32_t BinarySearchHashes(uint32_t hash, int32_t size);
+    int32_t BinarySearchHashes(const JSThread *thread, uint32_t hash, int32_t size);
     int32_t GetHashIndex(const JSThread *thread, const JSHandle<JSTaggedValue> &value, int32_t size);
     uint32_t Hash(const JSThread *thread, JSTaggedValue key);
     inline uint32_t GetSize() const

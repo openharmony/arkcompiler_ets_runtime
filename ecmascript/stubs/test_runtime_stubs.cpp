@@ -112,7 +112,7 @@ DEF_RUNTIME_STUBS(DefineProxyFunc)
     JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
     ASSERT(*proxyHandle != nullptr);
     // check taggedvalue
-    proxyHandle.GetTaggedValue().D();
+    proxyHandle.GetTaggedValue().D(thread);
     return proxyHandle.GetTaggedValue().GetRawData();
 }
 
@@ -131,7 +131,7 @@ DEF_RUNTIME_STUBS(DefineProxyHandler)
     // 1. handler has "Call"
     JSHandle<JSTaggedValue> funcKey = thread->GlobalConstants()->GetHandledApplyString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handlerHandle), funcKey, funcHandle);
-    handlerHandle.GetTaggedValue().D();
+    handlerHandle.GetTaggedValue().D(thread);
     return handlerHandle.GetTaggedValue().GetRawData();
 }
 
@@ -145,9 +145,9 @@ DEF_RUNTIME_STUBS(DefineProxyFunc2)
     ASSERT(targetHandle->IsECMAObject());
 
     JSHandle<JSProxy> proxyHandle = JSProxy::ProxyCreate(thread, targetHandle, handlerHandle);
-    targetHandle.GetTaggedValue().D();
-    handlerHandle.GetTaggedValue().D();
-    proxyHandle.GetTaggedValue().D();
+    targetHandle.GetTaggedValue().D(thread);
+    handlerHandle.GetTaggedValue().D(thread);
+    proxyHandle.GetTaggedValue().D(thread);
     ASSERT(*proxyHandle != nullptr);
     return proxyHandle.GetTaggedValue().GetRawData();
 }
@@ -157,7 +157,7 @@ DEF_RUNTIME_STUBS(DumpTaggedType)
     RUNTIME_STUBS_HEADER(DumpTaggedType);
     CONVERT_ARG_HANDLE_CHECKED(JSTaggedValue, value, 0);
     ASSERT(value->IsECMAObject());
-    value->D();
+    value->D(thread);
     return value.GetTaggedValue().GetRawData();
 }
 #endif

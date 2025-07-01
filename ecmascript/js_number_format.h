@@ -108,10 +108,10 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::number::LocalizedNumberFormatter *GetIcuCallTarget() const
+    icu::number::LocalizedNumberFormatter *GetIcuCallTarget(JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::number::LocalizedNumberFormatter *>(result);
     }
 
@@ -159,18 +159,18 @@ public:
                                 const JSHandle<JSObject> &options);
 
     template<typename T>
-    static icu::number::LocalizedNumberFormatter SetICUFormatterDigitOptions(
+    static icu::number::LocalizedNumberFormatter SetICUFormatterDigitOptions(JSThread *thread,
         icu::number::LocalizedNumberFormatter &icuNumberformatter, const JSHandle<T> &formatter)
     {
-        int minimumIntegerDigits = formatter->GetMinimumIntegerDigits().GetInt();
+        int minimumIntegerDigits = formatter->GetMinimumIntegerDigits(thread).GetInt();
         // Set ICU formatter IntegerWidth to MinimumIntegerDigits
         icuNumberformatter =
             icuNumberformatter.integerWidth(icu::number::IntegerWidth::zeroFillTo(minimumIntegerDigits));
 
-        int minimumSignificantDigits = formatter->GetMinimumSignificantDigits().GetInt();
-        int maximumSignificantDigits = formatter->GetMaximumSignificantDigits().GetInt();
-        int minimumFractionDigits = formatter->GetMinimumFractionDigits().GetInt();
-        int maximumFractionDigits = formatter->GetMaximumFractionDigits().GetInt();
+        int minimumSignificantDigits = formatter->GetMinimumSignificantDigits(thread).GetInt();
+        int maximumSignificantDigits = formatter->GetMaximumSignificantDigits(thread).GetInt();
+        int minimumFractionDigits = formatter->GetMinimumFractionDigits(thread).GetInt();
+        int maximumFractionDigits = formatter->GetMaximumFractionDigits(thread).GetInt();
 
         // If roundingtype is "compact-rounding" return ICU formatter
         RoundingType roundingType = formatter->GetRoundingType();

@@ -32,9 +32,9 @@ public:
 
     bool Has(const JSThread *thread, JSTaggedValue value) const;
 
-    uint32_t GetSize() const;
+    uint32_t GetSize(const JSThread *thread) const;
 
-    JSTaggedValue GetValue(int entry) const;
+    JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
     static constexpr size_t LINKED_SET_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedSet, LINKED_SET_OFFSET, SIZE)

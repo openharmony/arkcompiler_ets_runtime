@@ -97,8 +97,8 @@ void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule>
 void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
     std::set<CString> &increaseModule)
 {
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<SourceTextModule> requiredModule =
@@ -135,8 +135,8 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
 void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
     std::set<CString> &decreaseModule)
 {
-    if (!module->GetRequestedModules().IsUndefined()) {
-        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             JSHandle<SourceTextModule> requiredModule =

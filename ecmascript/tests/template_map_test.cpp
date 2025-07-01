@@ -48,8 +48,8 @@ HWTEST_F_L0(TemplateMapTest, CreateTemplateMap)
     EXPECT_EQ(templateMap->HoleEntriesCount(), 0);
     EXPECT_EQ(templateMap->Size(), numElementsTempMap);
     for (int32_t i = 0; i < numElementsTempMap; i++) {
-        EXPECT_EQ(templateMap->GetKey(i), JSTaggedValue::Undefined());
-        EXPECT_EQ(templateMap->GetValue(i), JSTaggedValue::Undefined());
+        EXPECT_EQ(templateMap->GetKey(thread, i), JSTaggedValue::Undefined());
+        EXPECT_EQ(templateMap->GetValue(thread, i), JSTaggedValue::Undefined());
     }
 }
 
@@ -73,22 +73,22 @@ HWTEST_F_L0(TemplateMapTest, Insert)
     JSHandle<JSTaggedValue> templateArrVal1(factory->NewFromASCII("key1"));
 
     TemplateMap::Insert(thread, templateMap, tempMapKey, templateArrVal);
-    int keyEntry = templateMap->FindEntry(tempMapKey.GetTaggedValue());
-    EXPECT_EQ(templateMap->GetKey(keyEntry), tempMapKey.GetTaggedValue());
-    EXPECT_EQ(templateMap->GetValue(keyEntry), templateArrVal.GetTaggedValue());
+    int keyEntry = templateMap->FindEntry(thread, tempMapKey.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetKey(thread, keyEntry), tempMapKey.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetValue(thread, keyEntry), templateArrVal.GetTaggedValue());
 
     TemplateMap::Insert(thread, templateMap, tempMapKey, templateArrVal1);
-    int keyEntry1 = templateMap->FindEntry(tempMapKey.GetTaggedValue());
+    int keyEntry1 = templateMap->FindEntry(thread, tempMapKey.GetTaggedValue());
     EXPECT_EQ(keyEntry, keyEntry1);
-    EXPECT_EQ(templateMap->GetKey(keyEntry1), tempMapKey.GetTaggedValue());
-    EXPECT_EQ(templateMap->GetValue(keyEntry1), templateArrVal1.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetKey(thread, keyEntry1), tempMapKey.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetValue(thread, keyEntry1), templateArrVal1.GetTaggedValue());
 
     TemplateMap::Insert(thread, templateMap, tempMapKey1, templateArrVal1);
-    int keyEntry2 = templateMap->FindEntry(tempMapKey1.GetTaggedValue());
+    int keyEntry2 = templateMap->FindEntry(thread, tempMapKey1.GetTaggedValue());
     EXPECT_NE(keyEntry1, keyEntry2);
-    EXPECT_EQ(templateMap->GetKey(keyEntry2), tempMapKey1.GetTaggedValue());
-    EXPECT_EQ(templateMap->GetValue(keyEntry2), templateArrVal1.GetTaggedValue());
-    EXPECT_EQ(templateMap->GetValue(keyEntry), templateArrVal1.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetKey(thread, keyEntry2), tempMapKey1.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetValue(thread, keyEntry2), templateArrVal1.GetTaggedValue());
+    EXPECT_EQ(templateMap->GetValue(thread, keyEntry), templateArrVal1.GetTaggedValue());
 }
 
 /*
@@ -278,9 +278,9 @@ HWTEST_F_L0(TemplateMapTest, GetAllKeys)
     JSHandle<TaggedArray> storeKeyArray = factory->NewTaggedArray(55);  // 55 : means the length of array
     templateMap->GetAllKeys(thread, 5, *storeKeyArray);  // 5: means the index of array
     for (int32_t i = 0; i < numElements; i++) {
-        EXPECT_NE(templateMap->GetKey(i), JSTaggedValue::Undefined());
+        EXPECT_NE(templateMap->GetKey(thread, i), JSTaggedValue::Undefined());
         // 5: get value from subscript five
-        EXPECT_EQ(templateMap->GetKey(i), storeKeyArray->Get(i + 5));
+        EXPECT_EQ(templateMap->GetKey(thread, i), storeKeyArray->Get(thread, i + 5));
     }
 }
 
@@ -304,10 +304,10 @@ HWTEST_F_L0(TemplateMapTest, GetAllKeysIntoVector)
         templateMap = TemplateMap::Insert(thread, templateMap, tempMapKey, tempMapValue);
     }
     std::vector<JSTaggedValue> storeKeyVector = {};
-    templateMap->GetAllKeysIntoVector(storeKeyVector);
+    templateMap->GetAllKeysIntoVector(thread, storeKeyVector);
     for (int32_t i = 0; i < numElements; i++) {
-        EXPECT_NE(templateMap->GetKey(i), JSTaggedValue::Undefined());
-        EXPECT_EQ(templateMap->GetKey(i), storeKeyVector[i]);
+        EXPECT_NE(templateMap->GetKey(thread, i), JSTaggedValue::Undefined());
+        EXPECT_EQ(templateMap->GetKey(thread, i), storeKeyVector[i]);
     }
 }
 
@@ -333,9 +333,10 @@ HWTEST_F_L0(TemplateMapTest, FindInsertIndex)
 
     for (int i = 0; i < numElements; i++) {
         JSHandle<JSTaggedValue> tempMapKey(JSArray::ArrayCreate(thread, JSTaggedNumber(i)));
-        uint32_t hashValue = static_cast<uint32_t>(TemplateMap::Hash(tempMapKey.GetTaggedValue()));
+        uint32_t hashValue = static_cast<uint32_t>(TemplateMap::Hash(thread, tempMapKey.GetTaggedValue()));
         EXPECT_EQ(JSTaggedValue::Undefined(), templateMap->GetKey(
-            templateMap->FindInsertIndex(hashValue)));
+            thread,
+            templateMap->FindInsertIndex(thread, hashValue)));
     }
 }
 }  // namespace panda::test

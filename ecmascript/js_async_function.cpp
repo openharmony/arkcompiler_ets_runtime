@@ -36,7 +36,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     auto vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
 
-    JSHandle<JSTaggedValue> asyncCtxt(thread, asyncFuncObj->GetGeneratorContext());
+    JSHandle<JSTaggedValue> asyncCtxt(thread, asyncFuncObj->GetGeneratorContext(thread));
 
     // 2.Let promiseCapability be ! NewPromiseCapability(%Promise%).
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -46,7 +46,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // 3.Let resolveResult be ! Call(promiseCapability.[[Resolve]], undefined, « value »).
-    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve(thread));
     JSHandle<JSTaggedValue> thisArg = globalConst->GetHandledUndefined();
 
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
@@ -75,10 +75,10 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSPromise>(thread, tcap->GetPromise())->SetPromiseIsHandled(true);
+    JSHandle<JSPromise>(thread, tcap->GetPromise(thread))->SetPromiseIsHandled(true);
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
-    JSHandle<JSPromise> promise(thread, pcap->GetPromise());
+    JSHandle<JSPromise> promise(thread, pcap->GetPromise(thread));
     [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
         thread, promise, JSHandle<JSTaggedValue>::Cast(fulFunc), JSHandle<JSTaggedValue>::Cast(rejFunc), tcap);
 
@@ -101,12 +101,12 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSAsyncGeneratorObject> asyncGen = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
-        asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncGen->GetGeneratorContext());
+        asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncGen->GetGeneratorContext(thread));
     } else {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSAsyncFuncObject> asyncFun = JSHandle<JSAsyncFuncObject>::Cast(obj);
-        asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncFun->GetGeneratorContext());
+        asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncFun->GetGeneratorContext(thread));
     }
 
     // 2.Let promise be ? PromiseResolve(%Promise%, value).
@@ -134,10 +134,10 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSPromise>(thread, tcap->GetPromise())->SetPromiseIsHandled(true);
+    JSHandle<JSPromise>(thread, tcap->GetPromise(thread))->SetPromiseIsHandled(true);
     if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace()) {
         thread->GetEcmaVM()->GetAsyncStackTrace()->InsertAsyncTaskStacks(
-            JSHandle<JSPromise>(thread, tcap->GetPromise()), "await");
+            JSHandle<JSPromise>(thread, tcap->GetPromise(thread)), "await");
     }
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
@@ -158,9 +158,9 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitFulfilled(
     JSThread *thread, const JSHandle<JSAsyncAwaitStatusFunction> &func, const JSHandle<JSTaggedValue> &value)
 {
     // 1.Let asyncContext be F.[[AsyncContext]].
-    JSHandle<GeneratorContext> asyncCtxt(thread, func->GetAsyncContext());
+    JSHandle<GeneratorContext> asyncCtxt(thread, func->GetAsyncContext(thread));
 
-    JSHandle<JSTaggedValue> tagVal(thread, asyncCtxt->GetGeneratorObject());
+    JSHandle<JSTaggedValue> tagVal(thread, asyncCtxt->GetGeneratorObject(thread));
     if (tagVal->IsAsyncGeneratorObject()) {
         AsyncGeneratorHelper::Next(thread, asyncCtxt, value.GetTaggedValue());
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
@@ -183,9 +183,9 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitRejected(
     JSThread *thread, const JSHandle<JSAsyncAwaitStatusFunction> &func, const JSHandle<JSTaggedValue> &reason)
 {
     // 1.Let asyncContext be F.[[AsyncContext]].
-    JSHandle<GeneratorContext> asyncCtxt(thread, func->GetAsyncContext());
+    JSHandle<GeneratorContext> asyncCtxt(thread, func->GetAsyncContext(thread));
 
-    JSHandle<JSTaggedValue> tagVal(thread, asyncCtxt->GetGeneratorObject());
+    JSHandle<JSTaggedValue> tagVal(thread, asyncCtxt->GetGeneratorObject(thread));
     if (tagVal->IsAsyncGeneratorObject()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<CompletionRecord> completionRecord =

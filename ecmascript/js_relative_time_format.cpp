@@ -61,7 +61,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
         if (EcmaStringAccessor(numberingSystemString).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
-        numberingSystemStdStr = intl::LocaleHelper::ConvertToStdString(numberingSystemString);
+        numberingSystemStdStr = intl::LocaleHelper::ConvertToStdString(thread, numberingSystemString);
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStdStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
@@ -201,29 +201,29 @@ bool SingularUnitToIcuUnit(JSThread *thread, const JSHandle<EcmaString> &unit, U
     JSHandle<EcmaString> quarters = JSHandle<EcmaString>::Cast(globalConst->GetHandledQuartersString());
     JSHandle<EcmaString> years = JSHandle<EcmaString>::Cast(globalConst->GetHandledYearsString());
 
-    if (EcmaStringAccessor::StringsAreEqual(*second, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*seconds, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *second, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *seconds, *unit)) {
         *unitEnum = UDAT_REL_UNIT_SECOND;
-    } else if (EcmaStringAccessor::StringsAreEqual(*minute, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*minutes, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *minute, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *minutes, *unit)) {
         *unitEnum = UDAT_REL_UNIT_MINUTE;
-    } else if (EcmaStringAccessor::StringsAreEqual(*hour, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*hours, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *hour, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *hours, *unit)) {
         *unitEnum = UDAT_REL_UNIT_HOUR;
-    } else if (EcmaStringAccessor::StringsAreEqual(*day, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*days, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *day, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *days, *unit)) {
         *unitEnum = UDAT_REL_UNIT_DAY;
-    } else if (EcmaStringAccessor::StringsAreEqual(*week, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*weeks, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *week, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *weeks, *unit)) {
         *unitEnum = UDAT_REL_UNIT_WEEK;
-    } else if (EcmaStringAccessor::StringsAreEqual(*month, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*months, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *month, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *months, *unit)) {
         *unitEnum = UDAT_REL_UNIT_MONTH;
-    } else if (EcmaStringAccessor::StringsAreEqual(*quarter, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*quarters, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *quarter, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *quarters, *unit)) {
         *unitEnum = UDAT_REL_UNIT_QUARTER;
-    } else if (EcmaStringAccessor::StringsAreEqual(*year, *unit) ||
-        EcmaStringAccessor::StringsAreEqual(*years, *unit)) {
+    } else if (EcmaStringAccessor::StringsAreEqual(thread, *year, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *years, *unit)) {
         *unitEnum = UDAT_REL_UNIT_YEAR;
     } else {
         return false;
@@ -242,7 +242,7 @@ JSHandle<JSTaggedValue> JSRelativeTimeFormat::UnwrapRelativeTimeFormat(JSThread 
     bool isInstanceOf = JSFunction::InstanceOf(thread, rtf, env->GetRelativeTimeFormatFunction());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, rtf);
     if (!rtf->IsJSRelativeTimeFormat() && isInstanceOf) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
         OperationResult operationResult = JSTaggedValue::GetProperty(thread, rtf, key);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, rtf);
         return operationResult.GetValue();
@@ -260,7 +260,7 @@ icu::FormattedRelativeDateTime GetIcuFormatted(JSThread *thread,
                                                const JSHandle<JSRelativeTimeFormat> &relativeTimeFormat,
                                                double value, const JSHandle<EcmaString> &unit)
 {
-    icu::RelativeDateTimeFormatter *formatter = relativeTimeFormat->GetIcuRTFFormatter();
+    icu::RelativeDateTimeFormatter *formatter = relativeTimeFormat->GetIcuRTFFormatter(thread);
     ASSERT_PRINT(formatter != nullptr, "rtfFormatter is null");
 
     // If isFinite(value) is false, then throw a RangeError exception.
@@ -316,35 +316,43 @@ JSHandle<EcmaString> SingularUnitString(JSThread *thread, const JSHandle<EcmaStr
     JSHandle<EcmaString> years = JSHandle<EcmaString>::Cast(globalConst->GetHandledYearsString());
 
     // 2. If unit is "seconds" or "second", return "second".
-    if (EcmaStringAccessor::StringsAreEqual(*second, *unit) || EcmaStringAccessor::StringsAreEqual(*seconds, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *second, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *seconds, *unit)) {
         return second;
     }
     // 3. If unit is "minutes" or "minute", return "minute".
-    if (EcmaStringAccessor::StringsAreEqual(*minute, *unit) || EcmaStringAccessor::StringsAreEqual(*minutes, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *minute, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *minutes, *unit)) {
         return minute;
     }
     // 4. If unit is "hours" or "hour", return "hour".
-    if (EcmaStringAccessor::StringsAreEqual(*hour, *unit) || EcmaStringAccessor::StringsAreEqual(*hours, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *hour, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *hours, *unit)) {
         return hour;
     }
     // 5. If unit is "days" or "day", return "day".
-    if (EcmaStringAccessor::StringsAreEqual(*day, *unit) || EcmaStringAccessor::StringsAreEqual(*days, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *day, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *days, *unit)) {
         return day;
     }
     // 6. If unit is "weeks" or "week", return "week".
-    if (EcmaStringAccessor::StringsAreEqual(*week, *unit) || EcmaStringAccessor::StringsAreEqual(*weeks, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *week, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *weeks, *unit)) {
         return week;
     }
     // 7. If unit is "months" or "month", return "month".
-    if (EcmaStringAccessor::StringsAreEqual(*month, *unit) || EcmaStringAccessor::StringsAreEqual(*months, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *month, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *months, *unit)) {
         return month;
     }
     // 8. If unit is "quarters" or "quarter", return "quarter".
-    if (EcmaStringAccessor::StringsAreEqual(*quarter, *unit) || EcmaStringAccessor::StringsAreEqual(*quarters, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *quarter, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *quarters, *unit)) {
         return quarter;
     }
     // 9. If unit is "years" or "year", return "year".
-    if (EcmaStringAccessor::StringsAreEqual(*year, *unit) || EcmaStringAccessor::StringsAreEqual(*years, *unit)) {
+    if (EcmaStringAccessor::StringsAreEqual(thread, *year, *unit) ||
+        EcmaStringAccessor::StringsAreEqual(thread, *years, *unit)) {
         return year;
     }
 
@@ -487,8 +495,8 @@ JSHandle<JSArray> JSRelativeTimeFormat::FormatToParts(JSThread *thread, double v
 void JSRelativeTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSRelativeTimeFormat> &relativeTimeFormat,
                                            const JSHandle<JSObject> &options)
 {
-    if (relativeTimeFormat->GetIcuRTFFormatter() != nullptr) {
-        [[maybe_unused]] icu::RelativeDateTimeFormatter *formatter = relativeTimeFormat->GetIcuRTFFormatter();
+    if (relativeTimeFormat->GetIcuRTFFormatter(thread) != nullptr) {
+        [[maybe_unused]] icu::RelativeDateTimeFormatter *formatter = relativeTimeFormat->GetIcuRTFFormatter(thread);
     } else {
         THROW_ERROR(thread, ErrorType::RANGE_ERROR, "rtf is not initialized");
     }
@@ -496,7 +504,7 @@ void JSRelativeTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSRe
     auto globalConst = thread->GlobalConstants();
     // [[locale]]
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
-    JSHandle<EcmaString> locale(thread, relativeTimeFormat->GetLocale());
+    JSHandle<EcmaString> locale(thread, relativeTimeFormat->GetLocale(thread));
     PropertyDescriptor localeDesc(thread, JSHandle<JSTaggedValue>::Cast(locale), true, true, true);
     JSObject::DefineOwnProperty(thread, options, property, localeDesc);
 
@@ -530,7 +538,7 @@ void JSRelativeTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSRe
 
     // [[NumberingSystem]]
     property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledNumberingSystemString());
-    JSHandle<JSTaggedValue> numberingSystem(thread, relativeTimeFormat->GetNumberingSystem());
+    JSHandle<JSTaggedValue> numberingSystem(thread, relativeTimeFormat->GetNumberingSystem(thread));
     PropertyDescriptor numberingSystemDesc(thread, numberingSystem, true, true, true);
     JSObject::DefineOwnProperty(thread, options, property, numberingSystemDesc);
 }

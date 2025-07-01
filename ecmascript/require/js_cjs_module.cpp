@@ -51,9 +51,9 @@ JSHandle<JSTaggedValue> CjsModule::SearchFromModuleCache(JSThread *thread, JSHan
                                                           false,
                                                           JSTaggedValue::Undefined());
     JSHandle<CjsModuleCache> moduleCache = JSHandle<CjsModuleCache>(thread, modCache);
-    if (moduleCache->ContainsModule(filename.GetTaggedValue())) {
+    if (moduleCache->ContainsModule(thread, filename.GetTaggedValue())) {
         JSHandle<CjsModule> cachedModule = JSHandle<CjsModule>(thread,
-                                                               moduleCache->GetModule(filename.GetTaggedValue()));
+            moduleCache->GetModule(thread, filename.GetTaggedValue()));
         JSHandle<JSTaggedValue> exportsName = globalConst->GetHandledCjsExportsString();
         JSTaggedValue cachedExports = SlowRuntimeStub::LdObjByName(thread, cachedModule.GetTaggedValue(),
                                                                    exportsName.GetTaggedValue(),
@@ -95,7 +95,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     }
     CString filename = jsPandaFile->GetJSPandaFileDesc();
     CString requestEntryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
-    CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
+    CString requestStr = ModulePathHelper::Utf8ConvertToString(thread, request.GetTaggedValue());
     CString parent;
     CString dirname;
     CString recordName;

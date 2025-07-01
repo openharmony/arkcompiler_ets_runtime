@@ -38,13 +38,13 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     }
     JSHandle<JSSharedMapIterator> iter(thisObj);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
-    if (iter->GetIteratedMap().IsUndefined()) {
+    if (iter->GetIteratedMap(thread).IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
-    JSHandle<JSSharedMap> iteratedMap(thread, iter->GetIteratedMap());
+    JSHandle<JSSharedMap> iteratedMap(thread, iter->GetIteratedMap(thread));
     [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, JSHandle<JSTaggedValue>::Cast(iteratedMap));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSHandle<LinkedHashMap> map(thread, iteratedMap->GetLinkedMap());
+    JSHandle<LinkedHashMap> map(thread, iteratedMap->GetLinkedMap(thread));
 
     int index = static_cast<int>(iter->GetNextIndex());
     IterationKind itemKind = iter->GetIterationKind();
@@ -53,14 +53,14 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     constexpr uint32_t NEW_ARRAY_LENGTH = 2; // 2 means the length of array
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     while (index < totalElements) {
-        JSTaggedValue key = map->GetKey(index);
+        JSTaggedValue key = map->GetKey(thread, index);
         if (!key.IsHole()) {
             iter->SetNextIndex(index + 1);
             keyHandle.Update(key);
             if (itemKind == IterationKind::KEY) {
                 return JSIterator::CreateIterResultObject(thread, keyHandle, false).GetTaggedValue();
             }
-            JSHandle<JSTaggedValue> value(thread, map->GetValue(index));
+            JSHandle<JSTaggedValue> value(thread, map->GetValue(thread, index));
             if (itemKind == IterationKind::VALUE) {
                 return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
             }

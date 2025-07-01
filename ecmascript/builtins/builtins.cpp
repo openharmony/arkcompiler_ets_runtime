@@ -1358,7 +1358,7 @@ void Builtins::InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     /* set "prototype" in constructor */
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, ctor, prototype.GetTaggedValue());
 
-    if (!JSTaggedValue::SameValue(nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
+    if (!JSTaggedValue::SameValue(thread_, nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
         JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
         PropertyDescriptor descriptor2(thread_, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, descriptor2);
@@ -2381,7 +2381,7 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetConstant(arrFuncPrototype, "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));                         \
     SetConstant(JSHandle<JSObject>(arrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));        \
     /* %TypedArray%.protoofprototype (where %TypedArray% is one of Int8Array, Uint8Array, etc.) */              \
-    JSTaggedValue protoOfPrototypeValue = arrFuncPrototype->GetJSHClass()->GetPrototype();                      \
+    JSTaggedValue protoOfPrototypeValue = arrFuncPrototype->GetJSHClass()->GetPrototype(thread_);               \
     env->Set##Type##Function(thread_, arrayFunction);                                                           \
     env->Set##Type##FunctionPrototype(thread_, arrFuncPrototypeValue);                                          \
     env->Set##Type##RootHclass(thread_, arrFuncInstanceHClass);                                                 \
@@ -3243,7 +3243,7 @@ void Builtins::InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle
     // set "prototype" in constructor.
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, ctor, prototype.GetTaggedValue());
 
-    if (!JSTaggedValue::SameValue(nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
+    if (!JSTaggedValue::SameValue(thread_, nameString, thread_->GlobalConstants()->GetHandledAsyncFunctionString())) {
         JSHandle<JSObject> intlObject(thread_, env->GetIntlFunction().GetTaggedValue());
         PropertyDescriptor descriptor2(thread_, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
         JSObject::DefineOwnProperty(thread_, intlObject, nameString, descriptor2);
@@ -3948,7 +3948,7 @@ void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) c
     props->Set(thread_, 1, emptyObj);
     JSHandle<JSHClass> hclass = factory_->CreateObjectClass(env, props, 1);
     JSHandle<JSObject> obj = factory_->NewJSObject(hclass);
-    obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
+    obj->SetPropertyInlinedProps(thread_, 0, props->Get(thread_, 1));
     env->SetExportOfScript(thread_, obj);
     return;
 }

@@ -78,19 +78,19 @@ public:
                             const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue FastGet(JSThread *thread, const int index, const JSHandle<JSAPIList> &list);
 
-    JSTaggedValue GetFirst();
-    JSTaggedValue GetLast();
-    bool IsEmpty();
-    JSTaggedValue Get(const int index);
-    bool Has(const JSTaggedValue &element);
-    JSTaggedValue GetIndexOf(const JSTaggedValue &element);
-    JSTaggedValue GetLastIndexOf(const JSTaggedValue &element);
+    JSTaggedValue GetFirst(const JSThread *thread);
+    JSTaggedValue GetLast(const JSThread *thread);
+    bool IsEmpty(const JSThread *thread);
+    JSTaggedValue Get(const JSThread *thread, const int index);
+    bool Has(const JSThread *thread, const JSTaggedValue &element);
+    JSTaggedValue GetIndexOf(const JSThread *thread, const JSTaggedValue &element);
+    JSTaggedValue GetLastIndexOf(const JSThread *thread, const JSTaggedValue &element);
     JSTaggedValue Equal(JSThread *thread, const JSHandle<JSAPIList> &list);
     void Clear(JSThread *thread);
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
-    inline uint32_t Length()
+    inline uint32_t Length(const JSThread *thread)
     {
-        return TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->Length();
+        return TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject())->Length();
     }
 
     static constexpr size_t SINGLY_LIST_OFFSET = JSObject::SIZE;

@@ -67,7 +67,7 @@ public:
     JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
     JSTaggedValue Get(JSThread *thread, const uint32_t index);
 
-    bool Has(const JSTaggedValue value) const;
+    bool Has(JSThread *thread, const JSTaggedValue value) const;
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
@@ -79,13 +79,14 @@ public:
                             const JSHandle<JSTaggedValue> &value);
     inline uint32_t GetSize() const
     {
-        return GetLength().GetInt();
+        return GetLength();
     }
 
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
-    ACCESSORS(Length, LENGTH_OFFSET, SIZE);
+    // Use uint64_t to keep the object size unchanged
+    ACCESSORS_FIXED_SIZE_FIELD(Length, uint32_t, uint64_t, LENGTH_OFFSET, SIZE);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LENGTH_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
     DECL_DUMP()
 
 private:

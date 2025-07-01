@@ -206,13 +206,13 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterFor)
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("ccc");
     ASSERT_EQ(EcmaStringAccessor(string).GetLength(), 3U);
     JSHandle<JSTaggedValue> string_handle(string);
-    ASSERT_EQ(tableHandle->ContainsKey(string_handle.GetTaggedValue()), false);
+    ASSERT_EQ(tableHandle->ContainsKey(thread, string_handle.GetTaggedValue()), false);
 
     JSHandle<JSSymbol> symbol = ecmaVM->GetFactory()->NewSymbolWithTableWithChar("ccc");
 
     std::vector<JSTaggedValue> args{string.GetTaggedValue()};
     auto result = SymbolAlgorithm(thread, JSTaggedValue::Undefined(), args, 6, AlgorithmType::BUILTIN_FOR);
-    ASSERT_EQ(tableHandle->ContainsKey(string_handle.GetTaggedValue()), true);
+    ASSERT_EQ(tableHandle->ContainsKey(thread, string_handle.GetTaggedValue()), true);
 
     JSTaggedValue target(*symbol);
     ASSERT_EQ(result.GetRawData() == target.GetRawData(), true);
@@ -241,7 +241,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
     ASSERT_TRUE(otherResult.IsString());
     JSHandle<SymbolTable> tableHandle(thread, ecmaVM->GetRegisterSymbols());
     JSTaggedValue stringValue(*string);
-    ASSERT_EQ(tableHandle->ContainsKey(stringValue), true);
+    ASSERT_EQ(tableHandle->ContainsKey(thread, stringValue), true);
 
     // not symbol
     args[0] = JSTaggedValue::Undefined();
@@ -290,7 +290,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolConstructor)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result.IsSymbol());
     JSSymbol *sym = reinterpret_cast<JSSymbol *>(result.GetRawData());
-    ASSERT_EQ(sym->GetDescription().IsUndefined(), true);
+    ASSERT_EQ(sym->GetDescription(thread).IsUndefined(), true);
 
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("ddd");
 
@@ -303,7 +303,8 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolConstructor)
     JSTaggedValue result1 = BuiltinsSymbol::SymbolConstructor(otherEcmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultString = JSTaggedValue::ToString(
-        thread, JSHandle<JSTaggedValue>(thread, reinterpret_cast<JSSymbol *>(result1.GetRawData())->GetDescription()));
+        thread,
+        JSHandle<JSTaggedValue>(thread, reinterpret_cast<JSSymbol *>(result1.GetRawData())->GetDescription(thread)));
     ASSERT_EQ(EcmaStringAccessor::Compare(ecmaVM, resultString, string), 0);
 }
 
@@ -325,7 +326,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
     ASSERT_TRUE(result.IsString());
     EcmaString *resString = reinterpret_cast<EcmaString *>(result.GetRawData());
     ASSERT_EQ(EcmaStringAccessor(resString).GetLength(), 0U);
-    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(resString, *string), true);
+    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(thread, resString, *string), true);
 
     // value is not symbol
     JSHandle<JSFunction> symbolObject(env->GetSymbolFunction());
@@ -341,7 +342,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
     ASSERT_TRUE(result.IsString());
     resString = reinterpret_cast<EcmaString *>(result.GetRawData());
     ASSERT_EQ(EcmaStringAccessor(resString).GetLength(), 0U);
-    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(resString, *string), true);
+    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(thread, resString, *string), true);
 
     // Undefined
     ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

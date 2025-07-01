@@ -46,9 +46,9 @@ HWTEST_F_L0(BuiltinsBaseTest, GetArgsArray)
     TestHelper::TearDownFrame(thread, prev);
 
     EXPECT_EQ(resultArray->GetLength(), 3U);
-    EXPECT_EQ(resultArray->Get(0).GetInt(), 1);
-    EXPECT_EQ(resultArray->Get(1).GetInt(), 2);
-    EXPECT_EQ(resultArray->Get(2).GetInt(), 3);
+    EXPECT_EQ(resultArray->Get(thread, 0).GetInt(), 1);
+    EXPECT_EQ(resultArray->Get(thread, 1).GetInt(), 2);
+    EXPECT_EQ(resultArray->Get(thread, 2).GetInt(), 3);
 }
 
 /**
@@ -104,13 +104,13 @@ HWTEST_F_L0(BuiltinsBaseTest, GetTaggedString)
     JSTaggedValue resultStr1 = BuiltinsBase::GetTaggedString(thread, BuiltinsBaseStr1);
     EXPECT_TRUE(resultStr1.IsString());
     JSHandle<EcmaString> handleEcmaStr1(thread, resultStr1);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStr1).ToCString().c_str(), "BuiltinsBase");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str(), "BuiltinsBase");
 
     char BuiltinsBaseStr2[] = ""; // Empty String
     JSTaggedValue resultStr2 = BuiltinsBase::GetTaggedString(thread, BuiltinsBaseStr2);
     EXPECT_TRUE(resultStr2.IsString());
     JSHandle<EcmaString> handleEcmaStr2(thread, resultStr2);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStr2).ToCString().c_str(), "");
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStr2).ToCString(thread).c_str(), "");
 }
 
 /**

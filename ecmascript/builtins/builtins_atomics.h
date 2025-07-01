@@ -96,7 +96,8 @@ private:
     };
 #undef BUILTINS_ATOMICS_FUNCTION_ENTRY
 
-    static uint32_t Signal(JSHandle<JSTaggedValue> &arrayBuffer, const size_t &index, double wakeCount);
+    static uint32_t Signal(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
+                           const size_t &index, double wakeCount);
     template <typename T>
     static WaitResult DoWait(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
                              size_t index, T execpt, double timeout);

@@ -34,7 +34,7 @@ public:
     // 25.2.4.3 SharedArrayBuffer.prototype.slice ( start, end )
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
 
-    static bool IsShared(JSTaggedValue arrayBuffer);
+    static bool IsShared(JSThread *thread, JSTaggedValue arrayBuffer);
 private:
     // 25.2.1.1 AllocateSharedArrayBuffer ( constructor, byteLength )
     static JSTaggedValue AllocateSharedArrayBuffer(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget,

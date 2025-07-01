@@ -37,7 +37,7 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightSetIterator> iter(input);
-    JSHandle<JSTaggedValue> lightWeightSet(thread, iter->GetIteratedLightWeightSet());
+    JSHandle<JSTaggedValue> lightWeightSet(thread, iter->GetIteratedLightWeightSet(thread));
     uint32_t index = iter->GetNextIndex();
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (lightWeightSet->IsUndefined()) {
@@ -58,8 +58,8 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPILightWeightSet> lightWeightSetHandle(lightWeightSet);
     JSAPILightWeightSet::CheckAndCopyValues(thread, lightWeightSetHandle);
     JSHandle<TaggedArray> valueArray(
-        thread, TaggedArray::Cast(lightWeightSetHandle->GetValues().GetTaggedObject()));
-    JSHandle<JSTaggedValue> value(thread, valueArray->Get(index));
+        thread, TaggedArray::Cast(lightWeightSetHandle->GetValues(thread).GetTaggedObject()));
+    JSHandle<JSTaggedValue> value(thread, valueArray->Get(thread, index));
     if (itemKind == IterationKind::VALUE) {
         return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
     }

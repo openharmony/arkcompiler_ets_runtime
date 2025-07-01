@@ -21,13 +21,13 @@
 namespace panda::ecmascript {
 JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     ASSERT(idx < elements->GetLength());
     // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetTaggedValue(elements, TaggedArray::DATA_OFFSET + offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(thread, elements, TaggedArray::DATA_OFFSET + offset);
     if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
@@ -41,13 +41,13 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSHandle<JSObject> re
 
 JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSObject *receiver, uint32_t idx)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     ASSERT(idx < elements->GetLength());
     // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetTaggedValue(elements->GetData(), offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(thread, elements->GetData(), offset);
     if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
@@ -59,36 +59,37 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSObject *receiver, u
     }
 }
 
-JSTaggedValue ElementAccessor::FastGet(JSHandle<TaggedArray> elements, uint32_t idx, ElementsKind kind)
+JSTaggedValue ElementAccessor::FastGet(const JSThread *thread, JSHandle<TaggedArray> elements, uint32_t idx,
+                                       ElementsKind kind)
 {
     ASSERT(idx < elements->GetLength());
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    JSTaggedType rawValue = Barriers::GetTaggedValue(elements->GetData(), offset);
+    JSTaggedType rawValue = Barriers::GetTaggedValue(thread, elements->GetData(), offset);
     return GetTaggedValueWithElementsKind(rawValue, kind);
 }
 
-bool ElementAccessor::IsDictionaryMode(JSHandle<JSObject> receiver)
+bool ElementAccessor::IsDictionaryMode(const JSThread *thread, JSHandle<JSObject> receiver)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     return elements->GetClass()->IsDictionary();
 }
 
-bool ElementAccessor::IsDictionaryMode(JSObject *receiver)
+bool ElementAccessor::IsDictionaryMode(const JSThread *thread, JSObject *receiver)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     return elements->GetClass()->IsDictionary();
 }
 
-uint32_t ElementAccessor::GetElementsLength(JSHandle<JSObject> receiver)
+uint32_t ElementAccessor::GetElementsLength(const JSThread *thread, JSHandle<JSObject> receiver)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     return elements->GetLength();
 }
 
-uint32_t ElementAccessor::GetElementsLength(JSObject *receiver)
+uint32_t ElementAccessor::GetElementsLength(const JSThread *thread, JSObject *receiver)
 {
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements(thread));
     return elements->GetLength();
 }
 
@@ -162,8 +163,8 @@ JSTaggedType ElementAccessor::ConvertTaggedValueWithElementsKind(JSTaggedValue r
 void ElementAccessor::CopyJSArrayObject(const JSThread *thread, JSHandle<JSObject>srcObj, JSHandle<JSObject>dstObj,
                                         uint32_t effectiveLength)
 {
-    ASSERT(effectiveLength <= GetElementsLength(srcObj));
-    ASSERT(effectiveLength <= GetElementsLength(dstObj));
+    ASSERT(effectiveLength <= GetElementsLength(thread, srcObj));
+    ASSERT(effectiveLength <= GetElementsLength(thread, dstObj));
     for (uint32_t i = 0; i < effectiveLength; i++) {
         JSHandle<JSTaggedValue> value(thread, Get(thread, srcObj, i));
         Set(thread, dstObj, i, value, true);
@@ -173,7 +174,7 @@ void ElementAccessor::CopyJSArrayObject(const JSThread *thread, JSHandle<JSObjec
 void ElementAccessor::CopyJSArrayToTaggedArray(const JSThread *thread, JSHandle<JSObject>srcObj,
                                                JSHandle<TaggedArray>dstElements, uint32_t effectiveLength)
 {
-    ASSERT(effectiveLength <= GetElementsLength(srcObj));
+    ASSERT(effectiveLength <= GetElementsLength(thread, srcObj));
     ASSERT(effectiveLength <= dstElements->GetLength());
     for (uint32_t i = 0; i < effectiveLength; i++) {
         JSHandle<JSTaggedValue> value(thread, Get(thread, srcObj, i));

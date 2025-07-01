@@ -25,7 +25,7 @@
 
 namespace panda {
 namespace ecmascript {
-int GlobalDictionary::Hash(const JSTaggedValue &key)
+int GlobalDictionary::Hash(const JSThread *thread, const JSTaggedValue &key)
 {
     if (key.IsHeapObject()) {
         if (key.IsSymbol()) {
@@ -34,7 +34,7 @@ int GlobalDictionary::Hash(const JSTaggedValue &key)
         }
         if (key.IsString()) {
             auto keyString = EcmaString::Cast(key.GetTaggedObject());
-            return EcmaStringAccessor(keyString).GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode(thread);
         }
     }
     // key must be object
@@ -42,26 +42,27 @@ int GlobalDictionary::Hash(const JSTaggedValue &key)
     UNREACHABLE();
 }
 
-bool GlobalDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
+bool GlobalDictionary::IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+                               const JSTaggedValue &other)
 {
     return key == other;
 }
 
-PropertyBox *GlobalDictionary::GetBox(int entry) const
+PropertyBox *GlobalDictionary::GetBox(const JSThread *thread, int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_VALUE_INDEX;
-    return PropertyBox::Cast(Get(index).GetTaggedObject());
+    return PropertyBox::Cast(Get(thread, index).GetTaggedObject());
 }
 
-JSTaggedValue GlobalDictionary::GetValue(int entry) const
+JSTaggedValue GlobalDictionary::GetValue(const JSThread *thread, int entry) const
 {
-    return GetBox(entry)->GetValue();
+    return GetBox(thread, entry)->GetValue(thread);
 }
 
-PropertyAttributes GlobalDictionary::GetAttributes(int entry) const
+PropertyAttributes GlobalDictionary::GetAttributes(const JSThread *thread, int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index));
+    return PropertyAttributes(Get(thread, index));
 }
 
 void GlobalDictionary::SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
@@ -106,9 +107,9 @@ void GlobalDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArra
 
     CVector<std::pair<JSTaggedValue, uint32_t>> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             std::pair<JSTaggedValue, uint32_t> pair(key, attr.GetOffset());
             sortArr.push_back(pair);
         }
@@ -130,9 +131,9 @@ void GlobalDictionary::GetAllKeysByFilter(const JSThread *thread,
 
     CVector<std::pair<JSTaggedValue, uint32_t>> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
             if (bIgnore) {
                 continue;
@@ -155,15 +156,15 @@ void GlobalDictionary::GetAllKeysByFilter(const JSThread *thread,
     }
 }
 
-std::pair<uint32_t, uint32_t> GlobalDictionary::GetNumOfEnumKeys() const
+std::pair<uint32_t, uint32_t> GlobalDictionary::GetNumOfEnumKeys(const JSThread *thread) const
 {
     uint32_t enumKeys = 0;
     uint32_t shadowKeys = 0;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (key.IsString()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 enumKeys++;
             } else {
@@ -177,16 +178,16 @@ std::pair<uint32_t, uint32_t> GlobalDictionary::GetNumOfEnumKeys() const
 void GlobalDictionary::GetEnumAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray,
                                       uint32_t *keys) const
 {
-    ASSERT_PRINT(offset + GetNumOfEnumKeys().first <= static_cast<unsigned int>(keyArray->GetLength()),
+    ASSERT_PRINT(offset + GetNumOfEnumKeys(thread).first <= static_cast<unsigned int>(keyArray->GetLength()),
                  "keyArray capacity is not enough for dictionary");
     int arrayIndex = 0;
     int size = Size();
 
     CVector<std::pair<JSTaggedValue, uint32_t>> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (key.IsString()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 std::pair<JSTaggedValue, uint32_t> pair(key, attr.GetOffset());
                 sortArr.push_back(pair);
@@ -209,29 +210,29 @@ bool GlobalDictionary::CompKey(const std::pair<JSTaggedValue, uint32_t> &a, cons
 
 void GlobalDictionary::InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry)
 {
-    PropertyBox *box = dictHandle->GetBox(entry);
+    PropertyBox *box = dictHandle->GetBox(thread, entry);
 
-    ASSERT(!box->GetValue().IsHole());
-    JSHandle<JSTaggedValue> oldValue(thread, box->GetValue());
+    ASSERT(!box->GetValue(thread).IsHole());
+    JSHandle<JSTaggedValue> oldValue(thread, box->GetValue(thread));
     GlobalDictionary::InvalidateAndReplaceEntry(thread, dictHandle, entry, oldValue);
 }
 
 void GlobalDictionary::InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
                                                  int entry, const JSHandle<JSTaggedValue> &oldValue)
 {
-    if (!dictHandle->IsValidateBox(entry)) {
+    if (!dictHandle->IsValidateBox(thread, entry)) {
         return;
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Swap with a copy.
     JSHandle<PropertyBox> newBox = factory->NewPropertyBox(oldValue);
-    PropertyBox *box = dictHandle->GetBox(entry);
-    PropertyAttributes attr = dictHandle->GetAttributes(entry);
-    if (!attr.IsConfigurable() || box->GetValue().IsHole()) {
+    PropertyBox *box = dictHandle->GetBox(thread, entry);
+    PropertyAttributes attr = dictHandle->GetAttributes(thread, entry);
+    if (!attr.IsConfigurable() || box->GetValue(thread).IsHole()) {
         return;
     }
     ASSERT_PRINT(attr.IsConfigurable(), "property must be configurable");
-    ASSERT_PRINT(!box->GetValue().IsHole(), "value must not be hole");
+    ASSERT_PRINT(!box->GetValue(thread).IsHole(), "value must not be hole");
 
     // Cell is officially mutable henceforth.
     attr.SetBoxType(PropertyBoxType::MUTABLE);
@@ -240,10 +241,10 @@ void GlobalDictionary::InvalidateAndReplaceEntry(JSThread *thread, const JSHandl
     box->Clear(thread);
 }
 
-bool GlobalDictionary::IsValidateBox(int entry) const
+bool GlobalDictionary::IsValidateBox(const JSThread *thread, int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_VALUE_INDEX;
-    return !Get(index).IsUndefined();
+    return !Get(thread, index).IsUndefined();
 }
 }  // namespace ecmascript
 }  // namespace panda

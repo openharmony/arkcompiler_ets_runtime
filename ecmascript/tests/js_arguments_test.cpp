@@ -135,7 +135,7 @@ HWTEST_F_L0(JsArgumentsTest, GetOwnProperty)
     PropertyDescriptor Desc(thread);
     JSHandle<EcmaString> caller = thread->GetEcmaVM()->GetFactory()->NewFromASCII("caller");
     // key is not caller
-    EXPECT_FALSE(JSTaggedValue::SameValue(key.GetTaggedValue(), caller.GetTaggedValue()));
+    EXPECT_FALSE(JSTaggedValue::SameValue(thread, key.GetTaggedValue(), caller.GetTaggedValue()));
     EXPECT_TRUE(JSArguments::GetOwnProperty(thread, JSHandle<JSArguments>(jsarg), key, Desc));
     EXPECT_EQ(Desc.GetValue()->GetInt(), 1);
 }

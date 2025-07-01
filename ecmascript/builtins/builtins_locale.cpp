@@ -56,7 +56,7 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
         localeString = JSTaggedValue::ToString(thread, tag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
-        icu::Locale *icuLocale = (JSHandle<JSLocale>::Cast(tag))->GetIcuLocale();
+        icu::Locale *icuLocale = (JSHandle<JSLocale>::Cast(tag))->GetIcuLocale(thread);
         localeString = intl::LocaleHelper::ToLanguageTag(thread, *icuLocale);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
@@ -93,7 +93,7 @@ JSTaggedValue BuiltinsLocale::Maximize(EcmaRuntimeCallInfo *argv)
     // 3. Let maximal be the result of the Add Likely Subtags algorithm applied to loc.[[Locale]]. If an error is
     //    signaled, set maximal to loc.[[Locale]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    icu::Locale source(*(locale->GetIcuLocale()));
+    icu::Locale source(*(locale->GetIcuLocale(thread)));
     UErrorCode status = U_ZERO_ERROR;
     source.addLikelySubtags(status);
     ASSERT(U_SUCCESS(status));
@@ -126,7 +126,7 @@ JSTaggedValue BuiltinsLocale::Minimize(EcmaRuntimeCallInfo *argv)
     // 3. Let minimal be the result of the Remove Likely Subtags algorithm applied to loc.[[Locale]].
     //    If an error is signaled, set minimal to loc.[[Locale]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    icu::Locale source(*(locale->GetIcuLocale()));
+    icu::Locale source(*(locale->GetIcuLocale(thread)));
     UErrorCode status = U_ZERO_ERROR;
     source.minimizeSubtags(status);
     ASSERT(U_SUCCESS(status));
@@ -175,7 +175,7 @@ JSTaggedValue BuiltinsLocale::GetBaseName(EcmaRuntimeCallInfo *argv)
     // 3. Let locale be loc.[[Locale]].
     // 4. Return the substring of locale corresponding to the unicode_language_id production.
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    icu::Locale icuLocale = icu::Locale::createFromName(locale->GetIcuLocale()->getBaseName());
+    icu::Locale icuLocale = icu::Locale::createFromName(locale->GetIcuLocale(thread)->getBaseName());
     JSHandle<EcmaString> baseName = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return baseName.GetTaggedValue();
@@ -264,7 +264,7 @@ JSTaggedValue BuiltinsLocale::GetNumeric(EcmaRuntimeCallInfo *argv)
     }
     // 3. Return loc.[[Numeric]].
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
-    icu::Locale *icuLocale = locale->GetIcuLocale();
+    icu::Locale *icuLocale = locale->GetIcuLocale(thread);
     UErrorCode status = U_ZERO_ERROR;
     auto numeric = icuLocale->getUnicodeKeywordValue<CString>("kn", status);
     JSTaggedValue result = (numeric == "true") ? JSTaggedValue::True() : JSTaggedValue::False();
@@ -306,7 +306,7 @@ JSTaggedValue BuiltinsLocale::GetLanguage(EcmaRuntimeCallInfo *argv)
     // 5. Return the substring of locale corresponding to the unicode_language_subtag production of the
     //    unicode_language_id.
     JSHandle<EcmaString> result = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledUndefinedString());
-    CString language = locale->GetIcuLocale()->getLanguage();
+    CString language = locale->GetIcuLocale(thread)->getLanguage();
     if (language.empty()) {
         return result.GetTaggedValue();
     }
@@ -335,7 +335,7 @@ JSTaggedValue BuiltinsLocale::GetScript(EcmaRuntimeCallInfo *argv)
     // 6. Return the substring of locale corresponding to the unicode_script_subtag production of the
     //    unicode_language_id.
     JSHandle<EcmaString> result(thread, JSTaggedValue::Undefined());
-    CString script = locale->GetIcuLocale()->getScript();
+    CString script = locale->GetIcuLocale(thread)->getScript();
     if (script.empty()) {
         return result.GetTaggedValue();
     }
@@ -364,7 +364,7 @@ JSTaggedValue BuiltinsLocale::GetRegion(EcmaRuntimeCallInfo *argv)
     //    return undefined.
     // 6. Return the substring of locale corresponding to the unicode_region_subtag production of the
     //    unicode_language_id.
-    CString region = locale->GetIcuLocale()->getCountry();
+    CString region = locale->GetIcuLocale(thread)->getCountry();
     if (region.empty()) {
         return globalConst->GetUndefined();
     }

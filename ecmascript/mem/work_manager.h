@@ -168,6 +168,8 @@ public:
     inline JSWeakMapProcessQueue *GetJSWeakMapQueue() const;
 
     inline TlabAllocator *GetTlabAllocator() const;
+
+    inline JSThread *GetJSThread() const;
 private:
     Heap *heap_ {nullptr};
     WorkManager *workManager_ {nullptr};

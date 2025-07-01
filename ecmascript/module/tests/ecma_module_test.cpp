@@ -159,15 +159,15 @@ public:
     static JSHandle<SourceTextModule> GetResolvedModuleFromRecordIndexBinding(JSThread *thread,
         JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordIndexBinding> binding)
     {
-        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(thread, module, binding,
-            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
+        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordIndexBinding>(
+            thread, module, binding, ModulePathHelper::Utf8ConvertToString(thread, binding->GetModuleRecord(thread)));
     }
     template <bool isLazy>
     static JSHandle<SourceTextModule> GetResolvedModuleFromRecordBinding(JSThread *thread,
         JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordBinding> binding)
     {
-        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordBinding>(thread, module, binding,
-            ModulePathHelper::Utf8ConvertToString(binding->GetModuleRecord()));
+        return ModuleValueAccessor::GetResolvedModule<isLazy, ResolvedRecordBinding>(
+            thread, module, binding, ModulePathHelper::Utf8ConvertToString(thread, binding->GetModuleRecord(thread)));
     }
 };
 class MockDeprecatedModuleValueAccessor : public DeprecatedModuleValueAccessor {
@@ -192,7 +192,7 @@ HWTEST_F_L0(EcmaModuleTest, AddImportEntry)
     SourceTextModule::AddImportEntry(thread, module, importEntry1, 0, 2);
     JSHandle<ImportEntry> importEntry2 = objectFactory->NewImportEntry();
     SourceTextModule::AddImportEntry(thread, module, importEntry2, 1, 2);
-    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
+    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries(thread));
     EXPECT_TRUE(importEntries->GetLength() == 2U);
 }
 
@@ -211,7 +211,7 @@ HWTEST_F_L0(EcmaModuleTest, AddLocalExportEntry)
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 2);
     JSHandle<LocalExportEntry> localExportEntry2 = objectFactory->NewLocalExportEntry();
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
-    JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
+    JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries(thread));
     EXPECT_TRUE(localExportEntries->GetLength() == 2U);
 }
 
@@ -230,7 +230,7 @@ HWTEST_F_L0(EcmaModuleTest, AddIndirectExportEntry)
     SourceTextModule::AddIndirectExportEntry(thread, module, indirectExportEntry1, 0, 2);
     JSHandle<IndirectExportEntry> indirectExportEntry2 = objectFactory->NewIndirectExportEntry();
     SourceTextModule::AddIndirectExportEntry(thread, module, indirectExportEntry2, 1, 2);
-    JSHandle<TaggedArray> indirectExportEntries(thread, module->GetIndirectExportEntries());
+    JSHandle<TaggedArray> indirectExportEntries(thread, module->GetIndirectExportEntries(thread));
     EXPECT_TRUE(indirectExportEntries->GetLength() == 2U);
 }
 
@@ -249,7 +249,7 @@ HWTEST_F_L0(EcmaModuleTest, AddStarExportEntry)
     SourceTextModule::AddStarExportEntry(thread, module, starExportEntry1, 0, 2);
     JSHandle<StarExportEntry> starExportEntry2 = objectFactory->NewStarExportEntry();
     SourceTextModule::AddStarExportEntry(thread, module, starExportEntry2, 1, 2);
-    JSHandle<TaggedArray> startExportEntries(thread, module->GetStarExportEntries());
+    JSHandle<TaggedArray> startExportEntries(thread, module->GetStarExportEntries(thread));
     EXPECT_TRUE(startExportEntries->GetLength() == 2U);
 }
 
@@ -793,7 +793,7 @@ HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 2);
     JSHandle<LocalExportEntry> localExportEntry2 = objectFactory->NewLocalExportEntry();
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
-    JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
+    JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries(thread));
     CString baseFileName = "a.abc";
     module->SetEcmaModuleFilenameString(baseFileName);
     ModuleManager *moduleManager = thread->GetModuleManager();
@@ -1727,7 +1727,7 @@ HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
     JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
     Local<ObjectRef> res = JSNApi::GetExportObject(instance, "module_test_module_test_module", "moduleName");
     JSHandle<JSTaggedValue> result = JSNApiHelper::ToJSHandle(res);
-    CString moduleName = ConvertToString(result.GetTaggedValue());
+    CString moduleName = ConvertToString(thread, result.GetTaggedValue());
     EXPECT_EQ(moduleName, "");
 }
 
@@ -1756,7 +1756,7 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
     increaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests().IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
@@ -1772,7 +1772,7 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
     decreaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    EXPECT_EQ(module->GetModuleRequests().IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule)
@@ -2814,15 +2814,15 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
     std::set<CString> increaseModule;
 
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests().IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
 
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetModuleRequests().IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
 
     module2->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
-    EXPECT_EQ(module2->GetModuleRequests().IsUndefined(), true);
+    EXPECT_EQ(module2->GetModuleRequests(thread).IsUndefined(), true);
 
     module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
     ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
@@ -2848,7 +2848,7 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
 
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    EXPECT_EQ(module->GetModuleRequests().IsUndefined(), false);
+    EXPECT_EQ(module->GetModuleRequests(thread).IsUndefined(), false);
 
     module2->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module2, decreaseModule);
@@ -4210,22 +4210,22 @@ HWTEST_F_L0(EcmaModuleTest, RestoreMutableFields)
 
     SourceTextModule::RestoreMutableFields(thread, module, fields);
 
-    EXPECT_EQ(module->GetTopLevelCapability(), fields.TopLevelCapability);
-    EXPECT_EQ(module->GetNameDictionary(), fields.NameDictionary);
-    EXPECT_EQ(module->GetCycleRoot(), fields.CycleRoot);
-    EXPECT_EQ(module->GetAsyncParentModules(), fields.AsyncParentModules);
-    EXPECT_EQ(module->GetSendableEnv(), fields.SendableEnv);
-    EXPECT_EQ(module->GetException(), fields.Exception);
-    EXPECT_EQ(module->GetNamespace(), fields.Namespace);
+    EXPECT_EQ(module->GetTopLevelCapability(thread), fields.TopLevelCapability);
+    EXPECT_EQ(module->GetNameDictionary(thread), fields.NameDictionary);
+    EXPECT_EQ(module->GetCycleRoot(thread), fields.CycleRoot);
+    EXPECT_EQ(module->GetAsyncParentModules(thread), fields.AsyncParentModules);
+    EXPECT_EQ(module->GetSendableEnv(thread), fields.SendableEnv);
+    EXPECT_EQ(module->GetException(thread), fields.Exception);
+    EXPECT_EQ(module->GetNamespace(thread), fields.Namespace);
 
     SourceTextModule::StoreAndResetMutableFields(thread, module, fields);
 
-    EXPECT_EQ(module->GetTopLevelCapability(), undefinedValue);
-    EXPECT_EQ(module->GetNameDictionary(), undefinedValue);
-    EXPECT_EQ(module->GetCycleRoot(), undefinedValue);
-    EXPECT_EQ(module->GetAsyncParentModules(), undefinedValue);
-    EXPECT_EQ(module->GetSendableEnv(), undefinedValue);
-    EXPECT_EQ(module->GetException(), undefinedValue);
-    EXPECT_EQ(module->GetNamespace(), undefinedValue);
+    EXPECT_EQ(module->GetTopLevelCapability(thread), undefinedValue);
+    EXPECT_EQ(module->GetNameDictionary(thread), undefinedValue);
+    EXPECT_EQ(module->GetCycleRoot(thread), undefinedValue);
+    EXPECT_EQ(module->GetAsyncParentModules(thread), undefinedValue);
+    EXPECT_EQ(module->GetSendableEnv(thread), undefinedValue);
+    EXPECT_EQ(module->GetException(thread), undefinedValue);
+    EXPECT_EQ(module->GetNamespace(thread), undefinedValue);
 }
 }  // namespace panda::test

@@ -68,7 +68,8 @@ JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallI
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (isInstanceOf) {
             PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(dtf), false, false, false);
-            JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+            JSHandle<JSTaggedValue> key(thread,
+                JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
             JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return thisValue.GetTaggedValue();
@@ -128,7 +129,7 @@ JSTaggedValue BuiltinsDateTimeFormat::Format(EcmaRuntimeCallInfo *argv)
     //    c. Set dtf.[[BoundFormat]] to F.
     // 5. Return dtf.[[BoundFormat]].
     JSHandle<JSDateTimeFormat> dtf = JSHandle<JSDateTimeFormat>::Cast(dtfValue);
-    JSHandle<JSTaggedValue> boundFormat(thread, dtf->GetBoundFormat());
+    JSHandle<JSTaggedValue> boundFormat(thread, dtf->GetBoundFormat(thread));
     if (boundFormat->IsUndefined()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSIntlBoundFunction> intlBoundFunc = factory->NewJSIntlBoundFunction(
@@ -136,7 +137,7 @@ JSTaggedValue BuiltinsDateTimeFormat::Format(EcmaRuntimeCallInfo *argv)
         intlBoundFunc->SetDateTimeFormat(thread, dtf);
         dtf->SetBoundFormat(thread, intlBoundFunc);
     }
-    return dtf->GetBoundFormat();
+    return dtf->GetBoundFormat(thread);
 }
 
 // 13.1.5 DateTime Format Functions
@@ -150,7 +151,7 @@ JSTaggedValue BuiltinsDateTimeFormat::AnonymousDateTimeFormat(EcmaRuntimeCallInf
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(GetConstructor(argv));
 
     // 1. Let dtf be F.[[DateTimeFormat]].
-    JSHandle<JSTaggedValue> dtf(thread, intlBoundFunc->GetDateTimeFormat());
+    JSHandle<JSTaggedValue> dtf(thread, intlBoundFunc->GetDateTimeFormat(thread));
 
     // 2. Assert: Type(dtf) is Object and dtf has an [[InitializedDateTimeFormat]] internal slot.
     ASSERT_PRINT(dtf->IsJSObject() && dtf->IsJSDateTimeFormat(), "dtf is not object or JSDateTimeFormat");

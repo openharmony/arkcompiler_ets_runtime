@@ -69,10 +69,10 @@ public:
     FunctionCallTimer() = default;
     ~FunctionCallTimer() = default;
     void StartCount(size_t id, bool isAot);
-    void StopCount(Method *method);
+    void StopCount(const JSThread *thread, Method *method);
     void PrintAllStats();
-    CString GetFullName(Method *method);
-    void InitialStatAndTimer(Method *method, size_t methodId, bool isAot);
+    CString GetFullName(const JSThread *thread, Method *method);
+    void InitialStatAndTimer(const JSThread *thread, Method *method, size_t methodId, bool isAot);
     void ResetStat();
 
 private:

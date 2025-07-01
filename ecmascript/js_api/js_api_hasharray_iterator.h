@@ -34,23 +34,23 @@ public:
     {
         JSTaggedValue rootValue;
         uint32_t index = iter->GetNextIndex();
-        if (queue->Empty()) {
-            rootValue = tableArr->Get(index);
+        if (queue->Empty(thread)) {
+            rootValue = tableArr->Get(thread, index);
             ASSERT(rootValue.IsRBTreeNode());
         } else {
             rootValue = queue->Pop(thread);
         }
         JSHandle<RBTreeNode> root = JSHandle<RBTreeNode>(thread, rootValue);
-        if (!root->GetLeft().IsHole()) {
-            JSHandle<JSTaggedValue> left(thread, root->GetLeft());
+        if (!root->GetLeft(thread).IsHole()) {
+            JSHandle<JSTaggedValue> left(thread, root->GetLeft(thread));
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, left)));
         }
-        if (!root->GetRight().IsHole()) {
-            JSHandle<JSTaggedValue> right(thread, root->GetRight());
+        if (!root->GetRight(thread).IsHole()) {
+            JSHandle<JSTaggedValue> right(thread, root->GetRight(thread));
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, right)));
         }
         // iter == RBTree.end(), move index to next position
-        if (queue->Empty()) {
+        if (queue->Empty(thread)) {
             iter->SetNextIndex(++index);
         }
         iter->SetTaggedQueue(thread, queue.GetTaggedValue());
@@ -65,9 +65,9 @@ public:
         ASSERT((std::is_same_v<T, JSAPIHashMapIterator>) || (std::is_same_v<T, JSAPIHashSetIterator>));
         uint32_t index = iter->GetNextIndex();
         // judge type of tableArr[index](Hole, LinkList, RBTree)
-        JSHandle<JSTaggedValue> root(thread, tableArr->Get(index));
+        JSHandle<JSTaggedValue> root(thread, tableArr->Get(thread, index));
         if (root->IsHole()) {
-            JSHandle<JSTaggedValue> rootValue = JSHandle<JSTaggedValue>(thread, tableArr->Get(index));
+            JSHandle<JSTaggedValue> rootValue = JSHandle<JSTaggedValue>(thread, tableArr->Get(thread, index));
             return rootValue;
         }
         // RBTree
@@ -75,12 +75,12 @@ public:
             return GetRBTreeCurrentNode<T>(thread, iter, queue, tableArr);
         }
         // LinkList
-        JSHandle<JSTaggedValue> currentNodeValue(thread, iter->GetCurrentNodeResult());
+        JSHandle<JSTaggedValue> currentNodeValue(thread, iter->GetCurrentNodeResult(thread));
         if (!currentNodeValue->IsLinkedNode()) {
             currentNodeValue = root;
         }
         JSHandle<LinkedNode> currentNode = JSHandle<LinkedNode>::Cast(currentNodeValue);
-        JSTaggedValue next = currentNode->GetNext();
+        JSTaggedValue next = currentNode->GetNext(thread);
         // iter == linklist.end(), move index to next position
         if (next.IsHole()) {
             iter->SetNextIndex(++index);

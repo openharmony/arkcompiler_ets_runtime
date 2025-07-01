@@ -46,9 +46,10 @@ public:
     using CreateStringUtf16Func =
         std::function<EcmaString *(const EcmaVM *vm, const uint16_t *utf8Data, size_t length, bool canBeCompress)>;
     using StringAreEqualUtf16Func =
-        std::function<bool(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)>;
+        std::function<bool(JSThread*, const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)>;
     using StringIsEqualUint8Func =
-        std::function<bool(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen, bool canBeCompress)>;
+        std::function<bool(JSThread*, const EcmaString *str1, const uint8_t *dataAddr,
+                           uint32_t dataLen, bool canBeCompress)>;
     using Compare =
         std::function<int32_t(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)>;
 
@@ -66,10 +67,10 @@ public:
             thread, EcmaStringAccessor::Concat(instance, handleEcmaStrFrontU8, handleEcmaStrBackU16NotComp));
         EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).IsUtf16());
         for (uint32_t i = 0; i < g_lenFrontU8; i++) {
-            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(i), g_arrayFrontU8[i]);
+            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(thread, i), g_arrayFrontU8[i]);
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
-            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(i + g_lenFrontU8),
+            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).Get(thread, i + g_lenFrontU8),
                       arrayBackU16NotComp[i]);
         }
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrConcatU8U16NotComp).GetLength(),
@@ -86,8 +87,8 @@ public:
         JSHandle<EcmaString> handleEcmaStrSubU8(
             thread, EcmaStringAccessor::FastSubString(instance, handleEcmaStrU8, indexStartSubU8, lengthSubU8));
         for (uint32_t i = 0; i < lengthSubU8; i++) {
-            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU8).Get(i),
-                      EcmaStringAccessor(handleEcmaStrU8).Get(i + indexStartSubU8));
+            EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU8).Get(thread, i),
+                      EcmaStringAccessor(handleEcmaStrU8).Get(thread, i + indexStartSubU8));
         }
         EXPECT_EQ(EcmaStringAccessor(handleEcmaStrSubU8).GetLength(), lengthSubU8);
     }
@@ -139,11 +140,11 @@ public:
         JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(
             thread,
             EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
-        EXPECT_FALSE(stringIsEqualFunc(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-        EXPECT_TRUE(stringIsEqualFunc(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(stringIsEqualFunc(*handleEcmaStrU16NotCompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-        EXPECT_FALSE(stringIsEqualFunc(*handleEcmaStrU16NotCompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-        EXPECT_FALSE(stringIsEqualFunc(*handleEcmaStrU16NotCompNo4, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_TRUE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo4, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     }
 
     static void TryLowerCommonCase(JSThread *thread, const EcmaVM *instance, JSHandle<EcmaString> &lowerStr,
@@ -151,7 +152,7 @@ public:
     {
         {
             JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(instance, lowerStr));
-            EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
             EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(lowerEcmaString).GetLength());
             EXPECT_TRUE(EcmaStringAccessor(lowerEcmaString).IsUtf8());
             EXPECT_FALSE(EcmaStringAccessor(lowerEcmaString).IsUtf16());
@@ -159,7 +160,7 @@ public:
 
         for (size_t i = 0; i < caseStrings.size(); i++) {
             JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(instance, caseStrings[i]));
-            EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
+            EXPECT_TRUE(JSTaggedValue::SameValue(thread, lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
             EXPECT_EQ(EcmaStringAccessor(lowerStr).GetLength(), EcmaStringAccessor(lowerEcmaString).GetLength());
             EXPECT_TRUE(EcmaStringAccessor(lowerEcmaString).IsUtf8());
             EXPECT_FALSE(EcmaStringAccessor(lowerEcmaString).IsUtf16());
@@ -249,15 +250,15 @@ public:
             std::string ivalue = myValue + std::to_string(i);
             value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
 
-            JSTaggedValue gValue = toor->Get(i);
+            JSTaggedValue gValue = toor->Get(thread, i);
             EXPECT_EQ(gValue, value.GetTaggedValue());
         }
-        JSTaggedValue gValue = toor->Get(10);  // 10: index
+        JSTaggedValue gValue = toor->Get(thread, 10);  // 10: index
         EXPECT_EQ(gValue, JSTaggedValue::Undefined());
 
         std::string ivalue = myValue + std::to_string(1);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        EXPECT_TRUE(toor->Has(value.GetTaggedValue()));
+        EXPECT_TRUE(toor->Has(thread, value.GetTaggedValue()));
     }
 
     template <class T>
@@ -265,17 +266,17 @@ public:
     {
         constexpr uint32_t NODE_NUMBERS = 9;
         JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-        EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-        EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
+        EXPECT_EQ(toor->GetLast(thread), JSTaggedValue::Undefined());
+        EXPECT_EQ(toor->GetFirst(thread), JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
             value.Update(JSTaggedValue(i + 1));
             T::Add(thread, toor, value);
         }
-        EXPECT_EQ(toor->GetLast().GetInt(), g_numberNine);
-        EXPECT_EQ(toor->GetFirst().GetInt(), 1);
+        EXPECT_EQ(toor->GetLast(thread).GetInt(), g_numberNine);
+        EXPECT_EQ(toor->GetFirst(thread).GetInt(), 1);
 
         value.Update(JSTaggedValue(g_nintyNine));
-        int len = toor->Length();
+        int len = toor->Length(thread);
         toor->Insert(thread, toor, value, len);
         return value;
     }
@@ -284,60 +285,60 @@ public:
     static void GetIndexOfAndGetLastIndexOfCommon(JSThread *thread, JSHandle<T> &toor)
     {
         auto value = ListGetLastCommon<T>(thread, toor);
-        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), g_numberNine);
-        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), g_numberNine);
-        EXPECT_EQ(toor->Length(), 10);  // 10: len
+        EXPECT_EQ(toor->GetIndexOf(thread, value.GetTaggedValue()).GetInt(), g_numberNine);
+        EXPECT_EQ(toor->GetLastIndexOf(thread, value.GetTaggedValue()).GetInt(), g_numberNine);
+        EXPECT_EQ(toor->Length(thread), 10);  // 10: len
 
         value.Update(JSTaggedValue(g_hundred));
         toor->Insert(thread, toor, value, 0);
-        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), 0);
-        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), 0);
-        EXPECT_EQ(toor->Length(), 11);  // 11: len
+        EXPECT_EQ(toor->GetIndexOf(thread, value.GetTaggedValue()).GetInt(), 0);
+        EXPECT_EQ(toor->GetLastIndexOf(thread, value.GetTaggedValue()).GetInt(), 0);
+        EXPECT_EQ(toor->Length(thread), 11);  // 11: len
 
         value.Update(JSTaggedValue(g_hundredAndOne));
         toor->Insert(thread, toor, value, g_numberFive);
-        EXPECT_EQ(toor->GetIndexOf(value.GetTaggedValue()).GetInt(), g_numberFive);
-        EXPECT_EQ(toor->GetLastIndexOf(value.GetTaggedValue()).GetInt(), g_numberFive);
-        EXPECT_EQ(toor->Length(), 12);  // 12: len
+        EXPECT_EQ(toor->GetIndexOf(thread, value.GetTaggedValue()).GetInt(), g_numberFive);
+        EXPECT_EQ(toor->GetLastIndexOf(thread, value.GetTaggedValue()).GetInt(), g_numberFive);
+        EXPECT_EQ(toor->Length(thread), 12);  // 12: len
 
-        toor->Dump();
+        toor->Dump(thread);
     }
 
     template <class T>
     static void InsertAndGetLastCommon(JSThread *thread, JSHandle<T> &toor)
     {
         auto value = ListGetLastCommon<T>(thread, toor);
-        EXPECT_EQ(toor->GetLast().GetInt(), g_nintyNine);
-        EXPECT_EQ(toor->Length(), 10);  // 10: len
+        EXPECT_EQ(toor->GetLast(thread).GetInt(), g_nintyNine);
+        EXPECT_EQ(toor->Length(thread), 10);  // 10: len
 
         value.Update(JSTaggedValue(g_hundred));
         toor->Insert(thread, toor, value, 0);
-        EXPECT_EQ(toor->GetFirst().GetInt(), g_hundred);
-        EXPECT_EQ(toor->Length(), 11);  // 11: len
+        EXPECT_EQ(toor->GetFirst(thread).GetInt(), g_hundred);
+        EXPECT_EQ(toor->Length(thread), 11);  // 11: len
 
-        toor->Dump();
+        toor->Dump(thread);
 
         value.Update(JSTaggedValue(g_hundredAndOne));
         toor->Insert(thread, toor, value, g_numberFive);
-        EXPECT_EQ(toor->Length(), 12);  // 12: len
-        toor->Dump();
-        EXPECT_EQ(toor->Get(g_numberFive).GetInt(), g_hundredAndOne);
+        EXPECT_EQ(toor->Length(thread), 12);  // 12: len
+        toor->Dump(thread);
+        EXPECT_EQ(toor->Get(thread, g_numberFive).GetInt(), g_hundredAndOne);
     }
 
     template <class T>
     static void ListRemoveCommon(JSThread *thread, JSHandle<T> &toor, JSMutableHandle<JSTaggedValue> &value)
     {
         constexpr uint32_t NODE_NUMBERS = 20;
-        EXPECT_EQ(toor->GetLast(), JSTaggedValue::Undefined());
-        EXPECT_EQ(toor->GetFirst(), JSTaggedValue::Undefined());
+        EXPECT_EQ(toor->GetLast(thread), JSTaggedValue::Undefined());
+        EXPECT_EQ(toor->GetFirst(thread), JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
             value.Update(JSTaggedValue(i));
             T::Add(thread, toor, value);
         }
-        EXPECT_EQ(toor->Length(), NODE_NUMBERS);
+        EXPECT_EQ(toor->Length(thread), NODE_NUMBERS);
         for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
             value.Update(JSTaggedValue(i));
-            JSTaggedValue gValue = toor->Get(i);
+            JSTaggedValue gValue = toor->Get(thread, i);
             EXPECT_EQ(gValue, value.GetTaggedValue());
         }
     }
@@ -435,11 +436,11 @@ public:
         JSTaggedValue value(newObj2);
         value.CreateWeakRef();
         array->Set(thread, 1, value);
-        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-        EXPECT_EQ(value, array->Get(1));
+        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+        EXPECT_EQ(value, array->Get(thread, 1));
         ecmaVM->CollectGarbage(type);
-        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-        EXPECT_EQ(JSTaggedValue::Undefined(), array->Get(1));  // 1 : index
+        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+        EXPECT_EQ(JSTaggedValue::Undefined(), array->Get(thread, 1));  // 1 : index
     }
 
     static void ArrayKeepGcCommon(JSThread *thread, TriggerGCType type)
@@ -454,14 +455,14 @@ public:
         JSTaggedValue value(newObj2.GetTaggedValue());
         value.CreateWeakRef();
         array->Set(thread, 1, value);
-        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-        EXPECT_EQ(value, array->Get(1));
+        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+        EXPECT_EQ(value, array->Get(thread, 1));
         ecmaVM->CollectGarbage(type);
-        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(0));
-        EXPECT_EQ(true, array->Get(1).IsWeak());
+        EXPECT_EQ(newObj1.GetTaggedValue(), array->Get(thread, 0));
+        EXPECT_EQ(true, array->Get(thread, 1).IsWeak());
         value = newObj2.GetTaggedValue();
         value.CreateWeakRef();
-        EXPECT_EQ(value, array->Get(1));
+        EXPECT_EQ(value, array->Get(thread, 1));
     }
 };
 };  // namespace panda::test

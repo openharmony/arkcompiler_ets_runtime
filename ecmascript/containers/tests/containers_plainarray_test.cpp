@@ -159,8 +159,8 @@ HWTEST_F_L0(ContainersPlainArrayTest, PlainArrayConstructor)
 
     ASSERT_TRUE(result.IsJSAPIPlainArray());
     JSHandle<JSAPIPlainArray> arrayHandle(thread, result);
-    JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(arrayHandle));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(arrayHandle));
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     int size = arrayHandle->GetSize();
     ASSERT_EQ(size, 0);
@@ -427,9 +427,9 @@ HWTEST_F_L0(ContainersPlainArrayTest, RemoveRangeFrom)
         EXPECT_EQ(pArray->GetSize(), static_cast<int>(NODE_NUMBERS - 2));
         for (uint32_t i = 0; i < NODE_NUMBERS - 2; i++) {
             if (i < 2) {
-                EXPECT_EQ(pArray->Get(JSTaggedValue(i)), JSTaggedValue(i + 1));
+                EXPECT_EQ(pArray->Get(thread, JSTaggedValue(i)), JSTaggedValue(i + 1));
             } else {
-                EXPECT_EQ(pArray->Get(JSTaggedValue(i + 2)), JSTaggedValue(i + 3));
+                EXPECT_EQ(pArray->Get(thread, JSTaggedValue(i + 2)), JSTaggedValue(i + 3));
             }
         }
     }

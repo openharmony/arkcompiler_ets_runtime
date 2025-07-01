@@ -86,10 +86,10 @@ void ModuleLogger::InsertModuleLoadInfo(JSHandle<SourceTextModule> currentModule
     if (index < 0) {
         exportNameStr = "*";
     } else {
-        JSHandle<TaggedArray> importArray(thread, currentModule->GetImportEntries());
-        JSHandle<ImportEntry> importEntry(thread, importArray->Get(index));
-        JSHandle<JSTaggedValue> importName(thread, importEntry->GetImportName());
-        exportNameStr = ModulePathHelper::Utf8ConvertToString(importName.GetTaggedValue());
+        JSHandle<TaggedArray> importArray(thread, currentModule->GetImportEntries(thread));
+        JSHandle<ImportEntry> importEntry(thread, importArray->Get(thread, index));
+        JSHandle<JSTaggedValue> importName(thread, importEntry->GetImportName(thread));
+        exportNameStr = ModulePathHelper::Utf8ConvertToString(thread, importName.GetTaggedValue());
     }
     auto &upLevelInfo = sonModule->upLevel;
     auto ulModule = upLevelInfo.find(curName);

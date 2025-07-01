@@ -92,14 +92,14 @@ std::ostream &JitDfx::GetLogFileStream()
     return logFiles_[threadId];
 }
 
-void JitDfx::DumpBytecodeInst(Method *method)
+void JitDfx::DumpBytecodeInst(JSThread *thread, Method *method)
 {
     if (!isEnableDump_) {
         return;
     }
-    CString methodInfo = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
-    auto jsPandaFile = method->GetJSPandaFile();
+    CString methodInfo = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
+    MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
+    auto jsPandaFile = method->GetJSPandaFile(thread);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ASSERT(methodLiteral != nullptr);
     panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
@@ -122,7 +122,7 @@ void JitDfx::DumpBytecodeInst(Method *method)
     GetLogFileStream() << ss.str() << std::endl;
 }
 
-void JitDfx::TraceJitCode(Method *method, bool isEntry)
+void JitDfx::TraceJitCode(JSThread *thread, Method *method, bool isEntry)
 {
     if (!isEnableDump_) {
         return;
@@ -131,7 +131,7 @@ void JitDfx::TraceJitCode(Method *method, bool isEntry)
         prefixOffset_ -= 1;
     }
     CString prefixStr = isEntry ? CString("JitCodeEntry:") : CString("JitCodeExit :");
-    CString methodInfo = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    CString methodInfo = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
     static CString blackSpace("  ");
     CString prefix;
     for (uint32_t i = 0; i < prefixOffset_; i++) {

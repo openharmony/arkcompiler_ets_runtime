@@ -42,9 +42,9 @@ public:
     static JSTaggedValue PopFirst(JSThread *thread, const JSHandle<JSAPITreeSet> &set);
     static JSTaggedValue PopLast(JSThread *thread, const JSHandle<JSAPITreeSet> &set);
 
-    int GetSize() const;
+    int GetSize(const JSThread *thread) const;
 
-    JSTaggedValue GetKey(int entry) const;
+    JSTaggedValue GetKey(JSThread *thread, int entry) const;
 
     JSTaggedValue GetValue(int entry) const;
 

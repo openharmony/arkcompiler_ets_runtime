@@ -36,30 +36,32 @@ void RegExpParserCache::Clear()
     }
 }
 
-size_t RegExpParserCache::GetHash(EcmaString *pattern, const uint32_t flags)
+size_t RegExpParserCache::GetHash(const JSThread *thread, EcmaString *pattern, const uint32_t flags)
 {
-    auto hashcode = EcmaStringAccessor(pattern).GetHashcode();
+    auto hashcode = EcmaStringAccessor(pattern).GetHashcode(thread);
     return (hashcode ^ flags) % CACHE_SIZE;
 }
 
-std::pair<JSTaggedValue, size_t> RegExpParserCache::GetCache(EcmaString *pattern, const uint32_t flags,
+std::pair<JSTaggedValue, size_t> RegExpParserCache::GetCache(const JSThread *thread,
+                                                             EcmaString *pattern, const uint32_t flags,
                                                              CVector<CString> &groupName)
 {
-    size_t hash = GetHash(pattern, flags);
+    size_t hash = GetHash(thread, pattern, flags);
     ParserKey &info = info_[hash];
     if (info.flags_ != flags || info.pattern_ == nullptr ||
-        !EcmaStringAccessor::StringsAreEqual(info.pattern_, pattern)) {
+        !EcmaStringAccessor::StringsAreEqual(thread, info.pattern_, pattern)) {
         return std::pair<JSTaggedValue, size_t>(JSTaggedValue::Hole(), 0);
     }
     groupName = info.newGroupNames_;
     return std::pair<JSTaggedValue, size_t>(info.codeBuffer_, info.bufferSize_);
 }
 
-void RegExpParserCache::SetCache(EcmaString *pattern, const uint32_t flags,
+void RegExpParserCache::SetCache(const JSThread *thread,
+                                 EcmaString *pattern, const uint32_t flags,
                                  const JSTaggedValue codeBuffer, const size_t bufferSize,
                                  CVector<CString> groupName)
 {
-    size_t hash = GetHash(pattern, flags);
+    size_t hash = GetHash(thread, pattern, flags);
     ParserKey &info = info_[hash];
     info.pattern_ = pattern;
     info.flags_ = flags;

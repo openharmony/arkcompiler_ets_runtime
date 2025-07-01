@@ -82,15 +82,15 @@ HWTEST_F_L0(ICRunTimeTest, UpdateLoadHandler)
     uint32_t slotId = 2;
     ICRuntime icRuntime(thread, handleProfileTypeInfo, slotId, ICKind::LoadIC);
     icRuntime.UpdateLoadHandler(handleOp1, handleKeyWithElement, handleReceiver);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsHole());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsHole());
     // test op is not Element
     ObjectOperator handleOp2(thread, handleKeyWithString);
     slotId = 0;
     ICRuntime icRuntime1(thread, handleProfileTypeInfo, slotId, ICKind::NamedLoadIC);
     icRuntime1.UpdateLoadHandler(handleOp2, handleKeyWithString, handleReceiver);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsTaggedArray());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsTaggedArray());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsHole());
 }
 
 HWTEST_F_L0(ICRunTimeTest, UpdateStoreHandler)
@@ -127,8 +127,8 @@ HWTEST_F_L0(ICRunTimeTest, UpdateStoreHandler)
     ICRuntime icRuntime(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     icRuntime.UpdateReceiverHClass(JSHandle<JSTaggedValue>(thread, JSHandle<JSObject>(handleReceiver)->GetJSHClass()));
     icRuntime.UpdateStoreHandler(handleOp1, handleKeyWithElement, handleReceiver);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsWeak());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsPrototypeHandler());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsWeak());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsPrototypeHandler());
     // test op is Transition
     slotId = 1;
     ObjectOperator handleOp2(thread, handleReceiver, handleKeyWithString, OperatorType::OWN);
@@ -138,8 +138,8 @@ HWTEST_F_L0(ICRunTimeTest, UpdateStoreHandler)
     ICRuntime icRuntime1(thread, handleProfileTypeInfo, slotId, ICKind::NamedStoreIC);
     icRuntime1.UpdateReceiverHClass(env->GetArgumentsClass());
     icRuntime1.UpdateStoreHandler(handleOp2, handleKeyWithString, handleReceiver);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId).IsWeak());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(slotId + 1).IsTransitionHandler());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId).IsWeak());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, slotId + 1).IsTransitionHandler());
 }
 
 HWTEST_F_L0(ICRunTimeTest, TraceIC)
@@ -177,14 +177,14 @@ HWTEST_F_L0(ICRunTimeTest, StoreMiss)
     StoreICRuntime storeICRuntime(thread, handleProfileTypeInfo, 0, ICKind::NamedGlobalStoreIC);
     storeICRuntime.StoreMiss(handleReceiver, handleKeyWithString, handleValueWithElement);
     EXPECT_EQ(JSObject::GetProperty(thread, handleReceiver, handleKeyWithString).GetValue(), handleValueWithElement);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsHole());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsHole());
 
     SlowRuntimeStub::StGlobalRecord(thread, handleKeyWithString.GetTaggedValue(),
                                     handleKeyWithString.GetTaggedValue(), false);
     handleProfileTypeInfo->Set(thread, 0, JSTaggedValue::Undefined());
     storeICRuntime.StoreMiss(handleReceiver1, handleKeyWithString, handleValueWithElement);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsPropertyBox());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsPropertyBox());
 }
 
 HWTEST_F_L0(ICRunTimeTest, LoadMiss)
@@ -205,7 +205,7 @@ HWTEST_F_L0(ICRunTimeTest, LoadMiss)
     handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
     LoadICRuntime loadICRuntime(thread, handleProfileTypeInfo, 0, ICKind::NamedGlobalStoreIC);
     EXPECT_EQ(loadICRuntime.LoadMiss(handleReceiver, handleKeyWithString), handleValueWithElement.GetTaggedValue());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(0).IsHole());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 0).IsHole());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsHole());
 }
 }  // namespace panda::test

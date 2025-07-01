@@ -39,7 +39,7 @@ HWTEST_F_L0(TaggedHashArrayTest, CreateTaggedHashArray)
     JSHandle<TaggedArray> taggedArray(taggedHashArray);
     EXPECT_EQ(taggedHashArray->GetLength(), static_cast<uint32_t>(numOfElement));
     for (int i = 0; i < numOfElement; i++) {
-        EXPECT_TRUE(taggedArray->Get(i).IsHole());
+        EXPECT_TRUE(taggedArray->Get(thread, i).IsHole());
     }
 }
 
@@ -58,10 +58,10 @@ HWTEST_F_L0(TaggedHashArrayTest, NewLinkedNode)
     JSHandle<LinkedNode> linkedNode =
         TaggedHashArray::NewLinkedNode(thread, keyHash, hashKey, hashKeyValue);
     EXPECT_TRUE(*linkedNode != nullptr);
-    EXPECT_TRUE(linkedNode->GetNext().IsHole());
-    EXPECT_EQ(linkedNode->GetKey(), hashKey.GetTaggedValue());
-    EXPECT_EQ(linkedNode->GetValue(), hashKeyValue.GetTaggedValue());
-    EXPECT_EQ(linkedNode->GetHash().GetInt(), keyHash);
+    EXPECT_TRUE(linkedNode->GetNext(thread).IsHole());
+    EXPECT_EQ(linkedNode->GetKey(thread), hashKey.GetTaggedValue());
+    EXPECT_EQ(linkedNode->GetValue(thread), hashKeyValue.GetTaggedValue());
+    EXPECT_EQ(linkedNode->GetHash(thread).GetInt(), keyHash);
 }
 
 /**
@@ -79,9 +79,9 @@ HWTEST_F_L0(TaggedHashArrayTest, NewTreeNode)
     JSHandle<RBTreeNode> treeNode =
         TaggedHashArray::NewTreeNode(thread, keyHash, hashKey, hashKeyValue);
     EXPECT_TRUE(*treeNode != nullptr);
-    EXPECT_TRUE(treeNode->GetIsRed().ToBoolean());
-    EXPECT_TRUE(treeNode->GetLeft().IsHole());
-    EXPECT_TRUE(treeNode->GetRight().IsHole());
+    EXPECT_TRUE(treeNode->GetIsRed());
+    EXPECT_TRUE(treeNode->GetLeft(thread).IsHole());
+    EXPECT_TRUE(treeNode->GetRight(thread).IsHole());
 }
 
 void HashCommon1(JSThread *thread, JSHandle<TaggedHashArray>& taggedHashArray, std::string& myKey,
@@ -147,8 +147,8 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetLinkNode)
     JSTaggedValue hashNodeVal = taggedHashArray->GetNode(thread, keyHash, myKey4.GetTaggedValue());
     EXPECT_TRUE(hashNodeVal.IsLinkedNode());
     JSHandle<LinkedNode> hashNode(thread, hashNodeVal);
-    EXPECT_EQ(hashNode->GetValue(), myKey4Value.GetTaggedValue());
-    EXPECT_TRUE(hashNode->GetNext().IsLinkedNode());
+    EXPECT_EQ(hashNode->GetValue(thread), myKey4Value.GetTaggedValue());
+    EXPECT_TRUE(hashNode->GetNext(thread).IsLinkedNode());
 }
 
 /**
@@ -182,9 +182,9 @@ HWTEST_F_L0(TaggedHashArrayTest, SetValAndGetTreeNode)
     JSTaggedValue hashNodeVal = taggedHashArray->GetNode(thread, keyHash, myKey5.GetTaggedValue());
     EXPECT_TRUE(hashNodeVal.IsRBTreeNode());
     JSHandle<RBTreeNode> hashNode(thread, hashNodeVal);
-    EXPECT_EQ(hashNode->GetValue(), myKey5Value.GetTaggedValue());
-    EXPECT_TRUE(hashNode->GetLeft().IsHole());
-    EXPECT_TRUE(hashNode->GetRight().IsHole());
+    EXPECT_EQ(hashNode->GetValue(thread), myKey5Value.GetTaggedValue());
+    EXPECT_TRUE(hashNode->GetLeft(thread).IsHole());
+    EXPECT_TRUE(hashNode->GetRight(thread).IsHole());
 }
 
 /**
@@ -246,28 +246,29 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveTreeNode)
     auto keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey8, myKey8Value);
     uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-    JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+    JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(thread, keyHashIndex));
     EXPECT_EQ(hashTreeNode->GetCount(), 2U);
     // test Remove()
     taggedHashArray->RemoveNode(thread, keyHash, myKey5.GetTaggedValue());
     EXPECT_EQ(hashTreeNode->GetCount(), 1U);
 }
 
-bool HasNode(JSTaggedValue hashTreeNodeVa, JSTaggedValue key)
+bool HasNode(const JSThread *thread, JSTaggedValue hashTreeNodeVa, JSTaggedValue key)
 {
     if (hashTreeNodeVa.IsHole()) {
         return false;
     }
 
     RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
-    JSTaggedValue rootKey = hashTreeNode->GetKey();
-    if (JSTaggedValue::SameValue(rootKey, key)) {
+    JSTaggedValue rootKey = hashTreeNode->GetKey(thread);
+    if (JSTaggedValue::SameValue(thread, rootKey, key)) {
         return true;
     }
-    return HasNode(hashTreeNode->GetLeft(), key) || HasNode(hashTreeNode->GetRight(), key);
+    return HasNode(thread, hashTreeNode->GetLeft(thread), key) ||
+           HasNode(thread, hashTreeNode->GetRight(thread), key);
 }
 
-int CheckRBTreeNodeNums(JSTaggedValue hashTreeNodeVa, int count)
+int CheckRBTreeNodeNums(const JSThread *thread, JSTaggedValue hashTreeNodeVa, int count)
 {
     if (hashTreeNodeVa.IsHole()) {
         return count;
@@ -276,12 +277,13 @@ int CheckRBTreeNodeNums(JSTaggedValue hashTreeNodeVa, int count)
     count++;
     int temp = count;
     RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
-    return CheckRBTreeNodeNums(hashTreeNode->GetLeft(), count) +
-           CheckRBTreeNodeNums(hashTreeNode->GetRight(), count) - temp;
+    return CheckRBTreeNodeNums(thread, hashTreeNode->GetLeft(thread), count) +
+           CheckRBTreeNodeNums(thread, hashTreeNode->GetRight(thread), count) - temp;
 }
 
 template <typename T>
-bool CheckRBTreeOfAllPaths(JSHandle<T> &tree, int numsOfBlack, JSTaggedValue hashTreeNodeVa, int count)
+bool CheckRBTreeOfAllPaths(const JSThread *thread, JSHandle<T> &tree, int numsOfBlack,
+    JSTaggedValue hashTreeNodeVa, int count)
 {
     if (hashTreeNodeVa.IsHole()) {
         return count == numsOfBlack;
@@ -290,22 +292,22 @@ bool CheckRBTreeOfAllPaths(JSHandle<T> &tree, int numsOfBlack, JSTaggedValue has
         count++;
     }
     RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
-    if (CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode->GetLeft(), count) &&
-        CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode->GetRight(), count)) {
+    if (CheckRBTreeOfAllPaths(thread, tree, numsOfBlack, hashTreeNode->GetLeft(thread), count) &&
+        CheckRBTreeOfAllPaths(thread, tree, numsOfBlack, hashTreeNode->GetRight(thread), count)) {
         return true;
     }
     return false;
 }
 
-bool CheckRedNode(JSTaggedValue hashTreeNodeva)
+bool CheckRedNode(const JSThread *thread, JSTaggedValue hashTreeNodeva)
 {
     if (hashTreeNodeva.IsHole()) {
         return true;
     }
     RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeva.GetTaggedObject());
-    JSTaggedValue leftChildVa = hashTreeNode->GetLeft();
-    JSTaggedValue rightChildVa = hashTreeNode->GetRight();
-    if (hashTreeNode->GetIsRed().ToBoolean()) {
+    JSTaggedValue leftChildVa = hashTreeNode->GetLeft(thread);
+    JSTaggedValue rightChildVa = hashTreeNode->GetRight(thread);
+    if (hashTreeNode->GetIsRed()) {
         if (!leftChildVa.IsHole() && RBTreeNode::IsRed(leftChildVa)) {
             return false;
         }
@@ -313,11 +315,11 @@ bool CheckRedNode(JSTaggedValue hashTreeNodeva)
             return false;
         }
     }
-    return CheckRedNode(leftChildVa) && CheckRedNode(rightChildVa);
+    return CheckRedNode(thread, leftChildVa) && CheckRedNode(thread, rightChildVa);
 }
 
 template <typename T>
-bool CheckBlackNodeNumbers(JSHandle<T> &tree, JSHandle<RBTreeNode> hashTreeNode)
+bool CheckBlackNodeNumbers(const JSThread *thread, JSHandle<T> &tree, JSHandle<RBTreeNode> hashTreeNode)
 {
     int numsOfBlack = 0;
     JSTaggedValue ChildVa = hashTreeNode.GetTaggedValue();
@@ -325,13 +327,13 @@ bool CheckBlackNodeNumbers(JSHandle<T> &tree, JSHandle<RBTreeNode> hashTreeNode)
         if (!RBTreeNode::IsRed(ChildVa)) {
             numsOfBlack++;
         }
-        ChildVa = RBTreeNode::Cast(ChildVa.GetTaggedObject())->GetLeft();
+        ChildVa = RBTreeNode::Cast(ChildVa.GetTaggedObject())->GetLeft(thread);
         if (ChildVa.IsHole()) {
             break;
         }
     }
 
-    return CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode.GetTaggedValue(), 0);
+    return CheckRBTreeOfAllPaths(thread, tree, numsOfBlack, hashTreeNode.GetTaggedValue(), 0);
 }
 
 template <typename T>
@@ -341,35 +343,37 @@ bool IsVaildRBTree(JSThread *thread, JSHandle<T> &tree, JSHandle<RBTreeNode> has
         return true;
     }
 
-    if (hashTreeNode->GetIsRed().ToBoolean()) {
+    if (hashTreeNode->GetIsRed()) {
         return false;
     }
 
-    JSTaggedValue leftChildVa = hashTreeNode->GetLeft();
-    JSTaggedValue rightChildVa = hashTreeNode->GetRight();
-    JSTaggedValue treeNodeKey = hashTreeNode->GetKey();
-    int hash = hashTreeNode->GetHash().GetInt();
+    JSTaggedValue leftChildVa = hashTreeNode->GetLeft(thread);
+    JSTaggedValue rightChildVa = hashTreeNode->GetRight(thread);
+    JSTaggedValue treeNodeKey = hashTreeNode->GetKey(thread);
+    int hash = hashTreeNode->GetHash(thread).GetInt();
     if (!leftChildVa.IsHole()) {
         RBTreeNode *leftTreeNode = RBTreeNode::Cast(leftChildVa.GetTaggedObject());
-        int cmp = RBTreeNode::Compare(leftTreeNode->GetHash().GetInt(), leftTreeNode->GetKey(), hash, treeNodeKey);
+        int cmp = RBTreeNode::Compare(thread, leftTreeNode->GetHash(thread).GetInt(),
+            leftTreeNode->GetKey(thread), hash, treeNodeKey);
         if (cmp > 0) {
             return false;
         }
     }
     if (!rightChildVa.IsHole()) {
         RBTreeNode *rightTreeNode = RBTreeNode::Cast(rightChildVa.GetTaggedObject());
-        int cmp = RBTreeNode::Compare(rightTreeNode->GetHash().GetInt(), rightTreeNode->GetKey(), hash, treeNodeKey);
+        int cmp = RBTreeNode::Compare(thread, rightTreeNode->GetHash(thread).GetInt(),
+            rightTreeNode->GetKey(thread), hash, treeNodeKey);
         if (cmp < 0) {
             return false;
         }
     }
 
     // check red node
-    if (!CheckRedNode(leftChildVa) || !CheckRedNode(rightChildVa)) {
+    if (!CheckRedNode(thread, leftChildVa) || !CheckRedNode(thread, rightChildVa)) {
         return false;
     }
     // check black node
-    if (!CheckBlackNodeNumbers(tree, hashTreeNode)) {
+    if (!CheckBlackNodeNumbers(thread, tree, hashTreeNode)) {
         return false;
     }
 
@@ -398,7 +402,7 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeNode)
         auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
         TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey1, myKey1Value);
         uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(thread, keyHashIndex));
         EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode));
     }
     std::random_device rd;
@@ -409,27 +413,27 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeNode)
         JSHandle<JSTaggedValue> myKey1(factory->NewFromStdString(myKey + std::to_string(index)));
         auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
         uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(thread, keyHashIndex));
         EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
-        int beforeNum = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+        int beforeNum = CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex), 0);
         taggedHashArray->RemoveNode(thread, keyHash, myKey1.GetTaggedValue());
-        if (HasNode(taggedHashArray->Get(keyHashIndex), myKey1.GetTaggedValue())) {
-            EXPECT_EQ(beforeNum - 1, CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0));
+        if (HasNode(thread, taggedHashArray->Get(thread, keyHashIndex), myKey1.GetTaggedValue())) {
+            EXPECT_EQ(beforeNum - 1, CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex), 0));
         }
-        EXPECT_TRUE(!HasNode(taggedHashArray->Get(keyHashIndex), myKey1.GetTaggedValue()));
-        JSHandle<RBTreeNode> hashTreeNode1(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_TRUE(!HasNode(thread, taggedHashArray->Get(thread, keyHashIndex), myKey1.GetTaggedValue()));
+        JSHandle<RBTreeNode> hashTreeNode1(thread, taggedHashArray->Get(thread, keyHashIndex));
         EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode1));
         JSHandle<JSTaggedValue> myKey2(factory->NewFromStdString(myKey + std::to_string(index + 100)));
         JSHandle<JSTaggedValue> myKey2Value(factory->NewFromStdString(myValue + std::to_string(index + 100)));
         auto keyHash1 = TaggedNode::Hash(thread, myKey2.GetTaggedValue());
         uint32_t keyHashIndex1 = static_cast<uint32_t>(numOfElement - 1) & keyHash1;
-        beforeNum = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex1), 0);
+        beforeNum = CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex1), 0);
         TaggedHashArray::SetVal(thread, taggedHashArray, keyHash1, myKey2, myKey2Value);
-        if (!HasNode(taggedHashArray->Get(keyHashIndex1), myKey2.GetTaggedValue())) {
-            EXPECT_EQ(beforeNum + 1, CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex1), 0));
+        if (!HasNode(thread, taggedHashArray->Get(thread, keyHashIndex1), myKey2.GetTaggedValue())) {
+            EXPECT_EQ(beforeNum + 1, CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex1), 0));
         }
-        EXPECT_TRUE(HasNode(taggedHashArray->Get(keyHashIndex1), myKey2.GetTaggedValue()));
-        JSHandle<RBTreeNode> hashTreeNode2(thread, taggedHashArray->Get(keyHashIndex1));
+        EXPECT_TRUE(HasNode(thread, taggedHashArray->Get(thread, keyHashIndex1), myKey2.GetTaggedValue()));
+        JSHandle<RBTreeNode> hashTreeNode2(thread, taggedHashArray->Get(thread, keyHashIndex1));
         EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode2));
     }
 }
@@ -454,21 +458,21 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeRootNode)
     JSHandle<JSTaggedValue> myKey0(factory->NewFromStdString(myKey + std::to_string(0)));
     auto keyHash = TaggedNode::Hash(thread, myKey0.GetTaggedValue());
     uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-    JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+    JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(thread, keyHashIndex));
     EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
 
     // before remove the root node, there is one non-hole node in the tree
-    int treeNodeNumber = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+    int treeNodeNumber = CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex), 0);
     EXPECT_EQ(treeNodeNumber, numOfElement);
-    CString value = EcmaStringAccessor(hashTreeNode->GetValue()).ToCString();
+    CString value = EcmaStringAccessor(hashTreeNode->GetValue(thread)).ToCString(thread);
     std::string myVlaue0("myvalue0");
     EXPECT_EQ(value, myVlaue0.c_str());
 
     // after remove the root node, the tree is empty and there is a hole node in the hash array.
     taggedHashArray->RemoveNode(thread, keyHash, myKey0.GetTaggedValue());
-    treeNodeNumber = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+    treeNodeNumber = CheckRBTreeNodeNums(thread, taggedHashArray->Get(thread, keyHashIndex), 0);
     EXPECT_EQ(treeNodeNumber, 0);
-    EXPECT_TRUE(taggedHashArray->Get(keyHashIndex).IsHole());
+    EXPECT_TRUE(taggedHashArray->Get(thread, keyHashIndex).IsHole());
 }
 
 /**
@@ -509,12 +513,12 @@ HWTEST_F_L0(TaggedHashArrayTest, ResetLinkNodeSize)
 
     keyHash = TaggedNode::Hash(thread, myKey4.GetTaggedValue());
     uint32_t hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-    EXPECT_TRUE(taggedHashArray->Get(hashArrayIndex).IsHole());
+    EXPECT_TRUE(taggedHashArray->Get(thread, hashArrayIndex).IsHole());
 
     keyHash = TaggedNode::Hash(thread, myKey5.GetTaggedValue());
     hashArrayIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
-    JSHandle<LinkedNode> hashNode(thread, taggedHashArray->Get(hashArrayIndex));
-    EXPECT_EQ(hashNode->GetValue(), myKey8Value.GetTaggedValue());
+    JSHandle<LinkedNode> hashNode(thread, taggedHashArray->Get(thread, hashArrayIndex));
+    EXPECT_EQ(hashNode->GetValue(thread), myKey8Value.GetTaggedValue());
 }
 
 /**
@@ -549,7 +553,7 @@ HWTEST_F_L0(TaggedHashArrayTest, GetCurrentNode)
     EXPECT_TRUE(currentNode->IsRBTreeNode());
     // Pop queue
     JSHandle<RBTreeNode> storeStartTreeNode(thread, taggedQueue->Pop(thread));
-    EXPECT_EQ(storeStartTreeNode->GetValue(), myKey5Value.GetTaggedValue());
+    EXPECT_EQ(storeStartTreeNode->GetValue(thread), myKey5Value.GetTaggedValue());
     EXPECT_TRUE(taggedQueue->Pop(thread).IsHole());
 }
 }  // namespace panda::test

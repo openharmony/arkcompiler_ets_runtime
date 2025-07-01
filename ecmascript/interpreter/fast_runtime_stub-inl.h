@@ -120,7 +120,7 @@ JSTaggedValue FastRuntimeStub::FastEqual(JSTaggedValue left, JSTaggedValue right
     return JSTaggedValue::Hole();
 }
 
-JSTaggedValue FastRuntimeStub::FastStrictEqual(JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue FastRuntimeStub::FastStrictEqual(JSThread *thread, JSTaggedValue left, JSTaggedValue right)
 {
     if (left.IsNumber()) {
         if (right.IsNumber()) {
@@ -139,8 +139,9 @@ JSTaggedValue FastRuntimeStub::FastStrictEqual(JSTaggedValue left, JSTaggedValue
     if (left.IsString() && right.IsString()) {
         auto leftStr = static_cast<EcmaString *>(left.GetTaggedObject());
         auto rightStr = static_cast<EcmaString *>(right.GetTaggedObject());
-        if (EcmaStringAccessor(leftStr).IsFlat() && EcmaStringAccessor(rightStr).IsFlat()) {
-            return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
+        if (EcmaStringAccessor(leftStr).IsFlat(thread) && EcmaStringAccessor(rightStr).IsFlat(thread)) {
+            return EcmaStringAccessor::StringsAreEqual(thread,
+                                                       static_cast<EcmaString *>(left.GetTaggedObject()),
                                                        static_cast<EcmaString *>(right.GetTaggedObject())) ?
                 JSTaggedValue::True() : JSTaggedValue::False();
         }
@@ -215,11 +216,11 @@ JSTaggedValue FastRuntimeStub::SetPropertyByValue(JSThread *thread, JSTaggedValu
 JSTaggedValue FastRuntimeStub::GetGlobalOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
     JSObject *obj = JSObject::Cast(receiver);
-    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties(thread).GetTaggedObject());
     GlobalDictionary *dict = GlobalDictionary::Cast(properties);
-    int entry = dict->FindEntry(key);
+    int entry = dict->FindEntry(thread, key);
     if (entry != -1) {
-        auto value = dict->GetValue(entry);
+        auto value = dict->GetValue(thread, entry);
         if (UNLIKELY(value.IsAccessor())) {
             return CallGetter(thread, receiver, receiver, value);
         }
@@ -277,7 +278,7 @@ JSTaggedValue FastRuntimeStub::NewLexicalEnv(JSThread *thread, ObjectFactory *fa
     }
     JSTaggedValue currentEnv = thread->GetCurrentLexenv();
     // currentEnv is LexicalEnv/GlobalEnv for normal function, and is SFunctionEnv for SharedFunction.
-    JSTaggedValue globalEnv = BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv();
+    JSTaggedValue globalEnv = BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv(thread);
     if LIKELY(!globalEnv.IsHole()) {
         newEnv->SetGlobalEnv(thread, globalEnv);
     } else {
@@ -298,11 +299,11 @@ JSTaggedValue FastRuntimeStub::NewThisObject(JSThread *thread, JSTaggedValue cto
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctorHandle, newTargetHandle);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
-    Method *method = Method::Cast(ctorHandle->GetMethod().GetTaggedObject());
+    Method *method = Method::Cast(ctorHandle->GetMethod(thread).GetTaggedObject());
     state->function = ctorHandle.GetTaggedValue();
-    state->constpool = method->GetConstantPool();
-    state->profileTypeInfo = ctorHandle->GetProfileTypeInfo();
-    state->env = ctorHandle->GetLexicalEnv();
+    state->constpool = method->GetConstantPool(thread);
+    state->profileTypeInfo = ctorHandle->GetProfileTypeInfo(thread);
+    state->env = ctorHandle->GetLexicalEnv(thread);
 
     return obj.GetTaggedValue();
 }

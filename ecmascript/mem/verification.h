@@ -179,7 +179,7 @@ private:
 template <class Callback>
 class VerifyVisitor final : public BaseObjectVisitor<VerifyVisitor<Callback>> {
 public:
-    explicit VerifyVisitor(Callback &cb) : cb_(cb) {}
+    explicit VerifyVisitor(Callback &cb) : thread_(JSThread::GetCurrent()), cb_(cb) {}
     ~VerifyVisitor() = default;
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area) override
     {
@@ -190,8 +190,8 @@ public:
             ASSERT(!hclass->IsAllTaggedProp());
             int index = 0;
             for (ObjectSlot slot = start; slot < end; slot++) {
-                auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                auto attr = layout->GetAttr(index++);
+                auto layout = LayoutInfo::Cast(hclass->GetLayout(thread_).GetTaggedObject());
+                auto attr = layout->GetAttr(thread_, index++);
                 if (attr.IsTaggedRep()) {
                     cb_(slot, TaggedObject::Cast(root));
                 }
@@ -203,6 +203,7 @@ public:
         }
     }
 private:
+    const JSThread *thread_;
     Callback &cb_;
 };
 }  // namespace panda::ecmascript

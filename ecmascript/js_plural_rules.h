@@ -52,14 +52,14 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LOCALE_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::number::LocalizedNumberFormatter *GetIcuNumberFormatter() const;
+    icu::number::LocalizedNumberFormatter *GetIcuNumberFormatter(JSThread *thread) const;
 
     static void SetIcuNumberFormatter(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
         const icu::number::LocalizedNumberFormatter &icuNF, const NativePointerCallback &callback);
 
     static void FreeIcuNumberFormatter(void *env, void *pointer, void* hint = nullptr);
 
-    icu::PluralRules *GetIcuPluralRules() const;
+    icu::PluralRules *GetIcuPluralRules(JSThread *thread) const;
 
     static void SetIcuPluralRules(JSThread *thread, const JSHandle<JSPluralRules> &pluralRules,
         const icu::PluralRules &icuPR, const NativePointerCallback &callback);

@@ -144,7 +144,7 @@ JSTaggedValue NumberHelper::Int32ToString(JSThread *thread, int32_t number, uint
                 return thread->GlobalConstants()->GetHandledZeroString().GetTaggedValue();
             }
             JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
-            return singleCharTable->GetStringFromSingleCharTable(ToCharCode(n));
+            return singleCharTable->GetStringFromSingleCharTable(thread, ToCharCode(n));
         }
     } else {
         n = static_cast<uint32_t>(-number);
@@ -558,12 +558,12 @@ void NumberHelper::ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int
     tmpbuf += std::to_string(p);
 }
 
-JSTaggedValue NumberHelper::StringToNumber(EcmaString *string, int32_t radix)
+JSTaggedValue NumberHelper::StringToNumber(JSThread *thread, EcmaString *string, int32_t radix)
 {
     bool negative = false;
     if ((radix == base::DECIMAL || radix == 0)) {
         int32_t elementIndex = 0;
-        if (EcmaStringAccessor(string).ToInt(&elementIndex, &negative)) {
+        if (EcmaStringAccessor(string).ToInt(thread, &elementIndex, &negative)) {
             if (elementIndex == 0 && negative == true) {
                 return JSTaggedValue(-0.0);
             }
@@ -571,7 +571,7 @@ JSTaggedValue NumberHelper::StringToNumber(EcmaString *string, int32_t radix)
         }
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(string).ToUtf8Span(buf);
+    Span<const uint8_t> str = EcmaStringAccessor(string).ToUtf8Span(thread, buf);
 
     JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix, &negative);
     if (result.GetNumber() == 0 && negative == true) {
@@ -777,7 +777,7 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     ASSERT(number.IsNumber());
     JSHandle<NumberToStringResultCache> cacheTable(thread->GetGlobalEnv()->GetNumberToStringResultCache());
     int entry = cacheTable->GetNumberHash(number);
-    JSTaggedValue cacheResult = cacheTable->FindCachedResult(entry, number);
+    JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, entry, number);
     if (cacheResult != JSTaggedValue::Undefined()) {
         return JSHandle<EcmaString>::Cast(JSHandle<JSTaggedValue>(thread, cacheResult));
     }
@@ -1171,7 +1171,7 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
+    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(thread, buf);
 
     auto p = const_cast<uint8_t *>(str.begin());
     auto end = str.end();

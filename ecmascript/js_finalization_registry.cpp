@@ -30,13 +30,13 @@ JSHandle<CellRecordVector> CellRecordVector::Append(const JSThread *thread, cons
     return JSHandle<CellRecordVector>(newVector);
 }
 
-bool CellRecordVector::IsEmpty()
+bool CellRecordVector::IsEmpty(const JSThread *thread)
 {
     if (Empty()) {
         return true;
     }
     for (uint32_t i = 0; i < GetEnd(); i++) {
-        JSTaggedValue value = Get(i);
+        JSTaggedValue value = Get(thread, i);
         if (!value.IsHole()) {
             return false;
         }
@@ -57,7 +57,7 @@ void JSFinalizationRegistry::Register(JSThread *thread, JSHandle<JSTaggedValue> 
     // If unregisterToken is undefined, we use vector to store
     // otherwise we use hash map to store to facilitate subsequent delete operations
     if (!unregisterToken->IsUndefined()) {
-        JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
+        JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister(thread));
         JSHandle<CellRecordVector> array(thread, JSTaggedValue::Undefined());
         if (maybeUnregister->Has(thread, unregisterToken.GetTaggedValue())) {
             array = JSHandle<CellRecordVector>(thread, maybeUnregister->Get(thread, unregisterToken.GetTaggedValue()));
@@ -69,7 +69,7 @@ void JSFinalizationRegistry::Register(JSThread *thread, JSHandle<JSTaggedValue> 
         maybeUnregister = LinkedHashMap::SetWeakRef(thread, maybeUnregister, unregisterToken, arrayValue);
         obj->SetMaybeUnregister(thread, maybeUnregister);
     } else {
-        JSHandle<CellRecordVector> noUnregister(thread, obj->GetNoUnregister());
+        JSHandle<CellRecordVector> noUnregister(thread, obj->GetNoUnregister(thread));
         noUnregister = CellRecordVector::Append(thread, noUnregister, cell);
         obj->SetNoUnregister(thread, noUnregister);
     }
@@ -81,7 +81,7 @@ bool JSFinalizationRegistry::Unregister(JSThread *thread, JSHandle<JSTaggedValue
 {
     // Because we have stored the object that may be unregistered in the hash map when registering,
     // at this time we just need to find it in the map and delete it
-    JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
+    JSHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister(thread));
     int entry = maybeUnregister->FindElement(thread, UnregisterToken.GetTaggedValue());
     if (entry == -1) {
         return false;
@@ -95,19 +95,19 @@ bool JSFinalizationRegistry::Unregister(JSThread *thread, JSHandle<JSTaggedValue
 void JSFinalizationRegistry::CleanFinRegLists(JSThread *thread, JSHandle<JSFinalizationRegistry> obj)
 {
     EcmaVM* vm = thread->GetEcmaVM();
-    if (obj->GetPrev().IsNull() && obj->GetNext().IsNull()) {
+    if (obj->GetPrev(thread).IsNull() && obj->GetNext(thread).IsNull()) {
         vm->SetFinRegLists(JSTaggedValue::Hole());
         return;
     }
-    if (!obj->GetPrev().IsNull()) {
-        JSHandle<JSFinalizationRegistry> prev(thread, obj->GetPrev());
-        prev->SetNext(thread, obj->GetNext());
+    if (!obj->GetPrev(thread).IsNull()) {
+        JSHandle<JSFinalizationRegistry> prev(thread, obj->GetPrev(thread));
+        prev->SetNext(thread, obj->GetNext(thread));
     }
-    if (!obj->GetNext().IsNull()) {
-        JSHandle<JSFinalizationRegistry> next(thread, obj->GetNext());
-        next->SetPrev(thread, obj->GetPrev());
+    if (!obj->GetNext(thread).IsNull()) {
+        JSHandle<JSFinalizationRegistry> next(thread, obj->GetNext(thread));
+        next->SetPrev(thread, obj->GetPrev(thread));
     } else {
-        vm->SetFinRegLists(obj->GetPrev());
+        vm->SetFinRegLists(obj->GetPrev(thread));
     }
     obj->SetPrev(thread, JSTaggedValue::Null());
     obj->SetNext(thread, JSTaggedValue::Null());
@@ -130,7 +130,7 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
     JSMutableHandle<JSFinalizationRegistry> jsFinalizationRegistry(thread, current.GetTaggedValue());
     while (!current->IsNull()) {
         jsFinalizationRegistry.Update(current.GetTaggedValue());
-        current.Update(jsFinalizationRegistry->GetPrev());
+        current.Update(jsFinalizationRegistry->GetPrev(thread));
         if (CleanupFinalizationRegistry(thread, jsFinalizationRegistry)) {
             // If the objects registered on the current JSFinalizationRegistry object have all been gc,
             // then we clean up this JSFinalizationRegistry object from the FinRegLists
@@ -145,15 +145,15 @@ void DealCallBackOfMap(JSThread *thread, JSHandle<CellRecordVector> &cellVect,
     if (!cellVect->Empty()) {
         uint32_t cellVectLen = cellVect->GetEnd();
         for (uint32_t i = 0; i < cellVectLen; ++i) {
-            JSTaggedValue value = cellVect->Get(i);
+            JSTaggedValue value = cellVect->Get(thread, i);
             if (value.IsHole()) {
                 continue;
             }
             JSHandle<CellRecord> cellRecord(thread, value);
             // if WeakRefTarget have been gc, set callback to job and delete
-            if (cellRecord->GetFromWeakRefTarget().IsUndefined()) {
+            if (cellRecord->GetFromWeakRefTarget(thread).IsUndefined()) {
                 JSHandle<TaggedArray> argv = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(1);
-                argv->Set(thread, 0, cellRecord->GetHeldValue());
+                argv->Set(thread, 0, cellRecord->GetHeldValue(thread));
                 job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, func, argv);
                 cellVect->Delete(thread, i);
             }
@@ -175,31 +175,31 @@ bool JSFinalizationRegistry::CleanupFinalizationRegistry(JSThread *thread, JSHan
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSFunction> func(thread, obj->GetCleanupCallback());
-    JSHandle<CellRecordVector> noUnregister(thread, obj->GetNoUnregister());
+    JSHandle<JSFunction> func(thread, obj->GetCleanupCallback(thread));
+    JSHandle<CellRecordVector> noUnregister(thread, obj->GetNoUnregister(thread));
     if (!noUnregister->Empty()) {
         uint32_t noUnregisterLen = noUnregister->GetEnd();
         for (uint32_t i = 0; i < noUnregisterLen; ++i) {
-            JSTaggedValue value = noUnregister->Get(i);
+            JSTaggedValue value = noUnregister->Get(thread, i);
             if (value.IsHole()) {
                 continue;
             }
             JSHandle<CellRecord> cellRecord(thread, value);
             // if WeakRefTarget have been gc, set callback to job and delete
-            if (cellRecord->GetFromWeakRefTarget().IsUndefined()) {
+            if (cellRecord->GetFromWeakRefTarget(thread).IsUndefined()) {
                 JSHandle<TaggedArray> argv = factory->NewTaggedArray(1);
-                argv->Set(thread, 0, cellRecord->GetHeldValue());
+                argv->Set(thread, 0, cellRecord->GetHeldValue(thread));
                 job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, func, argv);
                 noUnregister->Delete(thread, i);
             }
         }
     }
-    JSMutableHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister());
+    JSMutableHandle<LinkedHashMap> maybeUnregister(thread, obj->GetMaybeUnregister(thread));
     int index = 0;
     int totalElements = maybeUnregister->NumberOfElements() + maybeUnregister->NumberOfDeletedElements();
     while (index < totalElements) {
-        if (!maybeUnregister->GetKey(index++).IsHole()) {
-            JSHandle<CellRecordVector> cellVect(thread, maybeUnregister->GetValue(index - 1));
+        if (!maybeUnregister->GetKey(thread, index++).IsHole()) {
+            JSHandle<CellRecordVector> cellVect(thread, maybeUnregister->GetValue(thread, index - 1));
             DealCallBackOfMap(thread, cellVect, job, func);
             if (!cellVect->Empty()) {
                 continue;
@@ -212,7 +212,7 @@ bool JSFinalizationRegistry::CleanupFinalizationRegistry(JSThread *thread, JSHan
     // Determine whether the objects registered on the current JSFinalizationRegistry object
     // have all been gc
     int remainSize = newMap->NumberOfElements() + newMap->NumberOfDeletedElements();
-    if (noUnregister->IsEmpty() && remainSize == 0) {
+    if (noUnregister->IsEmpty(thread) && remainSize == 0) {
         return true;
     }
     return false;
@@ -222,7 +222,7 @@ void JSFinalizationRegistry::AddFinRegLists(JSThread *thread, JSHandle<JSFinaliz
 {
     // If any of prev and next is not null, it means that the current object is already in the linked list,
     // ignore this addition
-    if (!next->GetPrev().IsNull() || !next->GetNext().IsNull()) {
+    if (!next->GetPrev(thread).IsNull() || !next->GetNext(thread).IsNull()) {
         return;
     }
     EcmaVM* vm = thread->GetEcmaVM();
@@ -231,7 +231,7 @@ void JSFinalizationRegistry::AddFinRegLists(JSThread *thread, JSHandle<JSFinaliz
         JSHandle<JSFinalizationRegistry> prev(lists);
         // Prevent the same object from being connected end to end,
         // which should not happen and will lead to an infinite loop
-        if (JSTaggedValue::SameValue(next.GetTaggedValue(), prev.GetTaggedValue())) {
+        if (JSTaggedValue::SameValue(thread, next.GetTaggedValue(), prev.GetTaggedValue())) {
             return;
         }
         prev->SetNext(thread, next);

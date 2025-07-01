@@ -57,12 +57,12 @@ bool JSNApiClassCreationHelper::TryAddOriKeyAndOriAttrToHClass(const JSThread *t
     ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
     ConstructDescByAttr(thread, oriAttr, &desc);
     // If property key is element index, property must be add by slow path(DefinePropertyOrThrow).
-    if (UNLIKELY(!JSTaggedValue::IsPureString(keyValue))) {
+    if (UNLIKELY(!JSTaggedValue::IsPureString(const_cast<JSThread *>(thread), keyValue))) {
         return false;
     }
     // If property key is repeat key, property must be add by slow path.
-    JSHandle<ecmascript::LayoutInfo> layoutInfoHandle(thread, hClass->GetLayout());
-    if (UNLIKELY(layoutInfoHandle->CheckIsDuplicateKey(thread, attrOffset, key->GetKeyHashCode(), keyValue))) {
+    JSHandle<ecmascript::LayoutInfo> layoutInfoHandle(thread, hClass->GetLayout(thread));
+    if (UNLIKELY(layoutInfoHandle->CheckIsDuplicateKey(thread, attrOffset, key->GetKeyHashCode(thread), keyValue))) {
         return false;
     }
     ASSERT(static_cast<int32_t>(attrOffset) == hClass->GetNextInlinedPropsIndex());

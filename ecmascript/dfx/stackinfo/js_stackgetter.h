@@ -87,9 +87,9 @@ public:
                                size_t size, bool isCpuProfiler);
     static RunningState GetRunningState(const FrameIterator &it, const EcmaVM *vm, bool isNative,
                                         bool topFrame, bool enableVMTag = false);
-    static void GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry);
-    static void *GetMethodIdentifier(Method *method, const FrameIterator &it);
-    static void GetCallLineNumber(const FrameIterator &it, int &LineNumber);
+    static void GetNativeMethodCallPos(FrameIterator &it, const EcmaVM *vm, FrameInfoTemp &codeEntry);
+    static void *GetMethodIdentifier(Method *method, const FrameIterator &it, const EcmaVM *vm);
+    static void GetCallLineNumber(const FrameIterator &it, const EcmaVM *vm, int &LineNumber);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKGETTER_H

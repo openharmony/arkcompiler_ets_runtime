@@ -22,23 +22,23 @@ using ContainerError = containers::ContainerError;
 using ErrorFlag = containers::ErrorFlag;
 void JSAPIList::Add(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     JSTaggedValue newList = TaggedSingleList::Add(thread, singleList, value);
     list->SetSingleList(thread, newList);
 }
 
-JSTaggedValue JSAPIList::GetFirst()
+JSTaggedValue JSAPIList::GetFirst(const JSThread *thread)
 {
-    JSTaggedValue res = TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->GetFirst();
+    JSTaggedValue res = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject())->GetFirst(thread);
     if (res.IsHole()) {
         return JSTaggedValue::Undefined();
     }
     return res;
 }
 
-JSTaggedValue JSAPIList::GetLast()
+JSTaggedValue JSAPIList::GetLast(const JSThread *thread)
 {
-    JSTaggedValue res = TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->GetLast();
+    JSTaggedValue res = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject())->GetLast(thread);
     if (res.IsHole()) {
         return JSTaggedValue::Undefined();
     }
@@ -48,7 +48,7 @@ JSTaggedValue JSAPIList::GetLast()
 JSTaggedValue JSAPIList::Insert(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &value,
                                 const int index)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     int nodeLength = singleList->Length();
     if (index < 0 || index > nodeLength) {
         std::ostringstream oss;
@@ -68,7 +68,7 @@ JSTaggedValue JSAPIList::Insert(JSThread *thread, const JSHandle<JSAPIList> &lis
 JSTaggedValue JSAPIList::Set(JSThread *thread, const JSHandle<JSAPIList> &list,
                              const int index, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     int nodeLength = singleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -86,30 +86,30 @@ JSTaggedValue JSAPIList::Set(JSThread *thread, const JSHandle<JSAPIList> &list,
     return value.GetTaggedValue();
 }
 
-bool JSAPIList::Has(const JSTaggedValue &element)
+bool JSAPIList::Has(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    return singleList->Has(element);
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
+    return singleList->Has(thread, element);
 }
 
-bool JSAPIList::IsEmpty()
+bool JSAPIList::IsEmpty(const JSThread *thread)
 {
-    return TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->IsEmpty();
+    return TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject())->IsEmpty();
 }
 
-JSTaggedValue JSAPIList::Get(const int index)
+JSTaggedValue JSAPIList::Get(const JSThread *thread, const int index)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
     int nodeLength = singleList->Length();
     if (index < 0 || index >= nodeLength) {
         return JSTaggedValue::Undefined();
     }
-    return singleList->Get(index);
+    return singleList->Get(thread, index);
 }
 
 JSTaggedValue JSAPIList::FastGet(JSThread *thread, const int index, const JSHandle<JSAPIList> &list)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     if (index < 0 || index >= singleList->Length()) {
         return JSTaggedValue::Undefined();
     }
@@ -122,26 +122,26 @@ JSTaggedValue JSAPIList::FastGet(JSThread *thread, const int index, const JSHand
         }
         list->SetSingleList(thread, newSingleList);
         list->SetIsOrderedList(true);
-        return newList->GetElement(dataIndex);
+        return newList->GetElement(thread, dataIndex);
     }
-    return singleList->GetElement(dataIndex);
+    return singleList->GetElement(thread, dataIndex);
 }
 
-JSTaggedValue JSAPIList::GetIndexOf(const JSTaggedValue &element)
+JSTaggedValue JSAPIList::GetIndexOf(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    return JSTaggedValue(singleList->GetIndexOf(element));
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
+    return JSTaggedValue(singleList->GetIndexOf(thread, element));
 }
 
-JSTaggedValue JSAPIList::GetLastIndexOf(const JSTaggedValue &element)
+JSTaggedValue JSAPIList::GetLastIndexOf(const JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    return JSTaggedValue(singleList->GetLastIndexOf(element));
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
+    return JSTaggedValue(singleList->GetLastIndexOf(thread, element));
 }
 
 void JSAPIList::Clear(JSThread *thread)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
     if (singleList->NumberOfNodes() > 0) {
         singleList->Clear(thread);
     }
@@ -150,7 +150,7 @@ void JSAPIList::Clear(JSThread *thread)
 
 JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIList> &list, const int &index)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     int nodeLength = singleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -170,7 +170,7 @@ JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPILis
 
 JSTaggedValue JSAPIList::Remove(JSThread *thread, const JSTaggedValue &element)
 {
-    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+    TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject());
     SetIsOrderedList(false);
     return singleList->Remove(thread, element);
 }
@@ -180,7 +180,7 @@ JSTaggedValue JSAPIList::ReplaceAllElements(JSThread *thread, const JSHandle<JST
                                             const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(thisHandle);
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     return TaggedSingleList::ReplaceAllElements(thread, thisHandle, callbackFn, thisArg, singleList);
 }
 
@@ -188,27 +188,27 @@ JSTaggedValue JSAPIList::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &t
                               const JSHandle<JSTaggedValue> &callbackFn)
 {
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(thisHandle);
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     list->SetIsOrderedList(false);
     return TaggedSingleList::Sort(thread, callbackFn, singleList);
 }
 
 JSTaggedValue JSAPIList::Equal(JSThread *thread, const JSHandle<JSAPIList> &list)
 {
-    JSHandle<TaggedSingleList> compareList(thread, list->GetSingleList());
-    return TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->Equal(compareList);
+    JSHandle<TaggedSingleList> compareList(thread, list->GetSingleList(thread));
+    return TaggedSingleList::Cast(GetSingleList(thread).GetTaggedObject())->Equal(thread, compareList);
 }
 
 JSTaggedValue JSAPIList::ConvertToArray(const JSThread *thread, const JSHandle<JSAPIList> &list)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     return TaggedSingleList::ConvertToArray(thread, singleList);
 }
 
 JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> &list,
                                     const int fromIndex, const int toIndex)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     int nodeLength = singleList->Length();
     if (nodeLength <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
@@ -241,23 +241,23 @@ JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> 
 
 JSHandle<TaggedArray> JSAPIList::OwnKeys(JSThread *thread, const JSHandle<JSAPIList> &list)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     return TaggedSingleList::OwnKeys(thread, singleList);
 }
 
 bool JSAPIList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
-            + ConvertToString(*result);
+            + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     uint32_t length = static_cast<uint32_t>(singleList->Length());
     if (index >= length) {
         std::ostringstream oss;
@@ -266,14 +266,14 @@ bool JSAPIList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIList> &list
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
-    list->Get(index);
+    list->Get(thread, index);
     return true;
 }
 
 OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPIList> &list,
                                        const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
     int nodeLength = singleList->Length();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
@@ -299,14 +299,14 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, singleList->Get(index), PropertyMetaData(false));
+    return OperationResult(thread, singleList->Get(thread, index), PropertyMetaData(false));
 }
 
 bool JSAPIList::SetProperty(JSThread *thread, const JSHandle<JSAPIList> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<TaggedSingleList> singleList(thread, obj->GetSingleList());
+    JSHandle<TaggedSingleList> singleList(thread, obj->GetSingleList(thread));
     int nodeLength = singleList->Length();
     int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= nodeLength) {

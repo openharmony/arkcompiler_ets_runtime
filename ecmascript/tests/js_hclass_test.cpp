@@ -39,15 +39,15 @@ HWTEST_F_L0(JSHClassTest, InitializeClass)
     JSHandle<JSHClass> objectClass =
         factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
     // Get object properties
-    EXPECT_EQ(objectClass->GetLayout(), JSTaggedValue::Null());
-    EXPECT_EQ(objectClass->GetPrototype(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetLayout(thread), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetPrototype(thread), JSTaggedValue::Null());
     EXPECT_EQ(objectClass->GetObjectType(), JSType::TAGGED_ARRAY);
     EXPECT_TRUE(objectClass->IsExtensible());
     EXPECT_TRUE(!objectClass->IsPrototype());
-    EXPECT_EQ(objectClass->GetTransitions(), JSTaggedValue::Undefined());
-    EXPECT_EQ(objectClass->GetProtoChangeMarker(), JSTaggedValue::Null());
-    EXPECT_EQ(objectClass->GetProtoChangeDetails(), JSTaggedValue::Null());
-    EXPECT_EQ(objectClass->GetEnumCache(), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetTransitions(thread), JSTaggedValue::Undefined());
+    EXPECT_EQ(objectClass->GetProtoChangeMarker(thread), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetProtoChangeDetails(thread), JSTaggedValue::Null());
+    EXPECT_EQ(objectClass->GetEnumCache(thread), JSTaggedValue::Null());
 }
 
 HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
@@ -137,8 +137,9 @@ HWTEST_F_L0(JSHClassTest, Clone)
     EXPECT_TRUE(*cloneClass != nullptr);
     EXPECT_TRUE(objectClass->GetObjectSize() == cloneClass->GetObjectSize());
     EXPECT_EQ(cloneClass->GetObjectSize(), 64U); // 64 : 64 not missing the size of inlinedproperties
-    EXPECT_TRUE(objectClass->GetLayout() == cloneClass->GetLayout());
-    EXPECT_EQ(JSTaggedValue::SameValue(objectClass->GetPrototype(), cloneClass->GetPrototype()), true);
+    EXPECT_TRUE(objectClass->GetLayout(thread) == cloneClass->GetLayout(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, objectClass->GetPrototype(thread), cloneClass->GetPrototype(thread)),
+              true);
     EXPECT_TRUE(objectClass->GetBitField() == cloneClass->GetBitField());
     EXPECT_TRUE(objectClass->GetBitField1() == cloneClass->GetBitField1());
     EXPECT_TRUE(objectClass->NumberOfProps() == cloneClass->NumberOfProps());
@@ -148,8 +149,9 @@ HWTEST_F_L0(JSHClassTest, Clone)
     EXPECT_TRUE(*cloneClass != nullptr);
     EXPECT_TRUE(objectClass->GetObjectSize() > cloneClass->GetObjectSize());
     EXPECT_EQ(cloneClass->GetObjectSize(), 32U); // 32 : 32 missing the size of inlinedproperties
-    EXPECT_TRUE(objectClass->GetLayout() == cloneClass->GetLayout());
-    EXPECT_EQ(JSTaggedValue::SameValue(objectClass->GetPrototype(), cloneClass->GetPrototype()), true);
+    EXPECT_TRUE(objectClass->GetLayout(thread) == cloneClass->GetLayout(thread));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, objectClass->GetPrototype(thread), cloneClass->GetPrototype(thread)),
+              true);
     EXPECT_TRUE(objectClass->GetBitField() == cloneClass->GetBitField());
     EXPECT_TRUE(objectClass->GetBitField1() > cloneClass->GetBitField1());
     EXPECT_TRUE(objectClass->NumberOfProps() == cloneClass->NumberOfProps());
@@ -181,7 +183,7 @@ HWTEST_F_L0(JSHClassTest, TransitionElementsToDictionary)
     ElementsKind oldKind = jsObject->GetJSHClass()->GetElementsKind();
     JSHClass::TransitionElementsToDictionary(thread, jsObject);
     JSObject::TryMigrateToGenericKindForJSObject(thread, jsObject, oldKind);
-    auto resultDict = NameDictionary::Cast(jsObject->GetProperties().GetTaggedObject());
+    auto resultDict = NameDictionary::Cast(jsObject->GetProperties(thread).GetTaggedObject());
     EXPECT_TRUE(resultDict != nullptr);
     EXPECT_EQ(resultDict->EntriesCount(), 3); // 3 : 3 entry
 
@@ -229,7 +231,7 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_001)
     JSHandle<JSObject> childObj = factory->NewJSObject(childClass);
 
     std::vector<JSTaggedValue> keyVector;
-    JSObject::GetAllKeysForSerialization(childObj, keyVector);
+    JSObject::GetAllKeysForSerialization(thread, childObj, keyVector);
     EXPECT_EQ(keyVector.size(), 3U);
     EXPECT_TRUE(JSObject::HasProperty(thread, childObj, keyHandle0));
     EXPECT_TRUE(JSObject::HasProperty(thread, childObj, keyHandle2));
@@ -291,7 +293,7 @@ HWTEST_F_L0(JSHClassTest, AddProperty)
     }
     EXPECT_TRUE(objClass1 == objClass);
     std::vector<JSTaggedValue> keyVector;
-    JSObject::GetAllKeysForSerialization(Obj, keyVector);
+    JSObject::GetAllKeysForSerialization(thread, Obj, keyVector);
     EXPECT_EQ(keyVector.size(), 3U);
     EXPECT_TRUE(JSObject::HasProperty(thread, Obj, keyHandle0));
     EXPECT_TRUE(JSObject::HasProperty(thread, Obj, keyHandle1));
@@ -326,10 +328,10 @@ HWTEST_F_L0(JSHClassTest, TransitionExtension)
     // obj has no key "PreventExtensions"
     JSHandle<JSHClass> newClass2 = JSHClass::TransitionExtension(thread, obj2Class);
     EXPECT_FALSE(newClass2->IsExtensible());
-    JSHandle<TransitionsDictionary> dictionary(thread, obj2Class->GetTransitions());
+    JSHandle<TransitionsDictionary> dictionary(thread, obj2Class->GetTransitions(thread));
     // find key
     std::vector<JSTaggedValue> keyVector;
-    dictionary->GetAllKeysIntoVector(keyVector);
+    dictionary->GetAllKeysIntoVector(thread, keyVector);
     EXPECT_TRUE((keyVector[0] == keyHandle0.GetTaggedValue()) || (keyVector[0] == preExtensionsKey.GetTaggedValue()));
     EXPECT_TRUE((keyVector[1] == keyHandle0.GetTaggedValue()) || (keyVector[1] == preExtensionsKey.GetTaggedValue()));
 }
@@ -359,11 +361,11 @@ HWTEST_F_L0(JSHClassTest, TransitionProto)
     JSHClass::AddProperty(thread, Obj, obj3Key, attr);
     JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, objClass, funcPrototype);
-    EXPECT_EQ(newClass->GetPrototype(), funcPrototype.GetTaggedValue());
-    JSHandle<TransitionsDictionary> transitionDictionary(thread, objClass->GetTransitions());
+    EXPECT_EQ(newClass->GetPrototype(thread), funcPrototype.GetTaggedValue());
+    JSHandle<TransitionsDictionary> transitionDictionary(thread, objClass->GetTransitions(thread));
     // find key
     std::vector<JSTaggedValue> keyVector;
-    transitionDictionary->GetAllKeysIntoVector(keyVector);
+    transitionDictionary->GetAllKeysIntoVector(thread, keyVector);
     EXPECT_EQ(keyVector.size(), 2U);
     EXPECT_EQ(keyVector[0], obj1Key.GetTaggedValue());
     EXPECT_EQ(keyVector[1], prototypeKey.GetTaggedValue());
@@ -401,11 +403,11 @@ HWTEST_F_L0(JSHClassTest, TransitionToDictionary)
     JSObject::TransitionToDictionary(thread, Obj2);
     // refresh users
     JSHandle<JSHClass> obj1Class(thread, Obj1->GetJSHClass());
-    JSTaggedValue protoDetails = obj1Class->GetProtoChangeDetails();
+    JSTaggedValue protoDetails = obj1Class->GetProtoChangeDetails(thread);
     EXPECT_TRUE(protoDetails.IsProtoChangeDetails());
-    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetails.GetTaggedObject())->GetChangeListener();
+    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetails.GetTaggedObject())->GetChangeListener(thread);
     JSHandle<ChangeListener> listeners(thread, listenersValue.GetTaggedObject());
-    uint32_t holeIndex = ChangeListener::CheckHole(listeners);
+    uint32_t holeIndex = ChangeListener::CheckHole(thread, listeners);
     EXPECT_TRUE(holeIndex == 0U);
     // new class
     JSHandle<JSHClass> newClass(thread, Obj2->GetClass());
@@ -431,8 +433,8 @@ HWTEST_F_L0(JSHClassTest, UpdatePropertyMetaData)
     JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     // update metaData
     objClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(objClass->GetLayout().GetTaggedObject());
-    EXPECT_EQ(layoutInfo->GetAttr(oldAttr.GetOffset()).GetPropertyMetaData(), newAttr.GetPropertyMetaData());
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(objClass->GetLayout(thread).GetTaggedObject());
+    EXPECT_EQ(layoutInfo->GetAttr(thread, oldAttr.GetOffset()).GetPropertyMetaData(), newAttr.GetPropertyMetaData());
 }
 
 HWTEST_F_L0(JSHClassTest, SetPrototype)
@@ -444,9 +446,9 @@ HWTEST_F_L0(JSHClassTest, SetPrototype)
     JSHandle<JSTaggedValue> objectFuncPrototype = env->GetObjectFunctionPrototype();
 
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    EXPECT_EQ(objectClass->GetPrototype(), nullHandle.GetTaggedValue());
+    EXPECT_EQ(objectClass->GetPrototype(thread), nullHandle.GetTaggedValue());
     objectClass->SetPrototype(thread, objectFuncPrototype);
-    EXPECT_EQ(objectClass->GetPrototype(), objectFuncPrototype.GetTaggedValue());
+    EXPECT_EQ(objectClass->GetPrototype(thread), objectFuncPrototype.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSHClassTest, ProxyHClassClone)
@@ -470,6 +472,6 @@ HWTEST_F_L0(JSHClassTest, ProxyHClassClone)
     EXPECT_EQ(newHClass->GetObjectSize(), hclass->GetObjectSize());
     EXPECT_EQ(newHClass->GetInlinedPropsStartSize(), hclass->GetInlinedPropsStartSize());
     EXPECT_EQ(newHClass->GetInlinedProperties(), hclass->GetInlinedProperties());
-    EXPECT_EQ(newHClass->GetLayout(), hclass->GetLayout());
+    EXPECT_EQ(newHClass->GetLayout(thread), hclass->GetLayout(thread));
 }
 }  // namespace panda::test

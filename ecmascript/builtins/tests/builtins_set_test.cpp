@@ -138,7 +138,7 @@ HWTEST_F_L0(BuiltinsSetTest, CreateAndGetSize)
         JSTaggedValue result1 = BuiltinsSet::SetConstructor(ecmaRuntimeCallInfo1);
         TestHelper::TearDownFrame(thread, prev);
 
-        EXPECT_EQ(JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()))->GetSize(), 5);
+        EXPECT_EQ(JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()))->GetSize(thread), 5);
     }
 }
 
@@ -164,7 +164,7 @@ HWTEST_F_L0(BuiltinsSetTest, AddAndHas)
     JSTaggedValue result2 = BuiltinsSet::Add(ecmaRuntimeCallInfo);
     EXPECT_TRUE(result2.IsECMAObject());
     JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result2.GetRawData()));
-    EXPECT_EQ(jsSet->GetSize(), 1);
+    EXPECT_EQ(jsSet->GetSize(thread), 1);
 
     // test Has()
     JSTaggedValue jsSetTag(jsSet);
@@ -201,7 +201,7 @@ HWTEST_F_L0(BuiltinsSetTest, ForEach)
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsSet->GetSize(), static_cast<int>(i) + 1);
+        EXPECT_EQ(jsSet->GetSize(thread), static_cast<int>(i) + 1);
     }
     // test foreach
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
@@ -238,7 +238,7 @@ HWTEST_F_L0(BuiltinsSetTest, DeleteAndRemove)
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSSet *jsSet = JSSet::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsSet->GetSize(), static_cast<int>(i) + 1);
+        EXPECT_EQ(jsSet->GetSize(thread), static_cast<int>(i) + 1);
     }
     // whether jsSet has delete key
     keyArray[3] = '1' + 8;
@@ -271,7 +271,7 @@ HWTEST_F_L0(BuiltinsSetTest, DeleteAndRemove)
     // clear
     JSTaggedValue result6 = BuiltinsSet::Clear(ecmaRuntimeCallInfo1);
     EXPECT_EQ(result6.GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
-    EXPECT_EQ(set->GetSize(), 0);
+    EXPECT_EQ(set->GetSize(thread), 0);
 }
 
 HWTEST_F_L0(BuiltinsSetTest, Species)
@@ -294,10 +294,10 @@ HWTEST_F_L0(BuiltinsSetTest, Species)
     JSHandle<EcmaString> stringTag(JSObject::GetProperty(thread, set, toStringTagSymbol).GetValue());
     JSHandle<EcmaString> str = factory->NewFromASCII("Set");
     EXPECT_TRUE(!stringTag.GetTaggedValue().IsUndefined());
-    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*str, *stringTag));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *str, *stringTag));
 
     JSHandle<JSFunction> constructor = JSHandle<JSFunction>::Cast(JSTaggedValue::ToObject(thread, valueHandle));
-    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, set), constructor->GetFunctionPrototype());
+    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, set), constructor->GetFunctionPrototype(thread));
 
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("add"));
     JSTaggedValue value1 = JSObject::GetProperty(thread, set, key1).GetValue().GetTaggedValue();
@@ -338,7 +338,7 @@ HWTEST_F_L0(BuiltinsSetTest, GetIterator)
     JSHandle<JSSetIterator> iter(thread, result);
     EXPECT_TRUE(iter->IsJSSetIterator());
     EXPECT_EQ(IterationKind::VALUE, IterationKind(iter->GetIterationKind()));
-    EXPECT_EQ(JSSet::Cast(set.GetTaggedValue().GetTaggedObject())->GetLinkedSet(), iter->GetIteratedSet());
+    EXPECT_EQ(JSSet::Cast(set.GetTaggedValue().GetTaggedObject())->GetLinkedSet(thread), iter->GetIteratedSet(thread));
 
     // test entries()
     JSTaggedValue result2 = BuiltinsSet::Entries(ecmaRuntimeCallInfo);

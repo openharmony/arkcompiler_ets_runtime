@@ -114,11 +114,11 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_AddAndGetKeyAtAndClear)
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
 
         // test getKeyAt
-        JSTaggedValue gvalue = array->GetKeyAt(i);
+        JSTaggedValue gvalue = array->GetKeyAt(thread, i);
         EXPECT_EQ(gvalue, key.GetTaggedValue());
     }
-    EXPECT_EQ(array->GetKeyAt(-1), JSTaggedValue::Undefined());
-    EXPECT_EQ(array->GetKeyAt(NODE_NUMBERS), JSTaggedValue::Undefined());
+    EXPECT_EQ(array->GetKeyAt(thread, -1), JSTaggedValue::Undefined());
+    EXPECT_EQ(array->GetKeyAt(thread, NODE_NUMBERS), JSTaggedValue::Undefined());
     // test clear
     array->Clear(thread);
     EXPECT_EQ(array->GetSize(), 0); // 0 means the value
@@ -152,14 +152,15 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_CloneAndHasAndGet)
     // test has
     key.Update(JSTaggedValue(103)); // 103 means the value
     int32_t lkey = 103;
-    bool result = array->Has(lkey);
+    bool result = array->Has(thread, lkey);
     EXPECT_TRUE(result);
-    EXPECT_FALSE(array->Has(lkey * 2));
+    EXPECT_FALSE(array->Has(thread, lkey * 2));
 
     // test get
     myValue = std::string("myvalue3");
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
-    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array->Get(key.GetTaggedValue())), value));
+    EXPECT_TRUE(
+        JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array->Get(thread, key.GetTaggedValue())), value));
 }
 
 HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndRemoveRangeFrom)
@@ -169,16 +170,16 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndR
     auto array = GetIndexOfKeyAndGeIndexOfValueGetArray(value, NODE_NUMBERS);
     value.Update(JSTaggedValue(103)); // 103 means the value
     int32_t lvalue = 103;
-    JSTaggedValue value2 = array->GetIndexOfKey(lvalue);
+    JSTaggedValue value2 = array->GetIndexOfKey(thread, lvalue);
     EXPECT_EQ(value2.GetNumber(), 3); // 3 means the value
-    EXPECT_EQ(array->GetIndexOfKey(lvalue * 2), JSTaggedValue(-1));
+    EXPECT_EQ(array->GetIndexOfKey(thread, lvalue * 2), JSTaggedValue(-1));
 
     std::string myValue = "myvalue2";
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
-    JSTaggedValue value3 = array->GetIndexOfValue(value.GetTaggedValue());
+    JSTaggedValue value3 = array->GetIndexOfValue(thread, value.GetTaggedValue());
     EXPECT_EQ(value3.GetNumber(), 2); // 2 means the value
-    EXPECT_EQ(array->GetIndexOfValue(JSTaggedValue(0)), JSTaggedValue(-1));
+    EXPECT_EQ(array->GetIndexOfValue(thread, JSTaggedValue(0)), JSTaggedValue(-1));
 
     value.Update(JSTaggedValue(1));
     int32_t batchSize = 3; // 3 means the value

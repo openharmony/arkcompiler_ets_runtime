@@ -84,7 +84,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ObjectConstructor)
     ASSERT_TRUE(result.IsECMAObject());
     JSHandle<JSObject> jtHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(result.GetRawData())));
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(jtHandle));
-    JSTaggedValue funcProto = objectFunc->GetFunctionPrototype();
+    JSTaggedValue funcProto = objectFunc->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
     ASSERT_TRUE(jtHandle->IsExtensible());
 
@@ -103,7 +103,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ObjectConstructor)
     ASSERT_TRUE(resultTg.IsObject());
     JSHandle<JSObject> jtHandleTg(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(resultTg.GetRawData())));
     JSTaggedValue resultProtoTg = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(jtHandleTg));
-    JSTaggedValue funcProtoTg = objectFunc->GetFunctionPrototype();
+    JSTaggedValue funcProtoTg = objectFunc->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProtoTg, funcProtoTg);
     ASSERT_TRUE(jtHandleTg->IsExtensible());
 
@@ -124,7 +124,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ObjectConstructor)
     ASSERT_TRUE(resultVn.IsObject());
     JSHandle<JSObject> jtHandleVn(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(resultVn.GetRawData())));
     JSTaggedValue resultProtoVn = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(jtHandleVn));
-    JSTaggedValue funcProtoVn = objectFunc->GetFunctionPrototype();
+    JSTaggedValue funcProtoVn = objectFunc->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProtoVn, funcProtoVn);
     ASSERT_TRUE(jtHandleVn->IsExtensible());
 }
@@ -169,7 +169,7 @@ HWTEST_F_L0(BuiltinsObjectTest, Create)
 {
     JSHandle<JSTaggedValue> function(thread, BuiltinsObjectTestCreate(thread));
     JSHandle<JSFunction> objectFunc(thread, BuiltinsObjectTestCreate(thread));
-    JSHandle<JSTaggedValue> funcProto(thread, objectFunc->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> funcProto(thread, objectFunc->GetFunctionPrototype(thread));
 
     // no prop
     auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -358,7 +358,7 @@ HWTEST_F_L0(BuiltinsObjectTest, GetOwnPropertyDescriptor)
     JSTaggedValue jt(reinterpret_cast<TaggedObject *>(result.GetRawData()));
     PropertyDescriptor desc(thread);
     JSObject::GetOwnProperty(thread, JSHandle<JSObject>(thread, jt), writableStr, desc);
-    ASSERT_TRUE(JSTaggedValue::SameValue(desc.GetValue().GetTaggedValue(), JSTaggedValue(true)));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, desc.GetValue().GetTaggedValue(), JSTaggedValue(true)));
 }
 
 // 19.1.2.7 Object.getOwnPropertyNames ( O )

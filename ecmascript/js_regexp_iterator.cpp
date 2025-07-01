@@ -49,8 +49,8 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
     // 6. Let S be O.[[IteratedString]].
     // 7. Let global be O.[[Global]].
     // 8. Let fullUnicode be O.[[Unicode]].
-    JSHandle<JSTaggedValue> regexp(thread, jsIterator->GetIteratingRegExp());
-    JSHandle<JSTaggedValue> inputStr(thread, jsIterator->GetIteratedString());
+    JSHandle<JSTaggedValue> regexp(thread, jsIterator->GetIteratingRegExp(thread));
+    JSHandle<JSTaggedValue> inputStr(thread, jsIterator->GetIteratedString(thread));
     bool global = jsIterator->GetGlobal();
     bool fullUnicode = jsIterator->GetUnicode();
 
@@ -94,7 +94,7 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
         uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, regexp, isFastPath));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         uint32_t nextIndex = static_cast<uint32_t>(
-            BuiltinsRegExp::AdvanceStringIndex(inputStr, lastIndex, fullUnicode));
+            BuiltinsRegExp::AdvanceStringIndex(thread, inputStr, lastIndex, fullUnicode));
         BuiltinsRegExp::SetLastIndex(thread, regexp, JSTaggedValue(nextIndex), isFastPath);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }

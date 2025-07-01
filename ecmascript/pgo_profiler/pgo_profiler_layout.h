@@ -313,10 +313,11 @@ public:
     HClassLayoutDesc *GetHClassLayoutDesc(ProfileType type) const;
     HClassLayoutDesc *GetOrInsertHClassLayoutDesc(ProfileType type, bool root = false);
 
-    bool DumpForRoot(JSTaggedType root, ProfileType rootType);
-    bool DumpForChild(JSTaggedType child, ProfileType childType);
-    bool UpdateForTransition(JSTaggedType parent, ProfileType parentType, JSTaggedType child, ProfileType childType);
-    bool UpdateLayout(JSTaggedType curHClass, ProfileType curType);
+    bool DumpForRoot(const JSThread *thread, JSTaggedType root, ProfileType rootType);
+    bool DumpForChild(const JSThread *thread, JSTaggedType child, ProfileType childType);
+    bool UpdateForTransition(const JSThread *thread, JSTaggedType parent, ProfileType parentType,
+        JSTaggedType child, ProfileType childType);
+    bool UpdateLayout(const JSThread *thread, JSTaggedType curHClass, ProfileType curType);
     bool IsDumped(ProfileType curType) const;
 
     template<typename Callback>

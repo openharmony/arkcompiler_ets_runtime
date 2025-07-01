@@ -339,7 +339,8 @@ HWTEST_F_L0(JSNApiTests, GetKind_entries_values_keys)
     JSHandle<JSTaggedValue> jsMapIteratorTag =
         JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY_AND_VALUE);
     JSHandle<JSMapIterator> jsMapIterator(jsMapIteratorTag);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator->GetIteratedMap(), jsMap->GetLinkedMap()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsMapIterator->GetIteratedMap(thread), jsMap->GetLinkedMap(thread)),
+              true);
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
     EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString(vm_));
@@ -378,7 +379,8 @@ HWTEST_F_L0(JSNApiTests, GetKind_001)
     JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(jsMap);
     JSHandle<JSTaggedValue> jsMapIteratorTag1 = JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY);
     JSHandle<JSMapIterator> jsMapIterator1(jsMapIteratorTag1);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator1->GetIteratedMap(), jsMap->GetLinkedMap()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsMapIterator1->GetIteratedMap(thread), jsMap->GetLinkedMap(thread)),
+              true);
     Local<MapIteratorRef> mapIterator1 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag1);
     Local<JSValueRef> res1 = mapIterator1->GetKind(vm_);
     EXPECT_EQ(keysResult, res1->ToString(vm_)->ToString(vm_));
@@ -408,7 +410,8 @@ HWTEST_F_L0(JSNApiTests, GetKind_002)
     JSHandle<JSTaggedValue> mapTag = JSHandle<JSTaggedValue>::Cast(jsMap);
     JSHandle<JSTaggedValue> jsMapIteratorTag2 = JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::VALUE);
     JSHandle<JSMapIterator> jsMapIterator2(jsMapIteratorTag2);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator2->GetIteratedMap(), jsMap->GetLinkedMap()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsMapIterator2->GetIteratedMap(thread), jsMap->GetLinkedMap(thread)),
+              true);
     Local<MapIteratorRef> mapIterator2 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag2);
     Local<JSValueRef> res2 = mapIterator2->GetKind(vm_);
     EXPECT_EQ(valuesResult, res2->ToString(vm_)->ToString(vm_));
@@ -444,7 +447,8 @@ HWTEST_F_L0(JSNApiTests, GetKind_003)
     JSHandle<JSTaggedValue> jsMapIteratorTag =
         JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY_AND_VALUE);
     JSHandle<JSMapIterator> jsMapIterator(jsMapIteratorTag);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator->GetIteratedMap(), jsMap->GetLinkedMap()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsMapIterator->GetIteratedMap(thread), jsMap->GetLinkedMap(thread)),
+              true);
     // 将jsMapIteratorTag转换为本地代码可以使用的MapIteratorRef类型
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
@@ -490,7 +494,7 @@ HWTEST_F_L0(JSNApiTests, NewClassFunction)
     ASSERT_TRUE(obj->IsClassConstructor());
     // GetPropertyInlinedProps方法获取内联属性的方法,CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX类原型的内联属性索引
     JSTaggedValue res =
-        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(thread_, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     // 断言获取的属性是一个内部访问器
     ASSERT_TRUE(res.IsInternalAccessor());
 }
@@ -1120,7 +1124,8 @@ HWTEST_F_L0(JSNApiTests, JSSetIterator_IsSetIterator_GetIndex_GetKind)
     JSHandle<JSTaggedValue> jsTagSetIterator =
         JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
     JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsSetIterator1->GetIteratedSet(thread), jsSet->GetLinkedSet(thread)),
+              true);
     Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
     EXPECT_TRUE(setIterator->IsSetIterator(vm_));
     EXPECT_EQ(setIterator->GetIndex(), 0U);
@@ -1150,7 +1155,8 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsMapIterator)
     JSHandle<JSTaggedValue> jsMapIteratorTag =
         JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY_AND_VALUE);
     JSHandle<JSMapIterator> jsMapIterator(jsMapIteratorTag);
-    EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator->GetIteratedMap(), jsMap->GetLinkedMap()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, jsMapIterator->GetIteratedMap(thread), jsMap->GetLinkedMap(thread)),
+              true);
     Local<JSValueRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
 }
@@ -1171,7 +1177,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsModuleNamespaceObject)
     SourceTextModule::AddLocalExportEntry(thread_, module, localExportEntry1, 0, 2);
     JSHandle<LocalExportEntry> localExportEntry2 = objectFactory->NewLocalExportEntry();
     SourceTextModule::AddLocalExportEntry(thread_, module, localExportEntry2, 1, 2);
-    JSHandle<TaggedArray> localExportEntries(thread_, module->GetLocalExportEntries());
+    JSHandle<TaggedArray> localExportEntries(thread_, module->GetLocalExportEntries(thread_));
     CString baseFileName = "a.abc";
     module->SetEcmaModuleFilenameString(baseFileName);
     ModuleManager *moduleManager = thread_->GetModuleManager();
@@ -1986,7 +1992,7 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase0)
     // The GetPropertyInlinedProps method gets the method of an inline property,
     // CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX is the inline property index of the class prototype.
     JSTaggedValue res =
-        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
+        JSHandle<JSFunction>(obj)->GetPropertyInlinedProps(thread_, JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX);
     // The property that the assertion gets is an internal accessor
     ASSERT_TRUE(res.IsInternalAccessor());
     Local<StringRef> funcName = cls->GetName(vm_);
@@ -2031,7 +2037,8 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase1)
 
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     JSHandle<JSFunction> clsFunc(obj);
-    JSHandle<JSObject> clsPrototype(thread_, clsFunc->GetProtoOrHClass());
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSObject> clsPrototype(thread_, clsFunc->GetProtoOrHClass(thread));
     JSHandle<JSHClass> clsFuncHClass(thread_, clsFunc->GetJSHClass());
     JSHandle<JSHClass> clsProtoHClass(thread_, clsPrototype->GetJSHClass());
     uint32_t clsInlPropNum = clsFuncHClass->GetInlinedProperties();
@@ -2055,7 +2062,7 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase1)
             ASSERT_EQ(realVal, expectedVals[i]);
         }
     }
-    JSHandle<JSTaggedValue> clsProtoVal(thread_, clsFunc->GetProtoOrHClass());
+    JSHandle<JSTaggedValue> clsProtoVal(thread_, clsFunc->GetProtoOrHClass(thread));
     for (size_t i = 0; i < nonStaticPropCount; ++i) {
         size_t trueIdx = PROPERTY_COUNT_CASE1 - 1 - i;
         auto realProp = JSObject::GetProperty(thread_, clsProtoVal, JSNApiHelper::ToJSHandle(keys[trueIdx])).GetValue();

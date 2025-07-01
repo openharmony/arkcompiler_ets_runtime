@@ -479,10 +479,10 @@ uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)
     return ElementSize::EIGHT;
 }
 
-bool TypedArrayHelper::IsAccessorHasChanged(const JSHandle<JSTaggedValue> &obj)
+bool TypedArrayHelper::IsAccessorHasChanged(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (obj->IsHeapObject()) {
-        JSTaggedValue markerValue = obj->GetTaggedObject()->GetClass()->GetProtoChangeMarker();
+        JSTaggedValue markerValue = obj->GetTaggedObject()->GetClass()->GetProtoChangeMarker(thread);
         if (markerValue.IsProtoChangeMarker()) {
             return ProtoChangeMarker::Cast(markerValue.GetTaggedObject())->GetAccessorHasChanged();
         }

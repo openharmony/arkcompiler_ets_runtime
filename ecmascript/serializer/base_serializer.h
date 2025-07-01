@@ -44,6 +44,10 @@ public:
         return std::move(data_);
     }
 
+    JSThread *GetThread()
+    {
+        return thread_;
+    }
 protected:
     template <SerializeType serializeType>
     class SerializeObjectFieldVisitor final : public BaseObjectVisitor<SerializeObjectFieldVisitor<serializeType>> {

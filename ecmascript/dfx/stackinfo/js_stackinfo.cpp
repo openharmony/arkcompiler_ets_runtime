@@ -45,13 +45,13 @@ bool IsFastJitFunctionFrame(uintptr_t frameType)
            static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
-std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
-                                          bool enableStackSourceFile)
+std::string JsStackInfo::BuildMethodTrace(const JSThread *thread, Method *method, uint32_t pcOffset,
+                                          LastBuilderCache &lastCache, bool enableStackSourceFile)
 {
     std::string data;
     data.reserve(InitialLength);
     data.append("    at ");
-    std::string name = method->ParseFunctionName();
+    std::string name = method->ParseFunctionName(thread);
     if (name.empty()) {
         data.append("anonymous (");
     } else {
@@ -59,7 +59,7 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, Las
     }
     // source file
     DebugInfoExtractor *debugExtractor = nullptr;
-    const JSPandaFile *pandaFile = method->GetJSPandaFile();
+    const JSPandaFile *pandaFile = method->GetJSPandaFile(thread);
     if (pandaFile == lastCache.pf) {
         debugExtractor = lastCache.extractor;
     } else {
@@ -148,9 +148,9 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
                         uintptr_t offset)
 {
     ASSERT(!jsErrorObj.GetTaggedValue().IsUndefined());
-    JSTaggedValue machineCodeTagVal = func->GetMachineCode();
+    JSTaggedValue machineCodeTagVal = func->GetMachineCode(thread);
     MachineCode *machineCode = MachineCode::Cast(machineCodeTagVal.GetTaggedObject());
-    std::string methodName = method->ParseFunctionName();
+    std::string methodName = method->ParseFunctionName(thread);
     if (methodName.empty()) {
         methodName = "anonymous";
     }
@@ -187,7 +187,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
             if (needBaselineSpecialHandling) {
                 // the pcOffste in baseline frame slot is always uint64::max(), so pcOffset should be computed
                 JSHandle<JSFunction> function(thread, it.GetFunction());
-                pcOffset = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(function, baselineNativePc);
+                pcOffset = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(thread, function, baselineNativePc);
                 baselineNativePc = 0;
             }
             data += BuildJsStackTraceInfo(thread, method, it, jsErrorObj, lastCache,
@@ -227,9 +227,9 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
     it.GetStackTraceInfos(stackTraceInfos, needBaselineSpecialHandling, pcOffset);
     std::string data;
     for (auto &info : stackTraceInfos) {
-        Method *methodInline = ECMAObject::Cast(reinterpret_cast<TaggedObject *>(info.first))->GetCallTarget();
+        Method *methodInline = ECMAObject::Cast(reinterpret_cast<TaggedObject *>(info.first))->GetCallTarget(thread);
         uint32_t pcOffsetInline = info.second;
-        data += BuildMethodTrace(methodInline, pcOffsetInline, lastCache,
+        data += BuildMethodTrace(thread, methodInline, pcOffsetInline, lastCache,
                                  thread->GetEnableStackSourceFile());
     }
     return data;
@@ -273,7 +273,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
         }
         struct JsFrameInfo frameInfo;
         if (!method->IsNativeWithCallField()) {
-            std::string name = method->ParseFunctionName();
+            std::string name = method->ParseFunctionName(thread);
             if (name.empty()) {
                 frameInfo.functionName = "anonymous";
             } else {
@@ -281,7 +281,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
             }
             // source file
             DebugInfoExtractor *debugExtractor =
-                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile(thread));
             const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
             if (sourceFile.empty()) {
                 frameInfo.fileName = "?";

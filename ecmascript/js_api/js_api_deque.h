@@ -57,21 +57,21 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIDeque> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
-    JSTaggedValue GetFront();
+    JSTaggedValue GetFront(const JSThread *thread);
 
-    JSTaggedValue GetTail();
+    JSTaggedValue GetTail(const JSThread *thread);
 
     JSTaggedValue PopFirst(JSThread *thread);
 
     JSTaggedValue PopLast(JSThread *thread);
 
-    JSTaggedValue Get(const uint32_t index);
+    JSTaggedValue Get(const JSThread *thread, const uint32_t index);
 
     JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
 
-    uint32_t GetSize() const;
+    uint32_t GetSize(const JSThread *thread) const;
 
-    bool Has(JSTaggedValue value) const;
+    bool Has(const JSThread *thread, JSTaggedValue value) const;
 
     static constexpr size_t FIRST_OFFSET = JSObject::SIZE;
     ACCESSORS_PRIMITIVE_FIELD(First, uint32_t, FIRST_OFFSET, LAST_OFFSET)

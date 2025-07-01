@@ -131,7 +131,8 @@ private:
     template<typename T1, typename T2>
     static uint32_t CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
                                                 const T2 *dataSecond, size_t sizeSecond);
-    static uint32_t CalculateConcatHashCode(const JSHandle<EcmaString> &firstString,
+    static uint32_t CalculateConcatHashCode(const JSThread *thread,
+                                            const JSHandle<EcmaString> &firstString,
                                             const JSHandle<EcmaString> &secondString);
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
         uint32_t length, bool compressed);
@@ -182,7 +183,7 @@ private:
         ToBaseString()->InitLengthAndFlags(length, compressed, isIntern);
     }
 
-    inline size_t GetUtf8Length(bool modify = true, bool isGetBufferSize = false) const;
+    inline size_t GetUtf8Length(const JSThread *thread, bool modify = true, bool isGetBufferSize = false) const;
 
     inline void SetIsInternString()
     {
@@ -206,24 +207,24 @@ private:
 
     // not change this data structure.
     // if string is not flat, this func has low efficiency.
-    uint32_t PUBLIC_API GetHashcode()
+    uint32_t PUBLIC_API GetHashcode(const JSThread *thread)
     {
         uint32_t hashcode = ToBaseString()->GetRawHashcode();
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
         if (hashcode == 0 && GetLength() != 0) {
-            hashcode = ComputeRawHashcode();
+            hashcode = ComputeRawHashcode(thread);
             SetRawHashcode(hashcode);
         }
         return hashcode;
     }
 
-    uint32_t PUBLIC_API ComputeRawHashcode() const;
+    uint32_t PUBLIC_API ComputeRawHashcode(const JSThread *thread) const;
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress);
     static uint32_t ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length);
 
     template<bool verify = true>
-    uint16_t At(int32_t index) const;
+    uint16_t At(const JSThread *thread, int32_t index) const;
 
     // require is LineString
     void WriteData(uint32_t index, uint16_t src);
@@ -243,32 +244,34 @@ private:
     }
 
     // Compares string1 + string2 by bytes, It doesn't check canonical unicode equivalence.
-    bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2);
+    bool EqualToSplicedString(const JSThread *thread, const EcmaString *str1, const EcmaString *str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     static PUBLIC_API bool StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &str1,
         const JSHandle<EcmaString> &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     template <RBMode mode = RBMode::DEFAULT_RB>
-    static PUBLIC_API bool StringsAreEqual(EcmaString* str1, EcmaString* str2)
+    static PUBLIC_API bool StringsAreEqual(const JSThread *thread, EcmaString *str1, EcmaString *str2)
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject<mode>(obj, offset);
+        auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+            return Barriers::GetTaggedObject<mode>(thread, obj, offset);
         };
         return BaseString::StringsAreEqual(std::move(readBarrier), str1->ToBaseString(), str2->ToBaseString());
     }
 
     // Two strings have the same type of utf encoding format.
-    static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2);
+    static bool StringsAreEqualDiffUtfEncoding(const JSThread *thread, EcmaString *str1, EcmaString *str2);
     static bool StringsAreEqualDiffUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+    static bool StringIsEqualUint8Data(const JSThread *thread,
+                                       const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
                                        bool canBeCompress);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len);
+    static bool StringsAreEqualUtf16(const JSThread *thread,
+                                     const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len);
 
     // can change receiver and search data structure
     static int32_t IndexOf(const EcmaVM *vm,
@@ -279,31 +282,32 @@ private:
         const JSHandle<EcmaString> &receiver, const JSHandle<EcmaString> &search, int pos = 0);
 
     // It allows user to copy into buffer even if maxLength < length
-    size_t WriteUtf8(uint8_t *buf, size_t maxLength, bool isWriteBuffer = false) const;
+    size_t WriteUtf8(const JSThread *thread, uint8_t *buf, size_t maxLength, bool isWriteBuffer = false) const;
 
     // It allows user to copy into buffer even if maxLength < length
-    size_t WriteUtf16(uint16_t *buf, uint32_t targetLength, uint32_t bufLength) const;
+    size_t WriteUtf16(const JSThread *thread, uint16_t *buf, uint32_t targetLength, uint32_t bufLength) const;
 
-    size_t WriteOneByte(uint8_t *buf, size_t maxLength) const;
+    size_t WriteOneByte(const JSThread *thread, uint8_t *buf, size_t maxLength) const;
 
-    uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const;
+    uint32_t CopyDataUtf16(const JSThread *thread, uint16_t *buf, uint32_t maxLength) const;
 
-    std::u16string ToU16String(uint32_t len = 0);
+    std::u16string ToU16String(const JSThread *thread, uint32_t len = 0);
 
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false);
+    Span<const uint8_t> ToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf, bool modify = true,
+                                   bool cesu8 = false);
 
-    Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true);
+    Span<const uint8_t> DebuggerToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf, bool modify = true);
 
-    Span<const uint16_t> ToUtf16Span(CVector<uint16_t> &buf)
+    Span<const uint16_t> ToUtf16Span(const JSThread *thread, CVector<uint16_t> &buf)
     {
         Span<const uint16_t> str;
         uint32_t strLen = GetLength();
         if (UNLIKELY(IsUtf16())) {
-            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
+            const uint16_t *data = EcmaString::GetUtf16DataFlat(thread, this, buf);
             str = Span<const uint16_t>(data, strLen);
         } else {
             CVector<uint8_t> tmpBuf;
-            const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
+            const uint8_t *data = EcmaString::GetUtf8DataFlat(thread, this, tmpBuf);
             buf.reserve(strLen);
             auto utf16Len = common::utf_helper::ConvertRegionUtf8ToUtf16(data, buf.data(), strLen, strLen);
 #if !defined(NDEBUG)
@@ -316,10 +320,10 @@ private:
     }
 
     template <RBMode mode = RBMode::DEFAULT_RB>
-    void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
+    void WriteData(const JSThread *thread, EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject<mode>(obj, offset);
+        auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+            return Barriers::GetTaggedObject<mode>(thread, obj, offset);
         };
         ToBaseString()->WriteData(std::move(readBarrier), src->ToBaseString(), start, destSize, length);
     }
@@ -328,13 +332,13 @@ private:
     static bool CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len);
     static bool CanBeCompressed(const EcmaString *string);
 
-    bool PUBLIC_API ToElementIndex(uint32_t *index);
+    bool PUBLIC_API ToElementIndex(const JSThread *thread, uint32_t *index);
 
-    bool ToInt(int32_t *index, bool *negative);
+    bool ToInt(const JSThread *thread, int32_t *index, bool *negative);
 
     bool ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, const uint8_t *data);
 
-    bool PUBLIC_API ToTypedArrayIndex(uint32_t *index);
+    bool PUBLIC_API ToTypedArrayIndex(const JSThread *thread, uint32_t *index);
 
     template<typename T>
     static EcmaString *TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode);
@@ -351,7 +355,7 @@ private:
     template<typename T1, typename T2>
     static int32_t LastIndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_t pos);
 
-    bool IsFlat() const;
+    bool IsFlat(const JSThread *thread) const;
 
     bool IsLineString() const
     {
@@ -372,18 +376,20 @@ private:
     }
 
     template <typename Char>
-    static void WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength);
+    static void WriteToFlat(const JSThread *thread, EcmaString *src, Char *buf, uint32_t maxLength);
 
     template <typename Char>
-    static void WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length, uint32_t pos);
+    static void WriteToFlatWithPos(const JSThread *thread, EcmaString *src, Char *buf, uint32_t length, uint32_t pos);
 
-    static const uint8_t *PUBLIC_API GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf);
+    static const uint8_t *PUBLIC_API GetUtf8DataFlat(const JSThread *thread, const EcmaString *src,
+                                                     CVector<uint8_t> &buf);
 
-    static const uint8_t *PUBLIC_API GetNonTreeUtf8Data(const EcmaString *src);
+    static const uint8_t *PUBLIC_API GetNonTreeUtf8Data(const JSThread *thread, const EcmaString *src);
 
-    static const uint16_t *PUBLIC_API GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
+    static const uint16_t *PUBLIC_API GetUtf16DataFlat(const JSThread *thread, const EcmaString *src,
+                                                       CVector<uint16_t> &buf);
 
-    static const uint16_t *PUBLIC_API GetNonTreeUtf16Data(const EcmaString *src);
+    static const uint16_t *PUBLIC_API GetNonTreeUtf16Data(const JSThread *thread, const EcmaString *src);
 
     // string must be not flat
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
@@ -524,10 +530,10 @@ public:
         return ToSlicedString()->SetHasBackingStore(hasBackingStore);
     }
 
-    JSTaggedValue GetParent() const
+    JSTaggedValue GetParent(const JSThread* thread) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return JSTaggedValue(ToSlicedString()->GetParent<TaggedObject*>(std::move(readBarrier)));
     }
@@ -571,10 +577,10 @@ private:
 
     // Minimum length for a sliced string
     template<bool verify = true>
-    uint16_t Get(int32_t index) const
+    uint16_t Get(const JSThread *thread, int32_t index) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return ToSlicedString()->Get<verify>(std::move(readBarrier), index);
     }
@@ -613,10 +619,10 @@ public:
         return reinterpret_cast<TreeEcmaString*>(str);
     }
 
-    JSTaggedValue GetFirst() const
+    JSTaggedValue GetFirst(const JSThread *thread) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return JSTaggedValue(ToTreeString()->GetFirst<TaggedObject*>(std::move(readBarrier)));
     }
@@ -642,10 +648,10 @@ public:
         ToTreeString()->SetFirst(std::move(writeBarrier), value.GetTaggedObject());
     };
 
-    JSTaggedValue GetSecond() const
+    JSTaggedValue GetSecond(const JSThread *thread) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return JSTaggedValue(ToTreeString()->GetSecond<TaggedObject*>(std::move(readBarrier)));
     }
@@ -671,19 +677,19 @@ public:
         ToTreeString()->SetSecond(std::move(writeBarrier), value.GetTaggedObject());
     };
 
-    bool IsFlat() const
+    bool IsFlat(const JSThread *thread) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return ToTreeString()->IsFlat(std::move(readBarrier));
     }
 
     template<bool verify = true>
-    uint16_t Get(int32_t index) const
+    uint16_t Get(const JSThread *thread, int32_t index) const
     {
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
         };
         return ToTreeString()->Get<verify>(std::move(readBarrier), index);
     }
@@ -759,10 +765,11 @@ public:
 
     explicit EcmaStringAccessor(const JSHandle<EcmaString> &strHandle);
 
-    static uint32_t CalculateAllConcatHashCode(const JSHandle<EcmaString> &firstString,
+    static uint32_t CalculateAllConcatHashCode(const JSThread *thread,
+                                               const JSHandle<EcmaString> &firstString,
                                                const JSHandle<EcmaString> &secondString)
     {
-        return EcmaString::CalculateConcatHashCode(firstString, secondString);
+        return EcmaString::CalculateConcatHashCode(thread, firstString, secondString);
     }
 
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
@@ -843,7 +850,7 @@ public:
     }
 
     // require is LineString
-    inline size_t GetUtf8Length(bool isGetBufferSize = false) const;
+    inline size_t GetUtf8Length(const JSThread *thread, bool isGetBufferSize = false) const;
 
     size_t ObjectSize() const
     {
@@ -884,84 +891,86 @@ public:
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    std::u16string ToU16String(uint32_t len = 0)
+    std::u16string ToU16String(const JSThread *thread, uint32_t len = 0)
     {
-        return string_->ToU16String(len);
+        return string_->ToU16String(thread, len);
     }
 
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf)
+    Span<const uint8_t> ToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf)
     {
-        return string_->ToUtf8Span(buf);
+        return string_->ToUtf8Span(thread, buf);
     }
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    std::string ToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
+    std::string ToStdString(const JSThread *thread, StringConvertedUsage usage = StringConvertedUsage::PRINT);
 
     // this function convert for Utf8
-    CString Utf8ConvertToString();
+    CString Utf8ConvertToString(const JSThread *thread);
 
-    std::string DebuggerToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
+    std::string DebuggerToStdString(const JSThread *thread, StringConvertedUsage usage = StringConvertedUsage::PRINT);
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION, bool cesu8 = false);
+    CString ToCString(const JSThread *thread, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
+                      bool cesu8 = false);
 
 #if ENABLE_NEXT_OPTIMIZATION
-    void AppendToCString(CString &str);
-    void AppendToC16String(C16String &str);
+    void AppendToCString(const JSThread *thread, CString &str);
+    void AppendToC16String(const JSThread *thread, C16String &str);
 #endif
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
+    uint32_t WriteToFlatUtf8(const JSThread *thread, uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
     {
-        return string_->WriteUtf8(buf, maxLength, isWriteBuffer);
+        return string_->WriteUtf8(thread, buf, maxLength, isWriteBuffer);
     }
 
-    uint32_t WriteToUtf16(uint16_t *buf, uint32_t bufLength)
+    uint32_t WriteToUtf16(const JSThread *thread, uint16_t *buf, uint32_t bufLength)
     {
-        return string_->WriteUtf16(buf, GetLength(), bufLength);
+        return string_->WriteUtf16(thread, buf, GetLength(), bufLength);
     }
 
-    uint32_t WriteToOneByte(uint8_t *buf, uint32_t maxLength)
+    uint32_t WriteToOneByte(const JSThread *thread, uint8_t *buf, uint32_t maxLength)
     {
-        return string_->WriteOneByte(buf, maxLength);
+        return string_->WriteOneByte(thread, buf, maxLength);
     }
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    uint32_t WriteToFlatUtf16(uint16_t *buf, uint32_t maxLength) const
+    uint32_t WriteToFlatUtf16(const JSThread *thread, uint16_t *buf, uint32_t maxLength) const
     {
-        return string_->CopyDataUtf16(buf, maxLength);
+        return string_->CopyDataUtf16(thread, buf, maxLength);
     }
 
     template <typename Char>
-    static void WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length, uint32_t pos)
+    static void WriteToFlatWithPos(const JSThread *thread, EcmaString *src, Char *buf, uint32_t length, uint32_t pos)
     {
-        src->WriteToFlatWithPos(src, buf, length, pos);
+        src->WriteToFlatWithPos(thread, src, buf, length, pos);
     }
 
     template <typename Char>
-    static void WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
+    static void WriteToFlat(const JSThread *thread, EcmaString *src, Char *buf, uint32_t maxLength)
     {
-        src->WriteToFlat(src, buf, maxLength);
+        src->WriteToFlat(thread, src, buf, maxLength);
     }
 
     // require dst is LineString
     // not change src data structure.
     // if src is not flat, this func has low efficiency.
     template <RBMode mode = RBMode::DEFAULT_RB>
-    inline static void ReadData(EcmaString * dst, EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
+    inline static void ReadData(const JSThread *thread, EcmaString *dst, EcmaString *src, uint32_t start,
+                                uint32_t destSize, uint32_t length);
 
     // not change src data structure.
     // if src is not flat, this func has low efficiency.
     template<bool verify = true>
-    uint16_t Get(uint32_t index) const
+    uint16_t Get(const JSThread *thread, uint32_t index) const
     {
-        return string_->At<verify>(index);
+        return string_->At<verify>(thread, index);
     }
 
     // require string is LineString.
@@ -972,14 +981,14 @@ public:
 
     // not change src data structure.
     // if src is not flat, this func has low efficiency.
-    uint32_t GetHashcode()
+    uint32_t GetHashcode(const JSThread *thread)
     {
-        return string_->GetHashcode();
+        return string_->GetHashcode(thread);
     }
 
-    uint32_t ComputeHashcode()
+    uint32_t ComputeHashcode(const JSThread *thread)
     {
-        return string_->ComputeRawHashcode();
+        return string_->ComputeRawHashcode(thread);
     }
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
@@ -1029,39 +1038,41 @@ public:
     // not change str1 and str2 data structure.
     // if str1 or str2 is not flat, this func has low efficiency.
     template <RBMode mode = RBMode::DEFAULT_RB>
-    static bool StringsAreEqual(EcmaString *str1, EcmaString *str2)
+    static bool StringsAreEqual(const JSThread *thread, EcmaString *str1, EcmaString *str2)
     {
-        return EcmaString::StringsAreEqual<mode>(str1, str2);
+        return EcmaString::StringsAreEqual<mode>(thread, str1, str2);
     }
 
     // not change str1 and str2 data structure.
     // if str1 or str2 is not flat, this func has low efficiency.
-    static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2)
+    static bool StringsAreEqualDiffUtfEncoding(const JSThread *thread, EcmaString *str1, EcmaString *str2)
     {
-        return EcmaString::StringsAreEqualDiffUtfEncoding(str1, str2);
+        return EcmaString::StringsAreEqualDiffUtfEncoding(thread, str1, str2);
     }
 
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+    static bool StringIsEqualUint8Data(const JSThread *thread,
+                                       const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
                                        bool canBeCompress)
     {
-        return EcmaString::StringIsEqualUint8Data(str1, dataAddr, dataLen, canBeCompress);
+        return EcmaString::StringIsEqualUint8Data(thread, str1, dataAddr, dataLen, canBeCompress);
     }
 
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *utf16Data, uint32_t utf16Len)
+    static bool StringsAreEqualUtf16(const JSThread *thread, const EcmaString *str1, const uint16_t *utf16Data,
+                                     uint32_t utf16Len)
     {
-        return EcmaString::StringsAreEqualUtf16(str1, utf16Data, utf16Len);
+        return EcmaString::StringsAreEqualUtf16(thread, str1, utf16Data, utf16Len);
     }
 
     // require str1 and str2 are LineString.
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)
+    bool EqualToSplicedString(const JSThread *thread, const EcmaString *str1, const EcmaString *str2)
     {
-        return string_->EqualToSplicedString(str1, str2);
+        return string_->EqualToSplicedString(thread, str1, str2);
     }
 
     static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
@@ -1082,23 +1093,23 @@ public:
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool ToElementIndex(uint32_t *index)
+    bool ToElementIndex(const JSThread *thread, uint32_t *index)
     {
-        return string_->ToElementIndex(index);
+        return string_->ToElementIndex(thread, index);
     }
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool ToInt(int32_t *index, bool *negative)
+    bool ToInt(const JSThread *thread, int32_t *index, bool *negative)
     {
-        return string_->ToInt(index, negative);
+        return string_->ToInt(thread, index, negative);
     }
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    bool PUBLIC_API ToTypedArrayIndex(uint32_t *index)
+    bool PUBLIC_API ToTypedArrayIndex(const JSThread *thread, uint32_t *index)
     {
-        return string_->ToTypedArrayIndex(index);
+        return string_->ToTypedArrayIndex(thread, index);
     }
 
     static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
@@ -1146,9 +1157,9 @@ public:
         return data <= common::utf_helper::UTF8_1B_MAX;
     }
 
-    bool IsFlat() const
+    bool IsFlat(const JSThread *thread) const
     {
-        return string_->IsFlat();
+        return string_->IsFlat(thread);
     }
 
     bool IsLineString() const
@@ -1197,24 +1208,24 @@ public:
         return EcmaString::FlattenNoGCForSnapshot(vm, string);
     }
 
-    static const uint8_t *GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf)
+    static const uint8_t *GetUtf8DataFlat(const JSThread *thread, const EcmaString *src, CVector<uint8_t> &buf)
     {
-        return EcmaString::GetUtf8DataFlat(src, buf);
+        return EcmaString::GetUtf8DataFlat(thread, src, buf);
     }
 
-    static const uint8_t *GetNonTreeUtf8Data(const EcmaString *src)
+    static const uint8_t *GetNonTreeUtf8Data(const JSThread *thread, const EcmaString *src)
     {
-        return EcmaString::GetNonTreeUtf8Data(src);
+        return EcmaString::GetNonTreeUtf8Data(thread, src);
     }
 
-    static const uint16_t *GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
+    static const uint16_t *GetUtf16DataFlat(const JSThread *thread, const EcmaString *src, CVector<uint16_t> &buf)
     {
-        return EcmaString::GetUtf16DataFlat(src, buf);
+        return EcmaString::GetUtf16DataFlat(thread, src, buf);
     }
 
-    static const uint16_t *GetNonTreeUtf16Data(const EcmaString *src)
+    static const uint16_t *GetNonTreeUtf16Data(const JSThread *thread, const EcmaString *src)
     {
-        return EcmaString::GetNonTreeUtf16Data(src);
+        return EcmaString::GetNonTreeUtf16Data(thread, src);
     }
 
     static JSTaggedValue StringToList(JSThread *thread, JSHandle<JSTaggedValue> &str);

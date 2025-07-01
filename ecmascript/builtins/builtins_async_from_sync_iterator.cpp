@@ -41,7 +41,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Next(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIteratorRecord be O.[[SyncIteratorRecord]].
     JSHandle<JSAsyncFromSyncIterator> asyncIterator(thisValue);
-    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
+    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord(thread));
     // 5.If value is present, then
     // a.Let result be IteratorNext(syncIteratorRecord, value).
     // 6.Else,
@@ -76,8 +76,8 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIterator be O.[[SyncIteratorRecord]].[[Iterator]].
-    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
-    JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator());
+    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord(thread));
+    JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator(thread));
     // 5.Let return be GetMethod(syncIterator, "throw").
     JSHandle<JSTaggedValue> throwString = globalConstant->GetHandledThrowString();
     JSHandle<JSTaggedValue> throwResult = JSObject::GetMethod(thread, syncIterator, throwString);
@@ -87,12 +87,12 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     // 7.If throw is undefined, then
     if (throwResult->IsUndefined()) {
         JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
-        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
+        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject(thread));
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(iterResult.GetTaggedValue());
-        return pcap->GetPromise();
+        return pcap->GetPromise(thread);
     }
     JSTaggedValue ret;
     // 8.If value is present, then
@@ -116,7 +116,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
         JSHandle<JSObject> resolutionError =
             factory->GetJSError(ErrorType::TYPE_ERROR,
                                 "AsyncFromSyncIteratorPrototype.throw: is not Object.", StackCheck::NO);
-        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
+        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject(thread));
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -125,7 +125,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // b.Return promiseCapability.[[Promise]].
-        JSHandle<JSObject> promise(thread, pcap->GetPromise());
+        JSHandle<JSObject> promise(thread, pcap->GetPromise(thread));
         return promise.GetTaggedValue();
     }
     // 12.Return ! AsyncFromSyncIteratorContinuation(result, promiseCapability).
@@ -153,8 +153,8 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIterator be O.[[SyncIteratorRecord]].[[Iterator]].
     JSHandle<JSAsyncFromSyncIterator> asyncIterator(thisValue);
-    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
-    JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator());
+    JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord(thread));
+    JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator(thread));
     // 5.Let return be GetMethod(syncIterator, "return").
     JSHandle<JSTaggedValue> returnString = globalConstant->GetHandledReturnString();
     JSHandle<JSTaggedValue> returnResult = JSObject::GetMethod(thread, syncIterator, returnString);
@@ -165,12 +165,12 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     if (returnResult->IsUndefined()) {
         JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
         JSHandle<JSTaggedValue> its = JSHandle<JSTaggedValue>::Cast(iterResult);
-        JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
+        JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve(thread));
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefinedValue, undefinedValue, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(its.GetTaggedValue());
-        JSHandle<JSObject> promise(thread, pcap->GetPromise());
+        JSHandle<JSObject> promise(thread, pcap->GetPromise(thread));
         return promise.GetTaggedValue();
     }
     JSTaggedValue ret;
@@ -195,7 +195,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
         JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
             "AsyncFromSyncIteratorPrototype.return: is not Object.", StackCheck::NO);
         JSHandle<JSTaggedValue> rstErr = JSHandle<JSTaggedValue>::Cast(resolutionError);
-        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
+        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject(thread));
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -204,7 +204,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // b.Return promiseCapability.[[Promise]].
-        JSHandle<JSObject> promise(thread, pcap->GetPromise());
+        JSHandle<JSObject> promise(thread, pcap->GetPromise(thread));
         return promise.GetTaggedValue();
     }
     // 12.Return ! AsyncFromSyncIteratorContinuation(result, promiseCapability).

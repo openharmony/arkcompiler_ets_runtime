@@ -49,7 +49,7 @@ HWTEST_F_L0(JSCollatorTest, GetIcuCollatorAndCompare)
     icuCollator->setStrength(icu::Collator::PRIMARY);
     // Call "SetIcuCollator" function set icu collator
     JSCollator::SetIcuCollator(thread, collator, icuCollator, JSCollator::FreeIcuCollator);
-    icu::Collator *icuCollator1 = collator->GetIcuCollator();
+    icu::Collator *icuCollator1 = collator->GetIcuCollator(thread);
     EXPECT_TRUE(icuCollator1 == icuCollator);
     JSTaggedValue result = JSCollator::CompareStrings(thread, icuCollator1, string1, string2);
     EXPECT_EQ(result.GetInt(), 0);  // equivalent
@@ -60,7 +60,7 @@ HWTEST_F_L0(JSCollatorTest, GetIcuCollatorAndCompare)
     icuCollator = icu::Collator::createInstance(zhLocale, status);
     icuCollator->setStrength(icu::Collator::PRIMARY);
     JSCollator::SetIcuCollator(thread, collator, icuCollator, JSCollator::FreeIcuCollator);
-    icu::Collator *icuCollator2 = collator->GetIcuCollator();
+    icu::Collator *icuCollator2 = collator->GetIcuCollator(thread);
     EXPECT_TRUE(icuCollator2 == icuCollator);
     result = JSCollator::CompareStrings(thread, icuCollator2, string1, string2);
     EXPECT_EQ(result.GetInt(), 0);  // equivalent
@@ -84,17 +84,18 @@ HWTEST_F_L0(JSCollatorTest, InitializeCollatorAndGetIcuCollator)
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
 
     JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread, collator, localeStr, undefinedHandle);
-    EXPECT_EQ(JSTaggedValue::SameValue(collator.GetTaggedValue(), initCollator.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, collator.GetTaggedValue(), initCollator.GetTaggedValue()), true);
     // check attributes
-    EXPECT_TRUE(initCollator->GetBoundCompare().IsUndefined());
+    EXPECT_TRUE(initCollator->GetBoundCompare(thread).IsUndefined());
     EXPECT_EQ(initCollator->GetIgnorePunctuation(), false);
     EXPECT_EQ(initCollator->GetSensitivity(), SensitivityOption::VARIANT);
     EXPECT_EQ(initCollator->GetCaseFirst(), CaseFirstOption::UNDEFINED);
-    EXPECT_TRUE(initCollator->GetCollation().IsUndefined());
+    EXPECT_TRUE(initCollator->GetCollation(thread).IsUndefined());
     EXPECT_EQ(initCollator->GetUsage(), UsageOption::SORT);
-    EXPECT_TRUE(JSTaggedValue::SameValue(JSHandle<JSTaggedValue>(thread, initCollator->GetLocale()), localeStr));
+    EXPECT_TRUE(
+        JSTaggedValue::SameValue(thread, JSHandle<JSTaggedValue>(thread, initCollator->GetLocale(thread)), localeStr));
     // check icucollator
-    icu::Collator *icuCollator = initCollator->GetIcuCollator();
+    icu::Collator *icuCollator = initCollator->GetIcuCollator(thread);
     EXPECT_EQ(icuCollator->getStrength(), icu::Collator::TERTIARY);
 }
 }  // namespace panda::test

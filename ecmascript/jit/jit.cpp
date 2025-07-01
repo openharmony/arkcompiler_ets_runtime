@@ -240,13 +240,14 @@ Jit::~Jit()
 {
 }
 
-void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
+void Jit::CountInterpExecFuncs(JSThread *jsThread, JSHandle<JSFunction> &jsFunction)
 {
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    auto jSPandaFile = method->GetJSPandaFile();
+    Method *method = Method::Cast(jsFunction->GetMethod(jsThread).GetTaggedObject());
+    auto jSPandaFile = method->GetJSPandaFile(jsThread);
     ASSERT(jSPandaFile != nullptr);
     CString fileDesc = jSPandaFile->GetJSPandaFileDesc();
-    CString methodInfo = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    CString methodInfo =
+        fileDesc + ":" + method->GetRecordNameStr(jsThread) +"." + CString(method->GetMethodName(jsThread));
     auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
     if (profMap.find(methodInfo) == profMap.end()) {
         profMap.insert({methodInfo, false});

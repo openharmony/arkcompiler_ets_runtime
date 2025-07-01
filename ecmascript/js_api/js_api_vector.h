@@ -36,7 +36,7 @@ public:
 
     static void SetLength(JSThread *thread, const JSHandle<JSAPIVector> &vector, uint32_t newSize);
 
-    uint32_t GetCapacity();
+    uint32_t GetCapacity(JSThread *thread);
 
     static void IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIVector> &vector, int32_t newCapacity);
 
@@ -48,7 +48,7 @@ public:
 
     bool IsEmpty() const;
 
-    JSTaggedValue GetLastElement();
+    JSTaggedValue GetLastElement(JSThread *thread);
 
     static int32_t GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                               const JSHandle<JSTaggedValue> &obj);
@@ -80,7 +80,7 @@ public:
 
     JSTaggedValue PUBLIC_API Set(JSThread *thread, int32_t index, const JSTaggedValue &value);
 
-    bool Has(const JSTaggedValue &value) const;
+    bool Has(JSThread *thread, const JSTaggedValue &value) const;
 
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj);
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj);
@@ -92,7 +92,7 @@ public:
 
     static JSHandle<JSAPIVector> Clone(JSThread *thread, const JSHandle<JSAPIVector> &vector);
 
-    static JSTaggedValue GetFirstElement(const JSHandle<JSAPIVector> &vector);
+    static JSTaggedValue GetFirstElement(JSThread *thread, const JSHandle<JSAPIVector> &vector);
 
     static JSTaggedValue GetIteratorObj(JSThread *thread, const JSHandle<JSAPIVector> &obj);
 

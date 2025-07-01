@@ -86,10 +86,10 @@ HWTEST_F_L0(JSMapIteratorTest, SetIteratedMap)
         JSMapIterator::CreateMapIterator(thread, JSHandle<JSTaggedValue>::Cast(jsMap1), iterKind);
     JSHandle<JSMapIterator> jsMapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
 
-    EXPECT_EQ(jsMap1->GetLinkedMap(), jsMapIterator->GetIteratedMap());
-    jsMapIterator->SetIteratedMap(thread, JSHandle<JSTaggedValue>(thread, jsMap2->GetLinkedMap()));
-    EXPECT_NE(jsMap1->GetLinkedMap(), jsMapIterator->GetIteratedMap());
-    EXPECT_EQ(jsMap2->GetLinkedMap(), jsMapIterator->GetIteratedMap());
+    EXPECT_EQ(jsMap1->GetLinkedMap(thread), jsMapIterator->GetIteratedMap(thread));
+    jsMapIterator->SetIteratedMap(thread, JSHandle<JSTaggedValue>(thread, jsMap2->GetLinkedMap(thread)));
+    EXPECT_NE(jsMap1->GetLinkedMap(thread), jsMapIterator->GetIteratedMap(thread));
+    EXPECT_EQ(jsMap2->GetLinkedMap(thread), jsMapIterator->GetIteratedMap(thread));
 }
 
 /**
@@ -159,14 +159,14 @@ HWTEST_F_L0(JSMapIteratorTest, Update)
     JSMap::Set(thread, jsMap1, keyHandle2, keyHandle2);
     JSMap::Set(thread, jsMap1, keyHandle3, keyHandle3);
 
-    JSHandle<LinkedHashMap> mapHandle1(thread, LinkedHashMap::Cast(jsMap1->GetLinkedMap().GetTaggedObject()));
-    JSHandle<LinkedHashMap> mapHandle2(thread, LinkedHashMap::Cast(jsMap2->GetLinkedMap().GetTaggedObject()));
+    JSHandle<LinkedHashMap> mapHandle1(thread, LinkedHashMap::Cast(jsMap1->GetLinkedMap(thread).GetTaggedObject()));
+    JSHandle<LinkedHashMap> mapHandle2(thread, LinkedHashMap::Cast(jsMap2->GetLinkedMap(thread).GetTaggedObject()));
     mapHandle1->Rehash(thread, *mapHandle2);
     // create SetIterator with jsMap1
     JSHandle<JSMapIterator> mapIterator = factory->NewJSMapIterator(jsMap1, IterationKind::KEY);
     // update MapIterator
     mapIterator->Update(thread);
-    LinkedHashMap *resultMap = LinkedHashMap::Cast(mapIterator->GetIteratedMap().GetTaggedObject());
+    LinkedHashMap *resultMap = LinkedHashMap::Cast(mapIterator->GetIteratedMap(thread).GetTaggedObject());
     EXPECT_TRUE(resultMap->Has(thread, keyHandle1.GetTaggedValue()));
     EXPECT_TRUE(resultMap->Has(thread, keyHandle2.GetTaggedValue()));
     EXPECT_TRUE(resultMap->Has(thread, keyHandle3.GetTaggedValue()));
@@ -233,7 +233,7 @@ HWTEST_F_L0(JSMapIteratorTest, KEY_AND_VALUE_Next)
     for (int32_t i = 0; i < iteratorLength; i++) {
         JSHandle<JSTaggedValue> nextTagValResult(thread, JSMapIterator::Next(ecmaRuntimeCallInfo));
         JSHandle<JSArray> iteratorVal(thread, JSIterator::IteratorValue(thread, nextTagValResult).GetTaggedValue());
-        JSHandle<TaggedArray> elementsIterVal(thread, iteratorVal->GetElements());
+        JSHandle<TaggedArray> elementsIterVal(thread, iteratorVal->GetElements(thread));
         EXPECT_EQ(i, elementsIterVal->Get(thread, 0).GetInt());
         EXPECT_EQ(i + 10, elementsIterVal->Get(thread, 1).GetInt());  // 10: means expected value
     }

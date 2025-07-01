@@ -54,10 +54,10 @@ public:
                                                      const JSHandle<JSSegmenter> &segmenter,
                                                      const JSHandle<EcmaString> &string);
     // Get icu break iterator from icu field
-    icu::BreakIterator *GetIcuBreakIterator() const
+    icu::BreakIterator *GetIcuBreakIterator(JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::BreakIterator *>(result);
     }
 
@@ -85,10 +85,10 @@ public:
     static void SetUString(JSThread *thread, const JSHandle<JSSegments> &segments,
                            icu::UnicodeString* icuUnicodeString, const NativePointerCallback &callback);
 
-    icu::UnicodeString *GetUString() const
+    icu::UnicodeString *GetUString(JSThread *thread) const
     {
-        ASSERT(GetUnicodeString().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetUnicodeString().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetUnicodeString(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetUnicodeString(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::UnicodeString *>(result);
     }
 

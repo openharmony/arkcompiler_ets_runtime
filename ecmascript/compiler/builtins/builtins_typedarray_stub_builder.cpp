@@ -474,7 +474,7 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     GateRef arrLen = GetArrayLength(thisValue);
     BRANCH(Int32Equal(arrLen, Int32(0)), &writeResult, &notEmpty);
     Bind(&notEmpty);
-    CallNGCRuntime(glue, RTSTUB_ID(ReverseTypedArray), {thisValue});
+    CallNGCRuntime(glue, RTSTUB_ID(ReverseTypedArray), {glue, thisValue});
     Jump(&writeResult);
     Bind(&writeResult);
     result->WriteVariable(thisValue);
@@ -2119,7 +2119,7 @@ void BuiltinsTypedArrayStubBuilder::Sort(
     GateRef buffer = GetViewedArrayBuffer(glue, thisValue);
     BRANCH(IsDetachedBuffer(glue, buffer), slowPath, &notDetached);
     Bind(&notDetached);
-    CallNGCRuntime(glue, RTSTUB_ID(SortTypedArray), {thisValue});
+    CallNGCRuntime(glue, RTSTUB_ID(SortTypedArray), {glue, thisValue});
     result->WriteVariable(thisValue);
     Jump(exit);
 }

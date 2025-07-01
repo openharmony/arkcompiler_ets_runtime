@@ -62,7 +62,7 @@ HWTEST_F_L0(JSAPILinkedListIteratorTest, NextCreateLinkedListIterator)
     JSHandle<JSAPILinkedListIterator> linkedListIterator(
         thread, JSAPILinkedListIterator::CreateLinkedListIterator(thread, taggedValueHandle).GetTaggedValue());
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    uint32_t capacity = static_cast<uint32_t>(linkedList->Length());
+    uint32_t capacity = static_cast<uint32_t>(linkedList->Length(thread));
     for (uint32_t i = 0; i < capacity; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
@@ -78,7 +78,7 @@ HWTEST_F_L0(JSAPILinkedListIteratorTest, NextCreateLinkedListIterator)
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue(i));
         } else {
-            EXPECT_EQ(linkedListIterator->GetIteratedLinkedList(), JSTaggedValue::Undefined());
+            EXPECT_EQ(linkedListIterator->GetIteratedLinkedList(thread), JSTaggedValue::Undefined());
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue::Undefined());
         }

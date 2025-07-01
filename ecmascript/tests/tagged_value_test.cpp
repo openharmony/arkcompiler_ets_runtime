@@ -675,7 +675,7 @@ void CheckOkString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, CStr
 {
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, tagged);
     JSHandle<EcmaString> rightString = thread->GetEcmaVM()->GetFactory()->NewFromASCII(rightCStr);
-    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(EcmaString::Cast(result.GetObject<EcmaString>()),
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result.GetObject<EcmaString>()),
                                                     EcmaString::Cast(rightString.GetObject<EcmaString>())));
 }
 
@@ -828,22 +828,22 @@ HWTEST_F_L0(JSTaggedValueTest, ToObject)
 
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(2));
     JSTaggedValue tagged1 =
-        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value1))->GetValue());
+        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value1))->GetValue(thread));
     EXPECT_EQ(tagged1.GetRawData(), JSTaggedValue(2).GetRawData());
 
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(2.2));
     JSTaggedValue tagged2 =
-        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value2))->GetValue());
+        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value2))->GetValue(thread));
     EXPECT_EQ(tagged2.GetRawData(), JSTaggedValue(static_cast<double>(2.2)).GetRawData());
 
     JSHandle<JSTaggedValue> value3(thread, JSTaggedValue::True());
     JSTaggedValue tagged3 =
-        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value3))->GetValue());
+        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value3))->GetValue(thread));
     EXPECT_EQ(tagged3.GetRawData(), JSTaggedValue::True().GetRawData());
 
     JSHandle<JSTaggedValue> value4(factory->NewFromASCII("aaa"));
     JSTaggedValue tagged4 =
-        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value4))->GetValue());
+        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value4))->GetValue(thread));
     EXPECT_TRUE(tagged4.IsString());
     EXPECT_EQ(EcmaStringAccessor::Compare(instance,
         JSHandle<EcmaString>(thread, tagged4), JSHandle<EcmaString>(value4)), 0);
@@ -852,9 +852,9 @@ HWTEST_F_L0(JSTaggedValueTest, ToObject)
     JSHandle<EcmaString> str = factory->NewFromASCII("bbb");
     JSHandle<JSTaggedValue> value5(symbol);
     JSTaggedValue tagged5 =
-        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue());
+        JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue(thread));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(thread,
-        EcmaString::Cast(reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription())), str),
+        EcmaString::Cast(reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription(thread))), str),
         0);
     EXPECT_TRUE(tagged5.IsSymbol());
 
@@ -1007,52 +1007,53 @@ HWTEST_F_L0(JSTaggedValueTest, SameValue)
     JSHandle<JSObject> jsObj = ecma->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(objectFun), objectFun);
 
     // not same type
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1), JSTaggedValue::False()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1.0), JSTaggedValue::True()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1),
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1), JSTaggedValue::False()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1.0), JSTaggedValue::True()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1),
                                           ecma->GetFactory()->NewFromASCII("test").GetTaggedValue()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1), JSTaggedValue(*jsObj)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1), JSTaggedValue(*jsObj)));
     JSHandle<JSTaggedValue> test(ecma->GetFactory()->NewFromASCII("test"));
-    ASSERT_FALSE(JSTaggedValue::SameValue(test.GetTaggedValue(), JSTaggedValue(*jsObj)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, test.GetTaggedValue(), JSTaggedValue(*jsObj)));
 
     // number compare
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue(1), JSTaggedValue(1)));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue(1), JSTaggedValue(1.0)));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1.0), JSTaggedValue(2.0)));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(std::numeric_limits<int>::quiet_NaN()), JSTaggedValue(2.0)));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue(std::numeric_limits<int>::quiet_NaN()),
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue(1), JSTaggedValue(1)));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue(1), JSTaggedValue(1.0)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1.0), JSTaggedValue(2.0)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread,
+        JSTaggedValue(std::numeric_limits<int>::quiet_NaN()), JSTaggedValue(2.0)));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue(std::numeric_limits<int>::quiet_NaN()),
                                          JSTaggedValue(std::numeric_limits<int>::quiet_NaN())));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue(std::numeric_limits<double>::quiet_NaN()),
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue(std::numeric_limits<double>::quiet_NaN()),
                                          JSTaggedValue(std::numeric_limits<double>::quiet_NaN())));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(0.0), JSTaggedValue(-0.0)));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue(0), JSTaggedValue(-0)));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue(1.0), JSTaggedValue(-1.0)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(0.0), JSTaggedValue(-0.0)));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue(0), JSTaggedValue(-0)));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue(1.0), JSTaggedValue(-1.0)));
 
     // string compare
     JSHandle<JSTaggedValue> test1(ecma->GetFactory()->NewFromASCII("test1"));
-    ASSERT_FALSE(JSTaggedValue::SameValue(test.GetTaggedValue(), test1.GetTaggedValue()));
-    ASSERT_TRUE(JSTaggedValue::SameValue(test.GetTaggedValue(), test.GetTaggedValue()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, test.GetTaggedValue(), test1.GetTaggedValue()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, test.GetTaggedValue(), test.GetTaggedValue()));
 
     // bool compare
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue::True(), JSTaggedValue::True()));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue::False(), JSTaggedValue::False()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue::False(), JSTaggedValue::True()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue::True(), JSTaggedValue::False()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue::True(), JSTaggedValue::True()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue::False(), JSTaggedValue::False()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue::False(), JSTaggedValue::True()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue::True(), JSTaggedValue::False()));
 
     // js object compare
-    ASSERT_TRUE(JSTaggedValue::SameValue(jsObj.GetTaggedValue(), jsObj.GetTaggedValue()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, jsObj.GetTaggedValue(), jsObj.GetTaggedValue()));
 
     // undefined or null compare
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue::Undefined(), JSTaggedValue::Undefined()));
-    ASSERT_TRUE(JSTaggedValue::SameValue(JSTaggedValue::Null(), JSTaggedValue::Null()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue::Undefined(), JSTaggedValue::Null()));
-    ASSERT_FALSE(JSTaggedValue::SameValue(JSTaggedValue::Null(), JSTaggedValue::Undefined()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue::Undefined(), JSTaggedValue::Undefined()));
+    ASSERT_TRUE(JSTaggedValue::SameValue(thread, JSTaggedValue::Null(), JSTaggedValue::Null()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue::Undefined(), JSTaggedValue::Null()));
+    ASSERT_FALSE(JSTaggedValue::SameValue(thread, JSTaggedValue::Null(), JSTaggedValue::Undefined()));
 }
 
 HWTEST_F_L0(JSTaggedValueTest, SameValueZero)
 {
     // SameValueZero differs from SameValue only in its treatment of +0 and -0.
-    ASSERT_TRUE(JSTaggedValue::SameValueZero(JSTaggedValue(0.0), JSTaggedValue(-0.0)));
+    ASSERT_TRUE(JSTaggedValue::SameValueZero(thread, JSTaggedValue(0.0), JSTaggedValue(-0.0)));
 }
 
 HWTEST_F_L0(JSTaggedValueTest, Less)

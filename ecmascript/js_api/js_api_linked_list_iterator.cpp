@@ -36,7 +36,7 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILinkedListIterator> iter(input);
-    JSHandle<JSTaggedValue> linkedList(thread, iter->GetIteratedLinkedList());
+    JSHandle<JSTaggedValue> linkedList(thread, iter->GetIteratedLinkedList(thread));
     JSHandle<TaggedDoubleList> list(linkedList);
     if (linkedList->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -52,7 +52,7 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     iter->SetNextIndex(index + 1);
     int dataIndex = static_cast<int>(iter->GetDataIndex());
-    std::pair<int, JSTaggedValue> resultPair = list->GetByDataIndex(dataIndex);
+    std::pair<int, JSTaggedValue> resultPair = list->GetByDataIndex(thread, dataIndex);
     iter->SetDataIndex(resultPair.first);
     JSHandle<JSTaggedValue> value(thread, resultPair.second);
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
@@ -63,8 +63,8 @@ JSHandle<JSTaggedValue> JSAPILinkedListIterator::CreateLinkedListIterator(JSThre
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPILinkedList()) {
-        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPILinkedList()) {
-            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget(thread).IsJSAPILinkedList()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");

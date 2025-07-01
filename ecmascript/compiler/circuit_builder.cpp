@@ -1470,7 +1470,7 @@ GateRef CircuitBuilder::TransProtoWithoutLayout(GateRef glue, GateRef hClass, Ga
     GateRef key = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
         ConstantIndex::PROTOTYPE_STRING_INDEX);
     GateRef newClass = CallNGCRuntime(glue, RTSTUB_ID(JSHClassFindProtoTransitions), Gate::InvalidGateRef,
-                                      { hClass, key, proto }, glue);
+                                      { glue, hClass, key, proto }, glue);
     Label undef(env_);
     Label find(env_);
     BRANCH(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);

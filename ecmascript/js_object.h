@@ -338,7 +338,7 @@ public:
     {
         if (value_->IsPropertyBox()) {
             return JSHandle<JSTaggedValue>(thread_,
-                                           PropertyBox::Cast(value_.GetTaggedValue().GetTaggedObject())->GetValue());
+                PropertyBox::Cast(value_.GetTaggedValue().GetTaggedObject())->GetValue(thread_));
         }
         return value_;
     }
@@ -373,26 +373,26 @@ public:
 
     void SetCallable(bool flag);
     bool IsCallable() const;
-    Method *GetCallTarget() const;
-    void *GetNativePointer() const;
+    Method *GetCallTarget(const JSThread *thread) const;
+    void *GetNativePointer(const JSThread *thread) const;
 
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
 
     static void SetHash(const JSThread *thread, int32_t hash, const JSHandle<ECMAObject> &obj);
-    int32_t GetHash() const;
-    bool HasHash() const;
+    int32_t GetHash(const JSThread *thread) const;
+    bool HasHash(const JSThread *thread) const;
 
     void InitializeHash()
     {
         Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
     }
 
-    void* GetNativePointerField(int32_t index) const;
+    void* GetNativePointerField(const JSThread *thread, int32_t index) const;
     static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
                                       void *nativePointer, const NativePointerCallback &callBack, void *data,
                                       size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    int32_t GetNativePointerFieldCount() const;
+    int32_t GetNativePointerFieldCount(const JSThread *thread) const;
     static void SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count);
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
@@ -484,9 +484,9 @@ public:
 
     // ecma6 9.1
     // [[GetPrototypeOf]]
-    static JSTaggedValue GetPrototype(const JSHandle<JSObject> &obj);
+    static JSTaggedValue GetPrototype(const JSThread *thread, const JSHandle<JSObject> &obj);
 
-    static JSTaggedValue GetPrototype(JSTaggedValue obj);
+    static JSTaggedValue GetPrototype(const JSThread *thread, JSTaggedValue obj);
 
     // [[SetPrototypeOf]]
     static bool SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -652,11 +652,11 @@ public:
     bool IsJSAPILinkedListIterator() const;
     bool IsJSAPIListIterator() const;
     bool IsJSPrimitiveRef() const;
-    bool IsElementDict() const;
-    bool IsPropertiesDict() const;
+    bool IsElementDict(const JSThread *thread) const;
+    bool IsPropertiesDict(const JSThread *thread) const;
     bool IsTypedArray() const;
     bool IsSharedTypedArray() const;
-    bool PUBLIC_API ElementsAndPropertiesIsEmpty() const;
+    bool PUBLIC_API ElementsAndPropertiesIsEmpty(JSThread *thread) const;
 
     static PUBLIC_API void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
                                                    const JSHandle<JSTaggedValue> &key,
@@ -674,11 +674,12 @@ public:
                                                                   uint32_t propsLen,
                                                                   const JSHandle<JSHClass> &ihc,
                                                                   TrackTypeUpdateMode trackMode);
-    static bool CheckPropertiesForRep(
+    static bool CheckPropertiesForRep(const JSThread *thread,
         const JSHandle<TaggedArray> &properties, uint32_t propsLen, const JSHandle<JSHClass> &ihc);
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
-    static void GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
+    static void GetAllKeysForSerialization(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                           std::vector<JSTaggedValue> &keyVector);
 
     static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
                                    uint32_t &keyArrayEffectivelength,
@@ -694,8 +695,8 @@ public:
 
     static void GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
                                             std::vector<JSTaggedValue> &keyVector);
-    std::pair<uint32_t, uint32_t> GetNumberOfEnumKeys() const;
-    uint32_t GetNumberOfKeys();
+    std::pair<uint32_t, uint32_t> GetNumberOfEnumKeys(const JSThread *thread) const;
+    uint32_t GetNumberOfKeys(const JSThread *thread);
     uint32_t GetNumberOfElements(JSThread *thread);
 
     static JSHandle<TaggedArray> GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -720,12 +721,12 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
-    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
-    void Dump() const DUMP_API_ATTR
+    void Dump(const JSThread *thread, std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump(const JSThread *thread) const DUMP_API_ATTR
     {
-        Dump(std::cout);
+        Dump(thread, std::cout);
     }
-    void DumpForSnapshot(std::vector<Reference> &vec) const;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
     static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate = false,
                                                          bool *isCallGetter = nullptr);
 
@@ -745,15 +746,16 @@ public:
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, const JSHClass *hclass, uint32_t index,
                                         JSTaggedValue value);
-    inline JSTaggedValue GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const;
-    inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
+    inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index,
+                                                        PropertyAttributes attr) const;
+    inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSThread* thread, const JSHClass *hclass, uint32_t index,
         PropertyAttributes attr) const;
     template <size_t objectSize, uint32_t index>
-    inline JSTaggedValue GetPropertyInlinedPropsWithSize() const;
-    inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
-    inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
-    inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;
-    PropertyBox* GetGlobalPropertyBox(JSThread *thread, const std::string& key);
+    inline JSTaggedValue GetPropertyInlinedPropsWithSize(const JSThread* thread) const;
+    inline JSTaggedValue GetPropertyInlinedProps(const JSThread* thread, uint32_t index) const;
+    inline JSTaggedValue GetPropertyInlinedProps(const JSThread* thread, const JSHClass *hclass, uint32_t index) const;
+    inline JSTaggedValue GetProperty(const JSThread* thread, const JSHClass *hclass, PropertyAttributes attr) const;
+    PropertyBox* GetGlobalPropertyBox(const JSThread *thread, const std::string& key);
     template <bool needBarrier = true>
     inline void SetProperty(const JSThread *thread, const JSHClass *hclass, PropertyAttributes attr,
                             JSTaggedValue value);
@@ -815,8 +817,8 @@ private:
     friend class JSSharedArray;
     friend class builtins::BuiltinsArkTools;
 
-    static bool HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj);
-    PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
+    static bool HasMutantTaggedArrayElements(const JSThread *thread, const JSHandle<JSObject> &obj);
+    PropertyBox* GetGlobalPropertyBox(const JSThread *thread, JSTaggedValue key);
     static bool CheckAndUpdateArrayLength(JSThread *thread, const JSHandle<JSObject> &receiver,
                                           uint32_t index, ElementsKind &kind);
     static bool PUBLIC_API AddElementInternal(

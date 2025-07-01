@@ -84,8 +84,9 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, SetIteratedSet)
         JSAPITreeSet::Add(thread, jsTreeSet, key);
     }
     treeSetIterator->SetIteratedSet(thread, jsTreeSet.GetTaggedValue());
-    JSHandle<JSAPITreeSet> treeSetTo(thread, JSAPITreeSet::Cast(treeSetIterator->GetIteratedSet().GetTaggedObject()));
-    EXPECT_EQ(treeSetTo->GetSize(), static_cast<int>(DEFAULT_LENGTH));
+    JSHandle<JSAPITreeSet> treeSetTo(thread,
+                                     JSAPITreeSet::Cast(treeSetIterator->GetIteratedSet(thread).GetTaggedObject()));
+    EXPECT_EQ(treeSetTo->GetSize(thread), static_cast<int>(DEFAULT_LENGTH));
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         std::string ikey = setKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
@@ -179,7 +180,7 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, KEY_Next)
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKey = setKey + std::to_string(i);
         key.Update(factory->NewFromStdString(resultKey).GetTaggedValue());
-        EXPECT_EQ(JSTaggedValue::SameValue(
+        EXPECT_EQ(JSTaggedValue::SameValue(thread,
             JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), key), true);
         EXPECT_EQ(treeSetIterator->GetNextIndex(), (i + 1U));
     }
@@ -257,7 +258,7 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, KEY_AND_VALUE_Next)
         JSHandle<JSTaggedValue> keyValueArr(JSObject::GetProperty(thread, resultObj, valueStr).GetValue());
         for (int index = 0; index < 2; index++) {
             JSHandle<JSTaggedValue> indexValue(thread, JSTaggedValue(index));
-            EXPECT_EQ(JSTaggedValue::SameValue(
+            EXPECT_EQ(JSTaggedValue::SameValue(thread,
                 JSObject::GetProperty(thread, keyValueArr, indexValue).GetValue(), key), true);
         }
         EXPECT_EQ(treeSetIterator->GetNextIndex(), (i + 1U));

@@ -485,7 +485,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
             Branch(Int32Equal(nextCount, Int32(0)), &calcuFinalCount, exit);
             Bind(&calcuFinalCount);
             {
-                CallNGCRuntime(glue_, RTSTUB_ID(FinishObjSizeTracking), { hclass });
+                CallNGCRuntime(glue_, RTSTUB_ID(FinishObjSizeTracking), { glue_, hclass });
                 Jump(exit);
             }
         }

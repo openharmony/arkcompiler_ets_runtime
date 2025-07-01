@@ -48,7 +48,7 @@ JSTaggedValue BuiltinsDataView::DataViewConstructor(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint64_t offset = base::NumberHelper::DoubleToUInt64(offsetNumber.GetNumber());
     // 7. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(bufferHandle.GetTaggedValue())) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, bufferHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "buffer is Detached Buffer", JSTaggedValue::Exception());
     }
     // 8. Let bufferByteLength be the value of buffer’s [[ArrayBufferByteLength]] internal slot.
@@ -112,7 +112,7 @@ JSTaggedValue BuiltinsDataView::GetBuffer(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSDataView> dataView(thisHandle);
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSTaggedValue buffer = dataView->GetViewedArrayBuffer();
+    JSTaggedValue buffer = dataView->GetViewedArrayBuffer(thread);
     // 5. Return buffer.
     return JSTaggedValue(buffer);
 }
@@ -136,9 +136,9 @@ JSTaggedValue BuiltinsDataView::GetByteLength(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSDataView> dataView(thisHandle);
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSTaggedValue buffer = dataView->GetViewedArrayBuffer();
+    JSTaggedValue buffer = dataView->GetViewedArrayBuffer(thread);
     // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 6. Let size be the value of O’s [[ByteLength]] internal slot.
@@ -166,9 +166,9 @@ JSTaggedValue BuiltinsDataView::GetOffset(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSDataView> dataView(thisHandle);
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSTaggedValue buffer = dataView->GetViewedArrayBuffer();
+    JSTaggedValue buffer = dataView->GetViewedArrayBuffer(thread);
     // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 6. Let offset be the value of O’s [[ByteOffset]] internal slot.
@@ -374,9 +374,9 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
     }
     // 8. Let buffer be the value of view’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSDataView> dataView(view);
-    JSTaggedValue buffer = dataView->GetViewedArrayBuffer();
+    JSTaggedValue buffer = dataView->GetViewedArrayBuffer(thread);
     // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 10. Let viewOffset be the value of view’s [[ByteOffset]] internal slot.
@@ -440,9 +440,9 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
     }
     // 8. Let buffer be the value of view’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSDataView> dataView(view);
-    JSTaggedValue buffer = dataView->GetViewedArrayBuffer();
+    JSTaggedValue buffer = dataView->GetViewedArrayBuffer(thread);
     // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
     }
     // 10. Let viewOffset be the value of view’s [[ByteOffset]] internal slot.

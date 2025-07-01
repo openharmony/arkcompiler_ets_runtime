@@ -62,7 +62,7 @@ public:
     static JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
     static JSTaggedValue GetConstantPool(JSTaggedType *sp);
     static JSTaggedValue GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp);
-    static JSTaggedValue GetEcmaModule(JSTaggedType *sp);
+    static JSTaggedValue GetEcmaModule(JSThread *thread, JSTaggedType *sp);
     static bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static void NotifyBytecodePcChanged(JSThread *thread);
     static void NotifyDebuggerStmt(JSThread *thread);
@@ -71,10 +71,10 @@ public:
     static const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
     static std::pair<CString, CString> GetCurrentEntryPoint(JSThread *thread);
     static JSTaggedValue GetFunction(JSTaggedType *sp);
-    static JSTaggedValue GetNewTarget(JSTaggedType *sp);
+    static JSTaggedValue GetNewTarget(JSThread *thread, JSTaggedType *sp);
     static JSTaggedValue GetThis(JSTaggedType *sp);
-    static uint32_t GetNumArgs(JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
-    static bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
+    static uint32_t GetNumArgs(JSThread *thread, JSTaggedType *sp, uint32_t restIdx, uint32_t &startIdx);
+    static bool IsFastNewFrameEnter(JSThread *thread, JSFunction *ctor, JSHandle<Method> method);
     static bool IsFastNewFrameExit(JSTaggedType *sp);
     static int16_t GetHotnessCounter(uint32_t codeSize, bool cancelThreshold);
     static JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);

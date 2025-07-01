@@ -37,7 +37,7 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
     DISALLOW_GARBAGE_COLLECTION;
     int enumKeys = 0;
     for (int i = 0; i < end; i++) {
-        JSTaggedValue key = GetKey(i);
+        JSTaggedValue key = GetKey(thread, i);
         if (key.IsString()) {
             keyArray->Set(thread, enumKeys + offset, key);
             enumKeys++;
@@ -46,7 +46,7 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
 
     if (enumKeys < end) {
         for (int i = 0; i < end; i++) {
-            JSTaggedValue key = GetKey(i);
+            JSTaggedValue key = GetKey(thread, i);
             if (key.IsSymbol()) {
                 keyArray->Set(thread, enumKeys + offset, key);
                 enumKeys++;
@@ -64,9 +64,9 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t enumKeys = 0;
     for (uint32_t i = 0; i < numberOfProps; i++) {
-        JSTaggedValue key = GetKey(static_cast<int>(i));
+        JSTaggedValue key = GetKey(thread, static_cast<int>(i));
         if (key.IsString() && !(filter & NATIVE_KEY_SKIP_STRINGS)) {
-            PropertyAttributes attr = GetAttr(static_cast<int>(i));
+            PropertyAttributes attr = GetAttr(thread, static_cast<int>(i));
             bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
             if (bIgnore) {
                 continue;
@@ -79,9 +79,9 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
 
     if (enumKeys < numberOfProps) {
         for (uint32_t i = 0; i < numberOfProps; i++) {
-            JSTaggedValue key = GetKey(static_cast<int>(i));
+            JSTaggedValue key = GetKey(thread, static_cast<int>(i));
             if (key.IsSymbol() && !(filter & NATIVE_KEY_SKIP_SYMBOLS)) {
-                PropertyAttributes attr = GetAttr(static_cast<int>(i));
+                PropertyAttributes attr = GetAttr(thread, static_cast<int>(i));
                 bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
                 if (bIgnore) {
                     continue;
@@ -93,28 +93,28 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
     }
 }
 
-void LayoutInfo::GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> &keyVector)
+void LayoutInfo::GetAllKeysForSerialization(const JSThread *thread, int end, std::vector<JSTaggedValue> &keyVector)
 {
     ASSERT(end <= NumberOfElements());
     for (int i = 0; i < end; i++) {
-        JSTaggedValue key = GetKey(i);
+        JSTaggedValue key = GetKey(thread, i);
         if (key.IsString() || key.IsSymbol()) {
             keyVector.emplace_back(key);
         }
     }
 }
 
-std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end) const
+std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(const JSThread *thread, int end) const
 {
     ASSERT(end <= NumberOfElements());
     uint32_t enumKeys = 0;
     uint32_t shadowKeys = 0;
     for (int i = 0; i < end; i++) {
-        JSTaggedValue key = GetKey(i);
+        JSTaggedValue key = GetKey(thread, i);
         if (!key.IsString()) {
             continue;
         }
-        if (GetAttr(i).IsEnumerable()) {
+        if (GetAttr(thread, i).IsEnumerable()) {
             enumKeys++;
         } else {
             shadowKeys++;
@@ -132,11 +132,11 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     int enumKeys = 0;
     for (int i = 0; i < end; i++) {
-        keyHandle.Update(GetKey(i));
+        keyHandle.Update(GetKey(thread, i));
         if (!keyHandle->IsString()) {
             continue;
         }
-        if (GetAttr(i).IsEnumerable()) {
+        if (GetAttr(thread, i).IsEnumerable()) {
             bool isDuplicated = JSObject::IsDepulicateKeys(thread, keyArray, lastLength, shadowQueue, keyHandle);
             if (isDuplicated) {
                 continue;
@@ -158,8 +158,8 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     int enumKeys = 0;
     for (int i = 0; i < end; i++) {
-        keyHandle.Update(GetKey(i));
-        if (keyHandle->IsString() && GetAttr(i).IsEnumerable()) {
+        keyHandle.Update(GetKey(thread, i));
+        if (keyHandle->IsString() && GetAttr(thread, i).IsEnumerable()) {
             keyArray->Set(thread, enumKeys + offset, keyHandle);
             enumKeys++;
         }
@@ -167,39 +167,39 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     *keys += enumKeys;
 }
 
-CString LayoutInfo::GetSymbolKeyString(JSTaggedValue key)
+CString LayoutInfo::GetSymbolKeyString(const JSThread *thread, JSTaggedValue key)
 {
     auto symbol = JSSymbol::Cast(key);
     if (!symbol->HasId()) {
         return "";
     }
     auto id = symbol->GetPrivateId();
-    auto symbolDesc = symbol->GetDescription();
+    auto symbolDesc = symbol->GetDescription(thread);
     if (symbolDesc.IsUndefined()) {
         return ToCString(id);
     }
     if (!symbolDesc.IsString()) {
         return "";
     }
-    CString str = EcmaStringAccessor(symbolDesc).ToCString();
+    CString str = EcmaStringAccessor(symbolDesc).ToCString(thread);
     if (str != "method") {
         return "";
     }
     return str.append("_").append(ToCString(id));
 }
 
-void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
+void LayoutInfo::DumpFieldIndexByPGO(const JSThread *thread, int index, pgo::HClassLayoutDesc* desc)
 {
-    auto key = GetKey(index);
-    auto attr = GetAttr(index);
-    SetIsPGODumped(index);
+    auto key = GetKey(thread, index);
+    auto attr = GetAttr(thread, index);
+    SetIsPGODumped(thread, index);
     TrackType type = attr.GetTrackType();
     int propertyMeta = attr.GetPropertyMetaData();
     if (key.IsString()) {
-        auto keyString = EcmaStringAccessor(key).ToCString();
+        auto keyString = EcmaStringAccessor(key).ToCString(thread);
         desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
     } else if (key.IsSymbol()) {
-        auto keyString = GetSymbolKeyString(key);
+        auto keyString = GetSymbolKeyString(thread, key);
         if (keyString.empty()) {
             return;
         }
@@ -207,21 +207,21 @@ void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
     }
 }
 
-bool LayoutInfo::UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
+bool LayoutInfo::UpdateFieldIndexByPGO(const JSThread *thread, int index, pgo::HClassLayoutDesc* desc)
 {
-    auto key = GetKey(index);
-    auto attr = GetAttr(index);
+    auto key = GetKey(thread, index);
+    auto attr = GetAttr(thread, index);
     if (attr.IsPGODumped()) {
         return true;
     }
-    SetIsPGODumped(index);
+    SetIsPGODumped(thread, index);
     TrackType type = attr.GetTrackType();
     int propertyMeta = attr.GetPropertyMetaData();
     if (key.IsString()) {
-        auto keyString = EcmaStringAccessor(key).ToCString();
+        auto keyString = EcmaStringAccessor(key).ToCString(thread);
         return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
     } else if (key.IsSymbol()) {
-        auto keyString = GetSymbolKeyString(key);
+        auto keyString = GetSymbolKeyString(thread, key);
         if (keyString.empty()) {
             return false;
         }

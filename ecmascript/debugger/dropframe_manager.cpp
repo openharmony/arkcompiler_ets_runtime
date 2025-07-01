@@ -72,7 +72,7 @@ std::pair<uint16_t, uint16_t> DropframeManager::ReadStlexvarParams(const uint8_t
 void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
 {
     std::set<std::pair<uint16_t, uint16_t>> modifiedLexVarPos;
-    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
+    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile(thread);
     panda_file::File::EntityId methodId = method->GetMethodId();
     PushMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId));
     if (method->IsSendableMethod()) {
@@ -86,7 +86,7 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JS
         return;
     }
     PushMethodType(MethodType::NORMAL_METHOD);
-    uint32_t codeSize = method->GetCodeSize();
+    uint32_t codeSize = method->GetCodeSize(thread);
     uint16_t newEnvCount = 0;
     auto bcIns = BytecodeInstruction(method->GetBytecodeArray());
     auto bcInsLast = bcIns.JumpTo(codeSize);
@@ -114,14 +114,14 @@ void DropframeManager::AddLexPropertiesToRecord(JSThread *thread, BytecodeInstru
             if ((level < newEnvCount || i >= level - newEnvCount) &&
                 slot < LexicalEnv::Cast(env.GetTaggedObject())->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH &&
                 !modifiedLexVarPos.count({i, slot})) {
-                JSTaggedValue value = LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot);
+                JSTaggedValue value = LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(thread, slot) ;
                 EmplaceLexModifyRecord(thread, env, slot, value);
                 modifiedLexVarPos.insert({i, slot});
             }
             if (i >= level) {
                 break;
             }
-            JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv(thread);
             if (!taggedParentEnv.IsLexicalEnv()) {
                 break;
             }
@@ -132,7 +132,7 @@ void DropframeManager::AddLexPropertiesToRecord(JSThread *thread, BytecodeInstru
 
 void DropframeManager::MethodExit(JSThread *thread, [[maybe_unused]] JSHandle<Method> method)
 {
-    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
+    const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile(thread);
     panda_file::File::EntityId methodId = method->GetMethodId();
     if (!CheckExitMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId))) {
         return;

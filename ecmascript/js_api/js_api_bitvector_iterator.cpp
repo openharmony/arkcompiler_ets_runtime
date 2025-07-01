@@ -34,7 +34,7 @@ JSTaggedValue JSAPIBitVectorIterator::Next(EcmaRuntimeCallInfo* argv)
     }
     JSHandle<JSAPIBitVectorIterator> iter(input);
     // Let a be O.[[IteratedBitVectorLike]].
-    JSHandle<JSTaggedValue> bitVector(thread, iter->GetIteratedBitVector());
+    JSHandle<JSTaggedValue> bitVector(thread, iter->GetIteratedBitVector(thread));
     // If a is undefined, return an undefinedIteratorResult.
     if (bitVector->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();

@@ -28,23 +28,23 @@ HWTEST_F_L0(JSSymbolTest, SymbolCreate)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSSymbol> normallSymbol = factory->NewJSSymbol();
     EXPECT_TRUE(*normallSymbol != nullptr);
-    EXPECT_TRUE(normallSymbol->GetDescription().IsUndefined());
+    EXPECT_TRUE(normallSymbol->GetDescription(thread).IsUndefined());
 
     JSHandle<JSSymbol> privateSymbol = factory->NewPrivateSymbol();
     EXPECT_TRUE(*privateSymbol != nullptr);
     EXPECT_TRUE(privateSymbol->IsPrivate());
-    EXPECT_TRUE(privateSymbol->GetDescription().IsUndefined());
+    EXPECT_TRUE(privateSymbol->GetDescription(thread).IsUndefined());
 
     JSHandle<JSTaggedValue> symbolName(factory->NewFromASCII("hello world"));
     JSHandle<JSSymbol> privateNameSymbol = factory->NewPrivateNameSymbol(symbolName);
     EXPECT_TRUE(*privateNameSymbol != nullptr);
     EXPECT_TRUE(privateNameSymbol->IsPrivateNameSymbol());
-    EXPECT_FALSE(privateNameSymbol->GetDescription().IsUndefined());
+    EXPECT_FALSE(privateNameSymbol->GetDescription(thread).IsUndefined());
 
     JSHandle<JSSymbol> wellKnowSymbol = factory->NewWellKnownSymbol(symbolName);
     EXPECT_TRUE(*wellKnowSymbol != nullptr);
     EXPECT_TRUE(wellKnowSymbol->IsWellKnownSymbol());
-    EXPECT_FALSE(wellKnowSymbol->GetDescription().IsUndefined());
+    EXPECT_FALSE(wellKnowSymbol->GetDescription(thread).IsUndefined());
 }
 
 HWTEST_F_L0(JSSymbolTest, SymbolEqual)
@@ -59,17 +59,17 @@ HWTEST_F_L0(JSSymbolTest, SymbolEqual)
     JSSymbol *helloWord1Symbol = JSSymbol::Cast(helloWord1SymbolVal->GetTaggedObject());
     JSSymbol *helloWord2Symbol = JSSymbol::Cast(helloWord2SymbolVal->GetTaggedObject());
     JSSymbol *hiWordSymbol = JSSymbol::Cast(hiWordSymbolVal->GetTaggedObject());
-    EXPECT_TRUE(JSSymbol::Equal(*helloWord1Symbol, *helloWord2Symbol));
+    EXPECT_TRUE(JSSymbol::Equal(thread, *helloWord1Symbol, *helloWord2Symbol));
     helloWord2Symbol->SetFlags(1);
-    EXPECT_FALSE(JSSymbol::Equal(*helloWord1Symbol, *helloWord2Symbol));
-    EXPECT_FALSE(JSSymbol::Equal(*helloWord1Symbol, *hiWordSymbol));
+    EXPECT_FALSE(JSSymbol::Equal(thread, *helloWord1Symbol, *helloWord2Symbol));
+    EXPECT_FALSE(JSSymbol::Equal(thread, *helloWord1Symbol, *hiWordSymbol));
 }
 
 HWTEST_F_L0(JSSymbolTest, ConvertToString001)
 {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("bbb");
-        CString str = ConvertToString(symbol.GetTaggedValue());
+        CString str = ConvertToString(thread, symbol.GetTaggedValue());
         EXPECT_EQ(str, CString("bbb"));
 }
 
@@ -80,7 +80,7 @@ HWTEST_F_L0(JSSymbolTest, ConvertToString002)
         symbol->SetDescription(thread, JSTaggedValue::Undefined());
         symbol->SetFlags(0);
         symbol->SetHashField(0);
-        CString str = ConvertToString(symbol.GetTaggedValue());
+        CString str = ConvertToString(thread, symbol.GetTaggedValue());
         EXPECT_EQ(str, CString("Symbol()"));
 }
 }  // namespace panda::test

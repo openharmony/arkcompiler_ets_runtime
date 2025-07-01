@@ -335,7 +335,7 @@ HWTEST_F_L0(BuiltinsSharedSetTest, Species)
     EXPECT_TRUE(!stringTag.GetTaggedValue().IsUndefined());
 
     JSHandle<JSFunction> constructor = JSHandle<JSFunction>::Cast(JSTaggedValue::ToObject(thread, valueHandle));
-    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, set), constructor->GetFunctionPrototype());
+    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, set), constructor->GetFunctionPrototype(thread));
 
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("add"));
     JSTaggedValue value1 = JSObject::GetProperty(thread, set, key1).GetValue().GetTaggedValue();

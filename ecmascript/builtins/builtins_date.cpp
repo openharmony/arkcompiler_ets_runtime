@@ -51,7 +51,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
         if (value->IsDate()) {  // The value is a date object.
             JSHandle<JSDate> jsDate(thread, JSDate::Cast(value->GetTaggedObject()));
-            timeValue = jsDate->GetTimeValue();
+            timeValue = jsDate->GetTimeValue(thread);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         } else {
             JSHandle<JSTaggedValue> objValue(thread, JSTaggedValue::ToPrimitive(thread, value));
@@ -115,7 +115,7 @@ JSTaggedValue BuiltinsDate::GetTime(EcmaRuntimeCallInfo *argv)
         [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    return JSDate::Cast(msg->GetTaggedObject())->GetTime();
+    return JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
 }
 
 JSTaggedValue BuiltinsDate::SetTime(EcmaRuntimeCallInfo *argv)
@@ -180,7 +180,7 @@ JSTaggedValue BuiltinsDate::ValueOf(EcmaRuntimeCallInfo *argv)
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    return JSDate::Cast(msg->GetTaggedObject())->ValueOf();
+    return JSDate::Cast(msg->GetTaggedObject())->ValueOf(thread);
 }
 
 // 20.4.4.45
@@ -234,7 +234,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime();
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".
@@ -315,7 +315,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime();
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".
@@ -396,7 +396,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime();
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".

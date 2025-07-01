@@ -1397,7 +1397,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
-            auto hashcode = EcmaStringAccessor(str).GetHashcode();
+            auto hashcode = EcmaStringAccessor(str).GetHashcode(thread);
 #if ENABLE_NEXT_OPTIMIZATION
             EcmaString *strFromTable = stringTable->GetOrInternString(
                 vm_, hashcode,
@@ -1427,16 +1427,16 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                     JSHandle<EcmaString> stringHandle(thread, value);
                     return stringHandle;
                 },
-                [str](BaseString *foundString) {
+                [str, thread](BaseString *foundString) {
                     ASSERT(EcmaStringAccessor(str).NotTreeString());
-                    return EcmaStringAccessor::StringsAreEqual(EcmaString::FromBaseString(foundString), str);
+                    return EcmaStringAccessor::StringsAreEqual(thread, EcmaString::FromBaseString(foundString), str);
                 });
             ASSERT(strFromTable != nullptr);
             deserializeStringVector_.emplace_back(thread, strFromTable);
 #else
             RuntimeLockHolder locker(thread,
                 stringTable->stringTable_[EcmaStringTable::GetTableId(hashcode)].mutex_);
-            auto strFromTable = stringTable->GetStringThreadUnsafe(str, hashcode);
+            auto strFromTable = stringTable->GetStringThreadUnsafe(thread, str, hashcode);
             if (strFromTable) {
                 deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
@@ -1459,7 +1459,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                     UNREACHABLE();
                 }
                 str = reinterpret_cast<EcmaString *>(newObj);
-                stringTable->InsertStringToTableWithHashThreadUnsafe(str, hashcode);
+                stringTable->InsertStringToTableWithHashThreadUnsafe(thread, str, hashcode);
                 deserializeStringVector_.emplace_back(thread, str);
             }
 #endif
@@ -1586,13 +1586,14 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
 bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index,
     VisitObjectArea area)
 {
+    JSThread *thread = vm_->GetJSThread();
     if (area != VisitObjectArea::IN_OBJECT) {
         return false;
     }
     auto hclass = root->GetClass();
     ASSERT(!hclass->IsAllTaggedProp());
-    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    auto attr = layout->GetAttr(index++);
+    auto layout = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
+    auto attr = layout->GetAttr(thread, index++);
     if (attr.GetRepresentation() == Representation::DOUBLE) {
         auto fieldAddr = reinterpret_cast<double *>(slot.SlotAddress());
         SetObjectEncodeField(obj, slot.SlotAddress() - ToUintPtr(root),
@@ -1745,7 +1746,8 @@ EncodeBit SnapshotProcessor::SerializeObjectHeader(TaggedObject *objectHeader, s
 uint64_t SnapshotProcessor::SerializeTaggedField(JSTaggedType *tagged, CQueue<TaggedObject *> *queue,
                                                  std::unordered_map<uint64_t, ObjectEncode> *data)
 {
-    JSTaggedValue taggedValue(Barriers::GetTaggedValue(ToUintPtr(tagged)));
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    JSTaggedValue taggedValue(Barriers::GetTaggedValue(thread, ToUintPtr(tagged)));
     if (taggedValue.IsWeak()) {
         taggedValue.RemoveWeakTag();
         if (taggedValue.IsJSHClass()) {

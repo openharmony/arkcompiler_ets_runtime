@@ -34,11 +34,11 @@ public:
 
     JSTaggedValue Get(JSThread *thread, JSTaggedValue key) const;
 
-    uint32_t GetSize() const;
+    uint32_t GetSize(JSThread *thread) const;
 
-    JSTaggedValue GetKey(uint32_t entry) const;
+    JSTaggedValue GetKey(JSThread *thread, uint32_t entry) const;
 
-    JSTaggedValue GetValue(uint32_t entry) const;
+    JSTaggedValue GetValue(JSThread *thread, uint32_t entry) const;
 
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, SIZE)

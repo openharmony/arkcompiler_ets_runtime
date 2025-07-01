@@ -36,7 +36,7 @@ public:
         //     a. Perform ! AddToKeptObjects(target).
         //     b. Return target.
         // 3. Return undefined.
-        JSHandle<JSTaggedValue> target(thread, weakRef->GetFromWeak());
+        JSHandle<JSTaggedValue> target(thread, weakRef->GetFromWeak(thread));
         if (!target->IsUndefined()) {
             EcmaVM::AddToKeptObjects(thread, target);
         }
@@ -51,9 +51,9 @@ public:
         SetWeakObject(thread, weakObj);
     }
 
-    JSTaggedValue GetFromWeak() const
+    JSTaggedValue GetFromWeak(JSThread *thread) const
     {
-        JSTaggedValue weakObj = GetWeakObject();
+        JSTaggedValue weakObj = GetWeakObject(thread);
         if (!weakObj.IsUndefined()) {
             return JSTaggedValue(weakObj.GetWeakReferent());
         }

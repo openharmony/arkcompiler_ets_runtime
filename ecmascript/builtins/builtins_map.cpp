@@ -148,7 +148,7 @@ JSTaggedValue BuiltinsMap::Get(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
     JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
-    if (jsMap->GetSize() == 0) {
+    if (jsMap->GetSize(thread) == 0) {
         return JSTaggedValue::Undefined();
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -177,17 +177,17 @@ JSTaggedValue BuiltinsMap::ForEach(EcmaRuntimeCallInfo *argv)
     // 5.If thisArg was supplied, let T be thisArg; else let T be undefined.
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
 
-    JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap());
+    JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap(thread));
     const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // 7.Repeat for each e that is an element of entries, in original insertion order
     while (index < totalElements) {
-        JSHandle<JSTaggedValue> key(thread, hashMap->GetKey(index++));
+        JSHandle<JSTaggedValue> key(thread, hashMap->GetKey(thread, index++));
         // a. If e is not empty, then
         if (!key->IsHole()) {
-            JSHandle<JSTaggedValue> value(thread, hashMap->GetValue(index - 1));
+            JSHandle<JSTaggedValue> value(thread, hashMap->GetValue(thread, index - 1));
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(
                 thread, func, thisArg, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -197,11 +197,11 @@ JSTaggedValue BuiltinsMap::ForEach(EcmaRuntimeCallInfo *argv)
             // ii. ReturnIfAbrupt(funcResult).
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ret);
             // Maybe add or delete
-            JSTaggedValue nextTable = hashMap->GetNextTable();
+            JSTaggedValue nextTable = hashMap->GetNextTable(thread);
             while (!nextTable.IsHole()) {
-                index -= hashMap->GetDeletedElementsAt(index);
+                index -= hashMap->GetDeletedElementsAt(thread, index);
                 hashMap.Update(nextTable);
-                nextTable = hashMap->GetNextTable();
+                nextTable = hashMap->GetNextTable(thread);
             }
             totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
         }
@@ -228,7 +228,7 @@ JSTaggedValue BuiltinsMap::GetSize(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
     JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
-    uint32_t count = jsMap->GetSize();
+    uint32_t count = jsMap->GetSize(thread);
     return JSTaggedValue(count);
 }
 

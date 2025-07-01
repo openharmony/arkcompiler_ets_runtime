@@ -187,14 +187,14 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsShared)
 {
     // is not SharedBuffer
     JSHandle<JSArrayBuffer> jsArrayBuffer(thread, CreateJSArrayBuffer(thread));
-    bool result = BuiltinsSharedArrayBuffer::IsShared(jsArrayBuffer.GetTaggedValue());
+    bool result = BuiltinsSharedArrayBuffer::IsShared(thread, jsArrayBuffer.GetTaggedValue());
     ASSERT_EQ(result, false);
     // no BufferData
     JSTaggedValue tagged1 = BuiltTestUtil::CreateBuiltinsSharedArrayBuffer(thread, 0);
     JSHandle<JSArrayBuffer> arrBuf1(thread,
                                     JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged1.GetRawData())));
     arrBuf1->SetArrayBufferData(thread, JSTaggedValue::Null());
-    bool result1 = BuiltinsSharedArrayBuffer::IsShared(arrBuf1.GetTaggedValue());
+    bool result1 = BuiltinsSharedArrayBuffer::IsShared(thread, arrBuf1.GetTaggedValue());
     ASSERT_EQ(result1, false);
 }
 }  // namespace panda::test

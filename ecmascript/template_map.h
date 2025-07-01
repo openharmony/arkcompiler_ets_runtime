@@ -23,11 +23,12 @@ namespace panda::ecmascript {
 class TemplateMap : public TaggedHashTable<TemplateMap> {
 public:
     using HashTable = TaggedHashTable<TemplateMap>;
-    static inline bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
+    static inline bool IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+                               const JSTaggedValue &other)
     {
         return key == other;
     }
-    static inline int Hash(const JSTaggedValue &obj)
+    static inline int Hash([[maybe_unused]] const JSThread *thread, const JSTaggedValue &obj)
     {
         ASSERT(obj.IsJSArray());
         JSArray *array = JSArray::Cast(obj.GetTaggedObject());
@@ -59,8 +60,9 @@ public:
     {
         return HashTable::Create(thread, numberOfElements);
     }
-    static int ComputeCompactSize([[maybe_unused]] const JSHandle<TemplateMap> &table, int computeHashTableSize,
-        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    static int ComputeCompactSize([[maybe_unused]] const JSThread *thread,
+                                  [[maybe_unused]] const JSHandle<TemplateMap> &table, int computeHashTableSize,
+                                  [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
     {
         return computeHashTableSize;
     }

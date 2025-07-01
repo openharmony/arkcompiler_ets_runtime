@@ -361,7 +361,7 @@ HWTEST_F_L0(BuiltinsSharedMapTest, Species)
     EXPECT_EQ(value, newTarget.GetTaggedValue());
 
     JSHandle<JSFunction> constructor = JSHandle<JSFunction>::Cast(JSTaggedValue::ToObject(thread, valueHandle));
-    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, map), constructor->GetFunctionPrototype());
+    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, map), constructor->GetFunctionPrototype(thread));
 
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("set"));
     JSTaggedValue value1 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();

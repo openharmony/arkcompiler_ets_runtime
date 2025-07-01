@@ -63,10 +63,10 @@ public:
         }
         if (key.IsString()) {
             auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
-            return EcmaStringAccessor(keyString).GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode(thread);
         }
         if (key.IsECMAObject()) {
-            int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
+            int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash(thread);
             if (hash == 0) {
                 hash = base::RandomGenerator::GenerateIdentityHash();
                 JSHandle<ECMAObject> ecmaObj(thread, key);
@@ -127,11 +127,11 @@ public:
     static constexpr size_t LEFT_OFFSET = TaggedNode::SIZE;
     ACCESSORS(Left, LEFT_OFFSET, RIGHT_OFFSET);
     ACCESSORS(Right, RIGHT_OFFSET, ISRED_OFFSET);
-    ACCESSORS(IsRed, ISRED_OFFSET, COUNT_OFFSET);
+    ACCESSORS_FIXED_SIZE_FIELD(IsRed, bool, uint64_t, ISRED_OFFSET, COUNT_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Count, uint32_t, COUNT_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT(TaggedObject::SIZE, COUNT_OFFSET)
+    DECL_VISIT_OBJECT(TaggedObject::SIZE, ISRED_OFFSET)
 
     void InitRBTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
                         JSHandle<JSTaggedValue> value, int count);
@@ -147,7 +147,7 @@ public:
                                 JSHandle<LinkedNode> &head, JSHandle<LinkedNode> &tail);
     static JSHandle<LinkedNode> Detreeing(JSThread *thread, const JSHandle<RBTreeNode> &root);
     static uint32_t Count(JSTaggedValue nodeValue);
-    static int Compare(int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
+    static int Compare(const JSThread *thread, int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
     static bool IsRed(JSTaggedValue treeNodeValue);
 private:
     static void InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &treeNode,
@@ -159,7 +159,7 @@ private:
     void FlipColors(JSThread *thread);
     RBTreeNode *MoveRedLeft(JSThread *thread);
     RBTreeNode *MoveRedRight(JSThread *thread);
-    RBTreeNode *Min();
+    RBTreeNode *Min(JSThread *thread);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_NODE_H

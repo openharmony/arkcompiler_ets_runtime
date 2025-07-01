@@ -107,7 +107,7 @@ public:
         }
         EcmaVM *ecmaVm = thread->GetEcmaVM();
         std::string cacheEntry = locales->IsUndefined() ? "" :
-            EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+            EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
         if (cache) {
             void *cachedCollator = ecmaVm->GetIntlCache().GetIcuFormatterFromCache(icuType, cacheEntry);
             if (cachedCollator != nullptr) {

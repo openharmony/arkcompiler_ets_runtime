@@ -34,7 +34,7 @@ JSTaggedValue JSAPIVectorIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIVectorIterator> iter(input);
     // Let a be O.[[IteratedVectorLike]].
-    JSHandle<JSTaggedValue> vector(thread, iter->GetIteratedVector());
+    JSHandle<JSTaggedValue> vector(thread, iter->GetIteratedVector(thread));
     // If a is undefined, return an undefinedIteratorResult.
     if (vector->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();

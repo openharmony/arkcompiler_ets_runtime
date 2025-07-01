@@ -22,27 +22,22 @@
 
 namespace panda::ecmascript {
 
-JSTaggedValue TaggedArray::Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const
-{
-    return Get(idx);
-}
-
-uint32_t TaggedArray::GetIdx(const JSTaggedValue &value) const
+uint32_t TaggedArray::GetIdx(const JSThread *thread, const JSTaggedValue &value) const
 {
     uint32_t length = GetLength();
 
     for (uint32_t i = 0; i < length; i++) {
-        if (JSTaggedValue::SameValue(Get(i), value)) {
+        if (JSTaggedValue::SameValue(thread, Get(thread, i), value)) {
             return i;
         }
     }
     return TaggedArray::MAX_ARRAY_INDEX;
 }
 
-JSTaggedValue TaggedArray::GetBit(uint32_t idx, uint32_t bitOffset) const
+JSTaggedValue TaggedArray::GetBit(const JSThread *thread, uint32_t idx, uint32_t bitOffset) const
 {
     ASSERT(idx < GetLength());
-    JSTaggedType element = Get(idx).GetRawData();
+    JSTaggedType element = Get(thread, idx).GetRawData();
     return JSTaggedValue(int((element >> bitOffset) & 1ULL));
 }
 
@@ -50,7 +45,7 @@ JSTaggedValue TaggedArray::GetBit(uint32_t idx, uint32_t bitOffset) const
 void TaggedArray::SetBit(const JSThread *thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue &value)
 {
     ASSERT(idx < GetLength());
-    JSTaggedType element = Get(idx).GetRawData();
+    JSTaggedType element = Get(thread, idx).GetRawData();
     if (value.IsZero()) {
         element &= ~(1ULL << bitOffset);
     } else {
@@ -69,10 +64,10 @@ JSHandle<TaggedArray> TaggedArray::Append(const JSThread *thread, const JSHandle
     JSHandle<TaggedArray> argument = factory->NewTaggedArray(length);
     uint32_t index = 0;
     for (; index < firstLength; ++index) {
-        argument->Set(thread, index, first->Get(index));
+        argument->Set(thread, index, first->Get(thread, index));
     }
     for (; index < length; ++index) {
-        argument->Set(thread, index, second->Get(index - firstLength));
+        argument->Set(thread, index, second->Get(thread, index - firstLength));
     }
     return argument;
 }
@@ -88,7 +83,7 @@ JSHandle<TaggedArray> TaggedArray::AppendSkipHole(const JSThread *thread, const 
     JSHandle<TaggedArray> argument = factory->NewTaggedArray(copyLength);
     uint32_t index = 0;
     for (; index < firstLength; ++index) {
-        JSTaggedValue val = first->Get(index);
+        JSTaggedValue val = first->Get(thread, index);
         if (val.IsHole()) {
             break;
         }
@@ -96,7 +91,7 @@ JSHandle<TaggedArray> TaggedArray::AppendSkipHole(const JSThread *thread, const 
         ASSERT(copyLength >= index);
     }
     for (uint32_t i = 0; i < secondLength; ++i) {
-        JSTaggedValue val = second->Get(i);
+        JSTaggedValue val = second->Get(thread, i);
         if (val.IsHole()) {
             break;
         }
@@ -106,12 +101,12 @@ JSHandle<TaggedArray> TaggedArray::AppendSkipHole(const JSThread *thread, const 
     return argument;
 }
 
-bool TaggedArray::HasDuplicateEntry() const
+bool TaggedArray::HasDuplicateEntry(const JSThread *thread) const
 {
     uint32_t length = GetLength();
     for (uint32_t i = 0; i < length; i++) {
         for (uint32_t j = i + 1; j < length; j++) {
-            if (JSTaggedValue::SameValue(Get(i), Get(j))) {
+            if (JSTaggedValue::SameValue(thread, Get(thread, i), Get(thread, j))) {
                 return true;
             }
         }
@@ -170,7 +165,7 @@ void TaggedArray::RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedAr
         }
     } else {
         while (index < effectiveLength - 1) {
-            srcArray->Set(thread, index, srcArray->Get(index + 1));
+            srcArray->Set(thread, index, srcArray->Get(thread, index + 1));
             index++;
         }
     }
@@ -183,7 +178,7 @@ void TaggedArray::InsertElementByIndex(const JSThread *thread, JSHandle<TaggedAr
     ASSERT(0 <= index || index <= effectiveLength);
     ASSERT(effectiveLength < srcArray->GetLength());
     while (effectiveLength != index && effectiveLength > 0) {
-        JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
+        JSTaggedValue oldValue = srcArray->Get(thread, effectiveLength - 1);
         srcArray->Set(thread, effectiveLength, oldValue);
         effectiveLength--;
     }

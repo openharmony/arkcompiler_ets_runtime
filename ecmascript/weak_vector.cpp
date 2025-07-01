@@ -86,7 +86,7 @@ JSHandle<WeakVector> WeakVector::FillOrAppend(const JSThread *thread, const JSHa
     }
 
     // if exist hole, use it.
-    uint32_t holeIndex = CheckHole(vec);
+    uint32_t holeIndex = CheckHole(thread, vec);
     if (holeIndex != TaggedArray::MAX_ARRAY_INDEX) {
         JSTaggedValue storeVal = GetStoreVal(value, type);
         vec->Set(thread, holeIndex, storeVal);
@@ -133,10 +133,10 @@ JSHandle<WeakVector> WeakVector::Copy(const JSThread *thread, const JSHandle<Wea
     return JSHandle<WeakVector>(newVec);
 }
 
-uint32_t WeakVector::CheckHole(const JSHandle<WeakVector> &vec)
+uint32_t WeakVector::CheckHole(const JSThread *thread, const JSHandle<WeakVector> &vec)
 {
     for (uint32_t i = 0; i < vec->GetEnd(); i++) {
-        JSTaggedValue value = vec->Get(i);
+        JSTaggedValue value = vec->Get(thread, i);
         if (value.IsHole()) {
             return i;
         }

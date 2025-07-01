@@ -40,18 +40,18 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPITreeMapIterator> iter(input);
     // Let it be [[IteratedMap]].
-    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
+    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap(thread));
 
     // If it is undefined, return undefinedIteratorResult.
     if (iteratedMap->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
-    JSHandle<TaggedTreeMap> map(thread, JSHandle<JSAPITreeMap>::Cast(iteratedMap)->GetTreeMap());
+    JSHandle<TaggedTreeMap> map(thread, JSHandle<JSAPITreeMap>::Cast(iteratedMap)->GetTreeMap(thread));
     uint32_t elements = static_cast<uint32_t>(map->NumberOfElements());
 
-    JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries());
-    if ((iter->GetEntries().IsHole()) || (elements != entries->GetLength())) {
+    JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries(thread));
+    if ((iter->GetEntries(thread).IsHole()) || (elements != entries->GetLength())) {
         entries.Update(TaggedTreeMap::GetArrayFromMap(thread, map).GetTaggedValue());
         iter->SetEntries(thread, entries);
     }
@@ -61,15 +61,15 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     if (index < elements) {
         IterationKind itemKind = IterationKind(iter->GetIterationKind());
 
-        int keyIndex = entries->Get(index).GetInt();
+        int keyIndex = entries->Get(thread, index).GetInt();
         iter->SetNextIndex(index + 1);
 
-        JSHandle<JSTaggedValue> key(thread, map->GetKey(keyIndex));
+        JSHandle<JSTaggedValue> key(thread, map->GetKey(thread, keyIndex));
         // If itemKind is key, let result be e.[[Key]]
         if (itemKind == IterationKind::KEY) {
             return JSIterator::CreateIterResultObject(thread, key, false).GetTaggedValue();
         }
-        JSHandle<JSTaggedValue> value(thread, map->GetValue(keyIndex));
+        JSHandle<JSTaggedValue> value(thread, map->GetValue(thread, keyIndex));
         // Else if itemKind is value, let result be e.[[Value]].
         if (itemKind == IterationKind::VALUE) {
             return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
@@ -94,8 +94,8 @@ JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPITreeMap()) {
-        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeMap()) {
-            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
+        if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget(thread).IsJSAPITreeMap()) {
+            obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget(thread));
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
                                                                 "The Symbol.iterator method cannot be bound");

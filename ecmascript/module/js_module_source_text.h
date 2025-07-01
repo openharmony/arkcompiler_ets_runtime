@@ -403,7 +403,8 @@ public:
     static bool IsDynamicModule(LoadingTypes types);
 
     // taskpool
-    static std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(const JSHandle<Method> &method);
+    static std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(JSThread *thread,
+        const JSHandle<Method> &method);
     static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                      const JSHandle<Method> &method);
     static int ModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -446,12 +447,14 @@ private:
                                                          const JSHandle<JSHClass> &hclass,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
-    static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,
+    static bool CheckCircularImport(JSThread *thread,
+                                    const JSHandle<SourceTextModule> &module,
                                     const JSHandle<JSTaggedValue> &exportName,
                                     ResolvedMultiMap &resolvedMap);
-    static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
+    static JSTaggedValue FindByExport(JSThread *thread, const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
-    static void DFSModuleInstantiation(JSHandle<SourceTextModule> &module,
+    static void DFSModuleInstantiation(JSThread *thread,
+                                       JSHandle<SourceTextModule> &module,
                                        CVector<JSHandle<SourceTextModule>> &stack);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);

@@ -117,14 +117,14 @@ public:
         SetFlags(GetFlags() | IS_PRIVATE_NAME);
     }
 
-    static bool Equal(const JSSymbol &src, const JSSymbol &dst)
+    static bool Equal(JSThread *thread, const JSSymbol &src, const JSSymbol &dst)
     {
         if (src.GetFlags() != dst.GetFlags()) {
             return false;
         }
-        EcmaString *srcString = EcmaString::Cast(src.GetDescription().GetTaggedObject());
-        EcmaString *dstString = EcmaString::Cast(dst.GetDescription().GetTaggedObject());
-        return EcmaStringAccessor::StringsAreEqual(srcString, dstString);
+        EcmaString *srcString = EcmaString::Cast(src.GetDescription(thread).GetTaggedObject());
+        EcmaString *dstString = EcmaString::Cast(dst.GetDescription(thread).GetTaggedObject());
+        return EcmaStringAccessor::StringsAreEqual(thread, srcString, dstString);
     }
 
     uint64_t GetPrivateId()

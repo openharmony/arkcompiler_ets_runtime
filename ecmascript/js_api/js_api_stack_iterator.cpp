@@ -37,7 +37,7 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIStackIterator> iter(input);
-    JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack());
+    JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack(thread));
     if (stack->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();
@@ -56,7 +56,7 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSTaggedValue> key(thread, JSTaggedValue(index));
-    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIStack>::Cast(stack)->Get(index));
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIStack>::Cast(stack)->Get(thread, index));
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 }  // namespace panda::ecmascript

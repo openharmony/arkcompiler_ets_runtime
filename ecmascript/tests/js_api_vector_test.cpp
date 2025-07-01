@@ -78,7 +78,7 @@ HWTEST_F_L0(JSAPIVectorTest, AddGetHas)
 
     // test Has of empty vector
     value.Update(JSTaggedValue(NODE_NUMBERS));
-    EXPECT_FALSE(toor->Has(value.GetTaggedValue()));
+    EXPECT_FALSE(toor->Has(thread, value.GetTaggedValue()));
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -87,10 +87,10 @@ HWTEST_F_L0(JSAPIVectorTest, AddGetHas)
         bool result = JSAPIVector::Add(thread, toor, value);
         EXPECT_TRUE(result);
         EXPECT_EQ(JSAPIVector::Get(thread, toor, i), value.GetTaggedValue());
-        EXPECT_TRUE(toor->Has(value.GetTaggedValue()));
+        EXPECT_TRUE(toor->Has(thread, value.GetTaggedValue()));
     }
     value.Update(JSTaggedValue(NODE_NUMBERS));
-    EXPECT_FALSE(toor->Has(value.GetTaggedValue()));
+    EXPECT_FALSE(toor->Has(thread, value.GetTaggedValue()));
     EXPECT_EQ(static_cast<uint32_t>(toor->GetSize()), NODE_NUMBERS);
 
     // test Get exception
@@ -99,7 +99,7 @@ HWTEST_F_L0(JSAPIVectorTest, AddGetHas)
     JSAPIVector::Get(thread, toor, static_cast<int32_t>(NODE_NUMBERS));
     EXPECT_EXCEPTION();
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIVectorTest, RemoveByIndexAndRemove)
@@ -128,7 +128,7 @@ HWTEST_F_L0(JSAPIVectorTest, RemoveByIndexAndRemove)
     EXPECT_EQ(result1, JSTaggedValue::Exception());
     EXPECT_EXCEPTION();
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIVectorTest, RemoveByRangeAndGetHeapUsedSize)
@@ -157,7 +157,7 @@ HWTEST_F_L0(JSAPIVectorTest, ClearAndisEmpty)
     JSAPIVector::Clear(thread, toor);
     EXPECT_EQ(toor->IsEmpty(), true);
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIVectorTest, GetIndexOf)
@@ -177,7 +177,7 @@ HWTEST_F_L0(JSAPIVectorTest, GetIndexOf)
         EXPECT_EQ(JSAPIVector::GetIndexOf(thread, toor, value), static_cast<int>(i));
     }
 
-    toor->Dump();
+    toor->Dump(thread);
 }
 
 HWTEST_F_L0(JSAPIVectorTest, GetOwnProperty)
@@ -279,10 +279,10 @@ HWTEST_F_L0(JSAPIVectorTest, IncreaseCapacityToTrimToCurrentLength)
         JSAPIVector::Add(thread, toor, value);
     }
     JSAPIVector::IncreaseCapacityTo(thread, toor, 80);
-    JSHandle<TaggedArray> elementData(thread, toor->GetElements());
+    JSHandle<TaggedArray> elementData(thread, toor->GetElements(thread));
     EXPECT_EQ(static_cast<int>(elementData->GetLength()), 80);
     JSAPIVector::TrimToCurrentLength(thread, toor);
-    JSHandle<TaggedArray> newElementData(thread, toor->GetElements());
+    JSHandle<TaggedArray> newElementData(thread, toor->GetElements(thread));
     EXPECT_EQ(newElementData->GetLength(), elementsNums);
 
     // test IncreaseCapacityTo exception
@@ -332,7 +332,7 @@ HWTEST_F_L0(JSAPIVectorTest, SetLengthGetIndexFromGetLastElementGetLastIndexOf)
     JSHandle<JSAPIVector> toor(thread, CreateVector());
 
     // test GetLastElement of empty vector
-    EXPECT_EQ(toor->GetLastElement(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->GetLastElement(thread), JSTaggedValue::Undefined());
 
     // test GetLastIndexOf of empty vector
     uint32_t elementsNums = 20;
@@ -351,7 +351,7 @@ HWTEST_F_L0(JSAPIVectorTest, SetLengthGetIndexFromGetLastElementGetLastIndexOf)
     EXPECT_EXCEPTION();
 
     // test GetLastElement
-    EXPECT_EQ(toor->GetLastElement(), JSTaggedValue(elementsNums - 1));
+    EXPECT_EQ(toor->GetLastElement(thread), JSTaggedValue(elementsNums - 1));
 
     // test GetLastIndexOf
     EXPECT_EQ(JSAPIVector::GetLastIndexOf(thread, toor, obj), static_cast<int32_t>(elementsNums - 1));
@@ -458,9 +458,9 @@ HWTEST_F_L0(JSAPIVectorTest, OwnKeys)
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
     EXPECT_TRUE(keyArray->GetLength() == elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
-        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(thread,
             *(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
-            EcmaString::Cast(keyArray->Get(i).GetTaggedObject())
+            EcmaString::Cast(keyArray->Get(thread, i).GetTaggedObject())
         ));
     }
 }
@@ -474,13 +474,13 @@ HWTEST_F_L0(JSAPIVectorTest, OwnKeys)
 HWTEST_F_L0(JSAPIVectorTest, GetFirstElement)
 {
     JSHandle<JSAPIVector> toor(thread, CreateVector());
-    EXPECT_EQ(JSAPIVector::GetFirstElement(toor), JSTaggedValue::Undefined());
+    EXPECT_EQ(JSAPIVector::GetFirstElement(thread, toor), JSTaggedValue::Undefined());
 
     uint32_t elementsNums = 8;
     for (uint32_t i = 0; i < elementsNums; i++) {
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         JSAPIVector::Add(thread, toor, value);
     }
-    EXPECT_EQ(JSAPIVector::GetFirstElement(toor), JSTaggedValue(0));
+    EXPECT_EQ(JSAPIVector::GetFirstElement(thread, toor), JSTaggedValue(0));
 }
 }  // namespace panda::test

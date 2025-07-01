@@ -33,7 +33,7 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> sModule = factory->NewSSourceTextModule();
-    JSHandle<JSTaggedValue> currentEnvironment(thread, currentModule->GetEnvironment());
+    JSHandle<JSTaggedValue> currentEnvironment(thread, currentModule->GetEnvironment(thread));
     JSHandle<TaggedArray> sendableEnvironment = SendableClassModule::CloneModuleEnvironment(thread,
                                                                                             currentEnvironment);
     sModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
@@ -48,7 +48,7 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *t
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<ResolvedIndexBinding> binding(thread, indexBinding);
-    JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule());
+    JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule(thread));
     if (SourceTextModule::IsSharedModule((resolvedModule))) {
         return JSHandle<JSTaggedValue>::Cast(
             factory->NewSResolvedIndexBindingRecord(resolvedModule, binding->GetIndex()));
@@ -65,16 +65,16 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedObject());
-    JSHandle<SourceTextModule> resolvedModule(thread, resolvedBinding->GetModule());
+    JSHandle<SourceTextModule> resolvedModule(thread, resolvedBinding->GetModule(thread));
     if (SourceTextModule::IsSharedModule((resolvedModule))) {
-        JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName());
+        JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName(thread));
         return JSHandle<JSTaggedValue>::Cast(
             factory->NewSResolvedBindingRecord(resolvedModule, bindingName));
     }
 
     CString moduleName = SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue());
     JSHandle<EcmaString> record = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(moduleName);
-    JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName());
+    JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName(thread));
     return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordBindingRecord(record, bindingName));
 }
 
@@ -89,7 +89,7 @@ JSHandle<TaggedArray> SendableClassModule::CloneModuleEnvironment(JSThread *thre
     int enumKeys = static_cast<int>(currentEnvironment->GetLength());
     JSHandle<TaggedArray> sendableEnvironment = factory->NewSDictionaryArray(enumKeys);
     for (int idx = 0; idx < enumKeys; idx++) {
-        JSTaggedValue key = currentEnvironment->Get(idx);
+        JSTaggedValue key = currentEnvironment->Get(thread, idx);
         if (key.IsRecord()) {
             JSType type = key.GetTaggedObject()->GetClass()->GetObjectType();
             switch (type) {
@@ -155,7 +155,7 @@ JSHandle<TaggedArray> JSSharedModule::GenerateSharedExports(JSThread *thread, co
     }
     JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(newLength);
     for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = oldExports->Get(i);
+        JSTaggedValue value = oldExports->Get(thread, i);
         ASSERT(value.IsString());
         newArray->Set(thread, i, value);
     }

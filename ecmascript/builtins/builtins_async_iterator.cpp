@@ -50,14 +50,14 @@ JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
     JSHandle<JSTaggedValue> iterResultVal(iterResult);
-    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
+    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve(thread));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info = EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(iterResultVal.GetTaggedValue());
     JSFunction::Call(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return pcap->GetPromise();
+    return pcap->GetPromise(thread);
 }
 
 JSTaggedValue BuiltinsAsyncIterator::GetAsyncIteratorObj(EcmaRuntimeCallInfo *argv)

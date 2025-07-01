@@ -96,8 +96,8 @@ public:
     void UpdateTrackSpaceFlag(TaggedObject* object, RegionSpaceFlag spaceFlag);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject* currObj, JSHClass* currHC, JSTaggedValue key);
-    static ApEntityId PUBLIC_API GetMethodAbcId(JSFunction* jsFunction);
-    static ApEntityId PUBLIC_API GetMethodAbcId(JSTaggedValue jsMethod);
+    static ApEntityId PUBLIC_API GetMethodAbcId(const JSThread *thread, JSFunction* jsFunction);
+    static ApEntityId PUBLIC_API GetMethodAbcId(const JSThread *thread, JSTaggedValue jsMethod);
     void Reset(bool isEnable);
     void InsertSkipCtorMethodIdSafe(EntityId ctorMethodId);
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp);

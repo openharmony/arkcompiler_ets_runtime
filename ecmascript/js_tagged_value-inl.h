@@ -79,7 +79,7 @@ inline bool JSTaggedValue::IsPropertyKey(const JSHandle<JSTaggedValue> &key)
     return key->IsStringOrSymbol() || key->IsNumber();
 }
 
-inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue &y)
+inline bool JSTaggedValue::SameValue(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y)
 {
     // same object or special type must be same value
     if (x == y) {
@@ -93,7 +93,8 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
         return SameValueNumberic(x, y);
     }
     if (x.IsString() && y.IsString()) {
-        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
+        return StringCompare(const_cast<JSThread *>(thread), EcmaString::Cast(x.GetTaggedObject()),
+                             EcmaString::Cast(y.GetTaggedObject()));
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::SameValue(x, y);
@@ -101,23 +102,24 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
     return false;
 }
 
-inline bool JSTaggedValue::SameValue(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle)
+inline bool JSTaggedValue::SameValue(const JSThread *thread, const JSHandle<JSTaggedValue> &xHandle,
+                                     const JSHandle<JSTaggedValue> &yHandle)
 {
-    return SameValue(xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
+    return SameValue(thread, xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
 }
 
-inline bool JSTaggedValue::SameValueString(const JSHandle<JSTaggedValue> &xHandle,
+inline bool JSTaggedValue::SameValueString(const JSThread *thread, const JSHandle<JSTaggedValue> &xHandle,
                                            const JSHandle<JSTaggedValue> &yHandle)
 {
-    return SameValueString(xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
+    return SameValueString(thread, xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
 }
 
-inline bool JSTaggedValue::SameValueString(const JSTaggedValue &x, const JSTaggedValue &y)
+inline bool JSTaggedValue::SameValueString(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y)
 {
-    return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
+    return StringCompare(thread, EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
 }
 
-inline bool JSTaggedValue::SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y)
+inline bool JSTaggedValue::SameValueZero(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y)
 {
     if (x == y) {
         return true;
@@ -133,7 +135,7 @@ inline bool JSTaggedValue::SameValueZero(const JSTaggedValue &x, const JSTaggedV
     if (x.IsString() && y.IsString()) {
         auto xStr = static_cast<EcmaString *>(x.GetTaggedObject());
         auto yStr = static_cast<EcmaString *>(y.GetTaggedObject());
-        return EcmaStringAccessor::StringsAreEqual(xStr, yStr);
+        return EcmaStringAccessor::StringsAreEqual(thread, xStr, yStr);
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::SameValueZero(x, y);
@@ -173,13 +175,13 @@ inline bool JSTaggedValue::StrictIntEquals(int x, int y)
     return x == y;
 }
 
-inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, const JSHandle<JSTaggedValue> &x,
+inline bool JSTaggedValue::StrictEqual(const JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                        const JSHandle<JSTaggedValue> &y)
 {
-    return StrictEqual(x.GetTaggedValue(), y.GetTaggedValue());
+    return StrictEqual(thread, x.GetTaggedValue(), y.GetTaggedValue());
 }
 
-inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
+inline bool JSTaggedValue::StrictEqual(const JSThread *thread, const JSTaggedValue &x, const JSTaggedValue &y)
 {
     if (x.IsInt() && y.IsInt()) {
         return StrictIntEquals(x.GetInt(), y.GetInt());
@@ -193,7 +195,8 @@ inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedVal
         return true;
     }
     if (x.IsString() && y.IsString()) {
-        return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
+        return StringCompare(const_cast<JSThread *>(thread), EcmaString::Cast(x.GetTaggedObject()),
+                             EcmaString::Cast(y.GetTaggedObject()));
     }
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::Equal(x, y);
@@ -224,22 +227,19 @@ inline bool JSTaggedValue::IsInSharedSweepableSpace() const
     return false;
 }
 
-inline bool JSTaggedValue::IsEnumCacheAllValid() const
+inline bool JSTaggedValue::IsEnumCacheAllValid(const JSThread *thread) const
 {
-    return IsEnumCache() &&
-           EnumCache::Cast(GetTaggedObject())->IsEnumCacheAllValid();
+    return IsEnumCache() && EnumCache::Cast(GetTaggedObject())->IsEnumCacheAllValid(thread);
 }
 
-inline bool JSTaggedValue::IsEnumCacheOwnValid() const
+inline bool JSTaggedValue::IsEnumCacheOwnValid(const JSThread *thread) const
 {
-    return IsEnumCache() &&
-           EnumCache::Cast(GetTaggedObject())->IsEnumCacheOwnValid();
+    return IsEnumCache() && EnumCache::Cast(GetTaggedObject())->IsEnumCacheOwnValid(thread);
 }
 
-inline bool JSTaggedValue::IsEnumCacheProtoInfoUndefined() const
+inline bool JSTaggedValue::IsEnumCacheProtoInfoUndefined(const JSThread *thread) const
 {
-    return IsEnumCache() &&
-           EnumCache::Cast(GetTaggedObject())->IsEnumCacheProtoInfoUndefined();
+    return IsEnumCache() && EnumCache::Cast(GetTaggedObject())->IsEnumCacheProtoInfoUndefined(thread);
 }
 
 inline bool JSTaggedValue::IsNumber() const
@@ -1388,7 +1388,7 @@ inline uint32_t JSTaggedValue::GetArrayLength() const
     UNREACHABLE();
 }
 
-inline bool JSTaggedValue::ToElementIndex(JSTaggedValue key, uint32_t *output)
+inline bool JSTaggedValue::ToElementIndex(JSThread *thread, JSTaggedValue key, uint32_t *output)
 {
     if (key.IsInt()) {
         int index = key.GetInt();
@@ -1404,30 +1404,29 @@ inline bool JSTaggedValue::ToElementIndex(JSTaggedValue key, uint32_t *output)
             return true;
         }
     } else if (key.IsString()) {
-        return StringToElementIndex(key, output);
+        return StringToElementIndex(thread, key, output);
     }
     return false;
 }
 
-inline bool JSTaggedValue::StringToElementIndex(JSTaggedValue key, uint32_t *output)
+inline bool JSTaggedValue::StringToElementIndex(JSThread *thread, JSTaggedValue key, uint32_t *output)
 {
     ASSERT(key.IsString());
     auto strObj = static_cast<EcmaString *>(key.GetTaggedObject());
-    return EcmaStringAccessor(strObj).ToElementIndex(output);
+    return EcmaStringAccessor(strObj).ToElementIndex(thread, output);
 }
 
-inline uint32_t JSTaggedValue::GetKeyHashCode() const
+inline uint32_t JSTaggedValue::GetKeyHashCode(const JSThread *thread) const
 {
     ASSERT(IsStringOrSymbol());
     if (IsString()) {
-        return EcmaStringAccessor(GetTaggedObject()).GetHashcode();
+        return EcmaStringAccessor(GetTaggedObject()).GetHashcode(thread);
     }
 
     return JSSymbol::Cast(GetTaggedObject())->GetHashField();
 }
 
-
-inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
+inline JSTaggedNumber JSTaggedValue::StringToDouble(JSThread *thread, JSTaggedValue tagged)
 {
     auto strObj = static_cast<EcmaString *>(tagged.GetTaggedObject());
     size_t strLen = EcmaStringAccessor(strObj).GetLength();
@@ -1435,19 +1434,19 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
         return JSTaggedNumber(0);
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
+    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(thread, buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);
 }
 
 template <RBMode mode>
-inline bool JSTaggedValue::StringCompare(EcmaString *xStr, EcmaString *yStr)
+inline bool JSTaggedValue::StringCompare(const JSThread *thread, EcmaString *xStr, EcmaString *yStr)
 {
     if (EcmaStringAccessor(xStr).IsInternString() && EcmaStringAccessor(yStr).IsInternString()) {
         return xStr == yStr;
     }
-    return EcmaStringAccessor::StringsAreEqual<mode>(xStr, yStr);
+    return EcmaStringAccessor::StringsAreEqual<mode>(thread, xStr, yStr);
 }
 
 inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
@@ -1458,13 +1457,13 @@ inline JSTaggedValue JSTaggedValue::TryCastDoubleToInt32(double d)
     return JSTaggedValue(static_cast<int32_t>(d));
 }
 
-inline bool JSTaggedValue::IsPureString(JSTaggedValue key)
+inline bool JSTaggedValue::IsPureString(JSThread *thread, JSTaggedValue key)
 {
     if (!key.IsString()) {
         return false;
     }
     uint32_t idx;
-    return !StringToElementIndex(key, &idx);
+    return !StringToElementIndex(thread, key, &idx);
 }
 
 inline JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValue(JSThread *thread, JSHandle<JSTaggedValue> value)

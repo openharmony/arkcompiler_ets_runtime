@@ -67,7 +67,7 @@ HWTEST_F_L0(JSAPIArrayListIteratorTest, Next)
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue(i));
         } else {
-            EXPECT_EQ(arrayListIterator->GetIteratedArrayList(), JSTaggedValue::Undefined());
+            EXPECT_EQ(arrayListIterator->GetIteratedArrayList(thread), JSTaggedValue::Undefined());
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue::Undefined());
         }

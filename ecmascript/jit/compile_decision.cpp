@@ -139,20 +139,22 @@ CString CompileDecision::GetMethodInfo() const
 
 CString CompileDecision::GetMethodName() const
 {
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    JSThread *thread = vm_->GetJSThread();
+    Method *method = Method::Cast(jsFunction_->GetMethod(thread).GetTaggedObject());
     ASSERT(method != nullptr);
-    auto jSPandaFile = method->GetJSPandaFile();
+    auto jSPandaFile = method->GetJSPandaFile(thread);
     CString fileDesc;
     if (jSPandaFile != nullptr) {
         fileDesc = jSPandaFile->GetJSPandaFileDesc();
     }
-    return fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
+    return fileDesc + ":" + method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
 }
 
 uint32_t CompileDecision::GetCodeSize() const
 {
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    return method->GetCodeSize();
+    JSThread *thread = vm_->GetJSThread();
+    Method *method = Method::Cast(jsFunction_->GetMethod(thread).GetTaggedObject());
+    return method->GetCodeSize(thread);
 }
 
 bool CompileDecision::Decision()
@@ -191,8 +193,9 @@ bool CompileDecision::IsJsFunctionSupportCompile() const
         LOG_JIT(DEBUG) << tier_ << "skip jit task, as too large:" << GetMethodInfo();
         return false;
     }
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    if (vm_->IsEnableOsr() && osrOffset_ != MachineCode::INVALID_OSR_OFFSET && method->HasCatchBlock()) {
+    Method *method = Method::Cast(jsFunction_->GetMethod(vm_->GetJSThread()).GetTaggedObject());
+    if (vm_->IsEnableOsr() && osrOffset_ != MachineCode::INVALID_OSR_OFFSET &&
+        method->HasCatchBlock(vm_->GetJSThread())) {
         LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << GetMethodInfo();
         return false;
     }
@@ -206,7 +209,7 @@ bool CompileDecision::IsJsFunctionSupportCompile() const
 
 bool CompileDecision::IsSupportFunctionKind() const
 {
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    Method *method = Method::Cast(jsFunction_->GetMethod(vm_->GetJSThread()).GetTaggedObject());
     if (jsFunction_.GetTaggedValue().IsJSSharedFunction()) {
         LOG_JIT(DEBUG) << tier_ << "method does not support compile shared function:" << GetMethodInfo();
         return false;
@@ -241,7 +244,7 @@ bool CompileDecision::CheckJsFunctionStatus() const
     }
 
     if (tier_.IsFast() && jsFunction_->IsCompiledCode()) {
-        JSTaggedValue machineCode = jsFunction_->GetMachineCode();
+        JSTaggedValue machineCode = jsFunction_->GetMachineCode(vm_->GetJSThread());
         if (machineCode.IsMachineCodeObject() &&
             MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
             return false;
@@ -249,7 +252,7 @@ bool CompileDecision::CheckJsFunctionStatus() const
         return true;
     }
 
-    if (tier_.IsBaseLine() && !jsFunction_->GetBaselineCode().IsUndefined()) {
+    if (tier_.IsBaseLine() && !jsFunction_->GetBaselineCode(vm_->GetJSThread()).IsUndefined()) {
         return false;
     }
     return true;
@@ -257,7 +260,7 @@ bool CompileDecision::CheckJsFunctionStatus() const
 
 void CompileDecision::DisableJitCompile() const
 {
-    jsFunction_->SetJitHotnessCnt(ProfileTypeInfo::JIT_DISABLE_FLAG);
+    jsFunction_->SetJitHotnessCnt(vm_->GetJSThread(), ProfileTypeInfo::JIT_DISABLE_FLAG);
 }
 
 bool CompileDecision::CheckVmState() const

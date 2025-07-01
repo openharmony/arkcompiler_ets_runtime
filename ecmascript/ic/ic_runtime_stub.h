@@ -39,7 +39,7 @@ public:
     static inline JSTaggedValue StoreICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                               JSTaggedValue receiver, JSTaggedValue key,
                                               JSTaggedValue value, uint32_t slotId);
-    static inline JSTaggedValue CheckPolyHClass(JSTaggedValue cachedValue, JSHClass* hclass);
+    static inline JSTaggedValue CheckPolyHClass(const JSThread *thread, JSTaggedValue cachedValue, JSHClass* hclass);
     static inline JSTaggedValue LoadICWithHandler(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                                   JSTaggedValue handler);
     static inline JSTaggedValue LoadICWithElementHandler(JSThread *thread, JSTaggedValue receiver,
@@ -54,9 +54,9 @@ public:
                                             JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue StorePrototype(JSThread *thread, JSTaggedValue receiver,
                                                JSTaggedValue value, JSTaggedValue handler);
-    static inline JSTaggedValue LoadFromField(JSObject *receiver, uint64_t handlerInfo);
+    static inline JSTaggedValue LoadFromField(const JSThread *thread, JSObject *receiver, uint64_t handlerInfo);
     static inline void StoreField(JSThread *thread, JSObject *receiver, JSTaggedValue value, uint64_t handler);
-    static inline JSTaggedValue LoadGlobal(JSTaggedValue handler);
+    static inline JSTaggedValue LoadGlobal(const JSThread *thread, JSTaggedValue handler);
     static inline JSTaggedValue StoreGlobal(JSThread *thread, JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue LoadPrototype(JSThread *thread, JSTaggedValue receiver, JSTaggedValue handler);
 
@@ -83,7 +83,7 @@ public:
                                              JSTaggedValue value, JSTaggedValue handlerInfo);
     static inline JSTaggedValue StoreTypedArrayElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                        JSTaggedValue value);
-    static inline int64_t TryToElementsIndex(JSTaggedValue key);
+    static inline int64_t TryToElementsIndex(JSThread *thread, JSTaggedValue key);
     static inline JSTaggedValue LoadMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo, JSTaggedValue receiver,
                                          JSTaggedValue key, uint32_t slotId, ICKind kind);
     static inline JSTaggedValue LoadValueMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo,

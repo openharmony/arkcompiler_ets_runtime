@@ -53,25 +53,25 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSObjectByConstructor)
     EXPECT_TRUE(*newObjCls != nullptr);
 
     // check feild
-    EXPECT_EQ(newObj->GetProperties(), thread->GlobalConstants()->GetEmptyArray());
-    EXPECT_EQ(newObj->GetElements(), thread->GlobalConstants()->GetEmptyArray());
+    EXPECT_EQ(newObj->GetProperties(thread), thread->GlobalConstants()->GetEmptyArray());
+    EXPECT_EQ(newObj->GetElements(thread), thread->GlobalConstants()->GetEmptyArray());
     EXPECT_TRUE(JSTaggedValue(*newObj).IsECMAObject());
 
     // check jshclass
     JSHClass *cls = *newObjCls;
     EXPECT_TRUE(cls->GetObjectSize() ==
                 JSObject::SIZE + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS * JSTaggedValue::TaggedTypeSize());
-    EXPECT_TRUE(cls->GetPrototype() == GetGlobal(thread)->GetObjectFunctionPrototype().GetTaggedValue());
+    EXPECT_TRUE(cls->GetPrototype(thread) == GetGlobal(thread)->GetObjectFunctionPrototype().GetTaggedValue());
     EXPECT_TRUE(cls->GetObjectType() == JSType::JS_OBJECT);
 
     // check gc handle update
-    auto *prototype = cls->GetPrototype().GetTaggedObject();
+    auto *prototype = cls->GetPrototype(thread).GetTaggedObject();
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     // After FullGC
     if (thread->GetEcmaVM()->GetJSOptions().EnableSnapshotDeserialize()) {
-        EXPECT_TRUE(prototype == newObjCls->GetPrototype().GetTaggedObject());
+        EXPECT_TRUE(prototype == newObjCls->GetPrototype(thread).GetTaggedObject());
     } else {
-        EXPECT_TRUE(prototype != newObjCls->GetPrototype().GetTaggedObject());
+        EXPECT_TRUE(prototype != newObjCls->GetPrototype(thread).GetTaggedObject());
     }
     thread->GetEcmaVM()->SetEnableForceGC(true);
 }
@@ -88,17 +88,17 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSFunction)
     EXPECT_TRUE(*newFunCls != nullptr);
 
     // check feild
-    EXPECT_EQ(newFun->GetProperties(), thread->GlobalConstants()->GetEmptyArray());
-    EXPECT_EQ(newFun->GetElements(), thread->GlobalConstants()->GetEmptyArray());
-    EXPECT_EQ(newFun->GetProtoOrHClass(), JSTaggedValue::Hole());
-    EXPECT_EQ(newFun->GetHomeObject(), JSTaggedValue::Undefined());
+    EXPECT_EQ(newFun->GetProperties(thread), thread->GlobalConstants()->GetEmptyArray());
+    EXPECT_EQ(newFun->GetElements(thread), thread->GlobalConstants()->GetEmptyArray());
+    EXPECT_EQ(newFun->GetProtoOrHClass(thread), JSTaggedValue::Hole());
+    EXPECT_EQ(newFun->GetHomeObject(thread), JSTaggedValue::Undefined());
     EXPECT_TRUE(JSTaggedValue(*newFun).IsJSFunction());
 
     // check jshclass
     JSHClass *cls = *newFunCls;
     EXPECT_TRUE(cls->GetObjectSize() ==
                 JSFunction::SIZE + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS * JSTaggedValue::TaggedTypeSize());
-    EXPECT_TRUE(cls->GetPrototype() == GetGlobal(thread)->GetFunctionPrototype().GetTaggedValue());
+    EXPECT_TRUE(cls->GetPrototype(thread) == GetGlobal(thread)->GetFunctionPrototype().GetTaggedValue());
     EXPECT_TRUE(cls->GetObjectType() == JSType::JS_FUNCTION);
     EXPECT_TRUE(cls->IsCallable());
     EXPECT_TRUE(cls->IsExtensible());
@@ -136,7 +136,7 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSPrimitiveRef)
     EXPECT_TRUE(*newPrimitive != nullptr);
     EXPECT_TRUE(*newPrimitiveCls != nullptr);
 
-    EXPECT_TRUE(newPrimitive->GetValue() == JSTaggedValue(1));
+    EXPECT_TRUE(newPrimitive->GetValue(thread) == JSTaggedValue(1));
 }
 
 HWTEST_F_L0(ObjectFactoryTest, NewLexicalEnv)

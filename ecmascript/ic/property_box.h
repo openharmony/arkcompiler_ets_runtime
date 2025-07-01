@@ -35,9 +35,9 @@ public:
 
     void Clear(const JSThread *thread);
 
-    inline bool IsInvalid() const
+    inline bool IsInvalid(const JSThread *thread) const
     {
-        return GetValue().IsHole();
+        return GetValue(thread).IsHole();
     }
 
     static constexpr size_t VALUE_OFFSET = TaggedObjectSize();

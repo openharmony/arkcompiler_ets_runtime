@@ -24,7 +24,7 @@ void JSMap::Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JST
     if (!LinkedHashMap::IsKey(key.GetTaggedValue())) {
         THROW_TYPE_ERROR(thread, "the value must be Key of JSSet");
     }
-    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
+    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
 
     JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, key, value);
     map->SetLinkedMap(thread, newMap);
@@ -32,7 +32,7 @@ void JSMap::Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JST
 
 bool JSMap::Delete(const JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
+    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
     int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
     if (entry == -1) {
         return false;
@@ -43,36 +43,36 @@ bool JSMap::Delete(const JSThread *thread, const JSHandle<JSMap> &map, const JSH
 
 void JSMap::Clear(const JSThread *thread, const JSHandle<JSMap> &map)
 {
-    LinkedHashMap *linkedMap = LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject());
-    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
+    LinkedHashMap *linkedMap = LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject());
+    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
     JSHandle<LinkedHashMap> newMap = linkedMap->Clear(thread, mapHandle);
     map->SetLinkedMap(thread, newMap);
 }
 
 bool JSMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Has(thread, key);
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Has(thread, key);
 }
 
 JSTaggedValue JSMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(thread, key);
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Get(thread, key);
 }
 
-uint32_t JSMap::GetSize() const
+uint32_t JSMap::GetSize(JSThread *thread) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->NumberOfElements();
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSMap::GetKey(uint32_t entry) const
+JSTaggedValue JSMap::GetKey(JSThread *thread, uint32_t entry) const
 {
-    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetKey(entry);
+    ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->GetKey(thread, entry);
 }
 
-JSTaggedValue JSMap::GetValue(uint32_t entry) const
+JSTaggedValue JSMap::GetValue(JSThread *thread, uint32_t entry) const
 {
-    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
-    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetValue(entry);
+    ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->GetValue(thread, entry);
 }
 }  // namespace panda::ecmascript

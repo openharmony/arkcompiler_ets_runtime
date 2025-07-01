@@ -50,7 +50,7 @@ HWTEST_F_L0(BuiltinsBooleanTest, BooleanConstructor)
     JSTaggedValue result = BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
 
     ASSERT_TRUE(result.IsECMAObject());
-    ASSERT_EQ(JSPrimitiveRef::Cast(result.GetTaggedObject())->GetValue().IsTrue(), 1);
+    ASSERT_EQ(JSPrimitiveRef::Cast(result.GetTaggedObject())->GetValue(thread).IsTrue(), 1);
 }
 
 // new Boolean(undefined)
@@ -70,7 +70,7 @@ HWTEST_F_L0(BuiltinsBooleanTest, BooleanConstructor1)
     JSTaggedValue result = BuiltinsBoolean::BooleanConstructor(ecmaRuntimeCallInfo);
 
     ASSERT_TRUE(result.IsECMAObject());
-    ASSERT_EQ(JSPrimitiveRef::Cast(result.GetTaggedObject())->GetValue().IsFalse(), 1);
+    ASSERT_EQ(JSPrimitiveRef::Cast(result.GetTaggedObject())->GetValue(thread).IsFalse(), 1);
 }
 
 // Boolean("helloworld")

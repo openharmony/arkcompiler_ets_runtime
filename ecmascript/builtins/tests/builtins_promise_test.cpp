@@ -41,15 +41,17 @@ class BuiltinsPromiseTest : public BaseTestWithScope<false> {
 // native function for race2 then_on_rejected()
 JSTaggedValue TestPromiseRaceThenOnRejectd(EcmaRuntimeCallInfo *argv)
 {
+    JSThread *thread = argv->GetThread();
     JSHandle<JSTaggedValue> result = BuiltinsBase::GetCallArg(argv, 0);
     // 12345 : test case
-    EXPECT_EQ(JSTaggedValue::SameValue(result.GetTaggedValue(), JSTaggedValue(12345)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, result.GetTaggedValue(), JSTaggedValue(12345)), true);
     return JSTaggedValue::Undefined();
 }
 
 // native function for all then_on_resolved()
 JSTaggedValue TestPromiseAllThenOnResolved(EcmaRuntimeCallInfo *argv)
 {
+    JSThread *thread = argv->GetThread();
     JSHandle<JSTaggedValue> array = BuiltinsBase::GetCallArg(argv, 0);
     JSHandle<JSObject> objectArray = JSHandle<JSObject>::Cast(array);
     [[maybe_unused]] PropertyDescriptor desc(argv->GetThread());
@@ -58,42 +60,45 @@ JSTaggedValue TestPromiseAllThenOnResolved(EcmaRuntimeCallInfo *argv)
     EXPECT_TRUE(result1);
     JSHandle<JSTaggedValue> value1 = desc.GetValue();
     // 111 : test case
-    EXPECT_EQ(JSTaggedValue::SameValue(value1.GetTaggedValue(), JSTaggedValue(111)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, value1.GetTaggedValue(), JSTaggedValue(111)), true);
     [[maybe_unused]] bool result2 = JSObject::GetOwnProperty(
         argv->GetThread(), objectArray, JSHandle<JSTaggedValue>(argv->GetThread(), JSTaggedValue(1)), desc);
     EXPECT_TRUE(result2);
     JSHandle<JSTaggedValue> value2 = desc.GetValue();
     // 222 : test case
-    EXPECT_EQ(JSTaggedValue::SameValue(value2.GetTaggedValue(), JSTaggedValue(222)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, value2.GetTaggedValue(), JSTaggedValue(222)), true);
     return JSTaggedValue::Undefined();
 }
 
 // native function for catch catch_on_rejected()
 JSTaggedValue TestPromiseCatch(EcmaRuntimeCallInfo *argv)
 {
+    JSThread *thread = argv->GetThread();
     JSHandle<JSTaggedValue> result = BuiltinsBase::GetCallArg(argv, 0);
     // 3 : test case
-    EXPECT_EQ(JSTaggedValue::SameValue(result.GetTaggedValue(), JSTaggedValue(3)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, result.GetTaggedValue(), JSTaggedValue(3)), true);
     return JSTaggedValue::Undefined();
 }
 
 // native function for then then_on_resolved()
 JSTaggedValue TestPromiseThenOnResolved(EcmaRuntimeCallInfo *argv)
 {
-    auto factory = argv->GetThread()->GetEcmaVM()->GetFactory();
+    JSThread *thread = argv->GetThread();
+    auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> result = BuiltinsBase::GetCallArg(argv, 0);
     auto expect = factory->NewFromASCII("resolve");
-    EXPECT_EQ(JSTaggedValue::SameValue(result.GetTaggedValue(), expect.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, result.GetTaggedValue(), expect.GetTaggedValue()), true);
     return JSTaggedValue::Undefined();
 }
 
 // native function for then then_on_rejected()
 JSTaggedValue TestPromiseThenOnRejected(EcmaRuntimeCallInfo *argv)
 {
-    auto factory = argv->GetThread()->GetEcmaVM()->GetFactory();
+    JSThread *thread = argv->GetThread();
+    auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> result = BuiltinsBase::GetCallArg(argv, 0);
     auto expect = factory->NewFromASCII("reject");
-    EXPECT_EQ(JSTaggedValue::SameValue(result.GetTaggedValue(), expect.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, result.GetTaggedValue(), expect.GetTaggedValue()), true);
     return JSTaggedValue::Undefined();
 }
 
@@ -167,7 +172,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Reject1)
     auto result = PromiseAlgorithm(thread, promise, paramMsg.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> rejectPromise(thread, result);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(3)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(3)), true);
 }
 
 /*
@@ -191,7 +196,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Reject2)
     auto result = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> promise1(thread, result);
     EXPECT_EQ(promise1->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(promise1->GetPromiseResult(), paramMsg1.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, promise1->GetPromiseResult(thread), paramMsg1.GetTaggedValue()), true);
 
     /**
      * @tc.steps: step2. var p2 = Promise.reject(p1)
@@ -200,9 +205,9 @@ HWTEST_F_L0(BuiltinsPromiseTest, Reject2)
     JSHandle<JSPromise> promise2(thread, result1);
     EXPECT_NE(*promise1, *promise2);
     EXPECT_EQ(promise2->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(
-        JSTaggedValue::SameValue(promise2->GetPromiseResult(), JSTaggedValue(promise1.GetTaggedValue().GetRawData())),
-        true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, promise2->GetPromiseResult(thread),
+                                       JSTaggedValue(promise1.GetTaggedValue().GetRawData())),
+              true);
 }
 
 /*
@@ -223,7 +228,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Resolve1)
     auto result = PromiseAlgorithm(thread, promise, paramMsg.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> rejectPromise(thread, result);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(5)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(5)), true);
 }
 
 /*
@@ -247,7 +252,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Resolve2)
     auto result = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> promise1(thread, result);
     EXPECT_EQ(promise1->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(promise1->GetPromiseResult(), paramMsg1.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, promise1->GetPromiseResult(thread), paramMsg1.GetTaggedValue()), true);
 
     // promise1 Enter Reject() as a parameter.
     /**
@@ -257,7 +262,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Resolve2)
     JSHandle<JSPromise> promise2(thread, result1);
     EXPECT_EQ(*promise1, *promise2);
     EXPECT_EQ(promise2->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(promise2->GetPromiseResult(), paramMsg1.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, promise2->GetPromiseResult(thread), paramMsg1.GetTaggedValue()), true);
 }
 
 /*
@@ -278,7 +283,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race1)
     auto result1 = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> rejectPromise(thread, result1);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(12345)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(12345)), true);
 
     /**
      * @tc.steps: step2. var p2 = Promise.resolve(6789)
@@ -287,7 +292,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race1)
     auto result2 = PromiseAlgorithm(thread, promise, paramMsg2.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> resolvePromise(thread, result2);
     EXPECT_EQ(resolvePromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise->GetPromiseResult(), JSTaggedValue(6789)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise->GetPromiseResult(thread), JSTaggedValue(6789)), true);
     /**
      * @tc.steps: step3. Construct an array with two elements p1 and p2. array = [p1. p2]
      */
@@ -304,7 +309,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race1)
     auto result4 = PromiseAlgorithm(thread, promise, array.GetTaggedValue(), AlgorithmType::RACE);
     JSHandle<JSPromise> racePromise(thread, result4);
     EXPECT_EQ(racePromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(racePromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(racePromise->GetPromiseResult(thread).IsUndefined(), true);
 }
 
 /*
@@ -328,7 +333,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race2)
     auto result1 = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> rejectPromise(thread, result1);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(12345)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(12345)), true);
 
     /**
      * @tc.steps: step2. var p2 = Promise.resolve(6789)
@@ -336,7 +341,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race2)
     auto result2 = PromiseAlgorithm(thread, promise, paramMsg2.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> resolvePromise(thread, result2);
     EXPECT_EQ(resolvePromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise->GetPromiseResult(), JSTaggedValue(6789)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise->GetPromiseResult(thread), JSTaggedValue(6789)), true);
 
     /**
      * @tc.steps: step3. Construct an array with two elements p1 and p2. array = [p1. p2]
@@ -354,7 +359,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race2)
     auto result3 = PromiseAlgorithm(thread, promise, array.GetTaggedValue(), AlgorithmType::RACE);
     JSHandle<JSPromise> racePromise(thread, result3);
     EXPECT_EQ(racePromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(racePromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(racePromise->GetPromiseResult(thread).IsUndefined(), true);
 
     /**
      * @tc.steps: step5. p3.then((resolve)=>{print(resolve)}, (reject)=>{print(reject)})
@@ -366,7 +371,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race2)
     JSHandle<JSPromise> thenPromise(thread, thenResult);
 
     EXPECT_EQ(thenPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_TRUE(thenPromise->GetPromiseResult().IsUndefined());
+    EXPECT_TRUE(thenPromise->GetPromiseResult(thread).IsUndefined());
 
     /**
      * @tc.steps: step6. execute promise queue
@@ -398,7 +403,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, All)
     auto result1 = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> resolvePromise1(thread, result1);
     EXPECT_EQ(resolvePromise1->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise1->GetPromiseResult(), JSTaggedValue(111)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise1->GetPromiseResult(thread), JSTaggedValue(111)), true);
 
     /**
      * @tc.steps: step2. var p2 = Promise.resolve(222)
@@ -406,7 +411,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, All)
     auto result2 = PromiseAlgorithm(thread, promise, paramMsg2.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> resolvePromise2(thread, result2);
     EXPECT_EQ(resolvePromise2->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise2->GetPromiseResult(), JSTaggedValue(222)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise2->GetPromiseResult(thread), JSTaggedValue(222)), true);
 
     /**
      * @tc.steps: step3. Construct an array with two elements p1 and p2. array = [p1. p2]
@@ -424,7 +429,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, All)
     auto result4 = PromiseAlgorithm(thread, promise, array.GetTaggedValue(), AlgorithmType::ALL);
     JSHandle<JSPromise> allPromise(thread, result4);
     EXPECT_EQ(allPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(allPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(allPromise->GetPromiseResult(thread).IsUndefined(), true);
 
     /**
      * @tc.steps: step5. p3.then((resolve)=>{print(resolve)}, (reject)=>{print(reject)});
@@ -436,7 +441,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, All)
     JSHandle<JSPromise> thenPromise(thread, thenResult);
 
     EXPECT_EQ(thenPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_TRUE(thenPromise->GetPromiseResult().IsUndefined());
+    EXPECT_TRUE(thenPromise->GetPromiseResult(thread).IsUndefined());
 
     /**
      * @tc.steps: step6. execute promise queue
@@ -466,7 +471,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Catch)
     auto result = PromiseAlgorithm(thread, promise, paramMsg1.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> rejectPromise(thread, result);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), JSTaggedValue(3)), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), JSTaggedValue(3)), true);
 
     /**
      * @tc.steps: step2. p1 invokes catch()
@@ -482,7 +487,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Catch)
     JSHandle<JSPromise> catchPromise(thread, catchResult);
 
     EXPECT_EQ(catchPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(catchPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(catchPromise->GetPromiseResult(thread).IsUndefined(), true);
     TestHelper::TearDownFrame(thread, prevCatch);
 
     /**
@@ -513,7 +518,8 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenResolve)
     auto result = PromiseAlgorithm(thread, promise, paramMsg.GetTaggedValue(), AlgorithmType::RESOLVE);
     JSHandle<JSPromise> resolvePromise(thread, result);
     EXPECT_EQ(resolvePromise->GetPromiseState(), PromiseState::FULFILLED);
-    EXPECT_EQ(JSTaggedValue::SameValue(resolvePromise->GetPromiseResult(), paramMsg.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, resolvePromise->GetPromiseResult(thread), paramMsg.GetTaggedValue()),
+              true);
 
     /**
      * @tc.steps: step2. p1 invokes then()
@@ -525,7 +531,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenResolve)
     JSHandle<JSPromise> thenPromise(thread, thenResult);
 
     EXPECT_EQ(thenPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(thenPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(thenPromise->GetPromiseResult(thread).IsUndefined(), true);
 
     /**
      * @tc.steps: step3.  execute promise queue
@@ -555,7 +561,8 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenReject)
     auto result = PromiseAlgorithm(thread, promise, paramMsg.GetTaggedValue(), AlgorithmType::REJECT);
     JSHandle<JSPromise> rejectPromise(thread, result);
     EXPECT_EQ(rejectPromise->GetPromiseState(), PromiseState::REJECTED);
-    EXPECT_EQ(JSTaggedValue::SameValue(rejectPromise->GetPromiseResult(), paramMsg.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, rejectPromise->GetPromiseResult(thread), paramMsg.GetTaggedValue()),
+              true);
 
     /**
      * @tc.steps: step1. p1 invokes then()
@@ -566,7 +573,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenReject)
                                     testPromiseThenOnRejected.GetTaggedValue());
     JSHandle<JSPromise> thenPromise(thread, thenResult);
     EXPECT_EQ(thenPromise->GetPromiseState(), PromiseState::PENDING);
-    EXPECT_EQ(thenPromise->GetPromiseResult().IsUndefined(), true);
+    EXPECT_EQ(thenPromise->GetPromiseResult(thread).IsUndefined(), true);
     /**
      * @tc.steps: step3.  execute promise queue
      */

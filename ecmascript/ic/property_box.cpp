@@ -18,7 +18,7 @@
 namespace panda::ecmascript {
 void PropertyBox::Clear(const JSThread *thread)
 {
-    ASSERT_PRINT(!GetValue().IsHole(), "value must not be hole");
+    ASSERT_PRINT(!GetValue(thread).IsHole(), "value must not be hole");
     SetValue(thread, JSTaggedValue::Hole());
 }
 }  // namespace panda::ecmascript

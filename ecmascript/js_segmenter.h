@@ -59,10 +59,10 @@ public:
                                                      const JSHandle<JSTaggedValue> &locales,
                                                      const JSHandle<JSTaggedValue> &options);
     // Get icu break iterator from icu field
-    icu::BreakIterator *GetIcuBreakIterator() const
+    icu::BreakIterator *GetIcuBreakIterator(JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        auto result = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject())->GetExternalPointer();
         return reinterpret_cast<icu::BreakIterator *>(result);
     }
 

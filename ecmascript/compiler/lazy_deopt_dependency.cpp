@@ -114,7 +114,7 @@ bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
     return false;
 }
 
-bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass,
+bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHClass *receiverHClass,
                                                         JSHClass *holderHClass,
                                                         GlobalEnv *globalEnv)
 {
@@ -134,7 +134,7 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
             return false;
         }
     } else {
-        current = receiverHClass->GetPrototype();
+        current = receiverHClass->GetPrototype(thread);
     }
     bool success = true;
     while (current.IsHeapObject()) {
@@ -145,7 +145,7 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSHClass *receiverHClass
         if (currentHC == holderHClass) {
             break;
         }
-        current = currentHC->GetPrototype();
+        current = currentHC->GetPrototype(thread);
     }
     return success;
 }

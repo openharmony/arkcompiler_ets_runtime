@@ -30,17 +30,17 @@ class TaggedHashTable : public TaggedArray {
 public:
     inline int EntriesCount() const
     {
-        return Get(NUMBER_OF_ENTRIES_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_ENTRIES_INDEX).GetInt();
     }
 
     inline int HoleEntriesCount() const
     {
-        return Get(NUMBER_OF_HOLE_ENTRIES_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_HOLE_ENTRIES_INDEX).GetInt();
     }
 
     inline int Size() const
     {
-        return Get(SIZE_INDEX).GetInt();
+        return GetPrimitive(SIZE_INDEX).GetInt();
     }
 
     inline void IncreaseEntries(const JSThread *thread)
@@ -79,8 +79,8 @@ public:
             }
             return table;
         }
-        int newSize = Derived::ComputeCompactSize(table, ComputeHashTableSize(table->Size() + numOfAddedElements),
-            table->Size(), numOfAddedElements);
+        int newSize = Derived::ComputeCompactSize(
+            thread, table, ComputeHashTableSize(table->Size() + numOfAddedElements), table->Size(), numOfAddedElements);
         newSize = std::max(newSize, MIN_SHRINK_SIZE);
         int length = Derived::GetEntryIndex(newSize);
         JSHandle<Derived> newTable = table.GetTaggedValue().IsInSharedHeap() ?
@@ -112,23 +112,23 @@ public:
     static JSHandle<Derived> Insert(const JSThread *thread, JSHandle<Derived> &table,
                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
     {
-        int entry = table->FindEntry(key.GetTaggedValue());
+        int entry = table->FindEntry(thread, key.GetTaggedValue());
         if (entry != -1) {
             table->SetValue(thread, entry, value.GetTaggedValue());
             return table;
         }
 
         // Make sure the key object has an identity hash code.
-        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(thread, key.GetTaggedValue()));
         JSHandle<Derived> newTable = GrowHashTable(thread, table);
-        newTable->AddElement(thread, newTable->FindInsertIndex(hash), key, value);
+        newTable->AddElement(thread, newTable->FindInsertIndex(thread, hash), key, value);
         return newTable;
     }
 
     static JSHandle<Derived> Remove(const JSThread *thread, JSHandle<Derived> &table,
                                     const JSHandle<JSTaggedValue> &key)
     {
-        int entry = table->FindEntry(key.GetTaggedValue());
+        int entry = table->FindEntry(thread, key.GetTaggedValue());
         if (entry == -1) {
             return table;
         }
@@ -182,22 +182,22 @@ public:
         return true;
     }
 
-    JSTaggedValue GetKey(int entry) const
+    JSTaggedValue GetKey(const JSThread *thread, int entry) const
     {
         int index = Derived::GetKeyIndex(entry);
         if (UNLIKELY((index < 0 || index > static_cast<int>(GetLength())))) {
             return JSTaggedValue::Undefined();
         }
-        return Get(index);
+        return Get(thread, index);
     }
 
-    JSTaggedValue GetValue(int entry) const
+    JSTaggedValue GetValue(const JSThread *thread, int entry) const
     {
         int index = Derived::GetValueIndex(entry);
         if (UNLIKELY((index < 0 || index > static_cast<int>(GetLength())))) {
             return JSTaggedValue::Undefined();
         }
-        return Get(index);
+        return Get(thread, index);
     }
 
     inline void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const
@@ -207,7 +207,7 @@ public:
         int arrayIndex = 0;
         int size = Size();
         for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-            JSTaggedValue key = GetKey(hashIndex);
+            JSTaggedValue key = GetKey(thread, hashIndex);
             if (!key.IsUndefined() && !key.IsHole()) {
                 keyArray->Set(thread, arrayIndex + offset, key);
                 arrayIndex++;
@@ -215,11 +215,11 @@ public:
         }
     }
 
-    inline void GetAllKeysIntoVector(std::vector<JSTaggedValue> &vector) const
+    inline void GetAllKeysIntoVector(const JSThread *thread, std::vector<JSTaggedValue> &vector) const
     {
         int capacity = Size();
         for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
-            JSTaggedValue key = GetKey(hashIndex);
+            JSTaggedValue key = GetKey(thread, hashIndex);
             if (!key.IsUndefined() && !key.IsHole()) {
                 vector.push_back(key);
             }
@@ -229,29 +229,29 @@ public:
     inline void Swap(const JSThread *thread, int src, int dst);
 
     // Find entry for key otherwise return -1.
-    inline int FindEntry(const JSTaggedValue &key)
+    inline int FindEntry(const JSThread *thread, const JSTaggedValue &key)
     {
         int size = Size();
         int count = 1;
         JSTaggedValue keyValue;
-        int32_t hash = static_cast<int32_t>(Derived::Hash(key));
+        int32_t hash = static_cast<int32_t>(Derived::Hash(thread, key));
 
         for (uint32_t entry = GetFirstPosition(hash, size);; entry = GetNextPosition(entry, count++, size)) {
-            keyValue = GetKey(entry);
+            keyValue = GetKey(thread, entry);
             if (keyValue.IsHole()) {
                 continue;
             }
             if (keyValue.IsUndefined()) {
                 return -1;
             }
-            if (Derived::IsMatch(key, keyValue)) {
+            if (Derived::IsMatch(thread, key, keyValue)) {
                 return entry;
             }
         }
         return -1;
     }
 
-    inline int FindEntry(const uint8_t* str, int strSize)
+    inline int FindEntry(const JSThread *thread, const uint8_t* str, int strSize)
     {
         int size = Size();
         int count = 1;
@@ -259,7 +259,7 @@ public:
         int32_t hash = static_cast<int32_t>(Derived::Hash(str, strSize));
 
         for (uint32_t entry = GetFirstPosition(hash, size);; entry = GetNextPosition(entry, count++, size)) {
-            keyValue = GetKey(entry);
+            keyValue = GetKey(thread, entry);
             if (keyValue.IsHole()) {
                 continue;
             }
@@ -274,13 +274,13 @@ public:
         return -1;
     }
 
-    inline int FindInsertIndex(uint32_t hash)
+    inline int FindInsertIndex(const JSThread *thread, uint32_t hash)
     {
         int size = Size();
         int count = 1;
         // GrowHashTable will guarantee the hash table is never full.
         for (uint32_t entry = GetFirstPosition(hash, size);; entry = GetNextPosition(entry, count++, size)) {
-            if (!IsKey(GetKey(entry))) {
+            if (!IsKey(GetKey(thread, entry))) {
                 return entry;
             }
         }
@@ -314,16 +314,16 @@ public:
         // Rehash elements to new table
         for (int i = 0; i < currentSize; i++) {
             int fromIndex = Derived::GetKeyIndex(i);
-            JSTaggedValue k = this->GetKey(i);
+            JSTaggedValue k = this->GetKey(thread, i);
             if (!IsKey(k)) {
                 continue;
             }
-            uint32_t hash = static_cast<uint32_t>(Derived::Hash(k));
-            int insertionIndex = Derived::GetKeyIndex(newTable->FindInsertIndex(hash));
-            JSTaggedValue tv = Get(fromIndex);
+            uint32_t hash = static_cast<uint32_t>(Derived::Hash(thread, k));
+            int insertionIndex = Derived::GetKeyIndex(newTable->FindInsertIndex(thread, hash));
+            JSTaggedValue tv = Get(thread, fromIndex);
             newTable->Set(thread, insertionIndex, tv);
             for (int j = 1; j < Derived::GetEntrySize(); j++) {
-                tv = Get(fromIndex + j);
+                tv = Get(thread, fromIndex + j);
                 newTable->Set(thread, insertionIndex + j, tv);
             }
         }
@@ -425,7 +425,7 @@ public:
                                          const PropertyAttributes &metaData)
     {
         /* no need to add key if exist */
-        int entry = table->FindEntry(key.GetTaggedValue());
+        int entry = table->FindEntry(thread, key.GetTaggedValue());
         if (entry != -1) {
             return table;
         }
@@ -438,8 +438,8 @@ public:
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
-        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
-        entry = newTable->FindInsertIndex(hash);
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(thread, key.GetTaggedValue()));
+        entry = newTable->FindInsertIndex(thread, hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
         newTable->IncreaseEntries(thread);
@@ -456,7 +456,7 @@ public:
         attr.SetDictionaryOrder(enumIndex);
         attr.SetRepresentation(Representation::TAGGED);
         attr.SetDictSharedFieldType(metaData.GetSharedFieldType());
-        int entry = table->FindEntry(key.GetTaggedValue());
+        int entry = table->FindEntry(thread, key.GetTaggedValue());
         if (entry != -1) {
             table->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
             return table;
@@ -466,8 +466,8 @@ public:
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
-        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
-        entry = newTable->FindInsertIndex(hash);
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(thread, key.GetTaggedValue()));
+        entry = newTable->FindInsertIndex(thread, hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
         newTable->IncreaseEntries(thread);
@@ -476,7 +476,7 @@ public:
     }
     static JSHandle<Derived> Remove(const JSThread *thread, const JSHandle<Derived> &table, int entry)
     {
-        if (!(table->IsKey(table->GetKey(entry)))) {
+        if (!(table->IsKey(table->GetKey(thread, entry)))) {
             return table;
         }
         table->ClearEntry(thread, entry);
@@ -490,7 +490,7 @@ public:
     }
     inline int GetNextEnumerationIndex() const
     {
-        return HashTableT::Get(NEXT_ENUMERATION_INDEX).GetInt();
+        return HashTableT::GetPrimitive(NEXT_ENUMERATION_INDEX).GetInt();
     }
 
     inline int NextEnumerationIndex(const JSThread *thread)
@@ -499,12 +499,12 @@ public:
         auto table = Derived::Cast(this);
 
         if (!PropertyAttributes::IsValidIndex(index)) {
-            std::vector<int> indexOrder = GetEnumerationOrder();
+            std::vector<int> indexOrder = GetEnumerationOrder(thread);
             int length = static_cast<int>(indexOrder.size());
             for (int i = 0; i < length; i++) {
                 int oldIndex = indexOrder[i];
                 int enumIndex = PropertyAttributes::INITIAL_PROPERTY_INDEX + i;
-                PropertyAttributes attr = table->GetAttributes(oldIndex);
+                PropertyAttributes attr = table->GetAttributes(thread, oldIndex);
                 attr.SetDictionaryOrder(enumIndex);
                 attr.SetRepresentation(Representation::TAGGED);
                 table->SetAttributes(thread, oldIndex, attr);
@@ -514,26 +514,27 @@ public:
         return index;
     }
 
-    inline std::vector<int> GetEnumerationOrder()
+    inline std::vector<int> GetEnumerationOrder(const JSThread *thread)
     {
         std::vector<int> result;
         auto table = Derived::Cast(this);
         int size = table->Size();
         for (int i = 0; i < size; i++) {
-            if (table->IsKey(table->GetKey(i))) {
+            if (table->IsKey(table->GetKey(thread, i))) {
                 result.push_back(i);
             }
         }
-        std::sort(result.begin(), result.end(), [table](int a, int b) {
-            PropertyAttributes attrA = table->GetAttributes(a);
-            PropertyAttributes attrB = table->GetAttributes(b);
+        std::sort(result.begin(), result.end(), [table, thread](int a, int b) {
+            PropertyAttributes attrA = table->GetAttributes(thread, a);
+            PropertyAttributes attrB = table->GetAttributes(thread, b);
             return attrA.GetDictionaryOrder() < attrB.GetDictionaryOrder();
         });
         return result;
     }
 
-    static int ComputeCompactSize([[maybe_unused]] const JSHandle<Derived> &table, int computeHashTableSize,
-        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    static int ComputeCompactSize([[maybe_unused]] const JSThread *thread,
+                                  [[maybe_unused]] const JSHandle<Derived> &table, int computeHashTableSize,
+                                  [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
     {
         return computeHashTableSize;
     }

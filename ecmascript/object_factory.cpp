@@ -224,7 +224,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
         return;
     }
 
-    JSTaggedValue data = array->GetArrayBufferData();
+    JSTaggedValue data = array->GetArrayBufferData(thread_);
     size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
@@ -263,7 +263,7 @@ void ObjectFactory::NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayB
         return;
     }
 
-    JSTaggedValue data = array->GetArrayBufferData();
+    JSTaggedValue data = array->GetArrayBufferData(thread_);
     size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
     NativeAreaAllocator *nativeAreaAllocator = sHeap_->GetNativeAreaAllocator();
     if (!data.IsUndefined()) {
@@ -458,7 +458,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         LOG_FULL(FATAL) << "memcpy_s failed";
         UNREACHABLE();
     }
-    JSTaggedValue data = regexp->GetByteCodeBuffer();
+    JSTaggedValue data = regexp->GetByteCodeBuffer(thread_);
     if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread_, newBuffer);
@@ -530,7 +530,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
     for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = old->Get(i);
+        JSTaggedValue value = old->Get(thread_, i);
         newArray->Set(thread_, i, value);
     }
     return newArray;
@@ -543,17 +543,17 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object)
 
     JSHandle<JSObject> cloneObject = NewJSObject(klass);
 
-    JSHandle<TaggedArray> elements(thread_, object->GetElements());
+    JSHandle<TaggedArray> elements(thread_, object->GetElements(thread_));
     auto newElements = CloneProperties(elements);
     cloneObject->SetElements(thread_, newElements.GetTaggedValue());
 
-    JSHandle<TaggedArray> properties(thread_, object->GetProperties());
+    JSHandle<TaggedArray> properties(thread_, object->GetProperties(thread_));
     auto newProperties = CloneProperties(properties);
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
     uint32_t length = std::min(klass->GetInlinedProperties(), klass->NumberOfProps());
 
     for (uint32_t i = 0; i < length; i++) {
-        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(i));
+        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(thread_, i));
     }
     return cloneObject;
 }
@@ -567,7 +567,7 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
     cloneObject->SetTrackInfo(thread_, JSTaggedValue::Undefined());
 
-    JSHandle<TaggedArray> elements(thread_, object->GetElements());
+    JSHandle<TaggedArray> elements(thread_, object->GetElements(thread_));
     static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
     uint32_t elementsLength = elements->GetLength();
     MemSpaceType type = elementsLength > MAX_READ_ONLY_ARRAY_LENGTH ?
@@ -585,14 +585,14 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
         cloneObject->SetElements(thread_, newElements.GetTaggedValue());
     }
 
-    if (type == MemSpaceType::NON_MOVABLE && !object->GetElements().IsCOWArray()) {
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetElements(thread_).IsCOWArray()) {
         ASSERT(g_isEnableCMCGC ||
-            !Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
+            !Region::ObjectAddressToRange(object->GetElements(thread_).GetTaggedObject())->InNonMovableSpace());
         // Set the first shared elements into the old object.
-        object->SetElements(thread_, cloneObject->GetElements());
+        object->SetElements(thread_, cloneObject->GetElements(thread_));
     }
 
-    JSHandle<TaggedArray> properties(thread_, object->GetProperties());
+    JSHandle<TaggedArray> properties(thread_, object->GetProperties(thread_));
     uint32_t propertiesLength = properties->GetLength();
     type = propertiesLength > MAX_READ_ONLY_ARRAY_LENGTH ?
         MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
@@ -609,15 +609,15 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
         cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
     }
 
-    if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties().IsCOWArray()) {
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties(thread_).IsCOWArray()) {
         ASSERT(g_isEnableCMCGC ||
-            !Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
+            !Region::ObjectAddressToRange(object->GetProperties(thread_).GetTaggedObject())->InNonMovableSpace());
         // Set the first shared properties into the old object.
-        object->SetProperties(thread_, cloneObject->GetProperties());
+        object->SetProperties(thread_, cloneObject->GetProperties(thread_));
     }
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
-        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(i));
+        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(thread_, i));
     }
     return cloneObject;
 }
@@ -637,7 +637,7 @@ JSHandle<TaggedArray> ObjectFactory::CloneProperties(const JSHandle<TaggedArray>
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = old->Get(i);
+        JSTaggedValue value = old->Get(thread_, i);
         if (!value.IsJSFunction()) {
             newArray->Set(thread_, i, value);
         } else {
@@ -664,19 +664,19 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
 
     JSHandle<JSObject> cloneObject = NewJSObject(klass);
 
-    JSHandle<TaggedArray> elements(thread_, object->GetElements());
+    JSHandle<TaggedArray> elements(thread_, object->GetElements(thread_));
     auto newElements = CloneProperties(elements, env, cloneObject);
     cloneObject->SetElements(thread_, newElements.GetTaggedValue());
 
-    JSHandle<TaggedArray> properties(thread_, object->GetProperties());
+    JSHandle<TaggedArray> properties(thread_, object->GetProperties(thread_));
     auto newProperties = CloneProperties(properties, env, cloneObject);
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
     uint32_t length = std::min(klass->GetInlinedProperties(), klass->NumberOfProps());
 
     for (uint32_t i = 0; i < length; i++) {
-        auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
-        JSTaggedValue value = object->GetPropertyInlinedProps(i);
-        if (!layout->GetAttr(i).IsTaggedRep() || (!value.IsJSFunction() && !value.IsAccessorData())) {
+        auto layout = LayoutInfo::Cast(klass->GetLayout(thread_).GetTaggedObject());
+        JSTaggedValue value = object->GetPropertyInlinedProps(thread_, i);
+        if (!layout->GetAttr(thread_, i).IsTaggedRep() || (!value.IsJSFunction() && !value.IsAccessorData())) {
             cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else if (value.IsJSFunction()) {
             JSHandle<JSFunction> valueHandle(thread_, value);
@@ -698,13 +698,13 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object,
 JSHandle<JSFunction> ObjectFactory::CloneJSFunction(JSHandle<JSFunction> func)
 {
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
-    JSHandle<Method> method(thread_, func->GetMethod());
+    JSHandle<Method> method(thread_, func->GetMethod(thread_));
     JSHandle<JSFunction> cloneFunc = NewJSFunctionByHClass(method, jshclass);
 
-    JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    JSTaggedValue length = func->GetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetLength(func->GetLength());
-    cloneFunc->SetModule(thread_, func->GetModule());
+    cloneFunc->SetModule(thread_, func->GetModule(thread_));
     return cloneFunc;
 }
 
@@ -712,13 +712,13 @@ JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
 {
     ASSERT(func.GetTaggedValue().IsJSSharedFunction());
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
-    JSHandle<Method> method(thread_, func->GetMethod());
+    JSHandle<Method> method(thread_, func->GetMethod(thread_));
     JSHandle<JSFunction> cloneFunc = NewSFunctionByHClass(method, jshclass);
 
-    JSTaggedValue length = func->GetPropertyInlinedProps(JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
+    JSTaggedValue length = func->GetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetLength(func->GetLength());
-    cloneFunc->SetModule(thread_, func->GetModule());
+    cloneFunc->SetModule(thread_, func->GetModule(thread_));
     return cloneFunc;
 }
 
@@ -726,7 +726,7 @@ JSHandle<JSFunction> ObjectFactory::CreateJSFunctionFromTemplate(JSHandle<Functi
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    auto kind = funcTemp->GetFunctionKind();
+    auto kind = funcTemp->GetFunctionKind(thread_);
     JSHandle<JSHClass> jshclass;
     if (kind == FunctionKind::NORMAL_FUNCTION ||
         kind == FunctionKind::GETTER_FUNCTION ||
@@ -737,11 +737,11 @@ JSHandle<JSFunction> ObjectFactory::CreateJSFunctionFromTemplate(JSHandle<Functi
     } else {
         jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
-    JSHandle<Method> method = JSHandle<Method>(thread_, funcTemp->GetMethod());
+    JSHandle<Method> method = JSHandle<Method>(thread_, funcTemp->GetMethod(thread_));
     JSHandle<JSFunction> newFunc = NewJSFunctionByHClass(method, jshclass);
 
     newFunc->SetLength(funcTemp->GetLength());
-    newFunc->SetModule(thread_, funcTemp->GetModule());
+    newFunc->SetModule(thread_, funcTemp->GetModule(thread_));
     return newFunc;
 }
 
@@ -749,7 +749,7 @@ JSHandle<JSFunction> ObjectFactory::CreateSFunctionFromTemplate(JSHandle<Functio
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    auto kind = funcTemp->GetFunctionKind();
+    auto kind = funcTemp->GetFunctionKind(thread_);
     JSHandle<JSHClass> jshclass;
     if (kind == FunctionKind::NORMAL_FUNCTION ||
         kind == FunctionKind::GETTER_FUNCTION ||
@@ -760,11 +760,11 @@ JSHandle<JSFunction> ObjectFactory::CreateSFunctionFromTemplate(JSHandle<Functio
     } else {
         jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
-    JSHandle<Method> method(thread_, funcTemp->GetMethod());
+    JSHandle<Method> method(thread_, funcTemp->GetMethod(thread_));
     JSHandle<JSFunction> newFunc = NewSFunctionByHClass(method, jshclass);
 
     newFunc->SetLength(funcTemp->GetLength());
-    newFunc->SetModule(thread_, funcTemp->GetModule());
+    newFunc->SetModule(thread_, funcTemp->GetModule(thread_));
     return newFunc;
 }
 
@@ -778,7 +778,7 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
         hclass = JSHClass::Clone(thread_, hclass);
     }
 
-    JSHandle<Method> method(thread_, ctor->GetMethod());
+    JSHandle<Method> method(thread_, ctor->GetMethod(thread_));
     ASSERT_PRINT(method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR ||
                  method->GetFunctionKind() == FunctionKind::DERIVED_CONSTRUCTOR,
                  "cloned function is not class");
@@ -786,9 +786,9 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
     uint32_t length = std::min(hclass->GetInlinedProperties(), hclass->NumberOfProps());
 
     for (uint32_t i = 0; i < length; i++) {
-        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-        JSTaggedValue value = ctor->GetPropertyInlinedProps(i);
-        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+        auto layout = LayoutInfo::Cast(hclass->GetLayout(thread_).GetTaggedObject());
+        JSTaggedValue value = ctor->GetPropertyInlinedProps(thread_, i);
+        if (!layout->GetAttr(thread_, i).IsTaggedRep() || !value.IsJSFunction()) {
             cloneCtor->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
@@ -799,11 +799,11 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
         }
     }
 
-    JSHandle<TaggedArray> elements(thread_, ctor->GetElements());
+    JSHandle<TaggedArray> elements(thread_, ctor->GetElements(thread_));
     auto newElements = CloneProperties(elements, lexenv, JSHandle<JSObject>(cloneCtor));
     cloneCtor->SetElements(thread_, newElements.GetTaggedValue());
 
-    JSHandle<TaggedArray> properties(thread_, ctor->GetProperties());
+    JSHandle<TaggedArray> properties(thread_, ctor->GetProperties(thread_));
     auto newProperties = CloneProperties(properties, lexenv, JSHandle<JSObject>(cloneCtor));
     cloneCtor->SetProperties(thread_, newProperties.GetTaggedValue());
 
@@ -1064,7 +1064,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, con
             break;
     }
     JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
-    JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype());
+    JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, nativeConstructor, nativePrototype, undefined, 1, needCheckStack);
@@ -1112,8 +1112,9 @@ JSHandle<JSObject> ObjectFactory::CreateNapiObject()
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<GlobalEnv> &env,
     const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
 {
-    if (!constructor->HasFunctionPrototype() ||
-        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+    if (!constructor->HasFunctionPrototype(thread_) ||
+        (constructor->GetProtoOrHClass(thread_).IsHeapObject() &&
+         constructor->GetFunctionPrototype(thread_).IsECMAObject())) {
         JSHandle<JSHClass> jshclass;
         if (LIKELY(inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS)) {
             jshclass = JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
@@ -1125,7 +1126,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<Global
         if (jshclass->IsJSShared()) {
             obj = NewSharedOldSpaceJSObject(jshclass);
             if (jshclass->IsDictionaryMode()) {
-                auto fieldLayout = jshclass->GetLayout();
+                auto fieldLayout = jshclass->GetLayout(thread_);
                 ASSERT(fieldLayout.IsDictionary());
                 auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
                 auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
@@ -1133,7 +1134,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<Global
             }
             if (constructor->IsClassConstructor()) {
                 JSTaggedValue elementsDic =
-                    constructor->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+                    constructor->GetPropertyInlinedProps(thread_, ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
                 if (elementsDic.IsDictionary()) {
                     JSHandle<TaggedArray> elementsDicHld(thread_, elementsDic);
                     JSHandle<TaggedArray> elements =
@@ -1171,8 +1172,9 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                                     JSHandle<JSObject>(thread_, JSTaggedValue::Undefined()));
     }
     JSHandle<JSHClass> jshclass;
-    if (!constructor->HasFunctionPrototype() ||
-        (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
+    if (!constructor->HasFunctionPrototype(thread_) ||
+        (constructor->GetProtoOrHClass(thread_).IsHeapObject() &&
+         constructor->GetFunctionPrototype(thread_).IsECMAObject())) {
         jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor, newTarget);
     } else {
         JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -1184,7 +1186,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
     if (jshclass->IsJSShared()) {
         obj = NewSharedOldSpaceJSObject(jshclass);
         if (jshclass->IsDictionaryMode()) {
-            auto fieldLayout = jshclass->GetLayout();
+            auto fieldLayout = jshclass->GetLayout(thread_);
             ASSERT(fieldLayout.IsDictionary());
             auto dict = JSHandle<TaggedArray>(thread_, fieldLayout);
             auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
@@ -1192,9 +1194,10 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
         }
         if (constructor->IsClassConstructor() && newTarget->IsClassConstructor()) {
             JSTaggedValue elementsDicOfCtor =
-                constructor->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+                constructor->GetPropertyInlinedProps(thread_, ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
             JSTaggedValue elementsDicOfTrg =
-                JSHandle<JSFunction>(newTarget)->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+                JSHandle<JSFunction>(newTarget)->GetPropertyInlinedProps(thread_,
+                    ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
             if (elementsDicOfCtor.IsDictionary() && elementsDicOfTrg.IsDictionary()) {
                 JSHandle<TaggedArray> elements;
                 MergeSendableClassElementsDic(elements, JSHandle<JSTaggedValue>(thread_, elementsDicOfCtor),
@@ -1227,12 +1230,12 @@ void ObjectFactory::MergeSendableClassElementsDic(JSHandle<TaggedArray> &element
         JSMutableHandle<NumberDictionary> newElementsDicUpdate(thread_, elementsDicOfCtor);
         uint32_t headerSize = 4;
         for (uint32_t i = headerSize; i < elementsDicDicOfTrgHdl->GetLength(); i++) {
-            key.Update(elementsDicDicOfTrgHdl->Get(i));
+            key.Update(elementsDicDicOfTrgHdl->Get(thread_, i));
             if (key->IsInt()) {
                 JSHandle<NumberDictionary> elementsDicOfTrg(elementsDicOfTrgVal);
 
-                int entry = elementsDicOfTrg->FindEntry(key.GetTaggedValue());
-                PropertyAttributes attributes = elementsDicOfTrg->GetAttributes(entry);
+                int entry = elementsDicOfTrg->FindEntry(thread_, key.GetTaggedValue());
+                PropertyAttributes attributes = elementsDicOfTrg->GetAttributes(thread_, entry);
                 JSHandle<NumberDictionary> newElementsDic =
                     NumberDictionary::Put(thread_, elementsDicOfCtor, key, undefinedVal, attributes);
                 newElementsDicUpdate.Update(newElementsDic);
@@ -1563,7 +1566,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         // non ECMA standard jsapi container
         case JSType::JS_API_ARRAY_LIST: {
-            JSAPIArrayList::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            JSAPIArrayList::Cast(*obj)->SetLength(0);
             break;
         }
         case JSType::JS_API_HASH_MAP: {
@@ -1872,7 +1875,7 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
     }
     if (inProgress) {
-        hclass->ObjSizeTrackingStep();
+        hclass->ObjSizeTrackingStep(thread_);
     }
 }
 
@@ -2065,7 +2068,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(index);
-        layout->AddKey(thread_, index, array->Get(index), attributes);
+        layout->AddKey(thread_, index, array->Get(thread_, index), attributes);
     }
 
     JSHandle<JSHClass> defaultHClass = NewEcmaHClass(hclass, JSFunction::SIZE, JSType::JS_FUNCTION, size);
@@ -2112,7 +2115,7 @@ void ObjectFactory::SetupJSFunctionByHClass(const JSHandle<JSFunction> &function
         SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
-            SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+            SetAOTFuncEntry(method->GetJSPandaFile(thread_), *function, *method);
     } else {
         SetCodeEntryToFunctionFromMethod(function, method);
     }
@@ -2435,7 +2438,7 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
 
 JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
 {
-    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass(thread_));
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSGeneratorObject, thread_);
@@ -2450,7 +2453,7 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
 
 JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHandle<JSTaggedValue> generatorFunction)
 {
-    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
+    JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass(thread_));
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSAsyncGeneratorObject, thread_);
@@ -2615,7 +2618,7 @@ JSHandle<JSSymbol> ObjectFactory::NewJSSymbol()
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetFlags(0);
-    obj->SetHashField(SymbolTable::Hash(obj.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, obj.GetTaggedValue()));
     return obj;
 }
 
@@ -2635,7 +2638,7 @@ JSHandle<JSSymbol> ObjectFactory::NewPrivateNameSymbol(const JSHandle<JSTaggedVa
     obj->SetFlags(0);
     obj->SetPrivateNameSymbol();
     obj->SetDescription(thread_, name);
-    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, name.GetTaggedValue()));
     return obj;
 }
 
@@ -2648,7 +2651,7 @@ JSHandle<JSSymbol> ObjectFactory::NewWellKnownSymbol(const JSHandle<JSTaggedValu
     obj->SetFlags(0);
     obj->SetWellKnownSymbol();
     obj->SetDescription(thread_, name);
-    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, name.GetTaggedValue()));
     return obj;
 }
 
@@ -2660,15 +2663,15 @@ JSHandle<JSSymbol> ObjectFactory::NewPublicSymbol(const JSHandle<JSTaggedValue> 
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetFlags(0);
     obj->SetDescription(thread_, name);
-    obj->SetHashField(SymbolTable::Hash(name.GetTaggedValue()));
+    obj->SetHashField(SymbolTable::Hash(thread_, name.GetTaggedValue()));
     return obj;
 }
 
 JSHandle<JSSymbol> ObjectFactory::NewSymbolWithTable(const JSHandle<JSTaggedValue> &name)
 {
     JSHandle<SymbolTable> tableHandle(thread_, vm_->GetRegisterSymbols());
-    if (tableHandle->ContainsKey(name.GetTaggedValue())) {
-        JSTaggedValue objValue = tableHandle->GetSymbol(name.GetTaggedValue());
+    if (tableHandle->ContainsKey(thread_, name.GetTaggedValue())) {
+        JSTaggedValue objValue = tableHandle->GetSymbol(thread_, name.GetTaggedValue());
         return JSHandle<JSSymbol>(thread_, objValue);
     }
 
@@ -2932,7 +2935,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopySNameDictionary(JSHandle<TaggedAr
         return dstElements;
     }
     for (uint32_t i = 0; i < length; i++) {
-        dstElements->Set(thread_, i, srcElements->Get(i));
+        dstElements->Set(thread_, i, srcElements->Get(thread_, i));
     }
     return dstElements;
 }
@@ -2963,7 +2966,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements(NewTaggedArrayWithoutInit(newLength, spaceType));
-    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements(thread_).GetTaggedObject());
     dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
@@ -2985,7 +2988,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<MutantTaggedArray> dstElements(NewMutantTaggedArrayWithoutInit(newLength, spaceType));
-    MutantTaggedArray *srcElements = MutantTaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    MutantTaggedArray *srcElements = MutantTaggedArray::Cast(thisObjHandle->GetElements(thread_).GetTaggedObject());
     dstElements->SetExtraLength(srcElements->GetExtraLength());
     if (newLength == 0) {
         return dstElements;
@@ -3218,9 +3221,9 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     auto isMutantTaggedArray = old->GetClass()->IsMutantTaggedArray();
     for (; index < oldLength; ++index) {
         if (isMutantTaggedArray) {
-            newArray->Set<false>(thread_, index, old->Get(index));
+            newArray->Set<false>(thread_, index, old->Get(thread_, index));
         } else {
-            newArray->Set(thread_, index, old->Get(index));
+            newArray->Set(thread_, index, old->Get(thread_, index));
         }
     }
     auto isSpecialHole = initVal.IsHole() && isMutantTaggedArray;
@@ -3255,7 +3258,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyPartArray(const JSHandle<TaggedArray> &
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = old->Get(i + start);
+        JSTaggedValue value = old->Get(thread_, i + start);
         if (value.IsHole()) {
             break;
         }
@@ -3320,7 +3323,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyFromKeyArray(const JSHandle<TaggedArray
     newArray->SetExtraLength(old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = old->Get(i);
+        JSTaggedValue value = old->Get(thread_, i);
         newArray->Set(thread_, i, value);
     }
     return newArray;
@@ -3348,7 +3351,7 @@ JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> 
 
     uint32_t oldLength = old->GetLength();
     for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = oldArray->Get(i);
+        JSTaggedValue value = oldArray->Get(thread_, i);
         newArray->Set(thread_, i, value);
     }
     return JSHandle<LayoutInfo>::Cast(newArray);
@@ -3371,9 +3374,9 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     size_t keyOffset = 0;
     size_t attrOffset = sizeof(JSTaggedType);
     for (int i = 0; i < end; i++) {
-        JSTaggedValue propKey(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) + i * sizeof(Properties) +
+        JSTaggedValue propKey(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) +
                                                        keyOffset));
-        JSTaggedValue propValue(Barriers::GetTaggedValue(ToUintPtr(propertiesObj) +
+        JSTaggedValue propValue(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) +
                                                          i * sizeof(Properties) + attrOffset));
         sp[i].key_ = propKey;
         sp[i].attr_ = propValue;
@@ -3710,7 +3713,7 @@ JSHandle<JSSetIterator> ObjectFactory::NewJSSetIterator(const JSHandle<JSSet> &s
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetIteratedSet(thread_, set->GetLinkedSet());
+    iter->SetIteratedSet(thread_, set->GetLinkedSet(thread_));
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
     return iter;
@@ -3744,7 +3747,7 @@ JSHandle<JSMapIterator> ObjectFactory::NewJSMapIterator(const JSHandle<JSMap> &m
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetIteratedMap(thread_, map->GetLinkedMap());
+    iter->SetIteratedMap(thread_, map->GetLinkedMap(thread_));
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
     return iter;
@@ -4193,11 +4196,11 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<GlobalEnv> &e
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
     JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(length);
     while (fieldOrder < length) {
-        key.Update(properties->Get(fieldOrder * 2));  // 2: Meaning to double
+        key.Update(properties->Get(thread_, fieldOrder * 2));  // 2: Meaning to double
         ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
         PropertyAttributes attributes = PropertyAttributes::Default();
 
-        if (properties->Get(fieldOrder * 2 + 1).IsAccessor()) {  // 2: Meaning to double
+        if (properties->Get(thread_, fieldOrder * 2 + 1).IsAccessor()) {  // 2: Meaning to double
             attributes.SetIsAccessor(true);
         }
 
@@ -4225,10 +4228,10 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
     JSHandle<JSHClass> newObjHClass(objClass);
 
     for (size_t fieldOffset = 0; fieldOffset < length; fieldOffset++) {
-        key.Update(properties->Get(fieldOffset * 2)); // 2 : pair of key and value
+        key.Update(properties->Get(thread_, fieldOffset * 2)); // 2 : pair of key and value
         ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
         PropertyAttributes attributes = PropertyAttributes::Default();
-        auto value = properties->Get(fieldOffset * 2 + 1);
+        auto value = properties->Get(thread_, fieldOffset * 2 + 1);
         if (value.IsAccessor()) {  // 2: Meaning to double
             attributes.SetIsAccessor(true);
         }
@@ -4272,7 +4275,7 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t literalLengt
         return objHClass;
     }
     JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
-    JSTaggedValue maybeHClass = hclassCacheArr->Get(literalLength);
+    JSTaggedValue maybeHClass = hclassCacheArr->Get(thread_, literalLength);
     if (UNLIKELY(maybeHClass.IsHole())) {
         JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(maxPropsNum);
         hclassCacheArr->Set(thread_, literalLength, objHClass);
@@ -4354,7 +4357,7 @@ JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj,
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (code->SetData(desc, method, length, relocInfo, thread_)) {
+    if (code->SetData(thread_, desc, method, length, relocInfo)) {
         JSHandle<MachineCode> codeObj(thread_, code);
         if (g_isEnableCMCGC) {
             uintptr_t start = code->GetText();
@@ -4737,7 +4740,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyDeque(const JSHandle<TaggedArray> &old,
     uint32_t newIndex = 0;
     uint32_t oldCapacity = old->GetLength();
     while (curIndex != last) {
-        JSTaggedValue value = old->Get(curIndex);
+        JSTaggedValue value = old->Get(thread_, curIndex);
         newArray->Set(thread_, newIndex, value);
         ASSERT(oldCapacity != 0);
         curIndex = (curIndex + 1) % oldCapacity;
@@ -4776,7 +4779,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyQueue(const JSHandle<TaggedArray> &old,
     uint32_t newIndex = 0;
     uint32_t oldCapacity = old->GetLength();
     while (curIndex != tail) {
-        JSTaggedValue value = old->Get(curIndex);
+        JSTaggedValue value = old->Get(thread_, curIndex);
         newArray->Set(thread_, newIndex, value);
         ASSERT(oldCapacity != 0);
         curIndex = (curIndex + 1) % oldCapacity;
@@ -4953,7 +4956,7 @@ JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(cons
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPILinkedListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetIteratedLinkedList(thread_, linkedList->GetDoubleList());
+    iter->SetIteratedLinkedList(thread_, linkedList->GetDoubleList(thread_));
     iter->SetNextIndex(0);
     const uint32_t linkedListElementStartIndex = 4;
     iter->SetDataIndex(linkedListElementStartIndex);
@@ -4970,7 +4973,7 @@ JSHandle<JSAPIListIterator> ObjectFactory::NewJSAPIListIterator(const JSHandle<J
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetIteratedList(thread_, List->GetSingleList());
+    iter->SetIteratedList(thread_, List->GetSingleList(thread_));
     iter->SetNextIndex(0);
     const uint32_t linkedListElementStartIndex = 4;
     iter->SetDataIndex(linkedListElementStartIndex);
@@ -5232,8 +5235,8 @@ JSHandle<TaggedArray> ObjectFactory::NewOldSpaceTaggedArray(uint32_t length, JST
 
 JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements)
 {
-    JSHandle<JSHClass> cls(thread_,
-                           JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrHClass());
+    JSHandle<JSHClass> cls(
+        thread_, JSHandle<JSFunction>::Cast(vm_->GetGlobalEnv()->GetArrayFunction())->GetProtoOrHClass(thread_));
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
     array->SetElements(thread_, elements);
     array->SetLength(elements->GetLength());
@@ -5427,7 +5430,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
             key.Update(JSTaggedValue(InternString(key)));
         }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }
@@ -5470,7 +5473,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithProperties(size_t 
             key.Update(JSTaggedValue(InternString(key)));
         }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }
@@ -5508,7 +5511,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithProperties(si
             key.Update(JSTaggedValue(InternString(key)));
         }
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }
@@ -5535,7 +5538,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }
@@ -5573,7 +5576,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithNamedProperties(si
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }
@@ -5607,7 +5610,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithNamedProperti
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
-        if (UNLIKELY(!JSTaggedValue::IsPureString(key.GetTaggedValue()))) {
+        if (UNLIKELY(!JSTaggedValue::IsPureString(thread_, key.GetTaggedValue()))) {
             THROW_TYPE_ERROR_AND_RETURN(thread_, "property key must be string and can not convert into element index",
                                         JSHandle<JSTaggedValue>());
         }

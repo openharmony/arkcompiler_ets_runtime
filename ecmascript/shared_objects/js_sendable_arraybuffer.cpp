@@ -60,7 +60,7 @@ void JSSendableArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLen
 
 void JSSendableArrayBuffer::Detach(JSThread *thread, bool transferWithNativeAreaAllocator)
 {
-    JSTaggedValue arrayBufferData = GetArrayBufferData();
+    JSTaggedValue arrayBufferData = GetArrayBufferData(thread);
     // already detached.
     if (arrayBufferData.IsNull()) {
         return;

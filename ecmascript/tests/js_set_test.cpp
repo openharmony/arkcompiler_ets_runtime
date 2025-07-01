@@ -79,13 +79,13 @@ HWTEST_F_L0(JSSetTest, DeleteAndGet)
         JSSet::Add(thread, set, key);
         EXPECT_TRUE(set->Has(thread, key.GetTaggedValue()));
     }
-    EXPECT_EQ(set->GetSize(), 40);
+    EXPECT_EQ(set->GetSize(thread), 40);
     // whether jsSet has delete key
     keyArray[3] = '1' + 8;
     JSHandle<JSTaggedValue> deleteKey(factory->NewFromASCII(keyArray));
     JSSet::Delete(thread, set, deleteKey);
     EXPECT_FALSE(set->Has(thread, deleteKey.GetTaggedValue()));
-    EXPECT_EQ(set->GetSize(), 39);
+    EXPECT_EQ(set->GetSize(thread), 39);
 }
 
 HWTEST_F_L0(JSSetTest, Iterator)

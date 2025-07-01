@@ -16,6 +16,7 @@
 #include "ecmascript/debugger/js_debugger.h"
 
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::BuiltinsBase;
@@ -107,7 +108,7 @@ bool JSDebugger::RemoveBreakpointsByUrl(const std::string &url)
 
 void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset)
 {
-    ASSERT(bcOffset < method->GetCodeSize() && "code size of current Method less then bcOffset");
+    ASSERT(bcOffset < method->GetCodeSize(thread) && "code size of current Method less then bcOffset");
     HandleExceptionThrowEvent(thread, method, bcOffset);
     // clear singlestep flag
     singleStepOnDebuggerStmt_ = false;
@@ -138,10 +139,11 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
         return false;
     }
 
+    JSThread *thread = ecmaVm_->GetJSThread();
     auto smartBreakpoint = FindSmartBreakpoint(method, bcOffset);
     if (smartBreakpoint.has_value()) {
-        JSPtLocation smartLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
-            smartBreakpoint.value().GetSourceFile()};
+        JSPtLocation smartLocation {method->GetJSPandaFile(thread), method->GetMethodId(), bcOffset,
+                                    smartBreakpoint.value().GetSourceFile()};
         std::unique_ptr<PtMethod> ptMethod = FindMethod(smartLocation);
         RemoveSmartBreakpoint(ptMethod, bcOffset);
         hooks_->Breakpoint(smartLocation);
@@ -152,8 +154,8 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
     if (!breakpoint.has_value() || !IsBreakpointCondSatisfied(breakpoint)) {
         return false;
     }
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
-        breakpoint.value().GetSourceFile()};
+    JSPtLocation location {method->GetJSPandaFile(thread), method->GetMethodId(), bcOffset,
+                           breakpoint.value().GetSourceFile()};
 
     hooks_->Breakpoint(location);
     return true;
@@ -175,7 +177,8 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     if (breakpointAtDebugger.has_value()) {
         return false;
     }
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    JSThread *thread = ecmaVm_->GetJSThread();
+    JSPtLocation location {method->GetJSPandaFile(thread), method->GetMethodId(), bcOffset};
     hooks_->DebuggerStmt(location);
 
     return true;
@@ -187,7 +190,7 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Meth
         return;
     }
 
-    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    JSPtLocation throwLocation {method->GetJSPandaFile(thread), method->GetMethodId(), bcOffset};
 
     hooks_->Exception(throwLocation);
 }
@@ -198,16 +201,18 @@ bool JSDebugger::HandleStep(JSHandle<Method> method, uint32_t bcOffset)
         return false;
     }
 
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    JSThread *thread = ecmaVm_->GetJSThread();
+    JSPtLocation location {method->GetJSPandaFile(thread), method->GetMethodId(), bcOffset};
 
     return hooks_->SingleStep(location);
 }
 
 std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const
 {
+    JSThread *thread = ecmaVm_->GetJSThread();
     for (const auto &bp : breakpoints_) {
         if ((bp.GetBytecodeOffset() == bcOffset) &&
-            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile(thread)) &&
             (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
             return bp;
         }
@@ -217,9 +222,10 @@ std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<Method> method, 
 
 std::optional<JSBreakpoint> JSDebugger::FindSmartBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const
 {
+    JSThread *thread = ecmaVm_->GetJSThread();
     for (const auto &bp : smartBreakpoints_) {
         if ((bp.GetBytecodeOffset() == bcOffset) &&
-            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile(thread)) &&
             (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
             return bp;
         }
@@ -319,11 +325,12 @@ void JSDebugger::HandleSymbolicBreakpoint(const JSHandle<Method> &method)
         return;
     }
     std::unordered_set<std::string> recordNames = hooks_->GetAllRecordNames();
-    std::string recordName(method->GetRecordNameStr().c_str());
+    JSThread *thread = ecmaVm_->GetJSThread();
+    std::string recordName(method->GetRecordNameStr(thread).c_str());
     if (recordNames.find(recordName) == recordNames.end()) {
         return;
     }
-    auto symbolicBreakpoint = symbolicBreakpoints_.find(method->ParseFunctionName());
+    auto symbolicBreakpoint = symbolicBreakpoints_.find(method->ParseFunctionName(thread));
     if (symbolicBreakpoint != symbolicBreakpoints_.end()) {
         hooks_->HitSymbolicBreakpoint();
     }

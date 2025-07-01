@@ -78,7 +78,7 @@ JSTaggedValue BuiltinsFinalizationRegistry::Register(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "target invalid", JSTaggedValue::Exception());
     }
     // 4. If SameValue(target, heldValue) is true, throw a TypeError exception.
-    if (JSTaggedValue::SameValue(target, heldValue)) {
+    if (JSTaggedValue::SameValue(thread, target, heldValue)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "target and heldValue should not be equal", JSTaggedValue::Exception());
     }
     // 5. If CanBeHeldWeakly(unregisterToken) is false, then

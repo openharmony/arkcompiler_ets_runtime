@@ -39,7 +39,7 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIDequeIterator> iter(input);
-    JSHandle<JSTaggedValue> iteratorDeque(thread, iter->GetIteratedDeque());
+    JSHandle<JSTaggedValue> iteratorDeque(thread, iter->GetIteratedDeque(thread));
     if (iteratorDeque->IsUndefined()) {
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         return env->GetUndefinedIteratorResult().GetTaggedValue();
@@ -47,7 +47,7 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(iteratorDeque);
     uint32_t index = iter->GetNextIndex();
 
-    JSHandle<TaggedArray> elements(thread, deque->GetElements());
+    JSHandle<TaggedArray> elements(thread, deque->GetElements(thread));
     uint32_t capacity = elements->GetLength();
     uint32_t first = deque->GetFirst();
     uint32_t last = deque->GetLast();
@@ -60,7 +60,7 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     ASSERT(capacity != 0);
     iter->SetNextIndex((index + 1) % capacity);
     uint32_t elementIndex = (index + capacity - first) % capacity;
-    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIDeque>::Cast(iteratorDeque)->Get(elementIndex));
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIDeque>::Cast(iteratorDeque)->Get(thread, elementIndex));
 
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }

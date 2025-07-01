@@ -64,7 +64,7 @@ JSHandle<JSObject> JSGeneratorObject::GeneratorResume(JSThread *thread, const JS
                  "state is neither suspendedStart nor suspendedYield");
 
     // 4.Let genContext be generator.[[GeneratorContext]].
-    JSHandle<GeneratorContext> genContext(thread, generator->GetGeneratorContext());
+    JSHandle<GeneratorContext> genContext(thread, generator->GetGeneratorContext(thread));
 
     // 5.Let methodContext be the running execution context.
     // 6.Suspend methodContext.
@@ -106,7 +106,7 @@ JSHandle<JSObject> JSGeneratorObject::GeneratorResumeAbrupt(JSThread *thread,
     //         i.Return CreateIterResultObject(abruptCompletion.[[Value]], true).
     //     b.Return Completion(abruptCompletion).
     if (state == JSGeneratorState::COMPLETED) {
-        JSHandle<JSTaggedValue> valueHandle(thread, abruptCompletion->GetValue());
+        JSHandle<JSTaggedValue> valueHandle(thread, abruptCompletion->GetValue(thread));
         JSHandle<JSObject> result = JSIterator::CreateIterResultObject(thread, valueHandle, true);
         if (abruptCompletion->GetType() == CompletionRecordType::RETURN) {
             return result;
@@ -118,7 +118,7 @@ JSHandle<JSObject> JSGeneratorObject::GeneratorResumeAbrupt(JSThread *thread,
     ASSERT_PRINT(state == JSGeneratorState::SUSPENDED_YIELD, "state is not suspendedYield");
 
     // 5.Let genContext be generator.[[GeneratorContext]].
-    JSHandle<GeneratorContext> genContext(thread, generator->GetGeneratorContext());
+    JSHandle<GeneratorContext> genContext(thread, generator->GetGeneratorContext(thread));
 
     // 6.Let methodContext be the running execution context.
     // 7.Suspend methodContext.
@@ -134,9 +134,9 @@ JSHandle<JSObject> JSGeneratorObject::GeneratorResumeAbrupt(JSThread *thread,
     // 12.Return Completion(result).
     JSHandle<JSObject> result;
     if (abruptCompletion->GetType() == CompletionRecordType::RETURN) {
-        result = GeneratorHelper::Return(thread, genContext, abruptCompletion->GetValue());
+        result = GeneratorHelper::Return(thread, genContext, abruptCompletion->GetValue(thread));
     } else {
-        result = GeneratorHelper::Throw(thread, genContext, abruptCompletion->GetValue());
+        result = GeneratorHelper::Throw(thread, genContext, abruptCompletion->GetValue(thread));
     }
     return result;
 }

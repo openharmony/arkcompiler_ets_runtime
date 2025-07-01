@@ -235,31 +235,31 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
     static_assert(GC_TYPE_LAST == 9, "Update this method after TrigerGCType change");
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetYoungGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetYoungGcCause(), cause)) {
         return YOUNG_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetOldGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetOldGcCause(), cause)) {
         return OLD_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetFullGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetFullGcCause(), cause)) {
         return FULL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetAppSpawnFullGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetAppSpawnFullGcCause(), cause)) {
         return APPSPAWN_FULL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetSharedGcCause(), cause)) {
         return SHARED_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedPartialGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetSharedPartialGcCause(), cause)) {
         return SHARED_PARTIAL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedFullGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetSharedFullGcCause(), cause)) {
         return SHARED_FULL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetAppSpawnSharedFullGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetAppSpawnSharedFullGcCause(), cause)) {
         return APPSPAWN_SHARED_FULL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
+    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
         return UNIFIED_GC;
     }
     return GC_TYPE_LAST;

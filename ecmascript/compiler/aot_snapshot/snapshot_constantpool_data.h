@@ -83,7 +83,8 @@ protected:
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc);
     JSHandle<ConstantPool> GetUnsharedConstpool(const ItemData &data);
 
-    static bool CheckAOTPropertiesForRep(const JSHandle<TaggedArray> &properties, const JSHandle<JSHClass> &hclass);
+    static bool CheckAOTPropertiesForRep(const JSThread *thread, const JSHandle<TaggedArray> &properties,
+                                         const JSHandle<JSHClass> &hclass);
 
     static bool CheckAOTIhcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &ihc,
                                             const JSHandle<ClassInfoExtractor> &extractor);

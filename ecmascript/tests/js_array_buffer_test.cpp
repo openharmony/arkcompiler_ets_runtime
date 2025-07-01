@@ -86,13 +86,13 @@ HWTEST_F_L0(JsArrayBufferTest, Attach_Detach_IsDetach)
     JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(5);
     arrBuf->Attach(thread, length + 1, JSHandle<JSTaggedValue>::Cast(nativePointer).GetTaggedValue());
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
-    EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(),
+    EXPECT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(),
         JSHandle<JSTaggedValue>::Cast(nativePointer).GetTaggedValue().GetRawData());
 
     arrBuf->Detach(thread);
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
-    EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(), JSTaggedValue::Null().GetRawData());
-    EXPECT_TRUE(arrBuf->IsDetach());
+    EXPECT_EQ(arrBuf->GetArrayBufferData(thread).GetRawData(), JSTaggedValue::Null().GetRawData());
+    EXPECT_TRUE(arrBuf->IsDetach(thread));
     vm->GetNativeAreaAllocator()->FreeBuffer(buffer);
     vm->GetNativeAreaAllocator()->FreeBuffer(data);
 }

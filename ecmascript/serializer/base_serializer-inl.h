@@ -28,6 +28,7 @@ template <SerializeType serializeType>
 void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRangeImpl(BaseObject *rootObject,
     uintptr_t startAddr, uintptr_t endAddr, VisitObjectArea area)
 {
+    JSThread *thread = serializer_->GetThread();
     switch (area) {
         case VisitObjectArea::RAW_DATA:
             serializer_->WriteMultiRawData(startAddr, endAddr - startAddr);
@@ -45,7 +46,8 @@ void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRang
         default: {
             ObjectSlot end = ObjectSlot(endAddr);
             for (ObjectSlot slot = ObjectSlot(startAddr); slot < end; slot++) {
-                [[maybe_unused]] JSTaggedValue value = JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress()));
+                [[maybe_unused]] JSTaggedValue value =
+                    JSTaggedValue(Barriers::GetTaggedValue(thread, slot.SlotAddress()));
             }
             serializer_->SerializeTaggedObjField(serializeType, TaggedObject::Cast(rootObject), ObjectSlot(startAddr),
                                                  ObjectSlot(endAddr));

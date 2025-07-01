@@ -100,7 +100,8 @@ public:
                                            int32_t level, uint32_t slot);
     static void SetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler, int32_t level,
                               uint32_t slot, Local<JSValueRef> value);
-    static std::pair<int32_t, uint32_t> GetLevelSlot(const FrameHandler *frameHandler, std::string_view name);
+    static std::pair<int32_t, uint32_t> GetLevelSlot(const JSThread *ecmaVm, const FrameHandler *frameHandler,
+        std::string_view name);
     static Local<JSValueRef> GetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name);
     static bool SetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name, Local<JSValueRef> value);
 

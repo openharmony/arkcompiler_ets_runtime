@@ -65,7 +65,7 @@ JSTaggedValue JSPromise::FulfillPromise(JSThread *thread, const JSHandle<JSPromi
     // 1. Assert: the value of promise's [[PromiseState]] internal slot is "pending".
     ASSERT_PRINT(promise->GetPromiseState() == PromiseState::PENDING, "FulfillPromise: state must be pending");
     // 2. Let reactions be the value of promise's [[PromiseFulfillReactions]] internal slot.
-    JSHandle<TaggedQueue> reactions(thread, promise->GetPromiseFulfillReactions());
+    JSHandle<TaggedQueue> reactions(thread, promise->GetPromiseFulfillReactions(thread));
     // 3. Set the value of promise's [[PromiseResult]] internal slot to value.
     promise->SetPromiseResult(thread, value);
     // 4. Set the value of promise's [[PromiseFulfillReactions]] internal slot to undefined.
@@ -96,8 +96,8 @@ JSHandle<PromiseCapability> JSPromise::NewPromiseCapability(JSThread *thread, co
         JSHandle<JSPromise> promise = factory->NewJSPromise();
         JSHandle<ResolvingFunctionsRecord> resolvingFunctions = JSPromise::CreateResolvingFunctions(thread, promise);
         promiseCapability->SetPromise(thread, promise);
-        auto resolveFunc = resolvingFunctions->GetResolveFunction();
-        auto rejectFunc = resolvingFunctions->GetRejectFunction();
+        auto resolveFunc = resolvingFunctions->GetResolveFunction(thread);
+        auto rejectFunc = resolvingFunctions->GetRejectFunction(thread);
         promiseCapability->SetResolve(thread, resolveFunc);
         promiseCapability->SetReject(thread, rejectFunc);
         return promiseCapability;
@@ -117,12 +117,12 @@ JSHandle<PromiseCapability> JSPromise::NewPromiseCapability(JSThread *thread, co
     JSHandle<JSPromise> promise(thread, result);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, factory->NewPromiseCapability());
     // 8. If IsCallable(promiseCapability.[[Resolve]]) is false, throw a TypeError exception.
-    if (!promiseCapability->GetResolve().IsCallable()) {
+    if (!promiseCapability->GetResolve(thread).IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "NewPromiseCapability: resolve is not a callable function!",
                                     factory->NewPromiseCapability());
     }
     // 9. If IsCallable(promiseCapability.[[Reject]]) is false, throw a TypeError exception.
-    if (!promiseCapability->GetReject().IsCallable()) {
+    if (!promiseCapability->GetReject(thread).IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "NewPromiseCapability: reject is not a callable function!",
                                     factory->NewPromiseCapability());
     }
@@ -156,7 +156,8 @@ JSTaggedValue JSPromise::RejectPromise(JSThread *thread, const JSHandle<JSPromis
     // 1. Assert: the value of promise's [[PromiseState]] internal slot is "pending".
     ASSERT_PRINT(promise->GetPromiseState() == PromiseState::PENDING, "RejectPromise: state must be pending");
     // 2. Let reactions be the value of promise's [[PromiseRejectReactions]] internal slot.
-    JSHandle<TaggedQueue> reactions(thread, TaggedQueue::Cast(promise->GetPromiseRejectReactions().GetTaggedObject()));
+    JSHandle<TaggedQueue> reactions(thread,
+                                    TaggedQueue::Cast(promise->GetPromiseRejectReactions(thread).GetTaggedObject()));
     // 3. Set the value of promise's [[PromiseResult]] internal slot to reason.
     promise->SetPromiseResult(thread, reason);
     // 4. Set the value of promise's [[PromiseFulfillReactions]] internal slot to undefined.
@@ -184,7 +185,7 @@ JSTaggedValue JSPromise::TriggerPromiseReactions(JSThread *thread, const JSHandl
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> promiseReactionsJob(globalEnv->GetPromiseReactionJob());
     JSMutableHandle<PromiseReaction> reaction(thread, JSTaggedValue::Undefined());
-    while (!reactions->Empty()) {
+    while (!reactions->Empty(thread)) {
         reaction.Update(reactions->Pop(thread));
         JSHandle<TaggedArray> arguments = factory->NewTaggedArray(2);  // 2 means the length of new array
         arguments->Set(thread, 0, reaction);

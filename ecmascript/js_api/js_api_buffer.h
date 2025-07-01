@@ -47,7 +47,7 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
         JSType type = JSType::JS_##type##_ARRAY;                                                                      \
         auto byteSize = base::TypedArrayHelper::GetElementSize(type);                                                 \
         JSHandle<JSTypedArray> typedArray =                                                                           \
-            JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData().GetTaggedObject()));        \
+            JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData(thread).GetTaggedObject()));  \
         double valueNum = value->GetNumber();                                                                         \
         double left = (type##_MIN);                                                                                   \
         double right = (type##_MAX);                                                                                  \
@@ -81,7 +81,7 @@ using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
     {                                                                                                                 \
         JSType type = JSType::JS_##type##_ARRAY;                                                                      \
         JSHandle<JSTypedArray> typedArray =                                                                           \
-            JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData().GetTaggedObject()));        \
+            JSHandle<JSTypedArray>(thread, JSTypedArray::Cast(buffer->GetFastBufferData(thread).GetTaggedObject()));  \
         if (offset + NumberSize::type > buffer->GetLength()) {                                                        \
             std::ostringstream oss;                                                                                   \
             oss << "The value of \"offset\" is out of range. It must be >= " << 0                                     \
@@ -178,8 +178,10 @@ public:
                                     const JSHandle<JSTaggedValue> &str, EncodingType encoding = UTF8);
     static JSTaggedValue ToString(JSThread *thread, JSHandle<JSAPIFastBuffer> &buffer, EncodingType encodingType,
                                   uint32_t start, uint32_t end);
-    static std::string GetString(const JSHandle<JSTaggedValue> &str, JSHandle<JSTaggedValue> encoding);
-    static std::string GetString(const JSHandle<JSTaggedValue> &str, EncodingType encodingType = UTF8);
+    static std::string GetString(JSThread *thread, const JSHandle<JSTaggedValue> &str,
+                                 JSHandle<JSTaggedValue> encoding);
+    static std::string GetString(JSThread *thread, const JSHandle<JSTaggedValue> &str,
+                                 EncodingType encodingType = UTF8);
     static std::string_view FastGetString(const JSHandle<JSTaggedValue> &str, EncodingType encodingType,
                                           std::string &strDecoded);
     static JSTaggedValue AllocateFromBufferObject(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
@@ -204,7 +206,7 @@ public:
     static JSTaggedValue CreateBufferFromArrayLike(JSThread *thread, const JSHandle<JSAPIFastBuffer> &buffer,
                                                    const JSHandle<JSTaggedValue> &obj);
     static EncodingType GetEncodingType(std::string encode);
-    static EncodingType GetEncodingType(const JSHandle<JSTaggedValue> &encode);
+    static EncodingType GetEncodingType(JSThread *thread, const JSHandle<JSTaggedValue> &encode);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIFastBuffer> &obj,
                                        const JSHandle<JSTaggedValue> &key);
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIFastBuffer> &obj, const JSHandle<JSTaggedValue> &key,
@@ -248,7 +250,7 @@ private:
     JSTaggedValue SetValueByIndex(JSThread *thread, uint32_t index, JSTaggedValue value, JSType jsType,
                                   bool littleEndian = true)
     {
-        auto typeArray = this->GetFastBufferData();
+        auto typeArray = this->GetFastBufferData(thread);
         return SetValueByIndex(thread, typeArray, index, value, jsType, littleEndian);
     }
     static JSTaggedValue SetValueByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,

@@ -55,7 +55,7 @@ JSTaggedValue BuiltinsBoolean::ThisBooleanValue(JSThread *thread, JSTaggedValue 
     }
     // 2. If Type(value) is Object and value has a [[BooleanData]] internal slot, then
     if (value.IsJSPrimitiveRef()) {
-        JSTaggedValue primitive = JSPrimitiveRef::Cast(value.GetTaggedObject())->GetValue();
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(value.GetTaggedObject())->GetValue(thread);
         // a. Assert: value's [[BooleanData]] internal slot is a Boolean value.
         if (primitive.IsBoolean()) {
             // b. Return the value of value's [[BooleanData]] internal slot.

@@ -65,12 +65,12 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassFromCached(const JSHandle<
                                                                  const SnapshotGlobalData &globalData) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSHandle<JSTaggedValue> maybeCache(thread_, globalData.GetObjectLiteralHClassCache());
+    JSHandle<JSTaggedValue> maybeCache(thread_, globalData.GetObjectLiteralHClassCache(thread_));
     if (maybeCache->IsTaggedArray()) {
         size_t length = properties->GetLength();
         uint32_t propsLen = 0;
         for (size_t i = 0; i < length; i += 2) { // 2: skip a pair of key and value
-            if (properties->Get(i).IsHole()) {
+            if (properties->Get(thread_, i).IsHole()) {
                 break;
             }
             propsLen++;
@@ -81,7 +81,7 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassFromCached(const JSHandle<
         }
 
         JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
-        JSTaggedValue maybeHClass = hclassCacheArr->Get(propsLen);
+        JSTaggedValue maybeHClass = hclassCacheArr->Get(thread_, propsLen);
         if (!maybeHClass.IsJSHClass()) {
             return thread_->GlobalConstants()->GetHandledUndefined();
         }
@@ -89,10 +89,10 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassFromCached(const JSHandle<
         JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
 
         for (size_t fieldOffset = 0; fieldOffset < propsLen; fieldOffset++) {
-            key.Update(properties->Get(fieldOffset * 2)); // 2 : pair of key and value
+            key.Update(properties->Get(thread_, fieldOffset * 2)); // 2 : pair of key and value
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
             PropertyAttributes attributes = PropertyAttributes::Default();
-            auto value = properties->Get(fieldOffset * 2 + 1);
+            auto value = properties->Get(thread_, fieldOffset * 2 + 1);
             if (value.IsAccessor()) {  // 2: Meaning to double
                 attributes.SetIsAccessor(true);
             }
@@ -102,14 +102,14 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassFromCached(const JSHandle<
 
             auto metadata = JSTaggedValue(attributes.GetPropertyMetaData());
             auto rep = PropertyAttributes::TranslateToRep(value);
-            newClass = newClass->FindTransitions(key.GetTaggedValue(), metadata, rep);
+            newClass = newClass->FindTransitions(thread_, key.GetTaggedValue(), metadata, rep);
             if (newClass == nullptr) {
                 return thread_->GlobalConstants()->GetHandledUndefined();
             }
         }
 
         auto result = JSHandle<JSHClass>(thread_, newClass);
-        if (JSObject::CheckPropertiesForRep(properties, propsLen, result)) {
+        if (JSObject::CheckPropertiesForRep(thread_, properties, propsLen, result)) {
             return JSHandle<JSTaggedValue>(result);
         }
     }
@@ -132,12 +132,12 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
     uint32_t len = array->GetLength();
     std::vector<int> methodOffsetVec;
     for (uint32_t i = 0; i < len; i++) {
-        valueHandle.Update(array->Get(i));
+        valueHandle.Update(array->Get(thread_, i));
         uint32_t methodOffset = 0;
         if (valueHandle->IsJSFunction()) {
-            methodOffset = JSHandle<JSFunction>(valueHandle)->GetCallTarget()->GetMethodId().GetOffset();
+            methodOffset = JSHandle<JSFunction>(valueHandle)->GetCallTarget(thread_)->GetMethodId().GetOffset();
         } else if (valueHandle->IsFunctionTemplate()) {
-            auto method = Method::Cast(JSHandle<FunctionTemplate>(valueHandle)->GetMethod());
+            auto method = Method::Cast(JSHandle<FunctionTemplate>(valueHandle)->GetMethod(thread_));
             methodOffset = method->GetMethodId().GetOffset();
         }
         if (methodOffset != 0) {
@@ -167,13 +167,14 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
 }
 
-bool BaseSnapshotInfo::CheckAOTPropertiesForRep(const JSHandle<TaggedArray> &properties,
+bool BaseSnapshotInfo::CheckAOTPropertiesForRep(const JSThread *thread,
+                                                const JSHandle<TaggedArray> &properties,
                                                 const JSHandle<JSHClass> &hclass)
 {
-    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    auto layout = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
     for (size_t i = 0; i < properties->GetLength(); i++) {
-        auto attr = layout->GetAttr(i);
-        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(i));
+        auto attr = layout->GetAttr(thread, i);
+        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(thread, i));
         // If value.first is false, indicating that value cannot be converted to the expected value of
         // representation. For example, the representation is INT, but the value type is string.
         if (!value.first) {
@@ -192,15 +193,15 @@ bool BaseSnapshotInfo::CheckAOTIhcPropertiesForRep(JSThread *thread, const JSHan
     JSHandle<JSObject> prototype;
     if (ihc->IsJSHClass()) {
         JSHandle<JSHClass> ihclass(ihc);
-        prototype = JSHandle<JSObject>(thread, ihclass->GetProto());
+        prototype = JSHandle<JSObject>(thread, ihclass->GetProto(thread));
     } else {
         prototype = JSHandle<JSObject>(ihc);
     }
 
     ASSERT(!prototype->GetJSHClass()->IsDictionaryMode());
-    JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
+    JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties(thread));
     JSHandle<JSHClass> protohclass(thread, prototype->GetJSHClass());
-    return CheckAOTPropertiesForRep(nonStaticProperties, protohclass);
+    return CheckAOTPropertiesForRep(thread, nonStaticProperties, protohclass);
 }
 
 bool BaseSnapshotInfo::CheckAOTChcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &chc,
@@ -211,8 +212,8 @@ bool BaseSnapshotInfo::CheckAOTChcPropertiesForRep(JSThread *thread, const JSHan
     }
     JSHandle<JSHClass> chclass(thread, JSHClass::Cast(chc->GetTaggedObject()));
     ASSERT(!chclass->IsDictionaryMode());
-    JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
-    return CheckAOTPropertiesForRep(staticProperties, chclass);
+    JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties(thread));
+    return CheckAOTPropertiesForRep(thread, staticProperties, chclass);
 }
 
 void StringSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData, const std::set<uint32_t>&)
@@ -221,7 +222,7 @@ void StringSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData, c
         const ItemData &data = item.second;
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
-        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
+        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(thread_, snapshotCpArrIdx));
         // Lazy ConstantPool String Loading
         snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue::Hole());
     }
@@ -245,7 +246,7 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
-        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
+        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(thread_, snapshotCpArrIdx));
 
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         if (hasAbcId) {
@@ -289,11 +290,11 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, cp, data.constantPoolIdx_, data.recordName_);
         JSHandle<ClassLiteral> classLiteral(thread_, literalObj);
-        JSHandle<TaggedArray> arrayHandle(thread_, classLiteral->GetArray());
+        JSHandle<TaggedArray> arrayHandle(thread_, classLiteral->GetArray(thread_));
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
-        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
+        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(thread_, snapshotCpArrIdx));
 
         uint32_t methodId = cp->GetEntityId(data.ctorMethodOffset_).GetOffset();
         JSHandle<JSTaggedValue> undefinedHandle = thread_->GlobalConstants()->GetHandledUndefined();
@@ -343,7 +344,7 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
-        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
+        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(thread_, snapshotCpArrIdx));
 
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
@@ -374,7 +375,7 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
             thread_, jsPandaFile_, id, cp, data.recordName_);
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
-        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
+        JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(thread_, snapshotCpArrIdx));
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
         CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);

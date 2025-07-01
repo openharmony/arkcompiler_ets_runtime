@@ -242,9 +242,9 @@ public:
         return GetPeriodIndex() == BIG_METHOD_PERIOD_INDEX;
     }
 
-    JSTaggedValue GetExtraInfoMap() const
+    JSTaggedValue GetExtraInfoMap(const JSThread *thread) const
     {
-        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetExtraInfoMapOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetExtraInfoMapOffset()));
     }
 
     void SetExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> extraInfoMap)
@@ -256,7 +256,7 @@ public:
 
     uint16_t GetJitHotnessThreshold() const
     {
-        return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessThresholdBitfieldOffset());
+        return Barriers::GetPrimitive<uint16_t>(GetData(), GetJitHotnessThresholdBitfieldOffset());
     }
 
     void SetJitHotnessThreshold(uint16_t count)
@@ -266,7 +266,7 @@ public:
 
     uint16_t GetOsrHotnessThreshold() const
     {
-        return Barriers::GetValue<uint16_t>(GetData(), GetOsrHotnessThresholdBitfieldOffset());
+        return Barriers::GetPrimitive<uint16_t>(GetData(), GetOsrHotnessThresholdBitfieldOffset());
     }
 
     void SetOsrHotnessThreshold(uint16_t count)
@@ -276,7 +276,7 @@ public:
 
     uint16_t GetBaselineJitHotnessThreshold() const
     {
-        return Barriers::GetValue<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset());
+        return Barriers::GetPrimitive<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset());
     }
 
     void SetBaselineJitHotnessThreshold(uint16_t count)
@@ -291,7 +291,7 @@ public:
 
     uint16_t GetJitHotnessCnt() const
     {
-        return Barriers::GetValue<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
+        return Barriers::GetPrimitive<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
     }
 
     void SetJitHotnessCnt(uint16_t count)
@@ -304,10 +304,10 @@ public:
         Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
     }
 
-    inline JSTaggedValue GetIcSlot(uint32_t idx) const
+    inline JSTaggedValue GetIcSlot(const JSThread* thread, uint32_t idx) const
     {
         ASSERT(idx < GetIcSlotLength());
-        return TaggedArray::Get(idx);
+        return TaggedArray::Get(thread, idx);
     }
 
     inline void SetIcSlot(const JSThread* thread, uint32_t idx, const JSTaggedValue& value)
@@ -329,12 +329,12 @@ public:
     static JSHandle<NumberDictionary> CreateOrGetExtraInfoMap(const JSThread *thread,
                                                               JSHandle<ProfileTypeInfo> profileTypeInfo)
     {
-        if (profileTypeInfo->GetExtraInfoMap().IsUndefined()) {
+        if (profileTypeInfo->GetExtraInfoMap(thread).IsUndefined()) {
             JSHandle<NumberDictionary> dictJShandle = NumberDictionary::Create(thread);
             profileTypeInfo->SetExtraInfoMap(thread, dictJShandle);
             return dictJShandle;
         }
-        JSHandle<NumberDictionary> dictJShandle(thread, profileTypeInfo->GetExtraInfoMap());
+        JSHandle<NumberDictionary> dictJShandle(thread, profileTypeInfo->GetExtraInfoMap(thread));
         return dictJShandle;
     }
 
@@ -362,7 +362,7 @@ public:
 private:
     uint32_t GetPeriodIndex() const
     {
-        return Barriers::GetValue<uint32_t>(GetData(), GetBitfieldOffset());
+        return Barriers::GetPrimitive<uint32_t>(GetData(), GetBitfieldOffset());
     }
 
     void SetPeriodIndex(uint32_t count)

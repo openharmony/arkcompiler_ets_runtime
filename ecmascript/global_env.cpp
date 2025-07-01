@@ -72,8 +72,8 @@ JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JS
 JSHandle<JSTaggedValue> GlobalEnv::GetStringPrototypeFunctionByName(JSThread *thread, const char *name)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> stringFuncPrototype(thread,
-        JSObject::GetPrototype(JSHandle<JSObject>(GetStringFunction())));
+    JSHandle<JSTaggedValue> stringFuncPrototype(
+        thread, JSObject::GetPrototype(thread, JSHandle<JSObject>(GetStringFunction())));
     JSHandle<JSTaggedValue> nameKey(factory->NewFromUtf8(name));
     return JSObject::GetProperty(thread, stringFuncPrototype, nameKey).GetValue();
 }
@@ -86,19 +86,20 @@ JSHandle<JSTaggedValue> GlobalEnv::GetStringFunctionByName(JSThread *thread, con
     return JSObject::GetProperty(thread, stringFuncObj, nameKey).GetValue();
 }
 
-void GlobalEnv::NotifyDetectorDeoptimize(uint32_t detectorID)
+void GlobalEnv::NotifyDetectorDeoptimize(JSThread *thread, uint32_t detectorID)
 {
-    JSHandle<JSTaggedValue> dependentInfos = GetDependentInfos(detectorID);
+    JSHandle<JSTaggedValue> dependentInfos = GetDependentInfos(thread, detectorID);
     if (!dependentInfos->IsHeapObject()) {
         return;
     }
-    JSThread *thread = GetJSThread();
-    DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos>::Cast(dependentInfos),
-        thread, DependentInfos::DependentState::DETECTOR_CHECK);
-    SetDependentInfos(detectorID, thread->GlobalConstants()->GetHandledUndefined());
+    JSThread *initThread = GetJSThread();
+    DependentInfos::TriggerLazyDeoptimization(
+        JSHandle<DependentInfos>::Cast(dependentInfos), initThread,
+        DependentInfos::DependentState::DETECTOR_CHECK);
+    SetDependentInfos(detectorID, initThread->GlobalConstants()->GetHandledUndefined());
 }
 
-void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
+void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSThread *thread, JSHandle<JSObject> receiver)
 {
     if (!GetArrayPrototypeChangedGuardians()) {
         return;
@@ -108,7 +109,7 @@ void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver
     }
     if (receiver.GetTaggedValue() == GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == GetArrayPrototype().GetTaggedValue()) {
-        NotifyDetectorDeoptimize(ArrayPrototypeChangedGuardiansBits::START_BIT);
+        NotifyDetectorDeoptimize(thread, ArrayPrototypeChangedGuardiansBits::START_BIT);
         SetArrayPrototypeChangedGuardians(false);
         return;
     }

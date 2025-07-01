@@ -1775,7 +1775,7 @@ GateRef CircuitBuilder::ToNumber(GateRef gate, GateRef value, GateRef glue)
 
 GateRef CircuitBuilder::StringToNumber(GateRef gate, GateRef value, GateRef radix, GateRef glue)
 {
-    return CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), Gate::InvalidGateRef, { value, radix }, gate);
+    return CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), Gate::InvalidGateRef, { glue, value, radix }, gate);
 }
 
 GateRef CircuitBuilder::BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args,

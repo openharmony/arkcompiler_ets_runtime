@@ -54,16 +54,16 @@ public:
     static JSTaggedValue RemoveLastFound(JSThread *thread, JSHandle<JSAPILinkedList> &list,
                                          const JSTaggedValue &element);
     void Clear(JSThread *thread);
-    bool Has(const JSTaggedValue &element);
-    JSTaggedValue GetFirst();
-    JSTaggedValue GetLast();
-    JSTaggedValue Get(const int index);
+    bool Has(const JSThread *thread, const JSTaggedValue &element);
+    JSTaggedValue GetFirst(const JSThread *thread);
+    JSTaggedValue GetLast(const JSThread *thread);
+    JSTaggedValue Get(const JSThread *thread, const int index);
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
-    JSTaggedValue GetIndexOf(const JSTaggedValue &element);
-    JSTaggedValue GetLastIndexOf(const JSTaggedValue &element);
-    inline uint32_t Length()
+    JSTaggedValue GetIndexOf(const JSThread *thread, const JSTaggedValue &element);
+    JSTaggedValue GetLastIndexOf(const JSThread *thread, const JSTaggedValue &element);
+    inline uint32_t Length(JSThread *thread)
     {
-        return TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject())->Length();
+        return TaggedDoubleList::Cast(GetDoubleList(thread).GetTaggedObject())->Length();
     }
     static constexpr size_t DOUBLE_LIST_OFFSET = JSObject::SIZE;
     ACCESSORS(DoubleList, DOUBLE_LIST_OFFSET, SIZE);

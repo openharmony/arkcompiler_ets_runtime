@@ -23,7 +23,7 @@ void JSSet::Add(JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JST
         //  throw error
         THROW_TYPE_ERROR(thread, "the value must be Key of JSSet");
     }
-    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
+    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet(thread).GetTaggedObject()));
 
     JSHandle<LinkedHashSet> newSet = LinkedHashSet::Add(thread, setHandle, value);
     set->SetLinkedSet(thread, newSet);
@@ -31,7 +31,7 @@ void JSSet::Add(JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JST
 
 bool JSSet::Delete(const JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
+    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet(thread).GetTaggedObject()));
     int entry = setHandle->FindElement(thread, value.GetTaggedValue());
     if (entry == -1) {
         return false;
@@ -42,26 +42,26 @@ bool JSSet::Delete(const JSThread *thread, const JSHandle<JSSet> &set, const JSH
 
 void JSSet::Clear(const JSThread *thread, const JSHandle<JSSet> &set)
 {
-    LinkedHashSet *linkedSet = LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject());
-    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
+    LinkedHashSet *linkedSet = LinkedHashSet::Cast(set->GetLinkedSet(thread).GetTaggedObject());
+    JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet(thread).GetTaggedObject()));
     JSHandle<LinkedHashSet> newSet = linkedSet->Clear(thread, setHandle);
     set->SetLinkedSet(thread, newSet);
 }
 
 bool JSSet::Has(const JSThread *thread, JSTaggedValue value) const
 {
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(thread, value);
+    return LinkedHashSet::Cast(GetLinkedSet(thread).GetTaggedObject())->Has(thread, value);
 }
 
-uint32_t JSSet::GetSize() const
+uint32_t JSSet::GetSize(const JSThread *thread) const
 {
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->NumberOfElements();
+    return LinkedHashSet::Cast(GetLinkedSet(thread).GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSSet::GetValue(int entry) const
+JSTaggedValue JSSet::GetValue(const JSThread *thread, int entry) const
 {
-    ASSERT_PRINT(entry >= 0 && static_cast<uint32_t>(entry) < GetSize(),
+    ASSERT_PRINT(entry >= 0 && static_cast<uint32_t>(entry) < GetSize(thread),
         "entry must be non-negative integer less than capacity");
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->GetValue(entry);
+    return LinkedHashSet::Cast(GetLinkedSet(thread).GetTaggedObject())->GetValue(thread, entry);
 }
 }  // namespace panda::ecmascript

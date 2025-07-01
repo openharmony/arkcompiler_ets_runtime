@@ -91,14 +91,15 @@ namespace OHOS {
 
     static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
     {
+        JSThread *thread = argv->GetThread();
         JSHandle<JSTaggedValue> value = argv->GetCallArg(0);
         JSHandle<JSTaggedValue> key = argv->GetCallArg(1);
         JSHandle<JSTaggedValue> arrayList = argv->GetCallArg(2); // 2 means the secode arg
         if (!arrayList->IsUndefined()) {
             if (value->IsNumber()) {
                 TaggedArray *elements = TaggedArray::Cast(JSAPIArrayList::Cast(arrayList.GetTaggedValue().
-                                                          GetTaggedObject())->GetElements().GetTaggedObject());
-                [[maybe_unused]] JSTaggedValue result = elements->Get(key->GetInt());
+                                                          GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                [[maybe_unused]] JSTaggedValue result = elements->Get(thread, key->GetInt());
             }
         }
         return JSTaggedValue::Undefined();

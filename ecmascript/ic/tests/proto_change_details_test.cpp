@@ -102,9 +102,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, SetChangeListener)
     JSHandle<ProtoChangeDetails> handleChangeDetails = factory->NewProtoChangeDetails();
 
     handleChangeDetails->SetChangeListener(thread, handleValue.GetTaggedValue());
-    EXPECT_EQ(handleChangeDetails->GetChangeListener().GetInt(), 1);
+    EXPECT_EQ(handleChangeDetails->GetChangeListener(thread).GetInt(), 1);
     handleChangeDetails->SetChangeListener(thread, handleChangeListener.GetTaggedValue());
-    EXPECT_EQ(handleChangeDetails->GetChangeListener(), handleChangeListener.GetTaggedValue());
+    EXPECT_EQ(handleChangeDetails->GetChangeListener(thread), handleChangeListener.GetTaggedValue());
 }
 
 /**
@@ -150,7 +150,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_001)
     EXPECT_EQ(index, 9U);
     JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
-    EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
+    EXPECT_EQ(resultListenerArray->Get(thread, index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }
 
 /**
@@ -183,7 +183,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_002)
     EXPECT_EQ(index, 1U);
     JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
-    EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
+    EXPECT_EQ(resultListenerArray->Get(thread, index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }
 
 /**
@@ -215,7 +215,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Add_003)
     EXPECT_EQ(index, 10U);
     JSTaggedValue weakRefValue(objClassVal.GetTaggedValue());
     weakRefValue.CreateWeakRef();
-    EXPECT_EQ(resultListenerArray->Get(index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
+    EXPECT_EQ(resultListenerArray->Get(thread, index).GetTaggedObject(), weakRefValue.GetTaggedWeakRef());
 }
 
 /**
@@ -235,9 +235,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, CheckHole)
         weakVector->PushBack(thread, JSTaggedValue(i)); // Set Value and End
     }
     JSHandle<ChangeListener> handleChangeListenerArr = JSHandle<ChangeListener>::Cast(weakVector);
-    EXPECT_EQ(ChangeListener::CheckHole(handleChangeListenerArr), TaggedArray::MAX_ARRAY_INDEX);
+    EXPECT_EQ(ChangeListener::CheckHole(thread, handleChangeListenerArr), TaggedArray::MAX_ARRAY_INDEX);
     weakVector->Delete(thread, 1);
-    EXPECT_EQ(ChangeListener::CheckHole(handleChangeListenerArr), 1U);
+    EXPECT_EQ(ChangeListener::CheckHole(thread, handleChangeListenerArr), 1U);
 }
 
 /**
@@ -265,9 +265,9 @@ HWTEST_F_L0(ProtoChangeDetailsTest, Get)
     weakVector->Set(thread, 2, JSTaggedValue::Undefined());
     JSHandle<ChangeListener> handleChangeListenerArr = JSHandle<ChangeListener>::Cast(weakVector);
     EXPECT_TRUE(*handleChangeListenerArr != nullptr);
-    EXPECT_EQ(handleChangeListenerArr->Get(0).GetInt(), 0);
+    EXPECT_EQ(handleChangeListenerArr->Get(thread, 0).GetInt(), 0);
     // the value is the weakRef of objValue
-    EXPECT_EQ(handleChangeListenerArr->Get(1).GetTaggedObject(), objValue.GetTaggedWeakRef());
-    EXPECT_TRUE(handleChangeListenerArr->Get(2).IsUndefined());
+    EXPECT_EQ(handleChangeListenerArr->Get(thread, 1).GetTaggedObject(), objValue.GetTaggedWeakRef());
+    EXPECT_TRUE(handleChangeListenerArr->Get(thread, 2).IsUndefined());
 }
 } // namespace panda::test

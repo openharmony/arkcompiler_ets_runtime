@@ -121,7 +121,7 @@ HWTEST_F_L0(JSAPIBitVectorIteratorTest, Next)
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue(1));
         } else {
-            EXPECT_EQ(bitVectorIterator->GetIteratedBitVector(), JSTaggedValue::Undefined());
+            EXPECT_EQ(bitVectorIterator->GetIteratedBitVector(thread), JSTaggedValue::Undefined());
             EXPECT_EQ((JSObject::GetProperty(thread, resultObj, valueStr).GetValue()).GetTaggedValue(),
                 JSTaggedValue::Undefined());
         }

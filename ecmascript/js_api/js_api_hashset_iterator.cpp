@@ -36,16 +36,16 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIHashSetIterator> iter = JSHandle<JSAPIHashSetIterator>::Cast(input);
-    JSHandle<JSTaggedValue> iteratedHashSet(thread, iter->GetIteratedHashSet());
+    JSHandle<JSTaggedValue> iteratedHashSet(thread, iter->GetIteratedHashSet(thread));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (iteratedHashSet->IsUndefined()) {
         return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(iteratedHashSet);
-    JSHandle<TaggedHashArray> tableArr(thread, hashSet->GetTable());
+    JSHandle<TaggedHashArray> tableArr(thread, hashSet->GetTable(thread));
     uint32_t tableLength = tableArr->GetLength();
     uint32_t index = iter->GetNextIndex();
-    JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue());
+    JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue(thread));
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<TaggedNode> currentNode(thread, JSTaggedValue::Undefined());
     IterationKind itemKind = iter->GetIterationKind();
@@ -55,7 +55,7 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
             iter->SetNextIndex(++index);
             continue;
         }
-        valueHandle.Update(currentNode->GetKey());
+        valueHandle.Update(currentNode->GetKey(thread));
         if (itemKind == IterationKind::VALUE) {
             return JSIterator::CreateIterResultObject(thread, valueHandle, false).GetTaggedValue();
         }

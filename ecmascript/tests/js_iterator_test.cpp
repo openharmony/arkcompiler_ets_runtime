@@ -44,7 +44,7 @@ HWTEST_F_L0(JSIteratorTest, GetIterator)
     EXPECT_TRUE(array->IsArray(thread));
     JSHandle<JSArrayIterator> iter(JSIterator::GetIterator(thread, array));
     EXPECT_TRUE(iter->IsJSArrayIterator());
-    EXPECT_TRUE(iter->GetIteratedArray().IsArray(thread));
+    EXPECT_TRUE(iter->GetIteratedArray(thread).IsArray(thread));
 }
 
 HWTEST_F_L0(JSIteratorTest, IteratorNext)

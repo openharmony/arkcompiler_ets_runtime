@@ -59,11 +59,11 @@ HWTEST_F_L0(PropertyBoxTest, Clear)
 
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));
     JSHandle<PropertyBox> handlePropertyBox = factory->NewPropertyBox(handleValue);
-    EXPECT_FALSE(handlePropertyBox->GetValue().IsHole());
+    EXPECT_FALSE(handlePropertyBox->GetValue(thread).IsHole());
 
     handlePropertyBox->Clear(thread);
-    EXPECT_TRUE(handlePropertyBox->GetValue().IsHole());
-    EXPECT_TRUE(handlePropertyBox->IsInvalid());
+    EXPECT_TRUE(handlePropertyBox->GetValue(thread).IsHole());
+    EXPECT_TRUE(handlePropertyBox->IsInvalid(thread));
 }
 
 /**
@@ -81,7 +81,7 @@ HWTEST_F_L0(PropertyBoxTest, SetValue)
 
     JSHandle<PropertyBox> handlePropertyBox = JSHandle<PropertyBox>::Cast(handlePropertyBoxVal);
     handlePropertyBox->SetValue(thread, JSTaggedValue(2));
-    EXPECT_EQ(handlePropertyBox->GetValue().GetInt(), 2);
-    EXPECT_FALSE(handlePropertyBox->IsInvalid());
+    EXPECT_EQ(handlePropertyBox->GetValue(thread).GetInt(), 2);
+    EXPECT_FALSE(handlePropertyBox->IsInvalid(thread));
 }
 } // namespace panda::test

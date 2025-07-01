@@ -58,7 +58,7 @@ void PropertyAccessor::PreLoad()
         onlyHasSimpleProperties_ = false;
         tryPrototypeChainEnumCache_ = false;
     }
-    std::pair<uint32_t, uint32_t> numOfKeys = receiverObj->GetNumberOfEnumKeys();
+    std::pair<uint32_t, uint32_t> numOfKeys = receiverObj->GetNumberOfEnumKeys(thread_);
     uint32_t numOfEnumKeys = numOfKeys.first;
     if (numOfEnumKeys > 0) {
         AccumulateKeyLength(numOfEnumKeys);
@@ -85,8 +85,8 @@ bool PropertyAccessor::HasPrototypeChainEnumCache()
         tryPrototypeChainEnumCache_ = false;
         return false;
     }
-    JSTaggedValue enumCache = current.GetTaggedObject()->GetClass()->GetEnumCache();
-    return enumCache.IsEnumCacheAllValid();
+    JSTaggedValue enumCache = current.GetTaggedObject()->GetClass()->GetEnumCache(thread_);
+    return enumCache.IsEnumCacheAllValid(thread_);
 }
 
 void PropertyAccessor::CollectPrototypeInfo()
@@ -107,7 +107,7 @@ void PropertyAccessor::CollectPrototypeInfo()
             hasPrototypeChainEnumCache_ = false;
             tryPrototypeChainEnumCache_ = false;
         }
-        std::pair<uint32_t, uint32_t> numOfKeys = currentObj->GetNumberOfEnumKeys();
+        std::pair<uint32_t, uint32_t> numOfKeys = currentObj->GetNumberOfEnumKeys(thread_);
         uint32_t numOfEnumKeys = numOfKeys.first;
         if (numOfEnumKeys > 0) {
             AccumulateKeyLength(numOfEnumKeys);
@@ -123,7 +123,7 @@ void PropertyAccessor::CollectPrototypeInfo()
             hasPrototypeChainEnumCache_ = false;
             tryPrototypeChainEnumCache_ = false;
         }
-        current = JSObject::GetPrototype(current);
+        current = JSObject::GetPrototype(thread_, current);
     }
 }
 
@@ -153,7 +153,7 @@ void PropertyAccessor::InitSimplePropertiesEnumCache()
     }
 
     // Set proto's ProtoChainInfoEnumCache to JSTaggedValue::NULL and enable proto's ChangeMarker.
-    JSTaggedValue proto = JSObject::GetPrototype(receiver_.GetTaggedValue());
+    JSTaggedValue proto = JSObject::GetPrototype(thread_, receiver_.GetTaggedValue());
     if (proto.IsHeapObject()) {
         JSHandle<EnumCache> enumCache = JSObject::GetOrCreateEnumCache(thread_,
             JSHandle<JSHClass>(thread_, proto.GetTaggedObject()->GetClass()));
@@ -232,7 +232,7 @@ JSHandle<TaggedArray> PropertyAccessor::GetChainKeys(const JSHandle<JSTaggedValu
         JSObject::AppendOwnEnumPropertyKeys(thread_, JSHandle<JSObject>(current), keyArray, &keysNum, shadowQueue);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread_);
         JSObject::ClearHasDeleteProperty(current);
-        current.Update(JSObject::GetPrototype(current.GetTaggedValue()));
+        current.Update(JSObject::GetPrototype(thread_, current.GetTaggedValue()));
     }
     AddUndefinedEndIfNeeded(keyArray, keyLength, keysNum);
     return keyArray;
@@ -301,15 +301,15 @@ void PropertyAccessor::AddKey(const JSHandle<JSTaggedValue> &value,
     uint32_t receiverKeysLength = keyArrayOnReceiver->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < receiverKeysLength; i++) {
-        key.Update(keyArrayOnReceiver->Get(i));
+        key.Update(keyArrayOnReceiver->Get(thread_, i));
         if (JSTaggedValue::Equal(thread_, key, value)) {
             return;
         }
     }
 
-    uint32_t shadowKeysSize = shadowQueueOnReceiver->Size();
+    uint32_t shadowKeysSize = shadowQueueOnReceiver->Size(thread_);
     for (uint32_t i = 0; i < shadowKeysSize; i++) {
-        key.Update(shadowQueueOnReceiver->Get(i));
+        key.Update(shadowQueueOnReceiver->Get(thread_, i));
         if (JSTaggedValue::Equal(thread_, key, value)) {
             return;
         }
@@ -330,7 +330,7 @@ JSHandle<TaggedArray> PropertyAccessor::CombineKeys(const JSHandle<TaggedArray> 
     allKeys->Copy(thread_, 0, 0, keyArrayOnReceiver.GetObject<TaggedArray>(), receiverKeysLength);
     JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < PrototypeChainKeysLength; i++) {
-        value.Update(keyArrayOnPrototypeChain->Get(i));
+        value.Update(keyArrayOnPrototypeChain->Get(thread_, i));
         AddKey(value, allKeys, allKeysLength, keyArrayOnReceiver, shadowQueueOnReceiver);
     }
     AddUndefinedEndIfNeeded(allKeys, arraySize, allKeysLength);
@@ -344,8 +344,8 @@ JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFastWithPrototypeChainEnumCache
     auto proto = JSTaggedValue::GetPrototype(thread_, receiver_);
     JSHandle<JSTaggedValue> protoHandle(thread_, proto);
     if (hasPrototypeChainEnumCache_) {
-        EnumCache* enumCacheProto = EnumCache::Cast(proto.GetTaggedObject()->GetClass()->GetEnumCache());
-        JSHandle<JSTaggedValue> keyValueOnPrototypeChain(thread_, enumCacheProto->GetEnumCacheAll());
+        EnumCache* enumCacheProto = EnumCache::Cast(proto.GetTaggedObject()->GetClass()->GetEnumCache(thread_));
+        JSHandle<JSTaggedValue> keyValueOnPrototypeChain(thread_, enumCacheProto->GetEnumCacheAll(thread_));
         keyArrayOnPrototypeChain = JSHandle<TaggedArray>::Cast(keyValueOnPrototypeChain);
         JSHandle<EnumCache>::Cast(enumCache_)->
             SetProtoChainInfoEnumCache(thread_, keyArrayOnPrototypeChain.GetTaggedValue());
@@ -411,7 +411,7 @@ void PropertyAccessor::PushRemainingKeys(JSHandle<JSObject> object, std::vector<
         RETURN_IF_ABRUPT_COMPLETION(thread_);
         uint32_t length = proxyArr->GetLength();
         for (uint32_t i = 0; i < length; i++) {
-            value.Update(proxyArr->Get(i));
+            value.Update(proxyArr->Get(thread_, i));
             PropertyDescriptor desc(thread_);
             JSProxy::GetOwnProperty(thread_, JSHandle<JSProxy>(object), value, desc);
             RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -427,7 +427,7 @@ void PropertyAccessor::PushRemainingKeys(JSHandle<JSObject> object, std::vector<
         JSHandle<TaggedArray> array = JSTaggedValue::GetOwnEnumPropertyKeys(thread_, JSHandle<JSTaggedValue>(object));
         uint32_t length = array->GetLength();
         for (uint32_t i = 0; i < length; i++) {
-            value.Update(array->Get(i));
+            value.Update(array->Get(thread_, i));
             if (!value->IsString()) {
                 array->Set(thread_, i, JSTaggedValue::Hole());
             } else {

@@ -295,9 +295,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
     pfManager->AddJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
-    JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
+    JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc));
-    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString().c_str(), "foo");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString(thread).c_str(), "foo");
 
     pfManager->RemoveJSPandaFile(pf.get());
 }

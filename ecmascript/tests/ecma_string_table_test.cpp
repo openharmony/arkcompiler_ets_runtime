@@ -49,8 +49,8 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenString_EmptyString)
     table->GetOrInternFlattenString(thread->GetEcmaVM(), *emptyEcmaStrHandle);
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 #if ENABLE_NEXT_OPTIMIZATION
-    EcmaString *emptyEcmaStr = table->TryGetInternString(emptyEcmaStrHandle);
-    EXPECT_STREQ(EcmaStringAccessor(emptyEcmaStr).ToCString().c_str(), "");
+    EcmaString *emptyEcmaStr = table->TryGetInternString(thread, emptyEcmaStrHandle);
+    EXPECT_STREQ(EcmaStringAccessor(emptyEcmaStr).ToCString(thread).c_str(), "");
     EXPECT_TRUE(EcmaStringAccessor(emptyEcmaStr).IsInternString());
 #endif
 }
@@ -72,7 +72,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf8Data)
     EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(vm, utf8Data, sizeof(utf8Data), true);
-    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "hello");
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString(thread).c_str(), "hello");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 }
 
@@ -94,7 +94,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf16Data)
     EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(vm, utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
-    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "编码解码");
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString(thread).c_str(), "编码解码");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 }
 
@@ -115,12 +115,12 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrCreateHandle).IsInternString());
 
     EcmaString *ecmaStrGetPtr = table->GetOrInternString(vm, *ecmaStrCreateHandle);
-    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "hello world");
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString(thread).c_str(), "hello world");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 
 #if ENABLE_NEXT_OPTIMIZATION
-    EcmaString *ecmaStr = table->TryGetInternString(ecmaStrCreateHandle);
-    EXPECT_STREQ(EcmaStringAccessor(ecmaStr).ToCString().c_str(), "hello world");
+    EcmaString *ecmaStr = table->TryGetInternString(thread, ecmaStrCreateHandle);
+    EXPECT_STREQ(EcmaStringAccessor(ecmaStr).ToCString(thread).c_str(), "hello world");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStr).IsInternString());
 #endif
 }
@@ -135,7 +135,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity());
+    EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity(thread));
 #else
     EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity(thread));
 #endif
@@ -190,8 +190,8 @@ void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<EcmaString> value1 = vm->GetFactory()->NewFromASCII("value");
     for (int i = 0; i < 8000; ++i) {  // check 8000 store operations
-        auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-            return Barriers::GetTaggedObject(obj, offset);
+        auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
+            return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
         };
         ASSERT_TRUE(map->template Load<false>(std::move(readBarrier), i, value1->ToBaseString()) != nullptr);
     }
@@ -216,20 +216,21 @@ void EcmaStringTableTest::TestLoadOrStoreInsertNewKey()
     auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
     uint32_t key = 0x12345678;
     JSHandle<EcmaString> value(thread, *vm->GetFactory()->NewFromASCII("test_value"));
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
     };
     BaseString* loadResult1 = map->template Load<false>(std::move(readBarrier), key, value->ToBaseString());
     EXPECT_EQ(loadResult1, nullptr);
     // Test insertion
     BaseString* result = map->template LoadOrStore<true>(
         vm->GetJSThread(), key, [value]() { return value; },
-        [value](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*value, EcmaString::FromBaseString(foudString));
+        [vm, value](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(vm->GetAssociatedJSThread(), *value,
+                                                       EcmaString::FromBaseString(foudString));
         });
     EXPECT_EQ(result, value->ToBaseString());
     BaseString* loadResult2 = map->template Load<false>(std::move(readBarrier), key, value->ToBaseString());
-    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(loadResult2)).ToCString().c_str(), "test_value");
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(loadResult2)).ToCString(thread).c_str(), "test_value");
     EXPECT_EQ(loadResult2, value->ToBaseString());
     delete map;
 }
@@ -258,18 +259,19 @@ void EcmaStringTableTest::TestLoadOrStoreStoreExistingKey()
     // Initial insertion
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key, [original]() { return original; },
-        [original](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*original, EcmaString::FromBaseString(foudString));
+        [this, original](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(thread, *original, EcmaString::FromBaseString(foudString));
         });
 
     // store overflow
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key, [origina2]() { return origina2; },
-        [origina2](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*origina2, EcmaString::FromBaseString(foudString));
+        [vm, origina2](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(vm->GetAssociatedJSThread(), *origina2,
+                                                       EcmaString::FromBaseString(foudString));
         });
-    auto readBarrier = [](const void* obj, size_t offset)-> TaggedObject* {
-        return Barriers::GetTaggedObject(obj, offset);
+    auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
+        return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
     };
     EXPECT_EQ(map->template Load<false>(std::move(readBarrier), key, original->ToBaseString()),
               original->ToBaseString());
@@ -307,27 +309,27 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
     // Insert first key
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key1, [value1]() { return value1; },
-        [value1](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*value1, EcmaString::FromBaseString(foudString));
+        [this, value1](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(thread, *value1, EcmaString::FromBaseString(foudString));
         });
 
     // Insert second key causing collision
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key2, [value2]() { return value2; },
-        [value2](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*value2, EcmaString::FromBaseString(foudString));
+        [this, value2](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(thread, *value2, EcmaString::FromBaseString(foudString));
         });
     // Insert overflow key3:[value3 value4]
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key3, [value3]() { return value3; },
-        [value3](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*value3, EcmaString::FromBaseString(foudString));
+        [this, value3](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(thread, *value3, EcmaString::FromBaseString(foudString));
         });
 
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key3, [value4]() { return value4; },
-        [value4](BaseString* foudString) {
-            return EcmaStringAccessor::StringsAreEqual(*value4, EcmaString::FromBaseString(foudString));
+        [this, value4](BaseString *foudString) {
+            return EcmaStringAccessor::StringsAreEqual(thread, *value4, EcmaString::FromBaseString(foudString));
         });
 
     /*map:
@@ -376,7 +378,8 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternStringFromCompressedSubString_SubStr
     uint32_t utf8Len = EcmaStringAccessor(*originalStr).GetLength() - offset;
 
     EcmaString *internStr = table->GetOrInternStringFromCompressedSubString(vm, originalStr, offset, utf8Len);
-    EXPECT_STREQ(EcmaStringAccessor(internStr).ToCString().c_str(), "0x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");
+    EXPECT_STREQ(EcmaStringAccessor(internStr).ToCString(thread).c_str(),
+                 "0x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");
     EXPECT_TRUE(EcmaStringAccessor(internStr).IsInternString());
 }
 
@@ -397,7 +400,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_ConcatenatedStrings)
 
     EcmaString *concatenated = table->GetOrInternString(vm, str1, str2);
 
-    EXPECT_STREQ(EcmaStringAccessor(concatenated).ToCString().c_str(), "helloworld");
+    EXPECT_STREQ(EcmaStringAccessor(concatenated).ToCString(thread).c_str(), "helloworld");
     EXPECT_TRUE(EcmaStringAccessor(concatenated).IsInternString());
 }
 
@@ -416,9 +419,9 @@ HWTEST_F_L0(EcmaStringTableTest, TryGetInternString_ExistingString)
     JSHandle<EcmaString> original = factory->NewFromASCII("test");
     table->GetOrInternString(vm, *original);
 
-    EcmaString *retrieved = table->TryGetInternString(original);
+    EcmaString *retrieved = table->TryGetInternString(thread, original);
 
-    EXPECT_STREQ(EcmaStringAccessor(retrieved).ToCString().c_str(), "test");
+    EXPECT_STREQ(EcmaStringAccessor(retrieved).ToCString(thread).c_str(), "test");
     EXPECT_TRUE(EcmaStringAccessor(retrieved).IsInternString());
 }
 #endif
@@ -438,7 +441,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenStringNoGC)
     EXPECT_TRUE(!EcmaStringAccessor(nonInternString).IsInternString());
     internString = stringTable->GetOrInternFlattenStringNoGC(vm, nonInternString);
     EXPECT_TRUE(EcmaStringAccessor(internString).IsInternString());
-    EXPECT_STREQ(EcmaStringAccessor(internString).ToCString().c_str(), "test");
+    EXPECT_STREQ(EcmaStringAccessor(internString).ToCString(thread).c_str(), "test");
 
     EcmaString *repeatedCallString = stringTable->GetOrInternFlattenStringNoGC(vm, internString);
     EXPECT_EQ(internString, repeatedCallString);

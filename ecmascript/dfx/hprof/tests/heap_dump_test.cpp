@@ -459,7 +459,7 @@ public:
         JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
         JSHandle<JSObject> jsAPIArrayListObject = NewObject(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
         JSHandle<JSAPIArrayList> jsAPIArrayList = JSHandle<JSAPIArrayList>::Cast(jsAPIArrayListObject);
-        jsAPIArrayList->SetLength(instance->GetJSThread(), JSTaggedValue(0));
+        jsAPIArrayList->SetLength(0);
         return jsAPIArrayList;
     }
 
@@ -1506,17 +1506,18 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName10)
     {                                                                   \
         auto obj = generator->New##typeName();                          \
         refs.emplace_back(#typeName, obj.GetTaggedValue());             \
-        obj.GetTaggedValue().DumpForSnapshot(refs);                     \
+        obj.GetTaggedValue().DumpForSnapshot(thread, refs);             \
     }
 
 #define CREATE_ARRAY_AND_ADD_REFS(generator, typeName, length, refs)    \
     {                                                                   \
         auto obj = generator->New##typeName(length);                    \
         refs.emplace_back(#typeName, obj.GetTaggedValue());             \
-        obj.GetTaggedValue().DumpForSnapshot(refs);                     \
+        obj.GetTaggedValue().DumpForSnapshot(thread, refs);             \
     }
 
-void CreateObjectsForBinaryDump(ObjectFactory *factory, HeapDumpTestHelper *tester, std::vector<Reference> &refs)
+void CreateObjectsForBinaryDump(JSThread *thread, ObjectFactory *factory, HeapDumpTestHelper *tester,
+                                std::vector<Reference> &refs)
 {
     CREATE_OBJECT_AND_ADD_REFS(factory, PromiseRecord, refs)
     CREATE_OBJECT_AND_ADD_REFS(factory, PromiseReaction, refs)
@@ -1535,7 +1536,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
     std::vector<Reference> vec;
-    CreateObjectsForBinaryDump(factory, &tester, vec);
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_binary_dump.raw");
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
@@ -1551,7 +1552,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
     std::vector<Reference> vec;
-    CreateObjectsForBinaryDump(factory, &tester, vec);
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_binary_dump.raw");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
@@ -1569,7 +1570,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
     std::vector<Reference> vec;
-    CreateObjectsForBinaryDump(factory, &tester, vec);
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     bool status = true;
     std::string rawHeapPath("test_binary_dump_by_fork_with_callback.raw");

@@ -27,32 +27,32 @@ void JSAPITreeSet::Add(JSThread *thread, const JSHandle<JSAPITreeSet> &set, cons
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
+    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject()));
 
     JSTaggedValue newSet = TaggedTreeSet::Add(thread, setHandle, value);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     set->SetTreeSet(thread, newSet);
 }
 
-int JSAPITreeSet::GetSize() const
+int JSAPITreeSet::GetSize(const JSThread *thread) const
 {
-    return TaggedTreeSet::Cast(GetTreeSet().GetTaggedObject())->NumberOfElements();
+    return TaggedTreeSet::Cast(GetTreeSet(thread).GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSAPITreeSet::GetKey(int entry) const
+JSTaggedValue JSAPITreeSet::GetKey(JSThread *thread, int entry) const
 {
-    ASSERT_PRINT(entry < GetSize(), "entry must less than capacity");
-    JSTaggedValue key = TaggedTreeSet::Cast(GetTreeSet().GetTaggedObject())->GetKey(entry);
+    ASSERT_PRINT(entry < GetSize(thread), "entry must less than capacity");
+    JSTaggedValue key = TaggedTreeSet::Cast(GetTreeSet(thread).GetTaggedObject())->GetKey(thread, entry);
     return key.IsHole() ? JSTaggedValue::Undefined() : key;
 }
 
 bool JSAPITreeSet::Delete(JSThread *thread, const JSHandle<JSAPITreeSet> &set, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
+    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject()));
 
     int entry = TaggedTreeSet::FindEntry(thread, setHandle, key);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -66,17 +66,17 @@ bool JSAPITreeSet::Delete(JSThread *thread, const JSHandle<JSAPITreeSet> &set, c
 
 bool JSAPITreeSet::Has(JSThread *thread, const JSHandle<JSAPITreeSet> &set, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
+    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject()));
     return TaggedTreeSet::FindEntry(thread, setHandle, key) >= 0;
 }
 
 void JSAPITreeSet::Clear(const JSThread *thread, const JSHandle<JSAPITreeSet> &set)
 {
-    int cap = set->GetSize();
+    int cap = set->GetSize(thread);
     if (cap == 0) {
         return;
     }
-    JSTaggedValue fn = TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject())->GetCompare();
+    JSTaggedValue fn = TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject())->GetCompare(thread);
     JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
     JSTaggedValue internal = TaggedTreeSet::Create(thread, cap);
     if (!compareFn->IsUndefined() && !compareFn->IsNull()) {
@@ -87,12 +87,12 @@ void JSAPITreeSet::Clear(const JSThread *thread, const JSHandle<JSAPITreeSet> &s
 
 JSTaggedValue JSAPITreeSet::PopFirst(JSThread *thread, const JSHandle<JSAPITreeSet> &set)
 {
-    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
+    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject()));
     int entry = setHandle->GetMinimum(setHandle->GetRootEntries());
     if (entry < 0) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<JSTaggedValue> value(thread, setHandle->GetKey(entry));
+    JSHandle<JSTaggedValue> value(thread, setHandle->GetKey(thread, entry));
     JSTaggedValue newSet = TaggedTreeSet::Delete(thread, setHandle, entry);
     set->SetTreeSet(thread, newSet);
     return value.GetTaggedValue();
@@ -100,12 +100,12 @@ JSTaggedValue JSAPITreeSet::PopFirst(JSThread *thread, const JSHandle<JSAPITreeS
 
 JSTaggedValue JSAPITreeSet::PopLast(JSThread *thread, const JSHandle<JSAPITreeSet> &set)
 {
-    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
+    JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet(thread).GetTaggedObject()));
     int entry = setHandle->GetMaximum(setHandle->GetRootEntries());
     if (entry < 0) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<JSTaggedValue> value(thread, setHandle->GetKey(entry));
+    JSHandle<JSTaggedValue> value(thread, setHandle->GetKey(thread, entry));
     JSTaggedValue newSet = TaggedTreeSet::Delete(thread, setHandle, entry);
     set->SetTreeSet(thread, newSet);
     return value.GetTaggedValue();

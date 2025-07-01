@@ -230,7 +230,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
         //   i. Let S be a String containing only the code unit C.
         //   ii. Let R be a new String value computed by concatenating the previous value of R and S.
         // d. Else C is not in unescapedSet,
-        uint16_t cc = EcmaStringAccessor(string).Get(k);
+        uint16_t cc = EcmaStringAccessor(string).Get(thread, k);
         if (IsInURISet(cc)) {
             std::u16string sStr = StringHelper::Utf16ToU16String(&cc, 1);
             resStr.append(sStr);
@@ -238,7 +238,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
             //    throw a URIError exception.
             if (cc >= common::utf_helper::DECODE_TRAIL_LOW && cc <= common::utf_helper::DECODE_TRAIL_HIGH) {
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
                 THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
 
@@ -256,12 +256,12 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             } else {
                 k++;
                 if (k == strLen) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
-                uint16_t kc = EcmaStringAccessor(string).Get(k);
+                uint16_t kc = EcmaStringAccessor(string).Get(thread, k);
                 if (kc < common::utf_helper::DECODE_TRAIL_LOW || kc > common::utf_helper::DECODE_TRAIL_HIGH) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 vv = common::utf_helper::UTF16Decode(cc, kc);
@@ -305,7 +305,7 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
     return res;
 }
 
-uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &string)
+uint16_t BuiltinsGlobal::GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
     uint32_t size = EcmaStringAccessor(string).GetLength();
     ASSERT(size > 0 && size <= 4); // NOLINT 4: means 4 hex digits
@@ -313,14 +313,14 @@ uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &strin
 
     uint16_t ret = 0;
     for (uint32_t i = 0; i < size; ++i) {
-        uint16_t ch = EcmaStringAccessor(string).Get(i);
+        uint16_t ch = EcmaStringAccessor(string).Get(thread, i);
         size_t idx = StringHelper::FindFromU16ToUpper(hexString, &ch);
         ret = ((ret << 4U) | idx) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
     }
     return ret;
 }
 #else // ENABLE_NEXT_OPTIMIZATION
-uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &string)
+uint16_t BuiltinsGlobal::GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
     auto stringAcc = EcmaStringAccessor(string);
     uint32_t size = stringAcc.GetLength();
@@ -328,7 +328,7 @@ uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &strin
 
     uint16_t ret = 0;
     for (uint32_t i = 0; i < size; ++i) {
-        uint16_t ch = stringAcc.Get(i);
+        uint16_t ch = stringAcc.Get(thread, i);
         size_t val = common::utf_helper::HexChar16Value(ch);
         ret = ((ret << 4U) | val) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
     }
@@ -402,7 +402,7 @@ EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<
     //    c. Set position to position + cp.[[CodeUnitCount]].
     while (position < size) {
         // i.Let first be the code unit at index position within string.
-        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint16_t first = EcmaStringAccessor(string).Get(thread, position);
         uint16_t cp = first - CHAR16_LETTER_NULL;
         uint8_t codeUnitCount = 0;
         bool isUnpairedSurrogate = false;
@@ -418,7 +418,7 @@ EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<
             isUnpairedSurrogate = true;
         } else {
             // iv. Let second be the code unit at index position + 1 within string.
-            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            uint16_t second = EcmaStringAccessor(string).Get(thread, position + 1);
             // v. If second is not a trailing surrogate, then
             //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
             if (!IsUTF16LowSurrogate(second)) {
@@ -481,7 +481,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
         //         a. Let S be the String containing only the code unit C.
         //      3. Else C is in reservedSet,
         //         a. Let S be the substring of string from index start to index k inclusive.
-        uint16_t cc = EcmaStringAccessor(string).Get(k);
+        uint16_t cc = EcmaStringAccessor(string).Get(thread, k);
         std::u16string sStr;
         if (cc != '%') {
             if (cc == 0 && strLen == 1) {
@@ -509,7 +509,7 @@ void BuiltinsGlobal::HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
         auto substr = EcmaStringAccessor::FastSubString(
             thread->GetEcmaVM(), str, start, k - start + 1U);
         sStr = StringHelper::StringToU16string(
-            EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
+            EcmaStringAccessor(substr).ToStdString(thread, StringConvertedUsage::LOGICOPERATION));
     }
 }
 
@@ -522,13 +522,13 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
     // iii. If the code units at index (k+1) and (k + 2) within string do not represent hexadecimal digits,
     //      throw a URIError exception.
     if ((k + 2) >= strLen) {  // 2: means plus 2
-        errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
-    uint16_t frontChar = EcmaStringAccessor(str).Get(k + 1);
-    uint16_t behindChar = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
+    uint16_t frontChar = EcmaStringAccessor(str).Get(thread, k + 1);
+    uint16_t behindChar = EcmaStringAccessor(str).Get(thread, k + 2);  // 2: means plus 2
     if (!(IsHexDigits(frontChar) && IsHexDigits(behindChar))) {
-        errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
@@ -567,7 +567,7 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
         }
         // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
         if ((n == 1) || (n > 4)) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
 
@@ -575,7 +575,7 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
 
         // 5. If k + (3 × (n – 1)) is greater than or equal to strLen, throw a URIError exception.
         if (k + (3 * (n - 1)) >= strLen) {  // 3: means multiply by 3
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
         DecodePercentEncoding(thread, n, k, str, bb, oct);
@@ -594,25 +594,25 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, int32_t &n
     int32_t j = 1;
     while (j < n) {
         k++;
-        uint16_t codeUnit = EcmaStringAccessor(str).Get(k);
+        uint16_t codeUnit = EcmaStringAccessor(str).Get(thread, k);
         // b. If the code unit at index k within string is not "%", throw a URIError exception.
         // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
         //    digits, throw a URIError exception.
         if (!(codeUnit == '%')) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
-        if (!(IsHexDigits(EcmaStringAccessor(str).Get(k + 1)) &&
-                IsHexDigits(EcmaStringAccessor(str).Get(k + 2)))) {  // 2: means plus 2
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        if (!(IsHexDigits(EcmaStringAccessor(str).Get(thread, k + 1)) &&
+                IsHexDigits(EcmaStringAccessor(str).Get(thread, k + 2)))) {  // 2: means plus 2
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
-        uint16_t frontChart = EcmaStringAccessor(str).Get(k + 1);
-        uint16_t behindChart = EcmaStringAccessor(str).Get(k + 2);  // 2: means plus 2
+        uint16_t frontChart = EcmaStringAccessor(str).Get(thread, k + 1);
+        uint16_t behindChart = EcmaStringAccessor(str).Get(thread, k + 2);  // 2: means plus 2
         bb = GetValueFromTwoHex(frontChart, behindChart);
         // e. If the two most significant bits in B are not 10, throw a URIError exception.
         if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
         k += 2;  // 2: means plus 2
@@ -627,7 +627,7 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
                                                    uint32_t &start, int32_t &k, std::u16string &sStr)
 {
     if (!common::utf_helper::IsValidUTF8(oct)) {
-        CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+        CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
         THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
     }
     uint32_t vv = StringHelper::Utf8ToU32String(oct);
@@ -638,7 +638,7 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
             auto substr = EcmaStringAccessor::FastSubString(
                 thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
             sStr = StringHelper::StringToU16string(
-                EcmaStringAccessor(substr).ToStdString(StringConvertedUsage::LOGICOPERATION));
+                EcmaStringAccessor(substr).ToStdString(thread, StringConvertedUsage::LOGICOPERATION));
         }
     } else {
         uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
@@ -658,7 +658,7 @@ void BuiltinsGlobal::PrintString([[maybe_unused]] JSThread *thread, EcmaString *
         return;
     }
     BUILTINS_API_TRACE(thread, Global, PrintString);
-    CString buffer = ConvertToString(string);
+    CString buffer = ConvertToString(thread, string);
     std::cout << buffer;
 }
 
@@ -727,7 +727,7 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
     EcmaVM *vm  = thread->GetEcmaVM();
     auto [moduleName, fileName] = vm->GetCurrentModuleInfo(false);
     std::shared_ptr<JSPandaFile> curJsPandaFile;
-    CString requestPath = ModulePathHelper::Utf8ConvertToString(input.GetTaggedValue());
+    CString requestPath = ModulePathHelper::Utf8ConvertToString(thread, input.GetTaggedValue());
     CString abcFilePath = fileName.c_str();
     if (moduleName.size() != 0) {
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
@@ -768,7 +768,7 @@ JSTaggedValue BuiltinsGlobal::CallJsBoundFunction(EcmaRuntimeCallInfo *msg)
     // msg contains jsfunc, this, arg1,...
 
     JSHandle<JSBoundFunction> boundFunc(GetConstructor(msg));
-    JSHandle<JSTaggedValue> thisObj(thread, boundFunc->GetBoundThis());
+    JSHandle<JSTaggedValue> thisObj(thread, boundFunc->GetBoundThis(thread));
     msg->SetThis(thisObj.GetTaggedValue());
     return RuntimeStubs::CallBoundFunction(msg);
 }
@@ -879,7 +879,7 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
     //    d. Set R to the string-concatenation of R and S.
     //    e. Set k to k + 1.
     while (k < len) {
-        uint16_t c = EcmaStringAccessor(string).Get(k);
+        uint16_t c = EcmaStringAccessor(string).Get(thread, k);
         if (c < std::numeric_limits<int8_t>::max() && ESCAPE_BIT_MAP[c] == 1) {
             r.push_back(c);
         } else {
@@ -941,14 +941,14 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
     //   c. Set R to the string-concatenation of R and C.
     //   d. Set k to k + 1.
     while (k < len) {
-        uint16_t c = EcmaStringAccessor(string).Get(k);
+        uint16_t c = EcmaStringAccessor(string).Get(thread, k);
         if (c == '%') {
-            uint16_t c1 = EcmaStringAccessor(string).Get(k + 1);
+            uint16_t c1 = EcmaStringAccessor(string).Get(thread, k + 1);
             if (k + ESCAPE_CHAR_OFFSET5 < len && c1 == 'u') {
-                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
-                uint16_t c3 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET3);
-                uint16_t c4 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET4);
-                uint16_t c5 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET5);
+                uint16_t c2 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET2);
+                uint16_t c3 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET3);
+                uint16_t c4 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET4);
+                uint16_t c5 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET5);
 #if !ENABLE_NEXT_OPTIMIZATION
                 bool c2IsHexDigits = IsHexDigits(c2);
                 bool c3IsHexDigits = IsHexDigits(c3);
@@ -969,7 +969,7 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                     k = k + ESCAPE_CHAR_OFFSET5;
                 }
             } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
-                uint16_t c2 = EcmaStringAccessor(string).Get(k + ESCAPE_CHAR_OFFSET2);
+                uint16_t c2 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET2);
 #if !ENABLE_NEXT_OPTIMIZATION
                 bool c1IsHexDigits = IsHexDigits(c1);
                 bool c2IsHexDigits = IsHexDigits(c2);

@@ -80,7 +80,7 @@ public:
                                     const JSHandle<JSTaggedValue> &inputString, bool useCache,
                                     bool isIntermediateResult = false);
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
-    static int64_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, int64_t index,
+    static int64_t AdvanceStringIndex(const JSThread *thread, const JSHandle<JSTaggedValue> &inputStr, int64_t index,
                                       bool unicode);
     // 22.2.6.6 get RegExp.prototype.hasIndices
     static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
@@ -247,7 +247,7 @@ public:
                   JSTaggedValue &resTableArray);
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     template <RBMode mode = RBMode::DEFAULT_RB>
-    bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
+    bool Match(JSThread *thread, int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
                JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type);
     static JSTaggedValue GetGlobalTable(JSThread *thread);
     inline void SetHitCount(JSThread *thread, int hitCount)
@@ -257,7 +257,7 @@ public:
 
     inline int GetHitCount()
     {
-        return Get(CACHE_HIT_COUNT_INDEX).GetInt();
+        return GetPrimitive(CACHE_HIT_COUNT_INDEX).GetInt();
     }
 
     inline void SetCacheCount(JSThread *thread, int hitCount)
@@ -267,7 +267,7 @@ public:
 
     inline int GetCacheCount()
     {
-        return Get(CACHE_COUNT_INDEX).GetInt();
+        return GetPrimitive(CACHE_COUNT_INDEX).GetInt();
     }
 
     void Print()
@@ -293,17 +293,17 @@ public:
 
     inline uint32_t GetLargeStrCount()
     {
-        return Get(LARGE_STRING_COUNT_INDEX).GetInt();
+        return GetPrimitive(LARGE_STRING_COUNT_INDEX).GetInt();
     }
 
     inline uint32_t GetConflictCount()
     {
-        return Get(CONFLICT_COUNT_INDEX).GetInt();
+        return GetPrimitive(CONFLICT_COUNT_INDEX).GetInt();
     }
 
     inline uint32_t GetStrLenThreshold()
     {
-        return Get(STRING_LENGTH_THRESHOLD_INDEX).GetInt();
+        return GetPrimitive(STRING_LENGTH_THRESHOLD_INDEX).GetInt();
     }
 
     inline void SetCacheLength(JSThread *thread, int length)
@@ -313,7 +313,7 @@ public:
 
     inline int GetCacheLength()
     {
-        return Get(CACHE_LENGTH_INDEX).GetInt();
+        return GetPrimitive(CACHE_LENGTH_INDEX).GetInt();
     }
 
     inline void SetLastMatchGlobalTableIndex(JSThread *thread, int index)
@@ -323,7 +323,7 @@ public:
 
     inline int GetLastMatchGlobalTableIndex()
     {
-        return Get(LAST_MATCH_GLOBAL_TABLE_INDEX).GetInt();
+        return GetPrimitive(LAST_MATCH_GLOBAL_TABLE_INDEX).GetInt();
     }
 
     inline void SetUseLastMatch(JSThread *thread, bool useLastMatchIndex)
@@ -333,7 +333,7 @@ public:
 
     inline bool GetUseLastMatch()
     {
-        return Get(USE_LAST_MATCH_INDEX).IsTrue();
+        return GetPrimitive(USE_LAST_MATCH_INDEX).IsTrue();
     }
 
     inline void SetNeedUpdateGlobal(JSThread *thread, bool needUpdateGlobal)
@@ -343,7 +343,7 @@ public:
 
     inline bool GetNeedUpdateGlobal()
     {
-        return Get(NEED_UPDATE_GLOBAL_INDEX).IsTrue();
+        return GetPrimitive(NEED_UPDATE_GLOBAL_INDEX).IsTrue();
     }
 
 private:
@@ -411,7 +411,7 @@ public:
 
     JSTaggedValue GetTotalCaptureCounts()
     {
-        return Get(TOTAL_CAPTURE_COUNTS_INDEX);
+        return GetPrimitive(TOTAL_CAPTURE_COUNTS_INDEX);
     }
 
     void SetEndIndex(JSThread *thread, JSTaggedValue endIndex)
@@ -421,7 +421,7 @@ public:
 
     JSTaggedValue GetEndIndex()
     {
-        return Get(END_INDEX);
+        return GetPrimitive(END_INDEX);
     }
 
     void SetInputString(JSThread *thread, JSTaggedValue string)
@@ -429,9 +429,9 @@ public:
         Set(thread, INPUT_STRING_INDEX, string);
     }
 
-    JSTaggedValue GetInputString()
+    JSTaggedValue GetInputString(JSThread *thread)
     {
-        return Get(INPUT_STRING_INDEX);
+        return Get(thread, INPUT_STRING_INDEX);
     }
 
     void SetStartOfCaptureIndex(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -446,12 +446,12 @@ public:
 
     JSTaggedValue GetStartOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2); // 2 : double
+        return GetPrimitive(FIRST_CAPTURE_INDEX + index * 2); // 2 : double
     }
 
     JSTaggedValue GetEndOfCaptureIndex(uint32_t index)
     {
-        return Get(FIRST_CAPTURE_INDEX + index * 2 + 1); // 2 : double
+        return GetPrimitive(FIRST_CAPTURE_INDEX + index * 2 + 1); // 2 : double
     }
 
     static JSHandle<RegExpGlobalResult> GrowCapturesCapacity(JSThread *thread,

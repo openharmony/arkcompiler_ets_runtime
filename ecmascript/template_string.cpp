@@ -26,9 +26,9 @@ JSHandle<JSTaggedValue> TemplateString::GetTemplateObject(JSThread *thread, JSHa
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> templateMapTag = env->GetTemplateMap();
     JSHandle<TemplateMap> templateMap(templateMapTag);
-    int32_t element = templateMap->FindEntry(rawStringsTag.GetTaggedValue());
+    int32_t element = templateMap->FindEntry(thread, rawStringsTag.GetTaggedValue());
     if (element != -1) {
-        return JSHandle<JSTaggedValue>(thread, templateMap->GetValue(element));
+        return JSHandle<JSTaggedValue>(thread, templateMap->GetValue(thread, element));
     }
     JSHandle<JSTaggedValue> cookedStringsTag = JSObject::GetProperty(thread, templateLiteral, 1).GetValue();
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);

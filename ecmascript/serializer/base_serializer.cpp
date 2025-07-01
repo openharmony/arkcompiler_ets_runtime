@@ -149,11 +149,11 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
         switch (fieldOffset) {
             case JSHClass::PROTOTYPE_OFFSET: {
                 JSHClass *kclass = reinterpret_cast<JSHClass *>(root);
-                JSTaggedValue proto = kclass->GetPrototype();
+                JSTaggedValue proto = kclass->GetPrototype(thread_);
                 JSType type = kclass->GetObjectType();
                 if ((serializeSharedEvent_ > 0) &&
                     (type == JSType::JS_SHARED_OBJECT || type == JSType::JS_SHARED_FUNCTION)) {
-                    SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                    SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 } else {
                     SerializeObjectProto(kclass, proto);
                 }
@@ -176,7 +176,7 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -212,7 +212,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -222,7 +222,7 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
 
 void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
 {
-    JSTaggedValue moduleValue = func->GetModule();
+    JSTaggedValue moduleValue = func->GetModule(thread_);
     if (moduleValue.IsHeapObject()) {
         if (!moduleValue.IsInSharedHeap()) {
             LOG_ECMA(ERROR) << "Shared function reference to local module";
@@ -276,7 +276,7 @@ void BaseSerializer::SerializeSFunctionEnvFieldIndividually(TaggedObject *root, 
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -299,7 +299,7 @@ void BaseSerializer::SerializeSendableEnvFieldIndividually(TaggedObject *root, O
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -344,7 +344,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 break;
             }
             default: {
-                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
                 break;
             }
@@ -370,7 +370,7 @@ void BaseSerializer::SerializeTaggedObjField(SerializeType serializeType, Tagged
     if (serializeType != SerializeType::VALUE_SERIALIZE
         || !SerializeSpecialObjIndividually(objectType, root, start, end)) {
         for (ObjectSlot slot = start; slot < end; slot++) {
-            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
         }
     }
 }
@@ -378,16 +378,16 @@ void BaseSerializer::SerializeTaggedObjField(SerializeType serializeType, Tagged
 void BaseSerializer::SerializeInObjField(TaggedObject *object, ObjectSlot start, ObjectSlot end)
 {
     auto hclass = object->GetClass();
-    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    auto layout = LayoutInfo::Cast(hclass->GetLayout(thread_).GetTaggedObject());
     size_t index = 0;
     for (ObjectSlot slot = start; slot < end; slot++) {
-        auto attr = layout->GetAttr(index++);
+        auto attr = layout->GetAttr(thread_, index++);
         if (attr.GetRepresentation() == Representation::DOUBLE || attr.GetRepresentation() == Representation::INT) {
             auto fieldAddr = slot.SlotAddress();
             data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
             data_->WriteRawData(reinterpret_cast<uint8_t *>(fieldAddr), sizeof(JSTaggedType));
         } else {
-            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(slot.SlotAddress())));
+            SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
         }
     }
 }

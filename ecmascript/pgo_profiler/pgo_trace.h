@@ -66,12 +66,12 @@ public:
 
     class MethodData {
     public:
-        MethodData(JSTaggedValue value, bool hotness)
+        MethodData(const JSThread *thread, JSTaggedValue value, bool hotness)
         {
             Method* method = Method::Cast(value);
-            name_ = method->GetMethodName();
+            name_ = method->GetMethodName(thread);
             id_ = method->GetMethodId();
-            codesize_ = method->GetCodeSize();
+            codesize_ = method->GetCodeSize(thread);
             hotness_ = hotness;
         }
 
@@ -126,9 +126,9 @@ public:
         return &(iter->second);
     }
 
-    MethodData* TryGetMethodData(JSTaggedValue value, bool hotness = false)
+    MethodData* TryGetMethodData(const JSThread *thread, JSTaggedValue value, bool hotness = false)
     {
-        MethodData method(value, hotness);
+        MethodData method(thread, value, hotness);
         auto data = GetMethodData(method.GetId());
         if (data) {
             data->SetHotness(hotness);

@@ -129,21 +129,23 @@ public:
 
 private:
     template <RBMode mode = RBMode::DEFAULT_RB, class Predicate>
-    static const JSTaggedType* IndexOfElements(Span<const TaggedType> rawElements, IndexOfOptions options,
-                                               Predicate predicate);
-    static const JSTaggedType* IndexOfUndefined(Span<const JSTaggedType> elements, IndexOfOptions options,
-                                                bool isMutant);
-    static const JSTaggedType* IndexOfTaggedZero(Span<const JSTaggedType> taggedElements, IndexOfOptions options);
-    static const JSTaggedType* IndexOfInt(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
-                                          IndexOfOptions options, bool isMutantInt32Array);
-    static const JSTaggedType* IndexOfDouble(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
-                                             IndexOfOptions options, bool isMutantDoubleArray);
-    static const JSTaggedType* IndexOfObjectAddress(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
-                                                    IndexOfOptions options);
-    static const JSTaggedType* IndexOfString(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
-                                             IndexOfOptions options);
-    static const JSTaggedType* IndexOfBigInt(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
-                                             IndexOfOptions options);
+    static const JSTaggedType *IndexOfElements(JSThread *thread, Span<const TaggedType> rawElements,
+                                               IndexOfOptions options, Predicate predicate);
+    static const JSTaggedType *IndexOfUndefined(JSThread *thread, Span<const JSTaggedType> elements,
+                                                IndexOfOptions options, bool isMutant);
+    static const JSTaggedType *IndexOfTaggedZero(JSThread *thread, Span<const JSTaggedType> taggedElements,
+                                                 IndexOfOptions options);
+    static const JSTaggedType *IndexOfInt(JSThread *thread, Span<const JSTaggedType> elements,
+                                          JSTaggedValue searchElement, IndexOfOptions options, bool isMutantInt32Array);
+    static const JSTaggedType *IndexOfDouble(JSThread *thread, Span<const JSTaggedType> elements,
+                                             JSTaggedValue searchElement, IndexOfOptions options,
+                                             bool isMutantDoubleArray);
+    static const JSTaggedType *IndexOfObjectAddress(JSThread *thread, Span<const JSTaggedType> elements,
+                                                    JSTaggedValue searchElement, IndexOfOptions options);
+    static const JSTaggedType *IndexOfString(JSThread *thread, Span<const JSTaggedType> elements,
+                                             JSTaggedValue searchElement, IndexOfOptions options);
+    static const JSTaggedType *IndexOfBigInt(JSThread *thread, Span<const JSTaggedType> elements,
+                                             JSTaggedValue searchElement, IndexOfOptions options);
     static JSTaggedValue IndexOfDispatch(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                          JSHandle<JSTaggedValue> searchElementHandle, uint32_t from, uint32_t len,
                                          IndexOfOptions options);
@@ -160,7 +162,7 @@ private:
                             JSHandle<JSTaggedValue> &holeHandle);
 
 #if !ENABLE_NEXT_OPTIMIZATION
-    static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
+    static void SetSepValue(JSThread *thread, JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
     static JSTaggedValue JoinUseTreeString(const JSThread *thread,
                                            const JSHandle<JSTaggedValue> receiverValue,
                                            const JSHandle<EcmaString> sepStringHandle, const int sep,

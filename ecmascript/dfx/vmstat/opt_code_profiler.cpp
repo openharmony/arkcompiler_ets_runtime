@@ -171,7 +171,8 @@ void OptCodeProfiler::PrintMethodRecord(Key key, std::string methodName)
     }
 }
 
-void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpcode opcode, Mode mode)
+void OptCodeProfiler::Update(JSThread *thread, JSHandle<JSTaggedValue> &func, int bcIndex,
+                             EcmaOpcode opcode, Mode mode)
 {
     auto it = profMap_.find(opcode);
     if (it != profMap_.end()) {
@@ -184,15 +185,16 @@ void OptCodeProfiler::Update(JSHandle<JSTaggedValue> &func, int bcIndex, EcmaOpc
 
     // methodId & methodName
     auto funcPoint = JSFunction::Cast(func->GetTaggedObject());
-    auto method = funcPoint->GetMethod();
+    auto method = funcPoint->GetMethod(thread);
     if (!method.IsMethod()) {
         return;
     }
     auto methodPoint = Method::Cast(method);
     auto methodId = methodPoint->GetMethodId().GetOffset();
-    auto methodName = ConvertToStdString(methodPoint->GetRecordNameStr()) + "." + methodPoint->GetMethodName();
+    auto methodName =
+        ConvertToStdString(methodPoint->GetRecordNameStr(thread)) + "." + methodPoint->GetMethodName(thread);
 
-    const auto *pf = methodPoint->GetJSPandaFile();
+    const auto *pf = methodPoint->GetJSPandaFile(thread);
     ASSERT(pf != nullptr);
     auto pfName = pf->GetJSPandaFileDesc();
     auto itr = std::find(abcNames_.begin(), abcNames_.end(), pfName);

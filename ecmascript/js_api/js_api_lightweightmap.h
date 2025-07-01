@@ -114,11 +114,12 @@ private:
     static void SetValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                          int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind);
     static int32_t Hash(const JSThread *thread, JSTaggedValue key);
-    static int32_t BinarySearchHashes(JSHandle<TaggedArray> &array, int32_t hash, int32_t size);
+    static int32_t BinarySearchHashes(const JSThread *thread, JSHandle<TaggedArray> &array, int32_t hash, int32_t size);
     static JSHandle<TaggedArray> GetArrayByKind(const JSThread *thread,
                                                 const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                                 AccossorsKind kind);
-    static int32_t AvoidHashCollision(HashParams &params, int32_t index, uint32_t size, int32_t hash);
+    static int32_t AvoidHashCollision(const JSThread *thread, HashParams &params, int32_t index, uint32_t size,
+                                      int32_t hash);
 };
 }  // namespace panda::ecmascript
 

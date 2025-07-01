@@ -347,7 +347,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(currencyStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a utf-8", fractionDigitsOption);
         }
-        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(currencyStr);
+        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(thread, currencyStr);
         if (!JSLocale::IsWellFormedCurrencyCode(currencyCStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed code", fractionDigitsOption);
         }
@@ -393,7 +393,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(unitStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
-        std::string str = intl::LocaleHelper::ConvertToStdString(unitStr);
+        std::string str = intl::LocaleHelper::ConvertToStdString(thread, unitStr);
         if (!IsWellFormedUnitIdentifier(str, icuUnit, icuPerUnit)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
@@ -422,7 +422,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     if (style == StyleOption::CURRENCY) {
         JSHandle<EcmaString> currencyStr = JSHandle<EcmaString>::Cast(currency);
-        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(currencyStr);
+        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(thread, currencyStr);
         std::transform(currencyCStr.begin(), currencyCStr.end(), currencyCStr.begin(), toupper);
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSTaggedValue> currencyValue = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(currencyCStr));
@@ -542,7 +542,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         if (EcmaStringAccessor(numberingSystemEcmaString).IsUtf16()) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
-        numberingSystemStr = intl::LocaleHelper::ConvertToStdString(numberingSystemEcmaString);
+        numberingSystemStr = intl::LocaleHelper::ConvertToStdString(thread, numberingSystemEcmaString);
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStr)) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
@@ -636,7 +636,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     JSLocale::SetNumberFormatDigitOptions(thread, numberFormat, JSHandle<JSTaggedValue>::Cast(optionsObject),
                                           mnfdDefault, mxfdDefault, notation);
     RETURN_IF_ABRUPT_COMPLETION(thread);
-    icuNumberFormatter = SetICUFormatterDigitOptions(icuNumberFormatter, numberFormat);
+    icuNumberFormatter = SetICUFormatterDigitOptions(thread, icuNumberFormatter, numberFormat);
 
     // 22. Let compactDisplay be ? GetOptionOfString(options, "compactDisplay", "string", « "short", "long" », "short").
     property = globalConst->GetHandledCompactDisplayString();
@@ -737,7 +737,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
 
     if (forIcuCache) {
         std::string cacheEntry =
-            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
         auto formatterPointer = new icu::number::LocalizedNumberFormatter(icuNumberFormatter);
         ecmaVm->GetIntlCache().SetIcuFormatterToCache(IcuFormatterType::NUMBER_FORMATTER, cacheEntry,
             formatterPointer, JSNumberFormat::FreeIcuNumberformat);
@@ -766,7 +766,8 @@ int32_t JSNumberFormat::CurrencyDigits(const icu::UnicodeString &currency)
 icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatter(JSThread *thread,
     const JSHandle<JSTaggedValue> &locales)
 {
-    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    std::string cacheEntry =
+        locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString(thread);
     void *cachedNumberFormatter = thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(
         IcuFormatterType::NUMBER_FORMATTER, cacheEntry);
     if (cachedNumberFormatter) {
@@ -779,7 +780,7 @@ icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatt
 JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                                       JSTaggedValue x)
 {
-    icu::number::LocalizedNumberFormatter *icuNumberFormat = numberFormat->GetIcuCallTarget();
+    icu::number::LocalizedNumberFormatter *icuNumberFormat = numberFormat->GetIcuCallTarget(thread);
     ASSERT(icuNumberFormat != nullptr);
     JSHandle<JSTaggedValue> res = FormatNumeric(thread, icuNumberFormat, x);
     return res;
@@ -794,7 +795,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread,
     if (x.IsBigInt()) {
         JSHandle<BigInt> bigint(thread, x);
         JSHandle<EcmaString> bigintStr = BigInt::ToString(thread, bigint);
-        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString();
+        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString(thread);
         formattedNumber = icuNumberFormat->formatDecimal(icu::StringPiece(stdString), status);
     } else {
         double number = x.GetNumber();
@@ -916,7 +917,7 @@ JSHandle<JSArray> JSNumberFormat::FormatNumericToParts(JSThread *thread, const J
                                                        JSTaggedValue x)
 {
     ASSERT(x.IsNumber() || x.IsBigInt());
-    icu::number::LocalizedNumberFormatter *icuNumberFormatter = numberFormat->GetIcuCallTarget();
+    icu::number::LocalizedNumberFormatter *icuNumberFormatter = numberFormat->GetIcuCallTarget(thread);
     ASSERT(icuNumberFormatter != nullptr);
 
     UErrorCode status = U_ZERO_ERROR;
@@ -924,7 +925,7 @@ JSHandle<JSArray> JSNumberFormat::FormatNumericToParts(JSThread *thread, const J
     if (x.IsBigInt()) {
         JSHandle<BigInt> bigint(thread, x);
         JSHandle<EcmaString> bigintStr = BigInt::ToString(thread, bigint);
-        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString();
+        std::string stdString = EcmaStringAccessor(bigintStr).ToStdString(thread);
         formattedNumber = icuNumberFormatter->formatDecimal(icu::StringPiece(stdString), status);
     } else {
         double number = x.GetNumber();
@@ -961,7 +962,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::UnwrapNumberFormat(JSThread *thread, con
     // InstanceofOperator(nf, %NumberFormat%) is true, then
     //      a. Let nf be ? Get(nf, %Intl%.[[FallbackSymbol]]).
     if (!isJSNumberFormat && hasInstance) {
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
         OperationResult operationResult = JSTaggedValue::GetProperty(thread, nf, key);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
         return operationResult.GetValue();
@@ -1014,12 +1015,12 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     // [[Locale]]
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
-    JSHandle<JSTaggedValue> locale(thread, numberFormat->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, numberFormat->GetLocale(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[NumberingSystem]]
-    JSHandle<JSTaggedValue> numberingSystem(thread, numberFormat->GetNumberingSystem());
+    JSHandle<JSTaggedValue> numberingSystem(thread, numberFormat->GetNumberingSystem(thread));
     if (numberingSystem->IsUndefined()) {
         numberingSystem = globalConst->GetHandledLatnString();
     }
@@ -1038,7 +1039,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     JSHandle<JSTaggedValue> currency(thread, JSTaggedValue::Undefined());
     // If style is not currency the currency should be undefined
     if (style == StyleOption::CURRENCY) {
-        currency = JSHandle<JSTaggedValue>(thread, numberFormat->GetCurrency());
+        currency = JSHandle<JSTaggedValue>(thread, numberFormat->GetCurrency(thread));
     }
     if (!currency->IsUndefined()) {  // NOLINT(readability-implicit-bool-conversion)
         property = globalConst->GetHandledCurrencyString();
@@ -1061,7 +1062,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     }
 
     if (style == StyleOption::UNIT) {
-        JSHandle<JSTaggedValue> unit(thread, numberFormat->GetUnit());
+        JSHandle<JSTaggedValue> unit(thread, numberFormat->GetUnit(thread));
         if (!unit->IsUndefined()) {
             // [[Unit]]
             property = globalConst->GetHandledUnitString();
@@ -1077,7 +1078,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     }
     // [[MinimumIntegerDigits]]
     property = globalConst->GetHandledMinimumIntegerDigitsString();
-    JSHandle<JSTaggedValue> minimumIntegerDigits(thread, numberFormat->GetMinimumIntegerDigits());
+    JSHandle<JSTaggedValue> minimumIntegerDigits(thread, numberFormat->GetMinimumIntegerDigits(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumIntegerDigits);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
@@ -1085,23 +1086,23 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     if (roundingType == RoundingType::SIGNIFICANTDIGITS) {
         // [[MinimumSignificantDigits]]
         property = globalConst->GetHandledMinimumSignificantDigitsString();
-        JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
+        JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumSignificantDigits]]
         property = globalConst->GetHandledMaximumSignificantDigitsString();
-        JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
+        JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
     } else {
         // [[MinimumFractionDigits]]
         property = globalConst->GetHandledMinimumFractionDigitsString();
-        JSHandle<JSTaggedValue> minimumFractionDigits(thread, numberFormat->GetMinimumFractionDigits());
+        JSHandle<JSTaggedValue> minimumFractionDigits(thread, numberFormat->GetMinimumFractionDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumFractionDigits]]
         property = globalConst->GetHandledMaximumFractionDigitsString();
-        JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits());
+        JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits(thread));
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
         RETURN_IF_ABRUPT_COMPLETION(thread);
 
@@ -1109,12 +1110,12 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         if (roundingType == RoundingType::COMPACTROUNDING) {
             // [[MinimumSignificantDigits]]
             property = globalConst->GetHandledMinimumSignificantDigitsString();
-            JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
+            JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits(thread));
             JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             // [[MaximumSignificantDigits]]
             property = globalConst->GetHandledMaximumSignificantDigitsString();
-            JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
+            JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits(thread));
             JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
@@ -1123,7 +1124,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     // [[UseGrouping]]
     property = globalConst->GetHandledUserGroupingString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property,
-                                        JSHandle<JSTaggedValue>(thread, numberFormat->GetUseGrouping()));
+                                        JSHandle<JSTaggedValue>(thread, numberFormat->GetUseGrouping(thread)));
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Notation]]

@@ -82,9 +82,9 @@ public:
     static JSHandle<ChangeListener> Add(const JSThread *thread, const JSHandle<ChangeListener> &array,
                                         const JSHandle<JSHClass> &value, uint32_t *index);
 
-    static uint32_t CheckHole(const JSHandle<ChangeListener> &array);
+    static uint32_t CheckHole(const JSThread *thread, const JSHandle<ChangeListener> &array);
 
-    JSTaggedValue Get(uint32_t index);
+    JSTaggedValue Get(const JSThread *thread, uint32_t index);
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -176,9 +176,9 @@ public:
         }
     }
 
-    void Dump() const DUMP_API_ATTR
+    void Dump(const JSThread *thread) const DUMP_API_ATTR
     {
-        GetTaggedValue().D();
+        GetTaggedValue().D(thread);
     }
 
     template <typename R>

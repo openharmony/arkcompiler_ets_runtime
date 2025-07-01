@@ -93,16 +93,16 @@ public:
         }
         int hash = LinkedHash::Hash(thread, key);
         uint32_t bucket = HashToBucket(hash);
-        for (JSTaggedValue entry = GetElement(BucketToIndex(bucket)); !entry.IsHole();
-            entry = GetNextEntry(entry.GetInt())) {
-            JSTaggedValue element = GetKey(entry.GetInt());
+        for (JSTaggedValue entry = GetElement(thread, BucketToIndex(bucket)); !entry.IsHole();
+            entry = GetNextEntry(thread, entry.GetInt())) {
+            JSTaggedValue element = GetKey(thread, entry.GetInt());
             if (element.IsHole()) {
                 continue;
             }
             if (element.IsWeak()) {
                 element.RemoveWeakTag();
             }
-            if (HashObject::IsMatch(key, element)) {
+            if (HashObject::IsMatch(thread, key, element)) {
                 return entry.GetInt();
             }
         }
@@ -165,29 +165,29 @@ public:
 
     inline int NumberOfElements() const
     {
-        return Get(NUMBER_OF_ELEMENTS_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_ELEMENTS_INDEX).GetInt();
     }
 
     inline int NumberOfDeletedElements() const
     {
-        return Get(NUMBER_OF_DELETED_ELEMENTS_INDEX).GetInt();
+        return GetPrimitive(NUMBER_OF_DELETED_ELEMENTS_INDEX).GetInt();
     }
 
     inline int Capacity() const
     {
-        return JSTaggedValue(Get(CAPACITY_INDEX)).GetInt();
+        return JSTaggedValue(GetPrimitive(CAPACITY_INDEX)).GetInt();
     }
 
-    inline JSTaggedValue GetKey(int entry) const
+    inline JSTaggedValue GetKey(const JSThread *thread, int entry) const
     {
         int index = static_cast<int>(EntryToIndex(entry));
-        return GetElement(index);
+        return GetElement(thread, index);
     }
 
-    inline JSTaggedValue GetValue(int entry) const
+    inline JSTaggedValue GetValue(const JSThread *thread, int entry) const
     {
         int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
-        return GetElement(index);
+        return GetElement(thread, index);
     }
 
     inline static bool IsKey(JSTaggedValue key)
@@ -210,9 +210,9 @@ public:
         Set(thread, CAPACITY_INDEX, JSTaggedValue(capacity));
     }
 
-    inline JSTaggedValue GetNextTable() const
+    inline JSTaggedValue GetNextTable(const JSThread *thread) const
     {
-        return JSTaggedValue(Get(NEXT_TABLE_INDEX));
+        return JSTaggedValue(Get(thread, NEXT_TABLE_INDEX));
     }
 
     inline void SetNextTable(const JSThread *thread, JSTaggedValue nextTable)
@@ -220,16 +220,16 @@ public:
         Set(thread, NEXT_TABLE_INDEX, nextTable);
     }
 
-    inline int GetDeletedElementsAt(int entry) const
+    inline int GetDeletedElementsAt(const JSThread *thread, int entry) const
     {
-        ASSERT_PRINT(!GetNextTable().IsUndefined(), "function only execute after rehash");
+        ASSERT_PRINT(!GetNextTable(thread).IsUndefined(), "function only execute after rehash");
         int currentEntry = entry - 1;
         if (NumberOfDeletedElements() == -1) {
             return entry;
         }
         while (currentEntry >= 0) {
-            if (GetKey(currentEntry).IsHole()) {
-                return GetDeletedNum(currentEntry);
+            if (GetKey(thread, currentEntry).IsHole()) {
+                return GetDeletedNum(thread, currentEntry);
             }
             currentEntry--;
         }
@@ -246,7 +246,7 @@ public:
         SetNextTable(thread, JSTaggedValue(newTable));
         for (int i = 0; i < numberOfAllElements; i++) {
             int fromIndex = static_cast<int>(EntryToIndex(i));
-            JSTaggedValue key = GetElement(fromIndex);
+            JSTaggedValue key = GetElement(thread, fromIndex);
             if (key.IsHole()) {
                 // store num_of_deleted_element before entry i; it will be used when iterator update.
                 currentDeletedElements++;
@@ -263,7 +263,7 @@ public:
             newTable->InsertNewEntry(thread, bucket, desEntry);
             int desIndex = static_cast<int>(newTable->EntryToIndex(desEntry));
             for (int j = 0; j < HashObject::ENTRY_SIZE; j++) {
-                newTable->SetElement(thread, desIndex + j, GetElement(fromIndex + j));
+                newTable->SetElement(thread, desIndex + j, GetElement(thread, fromIndex + j));
             }
             desEntry++;
         }
@@ -272,10 +272,10 @@ public:
     }
 
 protected:
-    inline JSTaggedValue GetElement(int index) const
+    inline JSTaggedValue GetElement(const JSThread *thread, int index) const
     {
         ASSERT(index >= 0 && index < static_cast<int>(GetLength()));
-        return Get(index);
+        return Get(thread, index);
     }
 
     inline void SetElement(const JSThread *thread, int index, JSTaggedValue element)
@@ -296,10 +296,10 @@ protected:
         SetElement(thread, index, value);
     }
 
-    inline JSTaggedValue GetNextEntry(int entry) const
+    inline JSTaggedValue GetNextEntry(const JSThread *thread, int entry) const
     {
         int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
-        return GetElement(index);
+        return GetElement(thread, index);
     }
 
     inline void SetNextEntry(const JSThread *thread, int entry, JSTaggedValue nextEntry)
@@ -327,20 +327,20 @@ protected:
     inline void InsertNewEntry(const JSThread *thread, int bucket, int entry)
     {
         int bucketIndex = static_cast<int>(BucketToIndex(bucket));
-        JSTaggedValue previousEntry = GetElement(bucketIndex);
+        JSTaggedValue previousEntry = GetElement(thread, bucketIndex);
         SetNextEntry(thread, entry, previousEntry);
         SetElement(thread, bucketIndex, JSTaggedValue(entry));
     }
 
-    inline int GetDeletedNum(int entry) const
+    inline int GetDeletedNum(const JSThread *thread, int entry) const
     {
-        ASSERT_PRINT(!GetNextTable().IsUndefined(), "function only execute after rehash");
-        return GetNextEntry(entry).GetInt();
+        ASSERT_PRINT(!GetNextTable(thread).IsUndefined(), "function only execute after rehash");
+        return GetNextEntry(thread, entry).GetInt();
     }
 
     inline void SetDeletedNum(const JSThread *thread, int entry, JSTaggedValue num)
     {
-        ASSERT_PRINT(!GetNextTable().IsUndefined(), "function only execute after rehash");
+        ASSERT_PRINT(!GetNextTable(thread).IsUndefined(), "function only execute after rehash");
         SetNextEntry(thread, entry, num);
     }
 };
@@ -348,9 +348,9 @@ protected:
 class LinkedHashMapObject {
 public:
     // key must be string now for other object has no 'equals' method
-    static inline bool IsMatch(JSTaggedValue key, JSTaggedValue other)
+    static inline bool IsMatch(const JSThread *thread, JSTaggedValue key, JSTaggedValue other)
     {
-        return JSTaggedValue::SameValueZero(key, other);
+        return JSTaggedValue::SameValueZero(thread, key, other);
     }
 
     static const int ENTRY_SIZE = 2;
@@ -384,16 +384,16 @@ public:
 
     static JSHandle<LinkedHashMap> Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table);
 
-    void ClearAllDeadEntries(std::function<bool(JSTaggedValue)> &visitor);
+    void ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor);
     DECL_DUMP()
 };
 
 class LinkedHashSetObject {
 public:
     // key must be string now for other object has no 'equals' method
-    static inline bool IsMatch(JSTaggedValue key, JSTaggedValue other)
+    static inline bool IsMatch(const JSThread *thread, JSTaggedValue key, JSTaggedValue other)
     {
-        return JSTaggedValue::SameValueZero(key, other);
+        return JSTaggedValue::SameValueZero(thread, key, other);
     }
 
     static const int ENTRY_SIZE = 1;

@@ -239,7 +239,7 @@ public:
     int32_t GetCalleeReg2OffsetArray(int32_t calleeRegIndex) const
     {
         DASSERT_PRINT(calleeRegIndex < CalleeReg2OffsetArraySize, "Array index out of bounds.");
-        return Barriers::GetValue<int32_t>(this, CALLEE_R2O_OFFSET + calleeRegIndex * INT32_SIZE);
+        return Barriers::GetPrimitive<int32_t>(this, CALLEE_R2O_OFFSET + calleeRegIndex * INT32_SIZE);
     }
 
     // define BitField
@@ -262,8 +262,8 @@ public:
         return GetInstructionsSize();
     }
 
-    bool SetData(const MachineCodeDesc& desc, JSHandle<Method>& method, size_t dataSize, RelocMap& relocInfo,
-                 JSThread* thread);
+    bool SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize,
+                 RelocMap &relocInfo);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
@@ -302,7 +302,7 @@ public:
 
     void SetOsrDeoptFlag(bool isDeopt)
     {
-        uint16_t flag = Barriers::GetValue<uint16_t>(this, OSRMASK_OFFSET);
+        uint16_t flag = Barriers::GetPrimitive<uint16_t>(this, OSRMASK_OFFSET);
         if (isDeopt) {
             flag |= OSR_DEOPT_FLAG;
         } else {
@@ -316,7 +316,7 @@ public:
         Barriers::SetPrimitive(this, OSR_EXECUTE_CNT_OFFSET, count);
     }
 private:
-    bool SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method,
+    bool SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method,
                              size_t dataSize, RelocMap &relocInfo);
 };
 }  // namespace panda::ecmascript

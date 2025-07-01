@@ -60,14 +60,15 @@ public:
     public:
         static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
         {
+            JSThread *thread = argv->GetThread();
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             JSHandle<JSTaggedValue> stack = GetCallArg(argv, 2); // 2 means the secode arg
             if (!stack->IsUndefined()) {
                 if (value->IsNumber()) {
                     TaggedArray *elements = TaggedArray::Cast(JSAPIStack::Cast(stack.GetTaggedValue().
-                                            GetTaggedObject())->GetElements().GetTaggedObject());
-                    JSTaggedValue result = elements->Get(key->GetInt());
+                                            GetTaggedObject())->GetElements(thread).GetTaggedObject());
+                    JSTaggedValue result = elements->Get(thread, key->GetInt());
                     EXPECT_EQ(result, value.GetTaggedValue());
                 }
             }
@@ -131,7 +132,7 @@ HWTEST_F_L0(ContainersStackTest, StackConstructor)
     ASSERT_TRUE(result.IsJSAPIStack());
     JSHandle<JSAPIStack> stack(thread, result);
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(stack));
-    JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
+    JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
 
     // test StackConstructor exception

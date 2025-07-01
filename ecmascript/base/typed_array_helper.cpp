@@ -311,7 +311,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(
     uint32_t len = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
     JSHandle<JSObject> argObj(argArray);
     // load on demand check
-    if (ElementAccessor::GetElementsLength(argObj) < len) {
+    if (ElementAccessor::GetElementsLength(thread, argObj) < len) {
         TypedArrayHelper::CreateFromOrdinaryObject<typedArrayKind>(argv, obj, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return obj.GetTaggedValue();
@@ -441,7 +441,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 6. Let srcData be srcArray.[[ViewedArrayBuffer]].
     JSHandle<JSTaggedValue> srcData(thread, JSTypedArray::GetOffHeapBuffer(thread, srcObj));
     // 7. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(srcData.GetTaggedValue())) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, srcData.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
     }
     // 8. Let elementType be the Element Type value in Table 61 for constructorName.
@@ -451,7 +451,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 11. Let srcType be the Element Type value in Table 61 for srcName.
     // 12. Let srcElementSize be the Element Size value specified in Table 61 for srcName.
     uint32_t elementLength = srcObj->GetArrayLength();
-    JSHandle<JSTaggedValue> srcName(thread, srcObj->GetTypedArrayName());
+    JSHandle<JSTaggedValue> srcName(thread, srcObj->GetTypedArrayName(thread));
     DataViewType srcType = JSTypedArray::GetTypeFromName(thread, srcName);
     uint32_t srcElementSize = TypedArrayHelper::GetSizeFromType(srcType);
     // 13. Let srcByteOffset be srcArray.[[ByteOffset]].
@@ -484,7 +484,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
         data.Update(tmp);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         //   b. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
-        if (BuiltinsArrayBuffer::IsDetachedBuffer(srcData.GetTaggedValue())) {
+        if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, srcData.GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
         }
         ContentType objContentType = JSHandle<JSTypedArray>::Cast(obj)->GetContentType();
@@ -540,11 +540,11 @@ JSTaggedValue GetTypedArrayBuffer(EcmaRuntimeCallInfo *argv, JSHandle<JSTypedArr
     } else {
         buffer = JSTypedArray::GetOffHeapBuffer(thread, srcObj);
     }
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
@@ -555,11 +555,11 @@ JSTaggedValue CheckBufferAndType(JSTaggedValue buffer, JSThread *thread, const J
                                  JSHandle<JSTaggedValue> srcArray)
 {
     //   b. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
@@ -634,7 +634,7 @@ JSTaggedValue TypedArrayHelper::CreateSharedFromTypedArray(EcmaRuntimeCallInfo *
     // 11. Let srcType be the Element Type value in Table 61 for srcName.
     // 12. Let srcElementSize be the Element Size value specified in Table 61 for srcName.
     uint32_t elementLength = srcObj->GetArrayLength();
-    JSHandle<JSTaggedValue> srcName(thread, srcObj->GetTypedArrayName());
+    JSHandle<JSTaggedValue> srcName(thread, srcObj->GetTypedArrayName(thread));
     DataViewType srcType = JSTypedArray::GetTypeFromName(thread, srcName);
     uint32_t srcElementSize = TypedArrayHelper::GetSizeFromType(srcType);
     // 13. Let srcByteOffset be srcArray.[[ByteOffset]].
@@ -736,7 +736,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     }
     // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     JSHandle<JSTaggedValue> buffer = BuiltinsBase::GetCallArg(argv, 0);
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
     }
     // 10. Let bufferByteLength be buffer.[[ArrayBufferByteLength]].
@@ -749,7 +749,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
             std::string ctorName = EcmaStringAccessor(
-                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString();
+                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString(thread);
             std::string message = "The byte length of " + ctorName + " should be a multiple of " +
                 std::to_string(elementSize);
             THROW_RANGE_ERROR_AND_RETURN(thread, message.c_str(), JSTaggedValue::Exception());
@@ -803,7 +803,7 @@ JSTaggedValue TypedArrayHelper::CreateFromSendableArrayBuffer(EcmaRuntimeCallInf
     }
     // 9. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     JSHandle<JSTaggedValue> buffer = BuiltinsBase::GetCallArg(argv, 0);
-    if (BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+    if (BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, buffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
     }
     // 10. Let bufferByteLength be buffer.[[ArrayBufferByteLength]].
@@ -816,7 +816,7 @@ JSTaggedValue TypedArrayHelper::CreateFromSendableArrayBuffer(EcmaRuntimeCallInf
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
             std::string ctorName = EcmaStringAccessor(
-                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString();
+                JSTaggedValue::ToString(thread, GetConstructorNameFromType(thread, arrayType))).ToStdString(thread);
             std::string message = "The byte length of " + ctorName + " should be a multiple of " +
                 std::to_string(elementSize);
             THROW_RANGE_ERROR_AND_RETURN(thread, message.c_str(), JSTaggedValue::Exception());
@@ -979,9 +979,9 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
         TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSObject> result;
-    JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype());
+    JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype(thread));
     bool isCtrUnchanged = !env->GetTypedArraySpeciesProtectDetector() &&
-        !TypedArrayHelper::IsAccessorHasChanged(proto) &&
+        !TypedArrayHelper::IsAccessorHasChanged(thread, proto) &&
         !obj->GetJSHClass()->HasConstructor();
     bool isCtrBylen = buffHandle->IsInt();
     if (isCtrUnchanged && isCtrBylen) {
@@ -1087,12 +1087,12 @@ JSTaggedValue TypedArrayHelper::ValidateTypedArray(JSThread *thread, const JSHan
     }
     // 3. Let buffer be O.[[ViewedArrayBuffer]].
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(value)->GetViewedArrayBufferOrByteArray();
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(value)->GetViewedArrayBufferOrByteArray(thread);
+    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());
     }
@@ -1123,11 +1123,11 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         if (buffer->IsSendableArrayBuffer() &&
-            BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+            BuiltinsSendableArrayBuffer::IsDetachedBuffer(thread, buffer.GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The buffer is detached sendable buffer.", 0);
         }
         if (!buffer->IsSendableArrayBuffer() &&
-            BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+            BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer.GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The buffer is detached buffer.", 0);
         }
         JSHandle<JSTaggedValue> testResult(thread, callResult);
@@ -1210,8 +1210,8 @@ bool TypedArrayHelper::IsNativeArrayIterator(JSThread *thread,
     }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    if (!JSTaggedValue::SameValue(iterMethod, env->GetTypedArrayProtoValuesFunction()) &&
-        !JSTaggedValue::SameValue(iterMethod, env->GetArrayProtoValuesFunction())) {
+    if (!JSTaggedValue::SameValue(thread, iterMethod, env->GetTypedArrayProtoValuesFunction()) &&
+        !JSTaggedValue::SameValue(thread, iterMethod, env->GetArrayProtoValuesFunction())) {
         return false;
     }
 

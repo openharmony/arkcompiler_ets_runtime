@@ -845,7 +845,7 @@ void Builtins::InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHa
 {
     SetSFunctionLength(ctor, length);
     SetSFunctionName(ctor, name);
-    SetSFunctionPrototype(ctor, protoHClass->GetProto());
+    SetSFunctionPrototype(ctor, protoHClass->GetProto(thread_));
     ctor->SetProtoOrHClass(thread_, protoHClass);
 }
 
@@ -946,7 +946,7 @@ DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
     JSHandle<JSSymbol> key##Symbol = factory_->NewSEmptySymbol();                  \
     JSHandle<EcmaString> key##String = factory_->NewFromUtf8ReadOnly(description); \
     key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());            \
-    key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));
+    key##Symbol->SetHashField(SymbolTable::Hash(thread_, key##String.GetTaggedValue()));
 DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
 #undef INIT_PUBLIC_SYMBOL
 

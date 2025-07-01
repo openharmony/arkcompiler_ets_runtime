@@ -89,7 +89,7 @@ HWTEST_F_L0(ICRuntimeStubTest, LoadGlobalICByName)
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
                                           globalValue.GetTaggedValue(), propKey.GetTaggedValue(), 1, true);
     EXPECT_EQ(resultValue2.GetInt(), 2);
-    EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsPropertyBox());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsPropertyBox());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
@@ -113,7 +113,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
         ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, JSTaggedValue::Undefined(),
                                            JSTaggedValue::Undefined(), handleValue, 0, true);
     EXPECT_TRUE(resultValue1.IsUndefined());
-    EXPECT_EQ(handleBoxValue->GetValue().GetInt(), 2);
+    EXPECT_EQ(handleBoxValue->GetValue(thread).GetInt(), 2);
     // the globalValue is jsobject then call storeMiss function can find global variable from global record firstly
     // so need store global record.
     SlowRuntimeStub::StGlobalRecord(thread, propKey.GetTaggedValue(), handleBoxValue.GetTaggedValue(), false);
@@ -121,7 +121,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
         ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, globalValue.GetTaggedValue(),
                                            propKey.GetTaggedValue(), handleValue, 1, true);
     EXPECT_TRUE(resultValue2.IsUndefined());
-    EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsPropertyBox());
+    EXPECT_TRUE(handleProfileTypeInfo->Get(thread, 1).IsPropertyBox());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)
@@ -148,7 +148,7 @@ HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)
     handleCacheArray->Set(thread, 4, handleEmptyStr.GetTaggedValue()); // 4 : 4 set value in four
     JSTaggedValue handleWeakCacheValue(handleCacheArray.GetTaggedValue());
 
-    JSTaggedValue resultValue = ICRuntimeStub::CheckPolyHClass(handleWeakCacheValue, handleObjClass);
+    JSTaggedValue resultValue = ICRuntimeStub::CheckPolyHClass(thread, handleWeakCacheValue, handleObjClass);
     EXPECT_TRUE(resultValue.IsPropertyBox());
 }
 
@@ -198,7 +198,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByValue)
                                      handleKey.GetTaggedValue(), 0);
     EXPECT_TRUE(resultValue.IsString());
     JSHandle<EcmaString> handleEcmaStrTo(JSHandle<JSTaggedValue>(thread, resultValue));
-    EXPECT_STREQ("1", EcmaStringAccessor(handleEcmaStrTo).ToCString().c_str());
+    EXPECT_STREQ("1", EcmaStringAccessor(handleEcmaStrTo).ToCString(thread).c_str());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByName)
@@ -362,7 +362,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICWithHandler)
         ICRuntimeStub::StoreICWithHandler(thread, handleReceiver.GetTaggedValue(),
                                           handleHolder.GetTaggedValue(), JSTaggedValue(2), boxHandler.GetTaggedValue());
     EXPECT_TRUE(resultValue2.IsUndefined());
-    EXPECT_EQ(ICRuntimeStub::LoadGlobal(boxHandler.GetTaggedValue()).GetInt(), 2);
+    EXPECT_EQ(ICRuntimeStub::LoadGlobal(thread, boxHandler.GetTaggedValue()).GetInt(), 2);
     // HandlerBase Is NonExist and This situation is not judged.
     KindBit::Set<uint32_t>(HandlerKind::NON_EXIST, &handler);
     JSTaggedValue resultValue3 =
@@ -456,7 +456,7 @@ HWTEST_F_L0(ICRuntimeStubTest, Prototype_StoreAndLoad)
     // test loadPrototype function
     JSTaggedValue resultValue2 =
         ICRuntimeStub::LoadPrototype(thread, handleObj.GetTaggedValue(), handleProtoHandler.GetTaggedValue());
-    EXPECT_EQ(ICRuntimeStub::LoadFromField(*handleObj, handler).GetInt(), resultValue2.GetInt());
+    EXPECT_EQ(ICRuntimeStub::LoadFromField(thread, *handleObj, handler).GetInt(), resultValue2.GetInt());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
@@ -486,8 +486,8 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreWithTransition_In_Filed)
     // test handler is InlinedProps and store in filed
     InlinedPropsBit::Set<uint32_t>(true, &handler);
     ICRuntimeStub::StoreWithTransition(thread, *handleObj, JSTaggedValue(2), handleTranHandler.GetTaggedValue());
-    auto resultArray = TaggedArray::Cast(handleObj->GetProperties().GetTaggedObject());
-    EXPECT_EQ(resultArray->Get(bitOffset).GetInt(), 2);
+    auto resultArray = TaggedArray::Cast(handleObj->GetProperties(thread).GetTaggedObject());
+    EXPECT_EQ(resultArray->Get(thread, bitOffset).GetInt(), 2);
     handleObj->SynchronizedTransitionClass(thread, *originHClass);
 }
 
@@ -509,12 +509,12 @@ HWTEST_F_L0(ICRuntimeStubTest, Field_StoreAndLoad)
     handleObj->SetProperties(thread, handleTaggedArr.GetTaggedValue());
     // test handler is not InlinedProps
     ICRuntimeStub::StoreField(thread, *handleObj, JSTaggedValue(3), handler);
-    JSTaggedValue resultValue1 = ICRuntimeStub::LoadFromField(*handleObj, handler);
+    JSTaggedValue resultValue1 = ICRuntimeStub::LoadFromField(thread, *handleObj, handler);
     EXPECT_EQ(resultValue1.GetInt(), 3);
     // test handler is InlinedProps
     InlinedPropsBit::Set<uint32_t>(true, &handler);
     ICRuntimeStub::StoreField(thread, *handleObj, JSTaggedValue(2), handler);
-    JSTaggedValue resultValue = ICRuntimeStub::LoadFromField(*handleObj, handler);
+    JSTaggedValue resultValue = ICRuntimeStub::LoadFromField(thread, *handleObj, handler);
     EXPECT_EQ(resultValue.GetInt(), 2);
 }
 
@@ -526,14 +526,14 @@ HWTEST_F_L0(ICRuntimeStubTest, Global_StoreAndLoad)
 
     JSTaggedValue resultValue1 = ICRuntimeStub::StoreGlobal(thread, JSTaggedValue(2), handlerValue.GetTaggedValue());
     EXPECT_TRUE(resultValue1.IsUndefined());
-    JSTaggedValue resultValue2 = ICRuntimeStub::LoadGlobal(handlerValue.GetTaggedValue());
+    JSTaggedValue resultValue2 = ICRuntimeStub::LoadGlobal(thread, handlerValue.GetTaggedValue());
     EXPECT_EQ(resultValue2.GetInt(), 2);
 
     handlerValue->Clear(thread);
     JSTaggedValue resultValue3 = ICRuntimeStub::StoreGlobal(thread, JSTaggedValue(3), handlerValue.GetTaggedValue());
     EXPECT_TRUE(resultValue3.IsHole());
 
-    JSTaggedValue resultValue4 = ICRuntimeStub::LoadGlobal(handlerValue.GetTaggedValue());
+    JSTaggedValue resultValue4 = ICRuntimeStub::LoadGlobal(thread, handlerValue.GetTaggedValue());
     EXPECT_TRUE(resultValue4.IsHole());
 }
 
@@ -573,11 +573,11 @@ HWTEST_F_L0(ICRuntimeStubTest, TryToElementsIndex)
     JSHandle<JSTaggedValue> handleStrKey1(factory->NewFromASCII("1234"));
     JSHandle<JSTaggedValue> handleStrKey2(factory->NewFromASCII("xy"));
 
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(hanldeIntKey1), 0);
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(hanldeIntKey2), 1);
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(handleDoubleKey1), 1);
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(handleDoubleKey2), -1);
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(handleStrKey1.GetTaggedValue()), 1234);
-    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(handleStrKey2.GetTaggedValue()), -1);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, hanldeIntKey1), 0);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, hanldeIntKey2), 1);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, handleDoubleKey1), 1);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, handleDoubleKey2), -1);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, handleStrKey1.GetTaggedValue()), 1234);
+    EXPECT_EQ(ICRuntimeStub::TryToElementsIndex(thread, handleStrKey2.GetTaggedValue()), -1);
 }
 } // namespace panda::test

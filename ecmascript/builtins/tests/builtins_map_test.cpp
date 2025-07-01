@@ -146,7 +146,7 @@ HWTEST_F_L0(BuiltinsMapTest, CreateAndGetSize)
         JSTaggedValue result1 = BuiltinsMap::MapConstructor(ecmaRuntimeCallInfo1);
         TestHelper::TearDownFrame(thread, prev);
 
-        EXPECT_EQ(JSMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()))->GetSize(), 5);
+        EXPECT_EQ(JSMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()))->GetSize(thread), 5);
     }
 }
 
@@ -175,7 +175,7 @@ HWTEST_F_L0(BuiltinsMapTest, SetAndHas)
 
         EXPECT_TRUE(result2.IsECMAObject());
         jsMap = JSMap::Cast(reinterpret_cast<TaggedObject *>(result2.GetRawData()));
-        EXPECT_EQ(jsMap->GetSize(), 1);
+        EXPECT_EQ(jsMap->GetSize(thread), 1);
     }
 
     // test Has()
@@ -199,7 +199,7 @@ HWTEST_F_L0(BuiltinsMapTest, ForEach)
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSMap *jsMap = JSMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsMap->GetSize(), static_cast<int>(i) + 1);
+        EXPECT_EQ(jsMap->GetSize(thread), static_cast<int>(i) + 1);
     }
     JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFunc));
@@ -227,7 +227,7 @@ HWTEST_F_L0(BuiltinsMapTest, DeleteAndRemove)
 
         EXPECT_TRUE(result1.IsECMAObject());
         JSMap *jsMap = JSMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-        EXPECT_EQ(jsMap->GetSize(), static_cast<int>(i) + 1);
+        EXPECT_EQ(jsMap->GetSize(thread), static_cast<int>(i) + 1);
     }
     // whether jsMap has delete key
     keyArray[3] = '1' + 8;
@@ -265,7 +265,7 @@ HWTEST_F_L0(BuiltinsMapTest, DeleteAndRemove)
     JSTaggedValue result6 = BuiltinsMap::Clear(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev4);
     EXPECT_EQ(result6.GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
-    EXPECT_EQ(map->GetSize(), 0);
+    EXPECT_EQ(map->GetSize(thread), 0);
 }
 
 HWTEST_F_L0(BuiltinsMapTest, Species)
@@ -290,10 +290,10 @@ HWTEST_F_L0(BuiltinsMapTest, Species)
     JSHandle<EcmaString> stringTag(JSObject::GetProperty(thread, map, toStringTagSymbol).GetValue());
     JSHandle<EcmaString> str = factory->NewFromASCII("Map");
     EXPECT_TRUE(!stringTag.GetTaggedValue().IsUndefined());
-    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*str, *stringTag));
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *str, *stringTag));
 
     JSHandle<JSFunction> constructor = JSHandle<JSFunction>::Cast(JSTaggedValue::ToObject(thread, valueHandle));
-    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, map), constructor->GetFunctionPrototype());
+    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, map), constructor->GetFunctionPrototype(thread));
 
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("set"));
     JSTaggedValue value1 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
@@ -337,7 +337,7 @@ HWTEST_F_L0(BuiltinsMapTest, GetIterator)
     JSHandle<JSMapIterator> iter(thread, result);
     EXPECT_TRUE(iter->IsJSMapIterator());
     EXPECT_EQ(IterationKind::VALUE, iter->GetIterationKind());
-    EXPECT_EQ(JSMap::Cast(map.GetTaggedValue().GetTaggedObject())->GetLinkedMap(), iter->GetIteratedMap());
+    EXPECT_EQ(JSMap::Cast(map.GetTaggedValue().GetTaggedObject())->GetLinkedMap(thread), iter->GetIteratedMap(thread));
 
     // test Keys()
     JSTaggedValue result1 = BuiltinsMap::Keys(ecmaRuntimeCallInfo);

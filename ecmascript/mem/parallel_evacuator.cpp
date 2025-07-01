@@ -233,12 +233,13 @@ void ParallelEvacuator::UpdateRecordJSWeakMap(uint32_t threadId)
             break;
         }
         JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSTaggedValue maybeMap = weakMap->GetLinkedMap();
+        JSThread *thread = heap_->GetJSThread();
+        JSTaggedValue maybeMap = weakMap->GetLinkedMap(thread);
         if (maybeMap.IsUndefined()) {
             continue;
         }
         LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(visitor);
+        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 
@@ -250,8 +251,9 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
     bool pgoEnabled = heap_->GetJSThread()->IsPGOProfilerEnable();
     bool inHeapProfiler = heap_->InHeapProfiler();
     size_t promotedSize = 0;
+    auto thread = heap_->GetJSThread();
     region->IterateAllMarkedBits([this, &region, &isInOldGen, &isBelowAgeMark, &pgoEnabled,
-                                  &promotedSize, &allocator, &trackSet, inHeapProfiler](void *mem) {
+                                  &promotedSize, &allocator, &trackSet, inHeapProfiler, &thread](void *mem) {
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
@@ -285,7 +287,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         }
         if (pgoEnabled) {
             if (actualPromoted && klass->IsJSArray()) {
-                auto trackInfo = JSArray::Cast(header)->GetTrackInfo();
+                auto trackInfo = JSArray::Cast(header)->GetTrackInfo(thread);
                 trackSet.emplace(trackInfo.GetRawData());
             }
         }
@@ -530,16 +532,17 @@ void ParallelEvacuator::UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToSha
     ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         auto root = TaggedObject::Cast(rootObject);
+        JSThread *thread = evacuator_->heap_->GetJSThread();
         JSHClass *hclass = root->GetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        TaggedObject *dst = hclass->GetLayout(thread).GetTaggedObject();
         LayoutInfo *layout = LayoutInfo::UncheckCast(dst);
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            auto attr = layout->GetAttr(index++);
+            auto attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 evacuator_->UpdateNewObjectSlot<gcType, needUpdateLocalToShare>(slot);
             }

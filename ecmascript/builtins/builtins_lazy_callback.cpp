@@ -224,21 +224,21 @@ void BuiltinsLazyCallback::ResetLazyInternalAttr(JSThread *thread, const JSHandl
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromUtf8ReadOnly(name));
     if (LIKELY(!hclass->IsDictionaryMode())) {
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
         uint32_t propsNumber = hclass->NumberOfProps();
         int entry = layoutInfo->FindElementWithCache(thread, hclass, key.GetTaggedValue(), propsNumber);
         if (entry != -1) {
-            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            PropertyAttributes attr(layoutInfo->GetAttr(thread, entry));
             attr.SetIsAccessor(false);
             layoutInfo->SetNormalAttr(thread, entry, attr);
         }
     } else {
-        TaggedArray *array = TaggedArray::Cast(object->GetProperties().GetTaggedObject());
+        TaggedArray *array = TaggedArray::Cast(object->GetProperties(thread).GetTaggedObject());
         ASSERT(array->IsDictionaryMode());
         NameDictionary *dict = NameDictionary::Cast(array);
-        int entry = dict->FindEntry(key.GetTaggedValue());
+        int entry = dict->FindEntry(thread, key.GetTaggedValue());
         if (entry != -1) {
-            auto attr = dict->GetAttributes(entry);
+            auto attr = dict->GetAttributes(thread, entry);
             attr.SetIsAccessor(false);
             dict->SetAttributes(thread, entry, attr);
         }

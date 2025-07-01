@@ -166,7 +166,7 @@ JSTaggedValue LinkedHashMap::Get(const JSThread *thread, JSTaggedValue key) cons
     if (entry == -1) {
         return JSTaggedValue::Undefined();
     }
-    return GetValue(entry);
+    return GetValue(thread, entry);
 }
 
 bool LinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
@@ -199,12 +199,12 @@ JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHa
     return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::Shrink(thread, table, additionalCapacity);
 }
 
-void LinkedHashMap::ClearAllDeadEntries(std::function<bool(JSTaggedValue)> &visitor)
+void LinkedHashMap::ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor)
 {
     int entries = NumberOfElements() + NumberOfDeletedElements();
 
     for (int i = 0; i < entries; ++i) {
-        JSTaggedValue maybeKey = GetKey(i);
+        JSTaggedValue maybeKey = GetKey(thread, i);
         if (maybeKey.IsHole()) {
             // Already removed
             continue;
@@ -281,10 +281,10 @@ int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
     }
     if (key.IsString()) {
         auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
-        return EcmaStringAccessor(keyString).GetHashcode();
+        return EcmaStringAccessor(keyString).GetHashcode(thread);
     }
     if (key.IsECMAObject()) {
-        int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
+        int32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash(thread);
         if (hash == 0) {
             hash = base::RandomGenerator::GenerateIdentityHash();
             JSHandle<ECMAObject> ecmaObj(thread, key);

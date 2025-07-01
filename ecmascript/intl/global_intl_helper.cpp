@@ -197,9 +197,9 @@ int64_t GlobalIntlHelper::DoubleToInt64(double value)
     return static_cast<int64_t>(round(value));
 }
 
-std::string GlobalIntlHelper::EcmaConvertToStr(const JSHandle<EcmaString> &string)
+std::string GlobalIntlHelper::EcmaConvertToStr(const JSThread *thread, const JSHandle<EcmaString> &string)
 {
-    return std::string(ConvertToString(*string, StringConvertedUsage::LOGICOPERATION));
+    return std::string(ConvertToString(thread, *string, StringConvertedUsage::LOGICOPERATION));
 }
 
 std::vector<std::string> GlobalIntlHelper::LocalesToVector(JSThread *thread,
@@ -217,7 +217,7 @@ std::vector<std::string> GlobalIntlHelper::TaggedArrayToVector(JSThread *thread,
     uint32_t availablecalesLength = taggedarray->GetLength();
     for (uint32_t i = 0; i < availablecalesLength; i++) {
         availableItem.Update(taggedarray->Get(thread, i));
-        availableStringLocales.emplace_back(intl::LocaleHelper::ConvertToStdString(availableItem));
+        availableStringLocales.emplace_back(intl::LocaleHelper::ConvertToStdString(thread, availableItem));
     }
     return availableStringLocales;
 }

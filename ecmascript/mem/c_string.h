@@ -57,7 +57,7 @@ std::string PUBLIC_API ConvertToStdString(const CString &str);
 
 // '\u0000' is skip according to holdZero
 // cesu8 means non-BMP1 codepoints should encode as 1 utf8 string
-CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
+CString PUBLIC_API ConvertToString(const JSThread *thread, const ecmascript::EcmaString *s,
     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 
 #if ENABLE_NEXT_OPTIMIZATION
@@ -69,11 +69,11 @@ template <typename DstType>
 void AppendIntToCString(DstType &str, int number);
 template <typename DstType>
 void ConvertNumberToCStringAndAppend(DstType &str, JSTaggedValue num);
-void ConvertQuotedAndAppendToCString(CString &str, const EcmaString *s);
-void ConvertQuotedAndAppendToC16String(C16String &str, const EcmaString *s);
+void ConvertQuotedAndAppendToCString(const JSThread *thread, CString &str, const EcmaString *s);
+void ConvertQuotedAndAppendToC16String(const JSThread *thread, C16String &str, const EcmaString *s);
 #endif
 
-CString ConvertToString(ecmascript::JSTaggedValue key);
+CString ConvertToString(const JSThread *thread, ecmascript::JSTaggedValue key);
 
 // append char to CString to C16String.
 // char16_t to CString needs to be converted, which is time-consuming. So this way is not allowed.

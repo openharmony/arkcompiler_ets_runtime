@@ -23,7 +23,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
-bool JSForInIterator::IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHClass, EnumCacheKind kind)
+bool JSForInIterator::IsEnumCacheValid(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue cachedHClass,
+                                       EnumCacheKind kind)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *hclass = receiver.GetTaggedObject()->GetClass();
@@ -37,13 +38,13 @@ bool JSForInIterator::IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cac
         return false;
     }
     ASSERT(kind == EnumCacheKind::PROTOCHAIN);
-    JSTaggedValue proto = hclass->GetPrototype();
+    JSTaggedValue proto = hclass->GetPrototype(thread);
     if (!proto.IsHeapObject()) {
         return true;
     }
-    JSTaggedValue enumCache = proto.GetTaggedObject()->GetClass()->GetEnumCache();
+    JSTaggedValue enumCache = proto.GetTaggedObject()->GetClass()->GetEnumCache(thread);
     if (enumCache.IsEnumCache()) {
-        JSTaggedValue enumCacheAll = EnumCache::Cast(enumCache.GetTaggedObject())->GetEnumCacheAll();
+        JSTaggedValue enumCacheAll = EnumCache::Cast(enumCache.GetTaggedObject())->GetEnumCacheAll(thread);
         if (enumCacheAll != JSTaggedValue::Null()) {
             return true;
         }
@@ -51,7 +52,7 @@ bool JSForInIterator::IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cac
     return false;
 }
 
-bool JSForInIterator::NeedCheckProperty(JSTaggedValue receiver)
+bool JSForInIterator::NeedCheckProperty(const JSThread *thread, JSTaggedValue receiver)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue current = receiver;
@@ -59,7 +60,7 @@ bool JSForInIterator::NeedCheckProperty(JSTaggedValue receiver)
         if (!current.IsJSObject() || current.GetTaggedObject()->GetClass()->HasDeleteProperty()) {
             return true;
         }
-        current = JSObject::GetPrototype(current);
+        current = JSObject::GetPrototype(thread, current);
     }
     return false;
 }
@@ -87,19 +88,19 @@ JSTaggedValue JSForInIterator::NextInternal(JSThread *thread, const JSHandle<JSF
     if (index >= length) {
         return JSTaggedValue::Undefined();
     }
-    JSTaggedValue taggedKeys = it->GetKeys();
-    JSTaggedValue receiver = it->GetObject();
+    JSTaggedValue taggedKeys = it->GetKeys(thread);
+    JSTaggedValue receiver = it->GetObject(thread);
     EnumCacheKind kind = static_cast<EnumCacheKind>(it->GetCacheKind());
     TaggedArray *keys = TaggedArray::Cast(taggedKeys.GetTaggedObject());
-    if (IsEnumCacheValid(receiver, it->GetCachedHClass(), kind)) {
-        JSTaggedValue key = keys->Get(index);
+    if (IsEnumCacheValid(thread, receiver, it->GetCachedHClass(thread), kind)) {
+        JSTaggedValue key = keys->Get(thread, index);
         index++;
         it->SetIndex(index);
         return key;
     }
 
-    if (!NeedCheckProperty(receiver)) {
-        JSTaggedValue key = keys->Get(index);
+    if (!NeedCheckProperty(thread, receiver)) {
+        JSTaggedValue key = keys->Get(thread, index);
         index++;
         it->SetIndex(index);
         return key;
@@ -115,12 +116,12 @@ JSTaggedValue JSForInIterator::NextInternalSlowpath(JSThread *thread, const JSHa
     if (index >= length) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<TaggedArray> keysHandle(thread, it->GetKeys());
-    JSHandle<JSTaggedValue> receiverHandle(thread, it->GetObject());
+    JSHandle<TaggedArray> keysHandle(thread, it->GetKeys(thread));
+    JSHandle<JSTaggedValue> receiverHandle(thread, it->GetObject(thread));
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     bool has = false;
     while (index < length) {
-        keyHandle.Update(keysHandle->Get(index));
+        keyHandle.Update(keysHandle->Get(thread, index));
         if (keyHandle->IsUndefined()) {
             has = false;
             break;
@@ -137,7 +138,7 @@ JSTaggedValue JSForInIterator::NextInternalSlowpath(JSThread *thread, const JSHa
         return JSTaggedValue::Undefined();
     }
 
-    JSTaggedValue key = keysHandle->Get(index);
+    JSTaggedValue key = keysHandle->Get(thread, index);
     index++;
     it->SetIndex(index);
     return key;

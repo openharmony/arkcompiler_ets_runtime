@@ -25,7 +25,7 @@ void AotConstantpoolPatcher::SetPrototypeForTransitions(JSThread *thread, JSHCla
         backHClass.pop();
         hclass->SetProto(thread, proto);
 
-        auto transitions = current->GetTransitions();
+        auto transitions = current->GetTransitions(thread);
         if (transitions.IsUndefined()) {
             continue;
         }
@@ -36,7 +36,7 @@ void AotConstantpoolPatcher::SetPrototypeForTransitions(JSThread *thread, JSHCla
         }
         ASSERT(transitions.IsTaggedArray());
         TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
-        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+        dict->IterateEntryValue(thread, [&backHClass] (JSHClass *cache) {
             backHClass.push(JSHClass::Cast(cache));
         });
     }
@@ -44,7 +44,7 @@ void AotConstantpoolPatcher::SetPrototypeForTransitions(JSThread *thread, JSHCla
 
 void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JSHandle<ConstantPool> newConstPool)
 {
-    auto aotHCInfo = newConstPool->GetAotHClassInfo();
+    auto aotHCInfo = newConstPool->GetAotHClassInfo(thread);
     if (!aotHCInfo.IsTaggedArray()) {
         return;
     }
@@ -52,7 +52,7 @@ void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JS
     if (aotHCInfoArray->GetLength() <= 0) {
         return;
     }
-    JSTaggedValue ihc = aotHCInfoArray->Get(0);
+    JSTaggedValue ihc = aotHCInfoArray->Get(thread, 0);
     if (!ihc.IsJSHClass()) {
         return;
     }
@@ -66,9 +66,9 @@ void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JS
     auto env = thread->GetGlobalEnv();
     if (env->GetObjectFunctionTsNapiClass() == env->GetObjectFunctionNapiClass()) {
         JSHandle<JSHClass> objectFunctionNapiClass(env->GetObjectFunctionNapiClass());
-        objectFunctionIHC->SetPrototype(thread, objectFunctionNapiClass->GetProto());
+        objectFunctionIHC->SetPrototype(thread, objectFunctionNapiClass->GetProto(thread));
         JSHClass::EnableProtoChangeMarker(thread, objectFunctionIHC);
-        SetPrototypeForTransitions(thread, *objectFunctionIHC, objectFunctionNapiClass->GetProto());
+        SetPrototypeForTransitions(thread, *objectFunctionIHC, objectFunctionNapiClass->GetProto(thread));
         env->SetObjectFunctionTsNapiClass(thread, objectFunctionIHC.GetTaggedValue());
     }
 }

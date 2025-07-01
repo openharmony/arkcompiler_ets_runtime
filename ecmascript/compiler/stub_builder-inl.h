@@ -2787,7 +2787,7 @@ inline GateRef StubBuilder::GetIhcFromAOTLiteralInfo(GateRef glue, GateRef info)
 
 inline void StubBuilder::UpdateFieldType(GateRef glue, GateRef hclass, GateRef attr)
 {
-    CallNGCRuntime(glue, RTSTUB_ID(UpdateFieldType), { hclass, attr });
+    CallNGCRuntime(glue, RTSTUB_ID(UpdateFieldType), { glue, hclass, attr });
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)

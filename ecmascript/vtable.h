@@ -68,14 +68,14 @@ public:
         return GetLength() / TUPLE_SIZE;
     }
 
-    JSTaggedValue GetTupleItem(uint32_t tupleIdx, TupleItem kind) const
+    JSTaggedValue GetTupleItem(const JSThread *thread, uint32_t tupleIdx, TupleItem kind) const
     {
-        return Get(tupleIdx * TUPLE_SIZE + kind);
+        return Get(thread, tupleIdx * TUPLE_SIZE + kind);
     }
 
-    bool IsAccessor(uint32_t tupleIdx) const
+    bool IsAccessor(const JSThread *thread, uint32_t tupleIdx) const
     {
-        TypeKind type = static_cast<TypeKind>(GetTupleItem(tupleIdx, TupleItem::TYPE).GetInt());
+        TypeKind type = static_cast<TypeKind>(GetTupleItem(thread, tupleIdx, TupleItem::TYPE).GetInt());
         return type == TypeKind::ACCESSOR;
     }
 
@@ -85,9 +85,9 @@ public:
 
     void Trim(const JSThread *thread, uint32_t newLength);
 
-    int GetTupleIndexByName(JSTaggedValue val) const;
+    int GetTupleIndexByName(const JSThread *thread, JSTaggedValue val) const;
 
-    bool Find(JSTaggedValue val) const;
+    bool Find(const JSThread *thread, JSTaggedValue val) const;
 
     DECL_DUMP()
 };

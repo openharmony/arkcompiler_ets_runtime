@@ -55,13 +55,13 @@ JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // The default log level of ace_engine and js_runtime is error
-    LOG_ECMA(ERROR) << ": " << EcmaStringAccessor(str).ToStdString();
+    LOG_ECMA(ERROR) << ": " << EcmaStringAccessor(str).ToStdString(thread);
 
     uint32_t numArgs = info->GetArgsNumber();
     for (uint32_t i = 1; i < numArgs; i++) {
         JSHandle<JSTaggedValue> obj = GetCallArg(info, i);
         std::ostringstream oss;
-        obj->Dump(oss);
+        obj->Dump(thread, oss);
 
         // The default log level of ace_engine and js_runtime is error
         LOG_ECMA(ERROR) << ": " << oss.str();
@@ -82,8 +82,8 @@ JSTaggedValue BuiltinsArkTools::CompareHClass(EcmaRuntimeCallInfo *info)
     JSHClass *obj1Hclass = obj1->GetTaggedObject()->GetClass();
     JSHClass *obj2Hclass = obj2->GetTaggedObject()->GetClass();
     std::ostringstream oss;
-    obj1Hclass->Dump(oss);
-    obj2Hclass->Dump(oss);
+    obj1Hclass->Dump(thread, oss);
+    obj2Hclass->Dump(thread, oss);
     bool res = (obj1Hclass == obj2Hclass);
     if (!res) {
         LOG_ECMA(ERROR) << "These two object don't share the same hclass:" << oss.str();
@@ -101,7 +101,7 @@ JSTaggedValue BuiltinsArkTools::DumpHClass(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
     std::ostringstream oss;
-    objHclass->Dump(oss);
+    objHclass->Dump(thread, oss);
 
     LOG_ECMA(ERROR) << "hclass:" << oss.str();
     return JSTaggedValue::Undefined();
@@ -214,7 +214,7 @@ JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
     if (entry == -1) {
         return GetTaggedBoolean(false);
     }
-    PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+    PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject())->GetAttr(thread, entry);
     return GetTaggedBoolean(attr.IsNotHole());
 }
 
@@ -250,7 +250,7 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     if (object->IsHeapObject() && object->IsJSFunction()) {
         JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(object);
-        return function->GetLexicalEnv();
+        return function->GetLexicalEnv(thread);
     }
     return JSTaggedValue::Null();
 }
@@ -266,7 +266,7 @@ JSTaggedValue BuiltinsArkTools::CurrentEnvIsGlobal(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     if (object->IsHeapObject() && object->IsJSFunction()) {
         JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(object);
-        if (function->GetLexicalEnv().IsJSGlobalEnv()) {
+        if (function->GetLexicalEnv(thread).IsJSGlobalEnv()) {
             return JSTaggedValue::True();
         }
     }
@@ -307,7 +307,7 @@ JSTaggedValue BuiltinsArkTools::ForceLazyDeopt(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::Undefined();
     }
     JSHClass *hclass = object->GetTaggedObject()->GetClass();
-    JSTaggedValue infos = hclass->GetDependentInfos();
+    JSTaggedValue infos = hclass->GetDependentInfos(thread);
     if (!infos.IsHeapObject()) {
         return JSTaggedValue::Undefined();
     }
@@ -352,7 +352,7 @@ JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     if (object->IsHeapObject() && object->IsJSFunction()) {
         JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(object);
-        JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+        JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod(thread));
         method->SetAotCodeBit(false);
     }
 
@@ -373,7 +373,7 @@ JSTaggedValue BuiltinsArkTools::CheckCircularImport(EcmaRuntimeCallInfo *info)
     }
     CList<CString> referenceList;
     // str: bundleName/moduleName/xxx/xxx
-    CString string = ConvertToString(str.GetTaggedValue());
+    CString string = ConvertToString(thread, str.GetTaggedValue());
     LOG_ECMA(INFO) << "checkCircularImport begin with: "<< string;
     SourceTextModule::CheckCircularImportTool(thread, string, referenceList, printOtherCircular);
     return JSTaggedValue::Undefined();
@@ -417,7 +417,7 @@ JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
     if (fileNameValue->IsString()) {
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, fileNameValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        fileName = EcmaStringAccessor(str).ToStdString() + ".cpuprofile";
+        fileName = EcmaStringAccessor(str).ToStdString(thread) + ".cpuprofile";
     } else {
         fileName = GetProfileName();
     }
@@ -552,7 +552,7 @@ JSTaggedValue BuiltinsArkTools::IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func0 = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     JSHandle<JSFunction> func1 = JSHandle<JSFunction>::Cast(GetCallArg(info, 1));
-    return JSTaggedValue(func0->GetProfileTypeInfo() == func1->GetProfileTypeInfo());
+    return JSTaggedValue(func0->GetProfileTypeInfo(thread) == func1->GetProfileTypeInfo(thread));
 }
 
 // It is used to check whether a function has valid profileTypeInfo
@@ -563,7 +563,7 @@ JSTaggedValue BuiltinsArkTools::IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
-    return JSTaggedValue(func->GetProfileTypeInfo().IsTaggedArray());
+    return JSTaggedValue(func->GetProfileTypeInfo(thread).IsTaggedArray());
 }
 
 // It is used to print the IC state of a function with a specific slotId and icKind.
@@ -577,7 +577,7 @@ JSTaggedValue BuiltinsArkTools::GetICState(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     int slotId = JSHandle<JSTaggedValue>(GetCallArg(info, 1))->GetInt();
     int icKind = JSHandle<JSTaggedValue>(GetCallArg(info, 2))->GetInt();
-    JSHandle<ProfileTypeInfo> profileTypeInfo = JSHandle<ProfileTypeInfo>(thread, func->GetProfileTypeInfo());
+    JSHandle<ProfileTypeInfo> profileTypeInfo = JSHandle<ProfileTypeInfo>(thread, func->GetProfileTypeInfo(thread));
     if (profileTypeInfo.GetTaggedValue().IsUndefined()) {
         JSHandle<EcmaString> noProfileTypeInfo = factory->NewFromUtf8ReadOnly("No ProfileTypeInfo");
         return noProfileTypeInfo.GetTaggedValue();
@@ -611,7 +611,7 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
     bool isAotCompiled = func->IsCompiledCode();
     if (isAotCompiled) {
-        Method *method = func->GetCallTarget();
+        Method *method = func->GetCallTarget(thread);
         uint32_t deoptedCount = method->GetDeoptThreshold();
         uint32_t deoptThreshold = thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold();
         return JSTaggedValue(deoptedCount != deoptThreshold);
@@ -629,7 +629,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
-    Method *method = func->GetCallTarget();
+    Method *method = func->GetCallTarget(thread);
     bool isAotCompiled = func->IsCompiledCode();
     uint16_t threshold = method->GetDeoptThreshold();
     if (threshold > 0) {
@@ -661,7 +661,7 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> opStrVal = GetCallArg(info, 0);
-    std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
+    std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString(thread);
     TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Print(opStr);
@@ -801,7 +801,7 @@ JSTaggedValue BuiltinsArkTools::StartCollectingOpcodes([[maybe_unused]] EcmaRunt
     vm->SetBytecodeStatsStack(bytecodeStatsMap);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
-    auto msg = EcmaStringAccessor(str).ToCString();
+    auto msg = EcmaStringAccessor(str).ToCString(thread);
     LOG_ECMA(ERROR) << msg.c_str();
     return JSTaggedValue::Undefined();
 }
@@ -817,7 +817,7 @@ JSTaggedValue BuiltinsArkTools::StopCollectingOpcodes([[maybe_unused]] EcmaRunti
     bytecodeStatsStack_.pop();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
-    auto msg = EcmaStringAccessor(str).ToCString();
+    auto msg = EcmaStringAccessor(str).ToCString(thread);
     LOG_ECMA(ERROR) << msg.c_str();
     return JSTaggedValue::Undefined();
 }
@@ -1007,7 +1007,7 @@ JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRunti
     CHECK(arg->IsJSObject());
     JSHandle<JSObject> obj(arg);
     bool isDict = obj->GetClass()->IsDictionaryElement();
-    CHECK(isDict == ElementAccessor::IsDictionaryMode(obj));
+    CHECK(isDict == ElementAccessor::IsDictionaryMode(thread, obj));
     CHECK(isDict == (obj->GetClass()->GetElementsKind() == ElementsKind::DICTIONARY));
     return JSTaggedValue(isDict);
 }
@@ -1129,7 +1129,7 @@ JSTaggedValue BuiltinsArkTools::FunctionGetInferredName([[maybe_unused]] EcmaRun
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     if (obj->IsJSFunction()) {
         JSHandle<JSFunction> funcObj = JSHandle<JSFunction>::Cast(obj);
-        std::string name = Method::ConstCast(funcObj->GetMethod().GetTaggedObject())->ParseFunctionName();
+        std::string name = Method::ConstCast(funcObj->GetMethod(thread).GetTaggedObject())->ParseFunctionName(thread);
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return factory->NewFromStdString(name).GetTaggedValue();
     }
@@ -1192,11 +1192,12 @@ JSTaggedValue BuiltinsArkTools::FinalizeOptimization([[maybe_unused]] EcmaRuntim
 
 JSTaggedValue BuiltinsArkTools::EnsureFeedbackVectorForFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     CHECK(info && info->GetArgsNumber() == 1);
     CHECK(info->GetCallArg(0)->IsJSFunction());
     JSHandle<JSFunction> func(info->GetCallArg(0));
-    auto prof = func->GetProfileTypeInfo();
+    auto prof = func->GetProfileTypeInfo(thread);
     CHECK(prof.IsUndefined() || prof.GetHeapObject()->GetClass()->IsTaggedArray());
     return JSTaggedValue(!prof.IsUndefined());
 }
@@ -1238,7 +1239,8 @@ JSTaggedValue BuiltinsArkTools::AbortJS([[maybe_unused]] EcmaRuntimeCallInfo *in
     CHECK(info && info->GetArgsNumber() == 1);
     CHECK(info->GetCallArg(0)->IsString());
     JSHandle<EcmaString> msg(info->GetCallArg(0));
-    std::cerr << "AbortJS: " << EcmaStringAccessor(msg).ToCString(StringConvertedUsage::PRINT) << std::endl;
+    std::cerr << "AbortJS: " << EcmaStringAccessor(msg).ToCString(info->GetThread(), StringConvertedUsage::PRINT)
+              << std::endl;
     panda::PrintStack(std::cerr);
     std::abort();
 }
@@ -1553,8 +1555,8 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     if (!jit->IsEnableFastJit()) {
         return JSTaggedValue::False();
     }
-    while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
-        if (jsFunction->GetJitHotnessCnt() == ProfileTypeInfo::JIT_DISABLE_FLAG) {
+    while (!jsFunction->GetMachineCode(thread).IsMachineCodeObject()) {
+        if (jsFunction->GetJitHotnessCnt(thread) == ProfileTypeInfo::JIT_DISABLE_FLAG) {
             // The current function is not compiled for some reason.
             break;
         }
@@ -1672,13 +1674,13 @@ JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
     auto globalConst = thread->GlobalConstants();
     SharedHeap *sHeap = SharedHeap::GetInstance();
     sHeap->WaitGCFinished(thread);
-    if (JSTaggedValue::StrictEqual(globalConst->GetSharedGcCause(), type)) {
+    if (JSTaggedValue::StrictEqual(thread, globalConst->GetSharedGcCause(), type)) {
         sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::TRIGGER_BY_JS>(thread);
         sHeap->WaitGCFinished(thread);
-    } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedPartialGcCause(), type)) {
+    } else if (JSTaggedValue::StrictEqual(thread, globalConst->GetSharedPartialGcCause(), type)) {
         sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::TRIGGER_BY_JS>(thread);
         sHeap->WaitGCFinished(thread);
-    } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedFullGcCause(), type)) {
+    } else if (JSTaggedValue::StrictEqual(thread, globalConst->GetSharedFullGcCause(), type)) {
         sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(thread);
     }
     return JSTaggedValue::Undefined();

@@ -97,7 +97,7 @@ HWTEST_F_L0(BuiltinsWeakMapTest, CreateAndGetSize)
 
     JSTaggedValue result1 = BuiltinsWeakMap::WeakMapConstructor(ecmaRuntimeCallInfo);
     JSHandle<JSWeakMap> weakMap(thread, JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData())));
-    EXPECT_EQ(weakMap->GetSize(), 1);
+    EXPECT_EQ(weakMap->GetSize(thread), 1);
 }
 
 HWTEST_F_L0(BuiltinsWeakMapTest, SetAndHas)
@@ -124,7 +124,7 @@ HWTEST_F_L0(BuiltinsWeakMapTest, SetAndHas)
     JSTaggedValue result2 = BuiltinsWeakMap::Set(ecmaRuntimeCallInfo);
     EXPECT_TRUE(result2.IsECMAObject());
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result2.GetRawData()));
-    EXPECT_EQ(jsWeakMap->GetSize(), 1);
+    EXPECT_EQ(jsWeakMap->GetSize(thread), 1);
 
     // test Has()
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
@@ -155,7 +155,7 @@ void KeySetCommon(JSThread* thread, JSHandle<JSWeakMap>& weakMap, JSHandle<JSTag
 
     EXPECT_TRUE(result1.IsECMAObject());
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
-    EXPECT_EQ(jsWeakMap->GetSize(), static_cast<int>(val) + 1);
+    EXPECT_EQ(jsWeakMap->GetSize(thread), static_cast<int>(val) + 1);
 }
 
 HWTEST_F_L0(BuiltinsWeakMapTest, DeleteAndRemove)

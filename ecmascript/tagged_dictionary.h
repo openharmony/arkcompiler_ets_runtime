@@ -41,10 +41,11 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static int PUBLIC_API Hash(const JSTaggedValue &key);
+    static int PUBLIC_API Hash(const JSThread *thread, const JSTaggedValue &key);
     static int Hash(const uint8_t* str, int strSize);
 
-    static bool PUBLIC_API IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static bool PUBLIC_API IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+        const JSTaggedValue &other);
     static bool IsMatch(const uint8_t* str, int size, const JSTaggedValue &other);
 
     static JSHandle<NameDictionary> Create(const JSThread *thread,
@@ -52,7 +53,7 @@ public:
     static JSHandle<NameDictionary> PUBLIC_API CreateInSharedHeap(const JSThread *thread,
         int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
-    PropertyAttributes PUBLIC_API GetAttributes(int entry) const;
+    PropertyAttributes PUBLIC_API GetAttributes(const JSThread *thread, int entry) const;
     void PUBLIC_API SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
     void PUBLIC_API SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
                              const PropertyAttributes &metaData);
@@ -65,7 +66,7 @@ public:
     void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
     void GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
         TaggedArray *keyArray, uint32_t filter) const;
-    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys() const;
+    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(const JSThread *thread) const;
     void GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
                         JSHandle<TaggedQueue> shadowQueue, int32_t lastLength) const;
     void GetAllEnumKeys(JSThread *thread, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys) const;
@@ -84,12 +85,12 @@ public:
     {
         return a.GetDictionaryOrder() < b.GetDictionaryOrder();
     }
-    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
-    void Dump() const DUMP_API_ATTR
+    void Dump(const JSThread *thread, std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump(const JSThread *thread) const DUMP_API_ATTR
     {
-        Dump(std::cout);
+        Dump(thread, std::cout);
     }
-    void DumpForSnapshot(std::vector<Reference> &vec) const;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
 
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
@@ -116,14 +117,15 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static int PUBLIC_API Hash(const JSTaggedValue &key);
-    static bool PUBLIC_API IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static int PUBLIC_API Hash([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key);
+    static bool PUBLIC_API IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+        const JSTaggedValue &other);
     static JSHandle<NumberDictionary> Create(const JSThread *thread,
                                     int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     static JSHandle<NumberDictionary> CreateInSharedHeap(
         const JSThread *thread, int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
-    PropertyAttributes PUBLIC_API GetAttributes(int entry) const;
+    PropertyAttributes PUBLIC_API GetAttributes(const JSThread *thread, int entry) const;
     void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
     void SetEntry([[maybe_unused]] const JSThread *thread, int entry, const JSTaggedValue &key,
                   const JSTaggedValue &value, const PropertyAttributes &metaData);
@@ -144,12 +146,12 @@ public:
         ASSERT(a.IsNumber() && b.IsNumber());
         return a.GetNumber() < b.GetNumber();
     }
-    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
-    void Dump() const DUMP_API_ATTR
+    void Dump(const JSThread *thread, std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump(const JSThread *thread) const DUMP_API_ATTR
     {
-        Dump(std::cout);
+        Dump(thread, std::cout);
     }
-    void DumpForSnapshot(std::vector<Reference> &vec) const;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
 
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
@@ -186,12 +188,12 @@ public:
         SetValue(thread, entry, value);
     }
 
-    static int32_t Hash(const JSTaggedValue &key)
+    static int32_t Hash([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key)
     {
         return static_cast<int32_t>(key.GetRawData());
     }
 
-    static bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
+    static bool IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &other)
     {
         return key == other;
     }
@@ -242,10 +244,10 @@ public:
         static JSHandle<ProtoArray> Create(const JSThread *thread);
         void SetEntry(const JSThread *thread, uint32_t index, JSTaggedValue key, JSTaggedValue transIhc,
                       JSTaggedValue transPhc);
-        JSTaggedValue GetKey(uint32_t index) const;
-        std::pair<JSTaggedValue, JSTaggedValue> GetTransition(uint32_t index) const;
-        int32_t FindEntry(JSTaggedValue key) const;
-        std::pair<JSTaggedValue, JSTaggedValue> FindTransition(JSTaggedValue key) const;
+        JSTaggedValue GetKey(const JSThread *thread, uint32_t index) const;
+        std::pair<JSTaggedValue, JSTaggedValue> GetTransition(const JSThread *thread, uint32_t index) const;
+        int32_t FindEntry(const JSThread *thread, JSTaggedValue key) const;
+        std::pair<JSTaggedValue, JSTaggedValue> FindTransition(const JSThread *thread, JSTaggedValue key) const;
         static bool GetEntry(JSHandle<JSHClass> hclass);
 
     private:

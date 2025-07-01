@@ -45,8 +45,8 @@ HWTEST_F_L0(LayoutInfoTest, SetPropertyInit)
     EXPECT_TRUE(*layoutInfoHandle != nullptr);
 
     layoutInfoHandle->SetPropertyInit(thread, 0, key.GetTaggedValue(), defaultAttr);
-    EXPECT_EQ(layoutInfoHandle->GetKey(0), key.GetTaggedValue());
-    EXPECT_EQ(layoutInfoHandle->GetAttr(0).GetNormalAttr(), static_cast<uint32_t>(infoLength));
+    EXPECT_EQ(layoutInfoHandle->GetKey(thread, 0), key.GetTaggedValue());
+    EXPECT_EQ(layoutInfoHandle->GetAttr(thread, 0).GetNormalAttr(), static_cast<uint32_t>(infoLength));
 }
 
 HWTEST_F_L0(LayoutInfoTest, SetSortedIndex)
@@ -63,8 +63,8 @@ HWTEST_F_L0(LayoutInfoTest, SetSortedIndex)
     layoutInfoHandle->SetPropertyInit(thread, 0, key1.GetTaggedValue(), defaultAttr);
     layoutInfoHandle->SetPropertyInit(thread, 1, key2.GetTaggedValue(), defaultAttr);
     layoutInfoHandle->SetSortedIndex(thread, 0, infoLength - 4);
-    EXPECT_EQ(layoutInfoHandle->GetSortedIndex(0), 1U);
-    EXPECT_EQ(layoutInfoHandle->GetSortedKey(0), key2.GetTaggedValue());
+    EXPECT_EQ(layoutInfoHandle->GetSortedIndex(thread, 0), 1U);
+    EXPECT_EQ(layoutInfoHandle->GetSortedKey(thread, 0), key2.GetTaggedValue());
 }
 
 HWTEST_F_L0(LayoutInfoTest, FindElementWithCache)
@@ -138,15 +138,15 @@ void GetAllKeysCommon(JSThread *thread, bool enumKeys = false)
     if (enumKeys) {
         uint32_t keys = 0;
         layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys); // 0: offset
-        EXPECT_EQ(keyArray->Get(0), key3.GetTaggedValue());
+        EXPECT_EQ(keyArray->Get(thread, 0), key3.GetTaggedValue());
         EXPECT_EQ(keys, 1U);
     } else {
         layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray); // 0: offset
-        layoutInfoHandle->GetAllKeysForSerialization(infoLength, keyVector);
+        layoutInfoHandle->GetAllKeysForSerialization(thread, infoLength, keyVector);
         EXPECT_EQ(keyArray->GetLength(), keyVector.size());
 
         for (int i = 0;i < infoLength; i++) {
-            bool result = JSTaggedValue::SameValue(keyArray->Get(i), keyVector[i]);
+            bool result = JSTaggedValue::SameValue(thread, keyArray->Get(thread, i), keyVector[i]);
             EXPECT_TRUE(result);
         }
     }

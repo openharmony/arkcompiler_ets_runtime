@@ -373,7 +373,7 @@ void ConvertCharToInt32StubBuilder::GenerateCircuit()
     // char to string
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     // string to number
-    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {result, Int32(0)}, charCode);
+    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {glue, result, Int32(0)}, charCode);
     // get int from number
     result = NumberGetInt(glue, result);
     Return(result);
@@ -387,7 +387,7 @@ void ConvertCharToDoubleStubBuilder::GenerateCircuit()
     // char to string
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     // string to number
-    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {result, Int32(0)}, charCode);
+    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {glue, result, Int32(0)}, charCode);
     // get double from number
     result = GetDoubleOfTNumber(result);
     Return(result);

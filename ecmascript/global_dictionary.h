@@ -46,21 +46,22 @@ public:
     {
         return ENTRY_SIZE;
     }
-    static inline bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static inline bool IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+                               const JSTaggedValue &other);
 
-    static inline int Hash(const JSTaggedValue &key);
+    static inline int Hash(const JSThread *thread, const JSTaggedValue &key);
     inline static void InvalidatePropertyBox(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle, int entry);
 
     inline static void InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
                                                  int entry, const JSHandle<JSTaggedValue> &oldValue);
     
-    inline bool IsValidateBox(int entry) const;
+    inline bool IsValidateBox(const JSThread *thread, int entry) const;
 
-    inline PropertyBox *GetBox(int entry) const;
+    inline PropertyBox *GetBox(const JSThread *thread, int entry) const;
 
-    inline JSTaggedValue GetValue(int entry) const;
+    inline JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
-    inline PropertyAttributes GetAttributes(int entry) const;
+    inline PropertyAttributes GetAttributes(const JSThread *thread, int entry) const;
 
     inline void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
                          const PropertyAttributes &detail);
@@ -80,17 +81,17 @@ public:
 
     inline void GetEnumAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const;
 
-    inline std::pair<uint32_t, uint32_t> GetNumOfEnumKeys() const;
+    inline std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(const JSThread *thread) const;
 
     static bool inline CompKey(const std::pair<JSTaggedValue, uint32_t> &a,
                                const std::pair<JSTaggedValue, uint32_t> &b);
 
-    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
-    void Dump() const DUMP_API_ATTR
+    void Dump(const JSThread *thread, std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump(const JSThread *thread) const DUMP_API_ATTR
     {
-        Dump(std::cout);
+        Dump(thread, std::cout);
     }
-    void DumpForSnapshot(std::vector<Reference> &vec) const;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
 
 public:
     static constexpr int ENTRY_KEY_INDEX = 0;

@@ -64,7 +64,8 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (isInstanceOf) {
             PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(numberFormat), false, false, false);
-            JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+            JSHandle<JSTaggedValue> key(thread,
+                JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
             JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return thisValue.GetTaggedValue();
@@ -117,7 +118,7 @@ JSTaggedValue BuiltinsNumberFormat::Format(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSNumberFormat> typpedNf = JSHandle<JSNumberFormat>::Cast(nf);
-    JSHandle<JSTaggedValue> boundFunc(thread, typpedNf->GetBoundFormat());
+    JSHandle<JSTaggedValue> boundFunc(thread, typpedNf->GetBoundFormat(thread));
     // 4. If nf.[[BoundFormat]] is undefined, then
     //      a. Let F be a new built-in function object as defined in Number Format Functions (12.1.4).
     //      b. Set F.[[NumberFormat]] to nf.
@@ -129,7 +130,7 @@ JSTaggedValue BuiltinsNumberFormat::Format(EcmaRuntimeCallInfo *argv)
         intlBoundFunc->SetNumberFormat(thread, typpedNf);
         typpedNf->SetBoundFormat(thread, intlBoundFunc);
     }
-    return typpedNf->GetBoundFormat();
+    return typpedNf->GetBoundFormat(thread);
 }
 
 // 13.4.4 Intl.NumberFormat.prototype.formatToParts ( date )
@@ -195,7 +196,7 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatInternalFormatNumber(EcmaRuntime
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(GetConstructor(argv));
 
     // 1. Let nf be F.[[NumberFormat]].
-    JSHandle<JSTaggedValue> nf(thread, intlBoundFunc->GetNumberFormat());
+    JSHandle<JSTaggedValue> nf(thread, intlBoundFunc->GetNumberFormat(thread));
     // 2. Assert: Type(nf) is Object and nf has an [[InitializedNumberFormat]] internal slot.
     ASSERT(nf->IsJSObject() && nf->IsJSNumberFormat());
     // 3. If value is not provided, let value be undefined.

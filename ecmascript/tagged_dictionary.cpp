@@ -18,7 +18,7 @@
 #include "ecmascript/js_object-inl.h"
 
 namespace panda::ecmascript {
-int NameDictionary::Hash(const JSTaggedValue &key)
+int NameDictionary::Hash(const JSThread *thread, const JSTaggedValue &key)
 {
     if (key.IsHeapObject()) {
         JSTaggedValue jsKey(key);
@@ -28,7 +28,7 @@ int NameDictionary::Hash(const JSTaggedValue &key)
         }
         if (jsKey.IsString()) {
             auto keyString = reinterpret_cast<EcmaString *>(key.GetTaggedObject());
-            return EcmaStringAccessor(keyString).GetHashcode();
+            return EcmaStringAccessor(keyString).GetHashcode(thread);
         }
     }
     // key must be object
@@ -42,7 +42,8 @@ int NameDictionary::Hash(const uint8_t* str, int strSize)
     return BaseString::ComputeHashForData(str, strSize, 0);
 }
 
-bool NameDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
+bool NameDictionary::IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+                             const JSTaggedValue &other)
 {
     return key == other;
 }
@@ -68,9 +69,9 @@ void NameDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArray 
     int size = Size();
     CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             std::pair<JSTaggedValue, PropertyAttributes> pair(key, attr);
             sortArr.push_back(pair);
         }
@@ -86,9 +87,9 @@ void NameDictionary::UpdateAllAttributesToNoWitable(const JSThread *thread)
 {
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             attr.SetWritable(false);
             SetAttributes(thread, hashIndex, attr);
         }
@@ -101,9 +102,9 @@ void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArr
     int size = Size();
     CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
             if (bIgnore) {
                 continue;
@@ -125,15 +126,15 @@ void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArr
     }
 }
 
-std::pair<uint32_t, uint32_t> NameDictionary::GetNumOfEnumKeys() const
+std::pair<uint32_t, uint32_t> NameDictionary::GetNumOfEnumKeys(const JSThread *thread) const
 {
     uint32_t enumKeys = 0;
     uint32_t shadowKeys = 0;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = GetKey(hashIndex);
+        JSTaggedValue key = GetKey(thread, hashIndex);
         if (key.IsString()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 enumKeys++;
             } else {
@@ -151,9 +152,9 @@ void NameDictionary::GetAllEnumKeys(JSThread *thread, int offset, JSHandle<Tagge
     CVector<std::pair<JSHandle<JSTaggedValue>, PropertyAttributes>> sortArr;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(hashIndex));
+        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(thread, hashIndex));
         if (keyHandle->IsString()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(keyHandle, attr);
                 bool isDuplicated = JSObject::IsDepulicateKeys(thread, keyArray, lastLength, shadowQueue, keyHandle);
@@ -180,9 +181,9 @@ void NameDictionary::GetAllEnumKeys(JSThread *thread, int offset, JSHandle<Tagge
     CVector<std::pair<JSHandle<JSTaggedValue>, PropertyAttributes>> sortArr;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(hashIndex));
+        JSHandle<JSTaggedValue> keyHandle(thread, GetKey(thread, hashIndex));
         if (keyHandle->IsString()) {
-            PropertyAttributes attr = GetAttributes(hashIndex);
+            PropertyAttributes attr = GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(keyHandle, attr);
                 sortArr.push_back(pair);
@@ -207,10 +208,10 @@ JSHandle<NameDictionary> NameDictionary::CreateInSharedHeap(const JSThread *thre
     return OrderHashTableT::Create(thread, numberOfElements, MemSpaceKind::SHARED);
 }
 
-PropertyAttributes NameDictionary::GetAttributes(int entry) const
+PropertyAttributes NameDictionary::GetAttributes(const JSThread *thread, int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index));
+    return PropertyAttributes(Get(thread, index));
 }
 
 void NameDictionary::SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData)
@@ -246,7 +247,7 @@ void NameDictionary::ClearEntry(const JSThread *thread, int entry)
     SetEntry(thread, entry, hole, hole, metaData);
 }
 
-int NumberDictionary::Hash(const JSTaggedValue &key)
+int NumberDictionary::Hash([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key)
 {
     if (key.IsInt()) {
         int keyValue = key.GetInt();
@@ -261,7 +262,8 @@ int NumberDictionary::Hash(const JSTaggedValue &key)
     UNREACHABLE();
 }
 
-bool NumberDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
+bool NumberDictionary::IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,
+                               const JSTaggedValue &other)
 {
     if (key.IsHole() || key.IsUndefined()) {
         return false;
@@ -298,7 +300,7 @@ void NumberDictionary::GetAllKeys(const JSThread *thread, const JSHandle<NumberD
     int size = obj->Size();
     CVector<JSTaggedValue> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = obj->GetKey(hashIndex);
+        JSTaggedValue key = obj->GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
             sortArr.push_back(JSTaggedValue(static_cast<uint32_t>(key.GetInt())));
         }
@@ -323,12 +325,12 @@ void NumberDictionary::GetAllKeysByFilter(const JSThread *thread, const JSHandle
     CVector<JSTaggedValue> sortArr;
     uint32_t size = static_cast<uint32_t>(obj->Size());
     for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = obj->GetKey(hashIndex);
+        JSTaggedValue key = obj->GetKey(thread, hashIndex);
         if (key.IsUndefined() || key.IsHole()) {
             continue;
         }
 
-        PropertyAttributes attr = obj->GetAttributes(hashIndex);
+        PropertyAttributes attr = obj->GetAttributes(thread, hashIndex);
         bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
         if (!bIgnore) {
             sortArr.push_back(JSTaggedValue(static_cast<uint32_t>(key.GetInt())));
@@ -351,9 +353,9 @@ void NumberDictionary::GetAllEnumKeys(JSThread *thread, const JSHandle<NumberDic
     int size = obj->Size();
     CVector<JSTaggedValue> sortArr;
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key = obj->GetKey(hashIndex);
+        JSTaggedValue key = obj->GetKey(thread, hashIndex);
         if (!key.IsUndefined() && !key.IsHole()) {
-            PropertyAttributes attr = obj->GetAttributes(hashIndex);
+            PropertyAttributes attr = obj->GetAttributes(thread, hashIndex);
             if (attr.IsEnumerable()) {
                 sortArr.push_back(JSTaggedValue(static_cast<uint32_t>(key.GetInt())));
             }
@@ -388,10 +390,10 @@ JSHandle<NumberDictionary> NumberDictionary::CreateInSharedHeap(const JSThread *
     return OrderHashTableT::Create(thread, numberOfElements, MemSpaceKind::SHARED);
 }
 
-PropertyAttributes NumberDictionary::GetAttributes(int entry) const
+PropertyAttributes NumberDictionary::GetAttributes(const JSThread *thread, int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;
-    return PropertyAttributes(Get(index));
+    return PropertyAttributes(Get(thread, index));
 }
 
 void NumberDictionary::SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData)
@@ -439,7 +441,7 @@ JSHandle<PointerToIndexDictionary> PointerToIndexDictionary::PutIfAbsent(
     const JSHandle<JSTaggedValue> &value)
 {
     /* no need to add key if exist */
-    int entry = dictionary->FindEntry(key.GetTaggedValue());
+    int entry = dictionary->FindEntry(thread, key.GetTaggedValue());
     if (entry != -1) {
         return dictionary;
     }
@@ -447,8 +449,8 @@ JSHandle<PointerToIndexDictionary> PointerToIndexDictionary::PutIfAbsent(
     JSHandle<PointerToIndexDictionary> newDictionary = HashTableT::GrowHashTable(thread, dictionary);
 
     // Compute the key object
-    uint32_t hash = static_cast<uint32_t>(PointerToIndexDictionary::Hash(key.GetTaggedValue()));
-    entry = newDictionary->FindInsertIndex(hash);
+    uint32_t hash = static_cast<uint32_t>(PointerToIndexDictionary::Hash(thread, key.GetTaggedValue()));
+    entry = newDictionary->FindInsertIndex(thread, hash);
     newDictionary->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue());
     newDictionary->IncreaseEntries(thread);
     return newDictionary;
@@ -496,10 +498,10 @@ void FunctionProtoTransitionTable::InsertTransitionItem(const JSThread *thread,
                                                         JSHandle<JSTaggedValue> transPhc)
 {
     JSHandle<PointerToIndexDictionary> protoTransitionHandle(thread, protoTransitionTable_);
-    int32_t entry1 = protoTransitionHandle->FindEntry(ihc.GetTaggedValue());
+    int32_t entry1 = protoTransitionHandle->FindEntry(thread, ihc.GetTaggedValue());
     if (entry1 != -1) {
-        JSHandle<ProtoArray> protoArray(thread, protoTransitionHandle->GetValue(entry1));
-        auto entry2 = protoArray->FindEntry(baseIhc.GetTaggedValue());
+        JSHandle<ProtoArray> protoArray(thread, protoTransitionHandle->GetValue(thread, entry1));
+        auto entry2 = protoArray->FindEntry(thread, baseIhc.GetTaggedValue());
         if (entry2 != -1) {
             LOG_ECMA(DEBUG) << "Record prototype for current function already!";
             return;
@@ -524,18 +526,18 @@ std::pair<JSTaggedValue, JSTaggedValue> FunctionProtoTransitionTable::FindTransi
     ASSERT(ihc->IsJSHClass());
     ASSERT(baseIhc->IsJSHClass());
     JSHandle<PointerToIndexDictionary> protoTransitionHandle(thread, protoTransitionTable_);
-    int32_t entry1 = protoTransitionHandle->FindEntry(ihc.GetTaggedValue());
+    int32_t entry1 = protoTransitionHandle->FindEntry(thread, ihc.GetTaggedValue());
     if (entry1 == -1) {
         LOG_ECMA(DEBUG) << "Selected ihc not found2!";
         return std::make_pair(JSTaggedValue::Undefined(), JSTaggedValue::Undefined());
     }
-    JSHandle<ProtoArray> protoArray(thread, protoTransitionHandle->GetValue(entry1));
-    int32_t entry2 = protoArray->FindEntry(baseIhc.GetTaggedValue());
+    JSHandle<ProtoArray> protoArray(thread, protoTransitionHandle->GetValue(thread, entry1));
+    int32_t entry2 = protoArray->FindEntry(thread, baseIhc.GetTaggedValue());
     if (entry2 == -1) {
         LOG_ECMA(ERROR) << "Selected baseIhc not found!";
         return std::make_pair(JSTaggedValue::Undefined(), JSTaggedValue::Undefined());
     }
-    return protoArray->GetTransition(entry2);
+    return protoArray->GetTransition(thread, entry2);
 }
 
 bool FunctionProtoTransitionTable::TryInsertFakeParentItem(JSTaggedType child, JSTaggedType parent)
@@ -606,40 +608,40 @@ void ProtoArray::SetEntry(const JSThread *thread, uint32_t index, JSTaggedValue 
     Set(thread, phcIndex, transPhc);
 }
 
-JSTaggedValue ProtoArray::GetKey(uint32_t index) const
+JSTaggedValue ProtoArray::GetKey(const JSThread *thread, uint32_t index) const
 {
     uint32_t entryIndex = index * ENTRY_SIZE;
     uint32_t keyIndex = entryIndex + KEY_INDEX;
-    return Get(keyIndex);
+    return Get(thread, keyIndex);
 }
 
-std::pair<JSTaggedValue, JSTaggedValue> ProtoArray::GetTransition(uint32_t index) const
+std::pair<JSTaggedValue, JSTaggedValue> ProtoArray::GetTransition(const JSThread *thread, uint32_t index) const
 {
     uint32_t entryIndex = index * ENTRY_SIZE + KEY_INDEX;
-    JSTaggedValue transIhc = Get(entryIndex + TRANS_IHC_INDEX);
-    JSTaggedValue transPhc = Get(entryIndex + TRANS_PHC_INDEX);
+    JSTaggedValue transIhc = Get(thread, entryIndex + TRANS_IHC_INDEX);
+    JSTaggedValue transPhc = Get(thread, entryIndex + TRANS_PHC_INDEX);
     return std::make_pair(transIhc, transPhc);
 }
 
-std::pair<JSTaggedValue, JSTaggedValue> ProtoArray::FindTransition(JSTaggedValue key) const
+std::pair<JSTaggedValue, JSTaggedValue> ProtoArray::FindTransition(const JSThread *thread, JSTaggedValue key) const
 {
     for (uint32_t i = 0; i < ENTRY_NUMBER; i++) {
         uint32_t index = i * ENTRY_SIZE + KEY_INDEX;
-        JSTaggedValue keyValue = Get(index);
+        JSTaggedValue keyValue = Get(thread, index);
         if (keyValue == key) {
-            JSTaggedValue transIhc = Get(index + TRANS_IHC_INDEX);
-            JSTaggedValue transPhc = Get(index + TRANS_PHC_INDEX);
+            JSTaggedValue transIhc = Get(thread, index + TRANS_IHC_INDEX);
+            JSTaggedValue transPhc = Get(thread, index + TRANS_PHC_INDEX);
             return std::make_pair(transIhc, transPhc);
         }
     }
     return std::make_pair(JSTaggedValue::Undefined(), JSTaggedValue::Undefined());
 }
 
-int32_t ProtoArray::FindEntry(JSTaggedValue key) const
+int32_t ProtoArray::FindEntry(const JSThread *thread, JSTaggedValue key) const
 {
     for (uint32_t i = 0; i < ENTRY_NUMBER; i++) {
         uint32_t index = i * ENTRY_SIZE + KEY_INDEX;
-        JSTaggedValue keyValue = Get(index);
+        JSTaggedValue keyValue = Get(thread, index);
         if (keyValue == key) {
             return i;
         }

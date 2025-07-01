@@ -78,10 +78,10 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, ICU_FIELD_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()
 
-    icu::Collator *GetIcuCollator() const
+    icu::Collator *GetIcuCollator(const JSThread *thread) const
     {
-        ASSERT(GetIcuField().IsJSNativePointer());
-        JSNativePointer *nativePointer = JSNativePointer::Cast(GetIcuField().GetTaggedObject());
+        ASSERT(GetIcuField(thread).IsJSNativePointer());
+        JSNativePointer *nativePointer = JSNativePointer::Cast(GetIcuField(thread).GetTaggedObject());
         auto result = nativePointer->GetExternalPointer();
         return reinterpret_cast<icu::Collator *>(result);
     }
@@ -127,7 +127,8 @@ public:
                                                   const JSHandle<EcmaString> &string2,
                                                   CompareStringsOption csOption = CompareStringsOption::NONE);
 
-    static JSTaggedValue SlowCompareStrings(const icu::Collator *icuCollator,
+    static JSTaggedValue SlowCompareStrings(JSThread *thread,
+                                            const icu::Collator *icuCollator,
                                             EcmaString* flatString1,
                                             EcmaString* flatString2,
                                             int processedUntil);

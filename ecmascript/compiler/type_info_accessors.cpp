@@ -454,7 +454,7 @@ bool InlineTypeInfoAccessor::InitPropAndCheck(JSTaggedValue& prop) const
     }
     // PGO currently does not support call, so GT is still used to support inline operations.
     // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
-    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+    if (EcmaStringAccessor(prop).ToStdString(compilationEnv_->GetJSThread()) == "prototype") {
         return false;
     }
     return true;
@@ -620,7 +620,7 @@ JSTaggedValue StorePrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
 
     AOTSnapshot& snapshot = ptManager_->GetAOTSnapshot();
     auto symbolInfo = snapshot.GetSymbolInfo();
-    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(symbolInfo, *privateId);
+    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(compilationEnv_->GetJSThread(), symbolInfo, *privateId);
     return symbol;
 }
 
@@ -726,7 +726,7 @@ JSTaggedValue LoadPrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
 
     AOTSnapshot& snapshot = ptManager_->GetAOTSnapshot();
     auto symbolInfo = snapshot.GetSymbolInfo();
-    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(symbolInfo, *privateId);
+    auto symbol = ConstantPool::GetSymbolFromSymbolInfo(compilationEnv_->GetJSThread(), symbolInfo, *privateId);
     return symbol;
 }
 
@@ -1425,8 +1425,9 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::AotAccessorStrategy::GetHClas
 
     JSObject *jsObj = JSObject::Cast(obj);
     JSHClass *oldClass = jsObj->GetClass();
+    JSThread *thread = parent_.compilationEnv_->GetJSThread();
     if (hclassIndex == -1) {
-        if (jsObj->ElementsAndPropertiesIsEmpty()) {
+        if (jsObj->ElementsAndPropertiesIsEmpty(thread)) {
             return JSTaggedValue(oldClass);
         }
         return JSTaggedValue::Undefined();
@@ -1454,8 +1455,9 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::JitAccessorStrategy::GetHClas
     JSObject *jsObj = JSObject::Cast(obj);
     JSHClass *oldClass = jsObj->GetClass();
     JSHClass *newClass = sampleType->GetReceiver();
+    JSThread *thread = parent_.compilationEnv_->GetJSThread();
     if (newClass == nullptr) {
-        if (jsObj->ElementsAndPropertiesIsEmpty()) {
+        if (jsObj->ElementsAndPropertiesIsEmpty(thread)) {
             return JSTaggedValue(oldClass);
         }
         return JSTaggedValue::Undefined();

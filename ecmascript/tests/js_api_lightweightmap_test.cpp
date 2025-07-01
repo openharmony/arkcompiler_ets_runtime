@@ -70,7 +70,8 @@ protected:
         std::vector<JSHandle<JSTaggedValue>>& values)
     {
         JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
-        JSHandle<TaggedArray> valueArray(thread, JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
+        JSHandle<TaggedArray> valueArray(thread,
+                                         JSTaggedValue(TaggedArray::Cast(lwm->GetValues(thread).GetTaggedObject())));
 
         for (int i = 1; i <= 3; i++) {  // 3: key value count; 1: start key
             JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));

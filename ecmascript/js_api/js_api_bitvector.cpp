@@ -27,7 +27,7 @@ bool JSAPIBitVector::Push(
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
     uint32_t length = static_cast<uint32_t>(bitVector->GetLength());
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     if ((length & TAGGED_VALUE_BIT_OFFSET) == 0) {
         std::bitset<BIT_SET_LENGTH> increaseSet;
@@ -50,7 +50,7 @@ JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVecto
         return JSTaggedValue::Undefined();
     }
     uint32_t lastIndex = static_cast<uint32_t>(bitVector->GetLength() - 1);
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
 
     JSTaggedValue bit = GetBit(elements, lastIndex);
@@ -73,7 +73,7 @@ JSTaggedValue JSAPIBitVector::Set(JSThread* thread, const uint32_t index, JSTagg
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer().GetTaggedObject());
+    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer(thread).GetTaggedObject());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     SetBit(elements, index, value);
     return JSTaggedValue::Undefined();
@@ -89,7 +89,7 @@ JSTaggedValue JSAPIBitVector::Get(JSThread* thread, const uint32_t index)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer().GetTaggedObject());
+    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer(thread).GetTaggedObject());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     return GetBit(elements, index);
 }
@@ -118,7 +118,7 @@ bool JSAPIBitVector::Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVe
     if (length == 0) {
         return false;
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int index = startIndex; index <= endIndex; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -132,13 +132,13 @@ bool JSAPIBitVector::Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVe
     return false;
 }
 
-bool JSAPIBitVector::Has(const JSTaggedValue& value) const
+bool JSAPIBitVector::Has(JSThread* thread, const JSTaggedValue& value) const
 {
     uint32_t length = GetSize();
     if (length == 0) {
         return false;
     }
-    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer().GetTaggedObject());
+    JSNativePointer* np = JSNativePointer::Cast(GetNativePointer(thread).GetTaggedObject());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (uint32_t index = 0; index < length; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -176,7 +176,7 @@ JSTaggedValue JSAPIBitVector::SetBitsByRange(JSThread* thread, const JSHandle<JS
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int32_t index = startIndex; index < endIndex; index++) {
         SetBit(elements, index, value.GetTaggedValue());
@@ -209,11 +209,11 @@ JSTaggedValue JSAPIBitVector::GetBitsByRange(JSThread* thread, const JSHandle<JS
     }
     int32_t dstLength = endIndex - startIndex;
     auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSNativePointer> srcNp(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> srcNp(thread, bitVector->GetNativePointer(thread));
     auto srcElements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(srcNp->GetExternalPointer());
 
     JSHandle<JSAPIBitVector> newBitVector = factory->NewJSAPIBitVector(dstLength);
-    JSHandle<JSNativePointer> dstNp(thread, newBitVector->GetNativePointer());
+    JSHandle<JSNativePointer> dstNp(thread, newBitVector->GetNativePointer(thread));
     auto dstElements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(dstNp->GetExternalPointer());
 
     for (int32_t index = 0; index < dstLength; index++) {
@@ -231,7 +231,7 @@ JSTaggedValue JSAPIBitVector::SetAllBits(
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     int size = static_cast<int>(elements->size());
     if (value->IsZero()) {
@@ -269,7 +269,7 @@ JSTaggedValue JSAPIBitVector::GetBitCountByRange(JSThread* thread, const JSHandl
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int32_t index = startIndex; index < endIndex; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -305,7 +305,7 @@ int JSAPIBitVector::GetIndexOf(JSThread* thread, const JSHandle<JSAPIBitVector>&
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, -1);
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int32_t index = startIndex; index < endIndex; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -341,7 +341,7 @@ int JSAPIBitVector::GetLastIndexOf(JSThread* thread, const JSHandle<JSAPIBitVect
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, -1);
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int32_t index = endIndex - 1; index >= startIndex; index--) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -367,7 +367,7 @@ JSTaggedValue JSAPIBitVector::FlipBitByIndex(JSThread* thread, const JSHandle<JS
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
 
     std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -400,7 +400,7 @@ JSTaggedValue JSAPIBitVector::FlipBitsByRange(JSThread* thread, const JSHandle<J
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     for (int32_t index = startIndex; index < endIndex; index++) {
         std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
@@ -425,7 +425,7 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     uint32_t elementsLength = static_cast<uint32_t>((length - 1) / BIT_SET_LENGTH + 1);
     uint32_t newElementsLength = static_cast<uint32_t>((newSize - 1) / BIT_SET_LENGTH + 1);
 
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
+    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer(thread));
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     if (elementsLength == newElementsLength && length < newSize) {
         for (int32_t index = length; index < newSize; index++) {
@@ -464,11 +464,11 @@ bool JSAPIBitVector::GetOwnProperty(
     JSThread* thread, const JSHandle<JSAPIBitVector>& obj, const JSHandle<JSTaggedValue>& key)
 {
     uint32_t index = 0;
-    if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
+    if (UNLIKELY(!JSTaggedValue::ToElementIndex(thread, key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg = "The type of \"index\" can not obtain attributes of no-number type. Received value is: " +
-                           ConvertToString(*result);
+                           ConvertToString(thread, *result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }

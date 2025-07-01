@@ -46,9 +46,9 @@ public:
         SetWeakRefTarget(thread, weakObj);
     }
 
-    JSTaggedValue GetFromWeakRefTarget() const
+    JSTaggedValue GetFromWeakRefTarget(const JSThread *thread) const
     {
-        JSTaggedValue weakObj = GetWeakRefTarget();
+        JSTaggedValue weakObj = GetWeakRefTarget(thread);
         if (!weakObj.IsUndefined()) {
             return JSTaggedValue(weakObj.GetWeakReferent());
         }
@@ -70,7 +70,7 @@ public:
     }
     static JSHandle<CellRecordVector> Append(const JSThread *thread, const JSHandle<CellRecordVector> &vector,
                                              const JSHandle<JSTaggedValue> &value);
-    bool IsEmpty();
+    bool IsEmpty(const JSThread *thread);
 };
 
 class JSFinalizationRegistry : public JSObject {

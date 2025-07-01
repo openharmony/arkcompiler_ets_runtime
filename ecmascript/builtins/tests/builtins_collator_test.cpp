@@ -196,9 +196,9 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_001)
 
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
-    EXPECT_EQ(JSTaggedValue::SameValue(JSArray::GetProperty(thread, resultArr, key0).GetValue(), value1), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(JSArray::GetProperty(thread, resultArr, key1).GetValue(), value2), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(JSArray::GetProperty(thread, resultArr, key2).GetValue(), value0), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSArray::GetProperty(thread, resultArr, key0).GetValue(), value1), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSArray::GetProperty(thread, resultArr, key1).GetValue(), value2), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSArray::GetProperty(thread, resultArr, key2).GetValue(), value0), true);
 }
 
 // // compare with sort(sv)
@@ -285,15 +285,16 @@ HWTEST_F_L0(BuiltinsCollatorTest, ResolvedOptions)
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
     // judge whether the properties of the object are the same as those of jscollator tag
     JSHandle<JSTaggedValue> localeKey = globalConst->GetHandledLocaleString();
-    EXPECT_EQ(JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), locale), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSObject::GetProperty(thread, resultObj, localeKey).GetValue(), locale),
+        true);
     JSHandle<JSTaggedValue> usageKey = globalConst->GetHandledUsageString();
     JSHandle<JSTaggedValue> defaultUsageValue(factory->NewFromASCII("sort"));
-    EXPECT_EQ(
-        JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, usageKey).GetValue(), defaultUsageValue),
-        true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSObject::GetProperty(thread, resultObj, usageKey).GetValue(),
+                                       defaultUsageValue),
+              true);
     JSHandle<JSTaggedValue> handledCaseFirstKey = globalConst->GetHandledCaseFirstString();
     JSHandle<JSTaggedValue> handledCaseFirstValue(factory->NewFromASCII("upper"));
-    EXPECT_EQ(JSTaggedValue::SameValue(JSObject::GetProperty(thread, resultObj, handledCaseFirstKey).GetValue(),
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSObject::GetProperty(thread, resultObj, handledCaseFirstKey).GetValue(),
                                        handledCaseFirstValue),
               true);
 }
@@ -314,9 +315,9 @@ HWTEST_F_L0(BuiltinsCollatorTest, SupportedLocalesOf)
     auto resultArr = CollatorAlgorithm(thread, vals, 8, AlgorithmType::COLLATOR_SUPPORTED_LOCALES_OF);
 
     JSHandle<JSArray> resultHandle(thread, resultArr);
-    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements(thread));
     EXPECT_EQ(elements->GetLength(), 1U);
-    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(0));
-    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+    JSHandle<EcmaString> handleEcmaStr(thread, elements->Get(thread, 0));
+    EXPECT_STREQ("id-u-co-pinyin-de-id", EcmaStringAccessor(handleEcmaStr).ToCString(thread).c_str());
 }
 }  // namespace panda::test

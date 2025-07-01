@@ -56,9 +56,9 @@ public:
         SetLength(length);
     }
 
-    inline uint32_t GetHintLength() const
+    inline uint32_t GetHintLength(const JSThread *thread) const
     {
-        auto trackInfo = GetTrackInfo();
+        auto trackInfo = GetTrackInfo(thread);
         if (trackInfo.IsInt()) {
             int hint = trackInfo.GetInt();
             return hint > 0 ? hint : 0;
@@ -71,7 +71,7 @@ public:
         return index < GetArrayLength();
     }
 
-    inline bool IsKeyInRange(const JSHandle<JSTaggedValue> &key)
+    inline bool IsKeyInRange(const JSThread *thread, const JSHandle<JSTaggedValue> &key)
     {
         uint32_t keyValue = 0;
         if (key->IsInt()) {
@@ -79,7 +79,7 @@ public:
         }
 
         if (key->IsString()) {
-            JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &keyValue);
+            JSTaggedValue::ToElementIndex(const_cast<JSThread*>(thread), key.GetTaggedValue(), &keyValue);
         }
 
         if (key->IsDouble()) {

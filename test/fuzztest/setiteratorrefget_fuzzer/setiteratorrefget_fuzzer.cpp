@@ -59,7 +59,7 @@ void SetIteratorRefGetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         JSHandle<JSTaggedValue> jsTagSetIterator =
             JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
         JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
-        JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet());
+        JSTaggedValue::SameValue(thread, jsSetIterator1->GetIteratedSet(thread), jsSet->GetLinkedSet(thread));
         Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
         Local<JSValueRef> setIterator1 = setIterator;
         setIterator1->IsSetIterator(vm);

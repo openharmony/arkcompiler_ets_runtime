@@ -92,7 +92,7 @@ EcmaString *EcmaStringTable::GetStringFromCompressedSubString(JSThread *thread, 
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, true)) {
+        if (EcmaStringAccessor::StringIsEqualUint8Data(thread, foundString, utf8Data, utf8Len, true)) {
             return foundString;
         }
     }
@@ -112,7 +112,7 @@ EcmaString *EcmaStringTable::GetString(JSThread *thread, JSHandle<EcmaString> st
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringsAreEqual(foundString, str)) {
+        if (EcmaStringAccessor::StringsAreEqual(thread, foundString, str)) {
             return foundString;
         }
     }
@@ -136,7 +136,7 @@ EcmaString *EcmaStringTable::GetString(JSThread *thread, const JSHandle<EcmaStri
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor(foundString).EqualToSplicedString(firstStr, secondStr)) {
+        if (EcmaStringAccessor(foundString).EqualToSplicedString(thread, firstStr, secondStr)) {
             return foundString;
         }
     }
@@ -156,7 +156,7 @@ EcmaString *EcmaStringTable::GetString(JSThread *thread, const uint8_t *utf8Data
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
+        if (EcmaStringAccessor::StringIsEqualUint8Data(thread, foundString, utf8Data, utf8Len, canBeCompress)) {
             return foundString;
         }
     }
@@ -176,20 +176,20 @@ EcmaString *EcmaStringTable::GetString(JSThread *thread, const uint16_t *utf16Da
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
+        if (EcmaStringAccessor::StringsAreEqualUtf16(thread, foundString, utf16Data, utf16Len)) {
             return foundString;
         }
     }
     return nullptr;
 }
 
-EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(JSThread *thread, EcmaString *string, uint32_t hashcode) const
 {
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
+        if (EcmaStringAccessor::StringsAreEqual(thread, foundString, string)) {
             return foundString;
         }
     }
@@ -222,7 +222,7 @@ EcmaString *EcmaStringTable::AtomicGetOrInternStringImpl(JSThread *thread, const
     }
 #endif
     EcmaString *str = *string;
-    EcmaString *result = GetStringThreadUnsafe(str, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(thread, str, hashcode);
     if (result == nullptr) {
         InternStringThreadUnsafe(str, hashcode);
         return str;
@@ -259,7 +259,7 @@ EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *st
     }
     JSThread *thread = vm->GetJSThread();
     JSHandle<EcmaString> stringHandle(thread, string);
-    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode(thread);
     return AtomicGetOrInternStringImpl(thread, stringHandle, hashcode);
 }
 
@@ -269,7 +269,7 @@ EcmaString* EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaString
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
-    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode(thread);
     return AtomicGetOrInternStringImplNoGC(vm->GetJSThread(), string, hashcode);
 }
 
@@ -303,7 +303,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, EcmaString *string)
     if (EcmaStringAccessor(strFlat).IsInternString()) {
         return strFlat;
     }
-    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode(thread);
     JSHandle<EcmaString> strFlatHandle(thread, strFlat);
     EcmaString *result = GetString(thread, strFlatHandle, hashcode);
     if (result != nullptr) {
@@ -322,7 +322,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaSt
     JSThread *thread = vm->GetJSThread();
     JSHandle<EcmaString> firstFlat(thread, EcmaStringAccessor::Flatten(vm, firstString));
     JSHandle<EcmaString> secondFlat(thread, EcmaStringAccessor::Flatten(vm, secondString));
-    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
+    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(thread, firstFlat, secondFlat);
     EcmaString *result = GetString(thread, firstFlat, secondFlat, hashcode);
     if (result != nullptr) {
         return result;
@@ -363,7 +363,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
     JSThread *thread = vm->GetJSThread();
     EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     JSHandle<EcmaString> strHandle(thread, str);
-    uint32_t hashcode = EcmaStringAccessor(str).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(str).GetHashcode(thread);
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
@@ -382,12 +382,12 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
-void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode)
+void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(JSThread *thread, EcmaString *string, uint32_t hashcode)
 {
     // Strings in string table should not be in the young space.
     ASSERT(JSTaggedValue(string).IsInSharedHeap());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
-    ASSERT(EcmaStringAccessor(string).GetHashcode() == hashcode);
+    ASSERT(EcmaStringAccessor(string).GetHashcode(thread) == hashcode);
     stringTable_[GetTableId(hashcode)].table_.emplace(hashcode, string);
     EcmaStringAccessor(string).SetInternString();
 }
@@ -397,7 +397,7 @@ EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<Ecma
     JSThread *thread = vm->GetJSThread();
     EcmaString *strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
     JSHandle<EcmaString> strFlatHandle(thread, strFlat);
-    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode(thread);
     RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
@@ -411,7 +411,7 @@ EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<Ecma
 
 EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
-    uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode();
+    uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode(thread);
     return GetString(thread, string, hashcode);
 }
 
@@ -429,7 +429,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    EcmaString *result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(thread, utf8Data, utf8Len, canBeCompress, hashcode);
     if (result != nullptr) {
         return result;
     }
@@ -450,13 +450,14 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
     CVector<uint16_t> u16Buffer(utf16Len);
     utf::ConvertRegionMUtf8ToUtf16(utf8Data, u16Buffer.data(), utf::Mutf8Size(utf8Data), utf16Len, 0);
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(u16Buffer.data(), utf16Len);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
+    JSThread *thread = vm->GetJSThread();
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    EcmaString *result = GetStringThreadUnsafe(u16Buffer.data(), utf16Len, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(thread, u16Buffer.data(), utf16Len, hashcode);
     if (result != nullptr) {
         return result;
     }
@@ -529,11 +530,11 @@ bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
                 return false;
             }
             int counter = 0;
-            auto hashcode = EcmaStringAccessor(outerString).GetHashcode();
+            auto hashcode = EcmaStringAccessor(outerString).GetHashcode(thread);
             auto range = table.equal_range(hashcode);
             for (auto it = range.first; it != range.second; ++it) {
                 auto foundString = it->second;
-                counter += EcmaStringAccessor::StringsAreEqual(foundString, outerString) ? 1 : 0;
+                counter += EcmaStringAccessor::StringsAreEqual(thread, foundString, outerString) ? 1 : 0;
             }
             if (counter > 1) {
                 return false;
@@ -564,8 +565,8 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm,
     JSThread *thread = vm->GetJSThreadNoCheck();
     JSHandle<EcmaString> firstFlat(thread, EcmaStringAccessor::Flatten(vm, firstString));
     JSHandle<EcmaString> secondFlat(thread, EcmaStringAccessor::Flatten(vm, secondString));
-    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
-    EcmaString *result = GetStringThreadUnsafe(firstFlat, secondFlat, hashcode);
+    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(thread, firstFlat, secondFlat);
+    EcmaString *result = GetStringThreadUnsafe(thread, firstFlat, secondFlat, hashcode);
     if (result != nullptr) {
         return result;
     }
@@ -583,7 +584,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
 {
     ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    EcmaString *result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(thread, utf8Data, utf8Len, canBeCompress, hashcode);
     if (result != nullptr) {
         return result;
     }
@@ -595,9 +596,8 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
 }
 
 // This should only call in Debugger Signal, and need to fix and remove
-EcmaString *EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> firstString,
-                                                   const JSHandle<EcmaString> secondString,
-                                                   uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(JSThread *thread, const JSHandle<EcmaString> firstString,
+                                                   const JSHandle<EcmaString> secondString, uint32_t hashcode) const
 {
     ASSERT(EcmaStringAccessor(firstString).NotTreeString());
     ASSERT(EcmaStringAccessor(secondString).NotTreeString());
@@ -606,7 +606,7 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> fi
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor(foundString).EqualToSplicedString(firstStr, secondStr)) {
+        if (EcmaStringAccessor(foundString).EqualToSplicedString(thread, firstStr, secondStr)) {
             return foundString;
         }
     }
@@ -614,13 +614,13 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> fi
 }
 
 // This should only call in Debugger Signal, and need to fix and remove
-EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                                   uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(JSThread *thread, const uint8_t *utf8Data, uint32_t utf8Len,
+                                                   bool canBeCompress, uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
+        if (EcmaStringAccessor::StringIsEqualUint8Data(thread, foundString, utf8Data, utf8Len, canBeCompress)) {
             return foundString;
         }
     }
@@ -628,13 +628,13 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint8_t *utf8Data, uint
 }
 
 // This should only call in JIT Thread, and need to fix and remove
-EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len,
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(JSThread *thread, const uint16_t *utf16Data, uint32_t utf16Len,
                                                    uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
+        if (EcmaStringAccessor::StringsAreEqualUtf16(thread, foundString, utf16Data, utf16Len)) {
             return foundString;
         }
     }

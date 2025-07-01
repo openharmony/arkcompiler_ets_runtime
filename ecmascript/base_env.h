@@ -31,9 +31,9 @@ public:
         return static_cast<BaseEnv*>(obj);
     }
 
-    JSTaggedValue GetGlobalEnv() const
+    JSTaggedValue GetGlobalEnv(JSThread* thread) const
     {
-        return Get(GLOBAL_ENV_INDEX);
+        return Get(thread, GLOBAL_ENV_INDEX);
     }
 
     void SetGlobalEnv(JSThread* thread, JSTaggedValue value)

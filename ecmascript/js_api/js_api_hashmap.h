@@ -57,8 +57,8 @@ public:
 private:
     static void SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<LinkedNode> node);
     static void SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSHandle<RBTreeNode> node);
-    static bool HasValueLinkedNode(JSTaggedValue node, JSTaggedValue value);
-    static bool HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value);
+    static bool HasValueLinkedNode(JSThread *thread, JSTaggedValue node, JSTaggedValue value);
+    static bool HasValueRBTreeNode(JSThread *thread, JSTaggedValue node, JSTaggedValue value);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_API_JS_API_HASHMAP_H

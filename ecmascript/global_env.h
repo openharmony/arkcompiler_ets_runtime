@@ -113,7 +113,7 @@ public:
     {
         if (!value.IsInternalAccessor()) {
             SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();
-            if (!RemoveValueFromSnapshotEnv(snapshotEnv, value, offset)) {
+            if (!RemoveValueFromSnapshotEnv(thread, snapshotEnv, value, offset)) {
                 return;
             }
             size_t globalConstCount = thread->GlobalConstants()->GetConstantCount();
@@ -122,9 +122,10 @@ public:
     }
 
     // For work serialize, remove old value from snapshot env map
-    bool RemoveValueFromSnapshotEnv(SnapshotEnv *snapshotEnv, JSTaggedValue value, uint32_t offset)
+    bool RemoveValueFromSnapshotEnv(const JSThread *thread, SnapshotEnv *snapshotEnv, JSTaggedValue value,
+                                    uint32_t offset)
     {
-        JSTaggedValue oldValue(Barriers::GetTaggedValue(this, offset));
+        JSTaggedValue oldValue(Barriers::GetTaggedValue(thread, this, offset));
         if (oldValue == value) {
             return false;
         }
@@ -186,7 +187,7 @@ public:
         SetArrayPrototypeChangedGuardians(true);
     }
 
-    void NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver);
+    void NotifyArrayPrototypeChangedGuardians(JSThread *thread, JSHandle<JSObject> receiver);
 
     void SetBuiltinFunction(const JSThread *thread, kungfu::BuiltinsStubCSigns::ID builtinId,
                             JSHandle<JSFunction> function)
@@ -217,7 +218,7 @@ public:
 #define GLOBAL_ENV_FIELD_ACCESSORS(type, name, index)                                                   \
     inline JSHandle<type> Get##name() const                                                             \
     {                                                                                                   \
-        size_t offset = HEADER_SIZE + (index) * JSTaggedValue::TaggedTypeSize();                        \
+        size_t offset = HEADER_SIZE + (index)*JSTaggedValue::TaggedTypeSize();                          \
         const uintptr_t address = reinterpret_cast<uintptr_t>(this) + offset;                           \
         JSHandle<type> result(address);                                                                 \
         if (result.GetTaggedValue().IsInternalAccessor()) {                                             \
@@ -230,7 +231,7 @@ public:
     inline JSTaggedValue GetTagged##name() const                                                        \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
-        JSTaggedValue result(Barriers::GetTaggedValue(this, offset));                                   \
+        JSTaggedValue result(Barriers::GetPrimitive<JSTaggedValue>(this, offset));                      \
         if (result.IsInternalAccessor()) {                                                              \
             JSThread *thread = GetJSThread();                                                           \
             AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());                      \
@@ -254,7 +255,7 @@ public:
             Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());       \
         } else {                                                                                        \
             SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();                           \
-            RemoveValueFromSnapshotEnv(snapshotEnv, value.GetTaggedValue(), offset);                    \
+            RemoveValueFromSnapshotEnv(thread, snapshotEnv, value.GetTaggedValue(), offset);            \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());    \
         }                                                                                               \
     }                                                                                                   \
@@ -266,7 +267,7 @@ public:
             Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                        \
         } else {                                                                                        \
             SnapshotEnv *snapshotEnv = thread->GetEcmaVM()->GetSnapshotEnv();                           \
-            RemoveValueFromSnapshotEnv(snapshotEnv, value, offset);                                     \
+            RemoveValueFromSnapshotEnv(thread, snapshotEnv, value, offset);                             \
             Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                     \
         }                                                                                               \
     }
@@ -326,19 +327,19 @@ public:
         uint32_t bitField = GetBitField();
         return (bitField >> detectorID) & 1;
     }
-    
-    bool HasDependentInfos(uint32_t detectorID)
+
+    bool HasDependentInfos(JSThread *thread, uint32_t detectorID)
     {
         auto array = JSHandle<TaggedArray>::Cast(GetDetectorDependentInfos());
         ASSERT(detectorID < array->GetLength());
-        return array->Get(detectorID) != JSTaggedValue::Undefined();
+        return array->Get(thread, detectorID) != JSTaggedValue::Undefined();
     }
 
-    JSHandle<JSTaggedValue> GetDependentInfos(uint32_t detectorID)
+    JSHandle<JSTaggedValue> GetDependentInfos(JSThread *thread, uint32_t detectorID)
     {
         auto array = JSHandle<TaggedArray>::Cast(GetDetectorDependentInfos());
         ASSERT(detectorID < array->GetLength());
-        return JSHandle<JSTaggedValue>(GetJSThread(), array->Get(detectorID));
+        return JSHandle<JSTaggedValue>(GetJSThread(), array->Get(thread, detectorID));
     }
 
     void SetDependentInfos(uint32_t detectorID, JSHandle<JSTaggedValue> dependentInfos)
@@ -348,7 +349,7 @@ public:
         array->Set(GetJSThread(), detectorID, dependentInfos);
     }
 
-    void NotifyDetectorDeoptimize(uint32_t detectorID);
+    void NotifyDetectorDeoptimize(JSThread *thread, uint32_t detectorID);
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

@@ -52,7 +52,7 @@ JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRunt
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (newTarget->IsUndefined() && thisValue->IsJSObject() && isInstanceOf) {
         PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(relativeTimeFormat), false, false, true);
-        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol());
+        JSHandle<JSTaggedValue> key(thread, JSHandle<JSIntl>::Cast(env->GetIntlFunction())->GetFallbackSymbol(thread));
         JSTaggedValue::DefinePropertyOrThrow(thread, thisValue, key, descriptor);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return thisValue.GetTaggedValue();

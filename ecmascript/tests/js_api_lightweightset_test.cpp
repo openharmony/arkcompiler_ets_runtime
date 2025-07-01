@@ -63,7 +63,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
 
     uint32_t tmp = NODE_NUMBERS * 2; // 2 means the value
     JSAPILightWeightSet::IncreaseCapacityTo(thread, lws, static_cast<int32_t>(tmp));
-    uint32_t capacity = TaggedArray::Cast(lws->GetValues().GetTaggedObject())->GetLength();
+    uint32_t capacity = TaggedArray::Cast(lws->GetValues(thread).GetTaggedObject())->GetLength();
     EXPECT_EQ(JSTaggedValue(capacity), JSTaggedValue(tmp));
 
     // test IncreaseCapacityTo exception
@@ -191,9 +191,9 @@ HWTEST_F_L0(JSAPILightWeightSetTest, IsEmptyHasHasAll)
         }
     }
     EXPECT_EQ(hasAllLws->GetSize(), NODE_NUMBERS - 5); // 5 means the value
-    result = lws->HasAll(JSHandle<JSTaggedValue>::Cast(hasAllLws));
+    result = lws->HasAll(thread, JSHandle<JSTaggedValue>::Cast(hasAllLws));
     EXPECT_FALSE(result);
-    result = hasAllLws->HasAll(JSHandle<JSTaggedValue>::Cast(lws));
+    result = hasAllLws->HasAll(thread, JSHandle<JSTaggedValue>::Cast(lws));
     EXPECT_FALSE(result);
 }
 
@@ -221,7 +221,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetIndexOfRemoveRemoveAtGetValueAt)
     EXPECT_EQ(index, 5); // 5 means the value
 
     // test GetValueAt
-    JSTaggedValue jsValue = lws->GetValueAt(5); // 5 means the value
+    JSTaggedValue jsValue = lws->GetValueAt(thread, 5); // 5 means the value
     EXPECT_EQ(value.GetTaggedValue(), jsValue);
 
     // test Remove
@@ -292,21 +292,21 @@ HWTEST_F_L0(JSAPILightWeightSetTest, SpecialReturnTestEnsureCapacityGetValueAtGe
     }
 
     // test special return of EnsureCapacity
-    JSHandle<TaggedArray> array(thread, lws->GetValues());
+    JSHandle<TaggedArray> array(thread, lws->GetValues(thread));
     JSAPILightWeightSet::EnsureCapacity(thread, lws, 0);
-    JSHandle<TaggedArray> newArray(thread, lws->GetValues());
+    JSHandle<TaggedArray> newArray(thread, lws->GetValues(thread));
     EXPECT_TRUE(array->GetLength() == newArray->GetLength());
 
     // test special return of GetValueAt
-    JSTaggedValue result1 = lws->GetValueAt(-1);
+    JSTaggedValue result1 = lws->GetValueAt(thread, -1);
     EXPECT_EQ(result1, JSTaggedValue::Undefined());
-    JSTaggedValue result2 = lws->GetValueAt(static_cast<int32_t>(NODE_NUMBERS * 2));
+    JSTaggedValue result2 = lws->GetValueAt(thread, static_cast<int32_t>(NODE_NUMBERS * 2));
     EXPECT_EQ(result2, JSTaggedValue::Undefined());
 
     // test special return of GetHashAt
-    JSTaggedValue result3 = lws->GetHashAt(-1);
+    JSTaggedValue result3 = lws->GetHashAt(thread, -1);
     EXPECT_EQ(result3, JSTaggedValue::Undefined());
-    JSTaggedValue result4 = lws->GetHashAt(static_cast<int32_t>(NODE_NUMBERS * 2));
+    JSTaggedValue result4 = lws->GetHashAt(thread, static_cast<int32_t>(NODE_NUMBERS * 2));
     EXPECT_EQ(result4, JSTaggedValue::Undefined());
 }
 
@@ -327,17 +327,17 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetHashAtHasHash)
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(i))));
         int32_t index = lws->GetHashIndex(thread, hash, size);
-        JSTaggedValue getHash= lws->GetHashAt(index);
+        JSTaggedValue getHash= lws->GetHashAt(thread, index);
         EXPECT_EQ(getHash, hash.GetTaggedValue());
     }
 
     // test HasHash
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(i))));
-        EXPECT_TRUE(lws->HasHash(hash));
+        EXPECT_TRUE(lws->HasHash(thread, hash));
     }
     hash.Update(JSTaggedValue(lws->Hash(thread, JSTaggedValue(NODE_NUMBERS))));
-    EXPECT_FALSE(lws->HasHash(hash));
+    EXPECT_FALSE(lws->HasHash(thread, hash));
 }
 
 HWTEST_F_L0(JSAPILightWeightSetTest, ToString)

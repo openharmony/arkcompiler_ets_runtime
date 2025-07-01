@@ -229,14 +229,14 @@ inline bool JSObject::IsJSPrimitiveRef() const
     return GetJSHClass()->IsJsPrimitiveRef();
 }
 
-inline bool JSObject::IsElementDict() const
+inline bool JSObject::IsElementDict(const JSThread *thread) const
 {
-    return TaggedArray::Cast(GetElements().GetTaggedObject())->IsDictionaryMode();
+    return TaggedArray::Cast(GetElements(thread).GetTaggedObject())->IsDictionaryMode();
 }
 
-inline bool JSObject::IsPropertiesDict() const
+inline bool JSObject::IsPropertiesDict(const JSThread *thread) const
 {
-    return TaggedArray::Cast(GetProperties().GetTaggedObject())->IsDictionaryMode();
+    return TaggedArray::Cast(GetProperties(thread).GetTaggedObject())->IsDictionaryMode();
 }
 
 inline bool JSObject::IsTypedArray() const
@@ -273,8 +273,8 @@ std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(PropertyAttributes 
 
 void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)
 {
-    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
-    auto attr = layout->GetAttr(index);
+    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout(thread).GetTaggedObject());
+    auto attr = layout->GetAttr(thread, index);
     if (attr.IsTaggedRep()) {
         SetPropertyInlinedProps<true>(thread, index, value);
     } else {
@@ -299,15 +299,16 @@ void JSObject::SetPropertyInlinedProps(const JSThread *thread, uint32_t index, J
     SetPropertyInlinedProps<needBarrier>(thread, GetJSHClass(), index, value);
 }
 
-JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const
-{
-    return GetPropertyInlinedPropsWithRep(GetJSHClass(), index, attr);
-}
-
-JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index,
                                                        PropertyAttributes attr) const
 {
-    auto value = GetPropertyInlinedProps(hclass, index);
+    return GetPropertyInlinedPropsWithRep(thread, GetJSHClass(), index, attr);
+}
+
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSThread* thread, const JSHClass *hclass, uint32_t index,
+                                                       PropertyAttributes attr) const
+{
+    auto value = GetPropertyInlinedProps(thread, hclass, index);
     if (attr.IsDoubleRep()) {
         value = JSTaggedValue(bit_cast<double>(value.GetRawData()));
     } else if (attr.IsIntRep()) {
@@ -317,15 +318,15 @@ JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSHClass *hclass, u
 }
 
 template <size_t objectSize, uint32_t index>
-JSTaggedValue JSObject::GetPropertyInlinedPropsWithSize() const
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithSize(const JSThread* thread) const
 {
     constexpr uint32_t offset = static_cast<uint32_t>(objectSize + index * JSTaggedValue::TaggedTypeSize());
-    return JSTaggedValue(GET_VALUE(this, offset));
+    return JSTaggedValue(GET_VALUE(thread, this, offset));
 }
 
-JSTaggedValue JSObject::GetPropertyInlinedProps(uint32_t index) const
+JSTaggedValue JSObject::GetPropertyInlinedProps(const JSThread* thread, uint32_t index) const
 {
-    return GetPropertyInlinedProps(GetJSHClass(), index);
+    return GetPropertyInlinedProps(thread, GetJSHClass(), index);
 }
 
 template <bool needBarrier>
@@ -341,19 +342,19 @@ void JSObject::SetPropertyInlinedProps(const JSThread *thread, const JSHClass *h
     }
 }
 
-JSTaggedValue JSObject::GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const
+JSTaggedValue JSObject::GetPropertyInlinedProps(const JSThread* thread, const JSHClass *hclass, uint32_t index) const
 {
     uint32_t offset = hclass->GetInlinedPropertiesOffset(index);
-    return JSTaggedValue(GET_VALUE(this, offset));
+    return JSTaggedValue(GET_VALUE(thread, this, offset));
 }
 
-JSTaggedValue JSObject::GetProperty(const JSHClass *hclass, PropertyAttributes attr) const
+JSTaggedValue JSObject::GetProperty(const JSThread* thread, const JSHClass *hclass, PropertyAttributes attr) const
 {
     if (attr.IsInlinedProps()) {
-        return GetPropertyInlinedPropsWithRep(hclass, attr.GetOffset(), attr);
+        return GetPropertyInlinedPropsWithRep(thread, hclass, attr.GetOffset(), attr);
     }
-    TaggedArray *array = TaggedArray::Cast(GetProperties().GetTaggedObject());
-    return array->Get(attr.GetOffset() - hclass->GetInlinedProperties());
+    TaggedArray *array = TaggedArray::Cast(GetProperties(thread).GetTaggedObject());
+    return array->Get(thread, attr.GetOffset() - hclass->GetInlinedProperties());
 }
 
 template <bool needBarrier>
@@ -362,7 +363,7 @@ void JSObject::SetProperty(const JSThread *thread, const JSHClass *hclass, Prope
     if (attr.IsInlinedProps()) {
         SetPropertyInlinedProps<needBarrier>(thread, hclass, attr.GetOffset(), value);
     } else {
-        TaggedArray *array = TaggedArray::Cast(GetProperties().GetTaggedObject());
+        TaggedArray *array = TaggedArray::Cast(GetProperties(thread).GetTaggedObject());
         array->Set<needBarrier>(thread, attr.GetOffset() - hclass->GetInlinedProperties(), value);
     }
 }
@@ -489,7 +490,7 @@ inline JSTaggedValue JSObject::ShouldGetValueFromBox(ObjectOperator *op)
 {
     JSTaggedValue result = op->GetValue();
     if (result.IsPropertyBox()) {
-        result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
+        result = PropertyBox::Cast(result.GetTaggedObject())->GetValue(op->GetThread());
     }
     return result;
 }
@@ -515,10 +516,10 @@ inline uint32_t JSObject::SetValuesOrEntries(JSThread *thread, const JSHandle<Ta
     return index;
 }
 
-inline JSTaggedValue JSObject::GetPrototype(JSTaggedValue obj)
+inline JSTaggedValue JSObject::GetPrototype(const JSThread *thread, JSTaggedValue obj)
 {
     JSHClass *hclass = obj.GetTaggedObject()->GetClass();
-    return hclass->GetPrototype();
+    return hclass->GetPrototype(thread);
 }
 
 inline bool JSObject::IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
@@ -529,16 +530,16 @@ inline bool JSObject::IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> k
     }
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (int32_t i = 0; i < lastLength; i++) {
-        value.Update(keys->Get(i));
+        value.Update(keys->Get(thread, i));
         bool has = JSTaggedValue::Equal(thread, value, key);
         if (has) {
             return true;
         }
     }
 
-    uint32_t shadowSize = shadowQueue->Size();
+    uint32_t shadowSize = shadowQueue->Size(thread);
     for (uint32_t i = 0; i < shadowSize; i++) {
-        value.Update(shadowQueue->Get(i));
+        value.Update(shadowQueue->Get(thread, i));
         bool has = JSTaggedValue::Equal(thread, value, key);
         if (has) {
             return true;
@@ -558,7 +559,7 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
     JSThread *thread, const JSHandle<JSObject> &obj, uint32_t *copyLengthOfKeys, uint32_t *copyLengthOfElements)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    std::pair<uint32_t, uint32_t> numOfKeys = obj->GetNumberOfEnumKeys();
+    std::pair<uint32_t, uint32_t> numOfKeys = obj->GetNumberOfEnumKeys(thread);
     uint32_t numOfEnumKeys = numOfKeys.first;
     uint32_t numOfElements = obj->GetNumberOfElements(thread);
     JSHandle<TaggedArray> elementArray = numOfElements > 0 ? JSObject::GetEnumElementKeys(
@@ -568,9 +569,9 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
     return std::make_pair(keyArray, elementArray);
 }
 
-inline bool JSObject::HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj)
+inline bool JSObject::HasMutantTaggedArrayElements(const JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    return obj->GetElements().IsMutantTaggedArray();
+    return obj->GetElements(thread).IsMutantTaggedArray();
 }
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSOBJECT_INL_H

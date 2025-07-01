@@ -46,8 +46,9 @@ public:
     DECL_DUMP()
 
 private:
-    static bool IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHClass, EnumCacheKind kind);
-    static bool NeedCheckProperty(JSTaggedValue receiver);
+    static bool IsEnumCacheValid(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue cachedHClass,
+                                 EnumCacheKind kind);
+    static bool NeedCheckProperty(const JSThread *thread, JSTaggedValue receiver);
     static bool HasProperty(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 }  // namespace panda::ecmascript

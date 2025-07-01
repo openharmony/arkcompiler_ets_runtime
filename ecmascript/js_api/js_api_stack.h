@@ -44,20 +44,20 @@ public:
                             const JSHandle<JSTaggedValue> &value);
     bool Empty();
 
-    bool Has(JSTaggedValue value) const;
+    bool Has(JSThread *thread, JSTaggedValue value) const;
 
-    int Search(const JSHandle<JSTaggedValue> &value);
+    int Search(JSThread *thread, const JSHandle<JSTaggedValue> &value);
 
     inline int32_t GetSize() const
     {
         return GetTop();
     }
 
-    JSTaggedValue Peek();
+    JSTaggedValue Peek(JSThread *thread);
 
     JSTaggedValue Pop(JSThread *thread);
 
-    JSTaggedValue Get(const uint32_t index);
+    JSTaggedValue Get(JSThread *thread, const uint32_t index);
 
     JSTaggedValue PUBLIC_API Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
 

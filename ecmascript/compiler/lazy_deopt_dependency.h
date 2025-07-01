@@ -162,7 +162,7 @@ public:
     bool DependOnDetector(uint32_t detectorID, GlobalEnv *globalEnv);
     bool DependOnNotPrototype(JSHClass *hclass);
     bool DependOnStableHClass(JSHClass *hclass);
-    bool DependOnStableProtoChain(JSHClass *receiverHClass,
+    bool DependOnStableProtoChain(JSThread *thread, JSHClass *receiverHClass,
                                   JSHClass *holderHClass,
                                   GlobalEnv *globalEnv = nullptr);
     bool DependOnNotHotReloadPatchMain(JSThread *thread);

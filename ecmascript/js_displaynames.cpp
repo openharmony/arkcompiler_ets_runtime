@@ -69,10 +69,10 @@ const std::vector<std::string> JSDisplayNames::LANGUAGE_DISPLAY_OPTION_NAME = {
     "dialect", "standard"
 };
 
-icu::LocaleDisplayNames *JSDisplayNames::GetIcuLocaleDisplayNames() const
+icu::LocaleDisplayNames *JSDisplayNames::GetIcuLocaleDisplayNames(JSThread *thread) const
 {
-    ASSERT(GetIcuLDN().IsJSNativePointer());
-    auto result = JSNativePointer::Cast(GetIcuLDN().GetTaggedObject())->GetExternalPointer();
+    ASSERT(GetIcuLDN(thread).IsJSNativePointer());
+    auto result = JSNativePointer::Cast(GetIcuLDN(thread).GetTaggedObject())->GetExternalPointer();
     return reinterpret_cast<icu::LocaleDisplayNames *>(result);
 }
 
@@ -93,7 +93,7 @@ void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<J
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     ASSERT(iculocaledisplaynames != nullptr);
-    JSTaggedValue data = displayNames->GetIcuLDN();
+    JSTaggedValue data = displayNames->GetIcuLDN(thread);
     if (data.IsJSNativePointer()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(thread, iculocaledisplaynames);
@@ -273,7 +273,7 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     if (typeOpt == TypednsOption::LANGUAGE) {
         // a. If code does not match the unicode_language_id production, throw a RangeError exception.
         UErrorCode status = U_ZERO_ERROR;
-        std::string codeSt = intl::LocaleHelper::ConvertToStdString(code);
+        std::string codeSt = intl::LocaleHelper::ConvertToStdString(thread, code);
         icu::Locale loc = icu::Locale(icu::Locale::forLanguageTag(codeSt, status).getBaseName());
         std::string checked = loc.toLanguageTag<std::string>(status);
         if (checked.size() == 0) {
@@ -285,47 +285,47 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         // b. If IsStructurallyValidLanguageTag(code) is false, throw a RangeError exception.
         // c. Set code to CanonicalizeUnicodeLocaleId(code).
         // d. Return code.
-        if (!intl::LocaleHelper::IsStructurallyValidLanguageTag(code)) {
+        if (!intl::LocaleHelper::IsStructurallyValidLanguageTag(thread, code)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "not a structurally valid", code);
         }
         JSHandle<EcmaString> codeStr = intl::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
         icu::UnicodeString result;
-        std::string codeString = intl::LocaleHelper::ConvertToStdString(codeStr);
+        std::string codeString = intl::LocaleHelper::ConvertToStdString(thread, codeStr);
         icuLocaldisplaynames->languageDisplayName(codeString.c_str(), result);
         JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::REGION) {
         // a. If code does not match the unicode_region_subtag production, throw a RangeError exception.
-        std::string regionCode = intl::LocaleHelper::ConvertToStdString(code);
+        std::string regionCode = intl::LocaleHelper::ConvertToStdString(thread, code);
         if (!IsUnicodeRegionSubtag(regionCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid region", code);
         }
         // b. Let code be the result of mapping code to upper case as described in 6.1.
         // c. Return code.
-        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
         icu::UnicodeString result;
         icuLocaldisplaynames->regionDisplayName(regionCode.c_str(), result);
         JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::SCRIPT) {
-        std::string scriptCode = intl::LocaleHelper::ConvertToStdString(code);
+        std::string scriptCode = intl::LocaleHelper::ConvertToStdString(thread, code);
         if (!IsUnicodeScriptSubtag(scriptCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid script", code);
         }
-        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
         icu::UnicodeString result;
         icuLocaldisplaynames->scriptDisplayName(scriptCode.c_str(), result);
         JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::CALENDAR) {
-        std::string calendarCode = intl::LocaleHelper::ConvertToStdString(code);
+        std::string calendarCode = intl::LocaleHelper::ConvertToStdString(thread, code);
         if (!JSLocale::IsWellFormedCalendarCode(calendarCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid calendar", code);
         }
 
-        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
         icu::UnicodeString result;
         std::string calendarStrCode = std::strcmp(calendarCode.c_str(), "gregory") == 0
                                         ? "gregorian"
@@ -352,14 +352,14 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
-        std::string datetimeCode = intl::LocaleHelper::ConvertToStdString(code);
+        std::string datetimeCode = intl::LocaleHelper::ConvertToStdString(thread, code);
         UDateTimePatternField field = StringToUDateTimePatternField(datetimeCode.c_str());
         if (field == UDATPG_FIELD_COUNT) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid datetimefield", code);
         }
 
         UErrorCode status = U_ZERO_ERROR;
-        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+        icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
         icu::Locale locales = icuLocaldisplaynames->getLocale();
         std::unique_ptr<icu::DateTimePatternGenerator> generator(
             icu::DateTimePatternGenerator::createInstance(locales, status));
@@ -369,11 +369,11 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     // 4. 4. Assert: type is "currency".
     // 5. If ! IsWellFormedCurrencyCode(code) is false, throw a RangeError exception.
     ASSERT(typeOpt == TypednsOption::CURRENCY);
-    std::string cCode = intl::LocaleHelper::ConvertToStdString(code);
+    std::string cCode = intl::LocaleHelper::ConvertToStdString(thread, code);
     if (!JSLocale::IsWellFormedCurrencyCode(cCode)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed currency code", code);
     }
-    icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
+    icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames(thread);
     icu::UnicodeString result;
     icuLocaldisplaynames->keyValueDisplayName("currency", cCode.c_str(), result);
     JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
@@ -515,7 +515,7 @@ void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayN
 
     // [[Locale]]
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
-    JSHandle<JSTaggedValue> locale(thread, displayNames->GetLocale());
+    JSHandle<JSTaggedValue> locale(thread, displayNames->GetLocale(thread));
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 

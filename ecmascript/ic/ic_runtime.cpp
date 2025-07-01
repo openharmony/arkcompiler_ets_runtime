@@ -70,7 +70,7 @@ bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &h
         if (hclass->IsJSGlobalObject()) {
             return false;
         }
-        JSTaggedValue proto = hclass->GetPrototype();
+        JSTaggedValue proto = hclass->GetPrototype(thread_);
         // If proto is not an EcmaObject,
         // it means that there is no need to search for the prototype chain.
         if (!proto.IsECMAObject()) {
@@ -283,7 +283,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
             if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
                 icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
             }
-            return PropertyBox::Cast(box.GetTaggedObject())->GetValue();
+            return PropertyBox::Cast(box.GetTaggedObject())->GetValue(thread_);
         }
     }
 
@@ -348,7 +348,8 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
     JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(GetThread(), propKey);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
     if (!numericIndex.IsUndefined()) {
-        if (!JSTypedArray::IsValidIntegerIndex(receiver, numericIndex) || !GetThread()->GetEcmaVM()->ICEnabled()) {
+        if (!JSTypedArray::IsValidIntegerIndex(GetThread(), receiver, numericIndex) ||
+            !GetThread()->GetEcmaVM()->ICEnabled()) {
             icAccessor_.SetAsMega();
             return JSTaggedValue::GetProperty(GetThread(), receiver, propKey).GetValue().GetTaggedValue();
         }
@@ -493,7 +494,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
     JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(GetThread(), propKey);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
     if (!numericIndex.IsUndefined()) {
-        if (!JSTypedArray::IsValidIntegerIndex(receiver, numericIndex) || value->IsECMAObject() ||
+        if (!JSTypedArray::IsValidIntegerIndex(GetThread(), receiver, numericIndex) || value->IsECMAObject() ||
             !GetThread()->GetEcmaVM()->ICEnabled()) {
             icAccessor_.SetAsMega();
             bool success = JSTaggedValue::SetProperty(GetThread(), receiver, propKey, value, true);
@@ -582,7 +583,7 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
     auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
     if (key->IsString()) {
         auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
-        LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString()
+        LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString(thread)
                         << ", icstate is: " << state
                         << ", slotid is: " << GetSlotId();
     } else {
