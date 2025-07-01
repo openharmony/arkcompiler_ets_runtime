@@ -592,6 +592,11 @@ void WCollector::Preforward()
     PreforwardStaticWeakRoots();
 }
 
+void WCollector::ConcurrentPreforward()
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ConcurrentPreforward", "");
+    ProcessStringTable();
+}
 void WCollector::PrepareFix()
 {
     // make sure all objects before fixline is initialized
@@ -632,6 +637,7 @@ void WCollector::DoGarbageCollection()
         PostTrace();
 
         Preforward();
+        ConcurrentPreforward();
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
         if (isNotYoungGC) {
@@ -667,6 +673,7 @@ void WCollector::DoGarbageCollection()
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
         Preforward();
     }
+        ConcurrentPreforward();
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
         if (isNotYoungGC) {
@@ -692,6 +699,7 @@ void WCollector::DoGarbageCollection()
     auto collectedRoots = EnumRoots<EnumRootsPolicy::STW_AND_FLIP_MUTATOR>();
     TraceHeap(collectedRoots);
     PreforwardFlip();
+    ConcurrentPreforward();
     // reclaim large objects should after preforward(may process weak ref)
     // and before fix heap(may clear live bit)
     if (isNotYoungGC) {
