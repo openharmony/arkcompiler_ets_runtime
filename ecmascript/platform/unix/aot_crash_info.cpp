@@ -49,6 +49,10 @@ void SignalReg(int signo)
 {
     sigaction(signo, nullptr, &s_oldSa[signo]);
     struct sigaction newAction;
+    if (memset_s(&newAction, sizeof(newAction), 0, sizeof(newAction)) != EOK) {
+        LOG_ECMA(ERROR) << "memset_s newAction failed : " << strerror(errno);
+        return;
+    }
     newAction.sa_flags = SA_RESTART | SA_SIGINFO;
     newAction.sa_sigaction = GetSignalHandler;
     sigaction(signo, &newAction, nullptr);
