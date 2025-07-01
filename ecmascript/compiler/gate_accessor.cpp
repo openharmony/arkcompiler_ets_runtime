@@ -140,7 +140,7 @@ MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
     switch (op) {
         case OpCode::LOAD_WITHOUT_BARRIER:
         case OpCode::LOAD:
-        case OpCode::LOAD_HCLASS:
+        case OpCode::LOAD_HCLASS_OPCODE:
         case OpCode::STORE_WITHOUT_BARRIER:
         case OpCode::STORE: {
             auto accessor = LoadStoreAccessor(gatePtr->GetOneParameterMetaData()->GetValue());

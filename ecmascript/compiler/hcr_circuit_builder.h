@@ -182,17 +182,7 @@ GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef glue, GateRef x)
     return isAOTLiteralInfoObj;
 }
 
-#ifndef NDEBUG
-GateRef CircuitBuilder::LoadHClassWithLineASM([[maybe_unused]] GateRef glue, GateRef object, [[maybe_unused]] int line)
-{
-    // ReadBarrier is not need for loading hClass as long as it is non-movable
-    // now temporarily add RB for hClass
-    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
-    GateRef value = Load(VariableType::INT64(), glue, object, offset);
-    return Int64ToTaggedPtr(Int64And(value, Int64(TaggedObject::GC_STATE_MASK)));
-}
-#else
-GateRef CircuitBuilder::LoadHClass([[maybe_unused]] GateRef glue, GateRef object)
+GateRef CircuitBuilder::LoadHclassImpl([[maybe_unused]] GateRef glue, GateRef object, [[maybe_unused]] int line)
 {
     // ReadBarrier is not need for loading hClass as long as it is non-movable
     GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
@@ -201,12 +191,11 @@ GateRef CircuitBuilder::LoadHClass([[maybe_unused]] GateRef glue, GateRef object
     auto label = env_->GetCurrentLabel();
     auto depend = label->GetDepend();
     auto bits = LoadStoreAccessor::ToValue(MemoryAttribute::NoBarrier());
-    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadHClass(bits), type.GetMachineType(),
-                                           { depend, glue, addr }, type.GetGateType());
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->LoadHClassOpcode(bits), type.GetMachineType(),
+                                           {depend, glue, addr}, type.GetGateType());
     label->SetDepend(result);
     return result;
 }
-#endif
 
 GateRef CircuitBuilder::LoadHClassByConstOffset([[maybe_unused]] GateRef glue, GateRef object)
 {

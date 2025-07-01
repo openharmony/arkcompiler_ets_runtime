@@ -1375,21 +1375,12 @@ inline GateRef StubBuilder::IsJSHClass(GateRef glue, GateRef obj)
 
 // object operation
 
-#ifndef NDEBUG
-inline GateRef StubBuilder::LoadHClassWithLineASM(GateRef glue, GateRef object, int line)
+inline GateRef StubBuilder::LoadHclassImpl(GateRef glue, GateRef object, int line)
 {
     ASM_ASSERT_WITH_LINE(GET_MESSAGE_STRING_ID(LoadHClass), TaggedIsHeapObject(object), line);
     GateRef res = env_->GetBuilder()->LoadHClass(glue, object);
     return res;
 }
-#else
-inline GateRef StubBuilder::LoadHClass(GateRef glue, GateRef object)
-{
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(LoadHClass), TaggedIsHeapObject(object));
-    GateRef res = env_->GetBuilder()->LoadHClass(glue, object);
-    return res;
-}
-#endif
 
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {

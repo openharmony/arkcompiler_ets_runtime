@@ -578,13 +578,9 @@ public:
     inline GateRef GetObjectSizeFromHClass(GateRef hClass);
     inline GateRef HasConstructorByHClass(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
-#ifndef NDEBUG
-    inline GateRef LoadHClassWithLineASM(GateRef glue, GateRef object, int line);
-    // notice: if jump here by stub_builder please see stub_builder-inl.h/stub_builder.h LoadHClassWithLineASM
-#define LoadHClass(glue, object) LoadHClassWithLineASM(glue, object, __LINE__)
-#else
-    inline GateRef LoadHClass(GateRef glue, GateRef object);
-#endif
+    inline GateRef LoadHclassImpl(GateRef glue, GateRef object, int line);
+    // notice: if jump here by stub_builder please see stub_builder-inl.h/stub_builder.h LoadHclassImpl
+#define LoadHClass(glue, object) LoadHclassImpl(glue, object, __LINE__)
     inline GateRef LoadHClassByConstOffset(GateRef glue, GateRef object);
     inline GateRef LoadPrototype(GateRef glue, GateRef hclass);
     inline GateRef LoadProtoChangeMarker(GateRef glue, GateRef hclass);
