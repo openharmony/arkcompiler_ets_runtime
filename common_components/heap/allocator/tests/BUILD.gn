@@ -110,6 +110,29 @@ host_unittest_action("Region_Space_Test") {
   ]
 }
 
+host_unittest_action("Heap_Allocator_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "heap_allocator_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
 group("unittest") {
   testonly = true
 
@@ -119,6 +142,7 @@ group("unittest") {
     ":Region_Manager_Test",
     ":Treap_Test",
     ":Region_Space_Test",
+    ":Heap_Allocator_Test",
   ]
 }
 
@@ -131,5 +155,6 @@ group("host_unittest") {
     ":Region_Manager_TestAction",
     ":Treap_TestAction",
     ":Region_Space_TestAction",
+    ":Heap_Allocator_Test",
   ]
 }

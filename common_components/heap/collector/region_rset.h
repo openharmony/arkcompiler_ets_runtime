@@ -23,6 +23,7 @@ class RegionRSet {
 public:
     explicit RegionRSet(size_t regionSize) : cardCnt(regionSize / CARD_SIZE)
     {
+        CHECK_CC(regionSize % CARD_SIZE == 0);
 #ifdef _WIN64
         void* startAddress = VirtualAlloc(NULL, cardCnt * sizeof(uint64_t), MEM_RESERVE, PAGE_READWRITE);
         if (startAddress == NULL) {

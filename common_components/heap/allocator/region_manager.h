@@ -43,14 +43,17 @@ public:
     constexpr static size_t FIXED_PINNED_REGION_COUNT = 128;
     constexpr static size_t FIXED_PINNED_THRESHOLD = sizeof(uint64_t) * FIXED_PINNED_REGION_COUNT;
     /* region memory layout:
-        1. region info for each region, part of heap metadata
-        2. region space for allocation, i.e., the heap
+        1. some paddings memory to aligned
+        2. region info for each region, part of heap metadata
+        3. region space for allocation, i.e., the heap  --- start address is aligend to `RegionDesc::UNIT_SIZE`
     */
     static size_t GetHeapMemorySize(size_t heapSize)
     {
         size_t regionNum = GetHeapUnitCount(heapSize);
         size_t metadataSize = GetMetadataSize(regionNum);
-        size_t totalSize = metadataSize + RoundUp<size_t>(heapSize, RegionDesc::UNIT_SIZE);
+        // Add one more `RegionDesc::UNIT_SIZE` totalSize, because we need the region address is aligned to
+        // `RegionDesc::UNIT_SIZE`, this need some paddings
+        size_t totalSize = metadataSize + RoundUp<size_t>(heapSize, RegionDesc::UNIT_SIZE) + RegionDesc::UNIT_SIZE;
         return totalSize;
     }
 
@@ -134,7 +137,7 @@ public:
 
     RegionDesc* TakeRegion(bool expectPhysicalMem, bool allowgc)
     {
-        return TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem, allowgc);
+        return TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem, allowgc);
     }
 
     void AddRecentPinnedRegion(RegionDesc* region)
@@ -167,7 +170,7 @@ public:
         }
         if (addr == 0) {
             RegionDesc* region =
-                TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
+                TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
             if (region == nullptr) {
                 listMutex.unlock();
                 return 0;
@@ -210,7 +213,7 @@ public:
         }
         if (addr == 0) {
             RegionDesc* region =
-                TakeRegion(maxUnitCountPerRegion_, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
+                TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
             if (region == nullptr) {
                 return 0;
             }
@@ -244,7 +247,8 @@ public:
     // caller assures size is truely large (> region size)
     uintptr_t AllocLarge(size_t size, bool allowGC = true)
     {
-        size_t regionCount = (size + RegionDesc::UNIT_SIZE - 1) / RegionDesc::UNIT_SIZE;
+        size_t alignedSize = AlignUp<size_t>(size + RegionDesc::UNIT_HEADER_SIZE, RegionDesc::UNIT_SIZE);
+        size_t regionCount = alignedSize / RegionDesc::UNIT_SIZE;
         RegionDesc* region = TakeRegion(regionCount, RegionDesc::UnitRole::LARGE_SIZED_UNITS, false, allowGC);
         if (region == nullptr) {
             return 0;
@@ -265,6 +269,7 @@ public:
         DLOG(REGION, "alloc large region @0x%zx+%zu type %u", region->GetRegionStart(),
              region->GetRegionSize(), region->GetRegionType());
         uintptr_t addr = region->Alloc(size);
+        ASSERT(addr > 0);
         recentLargeRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_LARGE_REGION);
         return addr;
     }
@@ -388,14 +393,9 @@ public:
         return nullptr;
     }
 
-    size_t GetLargeObjectThreshold() const { return largeObjectThreshold_; }
-
     // this method checks whether allocation is permitted for now, otherwise, it is suspened
     // until allocation does no harm to gc.
     void RequestForRegion(size_t size);
-
-    void SetMaxUnitCountForRegion();
-    void SetLargeObjectThreshold();
 
     void PrepareTrace()
     {
@@ -526,8 +526,6 @@ public:
     }
 
 private:
-    static const size_t MAX_UNIT_COUNT_PER_REGION;
-    static const size_t HUGE_PAGE;
     inline void TagHugePage(RegionDesc* region, size_t num) const;
     inline void UntagHugePage(RegionDesc* region, size_t num) const;
 
@@ -592,8 +590,6 @@ private:
 
     // heap space not allocated yet for even once. this value should not be decreased.
     std::atomic<uintptr_t> inactiveZone_ = { 0 };
-    size_t maxUnitCountPerRegion_ = MAX_UNIT_COUNT_PER_REGION; // max units count for threadLocal buffer.
-    size_t largeObjectThreshold_;
     // Awaiting JitFort object has no references from other objects,
     // but we need to keep them as live untill jit compilation has finished installing.
     std::set<BaseObject*> awaitingJitFort_;

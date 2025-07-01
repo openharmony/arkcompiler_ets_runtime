@@ -101,6 +101,7 @@ std::string GetObjectInfo(const BaseObject* obj)
     } else {
         auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(obj));
         s << std::hex << "Type: 0x" << (int) region->GetRegionType() << ", "
+          << "Base: 0x" << region->GetRegionBase() << ", "
           << "Start: 0x" << region->GetRegionStart() << ", "
           << "End: 0x" << region->GetRegionEnd() << ", "
           << "AllocPtr: 0x" << region->GetRegionAllocPtr() << ", "

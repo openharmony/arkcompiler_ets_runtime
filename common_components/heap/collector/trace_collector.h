@@ -271,7 +271,7 @@ protected:
 
     void ResetBitmap(bool heapMarked)
     {
-        // if heap is marked and tracing result will be used during next gc, we should not reset liveInfo.
+        // if heap is marked and tracing result will be used during next gc, we should not reset liveInfo_.
     }
 
     uint32_t GetGCThreadCount(const bool isConcurrent) const
@@ -334,6 +334,7 @@ public:
         DCHECK_CC(!stack.empty());
         std::lock_guard<std::mutex> guard(mtx_);
         stacks_.push_back(std::move(stack));
+        cv_.notify_one();
     }
 
     StackType PopWorkStack()

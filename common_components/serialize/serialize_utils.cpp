@@ -47,9 +47,4 @@ SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
             return SerializedBaseObjectSpace::OTHER;
     }
 }
-
-size_t SerializeUtils::GetRegionSize()
-{
-    return BaseRuntime::GetInstance()->GetHeapParam().regionSize * KB;
-}
 }  // namespace common

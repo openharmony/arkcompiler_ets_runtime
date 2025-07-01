@@ -66,8 +66,8 @@ public:
         if (tlRegion_ == RegionDesc::NullRegion()) {
             return;
         }
-        DLOG(REGION, "AllocBuffer clear tlRegion %p@%#zx+%zu",
-            tlRegion_, tlRegion_->GetRegionStart(), tlRegion_->GetRegionAllocatedSize());
+        DLOG(REGION, "AllocBuffer clear tlRegion %p(base=%#zx)@%#zx+%zu",
+             tlRegion_, tlRegion_->GetRegionBase(), tlRegion_->GetRegionStart(), tlRegion_->GetRegionAllocatedSize());
         tlRegion_ = RegionDesc::NullRegion();
     }
     void ClearThreadLocalRegion();

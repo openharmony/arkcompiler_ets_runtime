@@ -18,6 +18,7 @@
 
 #include <limits>
 
+#include "common_components/heap/heap.h"
 #include "common_components/serialize/serialize_utils.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
@@ -138,12 +139,12 @@ public:
     static size_t AlignUpRegionAvailableSize(size_t size)
     {
         if (g_isEnableCMCGC) {
-            size_t regionSize = common::SerializeUtils::GetRegionSize();
+            constexpr size_t REGION_SIZE = common::Heap::GetNormalRegionAvailableSize();
             if (size == 0) {
-                return regionSize;
+                return REGION_SIZE;
             }
-            ASSERT(regionSize != 0);
-            return ((size - 1) / regionSize + 1) * regionSize; // 1: align up
+            ASSERT(REGION_SIZE != 0);
+            return ((size - 1) / REGION_SIZE + 1) * REGION_SIZE; // 1: align up
         } else {
             if (size == 0) {
                 return Region::GetRegionAvailableSize();

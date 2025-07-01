@@ -36,6 +36,10 @@
 #include <mach/mach.h>
 #endif
 namespace common {
+static_assert(Heap::NORMAL_UNIT_SIZE == RegionDesc::UNIT_SIZE);
+static_assert(Heap::NORMAL_UNIT_HEADER_SIZE == RegionDesc::UNIT_HEADER_SIZE);
+static_assert(Heap::NORMAL_UNIT_AVAILABLE_SIZE == RegionDesc::UNIT_AVAILABLE_SIZE);
+
 std::atomic<Barrier*>* Heap::currentBarrierPtr_ = nullptr;
 Barrier* Heap::stwBarrierPtr_ = nullptr;
 HeapAddress Heap::heapStartAddr_ = 0;

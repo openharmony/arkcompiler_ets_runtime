@@ -114,8 +114,9 @@ public:
     {
         // filter const string object.
         if (Heap::IsHeapAddress(obj)) {
-            auto regionInfo = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj));
-            return regionInfo->IsFromRegion();
+            RegionDesc::InlinedRegionMetaData *objMetaRegion =
+                RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(obj));
+            return objMetaRegion->IsFromRegion();
         }
 
         return false;

@@ -1004,7 +1004,7 @@ static uintptr_t g_nativeTable[] = {
 void SnapshotProcessor::Initialize()
 {
     if (g_isEnableCMCGC) {
-        commonRegionSize_ = common::SerializeUtils::GetRegionSize();
+        commonRegionSize_ = common::Heap::GetNormalRegionAvailableSize();
         regularObjAllocator_.Initialize(commonRegionSize_);
         pinnedObjAllocator_.Initialize(commonRegionSize_);
         largeObjAllocator_.Initialize(commonRegionSize_);
@@ -1267,7 +1267,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, size_t objSi
         }
         if (spaceType != SerializedObjectSpace::LARGE_SPACE) {
             uintptr_t top = regionAddr + liveObjectSize;
-            uintptr_t end = regionAddr + common::SerializeUtils::GetRegionSize();
+            uintptr_t end = regionAddr + common::Heap::GetNormalRegionAvailableSize();
             FreeObject::FillFreeObject(sHeap_, top, end - top);
         }
         beginAddr += liveObjectSize;
