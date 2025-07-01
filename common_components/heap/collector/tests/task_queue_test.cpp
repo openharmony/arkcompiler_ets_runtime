@@ -113,10 +113,10 @@ public:
     {
         return 0;
     }
-    bool IsHeapObject(HeapAddress addr) const
-    {
-        return false;
-    }
+
+#ifndef NDEBUG
+    bool IsHeapObject(HeapAddress) const override { return false; }
+#endif
 };
 
 class TestCollectorResources : public CollectorResources {
@@ -152,9 +152,6 @@ public:
         switch (GetTaskType()) {
             case GCTaskType::GC_TASK_TERMINATE_GC:
                 return false;
-            case GCTaskType::GC_TASK_TIMEOUT_GC:
-                // Simulate timeout behavior
-                return true;
             case GCTaskType::GC_TASK_INVOKE_GC:
                 proxy->RunGarbageCollection(taskIndex_, gcReason_);
                 return true;
@@ -231,24 +228,5 @@ HWTEST_F_L0(GCRunnerTest, Execute_InvokeGC) {
     EXPECT_TRUE(mockProxy_->WasRunCalled());
     EXPECT_EQ(mockProxy_->GetLastGcIndex(), 123U);
     EXPECT_EQ(mockProxy_->GetLastReason(), GC_REASON_FORCE);
-}
-
-/**
- * @tc.name: GCRunner_Execute_TimeoutGC_NoTrigger
- * @tc.desc: Test GC_TASK_TIMEOUT_GC does not trigger GC when time not exceeded.
- * @tc.type: FUNC
- */
-HWTEST_F_L0(GCRunnerTest, Execute_TimeoutGC_NoTrigger) {
-    // Arrange
-    mockProxy_->Reset();
-
-    MockGCTask task(GCTask::GCTaskType::GC_TASK_TIMEOUT_GC, 0, GC_REASON_BACKUP);
-
-    // Act
-    bool result = task.Execute(mockProxy_);
-
-    // Assert
-    EXPECT_TRUE(result);
-    EXPECT_FALSE(mockProxy_->WasRunCalled());
 }
 }

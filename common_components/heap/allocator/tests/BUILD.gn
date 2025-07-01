@@ -59,6 +59,7 @@ host_unittest_action("Region_Manager_Test") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+    "bounds_checking_function:libsec_shared",
   ]
 }
 
