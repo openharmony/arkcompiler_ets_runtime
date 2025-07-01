@@ -5899,6 +5899,7 @@ Local<JSValueRef> JSNApi::CreateContext(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
+    thread->SetMultiContextTriggered(true);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(globalEnv));
