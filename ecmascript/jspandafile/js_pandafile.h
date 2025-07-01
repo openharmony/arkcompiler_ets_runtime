@@ -192,7 +192,7 @@ public:
         if (IsBundlePack()) {
             return jsRecordInfo_.begin()->second->mainMethodIndex;
         }
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         if (info != jsRecordInfo_.end()) {
             return info->second->mainMethodIndex;
         }
@@ -211,7 +211,7 @@ public:
 
     const CUnorderedMap<uint32_t, uint64_t> *GetConstpoolMapByReocrd(const CString &recordName) const
     {
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         if (info != jsRecordInfo_.end()) {
             return &info->second->constpoolMap;
         }
@@ -233,7 +233,7 @@ public:
         if (IsBundlePack()) {
             jsRecordInfo_.begin()->second->mainMethodIndex = mainMethodIndex;
         } else {
-            auto info = jsRecordInfo_.find(recordName);
+            auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
             if (info != jsRecordInfo_.end()) {
                 info->second->mainMethodIndex = mainMethodIndex;
             }
@@ -254,7 +254,7 @@ public:
         if (IsBundlePack()) {
             return jsRecordInfo_.begin()->second->moduleRecordIdx;
         }
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         if (info != jsRecordInfo_.end()) {
             return info->second->moduleRecordIdx;
         }
@@ -267,7 +267,7 @@ public:
         if (IsBundlePack()) {
             return jsRecordInfo_.begin()->second->hasTopLevelAwait;
         }
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         if (info != jsRecordInfo_.end()) {
             return info->second->hasTopLevelAwait;
         }
@@ -337,7 +337,7 @@ public:
             return jsRecordInfo_.begin()->second;
         }
 
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         if (info != jsRecordInfo_.end()) {
             return info->second;
         }
@@ -389,12 +389,12 @@ public:
 
     inline bool HasRecord(const CString &recordName) const
     {
-        return jsRecordInfo_.find(recordName) != jsRecordInfo_.end();
+        return jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size())) != jsRecordInfo_.end();
     }
 
     JSRecordInfo &FindRecordInfo(const CString &recordName)
     {
-        auto info = jsRecordInfo_.find(recordName);
+        auto info = jsRecordInfo_.find(std::string_view(recordName.c_str(), recordName.size()));
         // check entry name, fix framework abc find recordName fail bug
         if (recordName == "_GLOBAL") {
             info = jsRecordInfo_.find(ENTRY_FUNCTION_NAME);
@@ -410,21 +410,27 @@ public:
     void InsertJSRecordInfo(const CString &recordName)
     {
         JSRecordInfo* info = new JSRecordInfo();
-        jsRecordInfo_.insert({recordName, info});
+        jsRecordInfo_.insert({std::string_view(recordName.c_str(), recordName.size()), info});
     }
 
     // note : it only uses in TDD
     void InsertNpmEntries(const CString &recordName, const CString &fieldName)
     {
-        npmEntries_.insert({recordName, fieldName});
+        npmEntries_.insert({std::string_view(recordName.c_str(), recordName.size()),
+            std::string_view(fieldName.c_str(), fieldName.size())});
     }
 
-    const CUnorderedMap<CString, JSRecordInfo*> &GetJSRecordInfo() const
+    const CUnorderedMap<std::string_view, JSRecordInfo*> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
 
     static CString ParseEntryPoint(const CString &desc)
+    {
+        return desc.substr(1, desc.size() - 2); // 2 : skip symbol "L" and ";"
+    }
+
+    static std::string_view ParseEntryPoint(const std::string_view &desc)
     {
         return desc.substr(1, desc.size() - 2); // 2 : skip symbol "L" and ";"
     }
@@ -557,8 +563,8 @@ private:
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
-    CUnorderedMap<CString, JSRecordInfo*> jsRecordInfo_;
-    CUnorderedMap<CString, CString> npmEntries_;
+    CUnorderedMap<std::string_view, JSRecordInfo*> jsRecordInfo_;
+    CUnorderedMap<std::string_view, std::string_view> npmEntries_;
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
     friend class JSPandaFileSnapshot;

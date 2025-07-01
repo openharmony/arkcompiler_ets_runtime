@@ -72,7 +72,8 @@ void HotReloadManager::ExtractPatch(const JSPandaFile *jsPandaFile)
 
     const auto &recordInfos = jsPandaFile->GetJSRecordInfo();
     for (const auto &[recordName, _] : recordInfos) {
-        auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex(recordName));
+        auto mainMethodIndex = panda_file::File::EntityId(
+            jsPandaFile->GetMainMethodIndex(CString(recordName.data(), recordName.size())));
         auto *notificationMgr = vm_->GetJsDebuggerManager()->GetNotificationManager();
         const std::string &url = patchExtractor->GetSourceFile(mainMethodIndex);
         if (url.empty()) {

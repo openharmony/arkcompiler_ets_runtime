@@ -70,8 +70,8 @@ void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
     CString bundleName = entry.substr(0, pos);
     size_t bundleNameLen = bundleName.length();
     for (auto &[recordName, _] : jsRecordInfo_) {
-        if (recordName.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
-            recordName.find(NPM_PATH_SEGMENT) != CString::npos) {
+        if (recordName.find(PACKAGE_PATH_SEGMENT) != std::string_view::npos ||
+            recordName.find(NPM_PATH_SEGMENT) != std::string_view::npos) {
             continue;
         }
         // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
@@ -84,6 +84,11 @@ void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
 
 JSPandaFile::~JSPandaFile()
 {
+    for (auto& each : jsRecordInfo_) {
+        delete each.second;
+    }
+    jsRecordInfo_.clear();
+    
     if (pf_ != nullptr) {
         delete pf_;
         CallReleaseSecureMemFunc(fileMapper_);
@@ -92,10 +97,6 @@ JSPandaFile::~JSPandaFile()
     }
 
     constpoolMap_.clear();
-    for (auto& each : jsRecordInfo_) {
-        delete each.second;
-    }
-    jsRecordInfo_.clear();
     methodLiteralMap_.clear();
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
@@ -185,8 +186,8 @@ void JSPandaFile::InitializeMergedPF()
         info->classId = index;
         bool hasCjsFiled = false;
         bool hasJsonFiled = false;
-        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        CString recordName = ParseEntryPoint(desc);
+        std::string_view desc = utf::Mutf8AsCString(cda.GetDescriptor());
+        std::string_view recordName = ParseEntryPoint(desc);
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
@@ -244,7 +245,7 @@ CString JSPandaFile::GetRecordName(const CString &entryPoint) const
 
 bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
-    auto info = npmEntries_.find(recordName);
+    auto info = npmEntries_.find(std::string_view(recordName.c_str(), recordName.size()));
     if (info != npmEntries_.end()) {
         entryPoint = info->second;
         return true;
