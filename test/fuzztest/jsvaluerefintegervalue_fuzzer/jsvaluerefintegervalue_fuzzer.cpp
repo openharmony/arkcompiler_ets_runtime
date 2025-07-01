@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefintegervalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -31,11 +31,9 @@ void JSValueRefIntegerValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    Local<JSValueRef> globalObject = NumberRef::New(vm, 0xffffffffffff);
+    FuzzedDataProvider fdp(data, size);
+    const int number = fdp.ConsumeIntegral<int>();
+    Local<JSValueRef> globalObject = NumberRef::New(vm, number);
     int64_t i64 = globalObject->IntegerValue(vm);
     UNUSED(i64);
     JSNApi::DestroyJSVM(vm);

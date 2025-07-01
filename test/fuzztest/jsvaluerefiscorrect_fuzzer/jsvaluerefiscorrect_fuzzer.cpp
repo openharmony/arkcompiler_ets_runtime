@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefiscorrect_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -20,19 +21,17 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-using namespace common::utf_helper;
 
 namespace OHOS {
-void JSValueRefIsFalseFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsFalseFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    Local<JSValueRef> object = JSValueRef::False(vm);
-    object->IsFalse();
+    bool input = fdp.ConsumeBool();
+    Local<BooleanRef> ref = BooleanRef::New(vm, input);
+    ref->IsFalse();
     JSNApi::DestroyJSVM(vm);
     return;
 }

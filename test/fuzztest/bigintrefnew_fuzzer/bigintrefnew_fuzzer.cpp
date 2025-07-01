@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "bigintrefnew_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -24,18 +25,18 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void BigIntRefNewFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void BigIntRefNewFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "Parameter out of range.";
-        return;
-    }
-    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
-    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm, maxUint64);
-    maxBigintUint64->Undefined(vm);
+    const uint64_t input = fdp.ConsumeIntegralInRange<uint64_t>(0, 1024);
+    Local<BigIntRef> bigint = BigIntRef::New(vm, input);
+
+    int64_t cValue = 0;
+    bool lossless = false;
+    bigint->BigIntToInt64(vm, &cValue, &lossless);
     JSNApi::DestroyJSVM(vm);
 }
 }

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefbooleavalue_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -21,24 +22,16 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-constexpr size_t DIVIDEND = 2;
 
-void BooleaValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void BooleaValueFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    FuzzedDataProvider fdp(data, size);
+    bool input = fdp.ConsumeBool();
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    if (size % DIVIDEND == 0) {
-        Local<JSValueRef> tag = JSValueRef::False(vm);
-        tag->BooleaValue(vm);
-    } else {
-        Local<JSValueRef> tag = JSValueRef::True(vm);
-        tag->BooleaValue(vm);
-    }
+    Local<JSValueRef> tag = BooleanRef::New(vm, input);
+    tag->BooleaValue(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

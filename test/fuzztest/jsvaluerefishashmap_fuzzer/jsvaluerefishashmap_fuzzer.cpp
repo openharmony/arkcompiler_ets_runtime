@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefishashmap_fuzzer.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -115,17 +116,16 @@ JSHandle<JSAPIHashMap> ConstructobjectHashMap(JSThread *thread)
 }
 
 
-void JSValueRefIsHashMapFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefIsHashMapFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "Parameter out of range..";
-            return;
-        }
         auto thread = vm->GetAssociatedJSThread();
         JSHandle<JSAPIHashMap> map = ConstructobjectHashMap(thread);
         JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(map);

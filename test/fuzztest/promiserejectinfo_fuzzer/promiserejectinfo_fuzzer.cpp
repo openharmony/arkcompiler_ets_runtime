@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "promiserejectinfo_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "common_components/base/utf_helper.h"
@@ -25,16 +26,16 @@ using namespace common::utf_helper;
 namespace OHOS {
     void PromiseRejectInfoNewFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        char *stringData = str.data();
+        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         [[maybe_unused]]PromiseRejectInfo promiseReject(promise, reason,
@@ -44,35 +45,36 @@ namespace OHOS {
 
     void GetDataFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        char *stringData = str.data();
+        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> reason(reasonString);
+        void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason,
-            PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, (void*)data);
+            PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data2);
         promiseReject.GetData();
         JSNApi::DestroyJSVM(vm);
     }
 
     void PromiseRejectInfoGetPromiseFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        char *stringData = str.data();
+        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> reason(reasonString);
         void *newdata = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, newdata);
@@ -82,16 +84,16 @@ namespace OHOS {
 
     void PromiseRejectInfoGetReasonFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        char *stringData = str.data();
+        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data2);
@@ -101,16 +103,16 @@ namespace OHOS {
 
     void PromiseRejectInfoGetOperationFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        char *stringData = str.data();
+        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data2);

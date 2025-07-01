@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "booleanrefnewbool_fuzzer.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -25,15 +26,14 @@ namespace OHOS {
     {
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        auto vm = JSNApi::CreateJSVM(option);
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (size <= 0) {
             return;
         }
-        bool input = true;
-        if (size == 0 || data == nullptr) {
-            input = false;
-        }
-        [[maybe_unused]] Local<BooleanRef> ref = BooleanRef::New(vm, input);
+        FuzzedDataProvider fdp(data, size);
+        bool input = fdp.ConsumeBool();
+        Local<BooleanRef> ref = BooleanRef::New(vm, input);
+        ref->IsFalse();
         JSNApi::DestroyJSVM(vm);
     }
 }
