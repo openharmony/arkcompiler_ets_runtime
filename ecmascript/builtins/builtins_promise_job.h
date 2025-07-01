@@ -24,7 +24,14 @@ public:
     static JSTaggedValue PromiseReactionJob(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue PromiseResolveThenableJob(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue DynamicImportJob(EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue CatchToStringException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject);
+    static JSTaggedValue CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject);
+
+    static JSTaggedValue HandelModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+                                               JSHandle<JSPromiseReactionsFunction> reject,
+                                               JSHandle<EcmaString> specifierString);
+    static JSTaggedValue HandelModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+                                               JSHandle<JSPromiseReactionsFunction> reject,
+                                               const CString &requestPath);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_JS_PROMISE_JOB_H
