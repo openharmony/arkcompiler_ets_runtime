@@ -214,6 +214,7 @@ namespace panda::ecmascript {
     V(ReverseTypedArray)                       \
     V(CopyTypedArrayBuffer)                    \
     V(IsFastRegExp)                            \
+    V(CopyObjectPrimitive)                     \
     V(CreateLocalToShare)                      \
     V(CreateOldToNew)                          \
     V(ObjectCopy)                              \
@@ -228,7 +229,8 @@ namespace panda::ecmascript {
     V(CopyCallTarget)                          \
     V(CopyArgvArray)                           \
     V(MarkRSetCardTable)                       \
-    V(MarkInBuffer)
+    V(MarkInBuffer)                            \
+    V(BatchMarkInBuffer)
 
 // When ASM enters C++ via CallNGCRuntime, if the C++ process requires GetGlobalEnv(),
 // the current globalenv in ASM must be set to glue before CallNGCRuntime!

@@ -688,6 +688,7 @@ private:
     V(CreateLocalToShare)                            \
     V(CreateOldToNew)                                \
     V(BatchBarrier)                                  \
+    V(CopyObjectPrimitive)                           \
     V(ObjectCopy)                                    \
     V(ArrayIteratorNext)                             \
     V(GetIterator)                                   \
@@ -709,6 +710,7 @@ private:
     V(CopyArgvArray)                                 \
     V(MarkRSetCardTable)                             \
     V(MarkInBuffer)                                  \
+    V(BatchMarkInBuffer)                             \
     V(CMCSetValueWithBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

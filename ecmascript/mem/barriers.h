@@ -195,7 +195,7 @@ public:
                                                         void* src, void* dst, size_t count);
     static bool ShouldProcessSATB(common::GCPhase gcPhase);
     static bool ShouldGetGCReason(common::GCPhase gcPhase);
-    static bool ShouldUpdateRememberSet(BaseObject* ref, common::GCPhase gcPhase);
+    static bool ShouldUpdateRememberSet(common::GCPhase gcPhase);
 
 private:
     static inline JSTaggedType GetTaggedValueForRB(const JSThread *thread, const void *obj, size_t offset,
