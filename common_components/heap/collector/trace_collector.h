@@ -305,7 +305,7 @@ protected:
     bool MarkSatbBuffer(WorkStack& workStack);
 
     // concurrent marking.
-    void TracingImpl(WorkStack& workStack, bool parallel);
+    void TracingImpl(WorkStack& workStack, bool parallel, bool Remark);
 
     bool AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue, size_t threadCount);
 private:

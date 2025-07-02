@@ -259,7 +259,7 @@ void TraceCollector::MergeAllocBufferRoots(WorkStack& workStack)
     });
 }
 
-void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
+void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel, bool Remark)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::TracingImpl_" + std::to_string(workStack.count())).c_str(), "");
     if (workStack.empty()) {
@@ -270,7 +270,13 @@ void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
     Taskpool *threadPool = GetThreadPool();
     ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
     if (parallel) { // parallel marking.
-        uint32_t parallelCount = GetGCThreadCount(true) - 1;
+        uint32_t parallelCount = 0;
+        // During the STW remark phase, Expect it to utilize all GC threads.
+        if (Remark) {
+            parallelCount = GetGCThreadCount(true);
+        } else {
+            parallelCount = GetGCThreadCount(true) - 1;
+        }
         uint32_t threadCount = parallelCount + 1;
         TaskPackMonitor monitor(parallelCount, parallelCount);
         GlobalWorkStackQueue globalQueue;
@@ -369,7 +375,7 @@ void TraceCollector::TraceRoots(const CArrayList<BaseObject *> &collectedRoots)
 
     {
         COMMON_PHASE_TIMER("Concurrent marking");
-        TracingImpl(workStack, maxWorkers > 0);
+        TracingImpl(workStack, maxWorkers > 0, false);
     }
 }
 
@@ -381,7 +387,7 @@ void TraceCollector::Remark()
     COMMON_PHASE_TIMER("STW re-marking");
     RemarkAndPreforwardStaticRoots(workStack);
     ConcurrentRemark(workStack, maxWorkers > 0);
-    TracingImpl(workStack, maxWorkers > 0);
+    TracingImpl(workStack, maxWorkers > 0, true);
     MarkAwaitingJitFort();
     ProcessWeakReferences();
 

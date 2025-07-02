@@ -378,7 +378,7 @@ void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
         return nullptr;
     };
 
-    const uint32_t runningWorkers = std::min<uint32_t>(GetGCThreadCount(true) - 1, taskList.size());
+    const uint32_t runningWorkers = std::min<uint32_t>(GetGCThreadCount(true), taskList.size());
     uint32_t parallelCount = runningWorkers + 1; // 1 ：DaemonThread
     TaskPackMonitor monitor(runningWorkers, runningWorkers);
     WorkStack localStack[parallelCount];
