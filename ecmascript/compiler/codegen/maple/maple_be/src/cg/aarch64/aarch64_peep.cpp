@@ -1459,8 +1459,8 @@ void CsetCbzToBeqOptAArch64::IntrinsicOptimize(BB &bb, Insn *preInsn, Insn &insn
         RegOperand &destReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnFirstOpnd));
         RegOperand &srcReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnSecondOpnd));
         RegOperand &tmpReg = static_cast<RegOperand&>(preInsn->GetOperand(kInsnThirdOpnd));
-        Insn &insn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, tmpReg);
-        bb.InsertInsnBefore(insn, insn);
+        Insn &insn1 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xandrrr, destReg, srcReg, tmpReg);
+        bb.InsertInsnBefore(insn, insn1);
         ImmOperand &immValueZero = aarch64cgFunc.CreateImmOperand(0, k16BitSize, false);
         Insn &insn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcmpri, rflag, destReg, immValueZero);
         bb.InsertInsnBefore(insn, insn2);
