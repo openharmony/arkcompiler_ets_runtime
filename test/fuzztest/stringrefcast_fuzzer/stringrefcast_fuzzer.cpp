@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/global_env.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "stringrefcast_fuzzer.h"
@@ -30,9 +31,9 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        Local<JSValueRef> value = StringRef::NewFromUtf8(vm, "abcdefbb");
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        Local<JSValueRef> value = StringRef::NewFromUtf8(vm, str.data());
         StringRef::Cast(*value);
         JSNApi::DestroyJSVM(vm);
     }

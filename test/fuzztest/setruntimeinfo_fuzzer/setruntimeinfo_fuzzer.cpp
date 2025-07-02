@@ -39,7 +39,7 @@ public:
     }
 };
 
-    void SetRuntimeInfoFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+    void SetRuntimeInfoFuzzTest(const uint8_t *data, size_t size)
     {
         FuzzedDataProvider dataProvider(data, size);
 

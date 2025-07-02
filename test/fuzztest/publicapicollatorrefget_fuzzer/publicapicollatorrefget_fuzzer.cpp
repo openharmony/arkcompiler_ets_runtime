@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
@@ -25,7 +26,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void GetCompareFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void GetCompareFunctionFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -42,7 +43,13 @@ void GetCompareFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
         JSHandle<JSCollator> collator =
             JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-        JSHandle<JSTaggedValue> localeStr = thread->GlobalConstants()->GetHandledEnUsString();
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.PickValueInArray({
+            "en-US", "en", "fr", "es", "de", "pt", "it", "ca",
+            "de-AT", "fi", "id", "id-ID", "ms", "nl", "pl", "ro",
+            "sl", "sv", "sw", "vi", "en-DE", "en-GB",
+        });
+        JSHandle<JSTaggedValue> localeStr(factory->NewFromStdString(str));
         JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
         JSHandle<JSCollator> initCollator =
             JSCollator::InitializeCollator(thread, collator, localeStr, undefinedHandle);

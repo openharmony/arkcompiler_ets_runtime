@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
@@ -26,7 +27,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void GetGeneratorReceiverFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void GetGeneratorReceiverFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -49,7 +50,15 @@ void GetGeneratorReceiverFuzzTest([[maybe_unused]]const uint8_t *data, size_t si
         generatorContext->SetMethod(thread, generatorFunc.GetTaggedValue());
         JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
         genObjHandleVal->SetGeneratorContext(thread, generatorContextVal.GetTaggedValue());
-        genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+        FuzzedDataProvider fdp(data, size);
+        auto state = fdp.PickValueInArray({
+            JSGeneratorState::UNDEFINED,
+            JSGeneratorState::SUSPENDED_START,
+            JSGeneratorState::SUSPENDED_YIELD,
+            JSGeneratorState::EXECUTING,
+            JSGeneratorState::COMPLETED,
+        });
+        genObjHandleVal->SetGeneratorState(state);
         JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
         Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
         object->GetGeneratorReceiver(vm);

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "snapshotserializebuiltins_fuzzer.h"
 
 #include "ecmascript/log_wrapper.h"
@@ -28,9 +29,11 @@ namespace OHOS {
         const CString fileName = "builtins.snapshot";
         std::remove(fileName.c_str());
         // generate builtins.snapshot file
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp1 = fdp.ConsumeIntegral<int>();
         RuntimeOption option1;
         option1.SetLogLevel(common::LOG_LEVEL::ERROR);
-        option1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
+        option1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE | arkProp1);
         // create vm and generate builtins.snapshot file
         EcmaVM *vm1 = JSNApi::CreateJSVM(option1);
         if (size <= 0 || data == nullptr) {
@@ -38,9 +41,10 @@ namespace OHOS {
         }
         JSNApi::DestroyJSVM(vm1);
 
+        const int arkProp2 = fdp.ConsumeIntegral<int>();
         RuntimeOption option2;
         option2.SetLogLevel(common::LOG_LEVEL::ERROR);
-        option2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
+        option2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE | arkProp2);
         // create vm by deserialize builtins.snapshot file
         EcmaVM *vm2 = JSNApi::CreateJSVM(option2);
         JSNApi::DestroyJSVM(vm2);

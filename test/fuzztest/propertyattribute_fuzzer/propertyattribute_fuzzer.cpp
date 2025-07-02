@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/global_env.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "propertyattribute_fuzzer.h"
@@ -23,8 +24,11 @@ using namespace panda::ecmascript;
 namespace OHOS {
 void PropertyAttributeFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -45,15 +49,12 @@ void PropertyAttributeSetIsFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    uint8_t *ptr = nullptr;
-    ptr = const_cast<uint8_t *>(data);
-    bool w = false, e = true, c = true;
-    constexpr int num = 2; //判断奇偶性
-    if (size % num == 1) {
-        w = true;
-        e = false;
-        c = false;
-    }
+
+    FuzzedDataProvider fdp(data, size);
+    bool w = fdp.ConsumeBool();
+    bool e = fdp.ConsumeBool();
+    bool c = fdp.ConsumeBool();
+
     Local<JSValueRef> jsvalueref;
     PropertyAttribute propertyattribute(jsvalueref, w, e, c);
     propertyattribute.SetWritable(e);

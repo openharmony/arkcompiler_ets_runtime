@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
@@ -40,8 +40,6 @@ namespace OHOS {
                 LOG_ECMA(ERROR) << "illegal input!";
                 return;
             }
-            uint8_t* ptr = nullptr;
-            ptr = const_cast<uint8_t*>(data);
             JSThread *thread = vm->GetJSThread();
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -53,8 +51,11 @@ namespace OHOS {
             weakMap->SetLinkedMap(thread, hashMap);
             JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
             Local<WeakMapRef> map = JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);
-            JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-            JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
+            FuzzedDataProvider fdp(data, size);
+            std::string str1 = fdp.ConsumeRandomLengthString(1024);
+            std::string str2 = fdp.ConsumeRandomLengthString(1024);
+            JSHandle<JSTaggedValue> value(factory->NewFromStdString(str1));
+            JSHandle<JSTaggedValue> key(factory->NewFromStdString(str2));
             JSWeakMap::Set(thread, weakMap, key, value);
             map->GetSize(vm);
             map->GetTotalElements(vm);

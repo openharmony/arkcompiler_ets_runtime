@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "setrefgetsize_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -29,7 +30,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void SetRefGetSizeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void SetRefGetSizeFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -49,8 +50,10 @@ void SetRefGetSizeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
         JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
         Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
-        JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
-        JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        JSHandle<JSTaggedValue> firstValue(factory->NewFromStdString(str));
+        JSSet::Add(vm->GetJSThread(), jsSet, firstValue);
         set->GetSize(vm);
     }
     JSNApi::DestroyJSVM(vm);

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "snapshotserializedeserialize_fuzzer.h"
 
 #include "ecmascript/log_wrapper.h"
@@ -34,9 +35,13 @@ namespace OHOS {
                 return;
             }
             auto factory = vm->GetFactory();
-            JSHandle<TaggedArray> array = factory->NewTaggedArray(*data);
-            if (*data > 0) {
-                JSHandle<EcmaString> str = factory->NewFromStdString("str1");
+            FuzzedDataProvider fdp(data, size);
+            const uint32_t len = fdp.ConsumeIntegralInRange<uint32_t>(0, 1024);
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(len);
+            const bool anotherStr = fdp.ConsumeBool();
+            if (anotherStr) {
+                std::string str1 = fdp.ConsumeRandomLengthString(1024);
+                JSHandle<EcmaString> str = factory->NewFromStdString(str1);
                 array->Set(vm->GetAssociatedJSThread(), 0, str.GetTaggedValue());
             }
             const CString fileName = "snapshot";

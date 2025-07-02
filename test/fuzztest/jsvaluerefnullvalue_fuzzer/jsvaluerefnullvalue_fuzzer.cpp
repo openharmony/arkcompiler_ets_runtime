@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefnullvalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -22,7 +23,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void JSValueRefNullValueFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefNullValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -31,7 +32,9 @@ void JSValueRefNullValueFuzzTest([[maybe_unused]] const uint8_t *data, size_t si
         LOG_ECMA(ERROR) << "Parameter out of range..";
         return;
     }
-    Local<PrimitiveRef> intValue = IntegerRef::New(vm, 0);
+    FuzzedDataProvider fdp(data, size);
+    const int value = fdp.ConsumeIntegral<int>();
+    Local<PrimitiveRef> intValue = IntegerRef::New(vm, value);
     intValue->Null(vm);
     JSNApi::DestroyJSVM(vm);
 }

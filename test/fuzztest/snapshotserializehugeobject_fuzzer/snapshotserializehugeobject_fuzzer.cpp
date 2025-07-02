@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "snapshotserializehugeobject_fuzzer.h"
 
 #include "ecmascript/log_wrapper.h"
@@ -35,9 +36,13 @@ namespace OHOS {
             }
             auto factory = vm->GetFactory();
             const uint32_t hugeSize = 256 * 1024;
-            JSHandle<TaggedArray> array = factory->NewTaggedArray(hugeSize + *data); // new huge object tagged array
-            if (*data > 0) {
-                JSHandle<TaggedArray> array1 = factory->NewTaggedArray(hugeSize + *data);
+            FuzzedDataProvider fdp(data, size);
+            const uint32_t len1 = fdp.ConsumeIntegralInRange<uint32_t>(hugeSize, hugeSize * 2);
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(len1); // new huge object tagged array
+            const bool anotherArray = fdp.ConsumeBool();
+            if (anotherArray) {
+                const uint32_t len2 = fdp.ConsumeIntegralInRange<uint32_t>(hugeSize, hugeSize * 2);
+                JSHandle<TaggedArray> array1 = factory->NewTaggedArray(len2);
                 array->Set(vm->GetAssociatedJSThread(), 0, array1.GetTaggedValue());
             }
             const CString fileName = "snapshot";
