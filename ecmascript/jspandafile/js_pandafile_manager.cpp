@@ -563,7 +563,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 template<ForHybridApp isHybrid>
 bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(fileName);
+    std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFile(fileName);
     if (jsPandaFile != nullptr) {
         return true;
     }
