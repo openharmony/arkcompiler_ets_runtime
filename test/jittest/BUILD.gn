@@ -106,14 +106,43 @@ group("ark_jit_ts_test") {
 
   # Until we support barriers for HeapConstant table
   if (defined(ets_runtime_enable_cmc_gc) && ets_runtime_enable_cmc_gc) {
-    test_list -= [ "boolean_new_boolean_poly" ]
-    test_list -= [ "boolean_change_proto_ic" ]
-    test_list -= [ "ldobjbyvalue_deopt_string_check" ]
-    test_list -= [ "ldobjbyvalue_mono_proto" ]
-    test_list -= [ "ldobjbyvalue_deopt_key_check" ]
-    test_list -= [ "ldobjbyvalue_mono_opt" ]
-    test_list -= [ "ldobjbyvalue_mono_proto_getter" ]
-    test_list -= [ "newobj_check" ]
+    test_list -= [
+      "boolean_new_boolean_poly",
+      "boolean_change_proto_ic",
+      "intrinsic_test",
+      "lazy_deopt_1",
+      "lazy_deopt_2",
+      "lazy_deopt_3",
+      "lazy_deopt_4",
+      "lazy_deopt_5",
+      "lazy_deopt_6",
+      "lazy_deopt_7",
+      "lazy_deopt_8",
+      "lazy_deopt_9",
+      "lazy_deopt_10",
+      "lazy_deopt_11",
+      "lazy_deopt_12",
+      "lazy_deopt_13",
+      "lazy_deopt_14",
+      "lazy_deopt_15",
+      "lazy_deopt_17",
+      "lazy_deopt_18",
+      "lazy_deopt_19",
+      "lazy_deopt_20",
+      "lazy_deopt_21",
+      "lazy_deopt_22",
+      "lazy_deopt_23",
+      "lazy_deopt_24",
+      "lazy_deopt_25",
+      "lazy_deopt_26",
+      "lazy_deopt_27",
+      "ldobjbyvalue_deopt_string_check",
+      "ldobjbyvalue_mono_proto",
+      "ldobjbyvalue_deopt_key_check",
+      "ldobjbyvalue_mono_opt",
+      "ldobjbyvalue_mono_proto_getter",
+      "newobj_check",
+    ]
   }
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

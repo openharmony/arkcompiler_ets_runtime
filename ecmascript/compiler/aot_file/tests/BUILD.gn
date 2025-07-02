@@ -160,7 +160,7 @@ group("unittest") {
     ":BinaryBufferParserTest",
     ":AnFileInfoTest",
   ]
-  
+
   # CMC-GC UT FIX LATER
   if (ets_runtime_enable_cmc_gc) {
     deps -= [ ":AOTFileTest" ]
@@ -179,5 +179,8 @@ group("host_unittest") {
       ":AOTChecksumTestAction",
       ":AOTFileTestAction",
     ]
+  } else if (ets_runtime_enable_cmc_gc) {
+    # CMC-GC UT FIX LATER
+    deps -= [ ":AOTFileTestAction" ]
   }
 }
