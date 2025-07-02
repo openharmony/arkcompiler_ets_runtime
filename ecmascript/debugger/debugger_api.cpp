@@ -1335,6 +1335,19 @@ void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
     debuggerMgr->DropLastFrame();
 }
 
+Local<JSValueRef> DebuggerApi::GetCurrentGlobalEnv(const EcmaVM *ecmaVm, const FrameHandler *frameHandler)
+{
+    auto thread = ecmaVm->GetJSThread();
+    JSTaggedValue lexicalEnv;
+    if (frameHandler == nullptr) {
+        lexicalEnv = thread->GetCurrentLexenv();
+    } else {
+        lexicalEnv = frameHandler->GetEnv();
+    }
+    JSHandle<JSTaggedValue> globalEnv(thread, thread->GetCurrentGlobalEnv(lexicalEnv));
+    return JSNApiHelper::ToLocal<JSValueRef>(globalEnv);
+}
+
 DebuggerApi::DebuggerNativeScope::DebuggerNativeScope(const EcmaVM *vm)
 {
     thread_ = vm->GetAssociatedJSThread();
