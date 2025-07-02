@@ -166,6 +166,8 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
 {
     size_t nNewlyMarked = 0;
     WeakStack weakStack;
+    auto visitor = CreateTraceObjectRefFieldsVisitor(&workStack, &weakStack);
+
     TraceCollector::WorkStack remarkStack;
     auto fetchFromSatbBuffer = [this, &workStack, &remarkStack]() {
         SatbBuffer::Instance().TryFetchOneRetiredNode(remarkStack);
@@ -193,7 +195,7 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
             auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void *)obj));
             region->AddLiveByteCount(obj->GetSize());
             [[maybe_unused]] auto beforeSize = workStack.count();
-            TraceObjectRefFields(obj, workStack, weakStack);
+            TraceObjectRefFields(obj, &visitor);
             DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d", beforeSize,
                  workStack.count(), workStack.count() - beforeSize);
             // try to fork new task if needed.
@@ -227,12 +229,6 @@ void TraceCollector::EnumConcurrencyModelRoots(RootSet& rootSet) const
     UNREACHABLE_CC();
 }
 
-void TraceCollector::EnumStaticRoots(RootSet& rootSet) const
-{
-    const RefFieldVisitor& visitor = [&rootSet, this](RefField<>& root) { EnumRefFieldRoot(root, rootSet); };
-    VisitRoots(visitor);
-}
-
 class MergeMutatorRootsScope {
 public:
     MergeMutatorRootsScope() : manager_(&MutatorManager::Instance()), worldStopped_(manager_->WorldStopped())
@@ -261,15 +257,6 @@ void TraceCollector::MergeAllocBufferRoots(WorkStack& workStack)
     theAllocator_.VisitAllocBuffers([&workStack](AllocationBuffer &buffer) {
         buffer.MarkStack([&workStack](BaseObject *o) { workStack.push_back(o); });
     });
-}
-
-void TraceCollector::EnumerateAllRoots(WorkStack& workStack)
-{
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumerateAllRoots", "");
-    EnumerateAllRootsImpl(GetThreadPool(), workStack);
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::EnumerateAllRoots END", (
-        "rootSet size:" + std::to_string(workStack.size())
-    ).c_str());
 }
 
 void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
@@ -326,24 +313,43 @@ bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkSt
     return true;
 }
 
-void TraceCollector::PushRootInWorkStack(RootSet *dst, RootSet *src)
+bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
 {
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::PushRootInWorkStack_" + std::to_string(src->count())).c_str(), "");
-    while (!src->empty()) {
-        auto temp = src->back();
-        src->pop_back();
-        if (!this->MarkObject(temp)) {
-            dst->push_back(temp);
-        }
+    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+    if (gcReason_ == GCReason::GC_REASON_YOUNG && regionInfo->IsInOldSpace()) {
+        DLOG(ENUM, "enum: skip old object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
+        return false;
+    }
+    // inline MarkObject
+    bool marked = regionInfo->MarkObject(obj);
+    if (!marked) {
+        ASSERT(!regionInfo->IsGarbageRegion());
+        regionInfo->AddLiveByteCount(obj->GetSize());
+        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
+             regionInfo, regionInfo->GetRegionType(), regionInfo->GetRegionStart(), regionInfo->GetLiveByteCount());
+    }
+    if (marked) {
+        return false;
+    }
+    workStack->push_back(obj);
+    return true;
+}
+
+void TraceCollector::PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL,
+                 ("CMCGC::PushRootsToWorkStack_" + std::to_string(collectedRoots.size())).c_str(), "");
+    for (BaseObject *obj : collectedRoots) {
+        PushRootToWorkStack(workStack, obj);
     }
 }
 
-void TraceCollector::TraceRoots(WorkStack &tempStack)
+void TraceCollector::TraceRoots(const CArrayList<BaseObject *> &collectedRoots)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots", "");
 
     WorkStack workStack = NewWorkStack();
-    PushRootInWorkStack(&workStack, &tempStack);
+    PushRootsToWorkStack(&workStack, collectedRoots);
 
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
@@ -367,8 +373,9 @@ void TraceCollector::TraceRoots(WorkStack &tempStack)
     }
 }
 
-void TraceCollector::Remark(WorkStack &workStack)
+void TraceCollector::Remark()
 {
+    WorkStack workStack = NewWorkStack();
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Remark[STW]", "");
     COMMON_PHASE_TIMER("STW re-marking");
@@ -507,27 +514,6 @@ void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpAfterGC();
 #endif
-}
-
-void TraceCollector::EnumerateAllRootsImpl(Taskpool *threadPool, RootSet& rootSet)
-{
-    ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
-
-    const size_t threadCount = static_cast<size_t>(GetGCThreadCount(true));
-    RootSet rootSetsInstance[threadCount];
-    RootSet* rootSets = rootSetsInstance; // work_around the crash of clang parser
-
-    // Only one root task, no need to post task.
-    EnumStaticRoots(rootSets[0]);
-    {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MergeAllocBufferRoots", "");
-        MergeAllocBufferRoots(rootSet);
-    }
-    for (size_t i = 0; i < threadCount; ++i) {
-        rootSet.insert(rootSets[i]);
-    }
-
-    VLOG(DEBUG, "Total roots: %zu(exclude stack roots)", rootSet.size());
 }
 
 void TraceCollector::UpdateGCStats()
