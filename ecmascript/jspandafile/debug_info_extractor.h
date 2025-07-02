@@ -114,7 +114,7 @@ public:
 
             CVector<panda_file::File::EntityId> methodIds;
             panda_file::ClassDataAccessor cda(pandaFile, id);
-            CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+            CString recordName = JSPandaFile::ParseEntryPoint(CString(utf::Mutf8AsCString(cda.GetDescriptor())));
             // Check record name in stage mode
             if (!jsPandaFile_->IsBundlePack()) {
                 // the recordName for testcases is empty

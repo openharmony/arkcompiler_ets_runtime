@@ -42,7 +42,7 @@ void PandaFileTranslator::TranslateClasses(const JSThread *thread, JSPandaFile *
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+        CString recordName = JSPandaFile::ParseEntryPoint(CString(utf::Mutf8AsCString(cda.GetDescriptor())));
         bool isUpdateMainMethodIndex = false;
         cda.EnumerateMethods([thread, jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName,
                               &recordName, &isUpdateMainMethodIndex]
@@ -103,7 +103,7 @@ void PandaFileTranslator::TranslateClass(const JSThread *thread, JSPandaFile *js
     const uint32_t index = classIndexes[classIdx];
     panda_file::File::EntityId classId(index);
     panda_file::ClassDataAccessor cda(*pf, classId);
-    CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+    CString recordName = JSPandaFile::ParseEntryPoint(CString(utf::Mutf8AsCString(cda.GetDescriptor())));
     bool isUpdateMainMethodIndex = false;
     cda.EnumerateMethods([thread, jsPandaFile, methodLiterals, &methodIdx, pf, &methodName,
                             &recordName, &isUpdateMainMethodIndex]

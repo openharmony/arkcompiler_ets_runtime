@@ -497,19 +497,19 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhpmPackage)
     EXPECT_EQ(CString(), entryPoint);
 
     // start with pkg_modules, packageName has pkg_modules
-    moduleRecordName = "pkg_modules@entry.@hw-agconnect.hmcore2";
-    moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
-    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
-        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    CString moduleRecordName2 = "pkg_modules@entry.@hw-agconnect.hmcore2";
+    CString moduleRequestName2 = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
     JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
-    info->npmPackageName = moduleRecordName;
-    recordInfo.insert({moduleRecordName, info});
-    entryPoint = ModulePathHelper::ParseOhpmPackage(pf.get(), moduleRecordName, moduleRequestName);
+    info->npmPackageName = moduleRecordName2;
+    recordInfo.insert({std::string_view(moduleRecordName2.c_str(), moduleRecordName2.size()), info});
+    entryPoint = ModulePathHelper::ParseOhpmPackage(pf.get(), moduleRecordName2, moduleRequestName2);
     EXPECT_EQ(CString(), entryPoint);
 
     // delete info
     delete info;
-    recordInfo.erase(moduleRecordName);
+    recordInfo.erase(moduleRecordName2);
 }
 
 HWTEST_F_L0(EcmaModuleTest, FindPackageInTopLevel)
@@ -989,24 +989,24 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
-        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
     
     CString moduleRecordName = "node_modules/0/moduleTest4/index";
     CString moduleRequestName = "json/index";
     CString result = "node_modules/0/moduleTest4/node_modules/json/index";
     JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
     info->npmPackageName = "node_modules/0/moduleTest4";
-    recordInfo.insert({moduleRecordName, info});
-    recordInfo.insert({result, info});
+    recordInfo.insert({std::string_view(moduleRecordName.c_str(), moduleRecordName.size()), info});
+    recordInfo.insert({std::string_view(result.c_str(), result.size()), info});
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
         thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
     
     // delete info
     delete info;
-    recordInfo.erase(moduleRecordName);
-    recordInfo.erase(result);
+    recordInfo.erase(std::string_view(moduleRecordName.c_str(), moduleRecordName.size()));
+    recordInfo.erase(std::string_view(result.c_str(), result.size()));
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
@@ -1493,7 +1493,8 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
 
     requestPath = "ets/Test";
     recordName = "&entry/ets/pages/Index&";
-    pf->InsertJSRecordInfo("&entry/ets/Test&");
+    CString recordInfo = "&entry/ets/Test&";
+    pf->InsertJSRecordInfo(recordInfo);
     result = ModulePathHelper::TranslateExpressionToNormalized(thread, pf.get(), baseFileName, recordName,
         requestPath);
     EXPECT_EQ(result, "&entry/ets/Test&");
@@ -1554,7 +1555,8 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized3)
     CString requestPath = "./@normalized:N&&&har/Index&1.0.0";
     CString baseFileName = "";
     CString recordName = "";
-    pf->InsertJSRecordInfo("@normalized:N&&&har/Index&1.0.0&");
+    CString recordInfo = "@normalized:N&&&har/Index&1.0.0&";
+    pf->InsertJSRecordInfo(recordInfo);
     CString result = ModulePathHelper::TranslateExpressionToNormalized(thread, pf.get(), baseFileName, recordName,
         requestPath);
     EXPECT_EQ(result, "./@normalized:N&&&har/Index&1.0.0");
@@ -1826,18 +1828,18 @@ HWTEST_F_L0(EcmaModuleTest, ConcatMergeFileNameToNormalized)
     requestPath = "./lib/toDate";
     result = "pkg_modules/.ohpm/validator@13.12.0/pkg_modules/validator/lib/toDate";
     pf->InsertJSRecordInfo(result);
-    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
-        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
     JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
     info->npmPackageName = result;
-    recordInfo.insert({recordName, info});
+    recordInfo.insert({std::string_view(recordName.c_str(), recordName.size()), info});
 
     entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
         requestPath);
     EXPECT_EQ(result, entryPoint);
     
     delete info;
-    recordInfo.erase(recordName);
+    recordInfo.erase(std::string_view(recordName.c_str(), recordName.size()));
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName)
@@ -4079,12 +4081,16 @@ HWTEST_F_L0(EcmaModuleTest, ParseCrossModuleFile)
     EXPECT_EQ(requestPath, "moduleName/src");
 
     requestPath="moduleName/src";
-    pf->InsertNpmEntries("moduleName", "/src");
+    CString recordInfo1 = "moduleName";
+    CString fieldInfo1 = "/src";
+    pf->InsertNpmEntries(recordInfo1, fieldInfo1);
     ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "/src");
 
     requestPath="moduleName/src/main/a/b/c";
-    pf->InsertNpmEntries("moduleName", "/src/main/a/b/c");
+    CString recordInfo2 = "moduleName";
+    CString fieldInfo2 = "/src/main/a/b/c";
+    pf->InsertNpmEntries(recordInfo2, fieldInfo2);
     ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "/a/b/c");
 }

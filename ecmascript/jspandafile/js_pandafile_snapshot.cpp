@@ -195,7 +195,7 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
                 LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s strLen failed";
             }
             writeBuf += sizeof(uint32_t);
-            if (memcpy_s(writeBuf, strLen, recordName.c_str(), strLen) != EOK) {
+            if (memcpy_s(writeBuf, strLen, recordName.data(), strLen) != EOK) {
                 LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s recordName failed";
             }
             writeBuf += strLen;
