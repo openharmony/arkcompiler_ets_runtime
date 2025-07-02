@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/work_manager-inl.h"
+#include "common_components/heap/allocator/region_desc.h"
+#include "common_components/mutator/mutator.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
@@ -110,6 +113,7 @@ void Barriers::CMCWriteBarrier(const JSThread *thread, void *obj, size_t offset,
     return;
 }
 
+#ifdef ARK_USE_SATB_BARRIER
 void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj, void* src, void* dst,
                                         size_t count)
 {
@@ -126,6 +130,87 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     }
     return;
 }
+#else
+bool Barriers::ShouldProcessSATB(common::GCPhase gcPhase)
+{
+    switch (gcPhase) {
+        case common::GCPhase::GC_PHASE_ENUM:
+        case common::GCPhase::GC_PHASE_MARK:
+        case common::GCPhase::GC_PHASE_FINAL_MARK:
+        case common::GCPhase::GC_PHASE_REMARK_SATB:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Barriers::ShouldGetGCReason(common::GCPhase gcPhase)
+{
+    switch (gcPhase) {
+        case common::GCPhase::GC_PHASE_ENUM:
+        case common::GCPhase::GC_PHASE_MARK:
+        case common::GCPhase::GC_PHASE_POST_MARK:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Barriers::ShouldUpdateRememberSet(BaseObject* ref, common::GCPhase gcPhase)
+{
+    if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
+        return false;
+    }
+    ASSERT(common::Heap::IsHeapAddress(ref));
+    return !ShouldGetGCReason(gcPhase) || common::Heap::GetHeap().GetGCReason() == common::GC_REASON_YOUNG;
+}
+
+void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObject *dstObj, void* src, void* dst,
+                                        size_t count)
+{
+    ASSERT(g_isEnableCMCGC);
+    ASSERT(dstObj != nullptr);
+
+    common::BaseObject* object = reinterpret_cast<BaseObject*>(const_cast<TaggedObject*>(dstObj));
+    common::RegionDesc* objRegion =
+        common::RegionDesc::GetRegionDescAt(reinterpret_cast<common::MAddress>(object));
+    uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
+    common::GCPhase gcPhase = thread->GetCMCGCPhase();
+
+    // 1. update Rememberset
+    auto checkReference = [&](BaseObject* ref) {
+        common::RegionDesc* refRegion =
+            common::RegionDesc::GetRegionDescAt(reinterpret_cast<common::MAddress>(ref));
+        return (!objRegion->IsInYoungSpace() && refRegion->IsInYoungSpace()) ||
+            (objRegion->IsInFromSpace() && refRegion->IsInRecentSpace());
+    };
+
+    for (size_t i = 0; i < count; i++) {
+        BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
+        if (!ShouldUpdateRememberSet(ref, gcPhase)) {
+            continue;
+        }
+
+        if (checkReference(ref)) {
+            objRegion->MarkRSetCardTable(object);
+            break;
+        }
+    }
+
+    // 2. SATB buffer proccess
+    if (ShouldProcessSATB(gcPhase)) {
+        common::Mutator* mutator = common::Mutator::GetMutator();
+        for (size_t i = 0; i < count; i++) {
+            BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
+            if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
+                continue;
+            }
+            ref = reinterpret_cast<BaseObject*>((uintptr_t)ref & ~(common::Barrier::TAG_WEAK));
+            mutator->RememberObjectInSatbBuffer(ref);
+        }
+    }
+}
+#endif
 
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);
