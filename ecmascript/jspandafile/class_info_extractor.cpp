@@ -593,7 +593,13 @@ JSHandle<JSFunction> ClassHelper::CreateJSFunctionFromTemplate(JSThread *thread,
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> propFunc = factory->CreateJSFunctionFromTemplate(funcTemp);
-    JSFunction::UpdateProfileTypeInfoCell(thread, funcTemp, propFunc);
+    if (thread->IsMultiContextTriggered()) {
+        // Disable the profileTypeInfo sharing in the multi-context scenario.
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        propFunc->SetRawProfileTypeInfo(thread, globalConst->GetEmptyProfileTypeInfoCell());
+    } else {
+        JSFunction::UpdateProfileTypeInfoCell(thread, funcTemp, propFunc);
+    }
     propFunc->SetHomeObject(thread, homeObject);
     propFunc->SetLexicalEnv(thread, lexenv);
     return propFunc;

@@ -1142,7 +1142,8 @@ public:
                                                  base::AlignedUint64,
                                                  ElementsHClassEntries,
                                                  base::AlignedPointer,
-                                                 base::AlignedUint32> {
+                                                 base::AlignedUint32,
+                                                 base::AlignedBool> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             IsEnableCMCGCIndex,
@@ -1197,6 +1198,7 @@ public:
             ArrayHClassIndexesIndex,
             moduleLoggerIndex,
             stageOfHotReloadIndex,
+            isMultiContextTriggeredIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1480,6 +1482,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::stageOfHotReloadIndex)>(
                 isArch32);
         }
+        static size_t GetIsMultiContextTriggeredOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::isMultiContextTriggeredIndex)>(
+                isArch32);
+        }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) uint32_t isEnableCMCGC_ {0};
@@ -1534,6 +1541,7 @@ public:
         alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
         alignas(EAS) ModuleLogger *moduleLogger_ {nullptr};
         alignas(EAS) StageOfHotReload stageOfHotReload_ {StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD};
+        alignas(EAS) bool isMultiContextTriggered_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1574,6 +1582,16 @@ public:
             NotifyHotReloadDeoptimize();
         }
         glueData_.stageOfHotReload_ = stageOfHotReload;
+    }
+
+    bool IsMultiContextTriggered() const
+    {
+        return glueData_.isMultiContextTriggered_;
+    }
+
+    void SetMultiContextTriggered(bool isMultiContextTriggered)
+    {
+        glueData_.isMultiContextTriggered_ = isMultiContextTriggered;
     }
 
     JSHandle<DependentInfos> GetDependentInfo() const;
