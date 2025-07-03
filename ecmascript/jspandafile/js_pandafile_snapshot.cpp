@@ -27,9 +27,8 @@ bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, c
     const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadData";
     // check application white list & specific file
-    if (filesystem::Exists(path.c_str()) && IsJSPandaFileSnapshotFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
+    if (IsJSPandaFileSnapshotFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
         return ReadDataFromFile(thread, jsPandaFile, path, version);
     }
     return false;
@@ -72,22 +71,22 @@ void JSPandaFileSnapshot::RemoveSnapshotFiles(const CString &path)
     DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
 }
 
-void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
     const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::WriteDataToFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile: " << filename;
     if (FileExist(filename.c_str())) {
         LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile file already exist";
-        return;
+        return false;
     }
+    LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile: " << filename;
     // calculate file size
-    size_t checksumSize = sizeof(uint32_t);
-    size_t fileSize = sizeof(uint32_t);
-    size_t appVersionCodeSize = sizeof(uint32_t);
-    size_t versionStrLenSize = sizeof(uint32_t);
-    size_t versionStrLen = version.size();
+    uint32_t checksumSize = sizeof(uint32_t);
+    uint32_t fileSize = sizeof(uint32_t);
+    uint32_t appVersionCodeSize = sizeof(uint32_t);
+    uint32_t versionStrLenSize = sizeof(uint32_t);
+    uint32_t versionStrLen = version.size();
     size_t bufSize = appVersionCodeSize + versionStrLenSize + versionStrLen + fileSize + checksumSize;
     // add moduleName len & ptr
     CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(jsPandaFile->GetJSPandaFileDesc());
@@ -116,55 +115,44 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
     MemMap fileMapMem =
         CreateFileMap(filename.c_str(), bufSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC, PAGE_PROT_READWRITE);
     if (fileMapMem.GetOriginAddr() == nullptr) {
-        LOG_ECMA(ERROR) << "WriteJSPandafileToFile: open file failed:" << filename;
-        return;
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::WriteDataToFile open file failed:" << filename;
+        return false;
     }
     MemMapScope memMapScope(fileMapMem);
+    FileMemMapWriter writer(fileMapMem, "JSPandaFileSnapshot::WriteDataToFile");
     // write versionCode
-    char* writeBuf = static_cast<char*>(fileMapMem.GetOriginAddr());
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &appVersionCode, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "WriteJSPandafileToFile: appVersionCode memcpy_s failed";
-        return;
+    if (!writer.WriteSingleData(&appVersionCode, sizeof(appVersionCode), "appVersionCode")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &versionStrLen, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: versionStrLen memcpy_s failed";
-        return;
+    if (!writer.WriteSingleData(&versionStrLen, sizeof(versionStrLen), "versionStrLen")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
-    if (memcpy_s(writeBuf, versionStrLen, version.c_str(), versionStrLen) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: versionStrLen memcpy_s failed";
-        return;
+    if (!writer.WriteSingleData(version.c_str(), versionStrLen, "versionStr")) {
+        return false;
     }
-    writeBuf += versionStrLen;
     // write pandafile size
     uint32_t fsize = jsPandaFile->GetFileSize();
-    if (memcpy_s(writeBuf, sizeof(fsize), &fsize, sizeof(fsize)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s fsize failed";
+    if (!writer.WriteSingleData(&fsize, sizeof(fsize), "fsize")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
     // write moduleName
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &moduleNameLen, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s moduleName len failed";
+    if (!writer.WriteSingleData(&moduleNameLen, sizeof(moduleNameLen), "moduleNameLen")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
-    if (memcpy_s(writeBuf, moduleNameLen, moduleName.c_str(), moduleNameLen) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s moduleName failed";
+    if (!writer.WriteSingleData(moduleName.c_str(), moduleNameLen, "moduleName")) {
+        return false;
     }
-    writeBuf += moduleNameLen;
     // write numMethods
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &numMethods, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s numMethods failed";
+    if (!writer.WriteSingleData(&numMethods, sizeof(numMethods), "numMethods")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
     size_t methodLiteralSize = sizeof(MethodLiteral) * numMethods;
     // write MethodLiterals
-    if (memcpy_s(writeBuf, methodLiteralSize, jsPandaFile->GetMethodLiterals(), methodLiteralSize) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s methodLiterals failed";
-        return;
+    if (!writer.WriteSingleData(jsPandaFile->GetMethodLiterals(), methodLiteralSize, "methodLiterals")) {
+        return false;
     }
-    MethodLiteral *methodLiterals = (MethodLiteral *) writeBuf;
+    MethodLiteral *methodLiterals = reinterpret_cast<MethodLiteral*>(writer.GetWritePtr() - methodLiteralSize);
     size_t methodIdx = 0;
     // get current pandafile base offset
     uintptr_t baseAddress = reinterpret_cast<uintptr_t>(jsPandaFile->GetBase());
@@ -174,40 +162,34 @@ void JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         // calculate relative offset
         methodLiteral->SetNativePointer(reinterpret_cast<void*>(nativePointerAddress - baseAddress));
     }
-    writeBuf += methodLiteralSize;
     // write mainMethodIndexSize
-    if (memcpy_s(writeBuf, sizeof(uint32_t), &mainMethodIndexSize, sizeof(uint32_t)) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s mainMethodIndexSize failed";
-        return;
+    if (!writer.WriteSingleData(&mainMethodIndexSize, sizeof(mainMethodIndexSize), "mainMethodIndexSize")) {
+        return false;
     }
-    writeBuf += sizeof(uint32_t);
     // write mainMethodIndex & recordName
     mainMethodIndex = JSPandaFile::DEFAULT_MAIN_METHOD_INDEX;
     for (auto &[recordName, recordInfo]: jsPandaFile->GetJSRecordInfo()) {
         mainMethodIndex = recordInfo->mainMethodIndex;
         if (mainMethodIndex != JSPandaFile::DEFAULT_MAIN_METHOD_INDEX) {
-            if (memcpy_s(writeBuf, sizeof(uint32_t), &mainMethodIndex, sizeof(uint32_t)) != EOK) {
-                LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s mainMethodIndex failed";
+            if (!writer.WriteSingleData(&mainMethodIndex, sizeof(mainMethodIndex), "mainMethodIndex")) {
+                return false;
             }
-            writeBuf += sizeof(uint32_t);
-            uint32_t strLen = recordName.size();
-            if (memcpy_s(writeBuf, sizeof(uint32_t), &strLen, sizeof(uint32_t)) != EOK) {
-                LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s strLen failed";
+            uint32_t recordNameLen = recordName.size();
+            if (!writer.WriteSingleData(&recordNameLen, sizeof(recordNameLen), "recordNameLen")) {
+                return false;
             }
-            writeBuf += sizeof(uint32_t);
-            if (memcpy_s(writeBuf, strLen, recordName.data(), strLen) != EOK) {
-                LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s recordName failed";
+            if (!writer.WriteSingleData(recordName.data(), recordNameLen, "recordName")) {
+                return false;
             }
-            writeBuf += strLen;
         }
     }
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
-    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
-    if (memcpy_s(writeBuf, checksumSize, &checksum, checksumSize) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: checksum memcpy_s failed";
-        return;
+    uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
+    if (!writer.WriteSingleData(&checksum, checksumSize, "checksum")) {
+        return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    return true;
 }
 
 bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
@@ -215,80 +197,96 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::ReadDataFromFile", "");
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMap fileMapMem = FileMap(filename.c_str(), FILE_RDONLY, PAGE_PROT_READ, 0);
     if (fileMapMem.GetOriginAddr() == nullptr) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: open file failed:" << filename;
+        RemoveSnapshotFiles(path);
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile open file failed:" << filename;
         return false;
     }
+    LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMapScope memMapScope(fileMapMem);
+    FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "JSPandaFileSnapshot::ReadDataFromFile");
 
-    const char* readBuf = static_cast<const char*>(fileMapMem.GetOriginAddr());
     size_t checksumSize = sizeof(uint32_t);
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
-    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
-    uint32_t readCheckSum = *reinterpret_cast<const uint32_t*>(readBuf + contentSize);
+    uint32_t readCheckSum = 0;
+    if (!reader.ReadFromOffset(&readCheckSum, checksumSize, contentSize, "checksum")) {
+        return false;
+    }
+    uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
     if (checksum != readCheckSum) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot checksum compare failed, checksum: " << checksum
-            << ", readCheckSum" << readCheckSum;
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile checksum compare failed, checksum: " << checksum
+            << ", readCheckSum: " << readCheckSum;
         RemoveSnapshotFiles(path);
         return false;
     }
     // verify version code
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
-    uint32_t readAppVersionCode = *reinterpret_cast<const uint32_t*>(readBuf);
+    uint32_t readAppVersionCode = 0;
+    if (!reader.ReadSingleData(&readAppVersionCode, sizeof(readAppVersionCode), "appVersionCode")) {
+        return false;
+    }
     if (appVersionCode != readAppVersionCode) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot version compare failed, appVersionCode: " << appVersionCode
-            << ", readAppVersionCode" << readAppVersionCode;
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile version compare failed, appVersionCode: "
+            << appVersionCode << ", readAppVersionCode: " << readAppVersionCode;
         RemoveSnapshotFiles(path);
         return false;
     }
-    readBuf += sizeof(uint32_t);
-    uint32_t readVersionStrLen = *reinterpret_cast<const uint32_t*>(readBuf);
-    readBuf += sizeof(uint32_t);
-    CString readVersion(readBuf, readVersionStrLen);
-    if (version != readVersion) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot version compare failed, version: " << version
-            << ", readVersion" << readVersion;
+    uint32_t readVersionStrLen = 0;
+    if (!reader.ReadSingleData(&readVersionStrLen, sizeof(readVersionStrLen), "readVersionStrLen")) {
+        return false;
+    }
+    CString readVersionStr;
+    if (!reader.ReadString(readVersionStr, readVersionStrLen, "readVersionStr")) {
+        return false;
+    }
+    if (version != readVersionStr) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile version compare failed, version: " << version
+            << ", readVersion: " << readVersionStr;
         RemoveSnapshotFiles(path);
         return false;
     }
-    readBuf += readVersionStrLen;
     // verify filesize
-    uint32_t fsize = *reinterpret_cast<const uint32_t*>(readBuf);
+    uint32_t fsize = 0;
+    if (!reader.ReadSingleData(&fsize, sizeof(fsize), "fsize")) {
+        return false;
+    }
     if (fsize != jsPandaFile->GetFileSize()) {
-        LOG_COMPILER(ERROR) << "JSPandaFileSnapshot: file size not equal, " << filename  << ", old = "
+        LOG_COMPILER(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile file size not equal, " << filename  << ", old = "
             << fsize << ", new = " << jsPandaFile->GetFileSize();
         RemoveSnapshotFiles(path);
         return false;
     }
-    readBuf += sizeof(uint32_t);
     // verify moduleName
     // read moduleName len
-    uint32_t moduleNameLen = *reinterpret_cast<const uint32_t*>(readBuf);
-    readBuf += sizeof(uint32_t);
+    uint32_t moduleNameLen = 0;
+    if (!reader.ReadSingleData(&moduleNameLen, sizeof(moduleNameLen), "moduleNameLen")) {
+        return false;
+    }
     // Get moduleName
-    CString str(readBuf, moduleNameLen);
+    CString readModuleName;
+    if (!reader.ReadString(readModuleName, moduleNameLen, "readModuleName")) {
+        return false;
+    }
     CString curModuleName = ModulePathHelper::GetModuleNameWithBaseFile(jsPandaFile->GetJSPandaFileDesc());
-    if (str != curModuleName) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot moduleName check failed, read moduleName is: " << str
-            << ", current moduleName is:" << curModuleName;
+    if (readModuleName != curModuleName) {
+        LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile moduleName check failed, read moduleName is: "
+            << readModuleName << ", current moduleName is:" << curModuleName;
         RemoveSnapshotFiles(path);
         return false;
     }
-    readBuf += moduleNameLen;
     // read numMethods
-    uint32_t numMethods = *reinterpret_cast<const uint32_t*>(readBuf);
+    uint32_t numMethods = 0;
+    if (!reader.ReadSingleData(&numMethods, sizeof(numMethods), "numMethods")) {
+        return false;
+    }
     jsPandaFile->numMethods_ = numMethods;
-    readBuf += sizeof(uint32_t);
     // read MethodLiterals
     MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
     size_t methodLiteralSize = numMethods * sizeof(MethodLiteral);
-    if (memcpy_s(methodLiterals, methodLiteralSize, readBuf, methodLiteralSize) != EOK) {
-        LOG_ECMA(ERROR) << "JSPandaFileSnapshot: memcpy_s failed";
+    if (!reader.ReadSingleData(methodLiterals, methodLiteralSize, "methodLiteralSize")) {
         return false;
     }
-
     size_t methodIdx = 0;
     // get current pandafile base offset
     uintptr_t baseAddress = reinterpret_cast<uintptr_t>(jsPandaFile->GetBase());
@@ -300,30 +298,37 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     }
     jsPandaFile->SetAllMethodLiteralToMap();
 
-    readBuf += methodLiteralSize;
     // read needUpdate size
-    uint32_t mainMethodIndexSize = *reinterpret_cast<const uint32_t*>(readBuf);
-    readBuf += sizeof(uint32_t);
+    uint32_t mainMethodIndexSize = 0;
+    if (!reader.ReadSingleData(&mainMethodIndexSize, sizeof(mainMethodIndexSize), "mainMethodIndexSize")) {
+        return false;
+    }
     // calculte mainMethodIndex and recordName
     uint32_t recordNum = 0;
     while (recordNum < mainMethodIndexSize) {
         // Get mainMethodIndex
-        uint32_t mainMethodIndex = *reinterpret_cast<const uint32_t*>(readBuf);
-        readBuf += sizeof(uint32_t);
+        uint32_t mainMethodIndex = 0;
+        if (!reader.ReadSingleData(&mainMethodIndex, sizeof(mainMethodIndex), "mainMethodIndex")) {
+            return false;
+        }
         // Get recordName length
-        uint32_t strLen = *reinterpret_cast<const uint32_t*>(readBuf);
-        readBuf += sizeof(uint32_t);
+        uint32_t recordNameLen = 0;
+        if (!reader.ReadSingleData(&recordNameLen, sizeof(recordNameLen), "recordNameLen")) {
+            return false;
+        }
         // Get recordName
-        CString str(readBuf, strLen);
-        readBuf += strLen;
+        CString recordName;
+        if (!reader.ReadString(recordName, recordNameLen, "recordName")) {
+            return false;
+        }
         // set mainMethodIndex record and index
-        auto info = jsPandaFile->jsRecordInfo_.find(str);
+        auto info = jsPandaFile->jsRecordInfo_.find(recordName);
         if (info != jsPandaFile->jsRecordInfo_.end()) {
             info->second->mainMethodIndex = mainMethodIndex;
         }
         recordNum++;
     }
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot: success with: " << filename;
+    LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile success with: " << filename;
     return true;
 }
 } // namespace panda::ecmascript

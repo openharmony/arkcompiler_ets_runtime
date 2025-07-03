@@ -28,7 +28,7 @@ public:
     static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version);
     static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path, const CString &version);
 
-private:
+protected:
     static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);
     static CString GetJSPandaFileFileName(const CString &fileName, const CString &path);
     static void RemoveSnapshotFiles(const CString &path);
@@ -58,7 +58,7 @@ private:
 // +---------------------------------+<-------- CheckSum
 // |             CheckSum            |
 // +---------------------------------+
-    static void WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+    static bool WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
         const CString &version);
     static bool ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
         const CString &version);

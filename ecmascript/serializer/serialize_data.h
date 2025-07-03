@@ -487,6 +487,12 @@ public:
         return errorMessage_;
     }
 
+    // for ut
+    void SetBuffer(uint8_t *buffer)
+    {
+        buffer_ = buffer;
+    }
+
 private:
     static constexpr size_t U8_SIZE = 1;
     static constexpr size_t U16_SIZE = 2;

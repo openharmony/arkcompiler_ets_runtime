@@ -34,34 +34,28 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
         return;
     }
     JSThread *thread = vm->GetJSThread();
-    ModuleSerializer serializer(thread);
-    JSHandle<TaggedArray> serializeArray = GetModuleSerializeArray(thread);
-    const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
-    if (!serializer.WriteValue(thread, JSHandle<JSTaggedValue>(serializeArray),
-                               globalConstants->GetHandledUndefined(),
-                               globalConstants->GetHandledUndefined())) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::SerializeDataAndPostSavingJob serialize failed";
+    std::unique_ptr<SerializeData> fileData = GetSerializeData(thread);
+    if (fileData == nullptr) {
         return;
     }
-    std::unique_ptr<SerializeData> fileData = serializer.Release();
     common::Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<ModuleSnapshotTask>(thread->GetThreadId(), thread, fileData, filePath, version));
 }
 
-void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, const CString &version)
+bool ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, const CString &version)
 {
     LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     if (!FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData Module serialize file doesn't exist: " << path;
-        return;
+        return false;
     }
     JSThread *thread = vm->GetJSThread();
     std::unique_ptr<SerializeData> fileData = std::make_unique<SerializeData>(thread);
     if (!ReadDataFromFile(thread, fileData, path, version)) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::DeserializeData failed: " << filePath;
-        return;
+        return false;
     }
     ModuleDeserializer deserializer(thread, fileData.release());
     JSHandle<TaggedArray> deserializedModules = JSHandle<TaggedArray>::Cast(deserializer.ReadValue());
@@ -80,6 +74,7 @@ void ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, cons
         moduleManager->AddResolveImportedModule(moduleName, value);
     }
     LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData success";
+    return true;
 }
 
 JSHandle<TaggedArray> ModuleSnapshot::GetModuleSerializeArray(JSThread *thread)
@@ -107,43 +102,53 @@ void ModuleSnapshot::RemoveSnapshotFiles(const CString &path)
     DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
 }
 
+std::unique_ptr<SerializeData> ModuleSnapshot::GetSerializeData(JSThread *thread)
+{
+    ModuleSerializer serializer(thread);
+    JSHandle<TaggedArray> serializeArray = GetModuleSerializeArray(thread);
+    const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
+    if (!serializer.WriteValue(thread, JSHandle<JSTaggedValue>(serializeArray),
+                               globalConstants->GetHandledUndefined(),
+                               globalConstants->GetHandledUndefined())) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::GetSerializeData serialize failed";
+        return nullptr;
+    }
+    std::unique_ptr<SerializeData> fileData = serializer.Release();
+    return fileData;
+}
+
 bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString& path,
     const CString &version)
 {
-    LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::ReadDataFromFile", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     MemMap fileMapMem = FileMap(filePath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
     if (fileMapMem.GetOriginAddr() == nullptr) {
+        RemoveSnapshotFiles(path);
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile File mmap failed";
         return false;
     }
+    LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile";
     MemMapScope memMapScope(fileMapMem);
-    uint8_t* readPtr = static_cast<uint8_t*>(fileMapMem.GetOriginAddr());
-    size_t checksumSize = sizeof(uint32_t);
+    FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "ModuleSnapshot::ReadDataFromFile");
+    uint32_t checksumSize = sizeof(uint32_t);
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
-    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
-    uint32_t readCheckSum = *reinterpret_cast<const uint32_t*>(readPtr + contentSize);
+    uint32_t readCheckSum = 0;
+    if (!reader.ReadFromOffset(&readCheckSum, checksumSize, contentSize, "checksum")) {
+        return false;
+    }
+    uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
     if (checksum != readCheckSum) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile checksum compare failed, checksum: " << checksum
             << ", readCheckSum" << readCheckSum;
         RemoveSnapshotFiles(path);
         return false;
     }
-    size_t remaining = fileMapMem.GetSize();
     // read app version
-    uint32_t readAppVersionCode;
-    if (remaining < sizeof(readAppVersionCode)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read AppVersionCode failed";
-        RemoveSnapshotFiles(path);
+    uint32_t readAppVersionCode = 0;
+    if (!reader.ReadSingleData(&readAppVersionCode, sizeof(readAppVersionCode), "AppVersionCode")) {
         return false;
     }
-    if (memcpy_s(&readAppVersionCode, sizeof(readAppVersionCode), readPtr, sizeof(readAppVersionCode)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s read AppVersionCode failed";
-        return false;
-    }
-    readPtr += sizeof(readAppVersionCode);
-    remaining -= sizeof(readAppVersionCode);
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
     if (readAppVersionCode != appVersionCode) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile readAppVersionCode: " << readAppVersionCode <<
@@ -151,80 +156,40 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
         RemoveSnapshotFiles(path);
         return false;
     }
-
     // read version
-    uint32_t versionStrLen;
-    if (remaining < sizeof(versionStrLen)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read versionStrLen failed";
+    uint32_t readVersionStrLen = 0;
+    if (!reader.ReadSingleData(&readVersionStrLen, sizeof(readVersionStrLen), "readVersionStrLen")) {
+        return false;
+    }
+    CString readVersionStr;
+    if (!reader.ReadString(readVersionStr, readVersionStrLen, "readVersionStr")) {
+        return false;
+    }
+    if (version != readVersionStr) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile version compare failed, version: " << version
+            << ", readVersion" << readVersionStr;
         RemoveSnapshotFiles(path);
         return false;
     }
-    if (memcpy_s(&versionStrLen, sizeof(versionStrLen), readPtr, sizeof(versionStrLen)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s read versionStrLen failed";
-        return false;
-    }
-    readPtr += sizeof(versionStrLen);
-    remaining -= sizeof(versionStrLen);
-    if (remaining < versionStrLen) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read versionStr failed";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-    CString readVersion(reinterpret_cast<const char*>(readPtr), versionStrLen);
-    if (readVersion != version) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile readVersion: " << readVersion <<
-            ", version: " << version << " doesn't match.";
-        RemoveSnapshotFiles(path);
-        return false;
-    }
-    readPtr += versionStrLen;
-    remaining -= versionStrLen;
-
     // read dataIndex
-    if (remaining < sizeof(data->dataIndex_)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read dataIndex failed";
-        RemoveSnapshotFiles(path);
+    if (!reader.ReadSingleData(&data->dataIndex_, sizeof(data->dataIndex_), "dataIndex")) {
         return false;
     }
-    if (memcpy_s(&data->dataIndex_, sizeof(data->dataIndex_), readPtr, sizeof(data->dataIndex_)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s dataIndex failed";
-        return false;
-    }
-    readPtr += sizeof(data->dataIndex_);
-    remaining -= sizeof(data->dataIndex_);
 
     // 8-byte alignment
-    const size_t alignPadding = AlignUp(readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                                - (readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
-    readPtr += alignPadding;
-    remaining -= alignPadding;
+    reader.Step(GetAlignUpPadding(reader.GetReadPtr(), fileMapMem.GetOriginAddr(), sizeof(uint64_t)));
 
     // read uint64_t
-    if (remaining < sizeof(data->sizeLimit_)) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read sizeLimit failed";
-        RemoveSnapshotFiles(path);
+    if (!reader.ReadSingleData(&data->sizeLimit_, sizeof(data->sizeLimit_), "sizeLimit")) {
         return false;
     }
-    if (memcpy_s(&data->sizeLimit_, sizeof(data->sizeLimit_), readPtr, sizeof(data->sizeLimit_)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s sizeLimit failed";
-        return false;
-    }
-    readPtr += sizeof(data->sizeLimit_);
-    remaining -= sizeof(data->sizeLimit_);
-
     // 8-byte alignment
-    readPtr = static_cast<uint8_t*>(fileMapMem.GetOriginAddr()) +
-               AlignUp(readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(size_t));
-    remaining = fileMapMem.GetSize() - (readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    reader.Step(GetAlignUpPadding(reader.GetReadPtr(), fileMapMem.GetOriginAddr(), sizeof(uint64_t)));
     // read group size
-    constexpr size_t groupSize = GROUP_SIZE * sizeof(size_t);
-    if (remaining < groupSize) {
-        LOG_ECMA(ERROR) << "read groupSize failed";
-        RemoveSnapshotFiles(path);
+    size_t sizeGroup[GROUP_SIZE];
+    if (!reader.ReadSingleData(sizeGroup, GROUP_SIZE * sizeof(size_t), "sizeGroup")) {
         return false;
     }
-
-    const size_t* sizeGroup = reinterpret_cast<size_t*>(readPtr);
     data->bufferSize_ = sizeGroup[BUFFER_SIZE_INDEX];
     data->bufferCapacity_ = sizeGroup[BUFFER_CAPACITY_INDEX];
     data->regularSpaceSize_ = sizeGroup[REGULAR_SPACE_SIZE_INDEX];
@@ -237,133 +202,74 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
 
     // read and check imcompleteData
     const size_t incompleteData = sizeGroup[INCOMPLETE_DATA_INDEX];
-    if (incompleteData > 1) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read incompleteData failed";
+    if (incompleteData != 0) {
+        LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile has incompleteData: " << incompleteData;
         RemoveSnapshotFiles(path);
         return false;
     }
     data->incompleteData_ = (incompleteData != 0);
 
-    readPtr += groupSize;
-    remaining -= groupSize;
     if (g_isEnableCMCGC) {
         // read regularRemainSizeVectorSize
         size_t regularRemainSizeVectorSize;
-        if (remaining < sizeof(size_t)) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read regularRemainSizeVectorSize failed";
-            RemoveSnapshotFiles(path);
+        if (!reader.ReadSingleData(&regularRemainSizeVectorSize, sizeof(regularRemainSizeVectorSize),
+            "regularRemainSizeVectorSize")) {
             return false;
         }
-        if (memcpy_s(&regularRemainSizeVectorSize, sizeof(size_t), readPtr, sizeof(size_t)) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s regularRemainSizeVectorSize failed";
-            return false;
-        }
-        readPtr += sizeof(size_t);
-        remaining -= sizeof(size_t);
         // read regularRemainSizeVector
-        uint32_t vecSize = regularRemainSizeVectorSize * sizeof(size_t);
-        if (remaining < vecSize) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read regularRemainSizeVector failed";
-            RemoveSnapshotFiles(path);
-            return false;
-        }
+        size_t vecSize = regularRemainSizeVectorSize * sizeof(size_t);
         if (vecSize > 0) {
             data->regularRemainSizeVector_.resize(regularRemainSizeVectorSize);
-            if (memcpy_s(data->regularRemainSizeVector_.data(), vecSize, readPtr, vecSize) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s regularRemainSizeVector failed";
+            if (!reader.ReadSingleData(data->regularRemainSizeVector_.data(), vecSize,
+                "regularRemainSizeVector")) {
                 return false;
             }
-            readPtr += vecSize;
-            remaining -= vecSize;
         }
         // read pinRemainSizeVectorSize
-        size_t pinRemainSizeVectorSize;
-        if (remaining < sizeof(size_t)) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read pinRemainSizeVectorSize failed";
-            RemoveSnapshotFiles(path);
+        size_t pinRemainSizeVectorSize = 0;
+        if (!reader.ReadSingleData(&pinRemainSizeVectorSize, sizeof(pinRemainSizeVectorSize),
+            "pinRemainSizeVectorSize")) {
             return false;
         }
-        if (memcpy_s(&pinRemainSizeVectorSize, sizeof(size_t), readPtr, sizeof(size_t)) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s pinRemainSizeVectorSize failed";
-            return false;
-        }
-        readPtr += sizeof(size_t);
-        remaining -= sizeof(size_t);
         // read pinRemainSizeVector
         vecSize = pinRemainSizeVectorSize * sizeof(size_t);
         if (vecSize > 0) {
-            if (remaining < vecSize) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read pinRemainSizeVectorSize failed";
-                RemoveSnapshotFiles(path);
-                return false;
-            }
             data->pinRemainSizeVector_.resize(pinRemainSizeVectorSize);
-            if (memcpy_s(data->pinRemainSizeVector_.data(), vecSize, readPtr, vecSize) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s pinRemainSizeVectorSize failed";
+            if (!reader.ReadSingleData(data->pinRemainSizeVector_.data(), vecSize, "pinRemainSizeVector")) {
                 return false;
             }
-            readPtr += vecSize;
-            remaining -= vecSize;
         }
     } else {
         // read vector size
-        std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
-        if (remaining < SERIALIZE_SPACE_NUM * sizeof(size_t)) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read vecSizes failed";
-            RemoveSnapshotFiles(path);
+        std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes {};
+        uint32_t vecSize = SERIALIZE_SPACE_NUM * sizeof(size_t);
+        if (!reader.ReadSingleData(vecSizes.data(), vecSize, "vecSizes")) {
             return false;
         }
-        if (memcpy_s(vecSizes.data(), SERIALIZE_SPACE_NUM * sizeof(size_t),
-                     readPtr, SERIALIZE_SPACE_NUM * sizeof(size_t)) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
-            return false;
-        }
-        readPtr += SERIALIZE_SPACE_NUM * sizeof(size_t);
-        remaining -= SERIALIZE_SPACE_NUM * sizeof(size_t);
-
-        // check vector data size
-        const size_t totalVecBytes = std::accumulate(
-            vecSizes.begin(), vecSizes.end(), 0UL,
-            [](size_t sum, size_t sz) { return sum + sz * sizeof(size_t); }
-        );
-        if (remaining < totalVecBytes) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile read totalVecBytes failed";
-            RemoveSnapshotFiles(path);
-            return false;
-        }
-
-        // check each vector data
+        // read each vector data
         for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
             auto& vec = data->regionRemainSizeVectors_[i];
-            const size_t vec_size = vecSizes[i];
-
-            if (vec_size > 0) {
-                vec.resize(vec_size);
-                if (memcpy_s(vec.data(), vec_size * sizeof(size_t), readPtr, vec_size * sizeof(size_t)) != EOK) {
-                    LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
+            const size_t curVectorSize = vecSizes[i];
+            const uint32_t curVectorDataSize = curVectorSize * sizeof(size_t);
+            if (curVectorSize > 0) {
+                vec.resize(curVectorSize);
+                if (!reader.ReadSingleData(vec.data(), curVectorDataSize, "vec")) {
                     return false;
                 }
-                readPtr += vec_size * sizeof(size_t);
             } else {
                 vec.clear();
             }
         }
-        remaining -= totalVecBytes;
     }
 
     // read buffer data
     if (data->bufferSize_ > 0) {
-        if (remaining < data->bufferSize_) {
-            RemoveSnapshotFiles(path);
-            return false;
-        }
         data->buffer_ = static_cast<uint8_t*>(malloc(data->bufferSize_));
         if (!data->buffer_) {
             RemoveSnapshotFiles(path);
             return false;
         }
-        if (memcpy_s(data->buffer_, data->bufferSize_, readPtr, data->bufferSize_) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile memcpy_s vecSizes failed";
+        if (!reader.ReadSingleData(data->buffer_, data->bufferSize_, "buffer")) {
             return false;
         }
     } else {
@@ -382,9 +288,9 @@ bool ModuleSnapshot::WriteDataToFile(
     // calculate file total size
     // versionCode
     uint32_t appVersionCode = thread->GetEcmaVM()->GetApplicationVersionCode();
-    size_t totalSize = sizeof(appVersionCode);
-    size_t versionStrLenSize = sizeof(uint32_t);
-    size_t versionStrLen = version.size();
+    uint32_t totalSize = sizeof(appVersionCode);
+    uint32_t versionStrLenSize = sizeof(uint32_t);
+    uint32_t versionStrLen = version.size();
     totalSize += versionStrLenSize;
     totalSize += versionStrLen;
 
@@ -423,59 +329,38 @@ bool ModuleSnapshot::WriteDataToFile(
         return false;
     }
     MemMapScope memMapScope(fileMapMem);
-    uint8_t* writePtr = static_cast<uint8_t*>(fileMapMem.GetOriginAddr());
+    FileMemMapWriter writer(fileMapMem, "ModuleSnapshot::WriteDataToFile");
 
     // write app versionCode
-    if (memcpy_s(writePtr, sizeof(appVersionCode), &appVersionCode, sizeof(appVersionCode)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write appVersionCode failed";
+    if (!writer.WriteSingleData(&appVersionCode, sizeof(appVersionCode), "appVersionCode")) {
         return false;
     }
-    writePtr += sizeof(appVersionCode);
-
     // write version
-    if (memcpy_s(writePtr, versionStrLenSize, &versionStrLen, versionStrLenSize) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write versionStrLen failed";
+    if (!writer.WriteSingleData(&versionStrLen, versionStrLenSize, "versionStrLen")) {
         return false;
     }
-    writePtr += versionStrLenSize;
-    if (memcpy_s(writePtr, versionStrLen, version.c_str(), versionStrLen) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write versionStr failed";
+    if (!writer.WriteSingleData(version.c_str(), versionStrLen, "versionStr")) {
         return false;
     }
-    writePtr += versionStrLen;
     // write dataIndex
-    if (memcpy_s(writePtr, sizeof(data->dataIndex_), &data->dataIndex_, sizeof(data->dataIndex_)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write dataIndex failed";
+    if (!writer.WriteSingleData(&data->dataIndex_, sizeof(data->dataIndex_), "dataIndex")) {
         return false;
     }
-    writePtr += sizeof(data->dataIndex_);
 
     // padding
-    const size_t pad1 = AlignUp(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                        - (writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
-    if (pad1 > 0) {
-        if (memset_s(writePtr, pad1, 0, pad1) != EOK) { // 0: reset
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memset_s write pad1 failed";
-            return false;
-        }
-        writePtr += pad1;
-    }
-    // write uint64_t
-    if (memcpy_s(writePtr, sizeof(data->sizeLimit_), &data->sizeLimit_, sizeof(data->sizeLimit_)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write sizeLimit failed";
+    if (!writer.WriteAlignUpPadding(GetAlignUpPadding(writer.GetWritePtr(),
+        fileMapMem.GetOriginAddr(), sizeof(uint64_t)))) {
         return false;
     }
-    writePtr += sizeof(data->sizeLimit_);
+    // write uint64_t
+    if (!writer.WriteSingleData(&data->sizeLimit_, sizeof(data->sizeLimit_), "sizeLimit")) {
+        return false;
+    }
 
     // alignment to size_t
-    const size_t pad2 = AlignUp(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                        - (writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
-    if (pad2 > 0) {
-        if (memset_s(writePtr, pad2, 0, pad2) != EOK) { // 0: reset
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memset_s write pad2 failed";
-            return false;
-        }
-        writePtr += pad2;
+    if (!writer.WriteAlignUpPadding(GetAlignUpPadding(writer.GetWritePtr(),
+        fileMapMem.GetOriginAddr(), sizeof(uint64_t)))) {
+        return false;
     }
     // constructor and write GROUP data(size_t)
     size_t sizeGroup[GROUP_SIZE] = {
@@ -490,69 +375,56 @@ bool ModuleSnapshot::WriteDataToFile(
         data->sharedNonMovableSpaceSize_,
         static_cast<size_t>(data->incompleteData_)
     };
-    if (memcpy_s(writePtr, sizeof(sizeGroup), sizeGroup, sizeof(sizeGroup)) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write sizeGroup failed";
+    if (!writer.WriteSingleData(sizeGroup, GROUP_SIZE * sizeof(size_t), "sizeGroup")) {
         return false;
     }
-    writePtr += sizeof(sizeGroup);
 
     if (g_isEnableCMCGC) {
         totalSize += data->regularRemainSizeVector_.size() * sizeof(size_t);
         totalSize += data->pinRemainSizeVector_.size() * sizeof(size_t);
         size_t regularRemainSize = data->regularRemainSizeVector_.size();
         // regularRemainSizeVector size
-        if (memcpy_s(writePtr, sizeof(size_t), &regularRemainSize, sizeof(size_t)) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write regularRemainSize failed";
+        if (!writer.WriteSingleData(&regularRemainSize, sizeof(regularRemainSize), "regularRemainSize")) {
             return false;
         }
-        writePtr += sizeof(size_t);
         // regularRemainSizeVector
         size_t regularRemainLen = regularRemainSize * sizeof(size_t);
         if (regularRemainLen > 0) {
-            if (memcpy_s(writePtr, regularRemainLen, data->regularRemainSizeVector_.data(), regularRemainLen) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write regularRemainSizeVector failed";
+            if (!writer.WriteSingleData(data->regularRemainSizeVector_.data(), regularRemainLen,
+                "regularRemainSizeVector")) {
                 return false;
             }
-            writePtr += regularRemainLen;
         }
         // pinRemainSizeVector size
         size_t pinRemainSize = data->pinRemainSizeVector_.size();
-        if (memcpy_s(writePtr, sizeof(size_t), &pinRemainSize, sizeof(size_t)) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write pinRemainSize failed";
+        if (!writer.WriteSingleData(&pinRemainSize, sizeof(pinRemainSize), "pinRemainSize")) {
             return false;
         }
-        writePtr += sizeof(size_t);
         // pinRemainSizeVector
         size_t pinRemainLen = pinRemainSize * sizeof(size_t);
         if (pinRemainLen > 0) {
-            if (memcpy_s(writePtr, pinRemainLen, data->pinRemainSizeVector_.data(), pinRemainLen) != EOK) {
-                LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write pinRemainSizeVector failed";
+            if (!writer.WriteSingleData(data->pinRemainSizeVector_.data(), pinRemainLen, "pinRemainSizeVector")) {
                 return false;
             }
-            writePtr += pinRemainLen;
         }
     } else {
-        // write 7 vector's size
+        // write vector's size
         std::array<size_t, SERIALIZE_SPACE_NUM> vecSizes;
         for (int i = 0; i < SERIALIZE_SPACE_NUM; ++i) {
             vecSizes[i] = data->regionRemainSizeVectors_[i].size();
         }
-        uint32_t vecSizeLength = vecSizes.size() * sizeof(size_t);
-        if (memcpy_s(writePtr, vecSizeLength, vecSizes.data(), vecSizeLength) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vecSizes failed";
+        uint32_t vecSize = SERIALIZE_SPACE_NUM * sizeof(size_t);
+        if (!writer.WriteSingleData(vecSizes.data(), vecSize, "vecSizes")) {
             return false;
         }
-        writePtr += vecSizes.size() * sizeof(size_t);
 
-        // write 7 vector's data
+        // write vector's data
         for (const auto& vec : data->regionRemainSizeVectors_) {
             if (!vec.empty()) {
-                uint32_t vecLength = vec.size() * sizeof(size_t);
-                if (memcpy_s(writePtr, vecLength, vec.data(), vecLength) != EOK) {
-                    LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write vec.data failed";
+                uint32_t curVectorDataSize = vec.size() * sizeof(size_t);
+                if (!writer.WriteSingleData(vec.data(), curVectorDataSize, "vec")) {
                     return false;
                 }
-                writePtr += vec.size() * sizeof(size_t);
             }
         }
     }
@@ -561,16 +433,13 @@ bool ModuleSnapshot::WriteDataToFile(
         if (!data->buffer_) {
             return false;
         }
-        if (memcpy_s(writePtr, data->bufferSize_, data->buffer_, data->bufferSize_) != EOK) {
-            LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memcpy_s write buffer_ failed";
+        if (!writer.WriteSingleData(data->buffer_, data->bufferSize_, "buffer")) {
             return false;
         }
     }
-    writePtr += data->bufferSize_;
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
-    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
-    if (memcpy_s(writePtr, checksumSize, &checksum, checksumSize) != EOK) {
-        LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile: checksum memcpy_s failed";
+    uint32_t checksum = adler32(0, static_cast<const Bytef*>(fileMapMem.GetOriginAddr()), contentSize);
+    if (!writer.WriteSingleData(&checksum, checksumSize, "checksum")) {
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);

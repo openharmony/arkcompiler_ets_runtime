@@ -26,11 +26,9 @@ public:
     static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams"; // ark module snapshot
 
     static void SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path, const CString &version);
-    static void DeserializeData(const EcmaVM *vm, const CString &path, const CString &version);
-    static JSHandle<TaggedArray> GetModuleSerializeArray(JSThread *thread);
-    static void RemoveSnapshotFiles(const CString &path);
+    static bool DeserializeData(const EcmaVM *vm, const CString &path, const CString &version);
 
-private:
+protected:
     static constexpr int BUFFER_SIZE_INDEX = 0;
     static constexpr int BUFFER_CAPACITY_INDEX = 1;
     static constexpr int REGULAR_SPACE_SIZE_INDEX = 2;
@@ -77,10 +75,19 @@ private:
 // +--------------------------------------+<-------- CheckSum
 // |               CheckSum               |
 // +--------------------------------------+
+    static JSHandle<TaggedArray> GetModuleSerializeArray(JSThread *thread);
+    static void RemoveSnapshotFiles(const CString &path);
+    static std::unique_ptr<SerializeData> GetSerializeData(JSThread *thread);
     static bool ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString &path,
         const CString &version);
     static bool WriteDataToFile(JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString &filePath,
         const CString &version);
+
+    static size_t GetAlignUpPadding(const uint8_t *curPtr, void *originAddr, const size_t alignment)
+    {
+        const auto originPtr = static_cast<uint8_t *>(originAddr);
+        return AlignUp(curPtr - originPtr, alignment) - (curPtr - originPtr);
+    }
 
     class ModuleSnapshotTask : public common::Task {
     public:
