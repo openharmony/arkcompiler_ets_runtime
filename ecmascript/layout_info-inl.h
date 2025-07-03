@@ -245,11 +245,12 @@ void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, cons
     uint32_t keyHash = key.GetKeyHashCode(thread);
     int insertIndex = number;
     for (; insertIndex > 0; --insertIndex) {
-        JSTaggedValue prevKey = GetSortedKey(thread, insertIndex - 1);
+        auto sortedIndex = GetSortedIndex(thread, insertIndex - 1);
+        JSTaggedValue prevKey = GetKey(thread, sortedIndex);
         if (prevKey.GetKeyHashCode(thread) <= keyHash) {
             break;
         }
-        SetSortedIndex(thread, insertIndex, GetSortedIndex(thread, insertIndex - 1));
+        SetSortedIndex(thread, insertIndex, sortedIndex);
     }
     SetSortedIndex(thread, insertIndex, number);
     if constexpr (checkDuplicateKeys) {
