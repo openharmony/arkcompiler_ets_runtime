@@ -142,10 +142,10 @@ bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject
 }
 
 static void TraceRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                          TraceCollector::WorkStack &workStack, RegionDesc *targetRegion);
+                          WorkStack &workStack, RegionDesc *targetRegion);
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
-static void TraceRefField(BaseObject *obj, RefField<> &field, TraceCollector::WorkStack &workStack,
-                          TraceCollector::WeakStack &weakStack, const GCReason gcReason)
+static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workStack,
+                          WeakStack &weakStack, const GCReason gcReason)
 {
     RefField<> oldField(field);
     BaseObject* targetObj = oldField.GetTargetObject();
@@ -173,7 +173,7 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, TraceCollector::Wo
 
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
 static void TraceRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                          TraceCollector::WorkStack &workStack, RegionDesc *targetRegion)
+                          WorkStack &workStack, RegionDesc *targetRegion)
 {
     if (targetRegion->IsNewObjectSinceTrace(targetObj)) {
         DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
@@ -281,7 +281,6 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
 
 class RemarkAndPreforwardVisitor {
 public:
-    using WorkStack = WCollector::WorkStack;
     RemarkAndPreforwardVisitor(WorkStack &localStack, WCollector *collector)
         : localStack_(localStack), collector_(collector) {}
 
@@ -336,7 +335,6 @@ private:
 
 class RemarkingAndPreforwardTask : public common::Task {
 public:
-    using WorkStack = WCollector::WorkStack;
     RemarkingAndPreforwardTask(WCollector *collector, WorkStack &localStack, TaskPackMonitor &monitor,
                                std::function<Mutator*()>& next)
         : Task(0), visitor_(localStack, collector), monitor_(monitor), getNextMutator_(next)
@@ -781,31 +779,6 @@ void WCollector::ProcessStringTable()
     stringTableCleaner->JoinAndWaitSweepWeakRefTask(weakVisitor);
 }
 
-void WCollector::ProcessWeakReferences()
-{
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessWeakReferences", "");
-    {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessGlobalWeakStack", "");
-        while (!globalWeakStack_.empty()) {
-            RefField<>& field = reinterpret_cast<RefField<>&>(*globalWeakStack_.back());
-            globalWeakStack_.pop_back();
-            RefField<> oldField(field);
-            BaseObject* targetObj = oldField.GetTargetObject();
-            if (gcReason_ == GC_REASON_YOUNG) {
-                if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
-                    RegionSpace::IsNewObjectSinceTrace(targetObj) || !RegionSpace::IsYoungSpaceObject(targetObj)) {
-                    continue;
-                }
-            } else {
-                if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
-                    RegionSpace::IsNewObjectSinceTrace(targetObj)) {
-                    continue;
-                }
-                field.ClearRef(oldField.GetFieldValue());
-            }
-        }
-    }
-}
 
 void WCollector::ProcessFinalizers()
 {

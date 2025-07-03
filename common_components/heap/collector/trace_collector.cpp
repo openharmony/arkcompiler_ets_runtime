@@ -47,59 +47,6 @@ void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
     }
 }
 
-class GlobalWorkStackQueue {
-public:
-    GlobalWorkStackQueue() = default;
-    ~GlobalWorkStackQueue() = default;
-
-    void AddWorkStack(TraceCollector::WorkStack &&stack)
-    {
-        DCHECK_CC(!stack.empty());
-        std::lock_guard<std::mutex> guard(mtx_);
-        workStacks_.push_back(std::move(stack));
-    }
-
-    TraceCollector::WorkStack PopWorkStack()
-    {
-        std::unique_lock<std::mutex> lock(mtx_);
-        while (true) {
-            if (!workStacks_.empty()) {
-                TraceCollector::WorkStack stack(std::move(workStacks_.back()));
-                workStacks_.pop_back();
-                return stack;
-            }
-            if (finished_) {
-                return TraceCollector::WorkStack();
-            }
-            cv_.wait(lock);
-        }
-    }
-
-    TraceCollector::WorkStack DrainAllWorkStack()
-    {
-        std::unique_lock<std::mutex> lock(mtx_);
-        while (!workStacks_.empty()) {
-            TraceCollector::WorkStack stack(std::move(workStacks_.back()));
-            workStacks_.pop_back();
-            return stack;
-        }
-        return TraceCollector::WorkStack();
-    }
-
-    void NotifyFinish()
-    {
-        std::lock_guard<std::mutex> guard(mtx_);
-        DCHECK_CC(!finished_);
-        finished_ = true;
-        cv_.notify_all();
-    }
-private:
-    bool finished_ {false};
-    std::condition_variable cv_;
-    std::mutex mtx_;
-    std::vector<TraceCollector::WorkStack> workStacks_;
-};
-
 class ConcurrentMarkingTask : public common::Task {
 public:
     ConcurrentMarkingTask(uint32_t id, TraceCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
@@ -122,7 +69,7 @@ public:
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
         while (true) {
-            TraceCollector::WorkStack workStack = globalQueue_.PopWorkStack();
+            WorkStack workStack = globalQueue_.PopWorkStack();
             if (workStack.empty()) {
                 break;
             }
@@ -137,6 +84,45 @@ private:
     Taskpool *threadPool_;
     TaskPackMonitor &monitor_;
     GlobalWorkStackQueue &globalQueue_;
+};
+
+class ClearWeakStackTask : public common::Task {
+public:
+    ClearWeakStackTask(uint32_t id, TraceCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
+                          GlobalWeakStackQueue &globalQueue)
+        : Task(id), collector_(tc), threadPool_(pool), monitor_(monitor), globalQueue_(globalQueue)
+    {}
+
+    // single work task without thread pool
+    ClearWeakStackTask(uint32_t id, TraceCollector& tc, TaskPackMonitor &monitor,
+                          GlobalWeakStackQueue &globalQueue)
+        : Task(id), collector_(tc), threadPool_(nullptr), monitor_(monitor), globalQueue_(globalQueue)
+    {}
+
+    ~ClearWeakStackTask() override
+    {
+        threadPool_ = nullptr;
+    }
+
+    // run concurrent marking task.
+    bool Run([[maybe_unused]] uint32_t threadIndex) override
+    {
+        while (true) {
+            WeakStack weakStack = globalQueue_.PopWorkStack();
+            if (weakStack.empty()) {
+                break;
+            }
+            collector_.ProcessWeakStack(weakStack);
+        }
+        monitor_.NotifyFinishOne();
+        return true;
+    }
+
+private:
+    TraceCollector &collector_;
+    Taskpool *threadPool_;
+    TaskPackMonitor &monitor_;
+    GlobalWeakStackQueue &globalQueue_;
 };
 
 void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
@@ -161,14 +147,28 @@ void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, Glo
     }
 }
 
+void TraceCollector::ProcessWeakStack(WeakStack &weakStack)
+{
+    while (!weakStack.empty()) {
+        RefField<>& field = reinterpret_cast<RefField<>&>(*weakStack.back());
+        weakStack.pop_back();
+        RefField<> oldField(field);
+        BaseObject* targetObj = oldField.GetTargetObject();
+        if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
+            RegionSpace::IsNewObjectSinceTrace(targetObj)) {
+            continue;
+        }
+        field.ClearRef(oldField.GetFieldValue());
+    }
+}
+
 void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
                                       GlobalWorkStackQueue &globalQueue)
 {
     size_t nNewlyMarked = 0;
     WeakStack weakStack;
     auto visitor = CreateTraceObjectRefFieldsVisitor(&workStack, &weakStack);
-
-    TraceCollector::WorkStack remarkStack;
+    WorkStack remarkStack;
     auto fetchFromSatbBuffer = [this, &workStack, &remarkStack]() {
         SatbBuffer::Instance().TryFetchOneRetiredNode(remarkStack);
         while (!remarkStack.empty()) {
@@ -313,6 +313,23 @@ bool TraceCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkSt
     return true;
 }
 
+bool TraceCollector::AddWeakStackClearWork(WeakStack &weakStack,
+                                           GlobalWeakStackQueue &globalQueue,
+                                           size_t threadCount)
+{
+    if (weakStack.size() <= threadCount * MIN_MARKING_WORK_SIZE) {
+        return false; // too less init tasks, which may lead to workload imbalance, add work rejected
+    }
+    DCHECK_CC(threadCount > 0);
+    const size_t chunkSize = std::min(weakStack.size() / threadCount + 1, MIN_MARKING_WORK_SIZE);
+    // Split the current work stack into work tasks.
+    while (!weakStack.empty()) {
+        WeakStackBuf *hSplit = weakStack.split(chunkSize);
+        globalQueue.AddWorkStack(WeakStack(hSplit));
+    }
+    return true;
+}
+
 bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
 {
     RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
@@ -383,12 +400,49 @@ void TraceCollector::Remark()
     ConcurrentRemark(workStack, maxWorkers > 0);
     TracingImpl(workStack, maxWorkers > 0);
     MarkAwaitingJitFort();
-    ProcessWeakReferences();
+    ClearWeakStack(maxWorkers > 0);
 
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots END",
         ("mark obejects:" + std::to_string(markedObjectCount_.load(std::memory_order_relaxed))).c_str());
     VLOG(DEBUG, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
 }
+
+void TraceCollector::ClearWeakStack(bool parallel)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessGlobalWeakStack", "");
+    {
+        if (gcReason_ == GC_REASON_YOUNG || globalWeakStack_.empty()) {
+            return;
+        }
+        Taskpool *threadPool = GetThreadPool();
+        ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
+        if (parallel) {
+            uint32_t parallelCount = GetGCThreadCount(true);
+            uint32_t threadCount = parallelCount + 1;
+            TaskPackMonitor monitor(parallelCount, parallelCount);
+            GlobalWeakStackQueue globalQueue;
+            for (uint32_t i = 0; i < parallelCount; ++i) {
+                threadPool->PostTask(std::make_unique<ClearWeakStackTask>(0, *this, threadPool, monitor, globalQueue));
+            }
+            if (!AddWeakStackClearWork(globalWeakStack_, globalQueue, static_cast<size_t>(threadCount))) {
+                ProcessWeakStack(globalWeakStack_);
+            }
+            bool exitLoop = false;
+            while (!exitLoop) {
+                WeakStack stack = globalQueue.DrainAllWorkStack();
+                if (stack.empty()) {
+                    exitLoop = true;
+                }
+                ProcessWeakStack(stack);
+            }
+            globalQueue.NotifyFinish();
+            monitor.WaitAllFinished();
+        } else {
+            ProcessWeakStack(globalWeakStack_);
+        }
+    }
+}
+
 
 bool TraceCollector::MarkSatbBuffer(WorkStack& workStack)
 {
