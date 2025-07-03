@@ -17,7 +17,6 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 config("module_private_config") {
   visibility = [ ":*" ]
   include_dirs = [
-    "compiler_service_include_dirs",
     "${compiler_service_root}/include",
     "${compiler_service_root}/interface",
   ]
