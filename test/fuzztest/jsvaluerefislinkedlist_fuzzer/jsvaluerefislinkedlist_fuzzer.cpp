@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefislinkedlist_fuzzer.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -112,17 +113,16 @@ void TearDownFrame(JSThread *thread, JSTaggedType *prev)
     thread->SetCurrentSPFrame(prev);
 }
 
-void JSValueRefIsLinkedListFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefIsLinkedListFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "Parameter out of range..";
-            return;
-        }
         auto thread = vm->GetAssociatedJSThread();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
