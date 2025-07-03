@@ -80,7 +80,7 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
         if (toObj == nullptr) {
             return false;
         }
-        RefField<> tmpField(toObj);
+        RefField<> tmpField(toObj, oldRef.IsWeak());
         if (field.CompareExchange(oldRef.GetFieldValue(), tmpField.GetFieldValue())) {
             if (obj != nullptr) {
                 DLOG(TRACE, "update obj %p<%p>(%zu)+%zu ref-field@%p: %#zx -> %#zx", obj, obj->GetTypeInfo(),

@@ -222,6 +222,15 @@ void RegionDesc::VisitRememberSet(const std::function<void(BaseObject*)>& func)
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), GetRegionAllocPtr());
 }
 
+void RegionList::MergeRegionListWithoutHead(RegionList& srcList, RegionDesc::RegionType regionType)
+{
+    RegionDesc *head = srcList.TakeHeadRegion();
+    MergeRegionList(srcList, regionType);
+    if (head) {
+        srcList.PrependRegion(head, head->GetRegionType());
+    }
+}
+
 void RegionList::MergeRegionList(RegionList& srcList, RegionDesc::RegionType regionType)
 {
     RegionList regionList("region list cache");
@@ -488,10 +497,10 @@ void RegionManager::AssembleLargeGarbageCandidates()
 
 void RegionManager::AssemblePinnedGarbageCandidates()
 {
-    pinnedRegionList_.MergeRegionList(recentPinnedRegionList_, RegionDesc::RegionType::FULL_PINNED_REGION);
+    pinnedRegionList_.MergeRegionListWithoutHead(recentPinnedRegionList_, RegionDesc::RegionType::FULL_PINNED_REGION);
     RegionDesc* region = pinnedRegionList_.GetHeadRegion();
     for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        fixedPinnedRegionList_[i]->MergeRegionList(*recentFixedPinnedRegionList_[i],
+        fixedPinnedRegionList_[i]->MergeRegionListWithoutHead(*recentFixedPinnedRegionList_[i],
             RegionDesc::RegionType::FULL_FIXED_PINNED_REGION);
     }
 }
@@ -612,8 +621,8 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
     // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
-    bool isLargeRegion = region->IsLargeRegion();
-    region->VisitAllObjectsBeforeFix([&collector, region, isLargeRegion](BaseObject* object) {
+    bool isLargeOrFixRegion = region->IsLargeRegion() || region->IsFixedRegion();
+    region->VisitAllObjectsBeforeFix([&collector, region, isLargeOrFixRegion](BaseObject* object) {
         if (region->IsNewObjectSinceForward(object)) {
             // handle dead objects in tl-regions for concurrent gc.
             if (collector.IsToVersion(object)) {
@@ -625,8 +634,8 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
         } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
-            if (isLargeRegion) {
-                // large region is no need to fillfreeobject.
+            if (isLargeOrFixRegion) {
+                // large/fix region is no need to fillfreeobject.
                 return;
             }
             FillFreeObject(object, RegionSpace::GetAllocSize(*object));
