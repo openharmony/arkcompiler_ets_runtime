@@ -152,7 +152,7 @@ private:
     // not change src data structure
     static inline EcmaString *FastSubUtf16String(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
-    inline void TrimLineString(const JSThread *thread, uint32_t newLength);
+    inline void TrimLineString(uint32_t newLength);
 
     inline bool IsUtf8() const
     {
