@@ -1499,9 +1499,9 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
         GateRef fromIndexHandler = acc_.GetValueIn(gate, 2);
         builder_.DeoptCheck(builder_.TaggedIsNumber(fromIndexHandler), acc_.GetFrameState(gate),
                             DeoptType::INDEXNOTINT);
-        GateRef fromIndex = BuiltinsArrayStubBuilder(&env, builder_.GetGlobalEnv(glue_)).MakeFromIndex(
-            fromIndexHandler, thisLen,
-            (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf));
+        GateRef fromIndex =
+            BuiltinsArrayStubBuilder(&env, circuit_->GetGlobalEnvCache())
+                .MakeFromIndex(fromIndexHandler, thisLen, (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf));
         ret = builder_.ArrayIncludesIndexOf(elements, targetElement, fromIndex, thisLen, callID, arrayKind);
     }
     if (EnableTrace()) {

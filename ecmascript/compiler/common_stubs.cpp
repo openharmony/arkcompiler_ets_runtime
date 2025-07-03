@@ -42,7 +42,8 @@ void AddStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Add(glue, x, y));
 }
 
@@ -51,7 +52,8 @@ void SubStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3); // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Sub(glue, x, y));
 }
 
@@ -61,7 +63,8 @@ void DefineFieldStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef propKey = TaggedArgument(2);    // 2: 3rd argument
     GateRef acc = TaggedArgument(3);        // 3: 4th argument
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th argument
+    SetCurrentGlobalEnv(globalEnv);
     Return(DefineField(glue, receiver, propKey, acc));
 }
 
@@ -74,11 +77,12 @@ void DefinefuncStubBuilder::GenerateCircuit()
     GateRef length = Int32Argument(3);   // 3: 4th argument
     GateRef lexEnv = TaggedArgument(4);  // 4: 5th argument
     GateRef slotId = Int32Argument(5);   // 5: 6th argument
+    GateRef globalEnv = TaggedArgument(6); // 6: 7th argument
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     Label exit(env);
     Label failed(env);
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.NewJSFunction(glue, jsFunc, methodId, length, lexEnv, &result, &exit, &failed, slotId);
     Bind(&failed);
     {
@@ -171,7 +175,8 @@ void NewFloat32ArrayWithNoArgsStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    NewObjectStubBuilder objBuilder(env, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(1);  // 1: global env
+    NewObjectStubBuilder objBuilder(env, globalEnv);
     objBuilder.SetParameters(glue, 0);
     GateRef res = objBuilder.NewFloat32ArrayWithSize(glue, Int32(0));
     Return(res);
@@ -183,6 +188,7 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef ctor = TaggedArgument(1);
     GateRef arg0 = TaggedArgument(2); /* 2 : length */
+    GateRef globalEnv = TaggedArgument(3); /* 3 : global env */
 
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
@@ -228,7 +234,7 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
     }
     Bind(&arrayCreateByLength);
     {
-        NewObjectStubBuilder newBuilder(env, GetGlobalEnv(glue));
+        NewObjectStubBuilder newBuilder(env, globalEnv);
         newBuilder.SetParameters(glue, 0);
         GateRef truncedLength = TruncInt64ToInt32(*arrayLength);
         res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
@@ -263,10 +269,11 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
 
 void StringLoadElementStubBuilder::GenerateCircuit()
 {
-    GateRef glue = PtrArgument(0);
-    GateRef string = TaggedArgument(1);
-    GateRef index = Int32Argument(2);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef glue = PtrArgument(0);          // 0: first argument glue
+    GateRef string = TaggedArgument(1);     // 1: second argument string
+    GateRef index = Int32Argument(2);       // 2: 3rd argument index
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument global env
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     GateRef result = builder.GetSingleCharCodeByIndex(glue, string, index);
     Return(result);
 }
@@ -369,7 +376,8 @@ void ConvertCharToInt32StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef charCode = Int32Argument(1);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd argument global env
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     // char to string
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     // string to number
@@ -383,7 +391,8 @@ void ConvertCharToDoubleStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef charCode = Int32Argument(1);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd argument global env
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     // char to string
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     // string to number
@@ -397,7 +406,8 @@ void ConvertCharToStringStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef charCode = Int32Argument(1);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd argument global env
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     // char to string
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     Return(result);
@@ -408,7 +418,8 @@ void MulStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Mul(glue, x, y));
 }
 
@@ -417,7 +428,8 @@ void DivStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Div(glue, x, y));
 }
 
@@ -426,7 +438,8 @@ void ModStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Mod(glue, x, y));
 }
 
@@ -442,7 +455,8 @@ void EqualStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Equal(glue, x, y));
 }
 
@@ -451,7 +465,8 @@ void NotEqualStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.NotEqual(glue, x, y));
 }
 
@@ -460,7 +475,8 @@ void StrictEqualStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.StrictEqual(glue, x, y));
 }
 
@@ -469,7 +485,8 @@ void StrictNotEqualStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.StrictNotEqual(glue, x, y));
 }
 
@@ -478,7 +495,8 @@ void LessStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Less(glue, x, y));
 }
 
@@ -487,7 +505,8 @@ void LessEqStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.LessEq(glue, x, y));
 }
 
@@ -496,7 +515,8 @@ void GreaterStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Greater(glue, x, y));
 }
 
@@ -505,7 +525,8 @@ void GreaterEqStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.GreaterEq(glue, x, y));
 }
 
@@ -514,7 +535,8 @@ void ShlStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Shl(glue, x, y));
 }
 
@@ -523,7 +545,8 @@ void ShrStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Shr(glue, x, y));
 }
 
@@ -532,7 +555,8 @@ void AshrStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Ashr(glue, x, y));
 }
 
@@ -541,7 +565,8 @@ void AndStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.And(glue, x, y));
 }
 
@@ -550,7 +575,8 @@ void OrStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Or(glue, x, y));
 }
 
@@ -559,7 +585,8 @@ void XorStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    OperationsStubBuilder operationBuilder(this);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    OperationsStubBuilder operationBuilder(this, globalEnv);
     Return(operationBuilder.Xor(glue, x, y));
 }
 
@@ -568,7 +595,8 @@ void IsInStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef prop = TaggedArgument(1); // 1: 2nd argument
     GateRef obj = TaggedArgument(2);  // 2: 3rd argument
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    SetCurrentGlobalEnv(globalEnv);
     Return(IsIn(glue, prop, obj));
 }
 
@@ -577,10 +605,11 @@ void InstanceofStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
     GateRef target = TaggedArgument(2); // 2: 3rd argument
-    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
-    GateRef slotId = Int32Argument(4); // 4 : 5th pars
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
+    GateRef slotId = Int32Argument(5);      // 5 : 6th pars
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    SetCurrentGlobalEnv(globalEnv);
     Return(InstanceOf(glue, object, target, profileTypeInfo, slotId, ProfileOperation()));
 }
 
@@ -589,7 +618,8 @@ void OrdinaryHasInstanceStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
     GateRef target = TaggedArgument(2); // 2: 3rd argument
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th argument
+    SetCurrentGlobalEnv(globalEnv);
     Return(OrdinaryHasInstance(glue, target, object));
 }
 
@@ -662,8 +692,8 @@ void CreateObjectHavingMethodStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef env = Int32Argument(2); /* 2 : 3rd parameter is index */
-
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = GetCurrentGlobalEnv(glue, env);
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
     GateRef result = newBuilder.CreateObjectHavingMethod(glue, obj, env);
     Return(result);
@@ -680,6 +710,7 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     GateRef startIdx = Int32Argument(2); /* 2 : 3rd parameter is startIdx */
     GateRef numArgs = Int32Argument(3); /* 3 : 4th parameter is numArgs */
     GateRef argvTaggedArray = TaggedArgument(4); /* 4 : 5th parameter is argvTaggedArray */
+    GateRef globalEnv = TaggedArgument(5);       /* 5 : 6th parameter is globalEnv */
 
     Label numArgsGreater(env);
     Label numArgsNotGreater(env);
@@ -695,7 +726,6 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     }
     Bind(&numArgsNotGreater);
     // 2. Construct RestArguments object.
-    GateRef globalEnv = GetGlobalEnv(glue);
     NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
     GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
@@ -714,6 +744,7 @@ void GetUnmappedArgsStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef numArgs = Int32Argument(2); /* 2 : 3rd parameter is numArgs */
     GateRef argvTaggedArray = TaggedArgument(3); /* 3 : 4th parameter is argvTaggedArray */
+    GateRef globalEnv = TaggedArgument(4);       /* 4 : 5th parameter is globalEnv */
 
     DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
@@ -724,7 +755,7 @@ void GetUnmappedArgsStubBuilder::GenerateCircuit()
 
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef startIdx = Int32(0);
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     newBuilder.SetParameters(glue, 0);
 
     Label fillArguments(env);
@@ -748,7 +779,8 @@ void GetCallSpreadArgsStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef array = TaggedArgument(1);
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2 : 3rd parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(GetCallSpreadArgs(glue, array, ProfileOperation()));
 }
 
@@ -757,7 +789,8 @@ void GetPropertyByIndexStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(GetPropertyByIndex(glue, receiver, index, ProfileOperation()));
 }
 
@@ -767,7 +800,8 @@ void SetPropertyByIndexStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByIndex(glue, receiver, index, value, false));
 }
 
@@ -777,7 +811,8 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
@@ -795,9 +830,10 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef id = Int64Argument(2); // 2 : 3rd para
-    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
-    GateRef slotId = Int32Argument(4); // 4 : 5th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
+    GateRef slotId = Int32Argument(5);      // 5 : 6th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByName(glue, receiver, id, info, profileTypeInfo, slotId, ProfileOperation()));
@@ -808,7 +844,8 @@ void DeprecatedGetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedPointerArgument(2); // 2 : 3rd para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.DeprecatedLoadObjByName(glue, receiver, key));
 }
 
@@ -818,9 +855,10 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef id = Int64Argument(2); // 2 : 3rd para
     GateRef value = TaggedPointerArgument(3); // 3 : 4th para
-    GateRef jsFunc = TaggedArgument(4); // 4 : 5th para
-    GateRef slotId = Int32Argument(5); // 5 : 6th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(4);    // 4: 5th para
+    GateRef jsFunc = TaggedArgument(5);       // 5 : 6th para
+    GateRef slotId = Int32Argument(6);        // 6 : 7th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
@@ -832,9 +870,10 @@ void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef megaStubCache = PtrArgument(3);
     GateRef prop = TaggedArgument(4);
-    GateRef jsFunc = TaggedArgument(5); // 5 : 6th para
-    GateRef slotId = Int32Argument(6); // 6 : 7th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(5);  // 5: 6th para
+    GateRef jsFunc = TaggedArgument(6);     // 6 : 7th para
+    GateRef slotId = Int32Argument(7);      // 7 : 8th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     Return(builder.LoadObjByNameWithMega(glue, receiver, megaStubCache, prop, jsFunc, slotId,
                                          ProfileOperation()));
 }
@@ -846,9 +885,10 @@ void SetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
     GateRef value = TaggedPointerArgument(3); // 3 : 4th para
     GateRef megaStubCache = PtrArgument(4); // 4 : 5th para
     GateRef prop = TaggedArgument(5); // 5 : 6th para
-    GateRef jsFunc = TaggedArgument(6); // 6 : 7th para
-    GateRef slotId = Int32Argument(7); // 7 : 8th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(6);  // 6: 7th para
+    GateRef jsFunc = TaggedArgument(7);     // 7 : 8th para
+    GateRef slotId = Int32Argument(8);      // 8 : 9th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     Return(builder.StoreObjByNameWithMega(glue, receiver, value, megaStubCache, prop, jsFunc, slotId,
                                           ProfileOperation()));
 }
@@ -876,9 +916,10 @@ void GetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
-    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
-    GateRef slotId = Int32Argument(4); // 4 : 5th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
+    GateRef slotId = Int32Argument(5);      // 5 : 6th para
+    AccessObjectStubBuilder builder(this, globalEnv);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByValue(glue, receiver, key, profileTypeInfo, slotId));
 }
@@ -888,7 +929,8 @@ void DeprecatedGetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    SetCurrentGlobalEnv(globalEnv);
     Return(GetPropertyByValue(glue, receiver, key));
 }
 
@@ -898,9 +940,10 @@ void SetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);        // 2 : 3rd para
     GateRef value = TaggedArgument(3);      // 3 : 4th para
-    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
-    GateRef slotId = Int32Argument(5);      // 5 : 6th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    GateRef jsFunc = TaggedArgument(5);     // 5 : 6th para
+    GateRef slotId = Int32Argument(6);      // 6 : 7th para
+    AccessObjectStubBuilder builder(this, globalEnv);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByValue(glue, receiver, key, value, profileTypeInfo, slotId));
 }
@@ -911,7 +954,8 @@ void DeprecatedSetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);        // 4: 5th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByValue(glue, receiver, key, value, false));
 }
 
@@ -921,7 +965,8 @@ void SetPropertyByValueWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);        // 4: 5th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByValue(glue, receiver, key, value, true));
 }
 
@@ -931,7 +976,8 @@ void StOwnByIndexStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th parameter is globalEnv
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StOwnByIndex(glue, receiver, index, value));
 }
 
@@ -941,7 +987,8 @@ void StOwnByValueStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);        // 4: 5th parameter is globalEnv
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StOwnByValue(glue, receiver, key, value));
 }
 
@@ -951,7 +998,8 @@ void StOwnByNameStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StOwnByName(glue, receiver, key, value));
 }
 
@@ -961,7 +1009,8 @@ void StOwnByValueWithNameSetStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);        // 4: 5th parameter is globalEnv
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StOwnByValueWithNameSet(glue, receiver, key, value));
 }
 
@@ -971,7 +1020,8 @@ void StOwnByNameWithNameSetStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StOwnByNameWithNameSet(glue, receiver, key, value));
 }
 
@@ -980,7 +1030,8 @@ void LdObjByIndexStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th parameter is globalEnv
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.LdObjByIndex(glue, receiver, index));
 }
 
@@ -990,7 +1041,8 @@ void StObjByIndexStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th parameter is globalEnv
+    AccessObjectStubBuilder builder(this, globalEnv);
     Return(builder.StObjByIndex(glue, receiver, index, value));
 }
 
@@ -998,9 +1050,10 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef id = Int64Argument(1);
-    GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
-    GateRef slotId = Int32Argument(3); // 3 : 4th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(2); // 2 : 3rd para
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
+    GateRef slotId = Int32Argument(4); // 4 : 5th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
@@ -1011,9 +1064,10 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef id = Int64Argument(1);
     GateRef value = TaggedArgument(2); // 2 : 3rd para
-    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
-    GateRef slotId = Int32Argument(4);  // 4: 5th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(3); // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(4); // 4 : 5th para
+    GateRef slotId = Int32Argument(5);  // 5: 6th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
@@ -1023,9 +1077,10 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef id = Int64Argument(1);
-    GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
-    GateRef slotId = Int32Argument(3); // 3 : 4th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(2);  // 2 : 3rd para
+    GateRef jsFunc = TaggedArgument(3);     // 3 : 4th para
+    GateRef slotId = Int32Argument(4);      // 4 : 5th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
@@ -1036,9 +1091,10 @@ void StGlobalVarStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef id = Int64Argument(1);
     GateRef value = TaggedArgument(2); // 2 : 3rd para
-    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
-    GateRef slotId = Int32Argument(4);  // 4: 5th para
-    AccessObjectStubBuilder builder(this, GetGlobalEnv(glue), jsFunc);
+    GateRef globalEnv = TaggedArgument(3);  // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
+    GateRef slotId = Int32Argument(5);      // 5: 6th para
+    AccessObjectStubBuilder builder(this, globalEnv, jsFunc);
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreGlobalVar(glue, id, info, value, profileTypeInfo, slotId));
@@ -1092,6 +1148,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
     GateRef key = TaggedArgument(2); /* 2 : 3rd parameter is value */
     GateRef firstValue = TaggedArgument(3); /* 3 : 4th parameter is value */
     GateRef secondValue = TaggedArgument(4); /* 4 : 5th parameter is value */
+    GateRef globalEnv = TaggedArgument(5);   // 5: 6th parameter is globalEnv
 
     Label receiverIsHeapObject(env);
     Label receiverNotHeapObject(env);
@@ -1107,7 +1164,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        SetCurrentGlobalEnv(GetGlobalEnv(glue));
+        SetCurrentGlobalEnv(globalEnv);
         Return(LoadElement(glue, receiver, key));
         Bind(&hclassNotEqualFirstValue);
         {
@@ -1172,6 +1229,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
     GateRef firstValue = TaggedArgument(3); /* 3 : 4th parameter is value */
     GateRef secondValue = TaggedArgument(4); /* 4 : 5th parameter is value */
     GateRef value = TaggedArgument(5); /* 5 : 6th parameter is value */
+    GateRef globalEnv = TaggedArgument(6);  // 6: 7th parameter is globalEnv
     Label receiverIsHeapObject(env);
     Label receiverNotHeapObject(env);
     Label hclassEqualFirstValue(env);
@@ -1186,7 +1244,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        SetCurrentGlobalEnv(GetGlobalEnv(glue));
+        SetCurrentGlobalEnv(globalEnv);
         Return(ICStoreElement(glue, receiver, key, value, secondValue));
         Bind(&hclassNotEqualFirstValue);
         {
@@ -1272,7 +1330,8 @@ void ConstructorCheckStubBuilder::GenerateCircuit()
 void CreateEmptyArrayStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(1);  // 1 : 2nd para
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     Return(newBuilder.CreateEmptyArray(glue));
 }
 
@@ -1281,8 +1340,9 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef index = Int32Argument(1);
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
-    GateRef slotId = Int32Argument(5); // 5 : 6th para
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    GateRef slotId = Int32Argument(3);  // 3 : 4th para
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     Return(newBuilder.CreateArrayWithBuffer(
         glue, index, jsFunc, { IntPtr(0), 0, true }, Undefined(), slotId, ProfileOperation()));
 }
@@ -1383,7 +1443,8 @@ void GetSingleCharCodeByIndexStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef str = TaggedArgument(1);
     GateRef index = Int32Argument(2);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     GateRef result = builder.GetSingleCharCodeByIndex(glue, str, index);
     Return(result);
 }
@@ -1392,7 +1453,8 @@ void CreateStringBySingleCharCodeStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef charCode = Int32Argument(1);
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
     Return(result);
 }
@@ -1403,6 +1465,7 @@ void FastStringEqualStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef str1 = TaggedArgument(1);
     GateRef str2 = Int32Argument(2);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
     Label leftEqualRight(env);
     Label leftNotEqualRight(env);
@@ -1416,7 +1479,7 @@ void FastStringEqualStubBuilder::GenerateCircuit()
     }
     Bind(&leftNotEqualRight);
     {
-        SetCurrentGlobalEnv(GetGlobalEnv(glue));
+        SetCurrentGlobalEnv(globalEnv);
         result = FastStringEqual(glue, str1, str2);
         Jump(&exit);
     }
@@ -1429,8 +1492,9 @@ void FastStringAddStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef str1 = TaggedArgument(1);
     GateRef str2 = Int32Argument(2);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this, globalEnv);
     GateRef result = builtinsStringStubBuilder.StringConcat(glue, str1, str2);
     Return(result);
 }
@@ -1441,8 +1505,9 @@ void StringAddStubBuilder::GenerateCircuit()
     GateRef str1 = TaggedArgument(1);
     GateRef str2 = TaggedArgument(2);       // 2: 3rd argument
     GateRef status = Int32Argument(3);      // 3: 4th argument
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th argument
 
-    BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetGlobalEnv(glue));
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this, globalEnv);
     GateRef result = builtinsStringStubBuilder.StringAdd(glue, str1, str2, status);
     Return(result);
 }
@@ -1452,7 +1517,8 @@ void DeleteObjectPropertyStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
     GateRef prop = TaggedArgument(2);
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
+    SetCurrentGlobalEnv(globalEnv);
     GateRef result = DeletePropertyOrThrow(glue, object, prop);
     Return(result);
 }
@@ -1461,7 +1527,8 @@ void GetpropiteratorStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
-    NewObjectStubBuilder newBuilder(this, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
+    NewObjectStubBuilder newBuilder(this, globalEnv);
     GateRef result = newBuilder.EnumerateObjectProperties(glue, object);
     Return(result);
 }
@@ -1506,10 +1573,11 @@ void StringIteratorNextStubBuilder::GenerateCircuit()
 
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsStringStubBuilder builder(this, GetGlobalEnv(glue));
+    BuiltinsStringStubBuilder builder(this, globalEnv);
     builder.StringIteratorNext(glue, obj, Gate::InvalidGateRef, &result, &exit, &slowpath);
     Bind(&slowpath);
     {
@@ -1528,10 +1596,11 @@ void ArrayIteratorNextStubBuilder::GenerateCircuit()
 
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsArrayStubBuilder builder(this, GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builder(this, globalEnv);
     builder.ArrayIteratorNext(glue, obj, Gate::InvalidGateRef, &result, &exit, &slowpath);
     Bind(&slowpath);
     {
@@ -1549,11 +1618,11 @@ void MapIteratorNextStubBuilder::GenerateCircuit()
 
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef,
-                                                                 GetGlobalEnv(glue));
+    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef, globalEnv);
     builder.Next(&result, &exit);
     Bind(&exit);
     Return(*result);
@@ -1566,11 +1635,11 @@ void SetIteratorNextStubBuilder::GenerateCircuit()
 
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef,
-                                                                 GetGlobalEnv(glue));
+    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef, globalEnv);
     builder.Next(&result, &exit);
     Bind(&exit);
     Return(*result);
@@ -1580,8 +1649,9 @@ void GetIteratorStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
+    GateRef globalEnv = TaggedArgument(2);  // 2: 3rd para
 
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    SetCurrentGlobalEnv(globalEnv);
     GateRef res = GetIterator(glue, obj, ProfileOperation());
     Return(res);
 }
@@ -1591,8 +1661,9 @@ void JSMapGetStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Get(linkedTable, key));
 }
@@ -1602,8 +1673,9 @@ void JSMapHasStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Has(linkedTable, key));
 }
@@ -1613,8 +1685,9 @@ void JSSetHasStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Has(linkedTable, key));
 }
@@ -1710,8 +1783,9 @@ void JSMapDeleteStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Delete(linkedTable, key));
 }
@@ -1721,8 +1795,9 @@ void JSSetDeleteStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Delete(linkedTable, key));
 }
@@ -1732,8 +1807,9 @@ void JSSetAddStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th para
 
-    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, GetGlobalEnv(glue));
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue, globalEnv);
     GateRef linkedTable = builder.GetLinked(obj);
     GateRef newTable = builder.Insert(linkedTable, key, key);
     builder.Store(VariableType::JS_ANY(), glue, obj, IntPtr(JSSet::LINKED_SET_OFFSET), newTable);
@@ -1756,7 +1832,8 @@ void SameValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef left = TaggedArgument(1);
     GateRef right = TaggedArgument(2U);
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3U); // 3 : 4th para
+    SetCurrentGlobalEnv(globalEnv);
     GateRef result = SameValue(glue, left, right);
     Return(result);
 }

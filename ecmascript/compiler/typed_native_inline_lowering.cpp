@@ -450,7 +450,7 @@ void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStub
     BRANCH_CIR(hasNoConstructor, &selfValidLabel, &selfInvalidLabel);
     builder_.Bind(&selfValidLabel);
     {
-        GateRef globalEnv = builder_.GetGlobalEnv(glue);
+        GateRef globalEnv = circuit_->GetGlobalEnvCache();
         GateRef prototype = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv,
                                                        GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
 
@@ -1152,8 +1152,8 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
     GateRef numberFunction = acc_.GetValueIn(gate, 0);
     GateRef param = acc_.GetValueIn(gate, 1);
 
-    GateRef globalEnvNumberFunction = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, builder_.GetGlobalEnv(),
-                                                                 GlobalEnv::NUMBER_FUNCTION_INDEX);
+    GateRef globalEnvNumberFunction = builder_.GetGlobalEnvValue(
+        VariableType::JS_ANY(), glue, circuit_->GetGlobalEnvCache(), GlobalEnv::NUMBER_FUNCTION_INDEX);
     auto builtinIsNumber = builder_.Equal(numberFunction, globalEnvNumberFunction);
     builder_.DeoptCheck(builtinIsNumber, FindFrameState(gate), DeoptType::NEWBUILTINCTORFAIL1);
 
@@ -1173,7 +1173,7 @@ void TypedNativeInlineLowering::LowerNewNumber(GateRef gate)
         builder_.DeoptCheck(builder_.TaggedIsLineUtf8String(glue, param), FindFrameState(gate), DeoptType::NOTSTRING1);
         auto length = builder_.GetLengthFromString(param);
         builder_.DeoptCheck(builder_.NotEqual(length, builder_.Int32(0)), FindFrameState(gate), DeoptType::NOTINT1);
-        BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
         GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineString::DATA_OFFSET));
         GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
         builder_.DeoptCheck(builder_.NotEqual(res, builder_.Int64(-1)), FindFrameState(gate), DeoptType::NOTINT1);
@@ -2000,7 +2000,7 @@ GateRef TypedNativeInlineLowering::CheckAndConvertToUInt(GateRef glue, GateRef m
     auto length = builder_.GetLengthFromString(msg);
     BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), notIntegerStr, nonZeroLength);
     builder_.Bind(nonZeroLength);
-    BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+    BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
     GateRef dataUtf8 = builder_.PtrAdd(msg, builder_.IntPtr(LineString::DATA_OFFSET));
     return stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
 }
@@ -2065,6 +2065,8 @@ void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns
     for (size_t idx = 0; idx < numIn; idx++) {
         args.emplace_back(acc_.GetValueIn(gate, idx));
     }
+    // for gloabalEnv
+    args.emplace_back(circuit_->GetGlobalEnvCache());
     GateRef ret = builder_.CallStub(glue, gate, id, args);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
@@ -2153,7 +2155,7 @@ void TypedNativeInlineLowering::LowerStringCharCodeAt(GateRef gate)
     BRANCH_CIR(builder_.Int32UnsignedLessThan(pos, strLen), &posIsValid, &posNotValid);
     builder_.Bind(&posIsValid);
     {
-        BuiltinsStringStubBuilder stringBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+        BuiltinsStringStubBuilder stringBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
         result = stringBuilder.FastStringCharCodeAt(glue, thisValue, pos);
         builder_.Jump(&exit);
     }
@@ -2231,7 +2233,7 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
     from = BuildIntMinMax<false>(finalStart, finalEnd);
     to = BuildIntMinMax<true>(finalStart, finalEnd);
     const CallSignature *cs = BuiltinsStubCSigns::Get(BuiltinsStubCSigns::ID::StringSubstring);
-    BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature *>(cs), &env, builder_.GetGlobalEnv(glue));
+    BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature *>(cs), &env, circuit_->GetGlobalEnvCache());
     GateRef len = builder_.Int32Sub(*to, *from);
     result = stringBuilder.GetSubString(glue, thisValue, *from, len);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
@@ -2320,7 +2322,8 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
         builder_.Bind(&resLenNotLessOrEqualZero);
         {
             const CallSignature *cs = BuiltinsStubCSigns::Get(BuiltinsStubCSigns::ID::StringSubStr);
-            BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature *>(cs), &env, builder_.GetGlobalEnv(glue));
+            BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature *>(cs), &env,
+                                                    circuit_->GetGlobalEnvCache());
             result = stringBuilder.GetFastSubString(glue, thisValue, *start, *resultLength);
             builder_.Jump(&exit);
         }
@@ -2426,8 +2429,8 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
             builder_.Bind(&fromLessThanTo);
             {
                 const CallSignature *cs = BuiltinsStubCSigns::Get(BuiltinsStubCSigns::ID::StringSlice);
-                BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature*>(cs), &env,
-                                                        builder_.GetGlobalEnv(glue));
+                BuiltinsStringStubBuilder stringBuilder(const_cast<CallSignature *>(cs), &env,
+                                                        circuit_->GetGlobalEnvCache());
                 GateRef len = builder_.Int32Sub(*to, *from);
                 result = stringBuilder.GetSubString(glue, thisValue, *from, len);
                 builder_.Jump(&exit);
@@ -2478,7 +2481,8 @@ void TypedNativeInlineLowering::LowerObjectIs(GateRef gate)
         result = builder_.TaggedFalse();
     } else {
         GateRef glue = glue_;
-        GateRef boolRet = builder_.CallStub(glue, gate, CommonStubCSigns::SameValue, { glue, left, right});
+        GateRef boolRet = builder_.CallStub(glue, gate, CommonStubCSigns::SameValue,
+                                            {glue, left, right, circuit_->GetGlobalEnvCache()});
         result = builder_.BooleanToTaggedBooleanPtr(boolRet);
     }
 
@@ -2494,7 +2498,7 @@ void TypedNativeInlineLowering::LowerObjectGetPrototypeOf(GateRef gate)
 
     // fast handle some primitive types
     if (TypeInfoAccessor::IsTrustedBooleanOrNumberOrStringType(compilationEnv_, circuit_, chunk_, acc_, value)) {
-        GateRef globalEnv = builder_.GetGlobalEnv(glue);
+        GateRef globalEnv = circuit_->GetGlobalEnvCache();
         size_t index = -1;
         if (TypeInfoAccessor::IsTrustedBooleanType(acc_, value)) {
             index = GlobalEnv::BOOLEAN_PROTOTYPE_INDEX;
@@ -2591,7 +2595,7 @@ void TypedNativeInlineLowering::LowerObjectIsPrototypeOf(GateRef gate)
                     {
                         Label sameValue(&builder_);
                         GateRef same = builder_.CallStub(glue, gate, CommonStubCSigns::SameValue,
-                                                         { glue, obj, *proto });
+                                                         {glue, obj, *proto, circuit_->GetGlobalEnvCache()});
                         BRANCH_CIR(same, &sameValue, &loopEnd);
                         builder_.Bind(&sameValue);
                         {
@@ -2632,7 +2636,7 @@ void TypedNativeInlineLowering::LowerObjectHasOwnProperty(GateRef gate)
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedFalse());
     Label callRuntime(&builder_);
     Label exit(&builder_);
-    BuiltinsObjectStubBuilder objectStubBuilder(&env, glue, builder_.GetGlobalEnv(glue));
+    BuiltinsObjectStubBuilder objectStubBuilder(&env, glue, circuit_->GetGlobalEnvCache());
     objectStubBuilder.HasOwnProperty(&result, &exit, &callRuntime, thisValue, key, gate);
     builder_.Bind(&callRuntime);
     {
@@ -2668,7 +2672,7 @@ void TypedNativeInlineLowering::LowerReflectGet(GateRef gate)
     builder_.Bind(&isEcmaObject);
     {
         result = builder_.CallStub(glue, gate, CommonStubCSigns::DeprecatedGetPropertyByName,  // no ic
-                                   { glue, target, key });
+                                   {glue, target, key, circuit_->GetGlobalEnvCache()});
         builder_.Jump(&exit);
     }
     builder_.Bind(&notEcmaObject);
@@ -2693,7 +2697,7 @@ void TypedNativeInlineLowering::LowerReflectHas(GateRef gate)
     Label afterHasOwn(&builder_);
     Label callRuntime(&builder_);
     Label exit(&builder_);
-    BuiltinsObjectStubBuilder objectStubBuilder(&env, glue, builder_.GetGlobalEnv(glue));
+    BuiltinsObjectStubBuilder objectStubBuilder(&env, glue, circuit_->GetGlobalEnvCache());
     objectStubBuilder.HasOwnProperty(&result, &afterHasOwn, &callRuntime, target, key, gate);
     builder_.Bind(&afterHasOwn);
     {
@@ -2783,7 +2787,7 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     Label exit(&builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder stubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder stubBuilder(&env, circuit_->GetGlobalEnvCache());
 
     using Indices = CircuitArgIndices::ArrayIncludesIndexOf;
     GateRef elements = acc_.GetValueIn(gate, Indices::ELEMENTS);
@@ -2860,7 +2864,7 @@ void TypedNativeInlineLowering::LowerArrayIteratorBuiltin(GateRef gate)
     IterationKind iterationKind = GetArrayIterKindFromBuilin(callID);
 
     GateRef glue = glue_;
-    GateRef globalEnv = builder_.GetGlobalEnv(glue);
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef prototype = builder_.GetGlobalEnvValue(
         VariableType::JS_POINTER(), glue, globalEnv, GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
 
@@ -2952,7 +2956,7 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder arrayBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder arrayBuilder(&env, circuit_->GetGlobalEnvCache());
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     GateRef usingThis = acc_.GetValueIn(gate, 2);
@@ -3021,7 +3025,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, circuit_->GetGlobalEnvCache());
     auto pcOffset = acc_.TryGetPcOffset(gate);
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
@@ -3049,7 +3053,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
     BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
     builder_.Bind(&lengthIsZero);
     {
-        NewObjectStubBuilder newBuilder(&env, builder_.GetGlobalEnv(glue));
+        NewObjectStubBuilder newBuilder(&env, circuit_->GetGlobalEnvCache());
         result = newBuilder.CreateEmptyArray(glue);
         builder_.Jump(&quit);
     }
@@ -3122,7 +3126,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, circuit_->GetGlobalEnvCache());
     auto pcOffset = acc_.TryGetPcOffset(gate);
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
@@ -3148,7 +3152,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
     BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
     builder_.Bind(&lengthIsZero);
     {
-        NewObjectStubBuilder newBuilder(&env, builder_.GetGlobalEnv(glue));
+        NewObjectStubBuilder newBuilder(&env, circuit_->GetGlobalEnvCache());
         result = newBuilder.CreateEmptyArray(glue);
         builder_.Jump(&exit);
     }
@@ -3206,7 +3210,7 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, circuit_->GetGlobalEnvCache());
     auto pcOffset = acc_.TryGetPcOffset(gate);
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
@@ -3276,7 +3280,7 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env, circuit_->GetGlobalEnvCache());
     auto pcOffset = acc_.TryGetPcOffset(gate);
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
@@ -3396,7 +3400,7 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
                 Label hasException(&builder_);
                 Label notHasException(&builder_);
                 GateRef element = builder_.CallStub(glue, gate, CommonStubCSigns::GetPropertyByIndex,
-                                                    { glue, thisValue, index });
+                                                    {glue, thisValue, index, circuit_->GetGlobalEnvCache()});
                 BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &hasException, &notHasException);
                 builder_.Bind(&hasException);
                 {
@@ -3443,7 +3447,7 @@ void TypedNativeInlineLowering::LowerArrayPush(GateRef gate)
     Label setLength(&builder_);
     Label exit(&builder_);
     GateRef glue = glue_;
-    BuiltinsArrayStubBuilder arrayBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder arrayBuilder(&env, circuit_->GetGlobalEnvCache());
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef oldLength = builder_.GetLengthOfJSArray(thisValue);
@@ -3502,7 +3506,7 @@ void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
     builder_.Branch(builder_.Int32Equal(sliceCount, builder_.Int32(0)), &sliceCountIsZero, &sliceCountIsNotZero);
     builder_.Bind(&sliceCountIsZero);
     {
-        NewObjectStubBuilder newObject(&env, builder_.GetGlobalEnv(glue));
+        NewObjectStubBuilder newObject(&env, circuit_->GetGlobalEnvCache());
         res = newObject.CreateEmptyArray(glue);
         builder_.Jump(&exit);
     }
@@ -3510,7 +3514,7 @@ void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
     builder_.DeoptCheck(builder_.Int32LessThanOrEqual(sliceCount, builder_.Int32(JSObject::MAX_GAP)),
                         frameState,
                         DeoptType::ARRAYLENGTHOVERMAX);
-    BuiltinsArrayStubBuilder arrayBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder arrayBuilder(&env, circuit_->GetGlobalEnvCache());
     GateRef newArray = arrayBuilder.NewArray(glue, sliceCount);
     GateRef newArrayElements = builder_.GetElementsArray(glue, newArray);
     GateRef thisElements = builder_.GetElementsArray(glue, thisArray);
@@ -3698,7 +3702,7 @@ void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
     }
     builder_.Bind(&returnEmptyArray);
     {
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue_));
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
         res->WriteVariable(newBuilder.CreateEmptyArray(glue_));
         builder_.Jump(exit);
     }
@@ -3710,7 +3714,7 @@ void TypedNativeInlineLowering::LowerArraySort(GateRef gate)
     GateRef glue = glue_;
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
-    BuiltinsArrayStubBuilder arrayStubBuilder(&env, builder_.GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder arrayStubBuilder(&env, circuit_->GetGlobalEnvCache());
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     Label slowPath(&env);
     Label exit(&env);

@@ -213,8 +213,8 @@ void NTypeBytecodeLowering::LowerNTypedCreateEmptyArray(GateRef gate)
 
 void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
 {
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    // 2: number of CREATEARRAYWITHBUFFER_IMM16_ID16/CREATEARRAYWITHBUFFER_IMM8_ID16 inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef index = acc_.GetValueIn(gate, 0);
     auto methodOffset = acc_.TryGetMethodOffset(gate);
     uint32_t cpId = ptManager_->GetConstantPoolIDByMethodOffset(methodOffset);

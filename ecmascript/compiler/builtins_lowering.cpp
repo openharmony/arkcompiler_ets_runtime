@@ -253,7 +253,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     GateRef globalEnvFunction =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, builder_.GetGlobalEnv(),
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue_, circuit_->GetGlobalEnvCache(),
                                    static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     return builder_.Equal(function, globalEnvFunction);
@@ -261,7 +261,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubC
 
 GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef globalFunction =
         builder_.GetGlobalEnvObj(globalEnv, GET_TYPED_GLOBAL_ENV_INDEX(id));
     GateRef target = acc_.GetValueIn(gate, 0); // 0:target
@@ -275,27 +275,27 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
     switch (id) {
         case BuiltinsStubCSigns::ID::MapProtoIterator: {
             expectType = JSType::JS_MAP;
-            detectorValue = builder_.BoolNot(builder_.GetMapIteratorDetector(builder_.GetGlobalEnv()));
+            detectorValue = builder_.BoolNot(builder_.GetMapIteratorDetector(circuit_->GetGlobalEnvCache()));
             break;
         }
         case BuiltinsStubCSigns::ID::SetProtoIterator: {
             expectType = JSType::JS_SET;
-            detectorValue = builder_.BoolNot(builder_.GetSetIteratorDetector(builder_.GetGlobalEnv()));
+            detectorValue = builder_.BoolNot(builder_.GetSetIteratorDetector(circuit_->GetGlobalEnvCache()));
             break;
         }
         case BuiltinsStubCSigns::ID::StringProtoIterator: {
             expectType = JSType::STRING_FIRST;
-            detectorValue = builder_.BoolNot(builder_.GetStringIteratorDetector(builder_.GetGlobalEnv()));
+            detectorValue = builder_.BoolNot(builder_.GetStringIteratorDetector(circuit_->GetGlobalEnvCache()));
             break;
         }
         case BuiltinsStubCSigns::ID::ArrayProtoIterator: {
             expectType = JSType::JS_ARRAY;
-            detectorValue = builder_.BoolNot(builder_.GetArrayIteratorDetector(builder_.GetGlobalEnv()));
+            detectorValue = builder_.BoolNot(builder_.GetArrayIteratorDetector(circuit_->GetGlobalEnvCache()));
             break;
         }
         case BuiltinsStubCSigns::ID::TypedArrayProtoIterator: {
             expectType = JSType::JS_TYPED_ARRAY_FIRST;
-            detectorValue = builder_.BoolNot(builder_.GetTypedArrayIteratorDetector(builder_.GetGlobalEnv()));
+            detectorValue = builder_.BoolNot(builder_.GetTypedArrayIteratorDetector(circuit_->GetGlobalEnvCache()));
             break;
         }
         default: {
@@ -436,19 +436,23 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
     GateRef result = Circuit::NullGate();
     switch (id) {
         case BUILTINS_STUB_ID(MapIteratorProtoNext): {
-            result = builder_.CallStub(glue, gate, CommonStubCSigns::MapIteratorNext, { glue, thisObj });
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::MapIteratorNext,
+                                       {glue, thisObj, circuit_->GetGlobalEnvCache()});
             break;
         }
         case BUILTINS_STUB_ID(SetIteratorProtoNext): {
-            result = builder_.CallStub(glue, gate, CommonStubCSigns::SetIteratorNext, { glue, thisObj });
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::SetIteratorNext,
+                                       {glue, thisObj, circuit_->GetGlobalEnvCache()});
             break;
         }
         case BUILTINS_STUB_ID(StringIteratorProtoNext): {
-            result = builder_.CallStub(glue, gate, CommonStubCSigns::StringIteratorNext, { glue, thisObj });
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::StringIteratorNext,
+                                       {glue, thisObj, circuit_->GetGlobalEnvCache()});
             break;
         }
         case BUILTINS_STUB_ID(ArrayIteratorProtoNext): {
-            result = builder_.CallStub(glue, gate, CommonStubCSigns::ArrayIteratorNext, { glue, thisObj });
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::ArrayIteratorNext,
+                                       {glue, thisObj, circuit_->GetGlobalEnvCache()});
             break;
         }
         default:
@@ -501,7 +505,7 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
             BRANCH_CIR(builder_.Equal(length, builder_.Int32(0)), &exit, &nonZeroLength);
             builder_.Bind(&nonZeroLength);
             Label isInteger(env);
-            BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), builder_.GetGlobalEnv(glue));
+            BuiltinsStringStubBuilder stringStub(builder_.GetCurrentEnvironment(), circuit_->GetGlobalEnvCache());
             GateRef dataUtf8 = builder_.PtrAdd(param, builder_.IntPtr(LineString::DATA_OFFSET));
             GateRef res = stringStub.StringDataToUint(dataUtf8, length, std::numeric_limits<int32_t>::max());
             BRANCH_CIR(builder_.Int64NotEqual(res, builder_.Int64(-1)), &isInteger, &notLineUtf8String);
@@ -534,7 +538,7 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
     Environment env(gate, circuit_, &builder_);
     size_t numIn = acc_.GetNumValueIn(gate);
     GateRef glue = glue_;
-    GateRef function = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, builder_.GetGlobalEnv(),
+    GateRef function = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, circuit_->GetGlobalEnvCache(),
                                                   static_cast<size_t>(GET_TYPED_ENV_FIELD_INEDX(id)));
     GateRef nativeCode = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), function,
         builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));

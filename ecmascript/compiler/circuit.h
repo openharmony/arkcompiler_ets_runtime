@@ -94,6 +94,15 @@ public:
         root_ = root;
     }
 
+    GateRef GetGlobalEnvCache() const
+    {
+        return globalEnv_;
+    }
+    void SetGlobalEnvCache(GateRef globalEnv)
+    {
+        globalEnv_ = globalEnv;
+    }
+
     Chunk* chunk()
     {
         return &chunk_;
@@ -345,7 +354,8 @@ private:
     Chunk chunk_;
     GateRef root_ { NullGate() };
     GateRef dead_ { NullGate() };
-    GateRef replaceable_ { NullGate() };
+    GateRef globalEnv_ {NullGate()};
+    GateRef replaceable_ {NullGate()};
     GateMetaBuilder metaBuilder_;
     ChunkMap<GateRef, size_t> gateToDInfo_;
     DebugInfo* debugInfo_ {nullptr};

@@ -432,11 +432,26 @@ void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
     ASSERT(bcBuilder_->IsFirstBasicBlock(1)); // 1: is firstBlock
     auto liveout = GetFrameLiveoutBefore(1); // 1: is firstBlock
     GateRef frameArgs = bcBuilder_->GetFrameArgs();
+    GateRef lexicalEnv = Circuit::NullGate();
     if (liveout->TestBit(envIndex_)) {
         GateRef jsFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
-        auto env = acc_.GetInitialEnvGate(frameContext->currentDepend_, jsFunc);
-        frameContext->SetValuesAt(envIndex_, env);
-        frameContext->currentDepend_ = env;
+        lexicalEnv = acc_.GetInitialEnvGate(frameContext->currentDepend_, jsFunc);
+        frameContext->SetValuesAt(envIndex_, lexicalEnv);
+        frameContext->currentDepend_ = lexicalEnv;
+    }
+    if (circuit_->GetGlobalEnvCache() == Circuit::NullGate()) {
+        GateRef globalEnv = Circuit::NullGate();
+        if (lexicalEnv != Circuit::NullGate()) {
+            globalEnv = circuit_->NewGate(circuit_->GetGlobalEnvByLexicalEnv(), MachineType::I64,
+                                          {frameContext->currentDepend_, lexicalEnv}, GateType::AnyType());
+        } else {
+            globalEnv = circuit_->NewGate(
+                circuit_->GetGlobalEnvByFunc(), MachineType::I64,
+                {frameContext->currentDepend_, acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC))},
+                GateType::AnyType());
+        }
+        circuit_->SetGlobalEnvCache(globalEnv);
+        frameContext->currentDepend_ = globalEnv;
     }
     auto holeGate = circuit_->GetConstantGate(MachineType::I64,
                                               JSTaggedValue::VALUE_HOLE,
