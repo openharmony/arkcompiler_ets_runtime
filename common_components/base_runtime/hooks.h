@@ -43,6 +43,7 @@ PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);
 PUBLIC_API void FillFreeObject(void *object, size_t size);
 PUBLIC_API void SetBaseAddress(uintptr_t base);
 PUBLIC_API void JSGCCallback(void *ecmaVM);
+PUBLIC_API bool IsPostForked();
 
 // Jit interfaces
 PUBLIC_API void SweepThreadLocalJitFort();

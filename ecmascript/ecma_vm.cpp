@@ -161,6 +161,7 @@ void EcmaVM::PreFork()
 
     SetPreForked(true);
     SetPostForked(false);
+    Runtime::GetInstance()->SetPostForked(false);
     Jit::GetInstance()->PreFork();
 }
 
@@ -173,6 +174,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
         heap_->ResetLargeCapacity();
     }
     Runtime::GetInstance()->PostFork();
+    Runtime::GetInstance()->SetPostForked(true);
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();

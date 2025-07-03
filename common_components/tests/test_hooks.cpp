@@ -29,6 +29,7 @@ void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm
 void SweepThreadLocalJitFort() {}
 void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase) {}
 void JSGCCallback(void *ecmaVM) {}
+bool IsPostForked() { return true; }
 void VisitJSThread(void *jsThread, CommonRootVisitor visitor) {}
 
 bool IsMachineCodeObject(uintptr_t objPtr)

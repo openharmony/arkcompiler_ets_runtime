@@ -334,6 +334,7 @@ public:
         DCHECK_CC(!stack.empty());
         std::lock_guard<std::mutex> guard(mtx_);
         stacks_.push_back(std::move(stack));
+        cv_.notify_one();
     }
 
     StackType PopWorkStack()
