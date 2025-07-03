@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "objectrefall_fuzzer.h"
@@ -23,17 +24,12 @@ using namespace panda::ecmascript;
 namespace OHOS {
     void ObjectGetPrototypeFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetArkProperties(arkProp);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        uint8_t *ptr = nullptr;
-        size_t temp = 0;
-        ptr = const_cast<uint8_t*>(data);
-        temp = size;
         Local<FunctionRef> object = ObjectRef::New(vm);
         object->GetPrototype(vm);
         JSNApi::DestroyJSVM(vm);
@@ -41,17 +37,12 @@ namespace OHOS {
 
     void ObjectSealFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetArkProperties(arkProp);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        uint8_t *ptr = nullptr;
-        size_t temp = 0;
-        ptr = const_cast<uint8_t*>(data);
-        temp = size;
         Local<ObjectRef> object = ObjectRef::New(vm);
         object->Seal(vm);
         JSNApi::DestroyJSVM(vm);
@@ -59,17 +50,12 @@ namespace OHOS {
 
     void ObjectFreezeFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetArkProperties(arkProp);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        uint8_t *ptr = nullptr;
-        size_t temp = 0;
-        ptr = const_cast<uint8_t*>(data);
-        temp = size;
         Local<ObjectRef> object = ObjectRef::New(vm);
         object->Freeze(vm);
         JSNApi::DestroyJSVM(vm);

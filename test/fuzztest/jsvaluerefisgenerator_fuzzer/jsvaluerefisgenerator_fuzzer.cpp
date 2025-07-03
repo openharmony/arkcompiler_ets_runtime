@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefisgenerator_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -30,17 +31,16 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void IsGeneratorObjectFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsGeneratorObjectFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         ObjectFactory *factory = vm->GetFactory();
         auto env = vm->GetGlobalEnv();
         JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();

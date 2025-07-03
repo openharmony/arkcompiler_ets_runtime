@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefiscontainer_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -33,16 +34,15 @@ using namespace panda::ecmascript;
 using namespace common::utf_helper;
 
 namespace OHOS {
-void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsVectorFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            return;
-        }
         JSThread *thread = vm->GetJSThread();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
@@ -53,27 +53,30 @@ void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsVector);
         Local<JSValueRef> isVector = JSNApiHelper::ToLocal<JSAPIVector>(argumentTag);
         isVector->IsVector(vm);
+        option.SetArkProperties(arkProp);
     }
     JSNApi::DestroyJSVM(vm);
     return;
 }
 
-void JSValueRefIsMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsMapFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
+    option.SetArkProperties(arkProp);
     Local<MapRef> map = MapRef::New(vm);
     map->IsMap(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
 
-void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsRegExpFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
@@ -93,6 +96,7 @@ void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
         jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
         jSRegExp->SetLength(0);
+        option.SetArkProperties(arkProp);
         JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
         Local<JSValueRef> regexp = JSNApiHelper::ToLocal<JSRegExp>(argumentTag);
         regexp->IsRegExp(vm);
@@ -101,16 +105,15 @@ void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     return;
 }
 
-void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsSetFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            return;
-        }
         JSThread *thread = vm->GetJSThread();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -122,21 +125,21 @@ void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
         Local<SetRef> isSet = JSNApiHelper::ToLocal<SetRef>(setTag);
         isSet->IsSet(vm);
+        option.SetArkProperties(arkProp);
     }
     JSNApi::DestroyJSVM(vm);
     return;
 }
 
-void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsTreeMapFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            return;
-        }
         JSThread *thread = vm->GetJSThread();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
@@ -148,20 +151,20 @@ void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
         Local<JSValueRef> isTreeMap = JSNApiHelper::ToLocal<JSAPITreeMap>(argumentTag);
         isTreeMap->IsTreeMap(vm);
+        option.SetArkProperties(arkProp);
     }
     JSNApi::DestroyJSVM(vm);
 }
 
-void JSValueRefIsTreeSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsTreeSetFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            return;
-        }
         JSThread *thread = vm->GetJSThread();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
@@ -173,6 +176,7 @@ void JSValueRefIsTreeSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
         Local<JSValueRef> isTreeSet = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
         isTreeSet->IsTreeSet(vm);
+        option.SetArkProperties(arkProp);
     }
     JSNApi::DestroyJSVM(vm);
 }

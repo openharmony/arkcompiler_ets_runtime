@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "booleanrefvalue_fuzzer.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -28,8 +29,7 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-constexpr size_t NODE_NUMBERS = 2;
-void BooleanRefValueFuzzerTest([[maybe_unused]] const uint8_t *data, size_t size)
+void BooleanRefValueFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -38,7 +38,8 @@ void BooleanRefValueFuzzerTest([[maybe_unused]] const uint8_t *data, size_t size
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    bool input = size % NODE_NUMBERS ? true : false;
+    FuzzedDataProvider fdp(data, size);
+    bool input = fdp.ConsumeBool();
     Local<BooleanRef> obj = BooleanRef::New(vm, input);
     obj->Value();
     JSNApi::DestroyJSVM(vm);

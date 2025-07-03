@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -21,17 +22,16 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-void JSValueRefIsDataViewFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsDataViewFuzzerTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, (int32_t)size);
-    Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 0, (int32_t)size - 1);
+    const int32_t bufferSize = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
+    const int32_t dataSize = fdp.ConsumeIntegralInRange<int32_t>(0, 1023);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm, bufferSize);
+    Local<DataViewRef> dataView = DataViewRef::New(vm, arrayBuffer, 0, dataSize);
     dataView->IsDataView(vm);
     JSNApi::DestroyJSVM(vm);
 }

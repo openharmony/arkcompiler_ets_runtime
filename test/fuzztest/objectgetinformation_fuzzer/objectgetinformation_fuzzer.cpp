@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "objectgetinformation_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -23,59 +24,29 @@ using namespace panda::ecmascript;
 namespace OHOS {
 void ObjectGetAllPropertyNamesFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    int32_t index = 0;
-    size_t maxByteLen1 = 4;
-    if (size > maxByteLen1) {
-        size = maxByteLen1;
-    }
-    if (memcpy_s(&index, maxByteLen1, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
-    uint32_t filter = 0;
-    size_t maxByteLen2 = 4;
-    if (size > maxByteLen2) {
-        size = maxByteLen2;
-    }
-    if (memcpy_s(&filter, maxByteLen2, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
+    std::string str1 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr1 = static_cast<void *>(const_cast<char *>(str1.data()));
+    std::string str2 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr2 = static_cast<void *>(const_cast<char *>(str2.data()));
+    const int32_t index = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
-    object->GetAllPropertyNames(vm, filter);
+    object->SetNativePointerField(vm, index, ptr1, callBack, ptr2);
+    object->GetAllPropertyNames(vm, index);
     JSNApi::DestroyJSVM(vm);
 }
 
 void ObjectGetNativePointerFieldCountFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    int32_t key = 0;
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
-    if (key <= 0 || key > 1024) { // 1024 : 1M in size
-        key = 1024;               // 1024 : 1M in size
-    }
+    const int32_t key = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
     Local<ObjectRef> object = ObjectRef::New(vm);
     object->SetNativePointerFieldCount(vm, key);
     object->GetNativePointerFieldCount(vm);
@@ -84,50 +55,36 @@ void ObjectGetNativePointerFieldCountFuzzTest(const uint8_t *data, size_t size)
 
 void ObjectGetOwnEnumerablePropertyNamesFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    int32_t index = 0;
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&index, maxByteLen, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
+    std::string str1 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr1 = static_cast<void *>(const_cast<char *>(str1.data()));
+    std::string str2 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr2 = static_cast<void *>(const_cast<char *>(str2.data()));
+    const int32_t index = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
+    object->SetNativePointerField(vm, index, ptr1, callBack, ptr2);
     object->GetOwnEnumerablePropertyNames(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
 void ObjectGetOwnPropertyNamesFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    int32_t index = 0;
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&index, maxByteLen, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
+    std::string str1 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr1 = static_cast<void *>(const_cast<char *>(str1.data()));
+    std::string str2 = fdp.ConsumeRandomLengthString(1024);
+    void *ptr2 = static_cast<void *>(const_cast<char *>(str2.data()));
+    const int32_t index = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
     Local<ObjectRef> object = ObjectRef::New(vm);
     NativePointerCallback callBack = nullptr;
-    object->SetNativePointerField(vm, index, (void *)data, callBack, (void *)data);
+    object->SetNativePointerField(vm, index, ptr1, callBack, ptr2);
     object->GetOwnPropertyNames(vm);
     JSNApi::DestroyJSVM(vm);
 }

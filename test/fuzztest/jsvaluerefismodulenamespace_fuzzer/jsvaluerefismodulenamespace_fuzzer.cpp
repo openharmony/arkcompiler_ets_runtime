@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefismodulenamespace_fuzzer.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -33,17 +34,16 @@ using namespace panda::ecmascript;
 namespace OHOS {
 constexpr uint32_t ERROR_TYPE_LEN = 2;
 
-void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsModuleNamespaceObjectFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         ObjectFactory *objectFactory = vm->GetFactory();
         JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
         JSHandle<LocalExportEntry> localExportEntry1 = objectFactory->NewLocalExportEntry();
@@ -65,17 +65,16 @@ void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsProxyFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsProxyFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         auto thread = vm->GetJSThread();
         JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
         JSHandle<JSTaggedValue> hclass(thread, globalEnv->GetObjectFunction().GetObject<JSFunction>());
@@ -90,17 +89,16 @@ void IsProxyFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSCollatorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSCollatorFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         auto thread = vm->GetJSThread();
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<JSTaggedValue> ctor = vm->GetGlobalEnv()->GetCollatorFunction();
@@ -117,17 +115,16 @@ void IsJSCollatorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSPluralRulesFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSPluralRulesFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         auto thread = vm->GetJSThread();
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -145,46 +142,43 @@ void IsJSPluralRulesFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsStrictEqualsFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsStrictEqualsFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
     Local<ObjectRef> object = ObjectRef::New(vm);
     Local<ObjectRef> object1 = ObjectRef::New(vm);
     object->IsStrictEquals(vm, object1);
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSListFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSListFormatFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
     Local<JSValueRef> object = ObjectRef::New(vm);
     object->IsJSListFormat(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSPrimitiveRefFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSPrimitiveRefFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         auto thread = vm->GetJSThread();
         auto factory = vm->GetFactory();
         JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
@@ -197,17 +191,16 @@ void IsJSPrimitiveRefFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsDequeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsDequeFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         auto thread = vm->GetJSThread();
         auto factory = vm->GetFactory();
         JSHandle<JSTaggedValue> proto = thread->GetEcmaVM()->GetGlobalEnv()->GetFunctionPrototype();
@@ -236,27 +229,29 @@ Local<JSValueRef> CreateJSValueRef(EcmaVM *vm, panda::ecmascript::JSType type)
     return JSNApiHelper::ToLocal<JSValueRef>(jsTaggedValue);
 }
 
-void IsJSIntlFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSIntlFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         Local<JSValueRef> jsInt1 = CreateJSValueRef(vm, JSType::JS_INTL);
         jsInt1->IsJSIntl(vm);
     }
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSDateTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSDateTimeFormatFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -270,34 +265,32 @@ void IsJSDateTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSNumberFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSNumberFormatFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         Local<JSValueRef> number = CreateJSValueRef(vm, JSType::JS_NUMBER_FORMAT);
         number->IsJSNumberFormat(vm);
     }
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSRelativeTimeFormatFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSRelativeTimeFormatFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
         Local<JSValueRef> relative = CreateJSValueRef(vm, JSType::JS_RELATIVE_TIME_FORMAT);
         relative->IsJSRelativeTimeFormat(vm);
     }

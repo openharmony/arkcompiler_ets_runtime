@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefislightweightmapandset_fuzzer.h"
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -163,17 +164,16 @@ JSHandle<JSAPILightWeightSet> ConstructobjectLightWeightSet(JSThread *thread)
     return mapHandle;
 }
 
-void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefIsLightWeightMapFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "Parameter out of range..";
-            return;
-        }
         auto thread = vm->GetAssociatedJSThread();
         JSHandle<JSAPILightWeightMap> mapHandle = ConstructobjectLightWeightMap(thread);
         JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
@@ -183,17 +183,16 @@ void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, si
     JSNApi::DestroyJSVM(vm);
 }
 
-void JSValueRefIsLightWeightSetFuzzTest([[maybe_unused]] const uint8_t *data, size_t size)
+void JSValueRefIsLightWeightSetFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "Parameter out of range..";
-            return;
-        }
         auto thread = vm->GetAssociatedJSThread();
         JSHandle<JSAPILightWeightSet> mapHandle = ConstructobjectLightWeightSet(thread);
         JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);

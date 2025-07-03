@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "arraylist_fuzzer.h"
 
 #include "ecmascript/containers/containers_arraylist.h"
@@ -947,10 +948,13 @@ namespace OHOS {
         JSNApi::DestroyJSVM(vm);
     }
 
-    void JSValueRefInstanceOfValueFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
+    void JSValueRefInstanceOfValueFuzzTest(const uint8_t *data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetArkProperties(arkProp);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);

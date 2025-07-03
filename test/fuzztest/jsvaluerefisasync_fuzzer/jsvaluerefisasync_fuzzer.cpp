@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
@@ -29,16 +30,13 @@ namespace OHOS {
     void JSValueRefIsAsyncGeneratorFunctionTrueFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
-            if (data == nullptr || size <= 0) {
-                LOG_ECMA(ERROR) << "illegal input!";
-                return;
-            }
-            uint8_t* ptr = nullptr;
-            ptr = const_cast<uint8_t*>(data);
+            option.SetArkProperties(arkProp);
             ObjectFactory *factory = vm->GetFactory();
             MethodLiteral *methodLiteral = nullptr;
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
@@ -52,34 +50,26 @@ namespace OHOS {
 
     void JSValueRefIsAsyncGeneratorFunctionFalseFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        int num = static_cast<int>(size);
-        Local<JSValueRef> object = IntegerRef::New(vm, num);
+        Local<JSValueRef> object = IntegerRef::New(vm, arkProp);
         object->IsAsyncGeneratorFunction(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
     void JSValueRefIsAsyncGeneratorObjectTrueFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         {
             JsiFastNativeScope scope(vm);
-            if (data == nullptr || size <= 0) {
-                LOG_ECMA(ERROR) << "illegal input!";
-                return;
-            }
-            uint8_t* ptr = nullptr;
-            ptr = const_cast<uint8_t*>(data);
+            option.SetArkProperties(arkProp);
             ObjectFactory *factory = vm->GetFactory();
             MethodLiteral *methodLiteral = nullptr;
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
@@ -93,17 +83,12 @@ namespace OHOS {
 
     void JSValueRefIsAsyncGeneratorObjectFalseFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        int num = static_cast<int>(size);
-        Local<JSValueRef> object = IntegerRef::New(vm, num);
+        Local<JSValueRef> object = IntegerRef::New(vm, arkProp);
         object->IsAsyncGeneratorObject(vm);
         JSNApi::DestroyJSVM(vm);
     }

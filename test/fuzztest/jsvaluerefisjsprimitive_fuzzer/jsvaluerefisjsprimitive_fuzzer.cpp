@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefisjsprimitive_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -24,10 +25,13 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSPrimitiveSymbolFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -45,10 +49,13 @@ void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSPrimitiveStringFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -66,10 +73,13 @@ void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     JSNApi::DestroyJSVM(vm);
 }
 
-void IsJSPrimitiveIntFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void IsJSPrimitiveIntFuzztest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

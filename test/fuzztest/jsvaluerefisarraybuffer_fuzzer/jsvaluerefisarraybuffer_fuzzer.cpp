@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -27,11 +27,9 @@ void JSValueRefIsArrayBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
-    }
-    Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, (int32_t)size);
+    FuzzedDataProvider fdp(data, size);
+    const int32_t bufferSize = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
+    Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, bufferSize);
     arrayBufferRef->IsArrayBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
