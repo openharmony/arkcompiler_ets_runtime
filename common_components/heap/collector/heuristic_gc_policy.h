@@ -87,11 +87,11 @@ static constexpr size_t NOTIFY_NATIVE_INTERVAL = 32;
 #else
     static constexpr size_t NATIVE_INIT_THRESHOLD = 200 * MB;
     static constexpr size_t MAX_GLOBAL_NATIVE_LIMIT = 2 * GB;
-    static constexpr size_t MAX_NATIVE_STEP = 300 * MB;
+    static constexpr size_t MAX_NATIVE_STEP = 200 * MB;
     static constexpr size_t MAX_NATIVE_SIZE_INC = 1 * GB;
     static constexpr size_t NATIVE_IMMEDIATE_THRESHOLD = 2 * MB;
 #endif
-static constexpr size_t URGENCY_NATIVE_LIMIT = (MAX_NATIVE_SIZE_INC + MAX_GLOBAL_NATIVE_LIMIT) / 2;
+static constexpr size_t URGENCY_NATIVE_LIMIT = MAX_NATIVE_SIZE_INC + MAX_NATIVE_STEP * 2; // 2 is double.
 
 class HeuristicGCPolicy {
 public:

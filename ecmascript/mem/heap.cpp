@@ -2699,8 +2699,12 @@ void Heap::CleanCallback()
     AsyncNativeCallbacksPack *asyncCallbacks = new AsyncNativeCallbacksPack();
     std::swap(*asyncCallbacks, asyncCallbacksPack);
     NativePointerTaskCallback asyncTaskCb = thread_->GetAsyncCleanTaskCallback();
+    size_t currentSize = 0;
+    if (g_isEnableCMCGC) {
+        currentSize = asyncCallbacks->GetTotalBindingSize();
+    }
     if (asyncTaskCb != nullptr && thread_->IsMainThreadFast() &&
-        pendingAsyncNativeCallbackSize_ < asyncClearNativePointerThreshold_) {
+        (pendingAsyncNativeCallbackSize_ + currentSize) < asyncClearNativePointerThreshold_) {
         IncreasePendingAsyncNativeCallbackSize(asyncCallbacks->GetTotalBindingSize());
         asyncCallbacks->RegisterFinishNotify([this] (size_t bindingSize) {
             this->DecreasePendingAsyncNativeCallbackSize(bindingSize);
