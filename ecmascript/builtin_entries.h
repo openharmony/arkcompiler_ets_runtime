@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <string>
 
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
@@ -138,22 +137,8 @@ public:
         return sizeof(JSTaggedValue) * (index * 2); // 2 is size of BuiltinEntries
     }
 
-    size_t GetBuiltinIndex(const JSThread *thread, JSTaggedValue key) const
-    {
-        auto ecmaString = EcmaString::Cast(key.GetTaggedObject());
-        auto str = std::string(ConvertToString(thread, ecmaString));
-        return GetBuiltinIndex(str);
-    }
-
-    size_t GetBuiltinIndex(const std::string& key) const
-    {
-        auto it = builtinIndex_.find(key);
-        if (it == builtinIndex_.end()) {
-            return NOT_FOUND;
-        } else {
-            return static_cast<size_t>(it->second);
-        }
-    }
+    size_t PUBLIC_API GetBuiltinIndex(const JSThread *thread, JSTaggedValue key) const;
+    size_t PUBLIC_API GetBuiltinIndex(const std::string& key) const;
 
     auto GetBuiltinKeys() -> std::vector<std::string> const
     {

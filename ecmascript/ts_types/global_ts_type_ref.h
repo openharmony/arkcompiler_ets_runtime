@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TS_TYPES_GLOBAL_TS_TYPE_REF_H
 #define ECMASCRIPT_TS_TYPES_GLOBAL_TS_TYPE_REF_H
 
-#include "ecmascript/ecma_macros.h"
+#include "ecmascript/log_wrapper.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
@@ -166,8 +166,28 @@ public:
     // (MAX_MODULE_ID - ModuleTableIdx::NUM_OF_DEFAULT_TABLES) ts files with types can be stored in TSModuleTable
     static constexpr uint64_t MAX_MODULE_ID = (1LLU << MODULE_ID_BITS) - 1;
 
-    FIRST_BIT_FIELD(Type, LocalId, uint32_t, LOCAL_ID_BITS);
-    NEXT_BIT_FIELD(Type, ModuleId, uint32_t, MODULE_ID_BITS, LocalId);
+    using LocalIdBits = BitField<uint32_t, 0, LOCAL_ID_BITS>;
+    using ModuleIdBits = LocalIdBits::NextField<uint32_t, MODULE_ID_BITS>;
+
+    inline uint32_t GetLocalId() const
+    {
+        return LocalIdBits::Decode(GetType());
+    }
+
+    inline void SetLocalId(uint32_t value)
+    {
+        SetType(LocalIdBits::Update(GetType(), value));
+    }
+
+    inline uint32_t GetModuleId() const
+    {
+        return ModuleIdBits::Decode(GetType());
+    }
+
+    inline void SetModuleId(uint32_t value)
+    {
+        SetType(ModuleIdBits::Update(GetType(), value));
+    }
 
     static inline bool IsValidLocalId(uint32_t localId)
     {

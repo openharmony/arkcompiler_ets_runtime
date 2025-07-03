@@ -90,11 +90,6 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 }
 
-/* template<bool atomic>
-static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset)
-{
-} */
-
 template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
@@ -139,10 +134,7 @@ static inline void CopyBackward([[maybe_unused]]const JSThread *thread, JSTagged
         return;
     }
 
-    for (size_t i = count; i > 0; i--) {
-        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, (i - 1) * sizeof(JSTaggedType));
-        Barriers::SetObject<false>(nullptr, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
-    }
+    Barriers::CMCArrayCopyReadBarrierBackward(thread, dst, src, count);
 }
 
 template <bool needReadBarrier>
@@ -154,10 +146,7 @@ static inline void CopyForward([[maybe_unused]]const JSThread *thread, JSTaggedV
         return;
     }
 
-    for (size_t i = 0; i < count; i++) {
-        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, i * sizeof(JSTaggedType));
-        Barriers::SetObject<false>(nullptr, dst, i * sizeof(JSTaggedType), valueToRef);
-    }
+    Barriers::CMCArrayCopyReadBarrierForward(thread, dst, src, count);
 }
 
 template <Region::RegionSpaceKind kind>

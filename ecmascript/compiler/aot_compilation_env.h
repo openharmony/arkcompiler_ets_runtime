@@ -49,6 +49,11 @@ public:
         UNREACHABLE();
     }
 
+    JSThread *GetHostThread() const override
+    {
+        return thread_;
+    }
+
     JSRuntimeOptions &GetJSOptions() const override;
 
     // thread

@@ -20,6 +20,7 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dependent_infos.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"

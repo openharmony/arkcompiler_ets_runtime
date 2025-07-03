@@ -15,6 +15,7 @@
 #include "ecmascript/patch/patch_loader.h"
 
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/method.h"
 #include "ecmascript/module/module_resolver.h"
 
 #include "common_interfaces/base_runtime.h"

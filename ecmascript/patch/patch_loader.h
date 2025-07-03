@@ -18,7 +18,6 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/method.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/napi/include/jsnapi_internals.h"
 
@@ -29,6 +28,7 @@ using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
 using LiteralTag = panda_file::LiteralTag;
 class ConstantPool;
 class JSThread;
+class Method;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};

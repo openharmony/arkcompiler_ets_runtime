@@ -27,11 +27,11 @@
 
 #include <string>
 
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 class SourceTextModule;
+class JSThread;
 #ifdef PANDA_TARGET_WINDOWS
 using fd_t = HANDLE;
 #define INVALID_FD INVALID_HANDLE_VALUE

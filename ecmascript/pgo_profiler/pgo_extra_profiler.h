@@ -20,7 +20,9 @@
 #include <memory>
 
 #include "ecmascript/common.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/elements.h"
+
 namespace panda::ecmascript {
 namespace pgo {
 class ExtraProfileTypeInfo : public TaggedObject {

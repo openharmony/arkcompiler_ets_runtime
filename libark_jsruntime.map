@@ -161,6 +161,7 @@
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::BindMidCpuCore*;
       panda::ecmascript::BindAllCpuCore*;
+      panda::ecmascript::BuiltinIndex::GetBuiltinIndex*;
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::Close*;
