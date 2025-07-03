@@ -59,13 +59,16 @@ BaseObject* CopyBarrier::ReadStaticRef(RefField<false>& field) const { return Re
 // If the object is still alive, return its toSpace object; if not, return nullptr
 BaseObject* CopyBarrier::ReadStringTableStaticRef(RefField<false>& field) const
 {
+    // Note: CMC GC assumes all objects in string table are not in young space. Based on the assumption, CMC GC skip
+    // read barrier in young GC
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        return reinterpret_cast<BaseObject*>(field.GetFieldValue());
+    }
+
     auto isSurvivor = [](BaseObject* obj) {
-        auto gcReason = Heap::GetHeap().GetGCReason();
         RegionDesc *regionInfo =
             RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        return ((gcReason == GC_REASON_YOUNG && !regionInfo->IsInYoungSpace()) ||
-                regionInfo->IsNewObjectSinceTrace(obj) ||
-                regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
+        return (regionInfo->IsNewObjectSinceTrace(obj) || regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
     };
 
     RefField<> tmpField(field);

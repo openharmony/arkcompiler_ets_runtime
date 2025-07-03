@@ -15,15 +15,6 @@
 #ifndef COMMON_COMPONENTS_HEAP_SPACE_OLD_SPACE_H
 #define COMMON_COMPONENTS_HEAP_SPACE_OLD_SPACE_H
 
-#include <assert.h>
-#include <list>
-#include <map>
-#include <set>
-#include <thread>
-#include <vector>
-
-#include "common_components/heap/allocator/alloc_util.h"
-#include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/heap/space/regional_space.h"
 #include "common_components/heap/space/from_space.h"
@@ -39,15 +30,15 @@ class OldSpace : public RegionalSpace {
 public:
     OldSpace(RegionManager& regionManager)
         : RegionalSpace(regionManager),
-          tlRegionList_("thread-local old regions"),
-          recentFullRegionList_("recent full old regions"),
+          tlOldRegionList_("thread-local old regions"),
+          recentFullOldRegionList_("recent full old regions"),
           oldRegionList_("old regions") {}
 
     void DumpRegionStats() const;
 
     void AddThreadLocalRegion(RegionDesc* region)
     {
-        tlRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION);
+        tlOldRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION);
     }
 
     void FixAllRegions()
@@ -55,12 +46,12 @@ public:
         TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
 
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-            RegionManager::FixRecentOldRegionList(collector, tlRegionList_);
-            RegionManager::FixRecentOldRegionList(collector, recentFullRegionList_);
+            RegionManager::FixRecentOldRegionList(collector, tlOldRegionList_);
+            RegionManager::FixRecentOldRegionList(collector, recentFullOldRegionList_);
             RegionManager::FixOldRegionList(collector, oldRegionList_);
         } else {
-            RegionManager::FixRecentRegionList(collector, tlRegionList_);
-            RegionManager::FixRecentRegionList(collector, recentFullRegionList_);
+            RegionManager::FixRecentRegionList(collector, tlOldRegionList_);
+            RegionManager::FixRecentRegionList(collector, recentFullOldRegionList_);
             RegionManager::FixRegionList(collector, oldRegionList_);
         }
     }
@@ -72,13 +63,14 @@ public:
 
     size_t GetAllocatedSize() const
     {
-        return tlRegionList_.GetAllocatedSize() + recentFullRegionList_.GetAllocatedSize() +
+        return tlOldRegionList_.GetAllocatedSize() + recentFullOldRegionList_.GetAllocatedSize() +
                oldRegionList_.GetAllocatedSize();
     }
 
     size_t GetUsedUnitCount() const
     {
-        return tlRegionList_.GetRegionCount() + recentFullRegionList_.GetRegionCount() + oldRegionList_.GetUnitCount();
+        return tlOldRegionList_.GetRegionCount() + recentFullOldRegionList_.GetRegionCount() +
+               oldRegionList_.GetUnitCount();
     }
 
     void PromoteRegionList(RegionList& list)
@@ -88,20 +80,20 @@ public:
 
     void AssembleRecentFull()
     {
-        oldRegionList_.MergeRegionList(recentFullRegionList_, RegionDesc::RegionType::OLD_REGION);
+        oldRegionList_.MergeRegionList(recentFullOldRegionList_, RegionDesc::RegionType::OLD_REGION);
     }
 
     void ClearRSet()
     {
-        ClearRSet(tlRegionList_.GetHeadRegion());
-        ClearRSet(recentFullRegionList_.GetHeadRegion());
+        ClearRSet(tlOldRegionList_.GetHeadRegion());
+        ClearRSet(recentFullOldRegionList_.GetHeadRegion());
         ClearRSet(oldRegionList_.GetHeadRegion());
     }
 
     void ClearAllGCInfo()
     {
-        ClearGCInfo(tlRegionList_);
-        ClearGCInfo(recentFullRegionList_);
+        ClearGCInfo(tlOldRegionList_);
+        ClearGCInfo(recentFullOldRegionList_);
         ClearGCInfo(oldRegionList_);
     }
 
@@ -116,21 +108,22 @@ public:
         };
 
         // Need to visit objects allocated before current GC iteration, traceline is used to distinguish them.
-        tlRegionList_.VisitAllRegions(visitRecentFunc);
-        recentFullRegionList_.VisitAllRegions(visitRecentFunc);
+        tlOldRegionList_.VisitAllRegions(visitRecentFunc);
+        recentFullOldRegionList_.VisitAllRegions(visitRecentFunc);
         oldRegionList_.VisitAllRegions(visitFunc);
     }
 
     void AddFullRegion(RegionDesc *region)
     {
-        recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
+        recentFullOldRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
     }
 
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {
-        DCHECK_CC(region->IsThreadLocalRegion());
-        tlRegionList_.DeleteRegion(region);
-        recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
+        ASSERT_LOGF(region->GetRegionType() == RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION,
+                    "not thread local old region");
+        tlOldRegionList_.DeleteRegion(region);
+        recentFullOldRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
     }
 
 private:
@@ -139,7 +132,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyFixLine();
+            region->ClearTraceCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });
@@ -155,10 +148,10 @@ private:
 
     // regions for thread-local allocation.
     // regions in this list are already used for allocation but not full yet.
-    RegionList tlRegionList_;
+    RegionList tlOldRegionList_;
 
     // recentFullRegionList is a list of regions which become full .
-    RegionList recentFullRegionList_;
+    RegionList recentFullOldRegionList_;
 
     RegionList oldRegionList_;
 };

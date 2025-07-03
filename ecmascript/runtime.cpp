@@ -393,6 +393,13 @@ JSHandle<ConstantPool> Runtime::AddOrUpdateConstpool(const JSPandaFile *jsPandaF
                                                      JSHandle<ConstantPool> constpool,
                                                      int32_t index)
 {
+    // Note: CMC GC assumes constpool is always a non-young object and tries to optimize it out in young GC
+    ASSERT_LOGF(
+        panda::ecmascript::g_isEnableCMCGC
+            ? common::Heap::GetHeap().InRecentSpace(*constpool) == false
+            : true,
+        "Violate CMC-GC assumption: should not be young object");
+
     LockHolder lock(constpoolLock_);
     if (globalSharedConstpools_.find(jsPandaFile) == globalSharedConstpools_.end()) {
         globalSharedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();

@@ -455,7 +455,7 @@ void WCollector::PreforwardStaticWeakRoots()
 
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion();
+        allocBuffer->ClearRegions();
     }
 }
 
@@ -617,8 +617,15 @@ void WCollector::PreforwardFlip()
 
         TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
-        VisitWeakGlobalRoots(weakVisitor);
         SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+
+        if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+            // only visit weak roots that may reference young objects
+            VisitDynamicWeakGlobalRoots(weakVisitor);
+        } else {
+            VisitDynamicWeakGlobalRoots(weakVisitor);
+            VisitDynamicWeakGlobalRootsOld(weakVisitor);
+        }
     };
     FlipFunction forwardMutatorRoot = [this](Mutator &mutator) {
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
@@ -633,7 +640,7 @@ void WCollector::PreforwardFlip()
     GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion();
+        allocBuffer->ClearRegions();
     }
 }
 
@@ -659,23 +666,41 @@ void WCollector::ConcurrentPreforward()
     PreforwardConcurrentRoots();
     ProcessStringTable();
 }
+
 void WCollector::PrepareFix()
 {
-    // make sure all objects before fixline is initialized
+    if (Heap::GetHeap().GetGCReason() == GCReason::GC_REASON_YOUNG) {
+        // string table objects are always not in young space, skip it
+        return;
+    }
+
     COMMON_PHASE_TIMER("PrepareFix");
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PrepareFix[STW]", "");
-    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFix();
-    reinterpret_cast<RegionSpace&>(theAllocator_).PrepareFixForPin();
+
+    // we cannot re-enter STW, check it first
+    if (!MutatorManager::Instance().WorldStopped()) {
+        STWParam prepareFixStwParam{"wgc-preparefix"};
+        ScopedStopTheWorld stw(prepareFixStwParam);
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PrepareFix[STW]", "");
+
 #ifndef GC_STW_STRINGTABLE
-    auto *baseRuntime = BaseRuntime::GetInstance();
-    auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
-    stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+        auto *baseRuntime = BaseRuntime::GetInstance();
+        auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
+        stringTable.GetInternalTable()->GetCleaner()->CleanUp();
 #endif
-    TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
+
+        GetGCStats().recordSTWTime(prepareFixStwParam.GetElapsedNs());
+    } else {
+#ifndef GC_STW_STRINGTABLE
+        auto *baseRuntime = BaseRuntime::GetInstance();
+        auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
+        stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+#endif
+    }
 }
 
 void WCollector::FixHeap()
 {
+    TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
     COMMON_PHASE_TIMER("FixHeap");
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::FixHeap", "");
     reinterpret_cast<RegionSpace&>(theAllocator_).FixHeap();
@@ -778,12 +803,7 @@ void WCollector::DoGarbageCollection()
     CopyFromSpace();
     WVerify::VerifyAfterForward(*this);
 
-    STWParam prepareFixStwParam{"wgc-preparefix"};
-    {
-        ScopedStopTheWorld stw(prepareFixStwParam);
-        PrepareFix();
-    }
-    GetGCStats().recordSTWTime(prepareFixStwParam.GetElapsedNs());
+    PrepareFix();
     FixHeap();
     if (isNotYoungGC) {
         CollectPinnedGarbage();
@@ -820,6 +840,11 @@ void WCollector::ProcessStringTable()
 #ifdef GC_STW_STRINGTABLE
     return;
 #endif
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        // no need to fix weak ref in young gc
+        return;
+    }
+
     WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
         auto isSurvivor = [this](BaseObject* oldObj) {
             RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(oldObj));
@@ -945,12 +970,10 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
     }
     DLOG(COPY, "copy obj %p<%p>(%zu) to %p", obj, obj->GetTypeInfo(), size, toObj);
     CopyObject(*obj, *toObj, size);
-    if (IsToObject(toObj)) {
-        toObj->SetForwardState(BaseStateWord::ForwardState::NORMAL);
-    } else {
-        // if this object is not in to-space, we label it as to-object explicitly.
-        toObj->SetForwardState(BaseStateWord::ForwardState::TO_VERSION);
-    }
+
+    ASSERT_LOGF(IsToObject(toObj), "Copy object to invalid region");
+    toObj->SetForwardState(BaseStateWord::ForwardState::NORMAL);
+
     std::atomic_thread_fence(std::memory_order_release);
     obj->SetSizeForwarded(size);
     // Avoid seeing the fwd pointer before observing the size modification

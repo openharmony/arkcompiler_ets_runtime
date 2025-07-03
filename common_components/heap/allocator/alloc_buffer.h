@@ -27,6 +27,7 @@ namespace common {
 enum class AllocBufferType: uint8_t {
     YOUNG = 0, // for young space
     OLD,       // for old space
+    TO         // for to space, valid only dring GC copy/fix phase and will become old-space later
 };
 
 // thread-local data structure
@@ -37,7 +38,7 @@ public:
     void Init();
     static AllocationBuffer* GetOrCreateAllocBuffer();
     static AllocationBuffer* GetAllocBuffer();
-    HeapAddress ToSpaceAllocate(size_t size, AllocType allocType);
+    HeapAddress ToSpaceAllocate(size_t size);
     HeapAddress Allocate(size_t size, AllocType allocType);
 
     template<AllocBufferType type = AllocBufferType::YOUNG>
@@ -47,6 +48,8 @@ public:
             return tlRegion_;
         } else if constexpr (type == AllocBufferType::OLD) {
             return tlOldRegion_;
+        } else if constexpr (type == AllocBufferType::TO) {
+            return tlToRegion_;
         }
     }
 
@@ -57,19 +60,32 @@ public:
             tlRegion_ = newRegion;
         } else if constexpr (type == AllocBufferType::OLD) {
             tlOldRegion_ = newRegion;
+        } else if constexpr (type == AllocBufferType::TO) {
+            tlToRegion_ = newRegion;
         }
     }
 
     RegionDesc* GetPreparedRegion() { return preparedRegion_.load(std::memory_order_acquire); }
+
+    template <AllocBufferType type>
     inline void ClearRegion()
     {
-        if (tlRegion_ == RegionDesc::NullRegion()) {
-            return;
+        if constexpr (type == AllocBufferType::YOUNG) {
+            tlRegion_ = RegionDesc::NullRegion();
+        } else if constexpr (type == AllocBufferType::OLD) {
+            tlOldRegion_ = RegionDesc::NullRegion();
+        } else if constexpr (type == AllocBufferType::TO) {
+            tlToRegion_ = RegionDesc::NullRegion();
         }
-        DLOG(REGION, "AllocBuffer clear tlRegion %p(base=%#zx)@%#zx+%zu",
-             tlRegion_, tlRegion_->GetRegionBase(), tlRegion_->GetRegionStart(), tlRegion_->GetRegionAllocatedSize());
-        tlRegion_ = RegionDesc::NullRegion();
     }
+
+    inline void ClearRegions()
+    {
+        ClearRegion<AllocBufferType::YOUNG>();
+        ClearRegion<AllocBufferType::OLD>();
+        ClearRegion<AllocBufferType::TO>();
+    }
+
     void ClearThreadLocalRegion();
     void Unregister();
 
@@ -131,6 +147,11 @@ public:
         return offsetof(AllocationBuffer, tlRegion_);
     }
 
+    static constexpr size_t GetTLOldRegionOffset()
+    {
+        return offsetof(AllocationBuffer, tlOldRegion_);
+    }
+
 private:
     // slow path
     HeapAddress TryAllocateOnce(size_t totalSize, AllocType allocType);
@@ -139,8 +160,10 @@ private:
 
     // tlRegion in AllocBuffer is a shortcut for fast allocation.
     // we should handle failure in RegionManager
-    RegionDesc* tlRegion_ = RegionDesc::NullRegion();
-    RegionDesc* tlOldRegion_ = RegionDesc::NullRegion();
+    RegionDesc* tlRegion_ = RegionDesc::NullRegion();     // managed by young-space
+    RegionDesc* tlOldRegion_ = RegionDesc::NullRegion();  // managed by old-space
+    // only used in ToSpaceAllocate for GC copy
+    RegionDesc* tlToRegion_ = RegionDesc::NullRegion();   // managed by to-space
 
     std::atomic<RegionDesc*> preparedRegion_ = { nullptr };
     // allocate objects which are exposed to runtime thus can not be moved.

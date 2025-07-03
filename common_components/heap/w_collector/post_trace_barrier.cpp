@@ -33,13 +33,16 @@ BaseObject* PostTraceBarrier::ReadStaticRef(RefField<false>& field) const { retu
 // If the object is still alive, return it; if not, return nullptr
 BaseObject* PostTraceBarrier::ReadStringTableStaticRef(RefField<false> &field) const
 {
+    // Note: CMC GC assumes all objects in string table are not in young space. Based on the assumption, CMC GC skip
+    // read barrier in young GC
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+        return reinterpret_cast<BaseObject*>(field.GetFieldValue());
+    }
+
     auto isSurvivor = [](BaseObject* obj) {
-        const GCReason gcReason = Heap::GetHeap().GetGCReason();
         RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
 
-        return (gcReason == GC_REASON_YOUNG && !region->IsInYoungSpace())
-            || region->IsMarkedObject(obj)
-            || region->IsNewObjectSinceTrace(obj);
+        return region->IsMarkedObject(obj) || region->IsNewObjectSinceTrace(obj);
     };
 
     auto obj = ReadRefField(nullptr, field);

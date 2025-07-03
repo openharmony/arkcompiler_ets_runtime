@@ -184,11 +184,6 @@ public:
         return RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsToRegion();
     }
 
-    inline bool IsToVersion(const BaseObject* obj) const
-    {
-        return obj->IsToVersion();
-    }
-
     virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const = 0;
 
     // avoid std::function allocation for each object trace

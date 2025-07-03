@@ -150,6 +150,12 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakGlobalRoots", "");
+}
+
+// weak global roots visited here should only reference old-space objects
+void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFunc)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakGlobalRootsOld", "");
     CMCWeakVisitor visitor(visitorFunc);
 
     panda::ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);

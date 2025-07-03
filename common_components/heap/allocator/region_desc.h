@@ -107,7 +107,6 @@ public:
         metadata.allocPtr = reinterpret_cast<uintptr_t>(nullptr);
         metadata.traceLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
-        metadata.fixLine = std::numeric_limits<uintptr_t>::max();
         metadata.freeSlot = nullptr;
         metadata.regionBase = reinterpret_cast<uintptr_t>(nullptr);
         metadata.regionStart = reinterpret_cast<uintptr_t>(nullptr);
@@ -416,7 +415,6 @@ public:
 
     static bool IsInRecentSpace(RegionType type)
     {
-        // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION;
     }
 
@@ -428,7 +426,6 @@ public:
 
     static bool IsInYoungSpace(RegionType type)
     {
-        // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION ||
             type == RegionType::FROM_REGION || type == RegionType::EXEMPTED_FROM_REGION;
     }
@@ -445,7 +442,7 @@ public:
 
     static bool IsInOldSpace(RegionType type)
     {
-        return type == RegionType::OLD_REGION || type == RegionType::THREAD_LOCAL_OLD_REGION;
+        return type == RegionType::OLD_REGION;
     }
 
     static void Initialize(size_t nUnit, uintptr_t regionInfoAddr, uintptr_t heapAddress)
@@ -465,6 +462,7 @@ public:
 
     static RegionDesc* GetRegionDescAt(uintptr_t allocAddr)
     {
+        ASSERT_LOGF(Heap::IsHeapAddress(allocAddr), "Cannot get region info of a non-heap object");
         UnitInfo* unit = reinterpret_cast<UnitInfo*>(UnitInfo::heapStartAddress -
                                                      (((allocAddr - UnitInfo::heapStartAddress) / UNIT_SIZE) + 1) *
                                                          sizeof(RegionDesc));
@@ -580,11 +578,11 @@ public:
 
     void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
-    void VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func);
+    void VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
 
     void VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func);
-    void VisitRememberSetBeforeFix(const std::function<void(BaseObject*)>& func);
+    void VisitRememberSetBeforeCopy(const std::function<void(BaseObject*)>& func);
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
     // reset so that this region can be reused for allocation
@@ -688,7 +686,6 @@ public:
 
     HeapAddress GetTraceLine() const { return metadata.traceLine; }
     HeapAddress GetCopyLine() const { return metadata.forwardLine; }
-    HeapAddress GetFixLine() const { return metadata.fixLine; }
 
     void SetTraceLine()
     {
@@ -710,21 +707,10 @@ public:
         }
     }
 
-    void SetFixLine()
-    {
-        if (metadata.fixLine == std::numeric_limits<uintptr_t>::max()) {
-            uintptr_t line = GetRegionAllocPtr();
-            metadata.fixLine = line;
-            DLOG(REGION, "set region %p(base=%#zx)@%#zx+%zu fix-line %#zx type %u",
-                 this, GetRegionBase(), GetRegionStart(), GetRegionSize(), GetFixLine(), GetRegionType());
-        }
-    }
-
-    void ClearTraceCopyFixLine()
+    void ClearTraceCopyLine()
     {
         metadata.traceLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
-        metadata.fixLine = std::numeric_limits<uintptr_t>::max();
     }
 
     void ClearFreeSlot()
@@ -742,19 +728,9 @@ public:
         return GetCopyLine() <= reinterpret_cast<uintptr_t>(obj);
     }
 
-    bool IsNewObjectSinceFix(const BaseObject* obj)
-    {
-        return GetFixLine() <= reinterpret_cast<uintptr_t>(obj);
-    }
-
     bool IsNewRegionSinceForward() const
     {
         return GetCopyLine() == GetRegionStart();
-    }
-
-    bool IsNewRegionSinceFix() const
-    {
-        return GetFixLine() == GetRegionStart();
     }
 
     bool IsInRecentSpace() const
@@ -969,6 +945,7 @@ public:
     }
 
     bool IsToRegion() const { return GetRegionType()  == RegionType::TO_REGION; }
+    bool IsOldRegion() const { return GetRegionType()  == RegionType::OLD_REGION; }
 
     bool IsGarbageRegion() const { return GetRegionType()  == RegionType::GARBAGE_REGION; }
     bool IsFreeRegion() const { return static_cast<UnitRole>(metadata.unitRole) == UnitRole::FREE_UNITS; }
@@ -1000,6 +977,16 @@ public:
         }
         this->SetNextRegion(nullptr);
         this->SetPrevRegion(nullptr);
+    }
+
+    static constexpr size_t GetAllocPtrOffset()
+    {
+        return offsetof(UnitMetadata, allocPtr);
+    }
+
+    static constexpr size_t GetRegionEndOffset()
+    {
+        return offsetof(UnitMetadata, regionEnd);
     }
 
 private:
@@ -1077,7 +1064,6 @@ private:
             // watermark set when gc phase transitions to pre-trace.
             uintptr_t traceLine;
             uintptr_t forwardLine;
-            uintptr_t fixLine;
             ObjectSlot* freeSlot;
             // `regionStart` is the header of the data, and `regionBase` is the header of the total region
             /**
@@ -1363,7 +1349,7 @@ private:
         metadata.freeSlot = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
-        ClearTraceCopyFixLine();
+        ClearTraceCopyLine();
         SetMarkedRegionFlag(0);
         SetEnqueuedRegionFlag(0);
         SetResurrectedRegionFlag(0);

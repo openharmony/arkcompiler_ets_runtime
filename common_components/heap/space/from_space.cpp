@@ -124,7 +124,7 @@ void FromSpace::ParallelCopyFromRegions(RegionDesc *startRegion, size_t regionCn
 
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion(); // clear thread local region for gc threads.
+        allocBuffer->ClearRegions(); // clear thread local region for gc threads.
     }
 }
 
@@ -143,7 +143,7 @@ void FromSpace::CopyFromRegions()
 
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY(allocBuffer != nullptr)) {
-        allocBuffer->ClearRegion(); // clear region for next GC
+        allocBuffer->ClearRegions(); // clear region for next GC
     }
 }
 

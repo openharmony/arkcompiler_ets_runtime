@@ -106,8 +106,7 @@ std::string GetObjectInfo(const BaseObject* obj)
           << "End: 0x" << region->GetRegionEnd() << ", "
           << "AllocPtr: 0x" << region->GetRegionAllocPtr() << ", "
           << "TraceLine: 0x" << region->GetTraceLine() << ", "
-          << "CopyLine: 0x" << region->GetCopyLine() << ", "
-          << "FixLine: 0x" << region->GetFixLine() << std::endl;
+          << "CopyLine: 0x" << region->GetCopyLine() << std::endl;
     }
 
     return s.str();

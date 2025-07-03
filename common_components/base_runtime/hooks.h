@@ -29,6 +29,7 @@ PUBLIC_API void VisitBaseRoots(const RefFieldVisitor &visitor);
 // Dynamic VM Roots scanning
 PUBLIC_API void VisitDynamicGlobalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakGlobalRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void VisitDynamicWeakGlobalRootsOld(const WeakRefFieldVisitor &visitorFunc);
 PUBLIC_API void VisitDynamicLocalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc);
 PUBLIC_API void VisitDynamicPreforwardRoots(const RefFieldVisitor &visitorFunc);
