@@ -31,8 +31,8 @@ class ModuleDataAccessor {
 public:
     ModuleDataAccessor(const JSPandaFile *pandaFile, panda_file::File::EntityId module_data_id);
     ~ModuleDataAccessor() = default;
-    DEFAULT_MOVE_CTOR(ModuleDataAccessor);
-    DEFAULT_COPY_CTOR(ModuleDataAccessor);
+    DEFAULT_MOVE_CTOR(ModuleDataAccessor)
+    DEFAULT_COPY_CTOR(ModuleDataAccessor)
     NO_MOVE_OPERATOR(ModuleDataAccessor);
     NO_COPY_OPERATOR(ModuleDataAccessor);
 
