@@ -459,10 +459,7 @@ EcmaVM::~EcmaVM()
         DFXJSNApi::StopTracing(this);
     }
 #endif
-
-    for (auto &moduleManager : moduleManagers_) {
-        moduleManager->NativeObjDestory();
-    }
+    moduleManagers_.DestroyAllNativeObj();
 
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
@@ -616,11 +613,7 @@ EcmaVM::~EcmaVM()
         functionProtoTransitionTable_ = nullptr;
     }
 
-    for (auto &moduleManager : moduleManagers_) {
-        delete moduleManager;
-        moduleManager = nullptr;
-    }
-    moduleManagers_.clear();
+    moduleManagers_.Clear();
 
     if (thread_ != nullptr) {
         delete thread_;
@@ -908,6 +901,12 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
     heap_->CollectGarbage(gcType, reason);
 }
 
+void EcmaVM::IterateConcurrentRoots(RootVisitor &v)
+{
+    ASSERT(g_isEnableCMCGC);
+    moduleManagers_.Iterate(v);
+}
+
 void EcmaVM::Iterate(RootVisitor &v)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "CMCGC::VisitRootEcmaVM", "");
@@ -978,8 +977,8 @@ void EcmaVM::Iterate(RootVisitor &v)
         ++iterator;
     }
 #endif
-    for (ModuleManager *moduleManager : moduleManagers_) {
-        moduleManager->Iterate(v);
+    if (!g_isEnableCMCGC) {
+        moduleManagers_.Iterate(v);
     }
 }
 
@@ -2116,7 +2115,40 @@ void EcmaVM::AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value)
 
 void EcmaVM::AddModuleManager(ModuleManager *moduleManager)
 {
-    moduleManagers_.push_back(moduleManager);
+    moduleManagers_.PushBack(moduleManager);
+}
+
+void EcmaVM::ModuleManagers::Iterate(RootVisitor &v)
+{
+    LockHolder lock(CMCGCMutex_);
+    for (ModuleManager *moduleManager : moduleManagersVec_) {
+        moduleManager->Iterate(v);
+    }
+}
+
+template <typename T>
+void EcmaVM::ModuleManagers::PushBack(T v)
+{
+    LockHolder lock(CMCGCMutex_);
+    moduleManagersVec_.push_back(v);
+}
+
+void EcmaVM::ModuleManagers::DestroyAllNativeObj()
+{
+    LockHolder lock(CMCGCMutex_);
+    for (auto &moduleManager : moduleManagersVec_) {
+        moduleManager->NativeObjDestory();
+    }
+}
+
+void EcmaVM::ModuleManagers::Clear()
+{
+    LockHolder lock(CMCGCMutex_);
+    for (auto &moduleManager : moduleManagersVec_) {
+        delete moduleManager;
+        moduleManager = nullptr;
+    }
+    moduleManagersVec_.clear();
 }
 
 void EcmaVM::InitDataViewTypeTable(const GlobalEnvConstants *constant)

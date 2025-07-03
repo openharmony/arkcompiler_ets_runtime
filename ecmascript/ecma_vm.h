@@ -454,6 +454,7 @@ public:
 
     size_t IterateHandle(RootVisitor &visitor);
     void Iterate(RootVisitor &v);
+    void IterateConcurrentRoots(RootVisitor &v);
 
     const Heap *GetHeap() const
     {
@@ -1592,7 +1593,20 @@ private:
     StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 
     // store multi-context module manager
-    std::vector<ModuleManager *> moduleManagers_ {};
+    class ModuleManagers {
+        Mutex CMCGCMutex_;
+        std::vector<ModuleManager *> moduleManagersVec_ {};
+
+    public:
+        void Iterate(RootVisitor &v);
+
+        template <typename T>
+        void PushBack(T moduleManager);
+
+        void DestroyAllNativeObj();
+
+        void Clear();
+    } moduleManagers_;
 
     // store Application versionCode
     uint32_t applicationVersionCode_ {0};

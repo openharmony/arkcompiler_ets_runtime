@@ -21,6 +21,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/module/module_manager_map.h"
 
 namespace panda::ecmascript {
 enum class ModuleExecuteMode {
@@ -32,7 +33,7 @@ public:
     explicit ModuleManager(EcmaVM *vm);
     ~ModuleManager()
     {
-        resolvedModules_.clear();
+        resolvedModules_.Clear();
     }
 
     JSHandle<SourceTextModule> GetImportedModule(const CString &referencing);
@@ -80,38 +81,39 @@ public:
         uint32_t ordinal = nextModuleAsyncEvaluatingOrdinal_++;
         return ordinal;
     }
+
     inline void AddResolveImportedModule(const CString &recordName, JSTaggedValue module)
     {
-        resolvedModules_.emplace(recordName, module);
+        resolvedModules_.Emplace(recordName, module);
     }
 
     inline void UpdateResolveImportedModule(const CString &recordName, JSTaggedValue module)
     {
-        resolvedModules_[recordName] = module;
+        resolvedModules_.Insert(recordName, module);
     }
 
     void NativeObjDestory()
     {
-        for (auto it = resolvedModules_.begin(); it != resolvedModules_.end(); it++) {
+        resolvedModules_.ForEach([](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
-            JSTaggedValue module = it->second;
+            GCRoot &root = it->second;
+            JSTaggedValue module = root.Read();
             SourceTextModule::Cast(module)->DestoryLazyImportArray();
             SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
             SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
-        }
+        });
     }
 
     inline uint32_t GetResolvedModulesSize() const
     {
-        return resolvedModules_.size();
+        return resolvedModules_.Size();
     }
 
     inline void AddNormalSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
     {
-        for (const auto& [_, moduleRecord] : resolvedModules_) {
-            serializerArray->Set(thread, idx++, moduleRecord);
-        }
+        resolvedModules_.ForEach(
+            [thread, &idx, serializerArray](auto it) { serializerArray->Set(thread, idx++, it->second.Read()); });
     }
 
     inline bool IsVMBundlePack()
@@ -128,7 +130,7 @@ public:
     // for ut
     void ClearResolvedModules()
     {
-        resolvedModules_.clear();
+        resolvedModules_.Clear();
     }
 
 private:
@@ -144,7 +146,7 @@ private:
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 
     EcmaVM *vm_ {nullptr};
-    CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
+    ModuleManagerMap<CString> resolvedModules_;
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
 
     friend class EcmaVM;

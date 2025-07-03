@@ -416,8 +416,30 @@ void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
         ParallelRemarkAndPreforward(workStack);
     } else {
         RemarkAndPreforwardVisitor visitor(workStack, this);
-        VisitRoots(visitor);
+        VisitSTWRoots(visitor);
     }
+}
+
+void WCollector::PreforwardConcurrentRoots()
+{
+    RefFieldVisitor visitor = [this](RefField<> &refField) {
+        RefField<> oldField(refField);
+        BaseObject *oldObj = oldField.GetTargetObject();
+        DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
+        if (IsFromObject(oldObj)) {
+            BaseObject *toVersion = TryForwardObject(oldObj);
+            ASSERT_LOGF(toVersion != nullptr, "TryForwardObject failed");
+            HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
+                                                            reinterpret_cast<uintptr_t>(toVersion),
+                                                            toVersion->GetSize());
+            RefField<> newField(toVersion);
+            // CAS failure means some mutator or gc thread writes a new ref (must be a to-object), no need to retry.
+            if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
+                DLOG(FIX, "fix raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
+            }
+        }
+    };
+    VisitConcurrentRoots(visitor);
 }
 
 void WCollector::PreforwardStaticWeakRoots()
@@ -472,7 +494,7 @@ void EnumRootsBuffer::UpdateBufferSize()
         bufferSize_ = std::max(buffer_.capacity(), bufferSize_);
     }
     if (buffer_.capacity() > UINT16_MAX) {
-        LOG_COMMON(INFO) << "too many roots, allocate too larget buffer: " << buffer_.size() << ", allocate "
+        LOG_COMMON(INFO) << "too many roots, allocated buffer too large: " << buffer_.size() << ", allocate "
                          << (static_cast<double>(buffer_.capacity()) / MB);
     }
 }
@@ -496,6 +518,7 @@ CArrayList<BaseObject *> WCollector::EnumRoots()
         for (const auto &roots : rootSet) {
             std::copy(roots.begin(), roots.end(), std::back_inserter(*results));
         }
+        VisitConcurrentRoots(visitor);
     }
     buffer.UpdateBufferSize();
     return std::move(*results);
@@ -605,6 +628,7 @@ void WCollector::Preforward()
 void WCollector::ConcurrentPreforward()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ConcurrentPreforward", "");
+    PreforwardConcurrentRoots();
     ProcessStringTable();
 }
 void WCollector::PrepareFix()

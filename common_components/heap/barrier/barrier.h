@@ -35,6 +35,7 @@ public:
 
     virtual void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const;
 
+    virtual void WriteRoot(BaseObject* obj) const;
     virtual void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const;
     virtual void WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const;
     

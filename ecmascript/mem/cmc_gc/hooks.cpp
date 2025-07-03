@@ -110,8 +110,6 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicGlobalRoot", "");
     CMCRootVisitor visitor(visitorFunc);
-    // MarkSharedModule
-    panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
 
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     // MarkSerializeRoots
@@ -119,6 +117,11 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 
     // MarkStringCache
     runtime->IterateCachedStringRoot(visitor);
+
+    if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
+        // MarkSharedModule
+        panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
+    }
 }
 
 void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
@@ -135,6 +138,13 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
             profiler->IteratePGOPreFuncList(visitor);
         }
     });
+
+    if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
+        runtime->GCIterateThreadList([&](JSThread *thread) {
+            auto vm = thread->GetEcmaVM();
+            ObjectXRay::VisitConcurrentVMRoots(vm, visitor);
+        });
+    }
 }
 
 void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
@@ -169,6 +179,23 @@ void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
     });
 }
 
+void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc)
+{
+    if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
+        return;
+    }
+    CMCRootVisitor visitor(visitorFunc);
+
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
+    // MarkSharedModule
+    panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
+
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        auto vm = thread->GetEcmaVM();
+        ObjectXRay::VisitConcurrentVMRoots(vm, visitor);
+    });
+}
+
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicThreadRoot", "");
@@ -178,6 +205,9 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
     }
     CMCRootVisitor visitor(visitorFunc);
     ObjectXRay::VisitVMRoots(ecmaVm, visitor);
+    if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
+        ObjectXRay::VisitConcurrentVMRoots(ecmaVm, visitor);
+    }
 
     auto profiler = ecmaVm->GetPGOProfiler();
     if (profiler != nullptr) {

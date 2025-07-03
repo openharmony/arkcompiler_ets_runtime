@@ -162,6 +162,11 @@ void BaseRuntime::PostFork()
 #endif
 }
 
+void BaseRuntime::WriteRoot(void *obj)
+{
+    Heap::GetBarrier().WriteRoot(reinterpret_cast<BaseObject *>(obj));
+}
+
 void BaseRuntime::WriteBarrier(void* obj, void* field, void* ref)
 {
     Heap::GetBarrier().WriteBarrier(reinterpret_cast<BaseObject*>(obj),

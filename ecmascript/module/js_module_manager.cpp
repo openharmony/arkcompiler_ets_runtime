@@ -111,11 +111,11 @@ JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &refer
 
 JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &referencing)
 {
-    auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
+    auto entry = resolvedModules_.Find(referencing);
+    if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << referencing;
     }
-    return JSHandle<SourceTextModule>(vm_->GetJSThread(), entry->second);
+    return JSHandle<SourceTextModule>(vm_->GetJSThread(), entry.value());
 }
 
 JSTaggedValue ModuleManager::HostGetImportedModule(void *src)
@@ -123,19 +123,18 @@ JSTaggedValue ModuleManager::HostGetImportedModule(void *src)
     const char *str = reinterpret_cast<char *>(src);
     CString referencing(str, strlen(str));
     LOG_FULL(INFO) << "current str during module deregister process : " << referencing;
-    auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) {
+    auto entry = resolvedModules_.Find(referencing);
+    if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_FULL(INFO) << "The module has been unloaded, " << referencing;
         return JSTaggedValue::Undefined();
     }
-    JSTaggedValue result = entry->second;
-    return result;
+    return entry.value();
 }
 
 bool ModuleManager::IsLocalModuleLoaded(const CString& referencing)
 {
-    auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) {
+    auto entry = resolvedModules_.Find(referencing);
+    if (!entry) {
         return false;
     }
     return true;
@@ -158,11 +157,11 @@ bool ModuleManager::IsModuleLoaded(const CString &referencing)
 
 bool ModuleManager::IsEvaluatedModule(const CString &referencing)
 {
-    auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) {
+    auto entry = resolvedModules_.Find(referencing);
+    if (!entry) {
         return false;
     }
-    JSTaggedValue result = entry->second;
+    JSTaggedValue result = entry.value();
     // ModuleStatus == (EVALUATED || ERRORED).
     if (SourceTextModule::Cast(result.GetTaggedObject())->GetStatus() >= ModuleStatus::EVALUATED) {
         return true;
@@ -194,11 +193,8 @@ bool ModuleManager::NeedExecuteModule(const CString &referencing)
 
 void ModuleManager::Iterate(RootVisitor &v)
 {
-    for (auto &it : resolvedModules_) {
-        ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v.VisitRoot(Root::ROOT_VM, slot);
-        ASSERT(slot.GetTaggedValue() == it.second);
-    }
+    resolvedModules_.ForEach(
+        [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
 }
 
 CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue module)
@@ -356,31 +352,31 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
 JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& referencing)
 {
     JSThread *thread = vm_->GetJSThread();
-    auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) {
+    auto entry = resolvedModules_.Find(referencing);
+    if (!entry) {
         return thread->GlobalConstants()->GetHandledUndefined();
     }
-    return JSHandle<JSTaggedValue>(thread, entry->second);
+    return JSHandle<JSTaggedValue>(thread, entry.value());
 }
 
 void ModuleManager::RemoveModuleFromCache(const CString& recordName)
 {
-    auto entry = resolvedModules_.find(recordName);
-    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
+    auto entry = resolvedModules_.Find(recordName);
+    if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
             ", when try to remove the module";
     }
-    JSTaggedValue result = entry->second;
+    JSTaggedValue result = entry.value();
     SourceTextModule::Cast(result)->DestoryLazyImportArray();
     SourceTextModule::Cast(result)->DestoryEcmaModuleFilenameString();
     SourceTextModule::Cast(result)->DestoryEcmaModuleRecordNameString();
-    resolvedModules_.erase(recordName);
+    resolvedModules_.Erase(recordName);
 }
 
 // this function only remove module's name from resolvedModules List, it's content still needed by sharedmodule
 void ModuleManager::RemoveModuleNameFromList(const CString& recordName)
 {
-    resolvedModules_.erase(recordName);
+    resolvedModules_.Erase(recordName);
 }
 
 JSTaggedValue ModuleManager::CreateModuleManagerNativePointer(JSThread *thread)

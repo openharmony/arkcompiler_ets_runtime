@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/runtime.h"
+#include "common_components/base_runtime/hooks.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_interfaces/base_runtime.h"
 #include "ecmascript/dynamic_object_accessor.h"
@@ -172,6 +173,7 @@ void Runtime::InitGCConfig(const JSRuntimeOptions &options)
     if (g_isEnableCMCGC) {
         g_maxRegularHeapObjectSize = 32_KB;
     }
+    g_isEnableCMCGCConcurrentRootMarking = options.IsEnableCMCGCConcurrentRootMarking();
 }
 
 void Runtime::DestroyIfLastVm()

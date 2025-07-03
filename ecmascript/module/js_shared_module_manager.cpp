@@ -31,17 +31,14 @@ SharedModuleManager* SharedModuleManager::GetInstance()
 
 void SharedModuleManager::Iterate(RootVisitor &v)
 {
-    for (auto &it : resolvedSharedModules_) {
-        ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v.VisitRoot(Root::ROOT_VM, slot);
-        ASSERT(slot.GetTaggedValue() == it.second);
-    }
+    resolvedSharedModules_.ForEach(
+        [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
 }
 
 bool SharedModuleManager::SearchInSModuleManagerUnsafe(const CString &recordName)
 {
-    auto entry = resolvedSharedModules_.find(recordName);
-    if (entry != resolvedSharedModules_.end()) {
+    auto entry = resolvedSharedModules_.Find(recordName);
+    if (entry) {
         return true;
     }
     return false;
@@ -49,11 +46,11 @@ bool SharedModuleManager::SearchInSModuleManagerUnsafe(const CString &recordName
 
 JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *thread, const CString &recordName)
 {
-    auto entry = resolvedSharedModules_.find(recordName);
-    if (entry == resolvedSharedModules_.end()) {
+    auto entry = resolvedSharedModules_.Find(recordName);
+    if (!entry) {
         return JSHandle<SourceTextModule>(thread->GlobalConstants()->GetHandledUndefined());
     }
-    JSHandle<JSTaggedValue> module(thread, entry->second);
+    JSHandle<JSTaggedValue> module(thread, entry.value());
     return JSHandle<SourceTextModule>::Cast(module);
 }
 
@@ -149,13 +146,14 @@ JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *
 
 void SharedModuleManager::SharedNativeObjDestory()
 {
-    for (auto it = resolvedSharedModules_.begin(); it != resolvedSharedModules_.end(); it++) {
+    resolvedSharedModules_.ForEach([](auto it) {
         CString key = it->first;
         ASSERT(!key.empty());
-        JSTaggedValue module = it->second;
+        GCRoot &root = it->second;
+        JSTaggedValue module = root.Read();
         SourceTextModule::Cast(module)->DestoryLazyImportArray();
         SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
         SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
-    }
+    });
 }
 } // namespace panda::ecmascript

@@ -22,6 +22,7 @@ void FillFreeObject(void *object, size_t size) {}
 void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc) {}
 void VisitDynamicLocalRoots(const RefFieldVisitor &visitor) {}
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc) {}
+void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc) {}
 void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc) {}
 void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc) {}
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm) {}

@@ -87,6 +87,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
 #else
     "--enable-cmc-gc:                      Enable cmc gc. Default: 'false'\n"
 #endif
+    "--enable-cmc-gc-concurrent-root-marking:         Enable concurrent root marking in cmc gc. Default: 'true'\n"
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
@@ -257,11 +258,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-loading-stubs-log", required_argument, nullptr, OPTION_ENABLE_LOADING_STUBS_LOG},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-cmc-gc", required_argument, nullptr, OPTION_ENABLE_CMC_GC},
+        {"enable-cmc-gc-concurrent-root-marking", required_argument, nullptr,
+         OPTION_ENABLE_CMC_GC_CONCURRENT_ROOT_MARKING},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
         {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
-            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
+         OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
@@ -323,7 +326,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
         {"compiler-framework-abc-path", required_argument, nullptr, OPTION_COMPILER_FRAMEWORK_ABC_PATH},
         {"compiler-enable-lexenv-specialization", required_argument, nullptr,
-            OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
+         OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION},
         {"compiler-enable-native-inline", required_argument, nullptr, OPTION_COMPILER_ENABLE_NATIVE_INLINE},
         {"compiler-enable-lowering-builtin", required_argument, nullptr, OPTION_COMPILER_ENABLE_LOWERING_BUILTIN},
         {"compiler-enable-litecg", required_argument, nullptr, OPTION_COMPILER_ENABLE_LITECG},
@@ -352,8 +355,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-check-pgo-version", required_argument, nullptr, OPTION_COMPILER_CHECK_PGO_VERSION},
         {"compiler-enable-mega-ic", required_argument, nullptr, OPTION_COMPILER_ENABLE_MEGA_IC},
         {"compiler-enable-baselinejit", required_argument, nullptr, OPTION_COMPILER_ENABLE_BASELINEJIT},
-        {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
-        {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
+        {"compiler-baselinejit-hotness-threshold", required_argument, nullptr,
+         OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
+        {"compiler-force-baselinejit-compile-main", required_argument, nullptr,
+         OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
         {"compiler-enable-jitfort", required_argument, nullptr, OPTION_ENABLE_JITFORT},
         {"compiler-codesign-disable", required_argument, nullptr, OPTION_CODESIGN_DISABLE},
@@ -366,7 +371,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-ldobjvalue-opt", required_argument, nullptr, OPTION_COMPILER_ENABLE_LDOBJVALUE_OPT},
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
-            OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
+         OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
         {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
@@ -616,6 +621,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableCMCGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_CMC_GC_CONCURRENT_ROOT_MARKING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableCMCGCConcurrentRootMarking(argBool);
                 } else {
                     return false;
                 }

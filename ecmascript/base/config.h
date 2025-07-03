@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 extern uint32_t g_isEnableCMCGC;
+extern uint32_t g_isEnableCMCGCConcurrentRootMarking;
 
 enum class PUBLIC_API RBMode : uint8_t {
     DEFAULT_RB = 0,  // Default read barrier mode to support both gc.

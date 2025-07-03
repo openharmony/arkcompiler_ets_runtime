@@ -214,6 +214,8 @@ private:
     void ParallelRemarkAndPreforward(WorkStack& workStack);
     void Preforward();
     void ConcurrentPreforward();
+
+    void PreforwardConcurrentRoots();
     void PreforwardStaticWeakRoots();
     void PreforwardConcurrencyModelRoots();
 

@@ -89,7 +89,6 @@ bool IdleBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field,
 
 void IdleBarrier::UpdateRememberSet(BaseObject* object, BaseObject* ref) const
 {
-    ASSERT(Heap::IsHeapAddress(ref));
     ASSERT(object != nullptr);
     RegionDesc::InlinedRegionMetaData *objMetaRegion = RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(
         reinterpret_cast<uintptr_t>(object));
@@ -101,6 +100,11 @@ void IdleBarrier::UpdateRememberSet(BaseObject* object, BaseObject* ref) const
                  objMetaRegion->GetRegionDesc(), object, ref, ref->GetTypeInfo());
         }
     }
+}
+
+void IdleBarrier::WriteRoot(BaseObject *obj) const
+{
+    DLOG(BARRIER, "write root obj %p", obj);
 }
 
 void IdleBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const

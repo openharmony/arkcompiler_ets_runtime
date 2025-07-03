@@ -130,6 +130,11 @@ public:
     ObjectXRay() = default;
     ~ObjectXRay() = default;
 
+    static inline void VisitConcurrentVMRoots(EcmaVM *vm, RootVisitor &visitor)
+    {
+        vm->IterateConcurrentRoots(visitor);
+    }
+
     static inline void VisitVMRoots(EcmaVM *vm, RootVisitor &visitor)
     {
         vm->Iterate(visitor);
