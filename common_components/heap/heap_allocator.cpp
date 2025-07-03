@@ -15,12 +15,27 @@
 
 #include "common_interfaces/heap/heap_allocator.h"
 
+#include "common_components/heap/heap_allocator-inl.h"
 #include "common_components/common/type_def.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/heap/allocator/region_space.h"
 
 namespace common {
+Address AllocateYoungInAllocBuffer(uintptr_t buffer, size_t size)
+{
+    ASSERT(buffer != 0);
+    AllocationBuffer *allocBuffer = reinterpret_cast<AllocationBuffer *>(buffer);
+    return allocBuffer->FastAllocateInTlab<AllocBufferType::YOUNG>(size);
+}
+
+Address AllocateOldInAllocBuffer(uintptr_t buffer, size_t size)
+{
+    ASSERT(buffer != 0);
+    AllocationBuffer *allocBuffer = reinterpret_cast<AllocationBuffer *>(buffer);
+    return allocBuffer->FastAllocateInTlab<common::AllocBufferType::OLD>(size);
+}
+
 Address HeapAllocator::AllocateInYoungOrHuge(size_t size, LanguageType language)
 {
     auto address = HeapManager::Allocate(size);

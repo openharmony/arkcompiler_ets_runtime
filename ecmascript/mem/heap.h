@@ -382,6 +382,11 @@ public:
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
 
+    inline TaggedObject *FastAllocateYoungInTlabForCMC(JSThread *thread, size_t size) const;
+    inline TaggedObject *FastAllocateOldInTlabForCMC(JSThread *thread, size_t size) const;
+    inline TaggedObject *AllocateYoungForCMC(JSThread *thread, size_t size) const;
+    inline TaggedObject *AllocateOldForCMC(JSThread *thread, size_t size) const;
+
     enum class HeapType {
         LOCAL_HEAP,
         SHARED_HEAP,

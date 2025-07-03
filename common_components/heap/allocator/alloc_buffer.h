@@ -98,6 +98,21 @@ public:
         stackRoots_.clear();
     }
 
+    template<AllocBufferType allocType>
+    HeapAddress FastAllocateInTlab(size_t size)
+    {
+        if constexpr (allocType == AllocBufferType::YOUNG) {
+            if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
+                return tlRegion_->Alloc(size);
+            }
+        } else if constexpr (allocType == AllocBufferType::OLD) {
+            if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
+                return tlOldRegion_->Alloc(size);
+            }
+        }
+        return 0;
+    }
+
     static constexpr size_t GetTLRegionOffset()
     {
         return offsetof(AllocationBuffer, tlRegion_);

@@ -1089,6 +1089,11 @@ public:
         glueData_.isEnableCMCGC_ = enableCMCGC;
     }
 
+    uintptr_t GetAllocBuffer() const
+    {
+        return glueData_.allocBuffer_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  base::AlignedBool,
