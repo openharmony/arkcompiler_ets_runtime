@@ -91,6 +91,10 @@ public:
     bool ParseBootPandaFiles(std::string &bootfiles);
 
     std::string ParseLocation(std::string &anfilePath);
+
+    bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
+
+    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
 };
 
 class StaticFrameworkAOTArgsParser final : public StaticAOTArgsParser {
