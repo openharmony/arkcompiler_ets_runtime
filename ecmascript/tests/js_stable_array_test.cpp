@@ -423,7 +423,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_ManyTiny)
  */
 HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
 {
-#if defined(ARK_USE_CMC_GC) || defined(USE_CMC_GC)
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     int32_t lengthArr = 8;
     std::string sep = "";
     // large string should use tree string.

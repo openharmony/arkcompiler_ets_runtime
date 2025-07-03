@@ -92,9 +92,6 @@
                     }
                 },
                 {
-                    "name": "//arkcompiler/ets_runtime:libark_jsruntime_sources"
-                },
-                {
                     "name": "//arkcompiler/ets_runtime/compiler_service:libcompiler_service",
                     "header": {
                       "header_files": [

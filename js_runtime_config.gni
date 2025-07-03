@@ -15,8 +15,8 @@ if (!defined(ark_standalone_build)) {
   ark_standalone_build = false
 }
 
-if (!defined(ark_use_cmc_gc)) {
-  ark_use_cmc_gc = false
+if (!defined(ark_hybrid)) {
+  ark_hybrid = false
 }
 
 declare_args() {
@@ -65,10 +65,6 @@ declare_args() {
   ark_js_hybrid = !ark_standalone_build && !is_mac
 
   ets_runtime_enable_cmc_gc = false
-}
-
-if (!defined(ark_hybrid)) {
-  ark_hybrid = false
 }
 
 if (defined(enable_cmc_gc) && !ets_runtime_enable_cmc_gc) {

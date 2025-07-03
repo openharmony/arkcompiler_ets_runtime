@@ -28,13 +28,7 @@ ohos_executable("ark_js_heap_snapshot_tool") {
   ]
 
   external_deps = []
-  deps = []
-
-  if (defined(ark_hybrid) && ark_hybrid) {
-    external_deps += [ "runtime_core:libarkruntime" ]
-  } else {
-    deps += [ "$js_root:libark_jsruntime" ]
-  }
+  deps = [ "$js_root:libark_jsruntime" ]
 
   if (!is_arkui_x) {
     external_deps += [

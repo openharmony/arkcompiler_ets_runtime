@@ -132,7 +132,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestGenerateStringNode)
             totalSize += node->GetSelfSize();
         }
     }
-#if defined(ARK_USE_CMC_GC) || defined(USE_CMC_GC)
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     // lineString: 32
     // treeString: 40
     // totalSize: 8 * 32 + 7 * 40
@@ -153,7 +153,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestGeneratePrivateStringNode)
     HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
                                             dumpOption, false, tester.GetEntryIdMapTest());
     Node *node = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
-#if defined(ARK_USE_CMC_GC) || defined(USE_CMC_GC)
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     // lineString: 32
     ASSERT_EQ(node->GetSelfSize(), 32);
 #else
@@ -182,7 +182,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestMoveNode)
     heapSnapShotTest.MoveNodeTest(address, reinterpret_cast<TaggedObject *>(treeString), 0);
     HeapEntryMap &heapEntryMap = heapSnapShotTest.GetEntryMapTest();
     Node *movedNode = heapEntryMap.FindEntry(reinterpret_cast<JSTaggedType>(treeString));
-#if defined(ARK_USE_CMC_GC) || defined(USE_CMC_GC)
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     // treeString: 40
     ASSERT_EQ(movedNode->GetSelfSize(), 40);
 #else
