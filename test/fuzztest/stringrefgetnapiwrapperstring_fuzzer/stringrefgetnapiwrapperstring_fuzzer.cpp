@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -25,17 +26,16 @@ using namespace common::utf_helper;
 namespace OHOS {
     void StringRefGetNapiWrapperStringFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
+        const int arkProp = fdp.ConsumeIntegral<int>();
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        option.SetArkProperties(arkProp);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        size_t temp = 0;
-        temp = size;
-        uint8_t *ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
         StringRef::GetNapiWrapperString(vm);
         JSNApi::DestroyJSVM(vm);
         return;

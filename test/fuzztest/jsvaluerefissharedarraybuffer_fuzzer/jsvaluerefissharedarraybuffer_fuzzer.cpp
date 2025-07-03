@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/containers/containers_arraylist.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_vm.h"
@@ -32,7 +33,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 namespace OHOS {
-void JSValueRefIsWeakMapFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsWeakMapFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -41,7 +42,9 @@ void JSValueRefIsWeakMapFuzzerTest([[maybe_unused]]const uint8_t *data, size_t s
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, (int32_t)size);
+    FuzzedDataProvider fdp(data, size);
+    const int32_t len = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
+    Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, len);
     sharedArrayBuffer->IsSharedArrayBuffer(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
