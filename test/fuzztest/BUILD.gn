@@ -380,5 +380,7 @@ group("fuzztest") {
     "uint8clampedarrayrefnew_fuzzer:fuzztest",
     "weakmapref_fuzzer:fuzztest",
     "weaksetref_fuzzer:fuzztest",
+    "commoncomplog_fuzzer:fuzztest",
+    "commoncompbaseutf_fuzzer:fuzztest",
   ]
 }
