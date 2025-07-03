@@ -238,7 +238,7 @@ HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
     size_t allocSize = ToAllocatedSize(size);
     if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
         internalAddr = regionManager_.AllocPinned(allocSize, allowGC);
-    } else if (LIKELY_CC(allocType == AllocType::MOVEABLE_OBJECT)) {
+    } else if (LIKELY_CC(allocType == AllocType::MOVEABLE_OBJECT || allocType == AllocType::MOVEABLE_OLD_OBJECT)) {
         AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
         internalAddr = allocBuffer->Allocate(allocSize, allocType);
     } else {
@@ -338,7 +338,9 @@ void AllocationBuffer::ClearThreadLocalRegion()
         RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
         heap.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
         tlRegion_ = RegionDesc::NullRegion();
-
+    }
+    if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
+        RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
         heap.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
         tlOldRegion_ = RegionDesc::NullRegion();
     }
