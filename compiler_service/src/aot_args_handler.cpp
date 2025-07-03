@@ -31,11 +31,16 @@
 
 namespace OHOS::ArkCompiler {
 const std::string AOT_FILE = "aot-file";
+const std::string COMPILER_MODE = "target-compiler-mode";
+const std::string PARTIAL = "partial";
+const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
+const std::string PATH = "path";
 
 const std::string STATIC_BOOT_PANDA_FILES = "boot-panda-files";
 const std::string STATIC_PAOC_PANDA_FILES = "paoc-panda-files";
 const std::string STATIC_PAOC_LOCATION = "paoc-location";
 const std::string STATIC_PAOC_OUTPUT = "paoc-output";
+const std::string STATIC_PAOC_USE_PROFILE = "paoc-use-profile";
 const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
 
 const std::string ARKTS_DYNAMIC = "dynamic";
@@ -229,12 +234,24 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + bootfiles);
 
     std::string anfilePath;
+    std::string pkgInfo;
+    bool partialMode = false;
     for (auto &argPair : argsMap) {
         // for 1.2, replace aot-file by paoc-output
         if (argPair.first == AOT_FILE) {
             anfilePath = argPair.second;
             std::string anFileName = anfilePath + AN_SUFFIX;
             hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + anFileName);
+            continue;
+        }
+
+        if (argPair.first == COMPILER_MODE && argPair.second == PARTIAL) {
+            partialMode = true;
+            continue;
+        }
+
+        if (argPair.first == COMPILER_PKG_INFO) {
+            pkgInfo = argPair.second;
             continue;
         }
 
@@ -246,6 +263,10 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     std::string location = ParseLocation(anfilePath);
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_LOCATION + Symbols::EQ + location);
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
+
+    if (partialMode && !ParseProfileUse(hapArgs, pkgInfo)) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
 
     return ERR_OK;
 }
@@ -297,6 +318,37 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
     std::string moduleName = anFilePath.substr(pos + 1);
     std::string location = APP_SANBOX_PATH_PREFIX + moduleName + ETS_PATH;
     return location;
+}
+
+bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &profilePath)
+{
+    nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
+    if (jsonPkgInfo.is_null() || jsonPkgInfo.empty()) {
+        LOG_SA(ERROR) << "invalid json when parse profile path";
+        return false;
+    }
+
+    std::string pgoDir = "pgoDir";
+    if (!jsonPkgInfo.contains(pgoDir) || jsonPkgInfo[pgoDir].is_null() || !jsonPkgInfo[pgoDir].is_string()) {
+        LOG_SA(ERROR) << "invalid pgoDir when parse profile path";
+        return false;
+    }
+
+    profilePath = jsonPkgInfo[pgoDir].get<std::string>() + "/profile.ap";
+    return true;
+}
+
+bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo)
+{
+    std::string profilePath;
+    bool parseRet = ParseProfilePath(pkgInfo, profilePath);
+    if (!parseRet) {
+        LOG_SA(ERROR) << "parse profile path failed in partial mode";
+        return false;
+    }
+    std::string pathArg = PATH + Symbols::EQ + profilePath;
+    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_USE_PROFILE + Symbols::COLON + pathArg);
+    return true;
 }
 
 std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParser(
