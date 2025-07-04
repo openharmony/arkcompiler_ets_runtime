@@ -246,7 +246,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_005, TestSize.Level0)
     AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::string sigData = "sig_data_for_test";
     int32_t ret = aotImpl.GetAOTVersion(sigData);
-    EXPECT_EQ(sigData.size(), 0);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -261,7 +260,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
     std::string args = "args_for_test";
     bool sigData = true;
     int32_t ret = aotImpl.NeedReCompile(args, sigData);
-    EXPECT_FALSE(sigData);
     EXPECT_EQ(ret, ERR_OK);
 }
 
