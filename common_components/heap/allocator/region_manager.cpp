@@ -147,7 +147,7 @@ void RegionDesc::VisitAllObjectsWithFixedSize(size_t cellCount, const std::funct
         GetRegionType() == RegionType::FULL_FIXED_PINNED_REGION);
     size_t size = (cellCount + 1) * sizeof(uint64_t);
     uintptr_t position = GetRegionStart();
-    uintptr_t end = GetRegionEnd();
+    uintptr_t end = GetRegionAllocPtr();
     while (position < end) {
         // GetAllocSize should before call func, because object maybe destroy in compact gc.
         BaseObject* obj = reinterpret_cast<BaseObject*>(position);
@@ -665,7 +665,6 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
                 region->CollectPinnedGarbage(object, cellCount);
             }
         });
-        region->SetRegionAllocPtr(region->GetRegionEnd());
         region = region->GetNextRegion();
     }
     stats.pinnedGarbageSize += garbageSize;

@@ -617,6 +617,7 @@ void TraceCollector::UpdateGCStats()
         remainingBytes = std::min(gcParam.kMinConcurrentRemainingBytes, gcStats.targetFootprint);
     }
     gcStats.heapThreshold = std::max(gcStats.targetFootprint - remainingBytes, bytesAllocated);
+    gcStats.heapThreshold = std::max(gcStats.heapThreshold, 20 * MB); // 20 MB:set 20 MB as min heapThreshold
     gcStats.heapThreshold = std::min(gcStats.heapThreshold, gcParam.gcThreshold);
 
     UpdateNativeThreshold(gcParam);
@@ -672,6 +673,15 @@ void TraceCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, si
 #endif
 }
 
+void TraceCollector::ReclaimGarbageMemory(GCReason reason)
+{
+    if (reason == GC_REASON_OOM) {
+        Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(true);
+    } else {
+        Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(false);
+    }
+}
+
 void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
 {
     gcReason_ = reason;
@@ -694,6 +704,8 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     Heap::GetHeap().SetGCReason(reason);
     GCStats& gcStats = GetGCStats();
     gcStats.collectedBytes = 0;
+    gcStats.smallGarbageSize = 0;
+    gcStats.pinnedGarbageSize = 0;
     gcStats.gcStartTime = TimeUtil::NanoSeconds();
 
     DoGarbageCollection();
@@ -701,9 +713,7 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
     HeapBitmapManager::GetHeapBitmapManager().ClearHeapBitmap();
     reinterpret_cast<RegionSpace&>(theAllocator_).DumpAllRegionStats("region statistics when gc ends");
 
-    if (reason == GC_REASON_OOM) {
-        Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(true);
-    }
+    ReclaimGarbageMemory(reason);
 
     PostGarbageCollection(gcIndex);
     MutatorManager::Instance().DestroyExpiredMutators();

@@ -222,6 +222,8 @@ public:
 
     void RunGarbageCollection(uint64_t, GCReason) override;
 
+    void ReclaimGarbageMemory(GCReason reason);
+
     void TransitionToGCPhase(const GCPhase phase, const bool)
     {
         MutatorManager::Instance().TransitionAllMutatorsToGCPhase(phase);
