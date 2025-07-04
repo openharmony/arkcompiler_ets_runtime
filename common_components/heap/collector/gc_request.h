@@ -41,6 +41,8 @@ enum GCReason : uint32_t {
     GC_REASON_NATIVE_SYNC,  // Just wait one gc request to reduce native heap consumption.
     GC_REASON_FORCE,        // force gc is triggered when runtime triggers gc actively.
     GC_REASON_APPSPAWN,     // appspawn gc is triggered when prefork.
+    GC_REASON_BACKGROUND,   // trigger gc caused by switching to background.
+    GC_REASON_HINT,         // trigger gc caused by hint gc.
     GC_REASON_MAX,
     GC_REASON_INVALID = std::numeric_limits<uint32_t>::max(),
 };

@@ -289,6 +289,8 @@ public:
         return param_;
     }
 
+    void SetConfigHeapSize(size_t configHeapSize);
+
     bool ParseCommand(const int argc, const char** argv);
     bool SetDefaultValue(char* argv);
 

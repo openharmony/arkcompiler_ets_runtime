@@ -17,6 +17,7 @@
 #define COMMON_COMPONENTS_HEAP_HEURISTIC_GC_POLICY_H
 
 #include "common_components/base/globals.h"
+#include "common_interfaces/base_runtime.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_components/log/log.h"
 
@@ -114,9 +115,23 @@ public:
 
     size_t GetNativeHeapThreshold() const;
 
+    void RecordAliveSizeAfterLastGC(size_t aliveBytes);
+
+    void ChangeGCParams(bool isBackground);
+
+    bool CheckAndTriggerHintGC(MemoryReduceDegree degree);
+
+    static constexpr size_t BACKGROUND_LIMIT = 2 * MB;
+    static constexpr size_t MIN_BACKGROUND_GC_SIZE = 30 * MB;
+
+    static constexpr double IDLE_MIN_INC_RATIO = 1.1f;
+    static constexpr size_t LOW_DEGREE_STEP_IN_IDLE = 5 * MB;
+    static constexpr size_t HIGH_DEGREE_STEP_IN_IDLE = 1 * MB;
 private:
     void CheckGCForNative();
+
     uint64_t heapSize_ {0};
+    size_t aliveSizeAfterGC_ {0};
 
     std::atomic<size_t> notifiedNativeSize_ = 0;
     std::atomic<size_t> nativeHeapThreshold_ = NATIVE_INIT_THRESHOLD;

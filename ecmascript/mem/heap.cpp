@@ -1893,6 +1893,13 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
     if (InSensitiveStatus()) {
         return false;
     }
+    if (g_isEnableCMCGC) {
+        common::MemoryReduceDegree cmcDegree = common::MemoryReduceDegree::LOW;
+        if (degree == MemoryReduceDegree::HIGH) {
+            cmcDegree = common::MemoryReduceDegree::HIGH;
+        }
+        return common::BaseRuntime::CheckAndTriggerHintGC(cmcDegree);
+    }
     LOG_GC(INFO) << "HintGC degree:"<< static_cast<int>(degree) << " reason:" << GCStats::GCReasonToString(reason);
     switch (degree) {
         case MemoryReduceDegree::LOW: {
@@ -2336,6 +2343,10 @@ void Heap::ChangeGCParams(bool inBackground)
 {
     const double doubleOne = 1.0;
     inBackground_ = inBackground;
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::ChangeGCParams(inBackground);
+        return;
+    }
     if (inBackground) {
         LOG_GC(INFO) << "app is inBackground";
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT &&

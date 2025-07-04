@@ -47,6 +47,8 @@ bool GCRequest::ShouldBeIgnored() const
     switch (reason) {
         case GC_REASON_HEU:
         case GC_REASON_YOUNG:
+        case GC_REASON_BACKGROUND:
+        case GC_REASON_HINT:
             return IsFrequentHeuristicGC();
         case GC_REASON_NATIVE:
             return IsFrequentAsyncGC();
@@ -68,6 +70,8 @@ GCRequest g_gcRequests[] = {
     { GC_REASON_HEU_SYNC, "heuristic_sync", true, true, 0, 0 },
     { GC_REASON_NATIVE_SYNC, "native_alloc_sync", true, true, 0, 0 },
     { GC_REASON_FORCE, "force", true, false, 0, 0 },
-    { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 }
+    { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 },
+    { GC_REASON_BACKGROUND, "backgound", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp },
+    { GC_REASON_HINT, "hint", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp }
 };
 } // namespace common
