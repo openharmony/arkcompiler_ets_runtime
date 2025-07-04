@@ -19,3 +19,6 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapD
 
 #23236
 obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearrayAsmAssertContext
+
+#23099
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
