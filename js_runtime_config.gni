@@ -192,6 +192,7 @@ if (enable_hisysevent) {
   hiviewdfx_ext_deps += [
     "hisysevent:libhisysevent",
     "hiview:libucollection_client",
+    "faultloggerd:dfx_signalhandler",
   ]
 }
 if (enable_rss) {
