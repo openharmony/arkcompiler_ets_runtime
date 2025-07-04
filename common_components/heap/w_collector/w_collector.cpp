@@ -291,7 +291,10 @@ public:
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
         if (collector_->IsFromObject(oldObj)) {
             BaseObject* toVersion = collector_->TryForwardObject(oldObj);
-            CHECK_CC(toVersion != nullptr);
+            if (toVersion == nullptr) {
+                Heap::throwOOM();
+                return;
+            }
             HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
                                                             reinterpret_cast<uintptr_t>(toVersion),
                                                             toVersion->GetSize());
@@ -862,7 +865,7 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
     }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
     if (toObj == nullptr) {
-        ASSERT_LOGF(0, "OOM");
+        Heap::throwOOM();
         // ConcurrentGC
         obj->UnlockExclusive(BaseStateWord::ForwardState::NORMAL);
         return toObj;
