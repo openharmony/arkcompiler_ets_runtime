@@ -375,13 +375,13 @@ public:
         // ************************boundary of dead region and alive region**************************
 
         THREAD_LOCAL_REGION,
-        THREAD_LOCAL_OLD_REGION,
         RECENT_FULL_REGION,
         FROM_REGION,
-        LONE_FROM_REGION,
         EXEMPTED_FROM_REGION,
+        LONE_FROM_REGION,
         TO_REGION,
         OLD_REGION,
+        THREAD_LOCAL_OLD_REGION,
 
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
@@ -416,6 +416,12 @@ public:
     {
         // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION;
+    }
+
+    static bool IsInYoungSpaceForWB(RegionType type)
+    {
+        return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION ||
+            type == RegionType::FROM_REGION;
     }
 
     static bool IsInYoungSpace(RegionType type)
@@ -1288,6 +1294,12 @@ public:
         {
             RegionType type = GetRegionType();
             return type == RegionType::FROM_REGION;
+        }
+
+        bool IsInYoungSpaceForWB() const
+        {
+            RegionType type = GetRegionType();
+            return RegionDesc::IsInYoungSpaceForWB(type);
         }
 
         inline HeapAddress GetRegionStart() const;
