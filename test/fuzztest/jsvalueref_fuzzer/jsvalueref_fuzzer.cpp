@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/global_env.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "jsvalueref_fuzzer.h"
@@ -21,31 +22,18 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void JSValueRefIsNullFuzzTest(const uint8_t* data, size_t size)
+    void JSValueRefIsBooleanOrNullFuzzTest(const uint8_t* data, size_t size)
     {
+        FuzzedDataProvider fdp(data, size);
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<JSValueRef> obj = StringRef::NewFromUtf8(vm, "TestKey");
-        obj->IsNull();
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void JSValueRefIsBooleanFuzzTest(const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<JSValueRef> tag = BooleanRef::New(vm, false);
+        bool inputBool = fdp.ConsumeBool();
+        Local<JSValueRef> tag = BooleanRef::New(vm, inputBool);
         tag->IsBoolean();
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        Local<JSValueRef> obj = StringRef::NewFromUtf8(vm, str.data());
+        obj->IsNull();
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -53,8 +41,6 @@ namespace OHOS {
 // Fuzzer entry point.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    // Run your code on data.
-    OHOS::JSValueRefIsNullFuzzTest(data, size);
-    OHOS::JSValueRefIsBooleanFuzzTest(data, size);
+    OHOS::JSValueRefIsBooleanOrNullFuzzTest(data, size);
     return 0;
 }

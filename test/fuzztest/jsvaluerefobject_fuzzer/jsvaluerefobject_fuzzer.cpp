@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefobject_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_function.h"
@@ -25,109 +26,25 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void JSValueRefIsSymbolFuzzTest(const uint8_t* data, size_t size)
+    void JSValueRefTypesFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<StringRef> description = StringRef::NewFromUtf8(vm, (char*)data, size);
+        FuzzedDataProvider fdp(data, size);
+        std::string str = fdp.ConsumeRandomLengthString(1024);
+        Local<StringRef> description = StringRef::NewFromUtf8(vm, str.data());
         Local<SymbolRef> symbol = SymbolRef::New(vm, description);
         symbol->IsSymbol(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void JSValueRefIsBigIntFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        constexpr int input = 2147483646;
+        const int input = fdp.ConsumeIntegral<int>();
         Local<IntegerRef> intValue = IntegerRef::New(vm, input);
-        [[maybe_unused]]bool res = intValue->IsBigInt(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void JSValueRefIsObjectFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<JSValueRef> res = IntegerRef::New(vm, (int)size);
-        [[maybe_unused]]bool result = res->IsObject(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void IsArgumentsObjectFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            if (size <= 0) {
-                LOG_ECMA(ERROR) << "illegal input!";
-                return;
-            }
-            ObjectFactory *factory = vm->GetFactory();
-            JSHandle<JSArguments> obj = factory->NewJSArguments();
-            JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
-            JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void IsJSPrimitiveBooleanFuzzTest(const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        int length = size / sizeof(char16_t);
-        Local<StringRef> obj =  StringRef::NewFromUtf16(vm, (char16_t*)data, length);
-        obj->IsJSPrimitiveBoolean(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void IsGeneratorFunctionFuzzTest(const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        int length = size / sizeof(char16_t);
-        Local<StringRef> obj = StringRef::NewFromUtf16(vm, (char16_t*)data, length);
-        obj->IsGeneratorFunction(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    void IsMapIteratorFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
-    {
-        JSRuntimeOptions option;
-        EcmaVM *vm = JSNApi::CreateEcmaVM(option);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<JSValueRef> object = IntegerRef::New(vm, (int)size);
-        object->IsMapIterator(vm);
+        intValue->IsBigInt(vm);
+        intValue->IsObject(vm);
+        intValue->IsMapIterator(vm);
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSArguments> obj = factory->NewJSArguments();
+        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
+        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -136,12 +53,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSValueRefIsSymbolFuzzTest(data, size);
-    OHOS::JSValueRefIsBigIntFuzzTest(data, size);
-    OHOS::JSValueRefIsObjectFuzzTest(data, size);
-    OHOS::IsArgumentsObjectFuzzTest(data, size);
-    OHOS::IsJSPrimitiveBooleanFuzzTest(data, size);
-    OHOS::IsGeneratorFunctionFuzzTest(data, size);
-    OHOS::IsMapIteratorFuzzTest(data, size);
+    OHOS::JSValueRefTypesFuzzTest(data, size);
     return 0;
 }
