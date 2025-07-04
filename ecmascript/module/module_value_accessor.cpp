@@ -423,6 +423,9 @@ void ModuleValueAccessor::EvaluateModuleIfNeeded(JSThread* thread, JSHandle<Sour
     SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::LAZY);
 }
 
+template void ModuleValueAccessor::EvaluateModuleIfNeeded<true>(JSThread *, JSHandle<SourceTextModule>);
+template void ModuleValueAccessor::EvaluateModuleIfNeeded<false>(JSThread *, JSHandle<SourceTextModule>);
+
 void ModuleValueAccessor::LogModuleLoadInfo(JSThread* thread, JSHandle<SourceTextModule> module,
     JSHandle<SourceTextModule> requiredModule, int32_t index, bool isSendable)
 {
@@ -492,6 +495,15 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule(JSThread* thre
     }
     return moduleManager->HostGetImportedModule(requestModuleRecordName);
 }
+
+template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<false, ResolvedRecordIndexBinding>(JSThread*,
+    JSHandle<SourceTextModule>, JSHandle<ResolvedRecordIndexBinding>, const CString &);
+template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<true, ResolvedRecordIndexBinding>(JSThread*,
+    JSHandle<SourceTextModule>, JSHandle<ResolvedRecordIndexBinding>, const CString &);
+template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<false, ResolvedRecordBinding>(JSThread*,
+    JSHandle<SourceTextModule>, JSHandle<ResolvedRecordBinding>, const CString &);
+template JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule<true, ResolvedRecordBinding>(JSThread*,
+    JSHandle<SourceTextModule>, JSHandle<ResolvedRecordBinding>, const CString &);
 
 JSTaggedValue DeprecatedModuleValueAccessor::GetModuleValueInner(JSThread* thread, JSTaggedValue key)
 {
