@@ -80,7 +80,8 @@ void BuiltinsProxyStubBuilder::CheckGetTrapResult(GateRef target, GateRef key, V
         Bind(&trapResultTypeError);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxyGetPropertyResultTypeError));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
             result->WriteVariable(Exception());
             Jump(exit);
         }
@@ -101,15 +102,16 @@ void BuiltinsProxyStubBuilder::CheckGetTrapResult(GateRef target, GateRef key, V
         Bind(&trapResultIsNotUndefined);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxyGetPropertyResultNotUndefined));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
             result->WriteVariable(Exception());
             Jump(exit);
         }
     }
     Bind(&callRuntime);
     {
-        result->WriteVariable(
-            CallRuntime(glue_, RTSTUB_ID(CheckGetTrapResult), { target, key, result->ReadVariable() }));
+        result->WriteVariable(CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+            RTSTUB_ID(CheckGetTrapResult), { target, key, result->ReadVariable() }));
         Jump(exit);
     }
 }
@@ -138,7 +140,8 @@ void BuiltinsProxyStubBuilder::CheckSetTrapResult(GateRef target, GateRef key, G
         Bind(&trapResultTypeError);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyResultTypeError));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
             result->WriteVariable(TaggedFalse());
             Jump(exit);
         }
@@ -157,14 +160,16 @@ void BuiltinsProxyStubBuilder::CheckSetTrapResult(GateRef target, GateRef key, G
         Bind(&trapResultIsNotUndefined);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyResultNotAccessor));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
             result->WriteVariable(TaggedFalse());
             Jump(exit);
         }
     }
     Bind(&callRuntime);
     {
-        result->WriteVariable(CallRuntime(glue_, RTSTUB_ID(CheckSetTrapResult), { target, key, value }));
+        result->WriteVariable(CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+            RTSTUB_ID(CheckSetTrapResult), { target, key, value }));
         Jump(exit);
     }
 }
@@ -186,7 +191,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     Bind(&handlerIsNull);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxyGetPropertyHandlerIsNull));
-        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result = Exception();
         Jump(&exit);
     }
@@ -216,7 +221,8 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
         }
         Bind(&slowPath);
         {
-            result = CallRuntime(glue_, RTSTUB_ID(JSProxyGetProperty), { proxy, key, receiver });
+            result = CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(JSProxyGetProperty), { proxy, key, receiver });
             Jump(&exit);
         }
     }
@@ -244,7 +250,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
     Bind(&handlerIsNull);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyHandlerIsNull));
-        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
         result = TaggedFalse();
         Jump(&exit);
     }
@@ -282,7 +288,8 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
                 {
                     if (mayThrow) {
                         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyReturnFalse));
-                        CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                        CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                            RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
                     }
                     result = TaggedFalse();
                     Jump(&exit);
@@ -295,8 +302,8 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         }
         Bind(&slowPath);
         {
-            result = CallRuntime(glue_, RTSTUB_ID(JSProxySetProperty),
-                                 {proxy, key, value, receiver, mayThrow ? TaggedTrue() : TaggedFalse()});
+            result = CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(JSProxySetProperty),
+                {proxy, key, value, receiver, mayThrow ? TaggedTrue() : TaggedFalse()});
             Jump(&exit);
         }
     }

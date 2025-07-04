@@ -2591,7 +2591,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     Bind(&throwError);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidStringLength));
-        CallRuntime(glue, RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowRangeError), {IntToTaggedInt(taggedId)});
         result = Exception();
         Jump(&exit);
     }
@@ -2758,7 +2758,8 @@ void BuiltinsStringStubBuilder::LocaleCompare(GateRef glue, GateRef thisValue, G
         Bind(&cacheAble);
         {
             Label defvalue(env);
-            GateRef resValue = CallRuntime(glue, RTSTUB_ID(LocaleCompareCacheable), {locales, thisValue, arg0});
+            GateRef resValue = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                RTSTUB_ID(LocaleCompareCacheable), {locales, thisValue, arg0});
             BRANCH(TaggedIsUndefined(resValue), &uncacheable, &defvalue);
             Bind(&defvalue);
             *res = resValue;
@@ -2766,7 +2767,8 @@ void BuiltinsStringStubBuilder::LocaleCompare(GateRef glue, GateRef thisValue, G
         }
         Bind(&uncacheable);
         {
-            res->WriteVariable(CallRuntime(glue, RTSTUB_ID(LocaleCompareWithGc), {locales, thisValue, arg0, options}));
+            res->WriteVariable(CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                RTSTUB_ID(LocaleCompareWithGc), {locales, thisValue, arg0, options}));
             Jump(exit);
         }
 #else

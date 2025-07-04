@@ -209,7 +209,7 @@ GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef glue, GateRef index, GateRef
     return ret;
 }
 
-GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue,
+GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, GateRef globalEnv, GateRef thisValue,
                                           GateRef numArgs, GateRef func, GateRef newTarget)
 {
     auto env = GetEnvironment();
@@ -224,6 +224,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Label callThis3(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef runtimeCallInfoArgs = PtrAdd(numArgs, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+    SetGlueGlobalEnv(glue, globalEnv);
     BRANCH(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
     Bind(&callThis0);
     {
@@ -282,7 +283,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);       \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -302,7 +303,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);       \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -322,7 +323,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);       \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -343,7 +344,7 @@ DECLARE_BUILTINS(type##method)                                                  
     Bind(&slowPath);                                                                                  \
     {                                                                                                 \
         auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                      \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                    \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);         \
         Jump(&exit);                                                                                  \
     }                                                                                                 \
     Bind(&exit);                                                                                      \
@@ -392,7 +393,7 @@ DECLARE_BUILTINS(stubName)                                                      
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);       \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \
@@ -450,7 +451,7 @@ DECLARE_BUILTINS(type##method)                                                  
     builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);       \
         Jump(&exit);                                                                                \
     }                                                                                               \
     Bind(&exit);                                                                                    \

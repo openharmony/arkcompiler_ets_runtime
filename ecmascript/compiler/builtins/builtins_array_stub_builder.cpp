@@ -234,7 +234,7 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                     BRANCH(TaggedIsHole(*ele), &eleIsHole, &notHasException0);
                     Bind(&eleIsHole);
                     {
-                        GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
+                        GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                             { thisValue, IntToTaggedInt(*fromKey) });
                         BRANCH(TaggedIsTrue(hasProp), &hasProperty, &notHasProperty);
                         Bind(&hasProperty);
@@ -335,7 +335,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
                 BRANCH(IsJsCOWArray(glue, thisValue), &isJsCOWArray, &getElements);
                 Bind(&isJsCOWArray);
                 {
-                    CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), { thisValue });
+                    CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(CheckAndCopyArray), { thisValue });
                     Jump(&getElements);
                 }
                 Bind(&getElements);
@@ -757,8 +757,9 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
         {
             CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, newArrayEles, *toIndex});
             Store(VariableType::INT32(), glue, newArray, IntPtr(JSArray::LENGTH_OFFSET), TruncInt64ToInt32(*toIndex));
-            GateRef ret = CallRuntime(glue, RTSTUB_ID(JSArrayFilterUnStable), { argHandle, thisValue,
-                IntToTaggedInt(*i), IntToTaggedInt(len), IntToTaggedInt(*toIndex), newArray, callbackFnHandle });
+            GateRef ret = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(JSArrayFilterUnStable),
+                { argHandle, thisValue, IntToTaggedInt(*i), IntToTaggedInt(len),
+                    IntToTaggedInt(*toIndex), newArray, callbackFnHandle });
             result->WriteVariable(ret);
             Jump(exit);
         }
@@ -881,8 +882,8 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     }
     Bind(&notStableJSArray);
     {
-        GateRef ret = CallRuntime(glue, RTSTUB_ID(JSArrayMapUnStable), { argHandle, thisValue,
-            IntToTaggedInt(*i), IntToTaggedInt(len), newArray, callbackFnHandle });
+        GateRef ret = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(JSArrayMapUnStable),
+            { argHandle, thisValue, IntToTaggedInt(*i), IntToTaggedInt(len), newArray, callbackFnHandle });
         result->WriteVariable(ret);
         Jump(exit);
     }
@@ -954,7 +955,8 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    { thisValue, IntToTaggedInt(*i) });
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
                 Bind(&hasProperty);
                 kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -1004,7 +1006,8 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
             Label hasException1(env);
             BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                { thisValue, IntToTaggedInt(*i) });
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -1278,7 +1281,7 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     BRANCH(IsJsCOWArray(glue, thisValue), &isJsCOWArray, &getElements);
     Bind(&isJsCOWArray);
     {
-        CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), { thisValue });
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(CheckAndCopyArray), { thisValue });
         Jump(&getElements);
     }
     Bind(&getElements);
@@ -1728,7 +1731,8 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
         BRANCH(TaggedIsHole(*presentValue), &presentValueIsHole, &afterGettingpresentValue);
         Bind(&presentValueIsHole);
         {
-            GateRef presentValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { receiver, IntToTaggedInt(*i) });
+            GateRef presentValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                RTSTUB_ID(HasProperty), { receiver, IntToTaggedInt(*i) });
             BRANCH(TaggedIsTrue(presentValueHasProp), &presentValueHasProperty, &afterGettingpresentValue);
             Bind(&presentValueHasProperty);
             {
@@ -1762,8 +1766,8 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                 BRANCH(TaggedIsHole(*middleValue), &middleValueIsHole, &afterGettingmiddleValue);
                 Bind(&middleValueIsHole);
                 {
-                    GateRef middleValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
-                        { receiver, IntToTaggedInt(middleIndex) });
+                    GateRef middleValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(HasProperty), { receiver, IntToTaggedInt(middleIndex) });
                     BRANCH(TaggedIsTrue(middleValueHasProp), &middleValueHasProperty, &afterGettingmiddleValue);
                     Bind(&middleValueHasProperty);
                     {
@@ -1833,8 +1837,8 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                     BRANCH(TaggedIsHole(*previousValue), &previousValueIsHole, &afterGettingpreviousValue);
                     Bind(&previousValueIsHole);
                     {
-                        GateRef previousValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
-                            { receiver, IntToTaggedInt(Int64Sub(*j, Int64(1))) });
+                        GateRef previousValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                            RTSTUB_ID(HasProperty), { receiver, IntToTaggedInt(Int64Sub(*j, Int64(1))) });
                         BRANCH(TaggedIsTrue(previousValueHasProp),
                             &previousValueHasProperty, &afterGettingpreviousValue);
                         Bind(&previousValueHasProperty);
@@ -2006,8 +2010,9 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                 BRANCH(Int32LessThan(*k, *thisLen), &callRT, &finish);
                 Bind(&callRT);
                 {
-                    accumulator = CallRuntime(glue, RTSTUB_ID(JSArrayReduceUnStable), { thisValue, thisValue,
-                        IntToTaggedInt(*k), IntToTaggedInt(*thisLen), *accumulator, callbackFnHandle });
+                    accumulator = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(JSArrayReduceUnStable), { thisValue, thisValue, IntToTaggedInt(*k),
+                            IntToTaggedInt(*thisLen), *accumulator, callbackFnHandle });
                     Jump(&finish);
                 }
                 Bind(&finish);
@@ -2207,7 +2212,8 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
             BRANCH(TaggedIsHole(*lower), &lowerValueIsHole, &afterGettingLower);
             Bind(&lowerValueIsHole);
             {
-                GateRef lowerHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                GateRef lowerHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    { thisValue, IntToTaggedInt(*i) });
                 BRANCH(TaggedIsTrue(lowerHasProp), &lowerHasProperty, &afterGettingLower);
                 Bind(&lowerHasProperty);
                 {
@@ -2226,7 +2232,8 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
                 BRANCH(TaggedIsHole(*upper), &upperValueIsHole, &afterGettingUpper);
                 Bind(&upperValueIsHole);
                 {
-                    GateRef upperHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*j) });
+                    GateRef upperHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*j) });
                     BRANCH(TaggedIsTrue(upperHasProp), &upperHasProperty, &afterGettingUpper);
                     Bind(&upperHasProperty);
                     {
@@ -3907,7 +3914,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
                     kValue = GetTaggedValueWithElementsKind(glue, thisValue, *copyFrom);
                     BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &setValue);
                     Bind(&kValueIsHole);
-                    GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
+                    GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                         { thisValue, IntToTaggedInt(*copyFrom) });
                     BRANCH(TaggedIsTrue(hasProp), &hasProperty, &setHole);
 
@@ -4057,7 +4064,8 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    { thisValue, IntToTaggedInt(*i) });
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
                 Bind(&hasProperty);
                 {
@@ -4138,7 +4146,8 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                { thisValue, IntToTaggedInt(*i) });
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
             {
@@ -4254,7 +4263,8 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    { thisValue, IntToTaggedInt(*i) });
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
                 Bind(&hasProperty);
                 kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -4329,7 +4339,8 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                { thisValue, IntToTaggedInt(*i) });
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -4454,7 +4465,8 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                                  { glue, thisValue, IntToTaggedPtr(*k) });
 #else
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*k)});
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    {thisValue, IntToTaggedInt(*k)});
 #endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
                 Bind(&hasProperty);
@@ -4529,7 +4541,8 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                              { glue, thisValue, IntToTaggedPtr(*k) });
 #else
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*k)});
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                {thisValue, IntToTaggedInt(*k)});
 #endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
@@ -4641,7 +4654,8 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                                  { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    {thisValue, IntToTaggedInt(*i)});
 #endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
                 Bind(&hasProperty);
@@ -4720,7 +4734,8 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                              { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                {thisValue, IntToTaggedInt(*i)});
 #endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
             Bind(&hasProperty);
@@ -4832,7 +4847,8 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                                  { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+                GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                    {thisValue, IntToTaggedInt(*i)});
 #endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
                 Bind(&hasProperty);
@@ -4910,7 +4926,8 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                              { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                {thisValue, IntToTaggedInt(*i)});
 #endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
             Bind(&hasProperty);
@@ -5314,7 +5331,8 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                { thisValue, IntToTaggedInt(*i) });
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &changeNewArrLen);
             Bind(&hasProperty);
             {
@@ -5428,7 +5446,8 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                         retValueItem = GetTaggedValueWithElementsKind(glue, retValue, *k);
                         BRANCH_NO_WEIGHT(TaggedIsHole(*retValueItem), &loopEnd3, &setValue);
                         Bind(&retValueNotStableArray);
-                        GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { retValue, IntToTaggedInt(*k) });
+                        GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+                            { retValue, IntToTaggedInt(*k) });
                         BRANCH_NO_WEIGHT(TaggedIsTrue(hasProp), &itemExist, &loopEnd3);
                         Bind(&itemExist);
                         retValueItem =

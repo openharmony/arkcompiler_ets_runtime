@@ -118,7 +118,8 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
                 BRANCH_UNLIKELY(Int32NotEqual(*newKind, kind), &needTransition, &final);
                 Bind(&needTransition);
                 {
-                    CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { thisValue, *newKind });
+                    CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(UpdateHClassForElementsKind), { thisValue, *newKind });
                     Jump(&final);
                 }
             }
@@ -193,7 +194,8 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
 #if ENABLE_NEXT_OPTIMIZATION
             GateRef presentValueHasProp = HasProperty(glue, receiver, IntToTaggedPtr(*i), hir);
 #else
-            GateRef presentValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(*i)});
+            GateRef presentValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(*i)});
 #endif
             BRANCH(TaggedIsTrue(presentValueHasProp), &presentValueHasProperty, &afterGettingpresentValue);
             Bind(&presentValueHasProperty);
@@ -231,8 +233,8 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
 #if ENABLE_NEXT_OPTIMIZATION
                     GateRef middleValueHasProp = HasProperty(glue, receiver, IntToTaggedPtr(middleIndex), hir);
 #else
-                    GateRef middleValueHasProp =
-                        CallRuntime(glue, RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(middleIndex)});
+                    GateRef middleValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(middleIndex)});
 #endif
                     BRANCH(TaggedIsTrue(middleValueHasProp), &middleValueHasProperty, &afterGettingmiddleValue);
                     Bind(&middleValueHasProperty);
@@ -349,8 +351,8 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                         GateRef previousValueHasProp =
                             HasProperty(glue, receiver, IntToTaggedPtr(Int64Sub(*j, Int64(1))), hir);
 #else
-                        GateRef previousValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
-                                                                   {receiver, IntToTaggedInt(Int64Sub(*j, Int64(1)))});
+                        GateRef previousValueHasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                            RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(Int64Sub(*j, Int64(1)))});
 #endif
                         BRANCH(TaggedIsTrue(previousValueHasProp),
                                &previousValueHasProperty, &afterGettingpreviousValue);
@@ -1665,7 +1667,8 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                              { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
 #endif
             BRANCH_LIKELY(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
@@ -2643,7 +2646,8 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
             Bind(&updateKind);
             {
                 elementKind = TaggedToElementKind(glue, value);
-                CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), {thisValue, *elementKind});
+                CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                    RTSTUB_ID(UpdateHClassForElementsKind), {thisValue, *elementKind});
                 Jump(&doFill);
             }
         }
