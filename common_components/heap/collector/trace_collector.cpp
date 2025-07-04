@@ -620,6 +620,7 @@ void TraceCollector::UpdateGCStats()
     gcStats.heapThreshold = std::min(gcStats.heapThreshold, gcParam.gcThreshold);
 
     UpdateNativeThreshold(gcParam);
+    Heap::GetHeap().RecordAliveSizeAfterLastGC(bytesAllocated);
 
     if (!gcStats.isYoungGC()) {
         g_gcRequests[GC_REASON_HEU].SetMinInterval(gcParam.gcInterval);

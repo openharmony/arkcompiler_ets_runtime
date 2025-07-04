@@ -1724,6 +1724,11 @@ JSRuntimeOptions::JSRuntimeOptions()
     param_ = common::BaseRuntimeParam::DefaultRuntimeParam();
 }
 
+void JSRuntimeOptions::SetConfigHeapSize(size_t configHeapSize)
+{
+    common::BaseRuntimeParam::SetConfigHeapSize(param_, configHeapSize);
+}
+
 void JSRuntimeOptions::SetMemConfigProperty(const std::string &configProperty)
 {
     if (configProperty == "openArkTools") {

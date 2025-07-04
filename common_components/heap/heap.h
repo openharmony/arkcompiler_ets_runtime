@@ -25,12 +25,14 @@
 #include "common_components/heap/barrier/barrier.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_interfaces/base/runtime_param.h"
+#include "common_interfaces/base_runtime.h"
 
 namespace common {
 class Allocator;
 class AllocationBuffer;
 class FinalizerProcessor;
 class CollectorResources;
+using MemoryReduceDegree = common::MemoryReduceDegree;
 
 class Heap {
 public:
@@ -90,10 +92,12 @@ public:
     virtual void NotifyNativeAllocation(size_t bytes) = 0;
     virtual void NotifyNativeFree(size_t bytes) = 0;
     virtual void NotifyNativeReset(size_t oldBytes, size_t newBytes) = 0;
-    virtual size_t GetNotifiedNativeSize() = 0;
+    virtual size_t GetNotifiedNativeSize() const = 0;
     virtual void SetNativeHeapThreshold(size_t newThreshold) = 0;
-    virtual size_t GetNativeHeapThreshold() = 0;
-
+    virtual size_t GetNativeHeapThreshold() const = 0;
+    virtual void ChangeGCParams(bool isBackground) = 0;
+    virtual void RecordAliveSizeAfterLastGC(size_t aliveBytes) = 0;
+    virtual bool CheckAndTriggerHintGC(MemoryReduceDegree degree) = 0;
     /* to avoid misunderstanding, variant types of heap size are defined as followed:
      * |------------------------------ max capacity ---------------------------------|
      * |------------------------------ current capacity ------------------------|

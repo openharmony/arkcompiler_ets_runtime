@@ -83,6 +83,8 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         if (g_isEnableCMCGC) {
             // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap
             LOG_ECMA(INFO) << "start run with cmc gc";
+            // SetConfigHeapSize for cmc gc, pc and persist config may change heap size.
+            const_cast<JSRuntimeOptions &>(options).SetConfigHeapSize(MemMapAllocator::GetInstance()->GetCapacity());
             common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
         }
         DaemonThread::CreateNewInstance();

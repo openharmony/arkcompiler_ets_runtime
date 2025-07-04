@@ -234,4 +234,13 @@ size_t BaseRuntime::GetNotifiedNativeSize()
     return Heap::GetHeap().GetNotifiedNativeSize();
 }
 
+void BaseRuntime::ChangeGCParams(bool isBackground)
+{
+    return Heap::GetHeap().ChangeGCParams(isBackground);
+}
+
+bool BaseRuntime::CheckAndTriggerHintGC(MemoryReduceDegree degree)
+{
+    return Heap::GetHeap().CheckAndTriggerHintGC(degree);
+}
 }  // namespace common
