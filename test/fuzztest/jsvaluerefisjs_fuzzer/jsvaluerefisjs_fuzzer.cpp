@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefisjs_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -27,7 +28,7 @@ using namespace panda::ecmascript;
 using namespace common::utf_helper;
 
 namespace OHOS {
-void JSValueRefIsJSArrayFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsJSArrayFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -37,7 +38,9 @@ void JSValueRefIsJSArrayFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         if (size <= 0) {
             return;
         }
-        JSHandle<JSTaggedValue> jsArrayTag = JSArray::ArrayCreate(vm->GetJSThread(), JSTaggedNumber(0));
+        FuzzedDataProvider fdp(data, size);
+        const int len = fdp.ConsumeIntegralInRange<int>(0, 1024);
+        JSHandle<JSTaggedValue> jsArrayTag = JSArray::ArrayCreate(vm->GetJSThread(), JSTaggedNumber(len));
         Local<JSValueRef> jsArray = JSNApiHelper::ToLocal<JSTypedArray>(jsArrayTag);
         jsArray->IsJSArray(vm);
     }
@@ -45,7 +48,7 @@ void JSValueRefIsJSArrayFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     return;
 }
 
-void JSValueRefIsJSPrimitiveNumberFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsJSPrimitiveNumberFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -57,7 +60,14 @@ void JSValueRefIsJSPrimitiveNumberFuzzTest([[maybe_unused]]const uint8_t *data, 
         }
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<JSTaggedValue> jstagvalue;
-        JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
+        FuzzedDataProvider fdp(data, size);
+        auto type = fdp.PickValueInArray({
+            PrimitiveType::PRIMITIVE_BOOLEAN,
+            PrimitiveType::PRIMITIVE_NUMBER,
+            PrimitiveType::PRIMITIVE_SYMBOL,
+            PrimitiveType::PRIMITIVE_BIGINT,
+        });
+        JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(type, jstagvalue);
         JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
         Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
         object->IsJSPrimitiveNumber(vm);

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -21,7 +22,7 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-void JSValueRefIsBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSValueRefIsBufferFuzzerTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -30,7 +31,9 @@ void JSValueRefIsBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size_t si
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<BufferRef> bufferRef = BufferRef::New(vm, (int32_t)size);
+    FuzzedDataProvider fdp(data, size);
+    const int32_t len = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
+    Local<BufferRef> bufferRef = BufferRef::New(vm, len);
     bufferRef->IsBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }

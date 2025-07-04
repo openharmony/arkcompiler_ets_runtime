@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "objectrefsetprototype_fuzzer.h"
@@ -20,10 +21,13 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-void ObjectRefSetPrototypeFuzzTest([[maybe_unused]]const uint8_t *data, [[maybe_unused]]size_t size)
+void ObjectRefSetPrototypeFuzzTest(const uint8_t *data, size_t size)
 {
+    FuzzedDataProvider fdp(data, size);
+    const int arkProp = fdp.ConsumeIntegral<int>();
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
+    option.SetArkProperties(arkProp);
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         LOG_ECMA(ERROR) << "Parameter out of range.";

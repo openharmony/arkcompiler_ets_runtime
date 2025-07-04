@@ -29,7 +29,7 @@ ohos_fuzztest("ObjectRefSetPrototypeFuzzTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [ "$js_root:libark_jsruntime" ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
