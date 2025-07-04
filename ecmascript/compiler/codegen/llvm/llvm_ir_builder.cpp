@@ -189,6 +189,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::UDIV, &LLVMIRBuilder::HandleUDiv},
         {OpCode::AND, &LLVMIRBuilder::HandleIntAnd},
         {OpCode::OR, &LLVMIRBuilder::HandleIntOr},
+        {OpCode::FETCH_OR, &LLVMIRBuilder::HandleFetchOr},
         {OpCode::XOR, &LLVMIRBuilder::HandleIntXor},
         {OpCode::LSR, &LLVMIRBuilder::HandleIntLsr},
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
@@ -2046,6 +2047,13 @@ void LLVMIRBuilder::HandleIntOr(GateRef gate)
     VisitIntOr(gate, g0, g1);
 }
 
+void LLVMIRBuilder::HandleFetchOr(GateRef gate)
+{
+    auto g0 = acc_.GetValueIn(gate, 0);
+    auto g1 = acc_.GetValueIn(gate, 1);
+    VisitFetchOr(gate, g0, g1);
+}
+
 void LLVMIRBuilder::HandleIntXor(GateRef gate)
 {
     auto g0 = acc_.GetIn(gate, 0);
@@ -2553,6 +2561,19 @@ void LLVMIRBuilder::VisitIntOr(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = GetLValue(e1);
     LLVMValueRef e2Value = GetLValue(e2);
     LLVMValueRef result = LLVMBuildOr(builder_, e1Value, e2Value, "");
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
+}
+
+void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = GetLValue(e1);
+    LLVMValueRef e2Value = GetLValue(e2);
+    LLVMValueRef result = LLVMBuildAtomicRMW(builder_, LLVMAtomicRMWBinOpOr, e1Value, e2Value,
+                                             LLVMAtomicOrderingMonotonic, false);
     Bind(gate, result);
 
     if (IsLogEnabled()) {

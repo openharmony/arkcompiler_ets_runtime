@@ -1272,6 +1272,16 @@ void SetValueWithBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
+void CMCSetValueWithBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef offset = PtrArgument(2); // 2 : 3rd para
+    GateRef value = TaggedArgument(3); // 3 : 4th para
+    CMCSetValueWithBarrier(glue, obj, offset, value);
+    Return();
+}
+
 void SetNonSValueWithBarrierStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

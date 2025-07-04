@@ -706,7 +706,10 @@ private:
     V(ReadBarrier)                                   \
     V(ComputeStringHashcode)                         \
     V(CopyCallTarget)                                \
-    V(CopyArgvArray)
+    V(CopyArgvArray)                                 \
+    V(MarkRSetCardTable)                             \
+    V(MarkInBuffer)                                  \
+    V(CMCSetValueWithBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

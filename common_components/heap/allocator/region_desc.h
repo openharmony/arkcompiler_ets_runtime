@@ -100,6 +100,8 @@ public:
     // release a large object when the size is greater than 4096KB.
     static constexpr size_t LARGE_OBJECT_RELEASE_THRESHOLD = 4096 * KB;
 
+    static constexpr size_t DEFAULT_REGION_UNIT_MASK = RegionDesc::UNIT_SIZE - 1;
+
     RegionDesc()
     {
         metadata.allocPtr = reinterpret_cast<uintptr_t>(nullptr);
@@ -1214,7 +1216,6 @@ public:
     // this could ONLY used in region that is ALIVE.
     class InlinedRegionMetaData {
     public:
-        static constexpr size_t DEFAULT_REGION_UNIT_MASK = RegionDesc::UNIT_SIZE - 1;
         static InlinedRegionMetaData *GetInlinedRegionMetaData(RegionDesc *region)
         {
             InlinedRegionMetaData *data = GetInlinedRegionMetaData(region->GetRegionStart());
@@ -1398,6 +1399,10 @@ private:
 
     static constexpr uint32_t NULLPTR_IDX = UnitInfo::INVALID_IDX;
     UnitMetadata metadata;
+public:
+    friend constexpr size_t GetMetaDataInRegionOffset();
+    static constexpr size_t REGION_RSET_IN_INLINED_METADATA_OFFSET = MEMBER_OFFSET(InlinedRegionMetaData, regionRSet_);
+    static constexpr size_t REGION_TYPE_IN_INLINED_METADATA_OFFSET = MEMBER_OFFSET(InlinedRegionMetaData, regionType_);
 };
 
 HeapAddress RegionDesc::InlinedRegionMetaData::GetRegionStart() const
@@ -1406,7 +1411,6 @@ HeapAddress RegionDesc::InlinedRegionMetaData::GetRegionStart() const
     DCHECK_CC(addr == regionDesc_->GetRegionStart());
     return addr;
 }
-
 } // namespace common
 
 #endif // COMMON_COMPONENTS_HEAP_ALLOCATOR_REGION_INFO_H

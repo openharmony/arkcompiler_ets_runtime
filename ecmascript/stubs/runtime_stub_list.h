@@ -226,7 +226,9 @@ namespace panda::ecmascript {
     V(GetExternalModuleVar)                    \
     V(ReadBarrier)                             \
     V(CopyCallTarget)                          \
-    V(CopyArgvArray)
+    V(CopyArgvArray)                           \
+    V(MarkRSetCardTable)                       \
+    V(MarkInBuffer)
 
 // When ASM enters C++ via CallNGCRuntime, if the C++ process requires GetGlobalEnv(),
 // the current globalenv in ASM must be set to glue before CallNGCRuntime!

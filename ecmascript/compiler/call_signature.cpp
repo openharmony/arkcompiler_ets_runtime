@@ -948,6 +948,11 @@ DEF_CALL_SIGNATURE(VerifyBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(VerifyBarrier);
 }
 
+DEF_CALL_SIGNATURE(CMCSetValueWithBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(CMCSetValueWithBarrier);
+}
+
 #undef SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON
 
 DEF_CALL_SIGNATURE(NewThisObjectChecked)
@@ -3869,6 +3874,34 @@ DEF_CALL_SIGNATURE(LoadNativeModuleFailed)
     *callSign = LoadNativeModuleFailed;
     std::array<VariableType, 1> params = { // 1 : 1 input parameters
         VariableType::JS_ANY(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(MarkRSetCardTable)
+{
+    // 3 : 3 input parameters
+    CallSignature MarkRSetCardTable("MarkRSetCardTable", 0, 1, ArgumentsOrder::DEFAULT_ORDER,
+                                         VariableType::BOOL()); // 2 : 2 input parameters
+    *callSign = MarkRSetCardTable;
+    std::array<VariableType, 1> params = { // 2 : 2 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(MarkInBuffer)
+{
+    // 3 : 3 input parameters
+    CallSignature MarkInBuffer("MarkInBuffer", 0, 1, ArgumentsOrder::DEFAULT_ORDER,
+                                         VariableType::BOOL());
+    *callSign = MarkInBuffer;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

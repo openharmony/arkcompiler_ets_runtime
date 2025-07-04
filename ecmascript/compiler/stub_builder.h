@@ -253,6 +253,7 @@ public:
     GateRef Int32Xor(GateRef x, GateRef y);
     GateRef FixLoadType(GateRef x);
     GateRef Int64Or(GateRef x, GateRef y);
+    GateRef Int64FetchOr(GateRef x, GateRef y);
     GateRef IntPtrOr(GateRef x, GateRef y);
     GateRef Int64And(GateRef x, GateRef y);
     GateRef Int64Xor(GateRef x, GateRef y);
@@ -811,6 +812,10 @@ public:
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void VerifyBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
+    GateRef GetCMCRegionRSet(GateRef obj);
+    GateRef GetCMCRegionType(GateRef obj);
+    GateRef IsInYoungSpace(GateRef regionType);
+    void CMCSetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);
@@ -1306,6 +1311,7 @@ private:
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
     GateRef globalEnv_ {Gate::InvalidGateRef};
+
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

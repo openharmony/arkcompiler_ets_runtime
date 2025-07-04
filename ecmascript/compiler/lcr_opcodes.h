@@ -32,6 +32,7 @@ namespace panda::ecmascript::kungfu {
     V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                                                         \
+    V(FetchOr, FETCH_OR, GateFlags::NONE_FLAG, 0, 1, 2)                                              \
     V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \

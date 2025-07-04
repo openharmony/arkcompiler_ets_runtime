@@ -48,6 +48,8 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "common_components/heap/allocator/region_desc.h"
+#include "common_components/mutator/mutator.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_locale.h"
@@ -4992,6 +4994,19 @@ JSTaggedValue RuntimeStubs::GetExternalModuleVar(uintptr_t argGlue, JSFunction *
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     return ModuleManager::GetExternalModuleVarFastPathForJIT(thread, index, jsFunc);
+}
+
+bool RuntimeStubs::MarkRSetCardTable(BaseObject* obj)
+{
+    common::RegionDesc* region = common::RegionDesc::GetAliveRegionDescAt(reinterpret_cast<common::MAddress>(obj));
+    return region->MarkRSetCardTable(obj);
+}
+
+void RuntimeStubs::MarkInBuffer(BaseObject* ref)
+{
+    ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~(common::Barrier::TAG_WEAK));
+    common::Mutator* mutator = common::Mutator::GetMutator();
+    mutator->RememberObjectInSatbBuffer(ref);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)
