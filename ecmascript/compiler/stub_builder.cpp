@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/allocator/region_desc.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
@@ -32,6 +31,7 @@
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/transitions_dictionary.h"
+#include "common_components/heap/allocator/region_desc.h"
 
 namespace panda::ecmascript::kungfu {
 void StubBuilder::Jump(Label *label)
@@ -1926,11 +1926,11 @@ GateRef StubBuilder::GetCMCRegionType(GateRef obj)
 GateRef StubBuilder::IsInYoungSpace(GateRef regionType)
 {
     auto env = GetEnvironment();
-    GateRef ret  = LogicOrBuilder(env).
-        Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::THREAD_LOCAL_REGION)))).
-        Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::RECENT_FULL_REGION)))).
-        Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::FROM_REGION)))).
-        Done();
+    GateRef ret = LogicOrBuilder(env)
+        .Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::THREAD_LOCAL_REGION))))
+        .Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::RECENT_FULL_REGION))))
+        .Or(Int8Equal(regionType, Int8(static_cast<int8_t>(common::RegionDesc::RegionType::FROM_REGION))))
+        .Done();
     return ret;
 }
 
@@ -1943,8 +1943,7 @@ void StubBuilder::CMCSetValueWithBarrier(GateRef glue, GateRef obj, [[maybe_unus
 
     GateRef gcPhase = LoadPrimitive(VariableType::INT8(), glue,
                                     Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false) +
-                                          JSThread::CMCGCPhaseBits::START_BIT / BITS_PER_BYTE));
-
+                                        JSThread::CMCGCPhaseBits::START_BIT / BITS_PER_BYTE));
     Label checkOldToYoung(env);
     Label markRSet(env);
     Label notMarkRSet(env);
@@ -1975,8 +1974,27 @@ void StubBuilder::CMCSetValueWithBarrier(GateRef glue, GateRef obj, [[maybe_unus
         BRANCH_UNLIKELY(isOldToYoung, &markRSet, &notMarkRSet);
         Bind(&markRSet);
         {
-            CallNGCRuntime(glue, RTSTUB_ID(MarkRSetCardTable), {obj});
-            Jump(&notMarkRSet);
+            Label markBit(env);
+            GateRef regionBase = IntPtrAnd(TaggedCastToIntPtr(obj),
+                IntPtr(~static_cast<int64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
+            GateRef objOffset = PtrSub(TaggedCastToIntPtr(obj), regionBase);
+            GateRef rset = GetCMCRegionRSet(obj);
+            GateRef cardIdx = IntPtrDiv(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
+                                        IntPtr(common::kBitsPerWord));
+            GateRef headMaskBitStart = IntPtrMod(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
+                                                 IntPtr(common::kBitsPerWord));
+            GateRef headMaskBits = Int64LSL(Int64(1), headMaskBitStart);
+            GateRef cardOffset = PtrMul(cardIdx, IntPtr(common::kBytesPerWord));
+            GateRef cardTable = LoadPrimitive(VariableType::NATIVE_POINTER(), rset,
+                                              IntPtr(common::RegionRSet::CARD_TABLE_OFFSET_IN_RSET));
+            GateRef card = LoadPrimitive(VariableType::INT64(), cardTable, cardOffset);
+            GateRef isMarked = Int64NotEqual(Int64And(card, headMaskBits), Int64(0));
+            BRANCH_NO_WEIGHT(isMarked, &notMarkRSet, &markBit);
+            Bind(&markBit);
+            {
+                Int64FetchOr(PtrAdd(cardTable, cardOffset), headMaskBits);
+                Jump(&notMarkRSet);
+            }
         }
     }
     Bind(&notMarkRSet);

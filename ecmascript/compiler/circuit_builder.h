@@ -77,6 +77,7 @@ class BuiltinLowering;
     V(Int64Div, Sdiv, MachineType::I64)                                   \
     V(DoubleDiv, Fdiv, MachineType::F64)                                  \
     V(Int32Mod, Smod, MachineType::I32)                                   \
+    V(IntPtrMod, Smod, MachineType::I64)                                  \
     V(DoubleMod, Smod, MachineType::F64)                                  \
     V(BitAnd, And, MachineType::I1)                                       \
     V(Int8And, And, MachineType::I8)                                      \

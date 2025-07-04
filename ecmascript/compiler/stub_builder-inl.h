@@ -498,6 +498,11 @@ inline GateRef StubBuilder::IntPtrDiv(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrDiv(x, y);
 }
 
+inline GateRef StubBuilder::IntPtrMod(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrMod(x, y);
+}
+
 inline GateRef StubBuilder::Int32Min(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32Min(x, y);

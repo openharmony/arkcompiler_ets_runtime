@@ -1568,7 +1568,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e2));
     auto machineType = acc_.GetMachineType(gate);
-    if (machineType == MachineType::I32) {
+    if (machineType == MachineType::I32 || machineType == MachineType::I64) {
         result = LLVMBuildSRem(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFRem(builder_, e1Value, e2Value, "");
@@ -2573,7 +2573,7 @@ void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = GetLValue(e1);
     LLVMValueRef e2Value = GetLValue(e2);
     LLVMValueRef result = LLVMBuildAtomicRMW(builder_, LLVMAtomicRMWBinOpOr, e1Value, e2Value,
-                                             LLVMAtomicOrderingMonotonic, false);
+                                             LLVMAtomicOrderingAcquireRelease, false);
     Bind(gate, result);
 
     if (IsLogEnabled()) {

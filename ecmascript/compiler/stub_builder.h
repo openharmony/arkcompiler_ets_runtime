@@ -235,6 +235,7 @@ public:
     GateRef DoubleMod(GateRef x, GateRef y);
     GateRef Int64Div(GateRef x, GateRef y);
     GateRef IntPtrDiv(GateRef x, GateRef y);
+    GateRef IntPtrMod(GateRef x, GateRef y);
     GateRef Int32Min(GateRef x, GateRef y);
     GateRef Int32Max(GateRef x, GateRef y);
     // bit operation
@@ -253,6 +254,7 @@ public:
     GateRef Int32Xor(GateRef x, GateRef y);
     GateRef FixLoadType(GateRef x);
     GateRef Int64Or(GateRef x, GateRef y);
+    // FetchOr with acquire and release
     GateRef Int64FetchOr(GateRef x, GateRef y);
     GateRef IntPtrOr(GateRef x, GateRef y);
     GateRef Int64And(GateRef x, GateRef y);
@@ -1311,7 +1313,6 @@ private:
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
     GateRef globalEnv_ {Gate::InvalidGateRef};
-
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H
