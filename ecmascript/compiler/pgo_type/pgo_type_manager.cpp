@@ -27,7 +27,9 @@ void PGOTypeManager::Iterate(RootVisitor &v)
     }
     aotSnapshot_.Iterate(v);
     for (auto &iter : hclassInfoLocal_) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
+        if (iter.GetRawData() != 0) {
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
+        }
     }
 }
 

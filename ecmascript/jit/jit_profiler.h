@@ -160,8 +160,8 @@ private:
     bool IsTypedArrayRootHClass(JSType jsType, OnHeapMode mode, JSHClass *receiver);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalId);
     bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
-    bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
-
+    bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset,
+                                     JSHClass *receiver, JSHClass *hold, bool isNonExist);
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
 		            JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,

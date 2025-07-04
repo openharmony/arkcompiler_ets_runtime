@@ -37,6 +37,11 @@ public:
     {
         return false;
     }
+
+    bool SupportNonExistIC() const override
+    {
+        return false;
+    }
    
     kungfu::LazyDeoptAllDependencies *GetDependencies() const override
     {

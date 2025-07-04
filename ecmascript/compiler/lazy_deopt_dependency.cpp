@@ -104,6 +104,12 @@ bool LazyDeoptAllDependencies::DependOnNotPrototype(JSHClass *hclass)
     return false;
 }
 
+// static
+bool LazyDeoptAllDependencies::CheckStableHClass(JSHClass *hclass)
+{
+    return StableHClassDependency::IsValid(hclass);
+}
+
 bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
 {
     LazyDeoptDependency *dependency = new StableHClassDependency(hclass);
@@ -114,9 +120,9 @@ bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
     return false;
 }
 
-bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHClass *receiverHClass,
-                                                        JSHClass *holderHClass,
-                                                        GlobalEnv *globalEnv)
+bool LazyDeoptAllDependencies::InitializeProtoChainForDependency(JSThread *thread, JSHClass *receiverHClass,
+                                                                 JSHClass *&holderHClass, GlobalEnv *globalEnv,
+                                                                 JSTaggedValue &current)
 {
     // For "stobjbyname", the holder may not the actual holder.
     // So when receiverHClass == holderHClass,
@@ -124,7 +130,6 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHCla
     if (receiverHClass == holderHClass) {
         holderHClass = nullptr;
     }
-    JSTaggedValue current;
     if (receiverHClass->IsCompositeHClass()) {
         if (receiverHClass->IsString()) {
             ASSERT(globalEnv != nullptr);
@@ -135,6 +140,40 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHCla
         }
     } else {
         current = receiverHClass->GetPrototype(thread);
+    }
+    return true;
+}
+
+// static
+bool LazyDeoptAllDependencies::CheckStableProtoChain(JSThread *thread, JSHClass *receiverHClass,
+                                                     JSHClass *holderHClass,
+                                                     GlobalEnv *globalEnv)
+{
+    JSTaggedValue current;
+    if (!InitializeProtoChainForDependency(thread, receiverHClass, holderHClass, globalEnv, current)) {
+        return false;
+    }
+    bool success = true;
+    while (current.IsHeapObject()) {
+        auto currentHC = current.GetTaggedObject()->GetClass();
+        success &= CheckStableHClass(currentHC);
+        // We only need to ensure Stable of the prototype chain
+        // from the receiver's prototype to the holder.
+        if (currentHC == holderHClass) {
+            break;
+        }
+        current = currentHC->GetPrototype(thread);
+    }
+    return success;
+}
+
+bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHClass *receiverHClass,
+                                                        JSHClass *holderHClass,
+                                                        GlobalEnv *globalEnv)
+{
+    JSTaggedValue current;
+    if (!InitializeProtoChainForDependency(thread, receiverHClass, holderHClass, globalEnv, current)) {
+        return false;
     }
     bool success = true;
     while (current.IsHeapObject()) {

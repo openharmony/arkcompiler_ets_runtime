@@ -70,6 +70,11 @@ public:
         return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
 
+    bool SupportNonExistIC() const override
+    {
+        return true;
+    }
+
     kungfu::LazyDeoptAllDependencies *GetDependencies() const override
     {
         return dependencies_;
