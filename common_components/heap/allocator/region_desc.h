@@ -591,7 +591,7 @@ public:
     void InitFreeUnits()
     {
         if (metadata.regionRSet != nullptr) {
-            delete metadata.regionRSet;
+            RegionRSet::DestroyRegionRSet(metadata.regionRSet);
             metadata.regionRSet = nullptr;
         }
         size_t nUnit = GetUnitCount();
@@ -1393,7 +1393,7 @@ private:
         DCHECK_CC(uClass != UnitRole::SUBORDINATE_UNIT);   //fixme: remove `UnitRole::SUBORDINATE_UNIT`
         InitRegionDesc(nUnit, uClass);
         DCHECK_CC(metadata.regionRSet == nullptr);
-        metadata.regionRSet = new RegionRSet(GetRegionBaseSize());
+        metadata.regionRSet = RegionRSet::CreateRegionRSet(GetRegionBaseSize());
         InitMetaData(nUnit, uClass);
         std::atomic_thread_fence(std::memory_order_seq_cst);
     }

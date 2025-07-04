@@ -620,9 +620,9 @@ inline GateRef StubBuilder::Int64Or(GateRef x, GateRef y)
     return env_->GetBuilder()->Int64Or(x, y);
 }
 
-inline GateRef StubBuilder::Int64FetchOr(GateRef x, GateRef y)
+inline GateRef StubBuilder::Int64FetchOr(GateRef x, GateRef y, MemoryAttribute mAttr)
 {
-    return env_->GetBuilder()->FetchOr(x, y);
+    return env_->GetBuilder()->FetchOr(x, y, mAttr);
 }
 
 inline GateRef StubBuilder::IntPtrOr(GateRef x, GateRef y)

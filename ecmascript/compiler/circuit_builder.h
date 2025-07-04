@@ -987,7 +987,7 @@ public:
 
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                MemoryAttribute mAttr = MemoryAttribute::Default());
-    GateRef FetchOr(GateRef ptr, GateRef value);
+    GateRef FetchOr(GateRef ptr, GateRef value, MemoryAttribute mAttr);
     void StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, GateRef compValue,
                      MemoryAttribute mAttr = MemoryAttribute::Default());
     void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
