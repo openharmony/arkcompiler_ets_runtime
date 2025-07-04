@@ -185,6 +185,10 @@ public:
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
+    GateRef CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv, int index, const std::vector<GateRef>& args);
+    GateRef CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv, int index, GateRef argc, GateRef argv);
+    GateRef CallRuntimeWithCurrentEnv(GateRef glue, GateRef currentEnv, int index, const std::vector<GateRef>& args);
+    
     GateRef CallNGCRuntime(GateRef glue, int index,
                            const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
     GateRef FastCallOptimized(GateRef glue, GateRef code,
@@ -481,6 +485,8 @@ public:
     GateRef IsMutantTaggedArray(GateRef glue, GateRef elements);
     GateRef IsJSObject(GateRef glue, GateRef obj);
     GateRef IsGlobalEnv(GateRef glue, GateRef obj);
+    GateRef IsLexicalEnv(GateRef glue, GateRef obj);
+    GateRef IsSFunctionEnv(GateRef glue, GateRef obj);
     GateRef IsEnumerable(GateRef attr);
     GateRef IsWritable(GateRef attr);
     GateRef IsConfigable(GateRef attr);
@@ -931,8 +937,8 @@ public:
     GateRef GetGlobalEnv(GateRef glue);
     GateRef GetGlobalObject(GateRef glue, GateRef globalEnv);
     GateRef GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv);
-    void SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv);
     void SetGlueGlobalEnv(GateRef glue, GateRef globalEnv);
+    void SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv);
     GateRef GetMethodFromFunction(GateRef glue, GateRef function);
     GateRef GetModuleFromFunction(GateRef glue, GateRef function);
     GateRef GetLengthFromFunction(GateRef function);

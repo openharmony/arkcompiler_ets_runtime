@@ -155,7 +155,8 @@ GateRef BuiltinsStubBuilder::GetCallArg2(GateRef numArg)
     return res;
 }
 
-GateRef BuiltinsStubBuilder::GetGlobalEnvFromFunction(GateRef glue, GateRef func) {
+GateRef BuiltinsStubBuilder::GetGlobalEnvFromFunction(GateRef glue, GateRef func)
+{
     auto env0 = GetEnvironment();
     Label subentry(env0);
     env0->SubCfgEntry(&subentry);
@@ -164,12 +165,11 @@ GateRef BuiltinsStubBuilder::GetGlobalEnvFromFunction(GateRef glue, GateRef func
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef lexicalEnv = GetFunctionLexicalEnv(glue, func);
     {
-        ASM_ASSERT(GET_MESSAGE_STRING_ID(LexicalEnvIsUndefined),
-                   BitOr(TaggedIsSharedObj(glue, func),
-                       LogicAndBuilder(env0).
-                       And(TaggedIsHeapObject(lexicalEnv)).
-                       And(IsGlobalEnv(glue, lexicalEnv)).
-                       Done()));
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(LexicalEnvIsInvalid),
+            BitOr(TaggedIsUndefined(lexicalEnv),
+                  LogicAndBuilder(env0).And(TaggedIsHeapObject(lexicalEnv))
+                                       .And(IsGlobalEnv(glue, lexicalEnv))
+                                       .Done()));
     }
     result = lexicalEnv;
     BRANCH_UNLIKELY(TaggedIsUndefined(lexicalEnv), &isUndefined, &exit);

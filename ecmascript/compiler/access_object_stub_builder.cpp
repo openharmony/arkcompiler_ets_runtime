@@ -528,9 +528,8 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        SetGlueGlobalEnv(glue, globalEnv);
-        result = CallRuntime(glue, RTSTUB_ID(TryLdGlobalICByName),
-                             { profileTypeInfo, propKey, IntToTaggedInt(slotId) });
+        result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(TryLdGlobalICByName),
+                                          { profileTypeInfo, propKey, IntToTaggedInt(slotId) });
         Jump(&exit);
     }
 
@@ -566,8 +565,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
         BRANCH(TaggedIsUndefined(record), &notFoundInRecord, &foundInRecord);
         Bind(&foundInRecord);
         {
-            SetGlueGlobalEnv(glue, globalEnv);
-            result = CallRuntime(glue, RTSTUB_ID(TryUpdateGlobalRecord), { propKey, value });
+            result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(TryUpdateGlobalRecord), { propKey, value });
             Jump(&exit);
         }
         Bind(&notFoundInRecord);
@@ -579,14 +577,12 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
             BRANCH(TaggedIsHole(*result), &notFoundInGlobal, &isFoundInGlobal);
             Bind(&isFoundInGlobal);
             {
-                SetGlueGlobalEnv(glue, globalEnv);
-                result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, value });
+                result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StGlobalVar), { propKey, value });
                 Jump(&exit);
             }
             Bind(&notFoundInGlobal);
             {
-                SetGlueGlobalEnv(glue, globalEnv);
-                result = CallRuntime(glue, RTSTUB_ID(ThrowReferenceError), { propKey });
+                result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(ThrowReferenceError), { propKey });
                 Jump(&exit);
             }
         }
@@ -595,10 +591,9 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
-        SetGlueGlobalEnv(glue, globalEnv);
-        result = CallRuntime(glue, RTSTUB_ID(StoreMiss),
-                             { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
-                               IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalTryStoreIC))) });
+        result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StoreMiss),
+            { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
+            IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalTryStoreIC))) });
         Jump(&exit);
     }
 
@@ -636,9 +631,8 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
     {
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        SetGlueGlobalEnv(glue, globalEnv);
-        result = CallRuntime(glue, RTSTUB_ID(LdGlobalICVar),
-                             { globalObject, propKey, profileTypeInfo, IntToTaggedInt(slotId) });
+        result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdGlobalICVar),
+                                          { globalObject, propKey, profileTypeInfo, IntToTaggedInt(slotId) });
         Jump(&exit);
     }
 
@@ -668,18 +662,16 @@ GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, cons
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         // IR later
-        SetGlueGlobalEnv(glue, globalEnv);
-        result = CallRuntime(glue, RTSTUB_ID(StGlobalVar), { propKey, value });
+        result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StGlobalVar), { propKey, value });
         Jump(&exit);
     }
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
-        SetGlueGlobalEnv(glue, globalEnv);
-        result = CallRuntime(glue, RTSTUB_ID(StoreMiss),
-                             { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
-                               IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalStoreIC))) });
+        result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StoreMiss),
+            { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
+            IntToTaggedInt(Int32(static_cast<int>(ICKind::NamedGlobalStoreIC))) });
         Jump(&exit);
     }
 

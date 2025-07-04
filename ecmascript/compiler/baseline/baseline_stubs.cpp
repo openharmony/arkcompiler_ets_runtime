@@ -368,8 +368,8 @@ void BaselineLdaStrID16StubBuilder::GenerateCircuit()
 void BaselineLdsymbolStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdsymbol, GLUE));
-
-    GateRef result = CallRuntime(glue, RTSTUB_ID(GetSymbolFunction), {});
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef result = GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
 
     Return(result);
 }

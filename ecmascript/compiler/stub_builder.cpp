@@ -13054,12 +13054,19 @@ GateRef StubBuilder::ComputeStringHashcode(GateRef glue, GateRef str)
 
 GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
 {
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrenEnvIsUndefined), BoolNot(TaggedIsUndefined(currentEnv)));
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label fromGlue(env);
-    Label exit(env);
+    auto env0 = GetEnvironment();
+    {
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentEnvIsInvalid),
+            LogicAndBuilder(env0).And(TaggedIsHeapObject(currentEnv))
+                                 .And(LogicOrBuilder(env0).Or(IsGlobalEnv(glue, currentEnv))
+                                      .Or(IsLexicalEnv(glue, currentEnv))
+                                      .Or(IsSFunctionEnv(glue, currentEnv)).Done())
+                                 .Done());
+    }
+    Label entry(env0);
+    env0->SubCfgEntry(&entry);
+    Label fromGlue(env0);
+    Label exit(env0);
     DEFVARIABLE(globalEnv, VariableType::JS_ANY(), Undefined());
 
     globalEnv = GetValueFromTaggedArray(glue, currentEnv, Int32(BaseEnv::GLOBAL_ENV_INDEX));
@@ -13071,27 +13078,7 @@ GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
     }
     Bind(&exit);
     auto ret = *globalEnv;
-    env->SubCfgExit();
+    env0->SubCfgExit();
     return ret;
-}
-
-void StubBuilder::SetGlueGlobalEnvFromCurrentEnv(GateRef glue, GateRef currentEnv)
-{
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrenEnvIsUndefined), BoolNot(TaggedIsUndefined(currentEnv)));
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label setGlue(env);
-    Label exit(env);
-    GateRef globalEnv = GetValueFromTaggedArray(glue, currentEnv, Int32(BaseEnv::GLOBAL_ENV_INDEX));
-    BRANCH_UNLIKELY(TaggedIsHole(globalEnv), &exit, &setGlue);
-    Bind(&setGlue);
-    {
-        GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetCurrentEnvOffset(env->IsArch32Bit()));
-        StoreWithoutBarrier(VariableType::JS_POINTER(), glue, globalEnvOffset, globalEnv);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    env->SubCfgExit();
 }
 }  // namespace panda::ecmascript::kungfu
