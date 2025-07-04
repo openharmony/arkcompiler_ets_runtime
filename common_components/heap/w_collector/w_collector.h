@@ -209,6 +209,7 @@ private:
     void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
     void ParallelRemarkAndPreforward(WorkStack& workStack);
     void Preforward();
+    void ConcurrentPreforward();
     void PreforwardStaticWeakRoots();
     void PreforwardConcurrencyModelRoots();
 
