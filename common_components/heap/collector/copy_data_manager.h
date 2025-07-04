@@ -90,7 +90,9 @@ class HeapBitmapManager {
             allocSpinLock.Unlock();
             return startAddr;
 #else
-            return allocZone_[type].zonePosition.fetch_add(sz);
+            auto address = allocZone_[type].zonePosition.fetch_add(sz);
+            MemorySet(address, sz, 0, sz);
+            return address;
 #endif
         }
         void ReleaseMemory()
@@ -99,10 +101,8 @@ class HeapBitmapManager {
             LOGE_IF(UNLIKELY_CC(!VirtualFree(reinterpret_cast<void*>(startAddress_), size_, MEM_DECOMMIT))) <<
                 "VirtualFree failed in ReturnPage, errno: " << GetLastError();
 #elif defined(__APPLE__)
-            MemorySet(startAddress_, size_, 0, size_);
             (void)madvise(reinterpret_cast<void*>(startAddress_), size_, MADV_DONTNEED);
 #else
-            MemorySet(startAddress_, size_, 0, size_);
             DLOG(REGION, "clear copy-data @[%#zx+%zu, %#zx)", startAddress_, size_, startAddress_ + size_);
             if (madvise(reinterpret_cast<void*>(startAddress_), size_, MADV_DONTNEED) == 0) {
                 DLOG(REGION, "release copy-data @[%#zx+%zu, %#zx)", startAddress_, size_, startAddress_ + size_);
