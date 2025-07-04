@@ -438,7 +438,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
     switch (space) {
         case SerializedObjectSpace::REGULAR_SPACE: {
             if (currentRegularObjectAddr_ + objSize >
-                    currentRegularRegionBeginAddr_ + common::SerializeUtils::GetRegionSize()) {
+                    currentRegularRegionBeginAddr_ + common::Heap::GetNormalRegionAvailableSize()) {
                 ASSERT(regularRegionIndex_ < regionVector_.size());
                 currentRegularObjectAddr_ = regionVector_[regularRegionIndex_++];
                 currentRegularRegionBeginAddr_ = currentRegularObjectAddr_;
@@ -449,7 +449,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
         }
         case SerializedObjectSpace::PIN_SPACE: {
             if (currentPinObjectAddr_ + objSize >
-                    currentPinRegionBeginAddr_ + common::SerializeUtils::GetRegionSize()) {
+                    currentPinRegionBeginAddr_ + common::Heap::GetNormalRegionAvailableSize()) {
                 ASSERT(pinRegionIndex_ < regionVector_.size());
                 currentPinObjectAddr_ = regionVector_[pinRegionIndex_++];
                 currentPinRegionBeginAddr_ = currentPinObjectAddr_;
@@ -690,7 +690,7 @@ void BaseDeserializer::AllocateToDifferentSpaces()
 
 void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 {
-    if (regularSpaceSize <= common::SerializeUtils::GetRegionSize()) {
+    if (regularSpaceSize <= common::Heap::GetNormalRegionAvailableSize()) {
         currentRegularObjectAddr_ = common::HeapAllocator::AllocateNoGC(regularSpaceSize);
     } else {
         currentRegularObjectAddr_ = AllocateMultiCMCRegion(regularSpaceSize, regularRegionIndex_,
@@ -703,7 +703,7 @@ void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 }
 void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 {
-    if (pinSpaceSize <= common::SerializeUtils::GetRegionSize()) {
+    if (pinSpaceSize <= common::Heap::GetNormalRegionAvailableSize()) {
         currentPinObjectAddr_ = common::HeapAllocator::AllocatePinNoGC(pinSpaceSize);
     } else {
         currentPinObjectAddr_ = AllocateMultiCMCRegion(pinSpaceSize, pinRegionIndex_, RegionType::PinRegion);
@@ -716,12 +716,13 @@ void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 
 uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType)
 {
-    size_t regionSize = common::SerializeUtils::GetRegionSize();
-    ASSERT(spaceObjSize > regionSize);
+    constexpr size_t REGION_SIZE = common::Heap::GetNormalRegionAvailableSize();
+    ASSERT(REGION_SIZE != 0);
+    ASSERT(spaceObjSize > REGION_SIZE);
     regionIndex = regionVector_.size();
-    size_t regionAlignedSize = AlignUp(spaceObjSize, regionSize);
-    ASSERT(regionSize != 0);
-    size_t regionNum = regionAlignedSize / regionSize;
+    size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
+    ASSERT(regionAlignedSize % REGION_SIZE == 0);
+    size_t regionNum = regionAlignedSize / REGION_SIZE;
     uintptr_t firstRegionAddr = 0U;
     std::vector<size_t> regionRemainSizeVector;
     size_t regionRemainSizeIndex = 0;
@@ -748,11 +749,11 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
         // fill region not used size
         if (regionNum == 1) {  // last region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
-            FreeObject::FillFreeObject(heap_, regionAddr + regionSize - lastRegionRemainSize,
+            FreeObject::FillFreeObject(heap_, regionAddr + REGION_SIZE - lastRegionRemainSize,
                                        lastRegionRemainSize);
         } else {
-            auto regionAliveObjSize = regionSize - regionRemainSizeVector[regionRemainSizeIndex++];
-            FreeObject::FillFreeObject(heap_, regionAddr + regionAliveObjSize, regionSize - regionAliveObjSize);
+            auto regionAliveObjSize = REGION_SIZE - regionRemainSizeVector[regionRemainSizeIndex++];
+            FreeObject::FillFreeObject(heap_, regionAddr + regionAliveObjSize, REGION_SIZE - regionAliveObjSize);
         }
         regionNum--;
     }

@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/mem/space.h"
+
+#include "common_components/heap/heap.h"
+#include "common_interfaces/heap/heap_allocator.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
-#include "ecmascript/mem/space.h"
 #include "ecmascript/platform/os.h"
-#include "common_interfaces/heap/heap_allocator.h"
 
 namespace panda::ecmascript {
 Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
@@ -130,7 +132,8 @@ void* HugeMachineCodeSpace::AllocateFortForCMC(size_t objectSize, JSThread *thre
     ASSERT(pDesc != nullptr);
     MachineCodeDesc *desc = reinterpret_cast<MachineCodeDesc *>(pDesc);
 
-    size_t mutableSize = AlignUp(objectSize - desc->instructionsSize, PageSize());
+    constexpr size_t REGION_HEADER_SIZE = common::Heap::GetNormalRegionHeaderSize();
+    size_t mutableSize = AlignUp(objectSize + REGION_HEADER_SIZE - desc->instructionsSize, PageSize());
     size_t fortSize = AlignUp(desc->instructionsSize, PageSize());
     size_t allocSize = mutableSize + fortSize;
     uintptr_t machineCodeObj = static_cast<uintptr_t>(
@@ -141,7 +144,7 @@ void* HugeMachineCodeSpace::AllocateFortForCMC(size_t objectSize, JSThread *thre
         return 0;
     }
 
-    desc->instructionsAddr = machineCodeObj + mutableSize;
+    desc->instructionsAddr = machineCodeObj - REGION_HEADER_SIZE + mutableSize;
 
     // Enable JitFort rights control
     [[maybe_unused]] void *addr = PageMapExecFortSpace((void *)desc->instructionsAddr, fortSize,

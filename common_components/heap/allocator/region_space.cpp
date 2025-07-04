@@ -85,7 +85,7 @@ HeapAddress RegionSpace::TryAllocateOnce(size_t allocSize, AllocType allocType)
     if (UNLIKELY_CC(allocType == AllocType::READ_ONLY_OBJECT)) {
         return regionManager_.AllocReadOnly(allocSize);
     }
-    if (UNLIKELY_CC(allocSize >= regionManager_.GetLargeObjectThreshold())) {
+    if (UNLIKELY_CC(allocSize >= RegionDesc::LARGE_OBJECT_DEFAULT_THRESHOLD)) {
         return regionManager_.AllocLarge(allocSize);
     }
     if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
@@ -153,7 +153,7 @@ uintptr_t RegionSpace::AllocRegion()
     youngSpace_.AddFullRegion(region);
 
     uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionSize());
+    uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());
     ASSERT(addr != 0);
 
     return start;
@@ -183,7 +183,7 @@ uintptr_t RegionSpace::AllocPinnedRegion()
     regionManager_.AddRecentPinnedRegion(region);
 
     uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionSize());
+    uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());
     ASSERT(addr != 0);
 
     return start;

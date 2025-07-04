@@ -34,6 +34,26 @@ class CollectorResources;
 
 class Heap {
 public:
+    // These need to keep same with that in `RegionDesc`
+    static constexpr size_t NORMAL_UNIT_SIZE = 256 * 1024;
+    static constexpr size_t NORMAL_UNIT_HEADER_SIZE = AlignUp<size_t>(2 * sizeof(void *) + sizeof(uint8_t), 8);
+    static constexpr size_t NORMAL_UNIT_AVAILABLE_SIZE = NORMAL_UNIT_SIZE - NORMAL_UNIT_HEADER_SIZE;
+
+    static constexpr size_t GetNormalRegionSize()
+    {
+        return NORMAL_UNIT_SIZE;
+    }
+
+    static constexpr size_t GetNormalRegionHeaderSize()
+    {
+        return NORMAL_UNIT_HEADER_SIZE;
+    }
+
+    static constexpr size_t GetNormalRegionAvailableSize()
+    {
+        return NORMAL_UNIT_AVAILABLE_SIZE;
+    }
+
     static void throwOOM()
     {
         // Maybe we need to add heapdump logic here

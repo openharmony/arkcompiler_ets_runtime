@@ -28,7 +28,6 @@ namespace common {
 static constexpr size_t kBitsPerByte = 8;
 static constexpr size_t kMarkedBytesPerBit = 8;
 static constexpr size_t kBitsPerWord = sizeof(uint64_t) * kBitsPerByte;
-class RegionDesc;
 struct RegionBitmap {
     static constexpr uint8_t factor = 16;
     std::atomic<uint16_t> partLiveBytes[factor];
@@ -41,6 +40,7 @@ struct RegionBitmap {
 
     static size_t GetRegionBitmapSize(size_t regionSize)
     {
+        CHECK_CC(regionSize % (kMarkedBytesPerBit * kBitsPerWord) == 0);
         return sizeof(RegionBitmap) + ((regionSize / (kMarkedBytesPerBit * kBitsPerWord)) * sizeof(uint64_t));
     }
 
@@ -70,13 +70,6 @@ struct RegionBitmap {
         bool ret = ((markWords[headWordIdx].load() & mask) != 0);
         return ret;
     }
-};
-struct RegionLiveDesc {
-    static constexpr HeapAddress TEMPORARY_PTR = 0x1234;
-    RegionDesc* relatedRegion = nullptr;
-    RegionBitmap* markBitmap = nullptr;
-    RegionBitmap* resurrectBitmap = nullptr;
-    RegionBitmap* enqueueBitmap = nullptr;
 };
 } // namespace common
 

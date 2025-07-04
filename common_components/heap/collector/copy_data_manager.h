@@ -43,7 +43,6 @@ class HeapBitmapManager {
     public:
         struct Zone {
             enum ZoneType : size_t {
-                LIVE_INFO,
                 BIT_MAP,
                 ZONE_TYPE_CNT,
             };
@@ -60,12 +59,6 @@ class HeapBitmapManager {
         void InitZones(size_t unitCount)
         {
             uintptr_t start = startAddress_;
-            allocZone_[Zone::ZoneType::LIVE_INFO].zoneStartAddress = start;
-            allocZone_[Zone::ZoneType::LIVE_INFO].zonePosition = start;
-#if defined(_WIN64)
-            lastCommitEndAddr[Zone::ZoneType::LIVE_INFO].store(start);
-#endif
-            start += unitCount * sizeof(RegionLiveDesc);
             allocZone_[Zone::ZoneType::BIT_MAP].zoneStartAddress = start;
             allocZone_[Zone::ZoneType::BIT_MAP].zonePosition = start;
 #if defined(_WIN64)
@@ -157,12 +150,6 @@ public:
         return bitmap;
     }
 
-    RegionLiveDesc* AllocateRegionLiveDesc()
-    {
-        return reinterpret_cast<RegionLiveDesc*>(
-            heapBitmap_[0].Allocate(Memory::Zone::ZoneType::LIVE_INFO, sizeof(RegionLiveDesc)));
-    }
-
 private:
     size_t GetHeapBitmapSize(size_t heapSize)
     {
@@ -174,8 +161,7 @@ private:
         constexpr uint8_t bitMarksSize = 64;
         // 3 bitmaps for each region: markBitmap,resurrectBitmap, enqueueBitmap.
         constexpr uint8_t nBitmapTypes = 3;
-        return unitCnt * sizeof(RegionLiveDesc) +
-               unitCnt * (sizeof(RegionBitmap) + (REGION_UNIT_SIZE / bitMarksSize)) * nBitmapTypes;
+        return unitCnt * (sizeof(RegionBitmap) + (REGION_UNIT_SIZE / bitMarksSize)) * nBitmapTypes;
     }
 
     Memory heapBitmap_[1];
