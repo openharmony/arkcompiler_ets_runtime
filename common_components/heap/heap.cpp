@@ -94,6 +94,7 @@ public:
     size_t GetCurrentCapacity() const override;
     size_t GetUsedPageSize() const override;
     size_t GetAllocatedSize() const override;
+    size_t GetSurvivedSize() const override;
     size_t GetRemainHeapSize() const override;
     size_t GetAccumulatedAllocateSize() const override;
     size_t GetAccumulatedFreeSize() const override;
@@ -269,11 +270,13 @@ size_t HeapImpl::GetUsedPageSize() const { return theSpace_->GetUsedPageSize(); 
 
 size_t HeapImpl::GetAllocatedSize() const { return theSpace_->GetAllocatedBytes(); }
 
-size_t HeapImpl::GetRemainHeapSize() const { return theSpace_->GetMaxCapacity() - theSpace_->GetUsedPageSize(); }
+size_t HeapImpl::GetRemainHeapSize() const { return theSpace_->GetMaxCapacity() - theSpace_->GetAllocatedBytes(); }
+
+size_t HeapImpl::GetSurvivedSize() const { return theSpace_->GetSurvivedSize(); }
 
 size_t HeapImpl::GetAccumulatedAllocateSize() const
 {
-    return collectorResources_.GetGCStats().GetAccumulatedFreeSize() + theSpace_->GetUsedPageSize();
+    return collectorResources_.GetGCStats().GetAccumulatedFreeSize() + theSpace_->GetAllocatedBytes();
 }
 
 size_t HeapImpl::GetAccumulatedFreeSize() const { return collectorResources_.GetGCStats().GetAccumulatedFreeSize(); }
