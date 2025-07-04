@@ -1303,6 +1303,21 @@ Local<DataViewRef> DataViewRef::New(
     return JSNApiHelper::ToLocal<DataViewRef>(JSHandle<JSTaggedValue>(dataView));
 }
 
+Local<DataViewRef> DataViewRef::NewWithoutSwitchState(
+    const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    JSHandle<JSArrayBuffer> buffer(JSNApiHelper::ToJSHandle(arrayBuffer));
+    LOG_IF_SPECIAL(buffer, FATAL);
+    if (byteOffset + byteLength > buffer->GetArrayBufferByteLength()) {
+        return JSValueRef::Hole(vm);
+    }
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSDataView> dataView = factory->NewJSDataView(buffer, byteOffset, byteLength);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return JSNApiHelper::ToLocal<DataViewRef>(JSHandle<JSTaggedValue>(dataView));
+}
+
 uint32_t DataViewRef::ByteLength()
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
@@ -2632,8 +2647,7 @@ uintptr_t ObjectRef::NewObject(const EcmaVM *vm)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm,
         (thread->GlobalConstants()->GetHandledUndefined()).GetAddress());
     ecmascript::ThreadManagedScope managedScope(thread);
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> object(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object(vm->GetFactory()->CreateNapiObject());
     return object.GetAddress();
 }
 
@@ -2806,6 +2820,34 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
     if (!obj->IsHeapObject()) {
         return JSTaggedValue::SetProperty(thread, obj, key, val);
     }
+    JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj, key, val);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    if (!res.IsHole()) {
+        return !res.IsException();
+    }
+    if (!JSNApi::KeyIsNumber(utf8)) {
+        res = ObjectFastOperator::SetPropertyByName(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
+                                                    val.GetTaggedValue());
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        if (!res.IsHole()) {
+            return !res.IsException();
+        }
+        return JSTaggedValue::SetProperty(thread, obj, key, val, true);
+    }
+    return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                      key.GetTaggedValue(),
+                                                      val.GetTaggedValue());
+}
+
+bool ObjectRef::SetWithoutSwitchState(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    [[maybe_unused]] LocalScope scope(vm);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
+    JSHandle<JSTaggedValue> val = JSNApiHelper::ToJSHandle(value);
     JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj, key, val);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!res.IsHole()) {
@@ -6271,7 +6313,7 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     return true;
 }
 
-Local<JSValueRef>  JSNApi::NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key)
+Local<JSValueRef> JSNApi::NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);

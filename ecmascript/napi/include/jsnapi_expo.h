@@ -861,6 +861,7 @@ public:
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
+    bool SetWithoutSwitchState(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Local<FunctionRef> getter,
                              Local<FunctionRef> setter, PropertyAttribute attribute = PropertyAttribute::Default());
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
@@ -1142,10 +1143,10 @@ protected:
 private:
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
-    int prevHandleStorageIndex_ {-1};
+    int32_t prevHandleStorageIndex_ {-1};
+    int32_t prevPrimitiveStorageIndex_ {-1};
     void *prevPrimitiveNext_ = nullptr;
     void *prevPrimitiveEnd_ = nullptr;
-    int prevPrimitiveStorageIndex_ {-1};
     void *thread_ = nullptr;
 };
 
@@ -1607,6 +1608,8 @@ class PUBLIC_API DataViewRef : public ObjectRef {
 public:
     static Local<DataViewRef> New(const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset,
                                   uint32_t byteLength);
+    static Local<DataViewRef> NewWithoutSwitchState(const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer,
+                                                    uint32_t byteOffset, uint32_t byteLength);
     uint32_t ByteLength();
     uint32_t ByteOffset();
     Local<ArrayBufferRef> GetArrayBuffer(const EcmaVM *vm);
