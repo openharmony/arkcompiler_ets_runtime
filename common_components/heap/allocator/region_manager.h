@@ -299,7 +299,6 @@ public:
         DLOG(REGION, "collect region %p@%#zx+%zu type %u", region, region->GetRegionStart(),
              region->GetLiveByteCount(), region->GetRegionType());
 
-        garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
 #ifdef USE_HWASAN
         ASAN_POISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionStart()),
             region->GetRegionSize());
@@ -308,6 +307,7 @@ public:
         LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr <<
                              std::hex << ", " << p_addr + p_size << ") poisoned\n";
 #endif
+        garbageRegionList_.PrependRegion(region, RegionDesc::RegionType::GARBAGE_REGION);
         if (region->IsLargeRegion()) {
             return region->GetRegionSize();
         } else {
