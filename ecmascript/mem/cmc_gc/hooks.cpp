@@ -258,6 +258,11 @@ void JSGCCallback(void *ecmaVM)
     }
 }
 
+bool IsPostForked()
+{
+    return panda::ecmascript::Runtime::GetInstance()->IsPostForked();
+}
+
 void SetBaseAddress(uintptr_t base)
 {
     // Please be careful about reentrant

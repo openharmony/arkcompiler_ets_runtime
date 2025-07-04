@@ -23,6 +23,10 @@
 #include "common_interfaces/profiler/heap_profiler_listener.h"
 #include "common_components/objects/string_table_internal.h"
 
+#ifdef ENABLE_RSS
+#include "res_sched_client.h"
+#endif
+
 namespace common {
 bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
 {
@@ -555,6 +559,7 @@ void WCollector::PreforwardFlip()
 {
     auto remarkAndForwardGlobalRoot = [this]() {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardFlip[STW]", "");
+        SetGCThreadRssPriority(common::RssPriorityType::KEY);
         ASSERT_LOGF(GetThreadPool() != nullptr, "thread pool is null");
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
@@ -564,6 +569,7 @@ void WCollector::PreforwardFlip()
         TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
         VisitWeakGlobalRoots(weakVisitor);
+        SetGCThreadRssPriority(common::RssPriorityType::COMMON);
     };
     FlipFunction forwardMutatorRoot = [this](Mutator &mutator) {
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
@@ -727,7 +733,11 @@ void WCollector::DoGarbageCollection()
 
 CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(const common::RefFieldVisitor &visitor)
 {
-    const auto enumGlobalRoots = [this, &visitor]() { EnumRootsImpl<VisitGlobalRoots>(visitor); };
+    const auto enumGlobalRoots = [this, &visitor]() {
+        SetGCThreadRssPriority(common::RssPriorityType::KEY);
+        EnumRootsImpl<VisitGlobalRoots>(visitor);
+        SetGCThreadRssPriority(common::RssPriorityType::COMMON);
+    };
 
     std::mutex stackMutex;
     CArrayList<CArrayList<BaseObject *>> rootSet;  // allcate for each mutator
@@ -933,6 +943,22 @@ void WCollector::CollectSmallSpace()
                 ).c_str());
 
     collectorResources_.GetFinalizerProcessor().NotifyToReclaimGarbage();
+}
+
+void WCollector::SetGCThreadRssPriority(common::RssPriorityType type)
+{
+#ifdef ENABLE_RSS
+    if (IsPostForked()) {
+        LOG_COMMON(DEBUG) << "SetGCThreadRssPriority gettid " << gettid();
+        uint64_t pid = getpid();
+        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(pid) },
+                                                    { "tid", std::to_string(gettid()) } };
+        OHOS::ResourceSchedule::ResSchedClient::GetInstance()
+            .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,
+            static_cast<int64_t>(type), payLoad);
+        common::Taskpool::GetCurrentTaskpool()->SetThreadRssPriority(type);
+    }
+#endif
 }
 
 bool WCollector::ShouldIgnoreRequest(GCRequest& request) { return request.ShouldBeIgnored(); }

@@ -95,6 +95,16 @@ public:
         return enableLargeHeap_;
     }
 
+    void SetPostForked(bool postForked)
+    {
+        postForked_ = postForked;
+    }
+
+    bool IsPostForked() const
+    {
+        return postForked_;
+    }
+
     // Result may be inaccurate, just an approximate value.
     size_t ApproximateThreadListSize()
     {
@@ -352,6 +362,7 @@ private:
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> globalSharedConstpools_ {};
     int32_t sharedConstpoolCount_ = 0; // shared constpool count.
     std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.
+    bool postForked_ {false};
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;
