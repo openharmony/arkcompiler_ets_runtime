@@ -1810,7 +1810,52 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="ContainersPlainArrayFuzzTest">
+    <target name="ContainersPlainArrayAddHasFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayGetFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayGetIndexOfKeyFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayGetIndexOfValueFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayGetKeyAtFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayGetValueAtFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayRemoveFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayRemoveAtFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArrayRemoveRangeFromFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersPlainArraySetValueAtFuzzTest">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

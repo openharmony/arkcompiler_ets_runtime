@@ -28,6 +28,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/js_array.h"
 
 #define MAXBYTELEN sizeof(unsigned int)
 
@@ -131,35 +132,6 @@ public:
         JSNApi::DestroyJSVM(vm);
     }
 
-    static void ContainersVectorGetFirstElementFuzzTest(const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            std::string str(data, data + size);
-            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-            callInfo->SetCallArg(0, value);
-
-            ContainersVector::Add(callInfo);
-
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-
-            ContainersVector::GetFirstElement(callInfo1);
-        }
-    JSNApi::DestroyJSVM(vm);
-    }
-
     static void ContainersVectorGetIndexOfFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
@@ -186,35 +158,6 @@ public:
             callInfo1->SetCallArg(0, value);
 
             ContainersVector::GetIndexOf(callInfo1);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorGetLastElementFuzzTest(const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            std::string str(data, data + size);
-            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-            callInfo->SetCallArg(0, value);
-
-            ContainersVector::Add(callInfo);
-
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-
-            ContainersVector::GetLastElement(callInfo1);
         }
         JSNApi::DestroyJSVM(vm);
     }
@@ -502,85 +445,6 @@ public:
         }
     };
 
-    static void ContainersVectorReplaceAllElementsFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<JSFunction> func =
-                factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestReplaceAllElementsFunc));
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-            callInfo1->SetCallArg(0, func.GetTaggedValue());
-            ContainersVector::ReplaceAllElements(callInfo1);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorForEachFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            JSHandle<JSAPIVector> vec = CreateJSAPIVector(thread);
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<JSFunction> func =
-                factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-            callInfo1->SetCallArg(0, func.GetTaggedValue());
-            callInfo1->SetCallArg(1, vec.GetTaggedValue());
-            ContainersVector::ForEach(callInfo1);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorSortFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-            callInfo1->SetCallArg(0, JSTaggedValue::Undefined());
-            ContainersVector::Sort(callInfo1);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
     static void ContainersVectorSubVectorFuzzTest(const uint8_t* data, size_t size)
     {
         if (size <= 0) {
@@ -605,50 +469,6 @@ public:
         JSNApi::DestroyJSVM(vm);
     }
 
-    static void ContainersVectorClearFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::Clear(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorCloneFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::Clone(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
     static void ContainersVectorSetLengthFuzzTest(const uint8_t* data, size_t size)
     {
         if (size <= 0) {
@@ -664,10 +484,10 @@ public:
             JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
             uint32_t length = 0;
-            if (size > MAXBYTELEN) {
-                size = MAXBYTELEN;
+            if (size > MAXBYTELEN - 1) {
+                size = MAXBYTELEN - 1;
             }
-            if (memcpy_s(&length, MAXBYTELEN, data, size) != 0) {
+            if (memcpy_s(&length, MAXBYTELEN - 1, data, size) != 0) {
                 std::cout << "memcpy_s failed!";
                 UNREACHABLE();
             }
@@ -677,72 +497,6 @@ public:
             callInfo->SetThis(vector.GetTaggedValue());
             callInfo->SetCallArg(0, JSTaggedValue(length));
             ContainersVector::SetLength(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorGetCapacityFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::GetCapacity(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorConvertToArrayFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::ConvertToArray(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorIsEmptyFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::IsEmpty(callInfo);
         }
         JSNApi::DestroyJSVM(vm);
     }
@@ -762,10 +516,10 @@ public:
             JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
             uint32_t capacity = 0;
-            if (size > MAXBYTELEN) {
-                size = MAXBYTELEN;
+            if (size > MAXBYTELEN - 1) {
+                size = MAXBYTELEN - 1;
             }
-            if (memcpy_s(&capacity, MAXBYTELEN, data, size) != 0) {
+            if (memcpy_s(&capacity, MAXBYTELEN - 1, data, size) != 0) {
                 std::cout << "memcpy_s failed!";
                 UNREACHABLE();
             }
@@ -775,50 +529,6 @@ public:
             callInfo->SetThis(vector.GetTaggedValue());
             callInfo->SetCallArg(0, JSTaggedValue(capacity));
             ContainersVector::IncreaseCapacityTo(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorToStringFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::ToString(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorTrimToCurrentLengthFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            ContainersVector::TrimToCurrentLength(callInfo);
         }
         JSNApi::DestroyJSVM(vm);
     }
@@ -848,35 +558,6 @@ public:
             callInfo->SetThis(vector.GetTaggedValue());
             callInfo->SetCallArg(0, array.GetTaggedValue());
             ContainersVector::CopyToArray(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
-    static void ContainersVectorIteratorFuzzTest(const uint8_t* data, size_t size)
-    {
-        if (size <= 0) {
-            return;
-        }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo1->SetFunction(JSTaggedValue::Undefined());
-            callInfo1->SetThis(vector.GetTaggedValue());
-            JSHandle<JSTaggedValue> iterValues(thread, ContainersVector::GetIteratorObj(callInfo1));
-
-            JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-            constexpr int32_t ELEMENT_NUMS = 8;
-            for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
-                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-                callInfo->SetFunction(JSTaggedValue::Undefined());
-                callInfo->SetThis(iterValues.GetTaggedValue());
-                result.Update(JSAPIVectorIterator::Next(callInfo));
-            }
         }
         JSNApi::DestroyJSVM(vm);
     }

@@ -18,12 +18,16 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
-ohos_fuzztest("ContainersVectorCopyToArrayFuzzTest") {
+ohos_fuzztest("ContainersPlainArrayRemoveFuzzTest") {
   module_out_path = ets_runtime_output_path
 
-  fuzz_config_file = "//arkcompiler/ets_runtime/test/fuzztest/containersvectorcopytoarray_fuzzer"
+  fuzz_config_file =
+      "//arkcompiler/ets_runtime/test/fuzztest/containersplainarrayremove_fuzzer"
 
-  sources = [ "containersvectorcopytoarray_fuzzer.cpp" ]
+  resource_config_file =
+      "//arkcompiler/ets_runtime/test/resource/js_runtime/ohos_test.xml"
+
+  sources = [ "containersplainarrayremove_fuzzer.cpp" ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
@@ -38,5 +42,5 @@ ohos_fuzztest("ContainersVectorCopyToArrayFuzzTest") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":ContainersVectorCopyToArrayFuzzTest" ]
+  deps += [ ":ContainersPlainArrayRemoveFuzzTest" ]
 }

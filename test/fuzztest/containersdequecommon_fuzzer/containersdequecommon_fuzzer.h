@@ -121,50 +121,6 @@ public:
             }
     };
 
-    static void ContainersDequeForEachFuzzTest(const uint8_t* data, size_t size)
-    {
-        uint32_t input = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        {
-            JsiFastNativeScope scope(vm);
-            auto thread = vm->GetAssociatedJSThread();
-
-            constexpr uint32_t NODE_NUMBERS = 8;
-            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-            for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-                callInfo->SetFunction(JSTaggedValue::Undefined());
-                callInfo->SetThis(deque.GetTaggedValue());
-                callInfo->SetCallArg(0, JSTaggedValue(i + input));
-                ContainersDeque::InsertFront(callInfo);
-            }
-
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env,
-                reinterpret_cast<void *>(TestClass::TestForEachFunc));
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(deque.GetTaggedValue());
-            callInfo->SetCallArg(0, func.GetTaggedValue());
-            callInfo->SetCallArg(1, deque.GetTaggedValue());
-            ContainersDeque::ForEach(callInfo);
-        }
-        JSNApi::DestroyJSVM(vm);
-    }
-
     static void ContainersDequeGetFirstFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
