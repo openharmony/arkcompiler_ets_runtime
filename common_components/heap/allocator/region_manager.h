@@ -368,9 +368,9 @@ public:
     size_t GetAllocatedSize() const
     {
         return largeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
-            pinnedRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize() +
-            rawPointerRegionList_.GetAllocatedSize() + readOnlyRegionList_.GetAllocatedSize() +
-            largeTraceRegions_.GetAllocatedSize() + appSpawnRegionList_.GetAllocatedSize();
+            GetPinnedSpaceSize() + rawPointerRegionList_.GetAllocatedSize() +
+            readOnlyRegionList_.GetAllocatedSize() + largeTraceRegions_.GetAllocatedSize() +
+            appSpawnRegionList_.GetAllocatedSize();
     }
 
     inline size_t GetPinnedSpaceSize() const
