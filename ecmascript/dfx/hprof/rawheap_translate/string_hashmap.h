@@ -16,12 +16,10 @@
 #ifndef RAWHEAP_TRANSLATE_STRING_HASHMAP_H
 #define RAWHEAP_TRANSLATE_STRING_HASHMAP_H
 
+#include "ecmascript/dfx/hprof/rawheap_translate/common.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
-using StringKey = size_t;
-using StringId = uint32_t;
-
 // An Implementation for Native StringTable without Auto Mem-Management
 // To make sure when using String, it still stays where it was.
 class StringHashMap {

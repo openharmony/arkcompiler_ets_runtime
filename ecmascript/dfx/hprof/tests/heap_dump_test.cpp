@@ -775,6 +775,8 @@ public:
         allocEvtObj_.clear();
     };
 
+    void DumpHeapSnapshotForCMCOOM() override {}
+
     void AllocationEvent(TaggedObject *address, size_t size) override
     {
         allocEvtObj_.emplace(address, true);

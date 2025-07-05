@@ -30,6 +30,9 @@ std::string RawHeap::ReadVersion(FileReader &file)
     if (!file.Seek(0) || !file.Read(version.data(), size)) {
         return "";
     }
+    if (*reinterpret_cast<uint64_t *>(version.data()) == 0) {
+        return "1.0.0";
+    }
     LOG_INFO_ << "current rawheap version is " << version.data();
     return std::string(version.data());
 }
@@ -473,6 +476,7 @@ void RawHeapTranslateV2::Translate()
         Node *hclass = GetNextEdgeTo();
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
+            return;
         } else if (hclass->nodeId != node->nodeId) {
             CreateEdge(node, hclass, InsertAndGetStringId("hclass"), EdgeType::DEFAULT);
         }
@@ -714,28 +718,27 @@ void RawHeapTranslateV2::CreateEdge(Node *node, Node *to, uint32_t nameOrIndex, 
 
 Node *RawHeapTranslateV2::GetNextEdgeTo()
 {
-    if (memPos_  + sizeof(uint16_t) > memSize_) {
+    if (memPos_ + 1 > memSize_) {
         return nullptr;
     }
 
-    uint16_t regionId = ByteToU16(mem_ + memPos_);
-    if (regionId == 0 || regionId <= EXCEPTION_VALUE) {
-        memPos_ += sizeof(uint16_t);
+    uint8_t tag = *reinterpret_cast<uint8_t *>(mem_ + memPos_++);
+    if ((tag & ZERO_VALUE) == ZERO_VALUE) {
         return nullptr;
     }
 
-    if (regionId == INT_VALUE) {
-        memPos_ += sizeof(uint16_t) + sizeof(uint32_t);
+    if ((tag & INTL_VALUE) == INTL_VALUE) {
+        memPos_ += sizeof(uint32_t);
         return nullptr;
     }
 
-    if (regionId == DOUBLE_VALUE) {
-        memPos_ += sizeof(uint16_t) + sizeof(uint64_t);
+    if ((tag & DOUB_VALUE) == DOUB_VALUE) {
+        memPos_ += sizeof(uint64_t);
         return nullptr;
     }
 
-    Node *node = FindNode(ByteToU32(mem_ + memPos_));
-    memPos_ += sizeof(uint32_t);
+    Node *node = FindNode(ByteToU32(mem_ + memPos_ - 1));
+    memPos_ += sizeof(uint32_t) - 1;
     return node;
 }
 

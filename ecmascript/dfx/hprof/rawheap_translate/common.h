@@ -16,12 +16,15 @@
 #ifndef RAWHEAP_TRANSLATE_COMMON_H
 #define RAWHEAP_TRANSLATE_COMMON_H
 
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
+#include <cstdint>
+#include <vector>
+#include <string>
 
 namespace rawheap_translate {
 using JSType = uint8_t;
 using NodeType = uint8_t;
+using StringKey = size_t;
+using StringId = uint32_t;
 
 static constexpr NodeType DEFAULT_NODETYPE = 8;  // 8: means default node type
 static constexpr NodeType FRAMEWORK_NODETYPE = 14;
@@ -93,5 +96,15 @@ struct Edge {
 
     Edge(Node *node, uint32_t index, EdgeType edgeType) : to(node), nameOrIndex(index), type(edgeType) {}
 };
+
+static constexpr uint8_t ZERO_VALUE = 0x02U;       // 0000 0010
+static constexpr uint8_t HOLE_VALUE = 0x12U;       // 0001 0010
+static constexpr uint8_t NULL_VALUE = 0x22U;       // 0010 0010
+static constexpr uint8_t EXCP_VALUE = 0x32U;       // 0011 0010
+static constexpr uint8_t UNDF_VALUE = 0x42U;       // 0100 0010
+static constexpr uint8_t TRUE_VALUE = 0x52U;       // 0101 0010
+static constexpr uint8_t FALS_VALUE = 0x62U;       // 0110 0010
+static constexpr uint8_t INTL_VALUE = 0x04U;       // 0000 0100
+static constexpr uint8_t DOUB_VALUE = 0x06U;       // 0000 0110
 }  // namespace rawheap_translate
 #endif  // RAWHEAP_TRANSLATE_COMMON_H

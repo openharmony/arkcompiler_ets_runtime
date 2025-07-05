@@ -13,29 +13,26 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "common_components/profiler/common_profiler_interface.h"
 
 namespace common {
-HeapProfilerListener &HeapProfilerListener::GetInstance()
+CommonHeapProfilerInterface *CommonHeapProfilerInterface::instance_ = nullptr;
+
+void CommonHeapProfilerInterface::SetSingleInstance(CommonHeapProfilerInterface *instance)
 {
-    static HeapProfilerListener instance;
-    return instance;
+    instance_ = instance;
 }
 
-void HeapProfilerListener::RegisterMoveEventCb(const std::function<void(uintptr_t, uintptr_t, size_t)> &cb)
+void CommonHeapProfilerInterface::DumpHeapSnapshotBeforeOOM()
 {
-    moveEventCb_ = cb;
-}
-
-void HeapProfilerListener::UnRegisterMoveEventCb()
-{
-    moveEventCb_ = nullptr;
-}
-
-void HeapProfilerListener::OnMoveEvent(uintptr_t fromObj, uintptr_t toObj, size_t size)
-{
-    if (moveEventCb_) {
-        moveEventCb_(fromObj, toObj, size);
+    if (GetInstance() == nullptr) {
+        return;
     }
+    GetInstance()->DumpHeapSnapshotForCMCOOM();
+}
+
+CommonHeapProfilerInterface *CommonHeapProfilerInterface::GetInstance()
+{
+    return instance_;
 }
 }  // namespace common

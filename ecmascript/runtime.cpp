@@ -117,6 +117,11 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
             Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableFastJit, isEnableBaselineJit);
             vm->Initialize();
             PostInitialization(vm);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+            if (g_isEnableCMCGC) {
+                common::CommonHeapProfilerInterface::SetSingleInstance(vm->GetOrNewHeapProfile());
+            }
+#endif
         }
     }
     if (!vm->IsInitialized()) {
