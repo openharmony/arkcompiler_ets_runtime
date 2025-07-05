@@ -294,8 +294,8 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
 
     if (g_isEnableCMCGC) {
         expectHeapTotalSize = common::Heap::GetHeap().GetCurrentCapacity();
-        expectHeapUsedSize = common::Heap::GetHeap().GetAllocatedSize();
-        expectHeapObjectSize = common::Heap::GetHeap().GetUsedPageSize();
+        expectHeapUsedSize = common::Heap::GetHeap().GetSurvivedSize();
+        expectHeapObjectSize = common::Heap::GetHeap().GetAllocatedSize();
         expectProcessHeapLimitSize = common::Heap::GetHeap().GetMaxCapacity();
     } else {
         auto heap = vm_->GetHeap();

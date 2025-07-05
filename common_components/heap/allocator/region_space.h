@@ -127,7 +127,7 @@ public:
     }
 
     // size of objects survived in previous gc.
-    inline size_t GetSurvivedSize() const
+    size_t GetSurvivedSize() const override
     {
         return fromSpace_.GetSurvivedSize() + toSpace_.GetAllocatedSize() +
             youngSpace_.GetAllocatedSize() + oldSpace_.GetAllocatedSize() + regionManager_.GetSurvivedSize();

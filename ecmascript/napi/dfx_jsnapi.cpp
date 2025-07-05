@@ -472,7 +472,7 @@ size_t DFXJSNApi::GetHeapTotalSize(const EcmaVM *vm)
 size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 {
     if (g_isEnableCMCGC) {
-        return common::Heap::GetHeap().GetAllocatedSize();
+        return common::Heap::GetHeap().GetSurvivedSize();
     }
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetHeap()->GetLiveObjectSize();
@@ -481,7 +481,7 @@ size_t DFXJSNApi::GetHeapUsedSize(const EcmaVM *vm)
 size_t DFXJSNApi::GetHeapObjectSize(const EcmaVM *vm)
 {
     if (g_isEnableCMCGC) {
-        return common::Heap::GetHeap().GetUsedPageSize();
+        return common::Heap::GetHeap().GetAllocatedSize();
     }
     return vm->GetHeap()->GetHeapObjectSize();
 }
