@@ -139,7 +139,18 @@ public:
         bool isDebugLevel_;
     };
 
-    class JitLockHolder {
+    class JitLockBase {
+    public:
+        virtual ~JitLockBase() = default;
+
+    protected:
+        JitLockBase() = default;
+
+        NO_COPY_SEMANTIC(JitLockBase);
+        NO_MOVE_SEMANTIC(JitLockBase);
+    };
+
+    class JitLockHolder : public JitLockBase {
     public:
         explicit JitLockHolder(JSThread *thread) : thread_(nullptr), scope_(thread->GetEcmaVM())
         {
@@ -186,7 +197,7 @@ public:
         NO_MOVE_SEMANTIC(JitLockHolder);
     };
 
-    class JitGCLockHolder {
+    class JitGCLockHolder : public JitLockBase {
     public:
         explicit JitGCLockHolder(JSThread *thread) : thread_(thread)
         {

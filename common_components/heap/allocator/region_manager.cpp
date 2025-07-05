@@ -195,18 +195,30 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
 
 void RegionDesc::VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func)
 {
+    if (IsLargeRegion() && IsJitFortAwaitInstallFlag()) {
+        // machine code which is not installed should skip here.
+        return;
+    }
     uintptr_t end = std::min(GetTraceLine(), GetRegionAllocPtr());
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), end);
 }
 
 void RegionDesc::VisitRememberSetBeforeFix(const std::function<void(BaseObject*)>& func)
 {
+    if (IsLargeRegion() && IsJitFortAwaitInstallFlag()) {
+        // machine code which is not installed should skip here.
+        return;
+    }
     uintptr_t end = std::min(GetFixLine(), GetRegionAllocPtr());
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), end);
 }
 
 void RegionDesc::VisitRememberSet(const std::function<void(BaseObject*)>& func)
 {
+    if (IsLargeRegion() && IsJitFortAwaitInstallFlag()) {
+        // machine code which is not installed should skip here.
+        return;
+    }
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), GetRegionAllocPtr());
 }
 
@@ -600,7 +612,8 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
     // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
-    region->VisitAllObjectsBeforeFix([&collector, region](BaseObject* object) {
+    bool isLargeRegion = region->IsLargeRegion();
+    region->VisitAllObjectsBeforeFix([&collector, region, isLargeRegion](BaseObject* object) {
         if (region->IsNewObjectSinceForward(object)) {
             // handle dead objects in tl-regions for concurrent gc.
             if (collector.IsToVersion(object)) {
@@ -612,6 +625,10 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
         } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
+            if (isLargeRegion) {
+                // large region is no need to fillfreeobject.
+                return;
+            }
             FillFreeObject(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
@@ -672,10 +689,15 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
 
 static void FixRegion(TraceCollector& collector, RegionDesc* region)
 {
-    region->VisitAllObjects([&collector](BaseObject* object) {
+    bool isLargeRegion = region->IsLargeRegion();
+    region->VisitAllObjects([&collector, isLargeRegion](BaseObject* object) {
         if (collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else {
+            if (isLargeRegion) {
+                // large region is no need to fillfreeobject.
+                return;
+            }
             FillFreeObject(object, RegionSpace::GetAllocSize(*object));
             DLOG(FIX, "fix: skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }

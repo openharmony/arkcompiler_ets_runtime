@@ -19,6 +19,8 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
+#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::base {
 class GCHelper {
@@ -48,9 +50,18 @@ public:
             }
             // BoundFunction : FunctionBase
             if (JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsBoundFunction()) {
-                Barriers::UpdateSlot(thread, callTargetToRef, JSBoundFunction::BOUND_ARGUMENTS_OFFSET);
-                Barriers::UpdateSlot(thread, callTargetToRef, JSBoundFunction::BOUND_TARGET_OFFSET);
+                auto toTaggedArray = reinterpret_cast<TaggedObject *>(
+                    Barriers::UpdateSlot(thread, callTargetToRef, JSBoundFunction::BOUND_ARGUMENTS_OFFSET));
+                auto boundTargetToRef = reinterpret_cast<TaggedObject *>(
+                    Barriers::UpdateSlot(thread, callTargetToRef, JSBoundFunction::BOUND_TARGET_OFFSET));
                 Barriers::UpdateSlot(thread, callTargetToRef, JSBoundFunction::BOUND_THIS_OFFSET);
+                CopyCallTarget(thread, boundTargetToRef);
+
+                uintptr_t argvAddr = ToUintPtr(toTaggedArray) + TaggedArray::DATA_OFFSET;
+                void *argvToRef = reinterpret_cast<void *>(argvAddr);
+                uint64_t argc =
+                    static_cast<uint64_t>(Barriers::GetPrimitive<uint32_t>(toTaggedArray, TaggedArray::LENGTH_OFFSET));
+                CopyArgvArray(thread, argvToRef, argc);
             }
         } else {
             ASSERT(!JSTaggedValue(reinterpret_cast<TaggedObject*>(callTargetToRef)).IsCallable());

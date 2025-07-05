@@ -417,11 +417,6 @@ HeapAddress AllocationBuffer::AllocateImpl(size_t totalSize, AllocType allocType
     // allocate from thread local region
     if (allocType == AllocType::MOVEABLE_OBJECT) {
         if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-            HeapAddress addr = tlRegion_->Alloc(totalSize);
-            if (addr != 0) {
-                return addr;
-            }
-
             // allocation failed because region is full.
             if (tlRegion_->IsThreadLocalRegion()) {
                 heapSpace.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);

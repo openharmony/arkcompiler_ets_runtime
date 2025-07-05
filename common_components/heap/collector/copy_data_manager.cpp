@@ -49,7 +49,6 @@ void HeapBitmapManager::InitializeHeapBitmap()
     } else {
 #ifndef __APPLE__
         (void)madvise(startAddress, allHeapBitmapSize_, MADV_NOHUGEPAGE);
-        COMMON_PRCTL(startAddress, allHeapBitmapSize_, "forward_data");
 #endif
     }
 #endif

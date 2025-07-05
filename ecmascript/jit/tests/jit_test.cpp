@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
@@ -37,6 +38,7 @@ public:
     {
         TestHelper::CreateEcmaVMWithScope(instance_, thread_, scope_, false, false, true, true);
         thread_ = instance_->GetJSThread();
+        ThreadNativeScope scope(thread_);
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         compilerVm_ = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         jit_ = Jit::GetInstance();
