@@ -111,11 +111,21 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
         void *properties = reinterpret_cast<void *>(GetProperties());
         size_t keyOffset = 0;
-        for (int i = 0; i < propertiesNumber; i++) {
-            JSTaggedValue propKey(Barriers::GetTaggedValue(thread,
-                ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
-            if (propKey == key) {
-                return i;
+        if (thread->NeedReadBarrier()) {
+            for (int i = 0; i < propertiesNumber; i++) {
+                JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_CMC_RB>(thread,
+                    ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
+                if (propKey == key) {
+                    return i;
+                }
+            }
+        } else {
+            for (int i = 0; i < propertiesNumber; i++) {
+                JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_NO_RB>(thread,
+                    ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
+                if (propKey == key) {
+                    return i;
+                }
             }
         }
         return -1;
