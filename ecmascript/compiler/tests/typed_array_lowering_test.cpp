@@ -169,7 +169,8 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayLoadElement)
     EXPECT_TRUE(Verifier::Run(&circuit));
     EXPECT_EQ(acc.GetOpCode(loadElement), OpCode::NOP);
     auto result = acc.GetValueIn(convert, 0);
-    EXPECT_TRUE(acc.GetOpCode(result) == OpCode::LOAD || acc.GetOpCode(result) == OpCode::LOAD_WITHOUT_BARRIER);
+    EXPECT_TRUE(acc.GetOpCode(result) == OpCode::LOAD || acc.GetOpCode(result) == OpCode::LOAD_WITHOUT_BARRIER ||
+        acc.GetOpCode(result) == OpCode::VALUE_SELECTOR);
     EXPECT_EQ(acc.GetMachineType(result), MachineType::F64);
 }
 
@@ -202,11 +203,12 @@ HWTEST_F_L0(TypedArrayLoweringTests, FLOAT32OnHeapArrayLoadElement)
     EXPECT_TRUE(Verifier::Run(&circuit));
     EXPECT_EQ(acc.GetOpCode(loadElement), OpCode::NOP);
     auto result = acc.GetValueIn(convert, 0);
-    EXPECT_EQ(acc.GetOpCode(result), OpCode::FEXT);
+    EXPECT_EQ(acc.GetOpCode(result), OpCode::VALUE_SELECTOR);
     EXPECT_EQ(acc.GetMachineType(result), MachineType::F64);
     auto load = acc.GetValueIn(result, 0);
-    EXPECT_TRUE(acc.GetOpCode(load) == OpCode::LOAD || acc.GetOpCode(load) == OpCode::LOAD_WITHOUT_BARRIER);
-    EXPECT_EQ(acc.GetMachineType(load), MachineType::F32);
+    EXPECT_TRUE(acc.GetOpCode(load) == OpCode::LOAD || acc.GetOpCode(load) == OpCode::LOAD_WITHOUT_BARRIER ||
+        acc.GetOpCode(load) == OpCode::CONSTANT);
+    EXPECT_EQ(acc.GetMachineType(load), MachineType::F64);
 }
 
 HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayLoadElement)

@@ -1736,4 +1736,30 @@ GateRef CircuitBuilder::IsNotLdEndExecPatchMain(GateRef glue)
                          Int32(static_cast<int>(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN)));
 }
 
+GateRef CircuitBuilder::FloatArrayElementConvert(GateRef value, bool isFloat32)
+{
+    Label entry(env_);
+    Label exit(env_);
+    env_->SubCfgEntry(&entry);
+    DEFVALUE(result, env_, VariableType::FLOAT64(), Double(base::NAN_VALUE));
+    Label ResultIsNan(env_);
+    Label ResultIsNumber(env_);
+
+    GateRef tmpResult = isFloat32 ? ExtFloat32ToDouble(value) : value;
+    BRANCH_UNLIKELY(DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
+    Bind(&ResultIsNan);
+    {
+        result = Double(base::NAN_VALUE);
+        Jump(&exit);
+    }
+    Bind(&ResultIsNumber);
+    {
+        result = tmpResult;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu
