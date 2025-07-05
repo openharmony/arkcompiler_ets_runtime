@@ -225,8 +225,9 @@ public:
             return false;
         }
         int ind = 0;
-        for (JSNativePointer* jsNp : heap->nativePointerList_) {
-            if (nodeNativeSizes[ind].compare(std::to_string(jsNp->GetBindingSize())) != 0) {
+        for (JSTaggedValue it : heap->nativePointerList_) {
+            size_t size = reinterpret_cast<JSNativePointer *>(it.GetTaggedObject())->GetBindingSize();
+            if (nodeNativeSizes[ind].compare(std::to_string(size)) != 0) {
                 return false;
             }
             ind++;

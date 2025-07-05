@@ -1291,7 +1291,7 @@ bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread) const
     return DaemonThread::GetInstance()->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
 }
 
-static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePointer*>::iterator& iter)
+static void SwapBackAndPop(NativePointerList &vec, NativePointerList::iterator &iter)
 {
     *iter = vec.back();
     if (iter + 1 == vec.end()) {
@@ -1302,7 +1302,7 @@ static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePoint
     }
 }
 
-static void ShrinkWithFactor(CVector<JSNativePointer*>& vec)
+static void ShrinkWithFactor(NativePointerList &vec)
 {
     constexpr size_t SHRINK_FACTOR = 2;
     if (vec.size() < vec.capacity() / SHRINK_FACTOR) {
@@ -1325,7 +1325,7 @@ void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)
         common::BaseRuntime::NotifyNativeAllocation(pointer->GetBindingSize());
     }
     std::lock_guard<std::mutex> lock(sNativePointerListMutex_);
-    sharedNativePointerList_.emplace_back(pointer);
+    sharedNativePointerList_.emplace_back(JSTaggedValue(pointer));
 }
 
 void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
@@ -1336,7 +1336,7 @@ void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*sharedIter)));
         bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
         if (!isAlive) {
-            JSNativePointer* object = *sharedIter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*sharedIter).GetTaggedObject());
             sharedNativePointerCallbacks.emplace_back(
                 object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData()));
             common::BaseRuntime::NotifyNativeFree(object->GetBindingSize());
@@ -1356,7 +1356,7 @@ void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
     auto& sharedNativePointerCallbacks = Runtime::GetInstance()->GetSharedNativePointerCallbacks();
     auto sharedIter = sharedNativePointerList_.begin();
     while (sharedIter != sharedNativePointerList_.end()) {
-        JSNativePointer* object = *sharedIter;
+        JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*sharedIter).GetTaggedObject());
         auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
         if (fwd == nullptr) {
             sharedNativePointerCallbacks.emplace_back(
@@ -1364,7 +1364,7 @@ void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
             SwapBackAndPop(sharedNativePointerList_, sharedIter);
         } else {
             if (fwd != reinterpret_cast<TaggedObject*>(object)) {
-                *sharedIter = reinterpret_cast<JSNativePointer*>(fwd);
+                *sharedIter = JSTaggedValue(fwd);
             }
             ++sharedIter;
         }
@@ -1381,7 +1381,7 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
             ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
-            JSNativePointer* object = *iter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
                 size_t bindingSize = object->GetBindingSize();
@@ -1398,7 +1398,7 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
         auto& concurrentNativeCallbacks = GetEcmaVM()->GetConcurrentNativePointerCallbacks();
         auto newIter = concurrentNativePointerList_.begin();
         while (newIter != concurrentNativePointerList_.end()) {
-            JSNativePointer* object = *newIter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*newIter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
@@ -1424,7 +1424,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
             ("ProcessReferencesNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
-            JSNativePointer* object = *iter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
                 size_t bindingSize = object->GetBindingSize();
@@ -1436,7 +1436,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
             }
             IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
             if (fwd != reinterpret_cast<TaggedObject*>(object)) {
-                *iter = JSNativePointer::Cast(fwd);
+                *iter = JSTaggedValue(fwd);
             }
             ++iter;
         }
@@ -1445,7 +1445,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
         auto& concurrentNativeCallbacks = GetEcmaVM()->GetConcurrentNativePointerCallbacks();
         auto newIter = concurrentNativePointerList_.begin();
         while (newIter != concurrentNativePointerList_.end()) {
-            JSNativePointer* object = *newIter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*newIter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
                 nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
@@ -1456,7 +1456,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
             }
             IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
             if (fwd != reinterpret_cast<TaggedObject*>(object)) {
-                *newIter = JSNativePointer::Cast(fwd);
+                *newIter = JSTaggedValue(fwd);
             }
             ++newIter;
         }
@@ -1471,9 +1471,9 @@ void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
         common::BaseRuntime::NotifyNativeAllocation(pointer->GetBindingSize());
     }
     if (isConcurrent) {
-        concurrentNativePointerList_.emplace_back(pointer);
+        concurrentNativePointerList_.emplace_back(JSTaggedValue(pointer));
     } else {
-        nativePointerList_.emplace_back(pointer);
+        nativePointerList_.emplace_back(JSTaggedValue(pointer));
     }
 }
 
@@ -1487,7 +1487,7 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*iter)));
         bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
         if (!isAlive) {
-            JSNativePointer* object = *iter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
             size_t bindingSize = object->GetBindingSize();
             asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
                 std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
@@ -1506,7 +1506,7 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*concurrentIter)));
         bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
         if (!isAlive) {
-            JSNativePointer* object = *concurrentIter;
+            JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*concurrentIter).GetTaggedObject());
             nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
             concurrentNativeCallbacks.emplace_back(object->GetDeleter(),
                 std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
@@ -1521,16 +1521,18 @@ void Heap::IteratorNativePointerList(WeakVisitor &visitor)
 
 void Heap::RemoveFromNativePointerList(const JSNativePointer* pointer)
 {
-    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
+    auto iter = std::find_if(nativePointerList_.begin(), nativePointerList_.end(),
+                             [pointer](JSTaggedValue item) { return item.GetTaggedObject() == pointer; });
     if (iter != nativePointerList_.end()) {
-        JSNativePointer* object = *iter;
+        JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy(thread_);
         SwapBackAndPop(nativePointerList_, iter);
     }
-    auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
+    auto newIter = std::find_if(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(),
+                                [pointer](JSTaggedValue item) { return item.GetTaggedObject() == pointer; });
     if (newIter != concurrentNativePointerList_.end()) {
-        JSNativePointer* object = *newIter;
+        JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*newIter).GetTaggedObject());
         nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
         object->Destroy(thread_);
         SwapBackAndPop(concurrentNativePointerList_, newIter);
@@ -1540,10 +1542,10 @@ void Heap::RemoveFromNativePointerList(const JSNativePointer* pointer)
 void Heap::ClearNativePointerList()
 {
     for (auto iter : nativePointerList_) {
-        iter->Destroy(thread_);
+        reinterpret_cast<JSNativePointer *>(iter.GetTaggedObject())->Destroy(thread_);
     }
     for (auto iter : concurrentNativePointerList_) {
-        iter->Destroy(thread_);
+        reinterpret_cast<JSNativePointer *>(iter.GetTaggedObject())->Destroy(thread_);
     }
     nativePointerList_.clear();
 }

@@ -86,9 +86,9 @@ public:
     template <TrieMapConfig::SlotBarrier SlotBarrier>
     BaseString* Value() const
     {
-        auto value = reinterpret_cast<BaseString *>(Pointer::Decode(bitField_));
+        uint64_t value = Pointer::Decode(bitField_);
         if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
-            return value;
+            return reinterpret_cast<BaseString *>(static_cast<uintptr_t>(value));
         }
         return reinterpret_cast<BaseString*>(Heap::GetBarrier().ReadStringTableStaticRef(
             *reinterpret_cast<RefField<false>*>((void*)(&value))));
