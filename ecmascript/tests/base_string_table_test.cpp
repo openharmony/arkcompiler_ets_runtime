@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifdef USE_CMC_GC
+
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/ecma_string_table.h"
@@ -38,6 +38,9 @@ public:
  */
 HWTEST_F_L0(BaseStringTableTest, GetOrInternFlattenString_EmptyString)
 {
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
     auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
 
     JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM()));
@@ -59,6 +62,9 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternFlattenString_EmptyString)
  */
 HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf8Data)
 {
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
     EcmaVM* vm = thread->GetEcmaVM();
     auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
 
@@ -81,6 +87,9 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf8Data)
  */
 HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf16Data)
 {
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
     EcmaVM* vm = thread->GetEcmaVM();
     auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
 
@@ -103,6 +112,9 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf16Data)
  */
 HWTEST_F_L0(BaseStringTableTest, GetOrInternStringFromCompressedSubString_SubString)
 {
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
     EcmaVM* vm = thread->GetEcmaVM();
     ecmascript::ObjectFactory* factory = vm->GetFactory();
     auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
@@ -119,4 +131,3 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternStringFromCompressedSubString_SubStr
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).IsInternString());
 }
 } // namespace panda::test
-#endif
