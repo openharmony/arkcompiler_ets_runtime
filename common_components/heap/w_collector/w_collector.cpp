@@ -640,6 +640,7 @@ void WCollector::DoGarbageCollection()
         ScopedStopTheWorld stw("stw-gc");
         auto collectedRoots = EnumRoots<EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR>();
         TraceHeap(collectedRoots);
+        TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
         PostTrace();
 

@@ -85,6 +85,7 @@ using Clock = std::chrono::high_resolution_clock;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 using BytesAndDuration = std::pair<uint64_t, double>;
 using MemoryReduceDegree = panda::JSNApi::MemoryReduceDegree;
+using NativePointerList = CVector<JSTaggedValue>;
 enum class IdleTaskType : uint8_t {
     NO_TASK,
     YOUNG_GC,
@@ -995,7 +996,7 @@ private:
     std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
-    CVector<JSNativePointer *> sharedNativePointerList_;
+    NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
 };
 
@@ -1985,8 +1986,8 @@ private:
 
     bool hasOOMDump_ {false};
 
-    CVector<JSNativePointer *> nativePointerList_;
-    CVector<JSNativePointer *> concurrentNativePointerList_;
+    NativePointerList nativePointerList_;
+    NativePointerList concurrentNativePointerList_;
 
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;
