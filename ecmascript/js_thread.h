@@ -37,6 +37,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
 #include "ecmascript/patch/patch_loader.h"
+#include "common_components/heap/collector/gc_request.h"
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder.h"
@@ -165,6 +166,7 @@ public:
     static constexpr int CMC_GC_PHASE_BITFIELD_NUM = 8;
     static constexpr int CMC_GC_PHASE_BITFIELD_MASK =
         (((1 << CMC_GC_PHASE_BITFIELD_NUM) - 1) << CMC_GC_PHASE_BITFIELD_START);
+    static constexpr int CMC_GC_REASON_BITFIELD_NUM = 32;
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
@@ -172,9 +174,10 @@ public:
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
-    using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
-    using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag;
-    using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>;
+    using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>; // 0
+    using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag; // 1
+    using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>; // 8-15
+    using CMCGCReasonBits = CMCGCPhaseBits::NextField<common::GCReason, CMC_GC_REASON_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
@@ -586,6 +589,16 @@ public:
     void SetCMCGCPhase(common::GCPhase gcPhase)
     {
         CMCGCPhaseBits::Set(gcPhase, &glueData_.sharedGCStateBitField_);
+    }
+
+    common::GCReason GetCMCGCReason() const
+    {
+        return CMCGCReasonBits::Decode(glueData_.sharedGCStateBitField_);
+    }
+
+    void SetCMCGCReason(common::GCReason gcReason)
+    {
+        CMCGCReasonBits::Set(gcReason, &glueData_.sharedGCStateBitField_);
     }
 
     void SetPGOProfilerEnable(bool enable)

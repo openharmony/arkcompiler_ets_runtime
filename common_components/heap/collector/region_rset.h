@@ -64,7 +64,7 @@ public:
         size_t cardIdx = (offset / kMarkedBytesPerBit) / kBitsPerWord;
         size_t headMaskBitStart = (offset / kMarkedBytesPerBit) % kBitsPerWord;
         uint64_t headMaskBits = static_cast<uint64_t>(1) << headMaskBitStart;
-        uint64_t card = cardTable[cardIdx].load();
+        uint64_t card = cardTable[cardIdx].load(std::memory_order_relaxed);
         bool isMarked = ((card & headMaskBits) != 0);
         if (!isMarked) {
             card = cardTable[cardIdx].fetch_or(headMaskBits);
@@ -107,6 +107,7 @@ public:
             }
         }
     }
+    static constexpr size_t CARD_TABLE_OFFSET_IN_RSET = 8;
 private:
     std::atomic<size_t> cardCnt;
     std::atomic<uint64_t>* cardTable;

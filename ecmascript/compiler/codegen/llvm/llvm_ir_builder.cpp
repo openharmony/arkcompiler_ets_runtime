@@ -189,6 +189,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::UDIV, &LLVMIRBuilder::HandleUDiv},
         {OpCode::AND, &LLVMIRBuilder::HandleIntAnd},
         {OpCode::OR, &LLVMIRBuilder::HandleIntOr},
+        {OpCode::FETCH_OR, &LLVMIRBuilder::HandleFetchOr},
         {OpCode::XOR, &LLVMIRBuilder::HandleIntXor},
         {OpCode::LSR, &LLVMIRBuilder::HandleIntLsr},
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
@@ -1567,7 +1568,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e1));
     ASSERT(ConvertLLVMTypeFromGate(gate) == ConvertLLVMTypeFromGate(e2));
     auto machineType = acc_.GetMachineType(gate);
-    if (machineType == MachineType::I32) {
+    if (machineType == MachineType::I32 || machineType == MachineType::I64) {
         result = LLVMBuildSRem(builder_, e1Value, e2Value, "");
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFRem(builder_, e1Value, e2Value, "");
@@ -2044,6 +2045,13 @@ void LLVMIRBuilder::HandleIntOr(GateRef gate)
     auto g0 = acc_.GetIn(gate, 0);
     auto g1 = acc_.GetIn(gate, 1);
     VisitIntOr(gate, g0, g1);
+}
+
+void LLVMIRBuilder::HandleFetchOr(GateRef gate)
+{
+    auto g0 = acc_.GetValueIn(gate, 0);
+    auto g1 = acc_.GetValueIn(gate, 1);
+    VisitFetchOr(gate, g0, g1);
 }
 
 void LLVMIRBuilder::HandleIntXor(GateRef gate)
@@ -2553,6 +2561,19 @@ void LLVMIRBuilder::VisitIntOr(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = GetLValue(e1);
     LLVMValueRef e2Value = GetLValue(e2);
     LLVMValueRef result = LLVMBuildOr(builder_, e1Value, e2Value, "");
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
+}
+
+void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = GetLValue(e1);
+    LLVMValueRef e2Value = GetLValue(e2);
+    LLVMValueRef result = LLVMBuildAtomicRMW(builder_, LLVMAtomicRMWBinOpOr, e1Value, e2Value,
+                                             LLVMAtomicOrderingAcquireRelease, false);
     Bind(gate, result);
 
     if (IsLogEnabled()) {

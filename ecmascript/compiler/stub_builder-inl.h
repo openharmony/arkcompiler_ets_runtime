@@ -533,6 +533,11 @@ inline GateRef StubBuilder::IntPtrDiv(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrDiv(x, y);
 }
 
+inline GateRef StubBuilder::IntPtrMod(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrMod(x, y);
+}
+
 inline GateRef StubBuilder::Int32Min(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32Min(x, y);
@@ -613,6 +618,11 @@ inline GateRef StubBuilder::BoolNot(GateRef x)
 inline GateRef StubBuilder::Int64Or(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64Or(x, y);
+}
+
+inline GateRef StubBuilder::Int64FetchOr(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->FetchOr(x, y);
 }
 
 inline GateRef StubBuilder::IntPtrOr(GateRef x, GateRef y)

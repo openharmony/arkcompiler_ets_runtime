@@ -100,6 +100,8 @@ public:
     // release a large object when the size is greater than 4096KB.
     static constexpr size_t LARGE_OBJECT_RELEASE_THRESHOLD = 4096 * KB;
 
+    static constexpr size_t DEFAULT_REGION_UNIT_MASK = RegionDesc::UNIT_SIZE - 1;
+
     RegionDesc()
     {
         metadata.allocPtr = reinterpret_cast<uintptr_t>(nullptr);
@@ -375,13 +377,13 @@ public:
         // ************************boundary of dead region and alive region**************************
 
         THREAD_LOCAL_REGION,
-        THREAD_LOCAL_OLD_REGION,
         RECENT_FULL_REGION,
         FROM_REGION,
-        LONE_FROM_REGION,
         EXEMPTED_FROM_REGION,
+        LONE_FROM_REGION,
         TO_REGION,
         OLD_REGION,
+        THREAD_LOCAL_OLD_REGION,
 
         // pinned object will not be forwarded by concurrent copying gc.
         FULL_PINNED_REGION,
@@ -416,6 +418,12 @@ public:
     {
         // Note: THREAD_LOCAL_OLD_REGION is not included
         return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION;
+    }
+
+    static bool IsInYoungSpaceForWB(RegionType type)
+    {
+        return type == RegionType::THREAD_LOCAL_REGION || type == RegionType::RECENT_FULL_REGION ||
+            type == RegionType::FROM_REGION;
     }
 
     static bool IsInYoungSpace(RegionType type)
@@ -1208,7 +1216,6 @@ public:
     // this could ONLY used in region that is ALIVE.
     class InlinedRegionMetaData {
     public:
-        static constexpr size_t DEFAULT_REGION_UNIT_MASK = RegionDesc::UNIT_SIZE - 1;
         static InlinedRegionMetaData *GetInlinedRegionMetaData(RegionDesc *region)
         {
             InlinedRegionMetaData *data = GetInlinedRegionMetaData(region->GetRegionStart());
@@ -1288,6 +1295,12 @@ public:
         {
             RegionType type = GetRegionType();
             return type == RegionType::FROM_REGION;
+        }
+
+        bool IsInYoungSpaceForWB() const
+        {
+            RegionType type = GetRegionType();
+            return RegionDesc::IsInYoungSpaceForWB(type);
         }
 
         inline HeapAddress GetRegionStart() const;
@@ -1386,6 +1399,10 @@ private:
 
     static constexpr uint32_t NULLPTR_IDX = UnitInfo::INVALID_IDX;
     UnitMetadata metadata;
+public:
+    friend constexpr size_t GetMetaDataInRegionOffset();
+    static constexpr size_t REGION_RSET_IN_INLINED_METADATA_OFFSET = MEMBER_OFFSET(InlinedRegionMetaData, regionRSet_);
+    static constexpr size_t REGION_TYPE_IN_INLINED_METADATA_OFFSET = MEMBER_OFFSET(InlinedRegionMetaData, regionType_);
 };
 
 HeapAddress RegionDesc::InlinedRegionMetaData::GetRegionStart() const
@@ -1394,7 +1411,6 @@ HeapAddress RegionDesc::InlinedRegionMetaData::GetRegionStart() const
     DCHECK_CC(addr == regionDesc_->GetRegionStart());
     return addr;
 }
-
 } // namespace common
 
 #endif // COMMON_COMPONENTS_HEAP_ALLOCATOR_REGION_INFO_H

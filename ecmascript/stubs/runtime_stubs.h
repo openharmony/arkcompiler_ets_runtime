@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_RUNTIME_STUBS_H
 #define ECMASCRIPT_RUNTIME_STUBS_H
 
+#include "common_components/heap/allocator/region_desc.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
@@ -177,6 +178,8 @@ public:
     static void LoadNativeModuleFailed(JSTaggedValue curModule);
     static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
+    static bool MarkRSetCardTable(BaseObject* obj);
+    static void MarkInBuffer(BaseObject* ref);
 
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);

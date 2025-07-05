@@ -38,6 +38,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "common_components/heap/allocator/region_desc.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ic/properties_cache.h"

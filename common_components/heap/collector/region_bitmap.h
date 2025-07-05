@@ -28,6 +28,7 @@ namespace common {
 static constexpr size_t kBitsPerByte = 8;
 static constexpr size_t kMarkedBytesPerBit = 8;
 static constexpr size_t kBitsPerWord = sizeof(uint64_t) * kBitsPerByte;
+static constexpr size_t kBytesPerWord = sizeof(uint64_t) / sizeof(uint8_t);
 struct RegionBitmap {
     static constexpr uint8_t factor = 16;
     std::atomic<uint16_t> partLiveBytes[factor];
