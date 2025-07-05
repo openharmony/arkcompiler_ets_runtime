@@ -19,6 +19,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "common_components/mutator/mutator_manager.h"
 #include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -355,7 +356,17 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
 
 bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ThreadManagedScope managedScope(thread);
+    bool needUnbindMutator = false;
+    if (g_isEnableCMCGC) {
+        common::Mutator *mutator = reinterpret_cast<common::Mutator *>(thread->GetThreadHolder()->GetMutator());
+        needUnbindMutator = common::BaseRuntime::GetInstance()->GetMutatorManager().BindMutatorOnly(mutator);
+    }
     stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
+    if (needUnbindMutator) {
+        common::BaseRuntime::GetInstance()->GetMutatorManager().UnbindMutatorOnly();
+    }
     if (stackTraceStr.empty()) {
         return false;
     }

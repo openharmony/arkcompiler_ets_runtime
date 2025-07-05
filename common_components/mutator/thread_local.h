@@ -29,7 +29,7 @@ enum class ThreadType { ARK_PROCESSOR = 0, GC_THREAD, FP_THREAD, HOT_UPDATE_THRE
 struct ThreadLocalData {
     // External thread local var.
     AllocationBuffer* buffer;
-    Mutator* mutator;
+    Mutator* mutator {nullptr};
     uint8_t* thread;
     uint8_t* schedule;
     uint8_t* preemptFlag;
