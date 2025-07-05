@@ -3350,9 +3350,16 @@ JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> 
     JSHandle<LayoutInfo>::Cast(newArray)->Initialize(thread_, oldArray->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
-    for (uint32_t i = 0; i < oldLength; i++) {
-        JSTaggedValue value = oldArray->Get(thread_, i);
-        newArray->Set(thread_, i, value);
+    if (g_isEnableCMCGC) {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            JSTaggedValue value = oldArray->Get<RBMode::FAST_CMC_RB>(thread_, i);
+            newArray->Set(thread_, i, value);
+        }
+    } else {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            JSTaggedValue value = oldArray->Get<RBMode::FAST_NO_RB>(thread_, i);
+            newArray->Set(thread_, i, value);
+        }
     }
     return JSHandle<LayoutInfo>::Cast(newArray);
 }
@@ -3373,14 +3380,26 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     void *propertiesObj = reinterpret_cast<void *>(old->GetProperties());
     size_t keyOffset = 0;
     size_t attrOffset = sizeof(JSTaggedType);
-    for (int i = 0; i < end; i++) {
-        JSTaggedValue propKey(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) +
-                                                       keyOffset));
-        JSTaggedValue propValue(Barriers::GetTaggedValue(thread_, ToUintPtr(propertiesObj) +
-                                                         i * sizeof(Properties) + attrOffset));
-        sp[i].key_ = propKey;
-        sp[i].attr_ = propValue;
-        newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
+    if (g_isEnableCMCGC) {
+        for (int i = 0; i < end; i++) {
+            JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_CMC_RB>(
+                thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) + keyOffset));
+            JSTaggedValue propValue(Barriers::GetTaggedValue<RBMode::FAST_CMC_RB>(
+                thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) + attrOffset));
+            sp[i].key_ = propKey;
+            sp[i].attr_ = propValue;
+            newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
+        }
+    } else {
+        for (int i = 0; i < end; i++) {
+            JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_NO_RB>(
+                thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) + keyOffset));
+            JSTaggedValue propValue(Barriers::GetTaggedValue<RBMode::FAST_NO_RB>(
+                thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) + attrOffset));
+            sp[i].key_ = propKey;
+            sp[i].attr_ = propValue;
+            newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
+        }
     }
 
     return newArr;

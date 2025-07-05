@@ -430,11 +430,12 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
 
         if (layoutInfoHandle->NumberOfElements() != static_cast<int>(offset)) {
             layoutInfoHandle.Update(factory->CopyAndReSort(layoutInfoHandle, offset, offset + 1));
+            newJsHClass->SetLayout(thread, layoutInfoHandle);
         } else if (layoutInfoHandle->GetPropertiesCapacity() <= static_cast<int>(offset)) {  // need to Grow
             layoutInfoHandle.Update(
                 factory->ExtendLayoutInfo(layoutInfoHandle, offset));
+            newJsHClass->SetLayout(thread, layoutInfoHandle);
         }
-        newJsHClass->SetLayout(thread, layoutInfoHandle);
         layoutInfoHandle->AddKey<checkDuplicateKeys>(thread, offset, key.GetTaggedValue(), attr);
     }
 

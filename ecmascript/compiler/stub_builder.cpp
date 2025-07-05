@@ -1629,8 +1629,8 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         Int32Sub(Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY), inlinedProperties);
                     GateRef capacity = ComputeNonInlinedFastPropsCapacity(glue, *length,
                         maxNonInlinedFastPropsCapacity);
-                    array = CallRuntime(glue, RTSTUB_ID(CopyArray),
-                        { *array, IntToTaggedInt(*length), IntToTaggedInt(capacity) });
+                    NewObjectStubBuilder newBuilder(this, glue);
+                    array = newBuilder.CopyArray(glue, *array, *length, capacity);
                     SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, *array);
                     Jump(&afterArrLenCon);
                 }
