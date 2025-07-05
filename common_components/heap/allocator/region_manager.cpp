@@ -553,7 +553,7 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
 #endif
             RegionDesc::ClearUnits(idx, num);
             DLOG(REGION, "reuse garbage region %p@%#zx+%zu", head, head->GetRegionStart(), head->GetRegionSize());
-            return RegionDesc::InitRegion(idx, num, type);
+            return RegionDesc::ResetRegion(idx, num, type);
         } else {
             DLOG(REGION, "reclaim garbage region %p@%#zx+%zu", head, head->GetRegionStart(), head->GetRegionSize());
             ReclaimRegion(head);

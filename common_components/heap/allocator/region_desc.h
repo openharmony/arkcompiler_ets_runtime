@@ -493,6 +493,13 @@ public:
         region->InitRegionDesc(nUnit, UnitRole::FREE_UNITS);
     }
 
+    static RegionDesc* ResetRegion(size_t unitIdx, size_t nUnit, RegionDesc::UnitRole uclass)
+    {
+        RegionDesc* region = reinterpret_cast<RegionDesc*>(RegionDesc::UnitInfo::GetUnitInfo(unitIdx));
+        region->ResetRegion(nUnit, uclass);
+        return region;
+    }
+
     static RegionDesc* InitRegion(size_t unitIdx, size_t nUnit, RegionDesc::UnitRole uclass)
     {
         RegionDesc* region = reinterpret_cast<RegionDesc*>(RegionDesc::UnitInfo::GetUnitInfo(unitIdx));
@@ -1354,10 +1361,6 @@ private:
         metadata.nextRegionIdx = NULLPTR_IDX;
         metadata.liveByteCount = 0;
         metadata.freeSlot = nullptr;
-        if (metadata.regionRSet != nullptr) {
-            ClearRSet();
-        }
-        metadata.regionRSet = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
         ClearTraceCopyFixLine();
@@ -1375,15 +1378,29 @@ private:
 #endif
     }
 
+    void ResetRegion(size_t nUnit, UnitRole uClass)
+    {
+        DCHECK_CC(metadata.regionRSet != nullptr);
+        ClearRSet();
+        InitRegionDesc(nUnit, uClass);
+        InitMetaData(nUnit, uClass);
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+    }
+
     void InitRegion(size_t nUnit, UnitRole uClass)
     {
         DCHECK_CC(uClass != UnitRole::FREE_UNITS);   //fixme: remove `UnitRole::SUBORDINATE_UNIT`
         DCHECK_CC(uClass != UnitRole::SUBORDINATE_UNIT);   //fixme: remove `UnitRole::SUBORDINATE_UNIT`
         InitRegionDesc(nUnit, uClass);
+        DCHECK_CC(metadata.regionRSet == nullptr);
+        metadata.regionRSet = new RegionRSet(GetRegionBaseSize());
+        InitMetaData(nUnit, uClass);
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+    }
+
+    void InitMetaData(size_t nUnit, UnitRole uClass)
+    {
         metadata.liveInfo_.Init(this);
-        if (metadata.regionRSet == nullptr) {
-            metadata.regionRSet = new RegionRSet(GetRegionBaseSize());
-        }
         HeapAddress header = GetRegionBase();
         void *ptr = reinterpret_cast<void *>(static_cast<uintptr_t>(header));
         new (ptr) InlinedRegionMetaData(this);
@@ -1394,7 +1411,6 @@ private:
             DCHECK_CC(uClass == UnitRole::LARGE_SIZED_UNITS);
             unit[i].metadata_.liveInfo_.Fini();
         }
-        std::atomic_thread_fence(std::memory_order_seq_cst);
     }
 
     static constexpr uint32_t NULLPTR_IDX = UnitInfo::INVALID_IDX;
