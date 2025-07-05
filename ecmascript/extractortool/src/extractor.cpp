@@ -15,6 +15,8 @@
 
 #include "extractor.h"
 
+#include <fstream>
+
 #include "constants.h"
 #include "file_path_utils.h"
 #include "ecmascript/platform/file.h"

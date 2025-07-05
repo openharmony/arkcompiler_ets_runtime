@@ -774,6 +774,7 @@ ecma_source = [
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/bit_helper.cpp",
+  "ecmascript/builtin_entries.cpp",
   "ecmascript/builtins/builtins.cpp",
   "ecmascript/builtins/builtins_ark_tools.cpp",
   "ecmascript/builtins/builtins_array.cpp",

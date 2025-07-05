@@ -15,6 +15,7 @@
 
 #include "ecmascript/platform/filesystem.h"
 
+#include <fstream>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>

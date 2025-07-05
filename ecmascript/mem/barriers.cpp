@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/barriers.h"
+#include "ecmascript/mem/barriers_get-inl.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator.h"
@@ -211,6 +211,24 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     }
 }
 #endif
+
+void Barriers::CMCArrayCopyReadBarrierForward(const JSThread *thread, JSTaggedValue* dst, const JSTaggedValue* src,
+                                              size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, i * sizeof(JSTaggedType));
+        Barriers::SetObject<false>(thread, dst, i * sizeof(JSTaggedType), valueToRef);
+    }
+}
+
+void Barriers::CMCArrayCopyReadBarrierBackward(const JSThread *thread, JSTaggedValue* dst, const JSTaggedValue* src,
+                                               size_t count)
+{
+    for (size_t i = count; i > 0; i--) {
+        JSTaggedType valueToRef = Barriers::GetTaggedValue(thread, src, (i - 1) * sizeof(JSTaggedType));
+        Barriers::SetObject<false>(thread, dst, (i - 1) * sizeof(JSTaggedType), valueToRef);
+    }
+}
 
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);

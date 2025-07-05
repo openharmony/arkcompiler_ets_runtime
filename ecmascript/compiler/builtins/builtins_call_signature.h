@@ -16,6 +16,9 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 
+#include <map>
+#include <unordered_set>
+
 #include "ecmascript/compiler/builtins/builtins_call_signature_id_properties.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"

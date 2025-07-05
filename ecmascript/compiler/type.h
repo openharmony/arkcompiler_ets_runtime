@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_H
 #define ECMASCRIPT_COMPILER_TYPE_H
 
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 #define VALUE_TYPE_LIST(V)  \
@@ -64,9 +63,11 @@ class ParamType {
 public:
     explicit ParamType(uint32_t type = 0) : type_(type) {}
 
-    explicit ParamType(JSType jsType)
+    ParamType(uint32_t jsType, [[maybe_unused]] bool isBuiltinType)
     {
-        type_ = BUILTIN_TYPE | static_cast<uint32_t>(jsType);
+        // only builtins type uses two-param constructor
+        ASSERT(isBuiltinType);
+        type_ = BUILTIN_TYPE | jsType;
     }
 
 #define DEFINE_TYPE_CONSTRUCTOR(type, name) \
@@ -98,9 +99,9 @@ public:
         return type_ & BUILTIN_TYPE;
     }
 
-    JSType GetBuiltinType() const
+    uint32_t GetBuiltinType() const
     {
-        return static_cast<JSType>(type_ & ~BUILTIN_TYPE);
+        return type_ & ~BUILTIN_TYPE;
     }
 
     bool operator ==(const ParamType &other) const

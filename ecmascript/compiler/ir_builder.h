@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_IR_BUILDER_H
 #define ECMASCRIPT_COMPILER_IR_BUILDER_H
 
+#include <set>
+
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
 
 namespace panda::ecmascript::kungfu {

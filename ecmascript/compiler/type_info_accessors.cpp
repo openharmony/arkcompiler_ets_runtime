@@ -49,7 +49,7 @@ ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
 ParamType TypeInfoAccessor::PGOBuiltinTypeToParamType(ProfileType pgoType)
 {
     if (pgoType.IsBuiltinsType()) {
-        return ParamType(pgoType.GetBuiltinsType());
+        return ParamType(static_cast<uint32_t>(pgoType.GetBuiltinsType()), true);
     }
     return ParamType::AnyType();
 }

@@ -113,7 +113,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     GateRef literialElements = builder_.GetElementsArray(glue, cachedArray);
     DISALLOW_GARBAGE_COLLECTION;
     JSArray *arrayHandle = JSArray::Cast(arr.GetTaggedObject());
-    TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements(compilationEnv_->GetJSThread()));
+    TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements(compilationEnv_->GetHostThread()));
     uint32_t literialLength = arrayLiteral->GetLength();
     uint32_t arrayLength = acc_.GetArraySize(gate);
     GateRef elements = Circuit::NullGate();
@@ -227,9 +227,8 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     GateRef globalEnv = circuit_->GetGlobalEnvCache();
     hclass = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv, static_cast<size_t>(hclassIndex));
 
-    JSThread *thread = JSThread::GlueToJSThread(glue);
     JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunction());
-    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass(thread);
+    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass(compilationEnv_->GetHostThread());
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t arraySize = arrayHC->GetObjectSize();
     size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);

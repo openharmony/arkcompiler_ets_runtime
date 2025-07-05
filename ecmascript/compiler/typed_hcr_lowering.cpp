@@ -429,7 +429,8 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef glue, GateRef gate)
     ParamType paramType = accessor.GetParamType();
     ASSERT(paramType.IsBuiltinType());
     auto builtinType = paramType.GetBuiltinType();
-    SetDeoptTypeInfo(builtinType, deoptType, typedArrayRootHclassIndex, typedArrayRootHclassOnHeapIndex);
+    SetDeoptTypeInfo(static_cast<JSType>(builtinType), deoptType, typedArrayRootHclassIndex,
+                     typedArrayRootHclassOnHeapIndex);
 
     GateRef frameState = GetFrameState(gate);
     GateRef globalEnv = circuit_->GetGlobalEnvCache();

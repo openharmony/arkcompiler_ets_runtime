@@ -18,6 +18,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/barriers_get-inl.h"
 
 #if defined(ENABLE_BYTRACE)
     #include "hitrace_meter.h"

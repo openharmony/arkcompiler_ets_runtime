@@ -37,7 +37,6 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 std::string GetFileDelimiter()
