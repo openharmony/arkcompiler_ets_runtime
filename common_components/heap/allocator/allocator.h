@@ -51,6 +51,11 @@ public:
         allocBufferManager_->RegisterAllocBuffer(buffer);
     }
 
+    inline void UnregisterAllocBuffer(AllocationBuffer& buffer) const
+    {
+        allocBufferManager_->UnregisterAllocBuffer(buffer);
+    }
+
     virtual ~Allocator() {}
     Allocator();
 

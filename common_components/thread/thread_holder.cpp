@@ -21,6 +21,7 @@
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
+#include "common_interfaces/thread/thread_state_transition.h"
 
 namespace common {
 thread_local ThreadHolder *currentThreadHolder = nullptr;
@@ -39,8 +40,22 @@ ThreadHolder *ThreadHolder::CreateAndRegisterNewThreadHolder(void *vm)
     return holder;
 }
 
+void ThreadHolder::ReleaseAllocBuffer()
+{
+    ThreadManagedScope scope(this);
+    if (allocBuffer_) {
+        auto buf = reinterpret_cast<AllocationBuffer*>(allocBuffer_);
+        if (buf->DecreaseRefCount()) {
+            buf->Unregister();
+            delete buf;
+        }
+        allocBuffer_ = nullptr;
+    }
+}
+
 void ThreadHolder::DestroyThreadHolder(ThreadHolder *holder)
 {
+    holder->ReleaseAllocBuffer();
     holder->TransferToNative();
     BaseRuntime::GetInstance()->GetThreadHolderManager().UnregisterThreadHolder(holder);
     holder->TransferToRunning();
@@ -107,6 +122,7 @@ bool ThreadHolder::TryBindMutator()
 
     BaseRuntime::GetInstance()->GetThreadHolderManager().BindMutator(this);
     allocBuffer_ = ThreadLocal::GetAllocBuffer();
+    reinterpret_cast<AllocationBuffer*>(allocBuffer_)->IncreaseRefCount();
     DCHECK_CC(allocBuffer_ != nullptr);
     return true;
 }
@@ -150,6 +166,7 @@ ThreadHolder::TryBindMutatorScope::TryBindMutatorScope(ThreadHolder *holder) : h
 ThreadHolder::TryBindMutatorScope::~TryBindMutatorScope()
 {
     if (holder_ != nullptr) {
+        holder_->ReleaseAllocBuffer();
         holder_->UnbindMutator();
         holder_ = nullptr;
     }

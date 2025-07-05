@@ -106,6 +106,7 @@ public:
     FinalizerProcessor& GetFinalizerProcessor() override;
     CollectorResources& GetCollectorResources() override;
     void RegisterAllocBuffer(AllocationBuffer& buffer) override;
+    void UnregisterAllocBuffer(AllocationBuffer& buffer) override;
     void StopGCWork() override;
     void TryHeuristicGC() override;
     void NotifyNativeAllocation(size_t bytes) override;
@@ -314,4 +315,5 @@ CollectorResources& HeapImpl::GetCollectorResources() { return collectorResource
 void HeapImpl::StopGCWork() { collectorResources_.StopGCWork(); }
 
 void HeapImpl::RegisterAllocBuffer(AllocationBuffer& buffer) { GetAllocator().RegisterAllocBuffer(buffer); }
+void HeapImpl::UnregisterAllocBuffer(AllocationBuffer& buffer) { GetAllocator().UnregisterAllocBuffer(buffer); }
 } // namespace common

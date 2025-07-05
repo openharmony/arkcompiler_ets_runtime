@@ -345,6 +345,12 @@ void AllocationBuffer::ClearThreadLocalRegion()
         tlOldRegion_ = RegionDesc::NullRegion();
     }
 }
+
+void AllocationBuffer::Unregister()
+{
+    Heap::GetHeap().UnregisterAllocBuffer(*this);
+}
+
 AllocationBuffer* AllocationBuffer::GetAllocBuffer() { return ThreadLocal::GetAllocBuffer(); }
 
 AllocationBuffer::~AllocationBuffer()
