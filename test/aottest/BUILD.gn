@@ -165,6 +165,7 @@ group("ark_aot_ts_test") {
     "extends_builtins",
     "fast_call_builtins",
     "fast_call_func_check",
+    "fast_supercall_allocate_this",
     "frame_iteration",
     "frame_states",
     "forin_delete_property",

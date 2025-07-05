@@ -451,6 +451,7 @@ private:
     V(CreateArrayWithBuffer)                    \
     V(NewJSObject)                              \
     V(FastNewThisObject)                        \
+    V(FastSuperAllocateThis)                    \
     V(GetTaggedArrayPtrTest)                    \
     V(BytecodeHandler)                          \
     V(Builtins)                                 \

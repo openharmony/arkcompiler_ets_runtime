@@ -94,6 +94,7 @@ namespace panda::ecmascript::kungfu {
     V(CreateObjectHavingMethod)       \
     V(NewJSObject)                    \
     V(FastNewThisObject)              \
+    V(FastSuperAllocateThis)          \
     V(JsBoundCallInternal)            \
     V(CreateStringBySingleCharCode)   \
     V(Getpropiterator)                \

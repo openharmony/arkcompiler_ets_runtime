@@ -1066,6 +1066,22 @@ DEF_CALL_SIGNATURE(FastNewThisObject)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(FastSuperAllocateThis)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("FastSuperAllocateThis", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // superCtor
+        VariableType::JS_ANY(),          // newtarget
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(NewLexicalEnv)
 {
     // 3 : 3 input parameters
