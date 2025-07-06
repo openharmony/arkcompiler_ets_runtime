@@ -87,12 +87,6 @@ template class EcmaStringTableImpl<EnableCMCGCTrait>;
 template <typename Traits>
 EcmaString* EcmaStringTableImpl<Traits>::GetOrInternFlattenString(EcmaVM* vm, EcmaString* string)
 {
-    if constexpr (Traits::EnableCMCGC) {
-        auto holder = vm->GetJSThread()->GetThreadHolder();
-        BaseString* res = stringTableItf_->GetOrInternFlattenString(holder, Traits::CreateHandle,
-                                                                    string->ToBaseString());
-        return EcmaString::FromBaseString(res);
-    }
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
@@ -102,7 +96,11 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternFlattenString(EcmaVM* vm, Ec
     ASSERT(!EcmaStringAccessor(string).IsInternString());
     ASSERT(EcmaStringAccessor(string).NotTreeString());
     // Strings in string table should not be in the young space.
-    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+    if constexpr (Traits::EnableCMCGC) {
+        ASSERT(string->IsInSharedHeap());
+    } else {
+        ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+    }
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
@@ -156,12 +154,6 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringFromCompressedSubString(
     EcmaVM* vm, const JSHandle<EcmaString>& string, uint32_t offset, uint32_t utf8Len)
 {
-    if constexpr (Traits::EnableCMCGC) {
-        auto holder = vm->GetJSThread()->GetThreadHolder();
-        BaseString* res = stringTableItf_->GetOrInternStringFromCompressedSubString(
-            holder, Traits::CreateHandle, string, offset, utf8Len);
-        return EcmaString::FromBaseString(res);
-    }
     const uint8_t* utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     JSThread *thread = vm->GetAssociatedJSThread();
@@ -182,7 +174,11 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringFromCompressedSubStrin
             ASSERT(!EcmaStringAccessor(str).IsInternString());
             ASSERT(EcmaStringAccessor(str).NotTreeString());
             // Strings in string table should not be in the young space.
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(str))->InSharedHeap());
+            if constexpr (Traits::EnableCMCGC) {
+                ASSERT(str->IsInSharedHeap());
+            } else {
+                ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(str))->InSharedHeap());
+            }
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> strHandle(thread, str);
             return strHandle;
@@ -279,12 +275,6 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
     if (UNLIKELY(signalState)) {
         return GetOrInternStringThreadUnsafe(vm, utf8Data, utf8Len, canBeCompress);
     }
-    if constexpr (Traits::EnableCMCGC) {
-        auto holder = vm->GetJSThread()->GetThreadHolder();
-        BaseString* res = stringTableItf_->GetOrInternString(holder, Traits::CreateHandle, utf8Data, utf8Len,
-                                                             canBeCompress);
-        return EcmaString::FromBaseString(res);
-    }
     ThreadType* holder = GetThreadHolder(vm->GetJSThread());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     BaseString *result = stringTable_.template LoadOrStore<true>(
@@ -295,7 +285,11 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
+            if constexpr (Traits::EnableCMCGC) {
+                ASSERT(value->IsInSharedHeap());
+            } else {
+                ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
+            }
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;
@@ -338,12 +332,6 @@ template <typename Traits>
 EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uint16_t* utf16Data, uint32_t utf16Len,
                                                            bool canBeCompress)
 {
-    if constexpr (Traits::EnableCMCGC) {
-        auto holder = vm->GetJSThread()->GetThreadHolder();
-        BaseString* res = stringTableItf_->GetOrInternString(holder, Traits::CreateHandle, utf16Data, utf16Len,
-                                                             canBeCompress);
-        return EcmaString::FromBaseString(res);
-    }
     ThreadType* holder = GetThreadHolder(vm->GetJSThread());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t*>(utf16Data), utf16Len);
     BaseString *result = stringTable_.template LoadOrStore<true>(
@@ -355,7 +343,11 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
-            ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
+            if constexpr (Traits::EnableCMCGC) {
+                ASSERT(value->IsInSharedHeap());
+            } else {
+                ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value))->InSharedHeap());
+            }
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;
@@ -372,10 +364,6 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
 template <typename Traits>
 EcmaString *EcmaStringTableImpl<Traits>::TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
-    if constexpr (Traits::EnableCMCGC) {
-        BaseString* res = stringTableItf_->TryGetInternString(string);
-        return EcmaString::FromBaseString(res);
-    }
     uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode(thread);
     EcmaString *str = *string;
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
