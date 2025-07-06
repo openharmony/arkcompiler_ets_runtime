@@ -198,6 +198,11 @@ if (enable_hisysevent) {
 if (enable_rss) {
   hiviewdfx_ext_deps += [ "resource_schedule_service:ressched_client", "samgr:samgr_proxy" ]
 }
+if (is_ohos && is_standard_system && !is_arkui_x &&
+    defined(global_parts_info) &&
+    defined(global_parts_info.resourceschedule_qos_manager)) {
+  hiviewdfx_ext_deps += [ "qos_manager:qos" ]
+}
 
 enable_sanitize = is_ohos && is_standard_system && !ark_standalone_build &&
                   current_toolchain != host_toolchain
@@ -288,13 +293,6 @@ template("libark_jsruntime_common_set") {
       external_deps += [ "runtime_core:arkfile_header_deps" ]
     } else {
       deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-    }
-
-    if (is_ohos && is_standard_system && !is_arkui_x &&
-        defined(global_parts_info) &&
-        defined(global_parts_info.resourceschedule_qos_manager)) {
-      defines += [ "ENABLE_QOS" ]
-      external_deps += [ "qos_manager:qos" ]
     }
 
     if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&

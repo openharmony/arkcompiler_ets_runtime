@@ -204,6 +204,29 @@ void DaemonThread::SetRssPriority([[maybe_unused]] common::RssPriorityType type)
 #endif
 }
 
+void DaemonThread::SetQosPriority(common::PriorityMode mode)
+{
+#ifdef ENABLE_QOS
+    switch (mode) {
+        case common::PriorityMode::STW: {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, GetThreadId());
+            return;
+        }
+        case common::PriorityMode::FOREGROUND: {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetThreadId());
+            return;
+        }
+        case common::PriorityMode::BACKGROUND: {
+            OHOS::QOS::ResetQosForOtherThread(GetThreadId());
+            return;
+        }
+        default:
+            UNREACHABLE();
+            break;
+    }
+#endif
+}
+
 #ifndef NDEBUG
 MutatorLock::MutatorLockState DaemonThread::GetMutatorLockState() const
 {

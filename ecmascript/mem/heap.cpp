@@ -673,6 +673,12 @@ void SharedHeap::SetGCThreadRssPriority(common::RssPriorityType type)
 #endif
 }
 
+void SharedHeap::SetGCThreadQosPriority(common::PriorityMode mode)
+{
+    dThread_->SetQosPriority(mode);
+    common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(mode);
+}
+
 bool SharedHeap::IsReadyToConcurrentMark() const
 {
     return dThread_->IsReadyToConcurrentMark();
