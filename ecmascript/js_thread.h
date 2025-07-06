@@ -904,6 +904,8 @@ public:
 
     JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
 
+    JSTaggedValue PUBLIC_API GetCurrentGlobalEnv(JSTaggedValue currentEnv);
+
     JSTaggedValue GetGlueGlobalEnv() const
     {
         // change to current

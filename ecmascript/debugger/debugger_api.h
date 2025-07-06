@@ -104,6 +104,7 @@ public:
         std::string_view name);
     static Local<JSValueRef> GetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name);
     static bool SetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name, Local<JSValueRef> value);
+    static Local<JSValueRef> GetCurrentGlobalEnv(const EcmaVM *ecmaVm, const FrameHandler *frameHandler = nullptr);
 
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);

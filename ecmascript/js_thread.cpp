@@ -1518,4 +1518,13 @@ ModuleManager *JSThread::GetModuleManager() const
     ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(nativePointer->GetExternalPointer());
     return moduleManager;
 }
+
+JSTaggedValue JSThread::GetCurrentGlobalEnv(JSTaggedValue currentEnv)
+{
+    auto globalEnv = BaseEnv::Cast(currentEnv.GetTaggedObject())->GetGlobalEnv(this);
+    if (globalEnv.IsHole()) {
+        return GetGlueGlobalEnv();
+    }
+    return globalEnv;
+}
 }  // namespace panda::ecmascript
