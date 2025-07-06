@@ -175,7 +175,20 @@ void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
         const_cast<panda::ecmascript::Heap *>(vm->GetHeap())->IteratorNativePointerList(visitor);
         thread->ClearVMCachedConstantPool();
         thread->IterateWeakEcmaGlobalStorage(visitor);
+        vm->IterateWeakGlobalEnvList(visitor);
         vm->IteratorSnapShotEnv(visitor);
+    });
+}
+
+void VisitDynamicPreforwardRoots(const RefFieldVisitor &visitorFunc)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicPreforwardRoots", "");
+    CMCRootVisitor visitor(visitorFunc);
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
+
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        auto vm = thread->GetEcmaVM();
+        vm->IterateGlobalEnvField(visitor);
     });
 }
 
@@ -227,7 +240,19 @@ void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm
     const_cast<panda::ecmascript::Heap *>(ecmaVm->GetHeap())->IteratorNativePointerList(visitor);
     thread->ClearVMCachedConstantPool();
     thread->IterateWeakEcmaGlobalStorage(visitor);
+    ecmaVm->IterateWeakGlobalEnvList(visitor);
     ecmaVm->IteratorSnapShotEnv(visitor);
+}
+
+void VisitDynamicThreadPreforwardRoot(const RefFieldVisitor &visitorFunc, void *vm)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicThreadPreforwardRoot", "");
+    auto ecmaVm = reinterpret_cast<panda::ecmascript::EcmaVM*>(vm);
+    if (!ecmaVm->GetAssociatedJSThread()->ReadyForGCIterating()) {
+        return;
+    }
+    CMCRootVisitor visitor(visitorFunc);
+    ecmaVm->IterateGlobalEnvField(visitor);
 }
 
 void VisitJSThread(void *jsThread, CommonRootVisitor visitor)

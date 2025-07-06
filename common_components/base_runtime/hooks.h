@@ -31,12 +31,14 @@ PUBLIC_API void VisitDynamicGlobalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakGlobalRoots(const WeakRefFieldVisitor &visitorFunc);
 PUBLIC_API void VisitDynamicLocalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc);
+PUBLIC_API void VisitDynamicPreforwardRoots(const RefFieldVisitor &visitorFunc);
 // Inlcude concurrent local and concurrent global roots
 PUBLIC_API void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc);
 
 // Visit roots of specific local thread.
 PUBLIC_API void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm);
 PUBLIC_API void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm);
+PUBLIC_API void VisitDynamicThreadPreforwardRoot(const RefFieldVisitor &visitorFunc, void *vm);
 
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);

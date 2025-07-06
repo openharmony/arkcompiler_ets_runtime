@@ -581,6 +581,27 @@ WeakRefFieldVisitor WCollector::GetWeakRefFieldVisitor()
     };
 }
 
+RefFieldVisitor WCollector::GetPrefowardRefFieldVisitor()
+{
+    return [this](RefField<> &refField) -> void {
+        RefField<> oldField(refField);
+        BaseObject *oldObj = oldField.GetTargetObject();
+        if (IsFromObject(oldObj)) {
+            BaseObject *toVersion = TryForwardObject(oldObj);
+            CHECK_CC(toVersion != nullptr);
+            HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(oldObj),
+                                                            reinterpret_cast<uintptr_t>(toVersion),
+                                                            toVersion->GetSize());
+            RefField<> newField(toVersion);
+            // CAS failure means some mutator or gc thread writes a new ref (must be
+            // a to-object), no need to retry.
+            if (refField.CompareExchange(oldField.GetFieldValue(), newField.GetFieldValue())) {
+                DLOG(FIX, "fix raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
+            }
+        }
+    };
+}
+
 void WCollector::PreforwardFlip()
 {
     auto remarkAndForwardGlobalRoot = [this]() {
@@ -600,6 +621,8 @@ void WCollector::PreforwardFlip()
     FlipFunction forwardMutatorRoot = [this](Mutator &mutator) {
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
         VisitWeakMutatorRoot(weakVisitor, mutator);
+        RefFieldVisitor visitor = GetPrefowardRefFieldVisitor();
+        VisitMutatorPreforwardRoot(visitor, mutator);
         // Request finalize callback in each vm-thread when gc finished.
         mutator.SetFinalizeRequest();
     };
@@ -623,6 +646,8 @@ void WCollector::Preforward()
     // copy and fix finalizer roots.
     // Only one root task, no need to post task.
     PreforwardStaticWeakRoots();
+    RefFieldVisitor visitor = GetPrefowardRefFieldVisitor();
+    VisitPreforwardRoots(visitor);
 }
 
 void WCollector::ConcurrentPreforward()

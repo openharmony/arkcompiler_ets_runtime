@@ -2579,6 +2579,7 @@ JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(bool lazyInit, bool isRealm)
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*globalEnvClass);
     InitObjectFields(header);
     auto globalEnv = JSHandle<GlobalEnv>(thread_, GlobalEnv::Cast(header));
+    thread_->GetEcmaVM()->RecordGlobalEnv(GlobalEnv::Cast(header));
     thread_->SetInGlobalEnvInitialize(true);
     globalEnv->Init(thread_);
     Builtins builtins;

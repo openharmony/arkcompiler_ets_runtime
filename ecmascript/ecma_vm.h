@@ -460,6 +460,8 @@ public:
     size_t IterateHandle(RootVisitor &visitor);
     void Iterate(RootVisitor &v);
     void IterateConcurrentRoots(RootVisitor &v);
+    void IterateWeakGlobalEnvList(WeakVisitor &visitor);
+    void IterateGlobalEnvField(RootVisitor &visitor);
 
     const Heap *GetHeap() const
     {
@@ -1311,6 +1313,11 @@ public:
         return applicationVersionCode_;
     }
 
+    void RecordGlobalEnv(GlobalEnv *globalEnv)
+    {
+        globalEnvRecordList_.push_back(static_cast<JSTaggedType>(ToUintPtr(globalEnv)));
+    }
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1596,6 +1603,9 @@ private:
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_;
     StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
+
+    // record globalEnv as weak reference
+    std::vector<JSTaggedType> globalEnvRecordList_;
 
     // store multi-context module manager
     class ModuleManagers {
