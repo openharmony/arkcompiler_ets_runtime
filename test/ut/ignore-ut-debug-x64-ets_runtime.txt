@@ -1,22 +1,23 @@
-# Known failure list for ut - debug - x64 - ets_runtime
+# Known failure list for ut - debug - x64 - ets_runtime -cmc -gc
 
-#21813
-obj/arkcompiler/ets_runtime/test/jittest/try_catch_empty/try_catch_empty
+#26061
+#22962
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
 
-#23099
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
+#26530
+obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest
 
-#24219
-obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Barrier_Test
-
-#25085
-obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest
-
-#25886
-obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
-
-#26471
+#27094
 obj/arkcompiler/ets_runtime/test/aottest/forin_enum_cache_chain/forin_enum_cache_chain/pgo
+
+#27282
+obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
 
 #25962
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Hclass_Test
+
+#25939
+obj/arkcompiler/ets_runtime/test/jittest/icnotfound/icnotfound
+
+#23099
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
