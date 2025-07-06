@@ -28,6 +28,7 @@ public:
     void PrependRegionLocked(RegionDesc* region, RegionDesc::RegionType type);
 
     void MergeRegionList(RegionList& regionList, RegionDesc::RegionType regionType);
+    void MergeRegionListWithoutHead(RegionList& regionList, RegionDesc::RegionType regionType);
 
     void DeleteRegion(RegionDesc* del)
     {

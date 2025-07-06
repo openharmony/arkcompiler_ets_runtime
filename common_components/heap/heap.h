@@ -169,6 +169,8 @@ public:
 
     virtual void RegisterAllocBuffer(AllocationBuffer& buffer) = 0;
 
+    virtual void UnregisterAllocBuffer(AllocationBuffer& buffer) = 0;
+
     virtual void StopGCWork() = 0;
 
     virtual GCReason GetGCReason() = 0;
