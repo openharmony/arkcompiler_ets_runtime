@@ -56,6 +56,24 @@ void MutatorManager::UnbindMutator(Mutator& mutator) const
     tlData->buffer = nullptr;
 }
 
+bool MutatorManager::BindMutatorOnly(Mutator *mutator) const
+{
+    // watch dog thread may call this function and copy barrier may occur, so bind mutator here.
+    common::ThreadLocalData* tlData = common::ThreadLocal::GetThreadLocalData();
+    ASSERT(tlData != nullptr);
+    if (tlData->mutator == nullptr) {
+        tlData->mutator = mutator;
+        return true;
+    }
+    return false;
+}
+
+void MutatorManager::UnbindMutatorOnly() const
+{
+    ThreadLocalData* tlData = ThreadLocal::GetThreadLocalData();
+    tlData->mutator = nullptr;
+}
+
 Mutator* MutatorManager::CreateMutator()
 {
     Mutator* mutator = ThreadLocal::GetMutator();

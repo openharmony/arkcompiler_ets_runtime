@@ -135,6 +135,9 @@ public:
     void BindMutator(Mutator& mutator) const;
     void UnbindMutator(Mutator& mutator) const;
 
+    bool BindMutatorOnly(Mutator *mutator) const;
+    void UnbindMutatorOnly() const;
+
     // Create and initialize the local mutator, then register to mutatorlist.
     Mutator* CreateMutator();
 
