@@ -695,14 +695,37 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
+    class GenerateNodeRootVisitor final : public RootVisitor {
+    public:
+        explicit GenerateNodeRootVisitor(HeapSnapshot &snapshot, bool isInFinish, bool isSimplify)
+            : snapshot_(snapshot), isInFinish_(isInFinish), isSimplify_(isSimplify) {}
+        ~GenerateNodeRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+        {
+            snapshot_.GenerateNode(JSTaggedValue(slot.GetTaggedType()), 0, isInFinish_, isSimplify_);
+        }
+
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                snapshot_.GenerateNode(JSTaggedValue(slot.GetTaggedType()), 0, isInFinish_, isSimplify_);
+            }
+        }
+
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    private:
+        HeapSnapshot &snapshot_;
+        bool isInFinish_;
+        bool isSimplify_;
+    };
     LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
     if (g_isEnableCMCGC) {
-        common::Heap &heap = common::Heap::GetHeap();
-        heap.ForEachObject([this, isInFinish, isSimplify](BaseObject *obj) {
-            GenerateNode(JSTaggedValue(reinterpret_cast<JSTaggedType>(obj)), 0, isInFinish, isSimplify);
-        }, isSimplify);
+        GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify);
+        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
     } else {
         auto heap = vm_->GetHeap();
         if (heap != nullptr) {
@@ -1271,11 +1294,7 @@ void HeapSnapshot::AddSyntheticRoot()
     CUnorderedSet<JSTaggedType> values {};
     CList<Edge *> rootEdges;
 
-    if (g_isEnableCMCGC) {
-        HandleCMCGCRoots(syntheticRoot, values, rootEdges);
-    } else {
-        HandleRoots(syntheticRoot, values, rootEdges);
-    }
+    HandleRoots(syntheticRoot, values, rootEdges);
 
     // add root edges to edges begin
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
@@ -1302,36 +1321,6 @@ void HeapSnapshot::NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
             syntheticRoot->IncEdgeCount();
         }
     }
-}
-
-void HeapSnapshot::HandleCMCGCRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges)
-{
-    common::RefFieldVisitor visitor = [this, &syntheticRoot, &values, &rootEdges](common::RefField<> &refField) {
-        NewRootEdge(syntheticRoot, JSTaggedValue(refField.GetFieldValue()), values, rootEdges);
-    };
-#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
-    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
-    bool needLeakDetect = !heapProfiler->IsStartLocalHandleLeakDetect() && heapProfiler->GetLeakStackTraceFd() > 0;
-    if (needLeakDetect) {
-        std::ostringstream buffer;
-        buffer << "========================== Local Handle Leak Detection Result ==========================\n";
-        heapProfiler->WriteToLeakStackTraceFd(buffer);
-        common::RefFieldVisitor visitorWithDetect = [this, &syntheticRoot, &values, &rootEdges](
-            common::RefField<> &refField) {
-            LogLeakedLocalHandleBackTrace(refField);
-            NewRootEdge(syntheticRoot, JSTaggedValue(refField.GetFieldValue()), values, rootEdges);
-        };
-        common::VisitRoots(visitorWithDetect);
-        buffer << "======================== End of Local Handle Leak Detection Result =======================";
-        heapProfiler->WriteToLeakStackTraceFd(buffer);
-        heapProfiler->CloseLeakStackTraceFd();
-    } else {
-        common::VisitRoots(visitor);
-    }
-    heapProfiler->ClearHandleBackTrace();
-#else
-    common::VisitRoots(visitor);
-#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }
 
 void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges)

@@ -544,7 +544,6 @@ private:
     void AddSyntheticRoot();
     void NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
                      CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
-    void HandleCMCGCRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
     void HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);

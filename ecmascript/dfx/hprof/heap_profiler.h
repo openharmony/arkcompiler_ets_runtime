@@ -197,6 +197,7 @@ private:
     std::stack<std::shared_ptr<ScopeWrapper>> activeScopeStack_;
     std::map<uintptr_t, std::string> handleBackTrace_;
     int32_t leakStackTraceFd_ {-1};
+    uint32_t moveEventCbId_ {0};
 
     friend class HeapProfilerFriendTest;
 };
