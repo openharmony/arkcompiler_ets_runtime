@@ -26,13 +26,13 @@ host_unittest_action("AssemblerTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "runtime_core:libarkfile_static" ]
   deps += hiviewdfx_deps
 }
 
@@ -45,11 +45,13 @@ host_unittest_action("TypedArrayLoweringTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("DeadCodeEliminationTest") {
@@ -61,10 +63,10 @@ host_unittest_action("DeadCodeEliminationTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
 }
 
 host_unittest_action("CombinedPassVisitorTest") {
@@ -76,10 +78,10 @@ host_unittest_action("CombinedPassVisitorTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
 }
 
 host_unittest_action("LoopOptimizationTest") {
@@ -91,11 +93,13 @@ host_unittest_action("LoopOptimizationTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("ConstantFoldingTest") {
@@ -107,11 +111,13 @@ host_unittest_action("ConstantFoldingTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("GlobalValueNumberingTest") {
@@ -124,11 +130,13 @@ host_unittest_action("GlobalValueNumberingTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("InstructionCombineTest") {
@@ -140,11 +148,13 @@ host_unittest_action("InstructionCombineTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("CreateEmptyFileTest") {
@@ -156,11 +166,13 @@ host_unittest_action("CreateEmptyFileTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("AotVersionTest") {
@@ -172,11 +184,13 @@ host_unittest_action("AotVersionTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("AotCompilerStatsTest") {
@@ -191,7 +205,7 @@ host_unittest_action("AotCompilerStatsTest") {
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ 
+  external_deps = [
     "runtime_core:libarkfile_static",
     "zlib:libz",
   ]
@@ -206,11 +220,13 @@ host_unittest_action("NumberSpeculativeRetypeTest") {
   ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
 }
 
 group("host_unittest") {
