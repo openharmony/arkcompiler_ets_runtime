@@ -4288,4 +4288,20 @@ HWTEST_F_L0(EcmaModuleTest, UpdateSharedModule)
         thread, curmodule, resolvedBinding.GetTaggedValue(), false);
     EXPECT_EQ(res, val.GetTaggedValue());
 }
+
+HWTEST_F_L0(EcmaModuleTest, DeregisterModuleList)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->PushToDeregisterModuleList("@ohos:hilog");
+    vm->PushToDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName");
+    vm->PushToDeregisterModuleList("&hsp&com.example.application&hsp/src/main/page/Test&1.0.0");
+    EXPECT_EQ(vm->ContainInDeregisterModuleList("@ohos:hilog"), true);
+    EXPECT_EQ(vm->ContainInDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName"), true);
+    EXPECT_EQ(vm->ContainInDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName1"), false);
+
+    vm->RemoveFromDeregisterModuleList("@ohos:hilog");
+    vm->RemoveFromDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName");
+    EXPECT_EQ(vm->ContainInDeregisterModuleList("@ohos:hilog"), false);
+    EXPECT_EQ(vm->ContainInDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName"), false);
+}
 }  // namespace panda::test
