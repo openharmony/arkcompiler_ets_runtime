@@ -60,11 +60,7 @@ host_unittest_action("HeapDumpTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -85,6 +81,8 @@ host_unittest_action("HeapDumpTest") {
   external_deps = [
     "bounds_checking_function:libsec_static",
     "cJSON:cjson_static",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
   ]
 
   # hiviewdfx libraries
@@ -102,11 +100,7 @@ host_unittest_action("HeapSnapShotTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -126,6 +120,10 @@ host_unittest_action("HeapSnapShotTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -139,14 +137,14 @@ host_unittest_action("HeapTrackerFirstTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -160,14 +158,14 @@ host_unittest_action("HeapTrackerSecondTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -181,14 +179,14 @@ host_unittest_action("HeapTrackerThirdTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -202,14 +200,14 @@ host_unittest_action("HProfTest") {
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
@@ -224,14 +222,14 @@ host_unittest_action("HeapSamplingTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -247,17 +245,15 @@ host_unittest_action("RawHeapTranslateTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   cflags_cc = [ "-std=c++17" ]
 
   external_deps = [
     "bounds_checking_function:libsec_static",
     "cJSON:cjson_static",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
   ]
 
   # hiviewdfx libraries
@@ -289,8 +285,6 @@ host_unittest_action("JSMetadataTest") {
 
   deps = [
     ":copy_metadata_for_test",
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
   ]
 
@@ -303,6 +297,10 @@ host_unittest_action("JSMetadataTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   external_deps += [ "cJSON:cjson_static" ]
   deps += hiviewdfx_deps
 }
@@ -314,22 +312,18 @@ host_unittest_action("LocalHandleLeakDetectTest") {
 
   if (enable_handle_leak_detect) {
     sources += [
-    # test file
+      # test file
       "local_handle_leak_detect_test.cpp",
     ]
   }
 
-  configs = [
-    "$js_root:ecma_test_config",
-  ]
+  configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   external_deps = [
     "icu:shared_icui18n",
-    "icu:shared_icuuc"
+    "icu:shared_icuuc",
   ]
   external_deps += hiviewdfx_ext_deps
 
@@ -344,21 +338,17 @@ host_unittest_action("GlobalHandleLeakDetectTest") {
   module_out_path = module_output_path
 
   sources = [
-  # test file
+    # test file
     "global_handle_leak_detect_test.cpp",
   ]
 
-  configs = [
-    "$js_root:ecma_test_config",
-  ]
+  configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   external_deps = [
     "icu:shared_icui18n",
-    "icu:shared_icuuc"
+    "icu:shared_icuuc",
   ]
   external_deps += hiviewdfx_ext_deps
 
@@ -372,6 +362,7 @@ host_unittest_action("GlobalHandleLeakDetectTest") {
 group("unittest") {
   testonly = true
   deps = [
+    ":GlobalHandleLeakDetectTest",
     ":HProfTest",
     ":HeapDumpTest",
     ":HeapSamplingTest",
@@ -381,7 +372,6 @@ group("unittest") {
     ":HeapTrackerThirdTest",
     ":JSMetadataTest",
     ":RawHeapTranslateTest",
-    ":GlobalHandleLeakDetectTest",
   ]
 
   # TODO: CMC-GC UT FIX LATER
@@ -400,6 +390,7 @@ group("unittest") {
 group("host_unittest") {
   testonly = true
   deps = [
+    ":GlobalHandleLeakDetectTestAction",
     ":HProfTestAction",
     ":HeapDumpTestAction",
     ":HeapSamplingTestAction",
@@ -409,10 +400,10 @@ group("host_unittest") {
     ":HeapTrackerThirdTestAction",
     ":JSMetadataTestAction",
     ":RawHeapTranslateTestAction",
-    ":GlobalHandleLeakDetectTestAction",
   ]
   if (is_mac) {
     deps -= [
+      ":GlobalHandleLeakDetectTestAction",
       ":HProfTestAction",
       ":HeapDumpTestAction",
       ":HeapSamplingTestAction",
@@ -422,7 +413,6 @@ group("host_unittest") {
       ":HeapTrackerThirdTestAction",
       ":JSMetadataTestAction",
       ":RawHeapTranslateTestAction",
-      ":GlobalHandleLeakDetectTestAction",
     ]
   }
 

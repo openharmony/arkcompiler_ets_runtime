@@ -48,11 +48,7 @@ host_unittest_action("CpuProfilerTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../../:libark_jsruntime_test",
-  ]
+  deps = [ "../../../../:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -73,6 +69,10 @@ host_unittest_action("CpuProfilerTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
