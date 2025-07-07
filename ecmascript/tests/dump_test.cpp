@@ -362,7 +362,7 @@ static JSHandle<JSAPIArrayList> NewJSAPIArrayList(JSThread *thread, ObjectFactor
     JSHandle<JSHClass> arrayListClass =
         factory->NewEcmaHClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
     JSHandle<JSAPIArrayList> jsArrayList = JSHandle<JSAPIArrayList>::Cast(factory->NewJSObjectWithInit(arrayListClass));
-    jsArrayList->SetLength(0);
+    jsArrayList->SetLength(thread, JSTaggedValue(0));
     return jsArrayList;
 }
 

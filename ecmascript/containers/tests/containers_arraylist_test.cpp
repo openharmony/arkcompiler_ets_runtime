@@ -179,7 +179,7 @@ HWTEST_F_L0(ContainersArrayListTest, ArrayListConstructor)
     JSTaggedValue resultProto = JSObject::GetPrototype(thread, JSHandle<JSObject>::Cast(arrayList));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype(thread);
     ASSERT_EQ(resultProto, funcProto);
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     ASSERT_EQ(length, 0);   // 0 means the value
 
     // test ArrayListConstructor exception
@@ -194,14 +194,14 @@ HWTEST_F_L0(ContainersArrayListTest, RemoveByRange)
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         JSTaggedValue result = ArrayListAdd(arrayList, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(arrayList->GetSize(), static_cast<int>(i + 1));
+        EXPECT_EQ(arrayList->GetSize(thread), static_cast<int>(i + 1));
     }
 
     // remove success
     {
         JSTaggedValue result = ArrayListRemoveByRange(arrayList, JSTaggedValue(1), JSTaggedValue(3));
         EXPECT_EQ(result, JSTaggedValue::Undefined());
-        EXPECT_EQ(arrayList->GetSize(), static_cast<int>(NODE_NUMBERS - 2));
+        EXPECT_EQ(arrayList->GetSize(thread), static_cast<int>(NODE_NUMBERS - 2));
         for (uint32_t i = 0; i < NODE_NUMBERS - 2; i++) {
             if (i < 1) {
                 EXPECT_EQ(arrayList->Get(thread, i), JSTaggedValue(i));
@@ -235,7 +235,7 @@ HWTEST_F_L0(ContainersArrayListTest, SubArrayList)
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         JSTaggedValue result = ArrayListAdd(arrayList, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(arrayList->GetSize(), static_cast<int>(i + 1));
+        EXPECT_EQ(arrayList->GetSize(thread), static_cast<int>(i + 1));
     }
 
     // input startIndex type error

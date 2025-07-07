@@ -978,9 +978,9 @@ Local<JSValueRef> DebuggerApi::GetArrayListValue(const EcmaVM *ecmaVm, Local<JSV
                                                  Global<MapRef> internalObjects)
 {
     JSHandle<JSAPIArrayList> arrayList(JSNApiHelper::ToJSHandle(value));
-    uint32_t size = static_cast<uint32_t>(arrayList->GetSize());
-    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, size);
     JSThread *thread = ecmaVm->GetJSThread();
+    uint32_t size = static_cast<uint32_t>(arrayList->GetSize(thread));
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, size);
     JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
     uint32_t index = 0;
     while (index < size) {

@@ -699,7 +699,7 @@ HWTEST_F_L0(JSNApiSplTest, JSValueRef_IsArrayList)
     JSHandle<JSTaggedValue> proto = globalEnv->GetFunctionPrototype();
     JSHandle<JSHClass> arrayListClass = factory->NewEcmaHClass(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
     JSHandle<JSAPIArrayList> jsArrayList = JSHandle<JSAPIArrayList>::Cast(factory->NewJSObjectWithInit(arrayListClass));
-    jsArrayList->SetLength(0);
+    jsArrayList->SetLength(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> arryListTag = JSHandle<JSTaggedValue>::Cast(jsArrayList);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {

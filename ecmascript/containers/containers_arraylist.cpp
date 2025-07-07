@@ -321,7 +321,7 @@ JSTaggedValue ContainersArrayList::IsEmpty(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    return JSTaggedValue(JSAPIArrayList::IsEmpty(JSHandle<JSAPIArrayList>::Cast(self)));
+    return JSTaggedValue(JSAPIArrayList::IsEmpty(thread, JSHandle<JSAPIArrayList>::Cast(self)));
 }
 
 JSTaggedValue ContainersArrayList::GetLastIndexOf(EcmaRuntimeCallInfo *argv)
@@ -585,7 +585,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     auto obj = JSHandle<JSAPIArrayList>::Cast(self);
-    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength();
+    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength(thread).GetArrayLength();
     JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
     elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements(thread)), length);
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
@@ -616,7 +616,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         }
     }
     obj->SetElements(thread, elements);
-    obj->SetLength(elements->GetLength());
+    obj->SetLength(thread, JSTaggedValue(elements->GetLength()));
     return JSTaggedValue::Undefined();
 }
 
@@ -638,7 +638,7 @@ JSTaggedValue ContainersArrayList::GetSize(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    return JSTaggedValue(JSHandle<JSAPIArrayList>::Cast(self)->GetSize());
+    return JSTaggedValue(JSHandle<JSAPIArrayList>::Cast(self)->GetSize(thread));
 }
 
 JSTaggedValue ContainersArrayList::ConvertToArray(EcmaRuntimeCallInfo *argv)
@@ -663,7 +663,7 @@ JSTaggedValue ContainersArrayList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArray> array = factory->NewJSArray();
 
-    uint32_t length = arrayList->GetLength();
+    uint32_t length = arrayList->GetLength(thread).GetArrayLength();
     array->SetArrayLength(thread, length);
 
     JSHandle<TaggedArray> srcElements(thread, arrayList->GetElements(thread));

@@ -459,7 +459,8 @@ public:
         JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
         JSHandle<JSObject> jsAPIArrayListObject = NewObject(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
         JSHandle<JSAPIArrayList> jsAPIArrayList = JSHandle<JSAPIArrayList>::Cast(jsAPIArrayListObject);
-        jsAPIArrayList->SetLength(0);
+        JSThread *thread = instance->GetJSThread();
+        jsAPIArrayList->SetLength(thread, JSTaggedValue(0));
         return jsAPIArrayList;
     }
 
