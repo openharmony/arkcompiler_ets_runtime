@@ -25,6 +25,7 @@ namespace {
 constexpr int32_t PGO_SAVING_SIGNAL = 50;
 } // namespace
 
+// LCOV_EXCL_START
 PGOProfilerManager* PGOProfilerManager::GetInstance()
 {
     static PGOProfilerManager* instance = new PGOProfilerManager();
@@ -428,6 +429,7 @@ bool PGOProfilerManager::IsForceDump() const
 {
     return forceDump_;
 }
+// LCOV_EXCL_STOP
 
 bool PGOProfilerManager::BinaryToText(const std::string& inPath,
                                       const std::string& outPath,
@@ -442,6 +444,7 @@ bool PGOProfilerManager::BinaryToText(const std::string& inPath,
     return ret;
 }
 
+// LCOV_EXCL_START
 void PGOProfilerManager::SetIsApFileCompatible(bool isCompatible)
 {
     isApFileCompatible_ = isCompatible;
@@ -554,4 +557,5 @@ Mutex& PGOProfilerManager::GetPGOInfoMutex()
     static Mutex pgoInfoMutex;
     return pgoInfoMutex;
 }
+// LCOV_EXCL_STOP
 } // namespace panda::ecmascript::pgo
