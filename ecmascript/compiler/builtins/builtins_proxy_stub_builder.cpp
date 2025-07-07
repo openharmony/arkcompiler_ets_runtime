@@ -180,7 +180,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     Label handlerIsNotNull(env);
     Label slowPath(env);
     Label trapIsCallable(env);
-    Label trapIsNotUndefinedOrNullOrHole(env);
+    Label trapFastPath(env);
     GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
@@ -196,8 +196,8 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::GET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name);
-        BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
-        Bind(&trapIsNotUndefinedOrNullOrHole);
+        BRANCH(TaggedIsHeapObject(trap), &trapFastPath, &slowPath);
+        Bind(&trapFastPath);
         {
             BRANCH(IsCallable(glue_, trap), &trapIsCallable, &slowPath);
             Bind(&trapIsCallable);
@@ -238,7 +238,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
     Label handlerIsNotNull(env);
     Label slowPath(env);
     Label trapIsCallable(env);
-    Label trapIsNotUndefinedOrNullOrHole(env);
+    Label trapFastPath(env);
     GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
@@ -254,8 +254,8 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::SET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name);
-        BRANCH(TaggedIsUndefinedOrNullOrHole(trap), &slowPath, &trapIsNotUndefinedOrNullOrHole);
-        Bind(&trapIsNotUndefinedOrNullOrHole);
+        BRANCH(TaggedIsHeapObject(trap), &trapFastPath, &slowPath);
+        Bind(&trapFastPath);
         {
             BRANCH(IsCallable(glue_, trap), &trapIsCallable, &slowPath);
             Bind(&trapIsCallable);

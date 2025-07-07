@@ -29,3 +29,4 @@ test proxy constructor success!
 false
 TypeError: ProxyCreate: handler is not Object
 test proxy getPrototype success!
+TypeError
