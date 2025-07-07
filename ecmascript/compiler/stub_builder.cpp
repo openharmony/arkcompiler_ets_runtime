@@ -6933,6 +6933,51 @@ GateRef StubBuilder::StringCompareContents(GateRef glue, GateRef left, GateRef r
     StringInfoGateRef leftStrInfoGate(&leftFlat);
     StringInfoGateRef rightStrInfoGate(&rightFlat);
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    GateRef isBothUtf8 = LogicAndBuilder(env).And(IsUtf8String(leftStrInfoGate.GetString()))
+                                             .And(IsUtf8String(rightStrInfoGate.GetString())).Done();
+    Label bothUtf8(env);
+    Label slowCompare(env);
+    BRANCH_LIKELY(isBothUtf8, &bothUtf8, &slowCompare);
+    Bind(&bothUtf8);
+    {
+        GateRef leftData = GetNormalStringData(glue, leftStrInfoGate);
+        GateRef rightData = GetNormalStringData(glue, rightStrInfoGate);
+        Label utf8LoopHead(env);
+        Label utf8LoopEnd(env);
+        Label utf8LoopBody(env);
+        Jump(&utf8LoopHead);
+        LoopBegin(&utf8LoopHead);
+        {
+            BRANCH(Int32UnsignedLessThan(*i, minLength), &utf8LoopBody, &exit);
+            Bind(&utf8LoopBody);
+            {
+                GateRef leftChar = LoadPrimitive(VariableType::INT8(), leftData, *i);
+                GateRef rightChar = LoadPrimitive(VariableType::INT8(), rightData, *i);
+                Label notEqual(env);
+                BRANCH_NO_WEIGHT(Int8Equal(leftChar, rightChar), &utf8LoopEnd, &notEqual);
+                Bind(&notEqual);
+                {
+                    Label leftIsLess(env);
+                    Label rightIsLess(env);
+                    BRANCH_NO_WEIGHT(Int32LessThan(ZExtInt8ToInt32(leftChar), ZExtInt8ToInt32(rightChar)), &leftIsLess, &rightIsLess);
+                    Bind(&leftIsLess);
+                    {
+                        result = Int32(-1);
+                        Jump(&exit);
+                    }
+                    Bind(&rightIsLess);
+                    {
+                        result = Int32(1);
+                        Jump(&exit);
+                    }
+                }
+            }
+            Bind(&utf8LoopEnd);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&utf8LoopHead);
+        }
+    }
+    Bind(&slowCompare);
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
