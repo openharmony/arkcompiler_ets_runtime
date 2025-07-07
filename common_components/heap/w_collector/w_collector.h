@@ -133,6 +133,7 @@ public:
     }
 
     void SetGCThreadRssPriority(common::RssPriorityType type);
+    void SetGCThreadQosPriority(common::PriorityMode mode);
 
 protected:
     BaseObject* CopyObjectImpl(BaseObject* obj);

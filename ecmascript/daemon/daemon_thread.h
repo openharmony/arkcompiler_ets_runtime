@@ -77,6 +77,7 @@ public:
     }
 
     void SetRssPriority(common::RssPriorityType type);
+    void SetQosPriority(common::PriorityMode mode);
 #ifndef NDEBUG
     MutatorLock::MutatorLockState GetMutatorLockState() const;
     void SetMutatorLockState(MutatorLock::MutatorLockState newState);

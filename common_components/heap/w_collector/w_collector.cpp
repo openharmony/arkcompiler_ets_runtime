@@ -26,6 +26,9 @@
 #ifdef ENABLE_RSS
 #include "res_sched_client.h"
 #endif
+#ifdef ENABLE_QOS
+#include "qos.h"
+#endif
 
 namespace common {
 bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
@@ -559,7 +562,7 @@ void WCollector::PreforwardFlip()
 {
     auto remarkAndForwardGlobalRoot = [this]() {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardFlip[STW]", "");
-        SetGCThreadRssPriority(common::RssPriorityType::KEY);
+        SetGCThreadQosPriority(common::PriorityMode::STW);
         ASSERT_LOGF(GetThreadPool() != nullptr, "thread pool is null");
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
@@ -569,7 +572,7 @@ void WCollector::PreforwardFlip()
         TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
         VisitWeakGlobalRoots(weakVisitor);
-        SetGCThreadRssPriority(common::RssPriorityType::COMMON);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     };
     FlipFunction forwardMutatorRoot = [this](Mutator &mutator) {
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
@@ -735,9 +738,9 @@ void WCollector::DoGarbageCollection()
 CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(const common::RefFieldVisitor &visitor)
 {
     const auto enumGlobalRoots = [this, &visitor]() {
-        SetGCThreadRssPriority(common::RssPriorityType::KEY);
+        SetGCThreadQosPriority(common::PriorityMode::STW);
         EnumRootsImpl<VisitGlobalRoots>(visitor);
-        SetGCThreadRssPriority(common::RssPriorityType::COMMON);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     };
 
     std::mutex stackMutex;
@@ -959,6 +962,32 @@ void WCollector::SetGCThreadRssPriority(common::RssPriorityType type)
             static_cast<int64_t>(type), payLoad);
         common::Taskpool::GetCurrentTaskpool()->SetThreadRssPriority(type);
     }
+#endif
+}
+
+void WCollector::SetGCThreadQosPriority(common::PriorityMode mode)
+{
+#ifdef ENABLE_QOS
+    LOG_COMMON(DEBUG) << "SetGCThreadQosPriority gettid " << gettid();
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::SetGCThreadQosPriority", "");
+    switch (mode) {
+        case PriorityMode::STW: {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, gettid());
+            break;
+        }
+        case PriorityMode::FOREGROUND: {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, gettid());
+            break;
+        }
+        case PriorityMode::BACKGROUND: {
+            OHOS::QOS::ResetQosForOtherThread(gettid());
+            break;
+        }
+        default:
+            UNREACHABLE();
+            break;
+    }
+    common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(mode);
 #endif
 }
 
