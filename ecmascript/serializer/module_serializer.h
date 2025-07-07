@@ -27,6 +27,12 @@ public:
 private:
     bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject) override;
     bool SerializeSharedObj([[maybe_unused]] TaggedObject *object) override;
+
+    size_t GetMaxJSSerializerSize(EcmaVM *vm) override
+    {
+        constexpr int moduleSerializeSizeMultiple = 2;
+        return vm->GetEcmaParamConfiguration().GetMaxJSSerializerSize() * moduleSerializeSizeMultiple;
+    }
 };
 }
 #endif // ECMASCRIPT_SERIALIZER_MODULE_SERIALIZER_H

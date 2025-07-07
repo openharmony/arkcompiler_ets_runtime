@@ -39,6 +39,10 @@ public:
 
 protected:
     virtual bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
+    virtual size_t GetMaxJSSerializerSize(EcmaVM *vm)
+    {
+        return vm->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    }
 
 private:
     void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;

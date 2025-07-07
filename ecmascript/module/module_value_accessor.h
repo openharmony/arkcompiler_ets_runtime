@@ -44,6 +44,7 @@ public:
 
     static void StoreModuleValue(JSThread *thread, int32_t index, JSTaggedValue value);
     static void StoreModuleValue(JSThread *thread, int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
+    static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule);
 protected:
     struct GetModuleValueFromBindingInfo {
         JSThread *thread;
@@ -91,7 +92,6 @@ protected:
                                   JSHandle<SourceTextModule> requiredModule,
                                   int32_t index,
                                   bool isSendable);
-    static JSHandle<JSTaggedValue> GetNativeOrCjsExports(JSThread *thread, JSTaggedValue resolvedModule);
 
     template <bool isLazy, typename BindingType>
     static JSHandle<SourceTextModule> GetResolvedModule(JSThread *thread,

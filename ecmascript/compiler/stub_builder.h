@@ -1213,6 +1213,8 @@ public:
     inline GateRef GetResolveModuleFromResolvedIndexBinding(GateRef glue, GateRef resolvedBinding);
     inline GateRef GetResolveModuleFromResolvedBinding(GateRef glue, GateRef resolvedBinding);
     inline GateRef GetIdxOfResolvedIndexBinding(GateRef resolvedBinding);
+    inline void SetIsUpdatedFromResolvedBindingOfResolvedIndexBinding(GateRef glue, GateRef resolvedBinding,
+                                                                      GateRef value);
     inline GateRef GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding);
     inline GateRef GetModuleRecord(GateRef glue, GateRef resolvedBinding);
     inline GateRef GetBindingName(GateRef glue, GateRef resolvedBinding);

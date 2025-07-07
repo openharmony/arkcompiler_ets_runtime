@@ -17,6 +17,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_snapshot.h"
+#include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -318,6 +319,100 @@ public:
         CheckEnv(serializeModule, deserializeModule);
     }
 
+    void InitMockUpdateBindingModule(bool isDictionaryMode) const
+    {
+        auto vm = thread->GetEcmaVM();
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<SourceTextModule> etsModule = factory->NewSourceTextModule();
+        CString baseFileName = "modules.abc";
+        CString recordName = "etsModule";
+        etsModule->SetEcmaModuleFilenameString(baseFileName);
+        etsModule->SetEcmaModuleRecordNameString(recordName);
+        etsModule->SetTypes(ModuleTypes::ECMA_MODULE);
+        etsModule->SetStatus(ModuleStatus::INSTANTIATED);
+        JSHandle<TaggedArray> requestedModules = factory->NewTaggedArray(1);
+        etsModule->SetRequestedModules(thread, requestedModules.GetTaggedValue());
+        JSHandle<SourceTextModule> nativeModule = factory->NewSourceTextModule();
+        CString nativeModuleRecordName = "nativeModule";
+        nativeModule->SetEcmaModuleFilenameString(baseFileName);
+        nativeModule->SetEcmaModuleRecordNameString(nativeModuleRecordName);
+        nativeModule->SetTypes(ModuleTypes::APP_MODULE);
+        nativeModule->SetStatus(ModuleStatus::INSTANTIATED);
+        requestedModules->Set(thread, index0, nativeModule);
+        JSHandle<EcmaString> str = factory->NewFromStdString("nativeModuleValue");
+        size_t localExportEntryLen = 1;
+        JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(str);
+        JSHandle<LocalExportEntry> localExportEntry =
+            factory->NewLocalExportEntry(val, val, index0, SharedTypes::UNSENDABLE_MODULE);
+        SourceTextModule::AddLocalExportEntry(thread, nativeModule, localExportEntry, index0, localExportEntryLen);
+        JSHandle<JSTaggedValue> objFuncProto = vm->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> hClassHandle = factory->NewEcmaHClass(JSObject::SIZE, 0, JSType::JS_OBJECT, objFuncProto);
+        hClassHandle->SetIsDictionaryMode(isDictionaryMode);
+        JSHandle<JSObject> object = factory->NewJSObject(hClassHandle);
+        if (isDictionaryMode) {
+            JSMutableHandle<NameDictionary> dict(thread,
+                NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(1)));
+            dict->SetKey(thread, index0, str.GetTaggedValue());
+            object->SetProperties(thread, dict);
+        } else {
+            JSHandle<LayoutInfo> layoutInfo(thread, hClassHandle->GetLayout(thread));
+            JSHandle<TaggedArray>::Cast(layoutInfo)->Set(thread, layoutInfo->GetKeyIndex(index0), str.GetTaggedValue());
+        }
+        SourceTextModule::StoreModuleValue(thread, nativeModule, index0, JSHandle<JSTaggedValue>::Cast(object));
+        size_t environmentArraySize = 1;
+        JSHandle<TaggedArray> environmentArray = factory->NewTaggedArray(environmentArraySize);
+        JSHandle<ResolvedIndexBinding> resolvedIndexBinding =
+            factory->NewResolvedIndexBindingRecord(nativeModule, index0);
+        resolvedIndexBinding->SetIsUpdatedFromResolvedBinding(true);
+        environmentArray->Set(thread, index0, resolvedIndexBinding.GetTaggedValue());
+        etsModule->SetEnvironment(thread, environmentArray);
+        thread->GetModuleManager()->AddResolveImportedModule(recordName, etsModule.GetTaggedValue());
+        thread->GetModuleManager()->AddResolveImportedModule(nativeModuleRecordName, nativeModule.GetTaggedValue());
+    }
+
+    void CheckRestoreUpdatedBindingBeforeSerialize(bool isDictionaryMode) const
+    {
+        // construct Module
+        CString path = GetSnapshotPath();
+        CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
+        CString version = "version 205.0.1.120(SP20)";
+        EcmaVM *vm = thread->GetEcmaVM();
+        InitMockUpdateBindingModule(isDictionaryMode);
+        // the origin binding is indexBinding
+        ModuleManager *moduleManager = thread->GetModuleManager();
+        JSHandle<SourceTextModule> serializeModule = moduleManager->HostGetImportedModule("etsModule");
+        JSHandle<SourceTextModule> serializeNativeModule = moduleManager->HostGetImportedModule("nativeModule");
+        JSHandle<TaggedArray> serializeEnvironment(thread, serializeModule->GetEnvironment(thread));
+        JSTaggedValue serializeResolvedBinding = serializeEnvironment->Get(thread, index0);
+        ASSERT_TRUE(serializeResolvedBinding.IsResolvedIndexBinding());
+        auto serializeBinding = ResolvedIndexBinding::Cast(serializeResolvedBinding.GetTaggedObject());
+        ASSERT_TRUE(serializeBinding->GetIsUpdatedFromResolvedBinding());
+        ASSERT_EQ(serializeBinding->GetModule(thread), serializeNativeModule.GetTaggedValue());
+        // serialize and persist
+        ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+        // after serialize, indexBinding has been restore to binding
+        serializeResolvedBinding = serializeEnvironment->Get(thread, index0);
+        ASSERT_TRUE(serializeResolvedBinding.IsResolvedBinding());
+        auto newSerializeBinding = ResolvedBinding::Cast(serializeResolvedBinding.GetTaggedObject());
+        ASSERT_EQ(newSerializeBinding->GetModule(thread), serializeNativeModule.GetTaggedValue());
+        auto str = EcmaStringAccessor(newSerializeBinding->GetBindingName(thread)).Utf8ConvertToString(thread);
+        ASSERT_EQ(str, "nativeModuleValue");
+        moduleManager->ClearResolvedModules();
+        // deserialize
+        ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
+        // deserializeModule stored binding
+        JSHandle<SourceTextModule> deserializeModule = moduleManager->HostGetImportedModule("etsModule");
+        JSHandle<SourceTextModule> deserializeNativeModule = moduleManager->HostGetImportedModule("nativeModule");
+        JSHandle<TaggedArray> deserializeEnvironment(thread, deserializeModule->GetEnvironment(thread));
+        ASSERT_EQ(serializeEnvironment->GetLength(), deserializeEnvironment->GetLength());
+        JSTaggedValue deserializeResolvedBinding = deserializeEnvironment->Get(thread, index0);
+        ASSERT_TRUE(deserializeResolvedBinding.IsResolvedBinding());
+        auto deserializeBinding = ResolvedBinding::Cast(deserializeResolvedBinding.GetTaggedObject());
+        ASSERT_EQ(deserializeBinding->GetModule(thread), deserializeNativeModule.GetTaggedValue());
+        str = EcmaStringAccessor(deserializeBinding->GetBindingName(thread)).Utf8ConvertToString(thread);
+        ASSERT_EQ(str, "nativeModuleValue");
+    }
+
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
@@ -482,5 +577,14 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenHasIncompleteData)
     ASSERT_FALSE(ModuleSnapshot::DeserializeData(vm, path, version));
     // check file is deleted
     ASSERT_FALSE(FileExist(fileName.c_str()));
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, ShouldRestoreUpdatedBindingBeforeSerializeWhenIsDictionaryMode)
+{
+    CheckRestoreUpdatedBindingBeforeSerialize(true);
+}
+HWTEST_F_L0(ModuleSnapshotTest, ShouldRestoreUpdatedBindingBeforeSerializeWhenIsNotDictionaryMode)
+{
+    CheckRestoreUpdatedBindingBeforeSerialize(false);
 }
 }  // namespace panda::test

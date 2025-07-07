@@ -2229,6 +2229,16 @@ public:
         return jitMethodPath_;
     }
 
+    void SetDisableModuleSnapshot(bool isdisable)
+    {
+        disableModuleSnapshot_ = isdisable;
+    }
+
+    bool DisableModuleSnapshot() const
+    {
+        return disableModuleSnapshot_;
+    }
+
     static bool ParseBool(const std::string &arg, bool* argBool);
     static bool ParseInt(const std::string &arg, int* argInt);
     static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
@@ -2547,6 +2557,7 @@ private:
     size_t heapSize_ = {0};
     common::RuntimeParam param_;
     bool enableWarmStartupSmartGC_ {false};
+    bool disableModuleSnapshot_ { false };
 };
 } // namespace panda::ecmascript
 

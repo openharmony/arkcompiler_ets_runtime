@@ -6223,7 +6223,8 @@ void JSNApi::PandaFileSerialize(const EcmaVM *vm)
 // Arkui trigger module Seralize when cold start is end.
 void JSNApi::ModuleSerialize(const EcmaVM *vm)
 {
-    if (const_cast<EcmaVM *>(vm)->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+    JSRuntimeOptions &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
+    if (options.DisableJSPandaFileAndModuleSnapshot() || options.DisableModuleSnapshot()) {
         return;
     }
     ecmascript::CString path(ecmascript::ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
