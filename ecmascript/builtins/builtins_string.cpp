@@ -997,15 +997,16 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     }
     bool isUtf8 = EcmaStringAccessor(thisHandle).IsUtf8();
     EcmaString *result = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), thisLen * count, isUtf8);
-    if (UNLIKELY(g_isEnableCMCGC)) {
-        for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
-            EcmaStringAccessor::ReadData<RBMode::FAST_CMC_RB>(
-                thread, result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+    EcmaStringAccessor::ReadData(thread, result, *thisHandle, 0, count * thisLen, thisLen);
+    if (isUtf8) {
+        uint8_t *utf8Data = const_cast<uint8_t *>(EcmaStringAccessor(result).GetDataUtf8());
+        for (uint32_t i = 1; i < static_cast<uint32_t>(count); ++i) {
+            std::copy_n(utf8Data, thisLen, utf8Data + i * thisLen);
         }
     } else {
-        for (uint32_t index = 0; index < static_cast<uint32_t>(count); ++index) {
-            EcmaStringAccessor::ReadData<RBMode::FAST_NO_RB>(
-                thread, result, *thisHandle, index * thisLen, (count - index) * thisLen, thisLen);
+        uint16_t *utf16Data = const_cast<uint16_t *>(EcmaStringAccessor(result).GetDataUtf16());
+        for (uint32_t i = 1; i < static_cast<uint32_t>(count); ++i) {
+            std::copy_n(utf16Data, thisLen, utf16Data + i * thisLen);
         }
     }
     return JSTaggedValue(result);
