@@ -38,3 +38,32 @@ try {
 } catch(err) {
     print("catch")
 }
+
+let specialTypes = new Set([
+    "object",
+    "function",
+]);
+
+class C {
+    value = 1;
+}
+
+function isPrimitive(a3) {
+    return !specialTypes.has(typeof a3.valueOf());
+}
+
+function Test() {
+    const myArray = [1, ,3];
+    const iterator = myArray[Symbol.iterator]();
+    print(isPrimitive(1));
+    let c = new C();
+    print(isPrimitive(c));
+    iterator.next();
+    print(isPrimitive(iterator.next()));
+}
+
+Test();
+ArkTools.jitCompileAsync(Test);
+print(ArkTools.waitJitCompileFinish(Test));
+print("-----------");
+Test();
