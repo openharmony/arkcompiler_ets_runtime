@@ -23,7 +23,7 @@ namespace OHOS {
 
     void CommonCompFormatLog(const uint8_t* data, size_t size)
     {
-        FormatLog("%d, %d", data[size / 2], data[size % 2]); // 2：Check size is even number
+        FormatLog("%d", data[size / 2]); // 2：Check size is even number
     }
     
     void CommonCompPrettyOrderMathNano(size_t size)
