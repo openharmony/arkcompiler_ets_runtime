@@ -1,18 +1,3 @@
 # Known failure list for ut - release - x64 - ets_runtime -cmc -gc
-#20980
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDelete
-
-#20471
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDelete
-
-#21629
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDeleteContext
-
-#20896
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeil
-
-#21801
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeilContext
-
-#20981
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
+#26061
+obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestContextAssert
