@@ -353,6 +353,7 @@ bool EcmaVM::Initialize()
     abcBufferCache_ = new AbcBufferCache();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->Init(thread_);
+    InitDataViewTypeTable(globalConst);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
@@ -2118,4 +2119,47 @@ void EcmaVM::AddModuleManager(ModuleManager *moduleManager)
     moduleManagers_.push_back(moduleManager);
 }
 
+void EcmaVM::InitDataViewTypeTable(const GlobalEnvConstants *constant)
+{
+    dataViewTypeTable_.emplace(constant->GetInt8ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT8));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedInt8ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT8));
+    dataViewTypeTable_.emplace(constant->GetUint8ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT8));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedUint8ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT8));
+    dataViewTypeTable_.emplace(
+        constant->GetUint8ClampedArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT8_CLAMPED));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedUint8ClampedArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT8_CLAMPED));
+    dataViewTypeTable_.emplace(constant->GetInt16ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT16));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedInt16ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT16));
+    dataViewTypeTable_.emplace(
+        constant->GetUint16ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT16));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedUint16ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT16));
+    dataViewTypeTable_.emplace(constant->GetInt32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT32));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedInt32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::INT32));
+    dataViewTypeTable_.emplace(
+        constant->GetUint32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT32));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedUint32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::UINT32));
+    dataViewTypeTable_.emplace(
+        constant->GetFloat32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::FLOAT32));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedFloat32ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::FLOAT32));
+    dataViewTypeTable_.emplace(
+        constant->GetFloat64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::FLOAT64));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedFloat64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::FLOAT64));
+    dataViewTypeTable_.emplace(
+        constant->GetBigInt64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGINT64));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedBigInt64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGINT64));
+    dataViewTypeTable_.emplace(
+        constant->GetBigUint64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGUINT64));
+    dataViewTypeTable_.emplace(
+        constant->GetSharedBigUint64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGUINT64));
+}
 }  // namespace panda::ecmascript
