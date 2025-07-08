@@ -82,7 +82,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
     "--enable-loading-stubs-log:           Enable Loading Stubs Log. Default: 'false'\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
-#ifdef USE_CMC_GC
+#ifdef DEFAULT_USE_CMC_GC
     "--enable-cmc-gc:                      Enable cmc gc. Default: 'true'\n"
 #else
     "--enable-cmc-gc:                      Enable cmc gc. Default: 'false'\n"

@@ -2532,7 +2532,7 @@ private:
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool enableLdObjValueOpt_ {true};
-#ifdef USE_CMC_GC
+#ifdef DEFAULT_USE_CMC_GC
     bool enableCMCGC_ {true};
 #else
     bool enableCMCGC_ {false};
