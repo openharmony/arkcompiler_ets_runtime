@@ -121,7 +121,7 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), stringTable_(vm), chunk_
                                                                                 size_t size) {
             this->MoveEvent(fromObj, reinterpret_cast<TaggedObject *>(toObj), size);
         };
-        common::HeapProfilerListener::GetInstance().RegisterMoveEventCb(moveEventCb_);
+        moveEventCbId_ = common::HeapProfilerListener::GetInstance().RegisterMoveEventCb(moveEventCb_);
     }
 }
 
@@ -131,7 +131,7 @@ HeapProfiler::~HeapProfiler()
     ClearSnapshot();
     GetChunk()->Delete(entryIdMap_);
     if (g_isEnableCMCGC) {
-        common::HeapProfilerListener::GetInstance().UnRegisterMoveEventCb();
+        common::HeapProfilerListener::GetInstance().UnRegisterMoveEventCb(moveEventCbId_);
     }
 }
 
@@ -237,12 +237,19 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
 {
     DISALLOW_GARBAGE_COLLECTION;
     int32_t heapCount = 0;
+    size_t heapSize = 0;
     HeapSnapshot *snapshot = nullptr;
     {
         if (dumpOption.isFullGC) {
-            size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
+            if (g_isEnableCMCGC) {
+                heapSize = common::Heap::GetHeap().GetSurvivedSize();
+                heapCount = static_cast<int32_t>(common::Heap::GetHeap().GetAllocatedSize());
+            } else {
+                heapSize = vm_->GetHeap()->GetLiveObjectSize();
+                heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
+            }
             LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
-            heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
+            LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap count " << heapCount;
             if (progress != nullptr) {
                 progress->ReportProgress(0, heapCount);
             }

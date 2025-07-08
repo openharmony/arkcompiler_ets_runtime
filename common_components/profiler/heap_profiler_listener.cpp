@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "common_components/log/log.h"
 #include "common_interfaces/profiler/heap_profiler_listener.h"
 
 namespace common {
@@ -22,20 +23,26 @@ HeapProfilerListener &HeapProfilerListener::GetInstance()
     return instance;
 }
 
-void HeapProfilerListener::RegisterMoveEventCb(const std::function<void(uintptr_t, uintptr_t, size_t)> &cb)
+uint32_t HeapProfilerListener::RegisterMoveEventCb(const std::function<void(uintptr_t, uintptr_t, size_t)> &cb)
 {
-    moveEventCb_ = cb;
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    moveEventCbs_.emplace(moveEventCbId_, cb);
+    return moveEventCbId_++;
 }
 
-void HeapProfilerListener::UnRegisterMoveEventCb()
+void HeapProfilerListener::UnRegisterMoveEventCb(uint32_t key)
 {
-    moveEventCb_ = nullptr;
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    moveEventCbs_.erase(key);
 }
 
 void HeapProfilerListener::OnMoveEvent(uintptr_t fromObj, uintptr_t toObj, size_t size)
 {
-    if (moveEventCb_) {
-        moveEventCb_(fromObj, toObj, size);
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    for (const auto &pair : moveEventCbs_) {
+        if (pair.second) {
+            pair.second(fromObj, toObj, size);
+        }
     }
 }
 }  // namespace common
