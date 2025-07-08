@@ -621,8 +621,9 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
     // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
-    bool isLargeOrFixRegion = region->IsLargeRegion() || region->IsFixedRegion();
-    region->VisitAllObjectsBeforeFix([&collector, region, isLargeOrFixRegion](BaseObject* object) {
+    bool isLargeRegion = region->IsLargeRegion();
+    bool isFixRegion = region->IsFixedRegion();
+    region->VisitAllObjectsBeforeFix([&collector, region, isLargeRegion, isFixRegion](BaseObject* object) {
         if (region->IsNewObjectSinceForward(object)) {
             // handle dead objects in tl-regions for concurrent gc.
             if (collector.IsToVersion(object)) {
@@ -634,8 +635,11 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
         } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
-            if (isLargeOrFixRegion) {
-                // large/fix region is no need to fillfreeobject.
+            if (isLargeRegion) {
+                // large region is no need to fillfreeobject.
+                return;
+            } else if (isFixRegion) {
+                region->CollectPinnedGarbage(object, region->GetRegionCellCount());
                 return;
             }
             FillFreeObject(object, RegionSpace::GetAllocSize(*object));
