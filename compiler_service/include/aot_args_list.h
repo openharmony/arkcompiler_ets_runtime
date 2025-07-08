@@ -157,12 +157,14 @@ std::unordered_set<std::string> staticAOTArgsList {
 std::vector<std::string> staticAOTDefaultArgs {
     "--load-runtimes=ets",
     "--compiler-enable-fast-interop=false",
+    "--compiler-lower-boxed-boolean=false",
     "--paoc-zip-panda-file=ets/modules_static.abc"
 };
 
 std::vector<std::string> staticFrameworkAOTDefaultArgs {
     "--load-runtimes=ets",
     "--compiler-enable-fast-interop=false",
+    "--compiler-lower-boxed-boolean=false"
 };
 
 } // namespace OHOS::ArkCompiler
