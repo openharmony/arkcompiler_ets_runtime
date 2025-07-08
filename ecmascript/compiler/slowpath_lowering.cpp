@@ -1370,9 +1370,8 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 
 void SlowPathLowering::LowerLdSymbol(GateRef gate)
 {
-    GateRef globalEnv = circuit_->GetGlobalEnvCache();
-    GateRef newGate = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue_,
-                                                 globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
+    const int id = RTSTUB_ID(GetSymbolFunction);
+    GateRef newGate = LowerCallRuntime(gate, id, {});
     ReplaceHirWithValue(gate, newGate);
 }
 

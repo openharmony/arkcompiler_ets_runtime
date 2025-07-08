@@ -2520,6 +2520,23 @@ DEF_RUNTIME_STUBS(CreateEmptyObject)
     return RuntimeCreateEmptyObject(thread, factory, globalEnv).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateEmptyArray)
+{
+    RUNTIME_STUBS_HEADER(CreateEmptyArray);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+    return RuntimeCreateEmptyArray(thread, factory, globalEnv).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetSymbolFunction)
+{
+    RUNTIME_STUBS_HEADER(GetSymbolFunction);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+    return globalEnv->GetSymbolFunction().GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetUnmapedArgs)
 {
     RUNTIME_STUBS_HEADER(GetUnmapedArgs);

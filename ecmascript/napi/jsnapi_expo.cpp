@@ -116,6 +116,7 @@ using ecmascript::OperationResult;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
 using ecmascript::Region;
+using ecmascript::SFunctionEnv;
 using ecmascript::TaggedArray;
 using ecmascript::base::BuiltinsBase;
 using ecmascript::base::JsonStringifier;
@@ -3611,8 +3612,8 @@ Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
     JSHandle<JSFunction> current(factory->NewSFunction(env, reinterpret_cast<void *>(nativeFunc)));
     JSFunction::SetSFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
-    // for naive SendableFunction, it's lexicalEnv should be undefined
-    ASSERT(current->GetLexicalEnv(thread) == JSTaggedValue::Undefined());
+    JSTaggedValue sFunctionEnv = thread->GlobalConstants()->GetEmptySFunctionEnv();
+    current->SetLexicalEnv<ecmascript::SKIP_BARRIER>(thread, JSHandle<GlobalEnv>(thread, sFunctionEnv));
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
@@ -3837,8 +3838,9 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     prototypeHClass->SetExtensible(false);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
-    // for naive SendableClassFunction, it doesn't need to store itself to lexicalEnv
-    ASSERT(constructor->GetLexicalEnv(thread) == JSTaggedValue::Undefined());
+    JSHandle<SFunctionEnv> sFunctionEnv = factory->NewSFunctionEnv();
+    sFunctionEnv->SetConstructor(thread, constructor.GetTaggedValue());
+    constructor->SetLexicalEnv(thread, sFunctionEnv);
     constructor->SetCallNapi(callNapi);
     JSFunction::SetSFunctionExtraInfo(thread, constructor, nullptr, deleter, data, nativeBindingSize);
 

@@ -488,8 +488,8 @@ DECLARE_ASM_HANDLER(HandleLdsymbol)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-    varAcc = GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    varAcc = CallRuntime(glue, RTSTUB_ID(GetSymbolFunction), {});
     DISPATCH_WITH_ACC(LDSYMBOL);
 }
 
@@ -586,7 +586,8 @@ DECLARE_ASM_HANDLER(HandleGetunmappedargs)
 
     Bind(&slowPath);
     {
-        GateRef res = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(GetUnmapedArgs), {});
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(GetUnmapedArgs), {});
         CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(GETUNMAPPEDARGS));
     }
 }
@@ -642,8 +643,8 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
 
     Bind(&slowPath);
     {
-        GateRef result2 = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(CopyRestArgs),
-                                                   { IntToTaggedInt(restIdx) });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result2 = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
         CHECK_EXCEPTION_WITH_ACC(result2, INT_PTR(COPYRESTARGS_IMM8));
     }
 }
@@ -652,7 +653,8 @@ DECLARE_ASM_HANDLER(HandleWideCopyrestargsPrefImm16)
 {
     GateRef restIdx = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_COPYRESTARGS_PREF_IMM16));
 }
 
@@ -662,7 +664,8 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithexcludedkeysImm8V8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef firstArgRegIdx = ZExtInt8ToInt16(ReadInst8_2(pc));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateObjectWithExcludedKeys),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithExcludedKeys),
         { Int16ToTaggedInt(numKeys), obj, Int16ToTaggedInt(firstArgRegIdx) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8));
 }
@@ -673,7 +676,8 @@ DECLARE_ASM_HANDLER(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef firstArgRegIdx = ZExtInt8ToInt16(ReadInst8_4(pc));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateObjectWithExcludedKeys),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithExcludedKeys),
         { Int16ToTaggedInt(numKeys), obj, Int16ToTaggedInt(firstArgRegIdx) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8));
 }
@@ -682,7 +686,8 @@ DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm16)
 {
     GateRef imm = ReadInst16_1(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
         { Int16ToTaggedInt(imm), acc }); // acc is thisValue
     CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16));
 }
@@ -691,8 +696,9 @@ DECLARE_ASM_HANDLER(HandleThrowIfsupernotcorrectcallPrefImm8)
 {
     GateRef imm = ReadInst8_1(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
-                                            { Int8ToTaggedInt(imm), acc }); // acc is thisValue
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(ThrowIfSuperNotCorrectCall),
+        { Int8ToTaggedInt(imm), acc }); // acc is thisValue
     CHECK_EXCEPTION(res, INT_PTR(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8));
 }
 
@@ -701,8 +707,9 @@ DECLARE_ASM_HANDLER(HandleAsyncfunctionresolveV8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionResolveOrReject),
-                                            { asyncFuncObj, value, TaggedTrue() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
+                              { asyncFuncObj, value, TaggedTrue() });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(ASYNCFUNCTIONRESOLVE_V8));
 }
 
@@ -711,8 +718,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionresolvePrefV8V8V8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionResolveOrReject),
-                                            { asyncFuncObj, value, TaggedTrue() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
+                              { asyncFuncObj, value, TaggedTrue() });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_ASYNCFUNCTIONRESOLVE_PREF_V8_V8_V8));
 }
 
@@ -721,8 +729,9 @@ DECLARE_ASM_HANDLER(HandleAsyncfunctionrejectV8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionResolveOrReject),
-                                            { asyncFuncObj, value, TaggedFalse() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
+                              { asyncFuncObj, value, TaggedFalse() });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(ASYNCFUNCTIONREJECT_V8));
 }
 
@@ -731,8 +740,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionrejectPrefV8V8V8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionResolveOrReject),
-                                            { asyncFuncObj, value, TaggedFalse() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
+                              { asyncFuncObj, value, TaggedFalse() });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8));
 }
 
@@ -750,8 +760,9 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
         LoadPrimitive(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     GateRef offset = TaggedPtrToTaggedIntPtr(PtrSub(pc, firstPC));
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(DefineGetterSetterByValue),
-                                            { obj, prop, getter, setter, acc, func, offset }); // acc is flag
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
+                              { obj, prop, getter, setter, acc, func, offset }); // acc is flag
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 
@@ -769,7 +780,8 @@ DECLARE_ASM_HANDLER(HandleAsyncfunctionenter)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionEnter), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionEnter), {});
     CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(ASYNCFUNCTIONENTER));
 }
 
@@ -842,7 +854,8 @@ DECLARE_ASM_HANDLER(HandleGetasynciteratorImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetAsyncIterator), { *varAcc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(GetAsyncIterator), { *varAcc });
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETASYNCITERATOR_IMM8));
 }
 
@@ -853,8 +866,10 @@ DECLARE_ASM_HANDLER(HandleLdPrivatePropertyImm8Imm16Imm16)
     GateRef slotIndex = ReadInst16_3(pc);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdPrivateProperty),
-        {currentEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc}); // acc as obj
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    result = CallRuntime(glue,
+                         RTSTUB_ID(LdPrivateProperty),
+                         {currentEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc}); // acc as obj
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(LDPRIVATEPROPERTY_IMM8_IMM16_IMM16));
 }
 
@@ -865,8 +880,11 @@ DECLARE_ASM_HANDLER(HandleStPrivatePropertyImm8Imm16Imm16V8)
     GateRef slotIndex = ReadInst16_3(pc);
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StPrivateProperty),
-        {currentEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc}); // acc as value
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    result =
+        CallRuntime(glue,
+                    RTSTUB_ID(StPrivateProperty),
+                    {currentEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc}); // acc as value
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8));
 }
 
@@ -876,7 +894,8 @@ DECLARE_ASM_HANDLER(HandleTestInImm8Imm16Imm16)
     [[maybe_unused]] GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(TestIn), {currentEnv,
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(TestIn), {currentEnv,
         IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), acc});  // acc as obj
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(TESTIN_IMM8_IMM16_IMM16));
 }
@@ -884,14 +903,16 @@ DECLARE_ASM_HANDLER(HandleTestInImm8Imm16Imm16)
 DECLARE_ASM_HANDLER(HandleThrowPatternnoncoerciblePrefNone)
 {
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowPatternNonCoercible), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowPatternNonCoercible), {});
     DISPATCH_LAST();
 }
 
 DECLARE_ASM_HANDLER(HandleThrowDeletesuperpropertyPrefNone)
 {
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowDeleteSuperProperty), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowDeleteSuperProperty), {});
     DISPATCH_LAST();
 }
 
@@ -1332,6 +1353,7 @@ DECLARE_ASM_HANDLER(HandleExpImm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef base = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
     GateRef result = CallRuntime(glue, RTSTUB_ID(Exp), { base, acc });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(EXP_IMM8_V8));
 }
@@ -1346,7 +1368,8 @@ DECLARE_ASM_HANDLER(HandleIsinImm8V8)
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef result = IsIn(glue, prop, acc); // acc is obj
 #else
-    GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
+    SetGlueGlobalEnv(glue, globalEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
 #endif
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ISIN_IMM8_V8));
 }
@@ -1513,7 +1536,8 @@ DECLARE_ASM_HANDLER(HandleCreategeneratorobjV8)
     GateRef v0 = ReadInst8_0(pc);
     GateRef genFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateGeneratorObj), { genFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateGeneratorObj), { genFunc });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(CREATEGENERATOROBJ_V8));
 }
 
@@ -1522,7 +1546,8 @@ DECLARE_ASM_HANDLER(HandleThrowConstassignmentPrefV8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowConstAssignment), { value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowConstAssignment), { value });
     DISPATCH_LAST();
 }
 
@@ -1530,7 +1555,8 @@ DECLARE_ASM_HANDLER(HandleGettemplateobjectImm8)
 {
     GateRef literal = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetTemplateObject), { literal });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETTEMPLATEOBJECT_IMM8));
 }
 
@@ -1538,7 +1564,8 @@ DECLARE_ASM_HANDLER(HandleGettemplateobjectImm16)
 {
     GateRef literal = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetTemplateObject), { literal });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GETTEMPLATEOBJECT_IMM16));
 }
 
@@ -1546,7 +1573,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGettemplateobjectPrefV8)
 {
     GateRef literal = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetTemplateObject), { literal });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_GETTEMPLATEOBJECT_PREF_V8));
 }
 
@@ -1576,7 +1604,8 @@ DECLARE_ASM_HANDLER(HandleThrowIfnotobjectPrefV8)
     }
     Bind(&notEcmaObject);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowIfNotObject), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowIfNotObject), {});
     DISPATCH_LAST();
 }
 
@@ -1585,7 +1614,8 @@ DECLARE_ASM_HANDLER(HandleCloseiteratorImm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef iter = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CloseIterator), { iter });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CloseIterator), { iter });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(CLOSEITERATOR_IMM8_V8));
 }
 
@@ -1594,7 +1624,8 @@ DECLARE_ASM_HANDLER(HandleCloseiteratorImm16V8)
     GateRef v0 = ReadInst8_2(pc);
     GateRef iter = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CloseIterator), { iter });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CloseIterator), { iter });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(CLOSEITERATOR_IMM16_V8));
 }
 
@@ -1656,7 +1687,8 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     }
     Bind(&slowPath);
     {
-        res = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(SuperCallSpread), { thisFunc, array });
+        SetGlueGlobalEnv(glue, globalEnv);
+        res = CallRuntime(glue, RTSTUB_ID(SuperCallSpread), { thisFunc, array });
         Jump(&threadCheck);
     }
     Bind(&threadCheck);
@@ -1693,7 +1725,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDelobjpropPrefV8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef prop = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(DelObjProp), { obj, prop });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_DELOBJPROP_PREF_V8_V8));
 }
 
@@ -1702,7 +1735,8 @@ DECLARE_ASM_HANDLER(HandleNewobjapplyImm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewObjApply), { func, acc }); // acc is array
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(NewObjApply), { func, acc }); // acc is array
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEWOBJAPPLY_IMM8_V8));
 }
 
@@ -1711,7 +1745,8 @@ DECLARE_ASM_HANDLER(HandleNewobjapplyImm16V8)
     GateRef v0 = ReadInst8_2(pc);
     GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewObjApply), { func, acc }); // acc is array
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(NewObjApply), { func, acc }); // acc is array
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEWOBJAPPLY_IMM16_V8));
 }
 
@@ -1722,7 +1757,8 @@ DECLARE_ASM_HANDLER(HandleCreateiterresultobjV8V8)
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef flag = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateIterResultObj), { value, flag });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateIterResultObj), { value, flag });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(CREATEITERRESULTOBJ_V8_V8));
 }
 
@@ -1732,8 +1768,8 @@ DECLARE_ASM_HANDLER(HandleAsyncfunctionawaituncaughtV8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionAwaitUncaught),
-                                               { asyncFuncObj, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(AsyncFunctionAwaitUncaught), { asyncFuncObj, value });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ASYNCFUNCTIONAWAITUNCAUGHT_V8));
 }
 
@@ -1742,8 +1778,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncfunctionawaituncaughtPrefV8V8)
     GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncFunctionAwaitUncaught),
-                                               { asyncFuncObj, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(AsyncFunctionAwaitUncaught), { asyncFuncObj, value });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_ASYNCFUNCTIONAWAITUNCAUGHT_PREF_V8_V8));
 }
 
@@ -1765,7 +1801,8 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholePrefV8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     // assert obj.IsString()
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { obj });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowUndefinedIfHole), { obj });
     DISPATCH_LAST();
 }
 
@@ -1786,7 +1823,8 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholewithnamePrefId16)
     GateRef str = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     // assert obj.IsString()
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowUndefinedIfHole), { str });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowUndefinedIfHole), { str });
     DISPATCH_LAST();
 }
 
@@ -1796,7 +1834,8 @@ DECLARE_ASM_HANDLER(HandleCopydatapropertiesV8)
     GateRef dst = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef src = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CopyDataProperties), { dst, src });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CopyDataProperties), { dst, src });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(COPYDATAPROPERTIES_V8));
 }
 
@@ -1805,7 +1844,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCopydatapropertiesPrefV8V8)
     GateRef dst = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef src = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CopyDataProperties), { dst, src });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CopyDataProperties), { dst, src });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_COPYDATAPROPERTIES_PREF_V8_V8));
 }
 
@@ -1816,8 +1856,8 @@ DECLARE_ASM_HANDLER(HandleStarrayspreadV8V8)
     GateRef dst = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef index = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StArraySpread),
-                                               { dst, index, acc }); // acc is res
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StArraySpread), { dst, index, acc }); // acc is res
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(STARRAYSPREAD_V8_V8));
 }
 
@@ -1830,7 +1870,8 @@ DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm8V8)
     GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef obj = *varAcc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(SetObjectWithProto), { proto, obj });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -1846,7 +1887,8 @@ DECLARE_ASM_HANDLER(HandleSetobjectwithprotoImm16V8)
     GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef obj = *varAcc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(SetObjectWithProto), { proto, obj });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -1861,7 +1903,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSetobjectwithprotoPrefV8V8)
     GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetObjectWithProto), { proto, obj });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(SetObjectWithProto), { proto, obj });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -1931,7 +1974,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm8V8V8)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StOwnByValue), { receiver, propKey, acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByValue), { receiver, propKey, acc });
         CHECK_EXCEPTION(result, INT_PTR(STOWNBYVALUE_IMM8_V8_V8));
     }
 }
@@ -1967,7 +2011,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm16V8V8)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StOwnByValue), { receiver, propKey, acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByValue), { receiver, propKey, acc });
         CHECK_EXCEPTION(result, INT_PTR(STOWNBYVALUE_IMM16_V8_V8));
     }
 }
@@ -1980,7 +2025,8 @@ DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm8V8V8)
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
      // acc is value, sp for thisFunc
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYVALUE_IMM8_V8_V8));
 }
 
@@ -1992,7 +2038,8 @@ DECLARE_ASM_HANDLER(HandleStsuperbyvalueImm16V8V8)
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
      // acc is value, sp for thisFunc
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYVALUE_IMM16_V8_V8));
 }
 
@@ -2003,7 +2050,8 @@ DECLARE_ASM_HANDLER(HandleStsuperbynameImm8Id16V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYNAME_IMM8_ID16_V8));
 }
 
@@ -2014,7 +2062,8 @@ DECLARE_ASM_HANDLER(HandleStsuperbynameImm16Id16V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYNAME_IMM16_ID16_V8));
 }
 
@@ -2041,8 +2090,9 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm16)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
         CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM8_V8_IMM16));
     }
 }
@@ -2070,8 +2120,9 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm16V8Imm16)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
         CHECK_EXCEPTION(result, INT_PTR(STOBJBYINDEX_IMM16_V8_IMM16));
     }
 }
@@ -2098,8 +2149,9 @@ DECLARE_ASM_HANDLER(HandleWideStobjbyindexPrefV8Imm32)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StObjByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
         CHECK_EXCEPTION(result, INT_PTR(WIDE_STOBJBYINDEX_PREF_V8_IMM32));
     }
 }
@@ -2163,8 +2215,9 @@ DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StOwnByIndex),
-                                                  { receiver, IntToTaggedInt(index), acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
         CHECK_EXCEPTION(result, INT_PTR(WIDE_STOWNBYINDEX_PREF_V8_IMM32));
     }
 }
@@ -2309,7 +2362,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
                 {
                     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
-                    CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
+                    SetGlueGlobalEnv(glue, globalEnv);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
                 }
             }
@@ -2317,8 +2371,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
     }
     Bind(&slowPath);
     {
-        GateRef res = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StOwnByValueWithNameSet),
-                                               { receiver, propKey, acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByValueWithNameSet), { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(STOWNBYVALUEWITHNAMESET_IMM16_V8_V8);
@@ -2355,7 +2409,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
                 {
                     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
-                    CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
+                    SetGlueGlobalEnv(glue, globalEnv);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(STOWNBYVALUEWITHNAMESET_IMM8_V8_V8);
                 }
             }
@@ -2363,8 +2418,8 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
     }
     Bind(&slowPath);
     {
-        GateRef res = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StOwnByValueWithNameSet),
-                                               { receiver, propKey, acc });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByValueWithNameSet), { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(STOWNBYVALUEWITHNAMESET_IMM8_V8_V8);
@@ -2401,7 +2456,8 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
     Bind(&slowPath);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
     Bind(&checkResult);
@@ -2440,7 +2496,8 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
     Bind(&slowPath);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        result = CallRuntime(glue, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
     Bind(&checkResult);
@@ -2478,7 +2535,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
                     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
                     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-                    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
+                    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8);
                 }
             }
@@ -2487,8 +2545,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
     Bind(&notJSObject);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByNameWithNameSet),
-                                                { receiver, propKey, acc });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByNameWithNameSet), { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8);
@@ -2523,7 +2581,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
                     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
                     Bind(&notException);
                     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-                    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
+                    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+                    CallRuntime(glue, RTSTUB_ID(SetFunctionNameNoPrefix), { acc, propKey });
                     DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
                 }
             }
@@ -2532,8 +2591,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
     Bind(&notJSObject);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByNameWithNameSet),
-                                                { receiver, propKey, acc });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(StOwnByNameWithNameSet), { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
         Bind(&notException1);
         DISPATCH(STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8);
@@ -3075,7 +3134,8 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     GateRef value = *varAcc;
     GateRef frame = GetFrame(*varSp);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuspendGenerator), { genObj, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuspendGenerator), { genObj, value });
     Label isException(env);
     Label notException(env);
     BRANCH(TaggedIsException(res), &isException, &notException);
@@ -3181,7 +3241,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef frame = GetFrame(*varSp);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuspendGenerator), { genObj, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuspendGenerator), { genObj, value });
     Label isException(env);
     Label notException(env);
     BRANCH(TaggedIsException(res), &isException, &notException);
@@ -3337,8 +3398,9 @@ DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm8Id16Imm8)
     GateRef pattern = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef flags = ReadInst8_3(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateRegExpWithLiteral),
-                                            { pattern, Int8ToTaggedInt(flags) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
+                              { pattern, Int8ToTaggedInt(flags) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8));
 }
 
@@ -3348,8 +3410,9 @@ DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm16Id16Imm8)
     GateRef pattern = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef flags = ReadInst8_4(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateRegExpWithLiteral),
-                                            { pattern, Int8ToTaggedInt(flags) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
+                              { pattern, Int8ToTaggedInt(flags) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8));
 }
 
@@ -3397,7 +3460,8 @@ DECLARE_ASM_HANDLER(HandleTonumberImm8)
     Bind(&valueNotNumber);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumber), { value });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumber), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMBER_IMM8));
     }
 }
@@ -3418,7 +3482,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumberPrefV8)
     Bind(&valueNotNumber);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumber), { value });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumber), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(DEPRECATED_TONUMBER_PREF_V8));
     }
 }
@@ -3450,7 +3515,8 @@ DECLARE_ASM_HANDLER(HandleLdbigintId16)
     GateRef stringId = ReadInst16_0(pc);
     GateRef numberBigInt = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdBigInt), { numberBigInt });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDBIGINT_ID16));
 }
 
@@ -3492,7 +3558,8 @@ DECLARE_ASM_HANDLER(HandleTonumericImm8)
     Bind(&valueNotNumeric);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumeric), { value });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(TONUMERIC_IMM8));
     }
 }
@@ -3513,7 +3580,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedTonumericPrefV8)
     Bind(&valueNotNumeric);
     {
         GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-        GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ToNumeric), { value });
+        SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+        GateRef res = CallRuntime(glue, RTSTUB_ID(ToNumeric), { value });
         CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(DEPRECATED_TONUMERIC_PREF_V8));
     }
 }
@@ -3525,7 +3593,8 @@ DECLARE_ASM_HANDLER(HandleDynamicimport)
     GateRef frame =  GetFrame(sp);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DYNAMICIMPORT));
 }
 
@@ -3536,7 +3605,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDynamicimportPrefV8)
     GateRef frame =  GetFrame(sp);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_DYNAMICIMPORT_PREF_V8));
 }
 
@@ -3548,7 +3618,8 @@ DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
     GateRef v0 = ReadInst8_0(pc);
     GateRef genFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(CreateAsyncGeneratorObj), { genFunc });
     Label isException(env);
     Label notException(env);
     BRANCH(TaggedIsException(result), &isException, &notException);
@@ -3590,8 +3661,9 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     GateRef flag = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef frame = GetFrame(*varSp);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncGeneratorResolve),
-                                            { asyncGenerator, value, flag });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorResolve),
+                              { asyncGenerator, value, flag });
     Label isException(env);
     Label notException(env);
     BRANCH(TaggedIsException(res), &isException, &notException);
@@ -3675,8 +3747,9 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef asyncGenerator = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncGeneratorReject),
-                                            { asyncGenerator, acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
+                              { asyncGenerator, acc });
     CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));
 }
 
@@ -3694,8 +3767,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)
     GateRef asyncGenerator = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(AsyncGeneratorReject),
-                                            { asyncGenerator, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
+                              { asyncGenerator, value });
     CHECK_EXCEPTION_VARACC(res, INT_PTR(DEPRECATED_ASYNCGENERATORREJECT_PREF_V8_V8));
 }
 
@@ -3756,7 +3830,8 @@ DECLARE_ASM_HANDLER(HandleSupercallthisrangeImm8Imm8V8)
     }
     Bind(&slowPath);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCall),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    res = CallRuntime(glue, RTSTUB_ID(SuperCall),
         { thisFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
     Jump(&checkResult);
     Bind(&checkResult);
@@ -3781,8 +3856,9 @@ DECLARE_ASM_HANDLER(HandleSupercallarrowrangeImm8Imm8V8)
     GateRef range = ReadInst8_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_2(pc));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCall),
-                                            { acc, Int16ToTaggedInt(v0), Int8ToTaggedInt(range) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
+        { acc, Int16ToTaggedInt(v0), Int8ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(SUPERCALLARROWRANGE_IMM8_IMM8_V8));
 }
 
@@ -3793,8 +3869,9 @@ DECLARE_ASM_HANDLER(HandleWideSupercallthisrangePrefImm16V8)
     GateRef frame = GetFrame(sp);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCall),
-                                            { currentFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
+        { currentFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8));
 }
 
@@ -3803,8 +3880,9 @@ DECLARE_ASM_HANDLER(HandleWideSupercallarrowrangePrefImm16V8)
     GateRef range = ReadInst16_1(pc);
     GateRef v0 = ZExtInt8ToInt16(ReadInst8_3(pc));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCall),
-                                            { acc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
+        { acc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8));
 }
 
@@ -3814,8 +3892,8 @@ DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm8V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue),
-                                               { receiver, propKey }); // sp for thisFunc
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDSUPERBYVALUE_IMM8_V8));
 }
 DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm16V8)
@@ -3824,8 +3902,8 @@ DECLARE_ASM_HANDLER(HandleLdsuperbyvalueImm16V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue),
-                                               { receiver, propKey }); // sp for thisFunc
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDSUPERBYVALUE_IMM16_V8));
 }
 
@@ -3836,8 +3914,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdsuperbyvaluePrefV8V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue),
-                                               { receiver, propKey }); // sp for thisFunc
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8));
 }
 
@@ -3848,7 +3926,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetiteratornextPrefV8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef method = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetIteratorNext), { obj, method });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetIteratorNext), { obj, method });
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_GETITERATORNEXT_PREF_V8_V8));
 }
 
@@ -3908,7 +3987,8 @@ DECLARE_ASM_HANDLER(HandleLdsuperbynameImm8Id16)
     GateRef receiver = acc;
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM8_ID16));
 }
 
@@ -3920,7 +4000,8 @@ DECLARE_ASM_HANDLER(HandleLdsuperbynameImm16Id16)
     GateRef receiver = acc;
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM16_ID16));
 }
 
@@ -3933,7 +4014,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdsuperbynamePrefId32V8)
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8));
 }
 
@@ -3959,8 +4041,9 @@ DECLARE_ASM_HANDLER(HandleLdobjbyindexImm8Imm16)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+                                     { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM8_IMM16));
     }
 }
@@ -3987,8 +4070,9 @@ DECLARE_ASM_HANDLER(HandleLdobjbyindexImm16Imm16)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+                                     { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LDOBJBYINDEX_IMM16_IMM16));
     }
 }
@@ -4015,8 +4099,9 @@ DECLARE_ASM_HANDLER(HandleWideLdobjbyindexPrefImm32)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+                                     { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(WIDE_LDOBJBYINDEX_PREF_IMM32));
     }
 }
@@ -4044,8 +4129,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbyindexPrefV8Imm32)
     }
     Bind(&slowPath);
     {
-        GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdObjByIndex),
-                                                  { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
+        SetGlueGlobalEnv(glue, globalEnv);
+        GateRef result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+                                     { receiver, IntToTaggedInt(index), TaggedFalse(), Undefined() });
         CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32));
     }
 }
@@ -4057,8 +4143,9 @@ DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordImm16Id16)
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StGlobalRecord),
-                                               { propKey, *varAcc, TaggedTrue() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+                                 { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STCONSTTOGLOBALRECORD_IMM16_ID16));
 }
 
@@ -4069,8 +4156,9 @@ DECLARE_ASM_HANDLER(HandleSttoglobalrecordImm16Id16)
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StGlobalRecord),
-                                               { propKey, *varAcc, TaggedFalse() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+                                 { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STTOGLOBALRECORD_IMM16_ID16));
 }
 
@@ -4081,8 +4169,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStconsttoglobalrecordPrefId32)
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StGlobalRecord),
-                                               { propKey, *varAcc, TaggedTrue() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+                                 { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32));
 }
 
@@ -4093,8 +4182,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlettoglobalrecordPrefId32)
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StGlobalRecord),
-                                               { propKey, *varAcc, TaggedFalse() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+                                 { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32));
 }
 
@@ -4105,8 +4195,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStclasstoglobalrecordPrefId32)
     GateRef stringId = ReadInst32_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StGlobalRecord),
-                                               { propKey, *varAcc, TaggedFalse() });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
+                                 { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32));
 }
 
@@ -4121,8 +4212,8 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
     GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt8ToInt32(index), module);
 #else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetModuleNamespaceByIndex),
-                                                  { IntToTaggedInt(index) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
 #endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(GETMODULENAMESPACE_IMM8);
@@ -4139,8 +4230,8 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
     GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt16ToInt32(index), module);
 #else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetModuleNamespaceByIndex),
-                                                  { Int16ToTaggedInt(index) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { Int16ToTaggedInt(index) });
 #endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
@@ -4153,7 +4244,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
     GateRef stringId = ReadInst32_1(pc);
     GateRef prop = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetModuleNamespace), { prop });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
 }
@@ -4194,8 +4286,8 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef indexInt32 = ZExtInt8ToInt32(index);
     varAcc = LoadExternalmodulevar(glue, indexInt32, module);
 #else
-    varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                      {Int8ToTaggedInt(index), module});
+    SetGlueGlobalEnv(glue, globalEnv);
+    varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int8ToTaggedInt(index), module});
 #endif
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
@@ -4214,8 +4306,8 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef indexInt32 = ZExtInt16ToInt32(index);
     varAcc = LoadExternalmodulevar(glue, indexInt32, module);
 #else
-    varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                      {Int16ToTaggedInt(index), module});
+    SetGlueGlobalEnv(glue, globalEnv);
+    varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int16ToTaggedInt(index), module});
 #endif
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
@@ -4228,8 +4320,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
     GateRef flag = ZExtInt8ToInt32(ReadInst8_5(pc));
     GateRef key = GetStringFromConstPool(glue, constpool, stringId);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdModuleVar),
-                                                  { key, IntToTaggedInt(flag) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedInt(flag) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8);
 }
@@ -4239,7 +4331,8 @@ DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
     GateRef index = ReadInst8_0(pc);
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StModuleVarByIndex), { IntToTaggedInt(index), value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { IntToTaggedInt(index), value });
     DISPATCH(STMODULEVAR_IMM8);
 }
 
@@ -4248,7 +4341,8 @@ DECLARE_ASM_HANDLER(HandleWideStmodulevarPrefImm16)
     GateRef index = ReadInst16_1(pc);
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StModuleVarByIndex), { Int16ToTaggedInt(index), value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { Int16ToTaggedInt(index), value });
     DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
 }
 
@@ -4258,7 +4352,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStmodulevarPrefId32)
     GateRef prop = GetStringFromConstPool(glue, constpool, stringId);
     GateRef value = acc;
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StModuleVar), { prop, value });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, value });
     DISPATCH(DEPRECATED_STMODULEVAR_PREF_ID32);
 }
 
@@ -4312,8 +4407,9 @@ DECLARE_ASM_HANDLER(HandleNewlexenvwithnameImm8Id16)
     GateRef scopeId = ReadInst16_1(pc);
     GateRef state = GetFrame(sp);
     GateRef currentEnv = GetEnvFromFrame(glue, state);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewLexicalEnvWithName),
-                                            { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewLexicalEnvWithName),
+                              { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
     Bind(&notException);
@@ -4330,8 +4426,9 @@ DECLARE_ASM_HANDLER(HandleWideNewlexenvwithnamePrefImm16Id16)
     GateRef scopeId = ReadInst16_3(pc);
     GateRef state = GetFrame(sp);
     GateRef currentEnv = GetEnvFromFrame(glue, state);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewLexicalEnvWithName),
-                                            { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(NewLexicalEnvWithName),
+                              { Int16ToTaggedInt(numVars), Int16ToTaggedInt(scopeId) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(res, &notException);
     Bind(&notException);
@@ -4354,9 +4451,12 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef module = GetModuleFromFunction(glue, currentFunc);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateClassWithBuffer),
-        { proto, currentEnv, constpool, Int16ToTaggedInt(methodId), Int16ToTaggedInt(literalId),
-        module, Int16ToTaggedInt(length) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
+                              { proto, currentEnv, constpool,
+                                Int16ToTaggedInt(methodId),
+                                Int16ToTaggedInt(literalId), module,
+                                Int16ToTaggedInt(length)});
 
     Label isException(env);
     Label isNotException(env);
@@ -4389,9 +4489,12 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef module = GetModuleFromFunction(glue, currentFunc);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateClassWithBuffer),
-        { proto, currentEnv, constpool, Int16ToTaggedInt(methodId),
-        Int16ToTaggedInt(literalId), module, Int16ToTaggedInt(length) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
+                              { proto, currentEnv, constpool,
+                                Int16ToTaggedInt(methodId),
+                                Int16ToTaggedInt(literalId), module,
+                                Int16ToTaggedInt(length)});
 
     Label isException(env);
     Label isNotException(env);
@@ -4427,9 +4530,12 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateClassWithBuffer),
-        { proto, lexicalEnv, constpool, Int16ToTaggedInt(methodId),
-        Int16ToTaggedInt(literalId), module, Int16ToTaggedInt(length) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
+                              { proto, lexicalEnv, constpool,
+                                Int16ToTaggedInt(methodId),
+                                Int16ToTaggedInt(literalId), module,
+                                Int16ToTaggedInt(length)});
 
     Label isException(env);
     Label isNotException(env);
@@ -4879,7 +4985,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreateObjectWithBuffer), { result });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16));
 }
 
@@ -4940,7 +5047,8 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
     GateRef length = Int16Sub(numArgs, firstArgOffset);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewObjRange),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
         { ctor, ctor, Int16ToTaggedInt(firstArgIdx), Int16ToTaggedInt(length) });
     Jump(&checkResult);
     Bind(&checkResult);
@@ -5018,7 +5126,8 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
     GateRef length = Int16Sub(numArgs, firstArgOffset);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewObjRange),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
         { ctor, ctor, Int16ToTaggedInt(firstArgIdx), Int16ToTaggedInt(length) });
     Jump(&checkResult);
     Bind(&checkResult);
@@ -5090,7 +5199,8 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
     GateRef firstArgIdx = Int16Add(firstArgRegIdx, firstArgOffset);
     GateRef length = Int16Sub(numArgs, firstArgOffset);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(NewObjRange),
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    res = CallRuntime(glue, RTSTUB_ID(NewObjRange),
         { ctor, ctor, Int16ToTaggedInt(firstArgIdx), Int16ToTaggedInt(length) });
     Jump(&checkResult);
     Bind(&checkResult);
@@ -5246,7 +5356,8 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     NewObjectStubBuilder newBuilder(this, globalEnv);
     result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
 #else
-    result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
+    SetGlueGlobalEnv(glue, globalEnv);
+    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
         currentEnv, GetModule(glue, sp) });
 #endif
 
@@ -5278,8 +5389,9 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     NewObjectStubBuilder newBuilder(this, globalEnv);
     result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
 #else
-    result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-                                      currentEnv, GetModule(glue, sp) });
+    SetGlueGlobalEnv(glue, globalEnv);
+    result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
+        currentEnv, GetModule(glue, sp) });
 #endif
 
 #if ECMASCRIPT_ENABLE_IC
@@ -5301,7 +5413,8 @@ DECLARE_ASM_HANDLER(HandleApplyImm8V8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef array = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CallSpread), { func, obj, array });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
     CHECK_PENDING_EXCEPTION(res, INT_PTR(APPLY_IMM8_V8_V8));
 }
 
@@ -5311,14 +5424,16 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallspreadPrefV8V8V8)
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef array = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CallSpread), { func, obj, array });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
     CHECK_PENDING_EXCEPTION(res, INT_PTR(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowNotexistsPrefNone)
 {
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowThrowNotExists), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowThrowNotExists), {});
     DISPATCH_LAST();
 }
 DECLARE_ASM_HANDLER(HandleThrowPrefNone)
@@ -5828,14 +5943,16 @@ DECLARE_ASM_HANDLER(BCDebuggerExceptionEntry)
 DECLARE_ASM_HANDLER(NewObjectRangeThrowException)
 {
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowDerivedMustReturnException), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowDerivedMustReturnException), {});
     DISPATCH_LAST();
 }
 
 DECLARE_ASM_HANDLER(ThrowStackOverflowException)
 {
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(ThrowStackOverflowException), {});
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    CallRuntime(glue, RTSTUB_ID(ThrowStackOverflowException), {});
     DISPATCH_LAST();
 }
 
@@ -5907,7 +6024,8 @@ DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
 
     GateRef index = ReadInst16_1(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdPatchVar), { Int16ToTaggedInt(index) });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { Int16ToTaggedInt(index) });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(WIDE_LDPATCHVAR_PREF_IMM16));
 }
 
@@ -5915,8 +6033,8 @@ DECLARE_ASM_HANDLER(HandleWideStpatchvarPrefImm16)
 {
     GateRef index = ReadInst16_1(pc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StPatchVar),
-                                               { Int16ToTaggedInt(index), acc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { Int16ToTaggedInt(index), acc });
     CHECK_EXCEPTION(result, INT_PTR(WIDE_STPATCHVAR_PREF_IMM16));
 }
 
@@ -5986,8 +6104,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeCreatePrivatePropertyPrefImm16Id16)
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef count = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef literalId = ZExtInt16ToInt32(ReadInst16_3(pc));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(CreatePrivateProperty),
-        { currentEnv, IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(CreatePrivateProperty), {currentEnv,
+        IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module});
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16));
 }
 
@@ -5998,8 +6117,9 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8)
     GateRef slotIndex = ReadInst16_4(pc);
     GateRef v0 = ReadInst8_6(pc);
     GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
-    GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(DefinePrivateProperty),
-        { currentEnv, IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc });  // acc as value
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(DefinePrivateProperty), {currentEnv,
+        IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8));
 }
 
@@ -6311,8 +6431,8 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdLazyModuleVarPrefImm8)
     GateRef frame = GetFrame(sp);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdLazyExternalModuleVarByIndex),
-                                          { Int8ToTaggedInt(index), currentFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    moduleRef = CallRuntime(glue, RTSTUB_ID(LdLazyExternalModuleVarByIndex), { Int8ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
     Label notException(env);
@@ -6333,8 +6453,8 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdLazyModuleVarPrefImm16)
     GateRef frame = GetFrame(sp);
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef currentEnv = GetEnvFromFrame(glue, frame);
-    moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(LdLazyExternalModuleVarByIndex),
-                                          { Int16ToTaggedInt(index), currentFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    moduleRef = CallRuntime(glue, RTSTUB_ID(LdLazyExternalModuleVarByIndex), { Int16ToTaggedInt(index), currentFunc });
 
     auto env = GetEnvironment();
     Label notException(env);
@@ -6399,7 +6519,8 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeSuperCallForwardAllArgsV8)
 
     GateRef thisFunc = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
+    SetGlueGlobalEnvFromCurrentEnv(glue, currentEnv);
+    res = CallRuntime(glue, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
 
     BRANCH(TaggedIsException(*res), &resIsException, &dispatch);
     Bind(&resIsException);
