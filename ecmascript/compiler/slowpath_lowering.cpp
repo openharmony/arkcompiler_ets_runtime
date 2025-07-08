@@ -881,7 +881,7 @@ void SlowPathLowering::LowerCallStubWithIC(GateRef gate, int sign, const std::ve
     inputs.emplace_back(slotId);
 
     GateRef result = builder_.CallStub(glue_, gate, sign, inputs);
-    ReplaceHirWithValue(gate, result);
+    ReplaceHirWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 GateRef SlowPathLowering::LowerCallRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel)

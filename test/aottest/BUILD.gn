@@ -369,6 +369,7 @@ group("ark_aot_ts_test") {
     "typedarraymap",
     "typeof",
     "unaryop_special_value",
+    "unhandle_pending_exception",
     "useless_gate_elimination",
     "xor",
     "sharedbitvector",
