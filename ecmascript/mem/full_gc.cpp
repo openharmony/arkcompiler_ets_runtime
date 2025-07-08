@@ -160,6 +160,7 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
+    heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 
     heap_->GetSweeper()->Sweep(true);
     heap_->GetSweeper()->PostTask(true);
