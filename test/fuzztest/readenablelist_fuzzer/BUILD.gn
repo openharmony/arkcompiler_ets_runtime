@@ -32,13 +32,12 @@ ohos_fuzztest("ReadEnableListFuzzTest") {
 
   deps = [ "$js_root:libark_jsruntime_static" ]
 
-  deps += [ "$ark_root/libpandafile:libarkfile_static" ]
-
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [
     "icu:shared_icui18n",
     "icu:shared_icuuc",
+    "runtime_core:libarkfile_static",
     "zlib:libz",
     sdk_libc_secshared_dep,
   ]
