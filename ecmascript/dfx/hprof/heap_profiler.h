@@ -178,6 +178,7 @@ private:
     uint32_t GetScopeCount() const;
     std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
     bool InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace);
+    const std::string RAWHEAP_FILE_NAME = "/data/log/faultlog/temp/jsheap.rawheap";
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
@@ -189,7 +190,6 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
-    const std::string RAWHEAP_FILE_NAME = "/data/log/faultlog/temp/jsheap.rawheap";
 
     static const long LOCAL_HANDLE_LEAK_TIME_MS {5000};
     bool startLocalHandleLeakDetect_ {false};
