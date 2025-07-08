@@ -1934,83 +1934,182 @@ GateRef StubBuilder::IsInYoungSpace(GateRef regionType)
     return ret;
 }
 
+GateRef StubBuilder::IsOldToYoung(GateRef objRegionType, GateRef valueRegionType)
+{
+    auto env = GetEnvironment();
+    GateRef isOldToYoung = LogicAndBuilder(env)
+        .And(BoolNot(IsInYoungSpace(objRegionType)))
+        .And(IsInYoungSpace(valueRegionType)).Done();
+    return isOldToYoung;
+}
+
+GateRef StubBuilder::GetGCPhase(GateRef glue)
+{
+    GateRef gcPhase = LoadPrimitive(VariableType::INT8(), glue,
+        Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false) +
+        JSThread::CMCGCPhaseBits::START_BIT / BITS_PER_BYTE));
+    return gcPhase;
+}
+
+GateRef StubBuilder::GetGCReason(GateRef glue)
+{
+    GateRef gcReason = LoadPrimitive(VariableType::INT32(), glue,
+        Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false) +
+        JSThread::CMCGCReasonBits::START_BIT / BITS_PER_BYTE));
+    return gcReason;
+}
+
+void StubBuilder::MarkRSetCardTable(GateRef obj, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label markBit(env);
+    GateRef regionBase = IntPtrAnd(TaggedCastToIntPtr(obj),
+        IntPtr(~static_cast<int64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
+    GateRef objOffset = PtrSub(TaggedCastToIntPtr(obj), regionBase);
+    GateRef rset = GetCMCRegionRSet(obj);
+    GateRef cardIdx = IntPtrDiv(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
+                                IntPtr(common::kBitsPerWord));
+    GateRef headMaskBitStart = IntPtrMod(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
+                                            IntPtr(common::kBitsPerWord));
+    GateRef headMaskBits = Int64LSL(Int64(1), headMaskBitStart);
+    GateRef cardOffset = PtrMul(cardIdx, IntPtr(common::kBytesPerWord));
+    GateRef cardTable = LoadPrimitive(VariableType::NATIVE_POINTER(), rset,
+                                        IntPtr(common::RegionRSet::CARD_TABLE_OFFSET_IN_RSET));
+    GateRef card = LoadPrimitive(VariableType::INT64(), cardTable, cardOffset);
+    GateRef isMarked = Int64NotEqual(Int64And(card, headMaskBits), Int64(0));
+    BRANCH_NO_WEIGHT(isMarked, exit, &markBit);
+    Bind(&markBit);
+    {
+        Int64FetchOr(PtrAdd(cardTable, cardOffset), headMaskBits);
+        Jump(exit);
+    }
+}
+
+GateRef StubBuilder::ShouldGetGCReason(GateRef gcPhase)
+{
+    auto env = GetEnvironment();
+    GateRef shouldGetGCReason = LogicOrBuilder(env)
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_ENUM)))
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_MARK)))
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_POST_MARK)))
+        .Done();
+    return shouldGetGCReason;
+}
+
+GateRef StubBuilder::ShouldProcessSATB(GateRef gcPhase)
+{
+    auto env = GetEnvironment();
+    GateRef shouldProcessSATB = LogicOrBuilder(env)
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_ENUM)))
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_MARK)))
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_FINAL_MARK)))
+        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_REMARK_SATB)))
+        .Done();
+    return shouldProcessSATB;
+}
+
+GateRef StubBuilder::ShouldUpdateRememberSet(GateRef glue, GateRef gcPhase)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label checkOldToYoung(env);
+    Label exit(env);
+    Label notMarkRSet(env);
+    Label notIdlePhase(env);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    BRANCH(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_IDLE)), &exit, &notIdlePhase);
+    Bind(&notIdlePhase);
+    GateRef gcReason = GetGCReason(glue);
+    Label reasonNotYoung(env);
+    BRANCH(Int32Equal(gcReason, Int32(common::GCReason::GC_REASON_YOUNG)), &exit, &reasonNotYoung);
+    Bind(&reasonNotYoung);
+    GateRef shouldGetGCReason = ShouldGetGCReason(gcPhase);
+    BRANCH(BoolNot(shouldGetGCReason), &exit, &notMarkRSet);
+    Bind(&notMarkRSet);
+    result = False();
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void StubBuilder::CMCSetValueWithBarrier(GateRef glue, GateRef obj, [[maybe_unused]]GateRef offset, GateRef value)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-
-    GateRef gcPhase = LoadPrimitive(VariableType::INT8(), glue,
-                                    Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false) +
-                                        JSThread::CMCGCPhaseBits::START_BIT / BITS_PER_BYTE));
     Label checkOldToYoung(env);
     Label markRSet(env);
     Label notMarkRSet(env);
-    Label notIdlePhase(env);
-    BRANCH(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_IDLE)), &checkOldToYoung, &notIdlePhase);
-    Bind(&notIdlePhase);
-    GateRef gcReason = LoadPrimitive(VariableType::INT32(), glue,
-        Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false) +
-        JSThread::CMCGCReasonBits::START_BIT / BITS_PER_BYTE));
-    Label reasonNotYoung(env);
-    BRANCH(Int32Equal(gcReason, Int32(common::GCReason::GC_REASON_YOUNG)), &checkOldToYoung, &reasonNotYoung);
-    Bind(&reasonNotYoung);
-    GateRef needMarkPhase = LogicOrBuilder(env)
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_COPY)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_FIX)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_PRECOPY)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_FINAL_MARK)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_REMARK_SATB)))
-        .Done();
-    BRANCH(needMarkPhase, &checkOldToYoung, &notMarkRSet);
+    GateRef gcPhase = GetGCPhase(glue);
+    BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
     Bind(&checkOldToYoung);
     {
         GateRef objRegionType = GetCMCRegionType(obj);
         GateRef valueRegionType = GetCMCRegionType(value);
-        GateRef isOldToYoung = LogicAndBuilder(env)
-                               .And(BoolNot(IsInYoungSpace(objRegionType)))
-                               .And(IsInYoungSpace(valueRegionType)).Done();
+        GateRef isOldToYoung = IsOldToYoung(objRegionType, valueRegionType);
         BRANCH_UNLIKELY(isOldToYoung, &markRSet, &notMarkRSet);
         Bind(&markRSet);
-        {
-            Label markBit(env);
-            GateRef regionBase = IntPtrAnd(TaggedCastToIntPtr(obj),
-                IntPtr(~static_cast<int64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
-            GateRef objOffset = PtrSub(TaggedCastToIntPtr(obj), regionBase);
-            GateRef rset = GetCMCRegionRSet(obj);
-            GateRef cardIdx = IntPtrDiv(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
-                                        IntPtr(common::kBitsPerWord));
-            GateRef headMaskBitStart = IntPtrMod(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
-                                                 IntPtr(common::kBitsPerWord));
-            GateRef headMaskBits = Int64LSL(Int64(1), headMaskBitStart);
-            GateRef cardOffset = PtrMul(cardIdx, IntPtr(common::kBytesPerWord));
-            GateRef cardTable = LoadPrimitive(VariableType::NATIVE_POINTER(), rset,
-                                              IntPtr(common::RegionRSet::CARD_TABLE_OFFSET_IN_RSET));
-            GateRef card = LoadPrimitive(VariableType::INT64(), cardTable, cardOffset);
-            GateRef isMarked = Int64NotEqual(Int64And(card, headMaskBits), Int64(0));
-            BRANCH_NO_WEIGHT(isMarked, &notMarkRSet, &markBit);
-            Bind(&markBit);
-            {
-                Int64FetchOr(PtrAdd(cardTable, cardOffset), headMaskBits);
-                Jump(&notMarkRSet);
-            }
-        }
+        MarkRSetCardTable(obj, &notMarkRSet);
     }
     Bind(&notMarkRSet);
     Label markInBuffer(env);
-    GateRef needMarkInBuffer = LogicOrBuilder(env)
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_ENUM)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_MARK)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_FINAL_MARK)))
-        .Or(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_REMARK_SATB)))
-        .Done();
-    BRANCH_UNLIKELY(needMarkInBuffer, &markInBuffer, &exit);
+    GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
     Bind(&markInBuffer);
     {
         CallNGCRuntime(glue, RTSTUB_ID(MarkInBuffer), {value});
         Jump(&exit);
     }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label iLessLength(env);
+    Label isTaggedObject(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label markRSet(env);
+    Label notMarkRSet(env);
+    GateRef objRegionType = GetCMCRegionType(dstObj);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    GateRef gcPhase = GetGCPhase(glue);
+    Label checkOldToYoung(env);
+    BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
+    Bind(&checkOldToYoung);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
+        Bind(&iLessLength);
+        GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uintptr_t)));
+        GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
+        BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
+        Bind(&isTaggedObject);
+        GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
+        BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
+        Bind(&markRSet);
+        MarkRSetCardTable(dstObj, &notMarkRSet);
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&notMarkRSet);
+    Label markInBuffer(env);
+    GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+    Bind(&markInBuffer);
+    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+    Jump(&exit);
     Bind(&exit);
     env->SubCfgExit();
 }
@@ -12972,32 +13071,43 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
-                   {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-    Label checkNext(env);
+    Label isEnableCMCGC(env);
+    Label notCMCGC(env);
     BRANCH_UNLIKELY(LoadPrimitive(
         VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &exit, &checkNext);
-    Bind(&checkNext);
-    Label handleBarrier(env);
-    BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
-    Bind(&handleBarrier);
+        &isEnableCMCGC, &notCMCGC);
+
+    Bind(&isEnableCMCGC);
     {
-        if (copyKind == SameArray) {
-            CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
-                           {
-                               glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
-                               TaggedCastToIntPtr(srcAddr)
-                           });
-        } else {
-            ASSERT(copyKind == DifferentArray);
-            CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
-                           {
-                               glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
-                               TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)
-                           });
-        }
+        CallNGCRuntime(glue, RTSTUB_ID(CopyObjectPrimitive),
+            {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
+        CMCArrayCopyWriteBarrier(glue, dstObj, dstAddr, srcAddr, taggedValueCount);
         Jump(&exit);
+    }
+    Bind(&notCMCGC);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
+            {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
+        Label handleBarrier(env);
+        BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
+        Bind(&handleBarrier);
+        {
+            if (copyKind == SameArray) {
+                CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
+                            {
+                                glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                                TaggedCastToIntPtr(srcAddr)
+                            });
+            } else {
+                ASSERT(copyKind == DifferentArray);
+                CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
+                            {
+                                glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                                TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)
+                            });
+            }
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     env->SubCfgExit();

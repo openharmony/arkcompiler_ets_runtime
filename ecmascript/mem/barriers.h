@@ -117,7 +117,7 @@ public:
                                                         void* src, void* dst, size_t count);
     static bool ShouldProcessSATB(common::GCPhase gcPhase);
     static bool ShouldGetGCReason(common::GCPhase gcPhase);
-    static bool ShouldUpdateRememberSet(BaseObject* ref, common::GCPhase gcPhase);
+    static bool ShouldUpdateRememberSet(common::GCPhase gcPhase);
 
     static void CMCArrayCopyReadBarrierForward(const JSThread *thread, JSTaggedValue* dst, const JSTaggedValue* src,
                                                size_t count);
