@@ -79,16 +79,15 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::BASELINE_CODE;
     desc.instructionsSize = 100;
-    desc.instructionsAddr = 1000;
-    desc.stackMapSizeAlign = 100;
     TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
-    objectSize = machineCode->GetClass()->SizeFromJSHClass(machineCode);
+    MachineCode *code = reinterpret_cast<MachineCode *>(machineCode);
+    code->SetPayLoadSizeInBytes(0);
+    objectSize = code->GetClass()->SizeFromJSHClass(code);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
     EXPECT_EQ(objectSize, 344U);
 #else
     EXPECT_EQ(objectSize, 208U);
 #endif
-
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
     TaggedObject *header3 = heap->AllocateYoungOrHugeObject(*objectClass, length);
