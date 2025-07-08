@@ -35,15 +35,15 @@ host_unittest_action("ExtractorToolTest") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 

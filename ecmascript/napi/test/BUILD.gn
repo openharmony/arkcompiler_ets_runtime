@@ -74,11 +74,7 @@ host_unittest_action("Jsnapi_001_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -98,7 +94,11 @@ host_unittest_action("Jsnapi_001_Test") {
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
 }
 
 host_unittest_action("Jsnapi_002_Test") {
@@ -111,11 +111,7 @@ host_unittest_action("Jsnapi_002_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -123,7 +119,11 @@ host_unittest_action("Jsnapi_002_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -137,11 +137,7 @@ host_unittest_action("Jsnapi_003_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -149,7 +145,11 @@ host_unittest_action("Jsnapi_003_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -163,11 +163,7 @@ host_unittest_action("Jsnapi_004_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -175,7 +171,11 @@ host_unittest_action("Jsnapi_004_Test") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -186,17 +186,17 @@ host_unittest_action("Jsnapi_Sendable_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
   }
 
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -210,14 +210,14 @@ host_unittest_action("FFIWorkLoadTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -233,13 +233,15 @@ host_unittest_action("JsnapiSample") {
 
   deps = [
     "$ark_root/assembler:libarkassembler_static",
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 

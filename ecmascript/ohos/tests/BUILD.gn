@@ -31,16 +31,18 @@ host_unittest_action("OhosTest") {
   ]
 
   deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
-  external_deps += [ "zlib:libz" ]
 }
 
 host_unittest_action("CrashTest") {
@@ -58,16 +60,18 @@ host_unittest_action("CrashTest") {
   ]
 
   deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
-  external_deps += [ "zlib:libz" ]
 }
 
 group("unittest") {

@@ -30,14 +30,14 @@ host_unittest_action("Containers_001_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -55,14 +55,14 @@ host_unittest_action("Containers_002_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -71,23 +71,23 @@ host_unittest_action("Containers_003_Test") {
 
   sources = [
     # test file
+    "containers_buffer_test.cpp",
     "containers_stack_test.cpp",
     "containers_treemap_test.cpp",
     "containers_treeset_test.cpp",
     "containers_vector_test.cpp",
-    "containers_buffer_test.cpp",
   ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -101,14 +101,14 @@ host_unittest_action("Containers_004_Test") {
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
   deps += hiviewdfx_deps
 }
 
