@@ -202,3 +202,6 @@ obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWith
 #27147
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestWithQemu
+
+#27484
+obj/arkcompiler/ets_runtime/common_components/mutator/tests/Mutator_TestWithQemu

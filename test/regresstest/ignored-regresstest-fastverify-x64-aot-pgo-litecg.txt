@@ -17,3 +17,12 @@ regresstest/ark-regress/mjsunit/es6/array-concat-spreadable-function.js
 
 # Issue #20325
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1263994.js
+
+# Issue #20325
+regresstest/ark-regress/mjsunit/regress/regress-458987.js
+regresstest/ark-regress/mjsunit/compiler/osr-top2.js
+regresstest/ark-regress/mjsunit/compiler/multiply-sub.js
+regresstest/ark-regress/mjsunit/compiler/lazy-deopt-async-function-resolve.js
+regresstest/ark-regress/mjsunit/compiler/bigint-compare.js
+regresstest/ark-regress/mjsunit/regress/regress-crbug-631318-10.js
+regresstest/ark-regress/mjsunit/regress/regress-2073.js
