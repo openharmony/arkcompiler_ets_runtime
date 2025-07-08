@@ -41,7 +41,7 @@ BaseObject* RemarkBarrier::ReadStringTableStaticRef(RefField<false> &field) cons
     }
 
     auto isSurvivor = [](BaseObject* obj) {
-        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+        RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
 
         return region->IsMarkedObject(obj) || region->IsNewObjectSinceTrace(obj);
     };
@@ -227,4 +227,4 @@ void RemarkBarrier::CopyStructArray(BaseObject *dstObj, HeapAddress dstField,
 }
 
 } // namespace panda
- 
+

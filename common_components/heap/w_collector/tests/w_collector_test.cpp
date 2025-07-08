@@ -86,7 +86,7 @@ HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
 
     new (obj) BaseObject();
 
-    RegionDesc *region = RegionDesc::GetRegionDescAt(addr);
+    RegionDesc *region = RegionDesc::GetAliveRegionDescAt(addr);
 
     bool isMarked = region->GetOrAllocResurrectBitmap()->MarkBits(0);
     region->SetResurrectedRegionFlag(1);

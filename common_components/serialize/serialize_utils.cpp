@@ -21,8 +21,7 @@
 namespace common {
 SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
 {
-    RegionDesc *info = RegionDesc::GetRegionDescAt(obj);
-    RegionDesc::RegionType type = info->GetRegionType();
+    RegionDesc::RegionType type = RegionDesc::GetAliveRegionType(obj);
     switch (type) {
         case RegionDesc::RegionType::THREAD_LOCAL_REGION:
         case RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION:
