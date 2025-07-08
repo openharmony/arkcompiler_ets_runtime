@@ -164,10 +164,11 @@ group("common_components_js_unittest") {
       "common_components/heap/barrier/tests:unittest",
 
       #"common_components/heap/collector/tests:unittest",
-      #"common_components/heap/w_collector/tests:unittest",
+      "common_components/heap/w_collector/tests:unittest",
       "common_components/mutator/tests:unittest",
       "common_components/objects/tests:unittest",
       "common_components/thread/tests:unittest",
+      "common_components/log/tests:unittest",
     ]
   }
 }
@@ -185,10 +186,11 @@ group("common_components_unittest") {
       "common_components/heap/barrier/tests:host_unittest",
 
       #"common_components/heap/collector/tests:host_unittest",
-      #"common_components/heap/w_collector/tests:host_unittest",
+      "common_components/heap/w_collector/tests:host_unittest",
       "common_components/mutator/tests:host_unittest",
       "common_components/objects/tests:host_unittest",
       "common_components/thread/tests:host_unittest",
+      "common_components/log/tests:host_unittest",
     ]
   }
 }

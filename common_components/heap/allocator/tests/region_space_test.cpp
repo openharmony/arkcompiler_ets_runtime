@@ -56,6 +56,10 @@ protected:
         ASSERT_NE(mutator_, nullptr);
         mutator_->InitTid();
         ThreadLocal::GetThreadLocalData()->mutator = mutator_;
+        BaseRuntime::GetInstance()->GetHeapParam().regionSize = 64; // 64：region size
+        RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        RegionManager& regionManager = theAllocator.GetRegionManager();
+        regionManager.SetMaxUnitCountForRegion();
     }
 
     void TearDown() override

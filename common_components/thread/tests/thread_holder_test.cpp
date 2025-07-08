@@ -22,8 +22,13 @@
 #include "common_interfaces/thread/thread_holder_manager.h"
 
 using namespace common;
-namespace common::test {
 
+namespace ark {
+class Coroutine;
+}
+
+namespace common::test {
+using Coroutine = ark::Coroutine;
 namespace {
     void SetCurrentThreadHolder(ThreadHolder* holder)
     {
@@ -79,5 +84,15 @@ HWTEST_F_L0(ThreadHolderTest, UnregisterThreadHolderTest) {
     ThreadHolderManager thManager;
     thManager.UnregisterThreadHolder(curHolder);
     EXPECT_EQ(mutator->PopRawObject(), nullptr);
+}
+
+HWTEST_F_L0(ThreadHolderTest, TryBindMutatorTest) {
+    ThreadHolder *curHolder = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+    ASSERT_TRUE(curHolder != nullptr);
+    SetCurrentThreadHolder(curHolder);
+
+    ThreadLocal::SetProcessorFlag(true);
+    ThreadHolder::TryBindMutatorScope scope(curHolder);
+    EXPECT_EQ(ThreadLocal::GetAllocBuffer(), nullptr);
 }
 }  // namespace panda::test

@@ -15,14 +15,171 @@ import("//arkcompiler/ets_runtime/common_components/tests/test_helper.gni")
 
 module_output_path = "ets_runtime"
 
-host_unittest_action("W_Collector_Test") {
+host_unittest_action("Copy_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "copy_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Enum_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "enum_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Idle_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "idle_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Post_Trace_Barrier_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "post_trace_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Preforward_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "preforward_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Remark_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "remark_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Trace_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "trace_barrier_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("W_Collector_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "w_collector_test.cpp",
   ]
 
@@ -46,6 +203,13 @@ group("unittest") {
 
   # deps file
   deps = [
+    ":Copy_Barrier_Test",
+    ":Enum_Barrier_Test",
+    ":Idle_Barrier_Test",
+    ":Post_Trace_Barrier_Test",
+    ":Preforward_Barrier_Test",
+    ":Remark_Barrier_Test",
+    ":Trace_Barrier_Test",
     ":W_Collector_Test",
   ]
 }
@@ -55,6 +219,13 @@ group("host_unittest") {
 
   # deps file
   deps = [
+    ":Copy_Barrier_TestAction",
+    ":Enum_Barrier_TestAction",
+    ":Idle_Barrier_TestAction",
+    ":Post_Trace_Barrier_TestAction",
+    ":Preforward_Barrier_TestAction",
+    ":Remark_Barrier_TestAction",
+    ":Trace_Barrier_TestAction",
     ":W_Collector_TestAction",
   ]
 }

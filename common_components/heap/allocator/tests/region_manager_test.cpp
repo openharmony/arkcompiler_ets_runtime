@@ -20,7 +20,6 @@
 #include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
 #include <cstdint>
-#include <gtest/gtest.h>
 
 using namespace common;
 
@@ -315,5 +314,118 @@ HWTEST_F_L0(RegionManagerTest, AllocPinnedFromFreeList)
     RegionManager manager;
     manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
     EXPECT_EQ(manager.AllocPinnedFromFreeList(0), 0);
+}
+
+HWTEST_F_L0(RegionManagerTest, FixAllRegionLists)
+{
+    Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.FixAllRegionLists();
+    EXPECT_EQ(Heap::GetHeap().GetGCReason(), GCReason::GC_REASON_YOUNG);
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly1)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    RegionManager manager;
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly2)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
+    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly3)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
+    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly4)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_PRECOPY);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly5)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_COPY);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly6)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetFixLine(), region->GetRegionStart());
+}
+
+HWTEST_F_L0(RegionManagerTest, AllocReadOnly7)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_UNDEF);
+    RegionManager manager;
+    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
+    manager.ClearAllGCInfo();
+    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
+    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
+    EXPECT_NE(ret, 0);
+    EXPECT_EQ(region->GetTraceLine(), std::numeric_limits<uintptr_t>::max());
+    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
+    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 }

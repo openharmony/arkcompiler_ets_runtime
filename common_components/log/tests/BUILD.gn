@@ -15,12 +15,12 @@ import("//arkcompiler/ets_runtime/common_components/tests/test_helper.gni")
 
 module_output_path = "ets_runtime"
 
-host_unittest_action("Mutator_Manager_Test") {
+host_unittest_action("Log_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    "mutator_manager_test.cpp",
+    "log_test.cpp",
   ]
 
   configs = [
@@ -34,30 +34,7 @@ host_unittest_action("Mutator_Manager_Test") {
   external_deps = [
     "icu:shared_icui18n",
     "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-  ]
-}
-
-host_unittest_action("Satb_Buffer_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "satb_buffer_test.cpp",
-  ]
-
-  configs = [
-    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
-    "//arkcompiler/ets_runtime:icu_path_test_config",
-  ]
-
-  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
-
-  # hiviewdfx libraries
-  external_deps = [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
+    "zlib:libz",
   ]
 }
 
@@ -66,7 +43,7 @@ group("unittest") {
 
   # deps file
   deps = [
-    ":Mutator_Manager_Test",
+    ":Log_Test",
   ]
 }
 
@@ -75,6 +52,6 @@ group("host_unittest") {
 
   # deps file
   deps = [
-    ":Mutator_Manager_TestAction",
+    ":Log_TestAction",
   ]
 }

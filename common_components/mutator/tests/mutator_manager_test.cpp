@@ -107,4 +107,122 @@ HWTEST_F_L0(MutatorManagerTest, DumpMutators_Test1)
     managerPtr->DumpMutators(timeoutTimes);
     delete managerPtr;
 }
+
+HWTEST_F_L0(MutatorManagerTest, DestroyRuntimeMutator_Test1)
+{
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    EXPECT_NE(ptr, nullptr);
+
+    MutatorManager::Instance().DestroyRuntimeMutator(threadType);
+    ptr = ThreadLocal::GetMutator();
+    EXPECT_EQ(ptr, nullptr);
+}
+
+HWTEST_F_L0(MutatorManagerTest, DestroyMutator_Test1)
+{
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+
+    MutatorManager::Instance().DestroyMutator(ptr);
+    EXPECT_TRUE(MutatorManager::Instance().TryAcquireMutatorManagementRLock());
+    MutatorManager::Instance().MutatorManagementRUnlock();
+
+    MutatorManager::Instance().MutatorManagementWLock();
+    MutatorManager::Instance().DestroyMutator(ptr);
+    EXPECT_FALSE(MutatorManager::Instance().TryAcquireMutatorManagementRLock());
+    MutatorManager::Instance().MutatorManagementWUnlock();
+}
+
+HWTEST_F_L0(MutatorManagerTest, AcquireMutatorManagementWLockForCpuProfile_Test1)
+{
+    std::atomic<bool> threadStarted{false};
+    std::thread testthread([&]() {
+        threadStarted = true;
+        MutatorManager::Instance().MutatorManagementWLock();
+        MutatorManager::Instance().AcquireMutatorManagementWLockForCpuProfile();
+    });
+    while (!threadStarted) {}
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    MutatorManager::Instance().MutatorManagementWUnlock();
+    testthread.join();
+    EXPECT_FALSE(MutatorManager::Instance().TryAcquireMutatorManagementRLock());
+    MutatorManager::Instance().MutatorManagementWUnlock();
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test1)
+{
+    std::list<Mutator*> undoneMutators;
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    ptr->SetCpuProfileState(MutatorBase::CpuProfileState::FINISH_CPUPROFILE);
+    undoneMutators.push_back(ptr);
+    MutatorManager::Instance().EnsureCpuProfileFinish(undoneMutators);
+    EXPECT_EQ(undoneMutators.size(), 0);
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test2)
+{
+    std::list<Mutator*> Mutators;
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    ptr->SetCpuProfileState(MutatorBase::CpuProfileState::NO_CPUPROFILE);
+    ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+    Mutators.push_back(ptr);
+    MutatorManager::Instance().EnsureCpuProfileFinish(Mutators);
+    EXPECT_EQ(Mutators.size(), 0);
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test3)
+{
+    std::list<Mutator*> Mutators;
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    std::thread testthread([&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ptr->SetCpuProfileState(MutatorBase::CpuProfileState::NO_CPUPROFILE);
+    });
+    ptr->SetCpuProfileState(MutatorBase::CpuProfileState::IN_CPUPROFILING);
+    ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+    Mutators.push_back(ptr);
+    MutatorManager::Instance().EnsureCpuProfileFinish(Mutators);
+    testthread.join();
+    EXPECT_EQ(Mutators.size(), 0);
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test4)
+{
+    std::list<Mutator*> Mutators;
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    std::thread testthread([&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+        ptr->SetCpuProfileState(MutatorBase::CpuProfileState::NO_CPUPROFILE);
+    });
+    ptr->SetCpuProfileState(MutatorBase::CpuProfileState::IN_CPUPROFILING);
+    ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_FALSE);
+    Mutators.push_back(ptr);
+    MutatorManager::Instance().EnsureCpuProfileFinish(Mutators);
+    testthread.join();
+    EXPECT_EQ(Mutators.size(), 0);
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test5)
+{
+    std::list<Mutator*> Mutators;
+    ThreadType threadType = ThreadType::GC_THREAD;
+    Mutator* ptr = MutatorManager::Instance().CreateRuntimeMutator(threadType);
+    std::thread testthread([&]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+
+    });
+    ptr->SetCpuProfileState(MutatorBase::CpuProfileState::NO_CPUPROFILE);
+    ptr->SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_FALSE);
+    Mutators.push_back(ptr);
+    MutatorManager::Instance().EnsureCpuProfileFinish(Mutators);
+    testthread.join();
+    EXPECT_EQ(Mutators.size(), 0);
+}
 }  // namespace common::test

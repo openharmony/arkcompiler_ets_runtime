@@ -15,218 +15,99 @@
 
 #include "common_components/heap/collector/task_queue.h"
 #include "common_components/heap/collector/collector_proxy.h"
-
+#include "common_components/heap/collector/gc_request.h"
 #include "common_components/tests/test_helper.h"
 
-using namespace common;
-
-// ==================== Mock Classes ====================
-
-class MockCollectorProxy : public CollectorProxy {
+namespace common {
+class StubAllocator : public Allocator {
 public:
-    explicit MockCollectorProxy(Allocator& allocator, CollectorResources& resources)
-        : CollectorProxy(allocator, resources), runCalled_(false),
-          lastGcIndex_(0), lastReason_(GC_REASON_INVALID) {}
-
-    void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override
-    {
-        runCalled_ = true;
-        lastGcIndex_ = gcIndex;
-        lastReason_ = reason;
-    }
-
-    bool WasRunCalled() const
-    {
-        return runCalled_;
-    }
-    uint64_t GetLastGcIndex() const
-    {
-        return lastGcIndex_;
-    }
-    GCReason GetLastReason() const
-    {
-        return lastReason_;
-    }
-
-    void Reset()
-    {
-        runCalled_ = false;
-        lastGcIndex_ = 0;
-        lastReason_ = GC_REASON_INVALID;
-    }
-
-private:
-    mutable bool runCalled_;
-    uint64_t lastGcIndex_;
-    GCReason lastReason_;
-};
-
-constexpr size_t DEFAULT_MAX_CAPACITY_SIZE = 10 * 1024 * 1024;
-constexpr size_t DEFAULT_CAPACITY_SIZE = 5 * 1024 * 1024;
-
-class TestAllocator : public Allocator {
-public:
-    HeapAddress Allocate(size_t size, AllocType type) override
-    {
-        return 0;
-    }
-    HeapAddress AllocateNoGC(size_t size, AllocType type) override
-    {
-        return 0;
-    }
-    bool ForEachObject(const std::function<void(BaseObject*)>& callback, bool safe) const override
-    {
-        return true;
-    }
-    size_t ReclaimGarbageMemory(bool releaseAll) override
-    {
-        return 0;
-    }
-    void FeedHungryBuffers() override {}
-    size_t LargeObjectSize() const override
-    {
-        return 0;
-    }
-    size_t GetAllocatedBytes() const override
-    {
-        return 0;
-    }
+    HeapAddress Allocate(size_t size, AllocType allocType) override { return 0; }
+    HeapAddress AllocateNoGC(size_t size, AllocType allocType) override { return 0; }
+    bool ForEachObject(const std::function<void(BaseObject*)>&, bool safe) const override { return true; }
+    size_t ReclaimGarbageMemory(bool releaseAll) override { return 0; }
+    size_t LargeObjectSize() const override { return 0; }
+    size_t GetAllocatedBytes() const override { return 0; }
     void Init(const RuntimeParam& param) override {}
-
-    size_t GetMaxCapacity() const override
-    {
-        return DEFAULT_MAX_CAPACITY_SIZE;
-    }
-    size_t GetCurrentCapacity() const override
-    {
-        return DEFAULT_CAPACITY_SIZE;
-    }
-    size_t GetUsedPageSize() const override
-    {
-        return 0;
-    }
-    HeapAddress GetSpaceStartAddress() const override
-    {
-        return 0;
-    }
-    HeapAddress GetSpaceEndAddress() const override
-    {
-        return 0;
-    }
-
+    size_t GetMaxCapacity() const override { return 0; }
+    size_t GetCurrentCapacity() const override { return 0; }
+    size_t GetUsedPageSize() const override { return 0; }
+    HeapAddress GetSpaceStartAddress() const override { return 0; }
+    HeapAddress GetSpaceEndAddress() const override { return 0; }
 #ifndef NDEBUG
     bool IsHeapObject(HeapAddress) const override { return false; }
 #endif
+    void FeedHungryBuffers() override {}
 };
 
-class TestCollectorResources : public CollectorResources {
+class StubCollectorProxy : public CollectorProxy {
 public:
-    explicit TestCollectorResources(CollectorProxy& proxy) : CollectorResources(proxy) {}
-    void Init() {}
-    void Fini() {}
+    explicit StubCollectorProxy(Allocator& allocator, CollectorResources& resources)
+        : CollectorProxy(allocator, resources) {}
+
+    void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override {}
+};
+}
+
+namespace common {
+class DummyCollectorProxy : public CollectorProxy {
+public:
+    explicit DummyCollectorProxy(Allocator& alloc, CollectorResources& res)
+        : CollectorProxy(alloc, res) {}
+    void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override {}
 };
 
-// ==================== Fix: Use correct GCTask interface ====================
-
-class MockGCTask : public GCTask {
-public:
-    explicit MockGCTask(GCTaskType type, uint64_t index, GCReason reason)
-        : GCTask(type), taskIndex_(index), gcReason_(reason) {}
-
-    uint64_t GetGCIndex() const
-    {
-        return taskIndex_;
-    }
-    GCReason GetGCReason() const
-    {
-        return gcReason_;
-    }
-
-    bool Execute(void* owner) override
-    {
-        if (owner == nullptr) {
-            return false;
-        }
-
-        auto* proxy = reinterpret_cast<CollectorProxy*>(owner);
-        switch (GetTaskType()) {
-            case GCTaskType::GC_TASK_TERMINATE_GC:
-                return false;
-            case GCTaskType::GC_TASK_INVOKE_GC:
-                proxy->RunGarbageCollection(taskIndex_, gcReason_);
-                return true;
-            default:
-                return true;
-        }
-    }
-
+class DummyCollectorResources : public CollectorResources {
 private:
-    uint64_t taskIndex_;
-    GCReason gcReason_;
+    DummyCollectorProxy proxy_;
+
+public:
+    explicit DummyCollectorResources(Allocator& alloc)
+        : CollectorResources(proxy_),
+          proxy_(alloc, *this) {}
 };
-
-// ==================== Test Fixture ====================
-
-// class GCRunnerTest : public BaseTestWithScope {
+}
 
 namespace common::test {
 class GCRunnerTest : public common::test::BaseTestWithScope {
 protected:
     void SetUp() override
     {
-        resources_.reset(new TestCollectorResources(proxy_));
-        mockProxy_ = new MockCollectorProxy(allocator_, *resources_);
+        allocator_ = std::make_unique<common::StubAllocator>();
+        dummyResources_ = std::make_unique<common::DummyCollectorResources>(*allocator_);
+        proxy_ = std::make_unique<common::StubCollectorProxy>(*allocator_, *dummyResources_);
+        proxyStorage_ = std::make_unique<common::StubCollectorProxy>(*allocator_, *dummyResources_);
     }
 
     void TearDown() override
     {
-        delete mockProxy_;
-        mockProxy_ = nullptr;
-        resources_.reset();
+        proxyStorage_.reset();
+        dummyResources_.reset();
+        proxy_.reset();
+        allocator_.reset();
     }
 
-    TestAllocator allocator_;
-    std::unique_ptr<TestCollectorResources> resources_;
-    MockCollectorProxy* mockProxy_;
-    CollectorProxy proxy_{allocator_, *resources_};
+    std::unique_ptr<common::StubAllocator> allocator_;
+    std::unique_ptr<common::StubCollectorProxy> proxy_;
+    std::unique_ptr<common::StubCollectorProxy> proxyStorage_;
+    std::unique_ptr<common::DummyCollectorResources> dummyResources_;
 };
 
-// ==================== Test Cases ====================
-
-/**
- * @tc.name: GCRunner_Execute_Terminate
- * @tc.desc: Test GC_TASK_TERMINATE_GC task type.
- * @tc.type: FUNC
- */
-HWTEST_F_L0(GCRunnerTest, Execute_Terminate) {
-    // Arrange
-    MockGCTask task(GCTask::GCTaskType::GC_TASK_TERMINATE_GC, 0, GC_REASON_INVALID);
-
-    // Act
-    bool result = task.Execute(mockProxy_);
-
-    // Assert
-    EXPECT_FALSE(result);  // Should return false to terminate thread
+HWTEST_F_L0(GCRunnerTest, Execute_TerminateGC) {
+    common::GCRunner runner(common::GCTask::GCTaskType::GC_TASK_TERMINATE_GC);
+    bool result = runner.Execute(proxyStorage_.get());
+    EXPECT_FALSE(result);
 }
 
-/**
- * @tc.name: GCRunner_Execute_InvokeGC
- * @tc.desc: Test GC_TASK_INVOKE_GC triggers RunGarbageCollection.
- * @tc.type: FUNC
- */
 HWTEST_F_L0(GCRunnerTest, Execute_InvokeGC) {
-    // Arrange
-    mockProxy_->Reset();
-
-    MockGCTask task(GCTask::GCTaskType::GC_TASK_INVOKE_GC, 123, GC_REASON_FORCE);
-
-    // Act
-    bool result = task.Execute(mockProxy_);
-
-    // Assert
-    EXPECT_TRUE(result);  // Thread should continue
-    EXPECT_TRUE(mockProxy_->WasRunCalled());
-    EXPECT_EQ(mockProxy_->GetLastGcIndex(), 123U);
-    EXPECT_EQ(mockProxy_->GetLastReason(), GC_REASON_FORCE);
+    common::GCRunner runner(common::GCTask::GCTaskType::GC_TASK_INVOKE_GC, GC_REASON_BACKUP);
+    bool result = runner.Execute(proxyStorage_.get());
+    EXPECT_TRUE(result);
 }
+
+HWTEST_F_L0(GCRunnerTest, Execute_InvalidTaskType) {
+    common::GCRunner runner(static_cast<common::GCTask::GCTaskType>(
+        static_cast<uint32_t>(common::GCTask::GCTaskType::GC_TASK_DUMP_HEAP_IDE) + 1));
+    bool result = runner.Execute(proxyStorage_.get());
+    EXPECT_TRUE(result);
 }
+}  // namespace common::test

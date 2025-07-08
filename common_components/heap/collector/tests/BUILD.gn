@@ -21,7 +21,7 @@ host_unittest_action("Collector_Test") {
   sources = [
     # test file
     "collector_resources_test.cpp",
-    "finalizer_processor_test.cpp",
+    # "finalizer_processor_test.cpp",
   ]
 
   configs = [

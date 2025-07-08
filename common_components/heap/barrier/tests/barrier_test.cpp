@@ -106,7 +106,6 @@ protected:
     }
 };
 
-
 HWTEST_F_L0(BarrierTest, ReadRefField_ReturnsExpectedValue) {
     uint64_t value = reinterpret_cast<uint64_t>(dummyObj.get());
     RefField<false> field(value);
@@ -114,7 +113,6 @@ HWTEST_F_L0(BarrierTest, ReadRefField_ReturnsExpectedValue) {
     BaseObject* result = barrier.ReadRefField(nullptr, field);
     EXPECT_EQ(result, dummyObj.get());
 }
-
 
 HWTEST_F_L0(BarrierTest, WriteRefField_SetsTargetObject) {
     uint64_t initValue = 0;
@@ -125,7 +123,6 @@ HWTEST_F_L0(BarrierTest, WriteRefField_SetsTargetObject) {
     EXPECT_EQ(field.GetTargetObject(), newRef);
 }
 
-
 HWTEST_F_L0(BarrierTest, WriteStaticRef_SetsTargetObject) {
     uint64_t initValue = 0;
     RefField<false> field(initValue);
@@ -135,7 +132,6 @@ HWTEST_F_L0(BarrierTest, WriteStaticRef_SetsTargetObject) {
     EXPECT_EQ(field.GetTargetObject(), newRef);
 }
 
-
 HWTEST_F_L0(BarrierTest, AtomicWriteRefField_UpdatesWithMemoryOrder) {
     uint64_t initValue = 0;
     RefField<true> field(initValue);
@@ -144,7 +140,6 @@ HWTEST_F_L0(BarrierTest, AtomicWriteRefField_UpdatesWithMemoryOrder) {
     barrier.AtomicWriteRefField(nullptr, field, newRef, std::memory_order_relaxed);
     EXPECT_EQ(field.GetTargetObject(std::memory_order_relaxed), newRef);
 }
-
 
 HWTEST_F_L0(BarrierTest, CompareAndSwapRefField_WorksWithSuccessAndFailure) {
     uint64_t initValue = 0;
@@ -156,4 +151,101 @@ HWTEST_F_L0(BarrierTest, CompareAndSwapRefField_WorksWithSuccessAndFailure) {
                                                  std::memory_order_seq_cst, std::memory_order_relaxed);
     EXPECT_TRUE(result);
     EXPECT_EQ(field.GetTargetObject(std::memory_order_relaxed), newRef);
+}
+
+HWTEST_F_L0(BarrierTest, WriteStruct_HandlesDifferentLengths) {
+    size_t srcBufferSize = 512;
+    size_t dstBufferSize = 1024;
+    char* srcBuffer = new char[srcBufferSize];
+    char* dstBuffer = new char[dstBufferSize];
+
+    for (size_t i = 0; i < srcBufferSize; ++i) {
+        srcBuffer[i] = static_cast<char>(i % 256);
+    }
+
+    barrier.WriteStruct(nullptr, reinterpret_cast<HeapAddress>(dstBuffer), dstBufferSize,
+                     reinterpret_cast<HeapAddress>(srcBuffer), srcBufferSize);
+
+    EXPECT_EQ(memcmp(dstBuffer, srcBuffer, srcBufferSize), 0);
+
+    for (size_t i = srcBufferSize; i < dstBufferSize; ++i) {
+        EXPECT_EQ(dstBuffer[i], 0);
+    }
+
+    delete[] srcBuffer;
+    delete[] dstBuffer;
+}
+
+HWTEST_F_L0(BarrierTest, ReadStaticRef_ReturnsExpectedValue) {
+    uint64_t value = reinterpret_cast<uint64_t>(dummyObj.get());
+    RefField<false> field(value);
+
+    BaseObject* result = barrier.ReadStaticRef(field);
+    EXPECT_EQ(result, dummyObj.get());
+}
+
+HWTEST_F_L0(BarrierTest, AtomicSwapRefField_ExchangesCorrectly) {
+    uint64_t initValue = reinterpret_cast<uint64_t>(dummyObj.get());
+    RefField<true> field(initValue);
+    BaseObject* newRef = reinterpret_cast<BaseObject*>(0x1234567890);
+    BaseObject* oldValue = barrier.AtomicSwapRefField(nullptr, field, newRef, std::memory_order_seq_cst);
+
+    EXPECT_EQ(oldValue, dummyObj.get());
+    EXPECT_EQ(field.GetTargetObject(std::memory_order_relaxed), newRef);
+}
+
+HWTEST_F_L0(BarrierTest, AtomicReadRefField_ReadsCorrectly) {
+    uint64_t initValue = reinterpret_cast<uint64_t>(dummyObj.get());
+    RefField<true> field(initValue);
+
+    BaseObject* value = barrier.AtomicReadRefField(nullptr, field, std::memory_order_seq_cst);
+
+    EXPECT_EQ(value, dummyObj.get());
+}
+
+HWTEST_F_L0(BarrierTest, CopyStructArray_CopiesDataCorrectly) {
+    constexpr size_t arraySize = 100;
+    char* srcBuffer = new char[arraySize];
+    char* dstBuffer = new char[arraySize];
+
+    for (size_t i = 0; i < arraySize; ++i) {
+        srcBuffer[i] = static_cast<char>(i % 256);
+    }
+
+    BaseObject srcObj;
+    BaseObject dstObj;
+
+    HeapAddress srcFieldAddr = reinterpret_cast<HeapAddress>(srcBuffer);
+    HeapAddress dstFieldAddr = reinterpret_cast<HeapAddress>(dstBuffer);
+
+    barrier.CopyStructArray(&dstObj, dstFieldAddr, arraySize, &srcObj, srcFieldAddr, arraySize);
+
+    EXPECT_EQ(memcmp(dstBuffer, srcBuffer, arraySize), 0);
+
+    delete[] srcBuffer;
+    delete[] dstBuffer;
+}
+
+HWTEST_F_L0(BarrierTest, ReadStruct_ReadsCorrectly) {
+    struct TestStruct {
+        int a;
+        double b;
+    };
+
+    TestStruct* initValue = new TestStruct{42, 3.14};
+    RefField<false> field(reinterpret_cast<uint64_t>(initValue));
+
+    char dstBuffer[sizeof(TestStruct)];
+    HeapAddress dstAddr = reinterpret_cast<HeapAddress>(dstBuffer);
+
+    BaseObject dummyObj;
+    HeapAddress srcAddr = reinterpret_cast<HeapAddress>(field.GetTargetObject());
+
+    barrier.ReadStruct(dstAddr, &dummyObj, srcAddr, sizeof(TestStruct));
+
+    TestStruct* result = reinterpret_cast<TestStruct*>(dstBuffer);
+    EXPECT_EQ(result->a, initValue->a);
+    EXPECT_EQ(result->b, initValue->b);
+
+    delete initValue;
 }

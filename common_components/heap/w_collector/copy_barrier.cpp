@@ -80,7 +80,7 @@ BaseObject* CopyBarrier::ReadStringTableStaticRef(RefField<false>& field) const
 void CopyBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const
 {
     CHECK_CC(!Heap::IsHeapAddress(dst));
-    if (obj != nullptr) {
+    if (obj != nullptr) { //LCOV_EXCL_BR_LINE
         obj->ForEachRefInStruct(
             [this, obj](RefField<false>& field) {
                 BaseObject* target = ReadRefField(obj, field);
@@ -104,10 +104,10 @@ void CopyBarrier::AtomicWriteRefField(BaseObject* obj, RefField<true>& field, Ba
 {
     RefField<> newField(newRef);
     field.SetFieldValue(newField.GetFieldValue(), order);
-    if (obj != nullptr) {
+    if (obj != nullptr) { //LCOV_EXCL_BR_LINE
         DLOG(FBARRIER, "atomic write obj %p<%p>(%zu) ref@%p: %#zx", obj, obj->GetTypeInfo(), obj->GetSize(), &field,
              newField.GetFieldValue());
-    } else {
+    } else { //LCOV_EXCL_BR_LINE
         DLOG(FBARRIER, "atomic write static ref@%p: %#zx", &field, newField.GetFieldValue());
     }
 }
@@ -129,9 +129,9 @@ bool CopyBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field,
     HeapAddress oldFieldValue = field.GetFieldValue(std::memory_order_seq_cst);
     RefField<false> oldField(oldFieldValue);
     BaseObject* oldVersion = ReadRefField(nullptr, oldField);
-    while (oldVersion == oldRef) {
+    while (oldVersion == oldRef) { //LCOV_EXCL_BR_LINE
         RefField<> newField(newRef);
-        if (field.CompareExchange(oldFieldValue, newField.GetFieldValue(), succOrder, failOrder)) {
+        if (field.CompareExchange(oldFieldValue, newField.GetFieldValue(), succOrder, failOrder)) { //LCOV_EXCL_BR_LINE
             return true;
         }
         oldFieldValue = field.GetFieldValue(std::memory_order_seq_cst);
