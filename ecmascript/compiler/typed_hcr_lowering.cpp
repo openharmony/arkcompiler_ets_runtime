@@ -1876,7 +1876,8 @@ void TypedHCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     BRANCH_CIR(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::FastNewThisObject, { glue, newTarget });
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::FastSuperAllocateThis,
+            { glue, superCtor, newTarget });
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

@@ -1374,6 +1374,15 @@ void FastNewThisObjectStubBuilder::GenerateCircuit()
     Return(newBuilder.FastNewThisObject(glue, ctor));
 }
 
+void FastSuperAllocateThisStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef superCtor = TaggedArgument(1);
+    GateRef newtarget = TaggedArgument(2);
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.FastSuperAllocateThis(glue, superCtor, newtarget));
+}
+
 void JsBoundCallInternalStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
