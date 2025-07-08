@@ -807,6 +807,10 @@ public:
                                                   const ElementsKind oldKind);
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
+    // Find function in JsObject For Hook
+    static JSHandle<JSTaggedValue> FindFuncInObjectForHook(JSThread *thread, JSHandle<JSTaggedValue> object,
+                                                const std::string &className, const std::string &funcName);
+
 private:
     friend class ObjectOperator;
     friend class LoadICRuntime;

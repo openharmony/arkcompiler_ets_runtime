@@ -535,4 +535,27 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     }
     return true;
 }
+
+// Iterate over all records in abc, rather than depth-first traversal of entryPoint
+bool JSPandaFileExecutor::ExecuteInsecureAbcFile(JSThread *thread, const CString &fileName)
+{
+    auto jsPandaFile = JSPandaFileManager::GetInstance()->LoadInsecureJSPandaFile(thread, fileName, "");
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteInsecureAbcFile jsPandaFile is nullptr";
+        return false;
+    }
+
+    const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
+    for (auto &[recordName, _] : recordInfo) {
+        const CString recordNameStr(recordName.data(), recordName.size());
+        JSHandle<JSTaggedValue> moduleRecord = ModuleResolver::HostResolveImportedModule(
+            thread, fileName, recordNameStr, jsPandaFile.get(), ExecuteTypes::STATIC);
+        SourceTextModule::Instantiate(thread, moduleRecord);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+        SourceTextModule::Evaluate(thread, module);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    }
+    return true;
+}
 }  // namespace panda::ecmascript

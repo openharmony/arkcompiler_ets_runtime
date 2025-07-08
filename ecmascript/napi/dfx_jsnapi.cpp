@@ -22,13 +22,15 @@
 #include "common_components/mutator/mutator_manager.h"
 #include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
-#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/jit/jit.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/dfx/hprof/heap_profiler.h"
+#include "ecmascript/jit/jit.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/ohos/ohos_constants.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -56,6 +58,9 @@ using ecmascript::CMap;
 using ecmascript::Tracing;
 using ecmascript::DumpSnapShotOption;
 using ecmascript::g_isEnableCMCGC;
+using ecmascript::JSFunction;
+using ecmascript::JSPandaFileExecutor;
+using ecmascript::SourceTextModule;
 
 sem_t g_heapdumpCnt;
 
@@ -1152,5 +1157,34 @@ void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)
     // SetJsRawHeapCropLevel
     ecmascript::Runtime::GetInstance()->SetRawHeapDumpCropLevel(level);
     LOG_ECMA(INFO) << "Set raw heap dump level " << static_cast<int>(level);
+}
+
+JSHandle<JSTaggedValue> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,
+                                                       const std::string &className, const std::string &funcName)
+{
+    JSThread *thread = vm->GetJSThread();
+    return SourceTextModule::FindFuncInModuleForHook(thread, recordName, className, funcName);
+}
+
+void DFXJSNApi::ReplaceFunctionForHook(const EcmaVM *vm, JSHandle<JSTaggedValue> &target,
+                                       JSHandle<JSTaggedValue> &hook, JSHandle<JSTaggedValue> &backup)
+{
+    if (!target->IsJSFunction() || !hook->IsJSFunction() || !backup->IsJSFunction()) {
+        return;
+    }
+
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(target);
+    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hook);
+    JSHandle<JSFunction> backupFunc = JSHandle<JSFunction>::Cast(backup);
+
+    JSFunction::ReplaceFunctionForHook(thread, backupFunc, targetFunc);
+    JSFunction::ReplaceFunctionForHook(thread, targetFunc, hookFunc);
+}
+
+bool DFXJSNApi::LoadHookModule(const EcmaVM *vm)
+{
+    const CString path(ecmascript::ohos::OhosConstants::HOOK_FILE_PATH);
+    return JSPandaFileExecutor::ExecuteInsecureAbcFile(vm->GetJSThread(), path);
 }
 } // namespace panda

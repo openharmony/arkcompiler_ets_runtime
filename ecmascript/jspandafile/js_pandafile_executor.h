@@ -80,6 +80,8 @@ public:
 
     static bool IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
         const CString &moduleName, const CString &entry);
+
+    static bool ExecuteInsecureAbcFile(JSThread *thread, const CString &fileName);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

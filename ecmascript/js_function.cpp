@@ -1350,4 +1350,30 @@ void JSFunction::ClearMachineCode(const JSThread *thread)
 {
     SetMachineCode(thread, JSTaggedValue::Undefined());
 }
+
+void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunction> &oldFunc,
+                                        const JSHandle<JSFunction> &newFunc)
+{
+    if (oldFunc->GetMethod(thread) == newFunc->GetMethod(thread)) {
+        return;
+    }
+
+    // Field in FunctionBase
+    oldFunc->SetMethod(thread, newFunc->GetMethod(thread));
+    oldFunc->SetCodeEntryOrNativePointer(newFunc->GetCodeEntryOrNativePointer());
+    oldFunc->SetLength(newFunc->GetLength());
+    oldFunc->SetBitField(newFunc->GetBitField());
+    // Field in Function
+    oldFunc->SetProtoOrHClass(thread, newFunc->GetProtoOrHClass(thread));
+    oldFunc->SetLexicalEnv(thread, newFunc->GetLexicalEnv(thread));
+    oldFunc->SetMachineCode(thread, newFunc->GetMachineCode(thread));
+    oldFunc->SetBaselineCode(thread, newFunc->GetBaselineCode(thread));
+    oldFunc->SetRawProfileTypeInfo(thread, newFunc->GetRawProfileTypeInfo(thread));
+    oldFunc->SetHomeObject(thread, newFunc->GetHomeObject(thread));
+    oldFunc->SetModule(thread, newFunc->GetModule(thread));
+    oldFunc->SetWorkNodePointer(newFunc->GetWorkNodePointer());
+    auto newFuncHashField = Barriers::GetTaggedValue(thread, *newFunc, HASH_OFFSET);
+    JSTaggedValue value(newFuncHashField);
+    SET_VALUE_WITH_BARRIER(thread, *oldFunc, HASH_OFFSET, value);
+}
 }  // namespace panda::ecmascript

@@ -46,6 +46,9 @@ public:
                                                        std::string_view entryPoint, uint8_t *buffer, size_t size,
                                                        bool needUpdate = false, void *fileMapper = nullptr);
 
+    std::shared_ptr<JSPandaFile> LoadInsecureJSPandaFile(JSThread *thread, const CString &filename,
+                                                         std::string_view entryPoint);
+
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename);
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename, const CString &desc);

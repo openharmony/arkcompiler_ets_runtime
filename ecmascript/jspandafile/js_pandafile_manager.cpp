@@ -227,6 +227,19 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
     return jsPandaFile;
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadInsecureJSPandaFile(JSThread *thread, const CString &filename,
+                                                                         std::string_view entryPoint)
+{
+    auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_ONLY);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "JSPandaFileManager::LoadInsecureJSPandaFile open panda file failed";
+        return nullptr;
+    }
+
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, "");
+    return jsPandaFile;
+}
+
 JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                       std::string_view entryPoint)
 {

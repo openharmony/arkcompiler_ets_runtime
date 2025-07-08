@@ -432,4 +432,22 @@ HWTEST_F_L0(JSPandaFileManagerTest, ReleaseSecureMem)
     delete[] fileMapper;
     delete[] secondFileMapper;
 }
+
+HWTEST_F_L0(JSPandaFileManagerTest, LoadInsecureJSPandaFile_1)
+{
+    CString fileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    auto jsPandaFile = pfManager->LoadInsecureJSPandaFile(thread, fileName, "");
+    EXPECT_TRUE(jsPandaFile != nullptr);
+    pfManager->RemoveJSPandaFile(jsPandaFile.get());
+}
+
+HWTEST_F_L0(JSPandaFileManagerTest, LoadInsecureJSPandaFile_2)
+{
+    CString fileName = QUICKFIX_ABC_PATH "multi_file/base/module.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    auto jsPandaFile = pfManager->LoadInsecureJSPandaFile(thread, fileName, "");
+    EXPECT_TRUE(jsPandaFile == nullptr);
+    pfManager->RemoveJSPandaFile(jsPandaFile.get());
+}
 }  // namespace panda::test

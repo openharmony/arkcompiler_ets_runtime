@@ -786,4 +786,141 @@ HWTEST_F_L0(DFXJSNApiTests, GetMainThreadStackTrace_1)
     DFXJSNApi::GetMainThreadStackTrace(vm_, stackTraceStr);
     ASSERT_TRUE(stackTraceStr.empty());
 }
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_1)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string className = "TestClass1";
+    std::string funcName = "testFunction3";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsUndefined());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_2)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "termination";
+    std::string className = "TestClass2";
+    std::string funcName = "testFunction3";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsUndefined());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_3)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string className = "TestClass1";
+    std::string funcName = "testFunction2";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction2", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_4)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string className = "";
+    std::string funcName = "testFunction1";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction1", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_5)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string className = "";
+    std::string funcName = "testFunction3";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction3", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_6)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string className = "";
+    std::string funcName = "testFunction4";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction4", method->ParseFunctionName(thread_));
+}
+
+static JSTaggedValue TestForFunction1([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+{
+    return JSTaggedValue::True();
+}
+
+static JSTaggedValue TestForFunction2([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+{
+    return JSTaggedValue::False();
+}
+
+static JSTaggedValue TestForFunction3([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+{
+    return JSTaggedValue::False();
+}
+
+HWTEST_F_L0(DFXJSNApiTests, ReplaceFunctionForHook_1) {
+    LocalScope scope(vm_);
+    vm_->SetEnableForceGC(false);
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> targetFunction = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForFunction1));
+    JSHandle<LexicalEnv> lexicalEnv1 = thread_->GetEcmaVM()->GetFactory()->NewLexicalEnv(0);
+    targetFunction->SetLexicalEnv(thread_, lexicalEnv1.GetTaggedValue());
+    JSHandle<JSFunction> hookFunction = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForFunction2));
+    JSHandle<LexicalEnv> lexicalEnv2 = thread_->GetEcmaVM()->GetFactory()->NewLexicalEnv(1);
+    hookFunction->SetLexicalEnv(thread_, lexicalEnv2.GetTaggedValue());
+    JSHandle<JSFunction> backupFunction = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForFunction3));
+    JSHandle<LexicalEnv> lexicalEnv3 = thread_->GetEcmaVM()->GetFactory()->NewLexicalEnv(2);
+    backupFunction->SetLexicalEnv(thread_, lexicalEnv3.GetTaggedValue());
+    EXPECT_FALSE(targetFunction->GetLexicalEnv(thread_) == hookFunction->GetLexicalEnv(thread_));
+    EXPECT_FALSE(targetFunction->GetCodeEntryOrNativePointer() == hookFunction->GetCodeEntryOrNativePointer());
+    JSHandle<JSTaggedValue> target = JSHandle<JSTaggedValue>(targetFunction);
+    JSHandle<JSTaggedValue> hook = JSHandle<JSTaggedValue>(hookFunction);
+    JSHandle<JSTaggedValue> backup = JSHandle<JSTaggedValue>(backupFunction);
+    DFXJSNApi::ReplaceFunctionForHook(vm_, target, hook, backup);
+    JSHandle<JSFunction> targetFunc = JSHandle<JSFunction>::Cast(target);
+    JSHandle<JSFunction> hookFunc = JSHandle<JSFunction>::Cast(hook);
+    EXPECT_TRUE(targetFunc->GetLexicalEnv(thread_) == targetFunc->GetLexicalEnv(thread_));
+    EXPECT_TRUE(hookFunc->GetCodeEntryOrNativePointer() == hookFunc->GetCodeEntryOrNativePointer());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, LoadHookModule_1)
+{
+    LocalScope scope(vm_);
+    EXPECT_FALSE(DFXJSNApi::LoadHookModule(vm_));
+}
 } // namespace panda::test

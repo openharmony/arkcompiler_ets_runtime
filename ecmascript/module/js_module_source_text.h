@@ -432,6 +432,10 @@ public:
                                          CVector<JSHandle<SourceTextModule>> &stack,
                                          int index, JSHandle<JSTaggedValue> exception);
 
+    // Find function in JsModuleSourceText For Hook
+    static JSHandle<JSTaggedValue> FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
+                                                           const std::string &className, const std::string &funcName);
+
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &exportName,

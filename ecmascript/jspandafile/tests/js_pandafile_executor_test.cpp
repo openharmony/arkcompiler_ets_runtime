@@ -175,4 +175,19 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteAbcFileWithSingletonPatternFlag)
         "entry", JSPandaFile::ENTRY_MAIN_FUNCTION, false);
     EXPECT_EQ(result1, JSPandaFileExecutor::ROUTE_URI_ERROR);
 }
+
+HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteInsecureAbcFile_1)
+{
+    std::string fileName = QUICKFIX_ABC_PATH "multi_file/base/module.abc";
+    bool result = JSPandaFileExecutor::ExecuteInsecureAbcFile(thread, fileName.c_str());
+    EXPECT_TRUE(result == false);
+}
+
+HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteInsecureAbcFile_2)
+{
+    ecmascript::ThreadManagedScope managedScope(thread);
+    std::string fileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    bool result = JSPandaFileExecutor::ExecuteInsecureAbcFile(thread, fileName.c_str());
+    EXPECT_TRUE(result == true);
+}
 }  // namespace panda::test
