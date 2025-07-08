@@ -24,7 +24,10 @@ void MutatorManager::FlipMutators(const char* reason, STWFunction&& stwFunction,
 {
     std::list<Mutator*> undoneMutators;
     {
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "Waiting-STW", "");
         ScopedStopTheWorld stw(reason);
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, reason, "");
+
         stwFunction();
         bool ignoreFinalizer = true;
         // Hope process ui thread's flipFunction at last, so add the ui mutator at the end of undoeMuators list.

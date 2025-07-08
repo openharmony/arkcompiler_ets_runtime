@@ -648,12 +648,15 @@ static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
     });
 }
 
-void RegionManager::FixRecentRegionList(TraceCollector& collector, RegionList& list)
+void RegionManager::FixRecentRegionList(TraceCollector &collector, RegionList &list)
 {
-    list.VisitAllRegions([&collector](RegionDesc* region) {
+    CArrayList<RegionDesc *> cache;
+    cache.reserve(list.GetRegionCount());
+    list.VisitAllRegions([&cache](RegionDesc *region) { cache.push_back(region); });
+    for (const auto &region : cache) {
         DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
         FixRecentRegion(collector, region);
-    });
+    }
 }
 
 static void FixToRegion(TraceCollector& collector, RegionDesc* region)
@@ -753,10 +756,13 @@ static void FixRecentOldRegion(TraceCollector& collector, RegionDesc* region)
 
 void RegionManager::FixRecentOldRegionList(TraceCollector& collector, RegionList& list)
 {
-    list.VisitAllRegions([&collector](RegionDesc* region) {
+    CArrayList<RegionDesc *> cache;
+    cache.reserve(list.GetRegionCount());
+    list.VisitAllRegions([&cache](RegionDesc *region) { cache.push_back(region); });
+    for (const auto &region : cache) {
         DLOG(REGION, "fix mature region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
         FixRecentOldRegion(collector, region);
-    });
+    }
 }
 
 void RegionManager::FixPinnedRegionList(TraceCollector& collector, RegionList& list, GCStats& stats)
