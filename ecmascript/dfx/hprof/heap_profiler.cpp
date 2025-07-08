@@ -135,6 +135,24 @@ HeapProfiler::~HeapProfiler()
     }
 }
 
+void HeapProfiler::DumpHeapSnapshotForCMCOOM()
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
+    auto appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
+        LOG_ECMA(INFO) << "DumpHeapSnapshotBeforeOOM, no dump quota.";
+        return;
+    }
+    vm_->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0);
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = panda::ecmascript::DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+    dumpOption.isDumpOOM = true;
+    DumpHeapSnapshotForOOM(dumpOption);
+#endif
+}
+
 void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
 {
     DISALLOW_GARBAGE_COLLECTION;

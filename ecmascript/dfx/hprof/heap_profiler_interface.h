@@ -18,7 +18,7 @@
 
 #include <functional>
 #include <memory>
-
+#include "common_components/profiler/common_profiler_interface.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -46,7 +46,7 @@ enum class RawHeapDumpCropLevel {
     DEFAULT = LEVEL_V1
 };
 
-class HeapProfilerInterface {
+class HeapProfilerInterface : public common::CommonHeapProfilerInterface {
 public:
     static HeapProfilerInterface *GetInstance(EcmaVM *vm);
     static void Destroy(EcmaVM *vm);

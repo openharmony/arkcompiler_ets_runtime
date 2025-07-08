@@ -143,15 +143,6 @@ private:
     Node* GetNextEdgeTo();
     EdgeType GenerateEdgeType(Node *node);
 
-    static constexpr uint16_t HOLE_VALUE = 0x05U;
-    static constexpr uint16_t NULL_VALUE = 0x03U;
-    static constexpr uint16_t BOOLEN_TRUE_VALUE = 0x07U;
-    static constexpr uint16_t BOOLEN_FALSE_VALUE = 0x06U;
-    static constexpr uint16_t EXCEPTION_VALUE = 0x10U;
-    static constexpr uint16_t UNDEFINED_VALUE = 0x02U;
-    static constexpr uint16_t INT_VALUE = 0xFFFFU;
-    static constexpr uint16_t DOUBLE_VALUE = 0xFFFEU;
-
     MetaParser *metaParser_ {nullptr};
     char *mem_ {};
     uint32_t memSize_ {0};

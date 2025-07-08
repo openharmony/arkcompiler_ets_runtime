@@ -79,6 +79,13 @@ public:
         }
     }
 
+    void WriteUint8(uint8_t value)
+    {
+        MaybeWriteBinBlock();
+        *reinterpret_cast<uint8_t *>(chunk_.data() + current_) = value;
+        ++current_;
+    }
+
     void WriteChar(char c)
     {
         ASSERT(c != '\0');
