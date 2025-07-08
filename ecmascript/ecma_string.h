@@ -21,11 +21,9 @@
 #include <cstring>
 
 #include "common_components/base/utf_helper.h"
-#include "common_interfaces/objects/base_string.h"
 #include "common_interfaces/objects/string/line_string.h"
 #include "common_interfaces/objects/string/sliced_string.h"
 #include "common_interfaces/objects/string/tree_string.h"
-#include "common_interfaces/objects/string/base_string-inl1.h"
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"

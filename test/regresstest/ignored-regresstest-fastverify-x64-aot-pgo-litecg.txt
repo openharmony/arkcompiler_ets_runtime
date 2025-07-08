@@ -17,3 +17,6 @@ regresstest/ark-regress/mjsunit/es6/array-concat-spreadable-function.js
 
 # Issue #20325
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1263994.js
+
+#26099
+regresstest/ark-regress/mjsunit/regress/regress-3612.js
