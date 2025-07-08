@@ -54,10 +54,8 @@ group("host_unittest") {
 
   if (is_mac) {
     deps -= [ ":SnapshotTestAction" ]
-  }
-
-  # TODO: CMC-GC UT FIX LATER
-  if (ets_runtime_enable_cmc_gc) {
+  } else if (ets_runtime_enable_cmc_gc) {
+    # TODO: CMC-GC UT FIX LATER
     deps -= [ ":SnapshotTestAction" ]
   }
 }
