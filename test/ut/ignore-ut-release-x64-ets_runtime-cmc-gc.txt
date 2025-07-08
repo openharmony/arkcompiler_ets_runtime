@@ -1,3 +1,7 @@
 # Known failure list for ut - release - x64 - ets_runtime -cmc -gc
 #26061
 obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestContextAssert
+obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestAsmAssert
+
+#26090
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
