@@ -381,7 +381,7 @@ void TypedBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
         GateRef left = tacc.GetLeftGate();
         GateRef right = tacc.GetReightGate();
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
     } else {
         LowerTypedBinOp<Op>(gate);
     }
@@ -425,7 +425,7 @@ void TypedBytecodeLowering::SpeculateInternStrings(const BinOpTypeInfoAccessor &
     InternStringCheck(left);
     InternStringCheck(right);
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
-    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 template<TypedBinOp Op>
@@ -446,7 +446,7 @@ void TypedBytecodeLowering::SpeculateStrings(const BinOpTypeInfoAccessor &tacc)
             }
         }
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
-        acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
     }
 }
 
@@ -458,7 +458,7 @@ void TypedBytecodeLowering::SpeculateNumbers(const BinOpTypeInfoAccessor &tacc)
     GateRef left = tacc.GetLeftGate();
     GateRef right = tacc.GetReightGate();
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
-    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 template<TypedUnOp Op>
@@ -467,7 +467,7 @@ void TypedBytecodeLowering::SpeculateNumber(const UnOpTypeInfoAccessor &tacc)
     AddProfiling(tacc.GetGate());
     pgoTypeLog_.CollectGateTypeLogInfo(tacc.GetGate(), false);
     GateRef result = builder_.TypedUnaryOp<Op>(tacc.GetValue(), tacc.GetParamType());
-    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 GateRef CheckedNumberToString(CircuitBuilder *builder, GateRef numOrStr, Label *exit)
@@ -508,12 +508,12 @@ void TypedBytecodeLowering::SpeculateNumbersOrString(const BinOpTypeInfoAccessor
             right = CheckedNumberToString(&builder_, right, &exit);
             ASSERT(tacc.GetParamType() == ParamType::StringType());
             GateRef result = builder_.TypedBinaryOp<Op>(left, right, ParamType::StringType());
-            acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
         } else if (TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, right)) {
             left = CheckedNumberToString(&builder_, left, &exit);
             ASSERT(tacc.GetParamType() == ParamType::StringType());
             GateRef result = builder_.TypedBinaryOp<Op>(left, right, ParamType::StringType());
-            acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
         }
     }
 }
@@ -530,7 +530,7 @@ void TypedBytecodeLowering::LowerTypeToNumeric(GateRef gate)
 void TypedBytecodeLowering::LowerPrimitiveTypeToNumber(const UnOpTypeInfoAccessor &tacc)
 {
     GateRef result = builder_.PrimitiveToNumber(tacc.GetValue(), tacc.GetParamType());
-    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerConditionJump(GateRef gate, bool flag)
@@ -755,7 +755,7 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
             }
         }
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -865,7 +865,7 @@ void TypedBytecodeLowering::LowerTypedPolyLdObjByName(const LoadObjPropertyTypeI
         PolyHeapObjectCheckAndLoad(info, typeIndex2HeapConstantIndex);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -926,7 +926,7 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
     DeleteConstDataIfNoUser(key);
 }
 
@@ -964,7 +964,7 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(key);
 }
 
@@ -1056,7 +1056,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
                                      tacc.GetValue(), tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
         }
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
@@ -1117,7 +1117,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         }
     }
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -1306,7 +1306,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBuilt
         // 2. load property
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
         DeleteConstDataIfNoUser(tacc.GetKey());
         return true;
     } else if (globalsId.IsGlobalEnvId()) { // ctor Hclass
@@ -1328,7 +1328,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBuilt
         // 2. load property
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
         DeleteConstDataIfNoUser(tacc.GetKey());
         return true;
     }
@@ -1360,7 +1360,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
         builder_.MathHClassConsistencyCheck(receiver);
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
         DeleteConstDataIfNoUser(tacc.GetKey());
         return true;
     }
@@ -1380,7 +1380,7 @@ void TypedBytecodeLowering::LowerTypedLdArrayLength(const LoadBuiltinObjTypeInfo
     }
 
     GateRef result = builder_.LoadArrayLength(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBuiltinObjTypeInfoAccessor &tacc)
@@ -1394,7 +1394,7 @@ void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBuiltinObjTyp
         builder_.TypedArrayCheck(array, arrayType, TypedArrayMetaDataAccessor::Mode::LOAD_LENGTH, onHeap);
     }
     GateRef result = builder_.LoadTypedArrayLength(array, arrayType, onHeap);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBuiltinObjTypeInfoAccessor &tacc)
@@ -1408,7 +1408,7 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBuiltinObjTypeInf
         }
     }
     GateRef result = builder_.LoadStringLength(str);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBuiltinObjTypeInfoAccessor &tacc)
@@ -1420,7 +1420,7 @@ void TypedBytecodeLowering::LowerTypedLdMapSize(const LoadBuiltinObjTypeInfoAcce
         builder_.EcmaMapCheck(jsMap);
     }
     GateRef result = builder_.LoadMapSize(jsMap);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadBuiltinObjTypeInfoAccessor &tacc,
@@ -1491,7 +1491,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     GateRef plrGate = builder_.Int32(plr.GetData());
     GateRef prototype = builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), static_cast<size_t>(*protoField));
     GateRef result = builder_.LoadProperty(prototype, plrGate, plr.IsFunction());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
     return true;
 }
 
@@ -1504,7 +1504,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByIndexForBuiltin(GateRef gate)
         if (tacc.IsBuiltinsTypeArray()) {  // pgo need dump profile type
             AddProfiling(gate);
             result = LoadTypedArrayByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
             return true;
         }
     }
@@ -1542,7 +1542,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByIndexForBuiltin(GateRef gate)
         builder_.IndexCheck(length, index);
     }
     builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value, onHeap);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     return true;
 }
 
@@ -1562,17 +1562,17 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
         if (tacc.IsBuiltinsString()) {
             AddProfiling(gate);
             result = LoadStringByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
             return true;
         } else if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             result = LoadJSArrayByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
             return true;
         } else if (tacc.IsBuiltinsTypeArray()) {
             AddProfiling(gate);
             result = LoadTypedArrayByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
             return true;
         }
     }
@@ -1623,7 +1623,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByValue(GateRef gate)
                 result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPoool, holderHClassIndex);
             }
         }
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
         return;
     }
 }
@@ -1825,12 +1825,12 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
         if (tacc.IsBuiltinsArray()) {
             AddProfiling(gate);
             StoreJSArrayByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
             return true;
         } else if (tacc.IsBuiltinsTypeArray()) {
             AddProfiling(gate);
             StoreTypedArrayByIndex(tacc);
-            acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+            acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
             return true;
         }
     }
@@ -1873,7 +1873,7 @@ void TypedBytecodeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
         result = builder_.TypedUnaryOp<TypedUnOp::TYPED_ISTRUE>(tacc.GetValue(), paramType);
     }
 
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
@@ -1898,7 +1898,7 @@ bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
         currentLabel->SetControl(newNumber);
         currentLabel->SetDepend(newNumber);
 
-        acc.ReplaceHirAndDeleteIfException(gate, builder->GetStateDepend(), newNumber);
+        acc.ReplaceHirAndReplaceDeadIfException(gate, builder->GetStateDepend(), newNumber);
         return true;
     }
     return false;
@@ -2063,7 +2063,7 @@ void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, con
         ReplaceGateWithPendingException(glue_, gate, builder_.GetState(),
             builder_.GetDepend(), result);
     } else {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
     }
 }
 
@@ -2076,7 +2076,7 @@ void TypedBytecodeLowering::SpeculateCallBuiltinFromGlobal(GateRef gate, const s
         ReplaceGateWithPendingException(glue_, gate, builder_.GetState(),
             builder_.GetDepend(), result);
     } else {
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
     }
 }
 
@@ -2713,7 +2713,7 @@ void TypedBytecodeLowering::LowerTypedTypeOf(GateRef gate)
         builder_.TypeOfCheck(tacc.GetValue(), tacc.GetParamType());
     }
     GateRef result = builder_.TypedTypeOf(tacc.GetParamType());
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
@@ -2747,7 +2747,7 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     if (index != builtin.NOT_FOUND) {
         AddProfiling(gate);
         GateRef result = builder_.LoadBuiltinObject(index);
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
@@ -2766,7 +2766,7 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
         GateRef boxValue = builder_.LoadConstOffset(
             VariableType::JS_ANY(), propertyBoxConst, PropertyBox::VALUE_OFFSET);
         builder_.DeoptCheck(builder_.TaggedIsNotHole(boxValue), frameState, DeoptType::PROPERTYBOXINVALID);
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), boxValue);
+        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), boxValue);
         DeleteConstDataIfNoUser(tacc.GetKey());
     }
 }
@@ -2795,7 +2795,7 @@ void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
     builder_.ProtoChangeMarkerCheck(target);
 
     result = builder_.OrdinaryHasInstance(obj, target);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
 }
 
 void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
@@ -2828,7 +2828,7 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
                               MemoryAttribute::NoBarrier());
     GateRef result = builder_.FinishAllocate(object);
 
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
@@ -2919,7 +2919,7 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
             { constpoolId, objIndex, JitCompilationEnv::IN_UNSHARED_CONSTANTPOOL }, jsObjectHandle);
         jitCompilationEnv->RecordGate2HeapConstantIndex(ret, indexInConstantTable);
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void TypedBytecodeLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend,

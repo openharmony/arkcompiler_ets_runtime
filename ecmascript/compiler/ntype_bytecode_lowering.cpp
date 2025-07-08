@@ -125,7 +125,7 @@ void NTypeBytecodeLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
     AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
     builder_.LexVarIsHoleCheck(value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate)
@@ -141,7 +141,7 @@ void NTypeBytecodeLowering::LowerThrowIfSuperNotCorrectCall(GateRef gate)
     } else {
         UNREACHABLE();
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.TaggedTrue());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), builder_.TaggedTrue());
 }
 
 void NTypeBytecodeLowering::LowerThrowIfNotObject(GateRef gate)
@@ -149,7 +149,7 @@ void NTypeBytecodeLowering::LowerThrowIfNotObject(GateRef gate)
     AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 0); // 0: the first parameter
     builder_.EcmaObjectCheck(value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::LowerLdLexVar(GateRef gate)
@@ -279,7 +279,7 @@ void NTypeBytecodeLowering::LowerNTypedStownByIndex(GateRef gate)
     acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::AddProfiling(GateRef gate)
@@ -418,7 +418,7 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
     size_t offset = attr.GetOffset();
     GateRef accValue = acc_.GetValueIn(gate, 2); // 2: accValue
     builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, hclass->GetInlinedPropertiesOffset(offset), accValue);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)

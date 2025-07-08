@@ -154,6 +154,7 @@ group("ark_aot_ts_test") {
     "exception_case18",
     "exception_case19",
     "exception_case2",
+    "exception_case20",
     "exception_case3",
     "exception_case4",
     "exception_case5",

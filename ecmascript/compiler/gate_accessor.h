@@ -615,7 +615,7 @@ public:
 
     void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success, StateDepend exception, GateRef value);
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
-    void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
+    void ReplaceHirAndReplaceDeadIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
     bool IsLoopBackUse(GateRef gate, const UseIterator &useIt) const;
     void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
