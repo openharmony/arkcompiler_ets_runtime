@@ -18,6 +18,10 @@
 namespace panda::ecmascript {
 bool HeapMarker::Mark(JSTaggedType addr)
 {
+    if (g_isEnableCMCGC) {
+        return CMCMark(addr);
+    }
+
     auto index = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
     Region *region = Region::ObjectAddressToRange(addr);
     auto it = regionBitsetMap_.find(region);
@@ -34,6 +38,27 @@ bool HeapMarker::Mark(JSTaggedType addr)
     bitset.set(index);
     ++count_;
     regionBitsetMap_.emplace(region, bitset);
+    return true;
+}
+
+bool HeapMarker::CMCMark(JSTaggedType addr)
+{
+    auto index = (addr & common::RegionDesc::DEFAULT_REGION_UNIT_MASK) >> TAGGED_TYPE_SIZE_LOG;
+    JSTaggedType region = addr & ~common::RegionDesc::DEFAULT_REGION_UNIT_MASK;
+    auto it = cmcRegionBitsetMap_.find(region);
+    if (it != cmcRegionBitsetMap_.end()) {
+        if (it->second.test(index)) {
+            return false;
+        }
+        it->second.set(index);
+        ++count_;
+        return true;
+    }
+
+    std::bitset<CMC_BITSET_SIZE> bitset;
+    bitset.set(index);
+    ++count_;
+    cmcRegionBitsetMap_.emplace(region, bitset);
     return true;
 }
 
@@ -55,7 +80,24 @@ void HeapMarker::Clear()
 
 void HeapMarker::IterateMarked(const std::function<void(JSTaggedType)> &cb)
 {
+    if (g_isEnableCMCGC) {
+        IterateCMCMarked(cb);
+        return;
+    }
+
     for (const auto &[region, bitset] : regionBitsetMap_) {
+        for (size_t index = 0; index < bitset.size(); ++index) {
+            if (bitset.test(index)) {
+                JSTaggedType addr = reinterpret_cast<JSTaggedType>(region) + (index << TAGGED_TYPE_SIZE_LOG);
+                cb(addr);
+            }
+        }
+    }
+}
+
+void HeapMarker::IterateCMCMarked(const std::function<void(JSTaggedType)> &cb)
+{
+    for (const auto &[region, bitset] : cmcRegionBitsetMap_) {
         for (size_t index = 0; index < bitset.size(); ++index) {
             if (bitset.test(index)) {
                 JSTaggedType addr = reinterpret_cast<JSTaggedType>(region) + (index << TAGGED_TYPE_SIZE_LOG);
