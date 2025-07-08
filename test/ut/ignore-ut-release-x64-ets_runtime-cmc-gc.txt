@@ -16,3 +16,9 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathC
 
 #20981
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
+#26061
+obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestContextAssert
+obj/arkcompiler/ets_runtime/test/moduletest/hugeictest/hugeictestAsmAssert
+
+#26090
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest

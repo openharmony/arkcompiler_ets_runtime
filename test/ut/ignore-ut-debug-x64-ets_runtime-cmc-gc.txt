@@ -17,3 +17,6 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 
 #24219
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Barrier_Test
+#26061
+obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
+obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
