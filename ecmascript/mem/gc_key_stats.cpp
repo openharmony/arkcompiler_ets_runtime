@@ -26,7 +26,6 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/dfx_hisys_event.h"
-#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -143,7 +142,6 @@ int32_t GCKeyStats::SendSysEventDataSize(std::vector<std::string> filePaths,  st
         OHOS::HiviewDFX::HiSysEvent::EventType::STATISTIC,
         "COMPONENT_NAME", COMPONENT_NAME,
         "PARTITION_NAME", PARTITION_NAME,
-        "REMAIN_PARTITION_SIZE", panda::ecmascript::GetDeviceValidSize(PARTITION_NAME),
         "FILE_OR_FOLDER_PATH", filePaths,
         "FILE_OR_FOLDER_SIZE", fileSizes);
     if (ret != 0) {
