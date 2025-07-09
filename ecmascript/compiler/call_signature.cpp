@@ -3886,6 +3886,20 @@ DEF_CALL_SIGNATURE(FindPatchModule)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(UpdateSharedModule)
+{
+    // 2 : 2 input parameters
+    CallSignature updateSharedModule("UpdateSharedModule", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = updateSharedModule;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FatalPrintMisstakenResolvedBinding)
 {
     // 3 : 3 input parameters

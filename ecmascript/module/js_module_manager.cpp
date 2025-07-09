@@ -192,21 +192,6 @@ bool ModuleManager::NeedExecuteModule(const CString &referencing)
     return true;
 }
 
-void ModuleManager::AddToInstantiatingSModuleList(const CString &record)
-{
-    InstantiatingSModuleList_.push_back(record);
-}
-
-CVector<CString> ModuleManager::GetInstantiatingSModuleList()
-{
-    return InstantiatingSModuleList_;
-}
-
-void ModuleManager::ClearInstantiatingSModuleList()
-{
-    InstantiatingSModuleList_.clear();
-}
-
 void ModuleManager::Iterate(RootVisitor &v)
 {
     for (auto &it : resolvedModules_) {
@@ -395,11 +380,6 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
 // this function only remove module's name from resolvedModules List, it's content still needed by sharedmodule
 void ModuleManager::RemoveModuleNameFromList(const CString& recordName)
 {
-    auto entry = resolvedModules_.find(recordName);
-    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
-            ", when try to remove the module";
-    }
     resolvedModules_.erase(recordName);
 }
 

@@ -161,8 +161,7 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveSharedImportedModuleWithMerge(JST
         return JSHandle<JSTaggedValue>(sharedModuleManager->GetSModule(thread, recordName));
     }
     // before resolving module completely, shared-module put into isolate -thread resolvedModules_ temporarily.
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
+    JSHandle<JSTaggedValue> module = thread->GetModuleManager()->TryGetImportedModule(recordName);
     if (!module->IsUndefined()) {
         return module;
     }
@@ -171,8 +170,8 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveSharedImportedModuleWithMerge(JST
     JSHandle<JSTaggedValue> moduleRecord =
         SharedModuleHelper::ParseSharedModule(thread, jsPandaFile, recordName, fileName, recordInfo);
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordNameString(recordName);
-    moduleManager->AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
-    moduleManager->AddToInstantiatingSModuleList(recordName);
+    sharedModuleManager->AddToResolvedModulesAndCreateSharedModuleMutex(
+        thread, recordName, moduleRecord.GetTaggedValue());
     return moduleRecord;
 }
 

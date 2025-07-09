@@ -4582,6 +4582,19 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
     return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE)));
 }
 
+inline GateRef StubBuilder::GetSharedType(GateRef module)
+{
+    GateRef bitfield = GetBitFieldFromSourceTextModule(module);
+    return Int32And(Int32LSR(bitfield, Int32(SourceTextModule::SHARED_TYPES_SHIFT)),
+                    Int32((1LU << SourceTextModule::IS_SHARED_TYPE_BITS) - 1));
+}
+
+inline GateRef StubBuilder::IsSharedModule(GateRef module)
+{
+    GateRef sharedType = GetSharedType(module);
+    return Int32Equal(sharedType, Int32(static_cast<int>(SharedTypes::SHARED_MODULE)));
+}
+
 inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
 {
     GateRef globalEnv = GetCurrentGlobalEnv();

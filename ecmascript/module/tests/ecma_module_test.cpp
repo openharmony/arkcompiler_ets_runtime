@@ -148,6 +148,15 @@ public:
         GetModuleValueFromBindingInfo info { thread, module, resolvedBinding, 0, isSendable };
         return ModuleValueAccessor::GetModuleValueFromRecordIndexBinding<isLazy>(info);
     }
+
+    template <bool isLazy>
+    static JSTaggedValue GetModuleValueFromIndexBinding(JSThread *thread, JSHandle<SourceTextModule> module,
+        JSTaggedValue resolvedBinding, bool isSendable)
+    {
+        GetModuleValueFromBindingInfo info { thread, module, resolvedBinding, 0, isSendable };
+        return ModuleValueAccessor::GetModuleValueFromIndexBinding<isLazy>(info);
+    }
+
     template <bool isLazy>
     static JSTaggedValue GetModuleValueFromRecordBinding(JSThread *thread, JSHandle<SourceTextModule> module,
         JSTaggedValue resolvedBinding, int32_t index, bool isSendable)
@@ -3755,17 +3764,26 @@ HWTEST_F_L0(EcmaModuleTest, CloneEnvForSModule1)
     EXPECT_TRUE(elements->GetLength() == 1U);
 }
 
-HWTEST_F_L0(EcmaModuleTest, InsertInSModuleManager) {
+HWTEST_F_L0(EcmaModuleTest, TransferFromLocalToSharedModuleMapAndGetInsertedSModule) {
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSSourceTextModule();
     CString recordName = "test";
     module1->SetEcmaModuleRecordNameString(recordName);
-    manager1->InsertInSModuleManager(thread, recordName, module1);
-    EXPECT_FALSE(thread->HasPendingException());
+    module1->SetSharedType(SharedTypes::SHARED_MODULE);
+    // success
+    JSHandle<SourceTextModule> res =
+        manager1->TransferFromLocalToSharedModuleMapAndGetInsertedSModule(thread, module1);
+    EXPECT_EQ(res, module1);
+    // insert fail
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSSourceTextModule();
+    module2->SetEcmaModuleRecordNameString(recordName);
+    module2->SetSharedType(SharedTypes::SHARED_MODULE);
+    res = manager1->TransferFromLocalToSharedModuleMapAndGetInsertedSModule(thread, module2);
+    EXPECT_EQ(res, module1);
 }
 
-HWTEST_F_L0(EcmaModuleTest, findModuleMutexWithLock) {
+HWTEST_F_L0(EcmaModuleTest, FindModuleMutexWithLock) {
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSSourceTextModule();
@@ -3774,8 +3792,8 @@ HWTEST_F_L0(EcmaModuleTest, findModuleMutexWithLock) {
     module1->SetEcmaModuleFilenameString(baseFileName);
     CString recordName1 = "module_unexecute";
     module1->SetEcmaModuleRecordNameString(recordName1);
-    manager1->InsertInSModuleManager(thread, recordName1, module1);
-    manager1->findModuleMutexWithLock(thread, module1);
+    manager1->AddToResolvedModulesAndCreateSharedModuleMutex(thread, recordName1, module1.GetTaggedValue());
+    manager1->FindModuleMutexWithLock(thread, module1);
     EXPECT_FALSE(thread->HasPendingException());
 }
 
@@ -4233,5 +4251,41 @@ HWTEST_F_L0(EcmaModuleTest, RestoreMutableFields)
     EXPECT_EQ(module->GetSendableEnv(thread), undefinedValue);
     EXPECT_EQ(module->GetException(thread), undefinedValue);
     EXPECT_EQ(module->GetNamespace(thread), undefinedValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, UpdateSharedModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> curmodule = objectFactory->NewSourceTextModule();
+    JSHandle<SourceTextModule> resolvedModule = objectFactory->NewSSourceTextModule();
+    resolvedModule->SetEcmaModuleRecordNameString("updateSharedModule");
+    resolvedModule->SetSharedType(SharedTypes::SHARED_MODULE);
+    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
+    JSHandle<JSTaggedValue> resolvedBinding = JSHandle<JSTaggedValue>::Cast(
+        objectFactory->NewResolvedIndexBindingRecord(resolvedModule, 0));
+    envRec->Set(thread, 0, resolvedBinding);
+    curmodule->SetEnvironment(thread, envRec);
+    JSTaggedValue res = MockModuleValueAccessor::GetModuleValueFromIndexBinding<false>(
+        thread, curmodule, resolvedBinding.GetTaggedValue(), false);
+    EXPECT_TRUE(res.IsHole());
+
+    JSHandle<SourceTextModule> resolvedModule2 = objectFactory->NewSSourceTextModule();
+    CString recordName = "updateSharedModule";
+    resolvedModule2->SetEcmaModuleRecordNameString(recordName);
+    resolvedModule2->SetSharedType(SharedTypes::SHARED_MODULE);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewSLocalExportEntry(JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromASCII("exportName")),
+                                      JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromASCII("localName")), 1);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewSTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    resolvedModule2->SetLocalExportEntries(thread, localExportEntries);
+    JSHandle<JSTaggedValue> val(objectFactory->NewFromUtf8("exportVal"));
+
+    SharedModuleManager::GetInstance()->
+        TransferFromLocalToSharedModuleMapAndGetInsertedSModule(thread, resolvedModule2);
+    SourceTextModule::StoreModuleValue(thread, resolvedModule2, 0, val);
+    res = MockModuleValueAccessor::GetModuleValueFromIndexBinding<false>(
+        thread, curmodule, resolvedBinding.GetTaggedValue(), false);
+    EXPECT_EQ(res, val.GetTaggedValue());
 }
 }  // namespace panda::test

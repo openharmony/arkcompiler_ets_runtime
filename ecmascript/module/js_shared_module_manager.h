@@ -43,16 +43,14 @@ public:
 
     void Iterate(RootVisitor &v);
 
-    StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    StateVisit &FindModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     bool SearchInSModuleManager(JSThread *thread, const CString &recordName);
 
-    void InsertInSModuleManager(JSThread *thread, const CString &recordName,
-        JSHandle<SourceTextModule> &moduleRecord);
-
     JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
 
-    void PUBLIC_API TransferSModule(JSThread *thread);
+    JSHandle<SourceTextModule> PUBLIC_API TransferFromLocalToSharedModuleMapAndGetInsertedSModule(
+        JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     bool IsInstantiatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
@@ -60,11 +58,15 @@ public:
         const CString &entryPoint, ClassKind classKind = ClassKind::NON_SENDABLE);
 
     JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
-                                                            const JSHandle<TaggedArray> &exports);
+                                                     const JSHandle<TaggedArray> &exports);
+    
+    void AddToResolvedModulesAndCreateSharedModuleMutex(JSThread *thread,
+                                                        const CString &recordName,
+                                                        JSTaggedValue module);
 
-    inline void AddResolveImportedSModule(const CString &recordName, JSTaggedValue module)
+    inline bool AddResolveImportedSModule(const CString &recordName, JSTaggedValue module)
     {
-        resolvedSharedModules_.emplace(recordName, module);
+        return resolvedSharedModules_.try_emplace(recordName, module).second;
     }
 
     inline void UpdateResolveImportedSModule(const CString &recordName, JSTaggedValue module)
@@ -100,6 +102,9 @@ private:
     bool SearchInSModuleManagerUnsafe(const CString &recordName);
 
     JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, const CString &recordName);
+
+    bool TryInsertInSModuleManager(JSThread *thread, const CString &recordName,
+        const JSHandle<SourceTextModule> &moduleRecord);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
     CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;

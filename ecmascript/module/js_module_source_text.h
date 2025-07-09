@@ -355,6 +355,8 @@ public:
     static constexpr size_t LOADING_TYPE_BITS = 3;
     static constexpr uint16_t REGISTER_COUNTS = 16;
     static constexpr size_t IS_SHARED_TYPE_BITS = 2;
+    static constexpr size_t SHARED_TYPES_SHIFT = STATUS_BITS + MODULE_TYPE_BITS + IS_NEW_BC_VERSION_BITS +
+                                                 HASTLA_BITS + LOADING_TYPE_BITS + REGISTER_COUNTS;
 
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)

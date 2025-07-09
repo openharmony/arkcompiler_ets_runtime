@@ -712,7 +712,8 @@ private:
     V(MarkRSetCardTable)                             \
     V(MarkInBuffer)                                  \
     V(BatchMarkInBuffer)                             \
-    V(CMCSetValueWithBarrier)
+    V(CMCSetValueWithBarrier)                        \
+    V(UpdateSharedModule)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

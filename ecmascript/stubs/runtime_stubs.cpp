@@ -4971,6 +4971,19 @@ JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, JSTaggedValue res
     return (thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
 }
 
+JSTaggedValue RuntimeStubs::UpdateSharedModule(uintptr_t argGlue, JSTaggedValue resolvedModule)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSHandle<SourceTextModule> module(thread, resolvedModule);
+    JSHandle<SourceTextModule> sharedModule =
+        SharedModuleManager::GetInstance()->GetSModule(thread, module->GetEcmaModuleRecordNameString());
+    if (sharedModule.GetTaggedValue().IsSourceTextModule()) {
+        return sharedModule.GetTaggedValue();
+    }
+    return module.GetTaggedValue();
+}
+
 void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule)
 {
     DISALLOW_GARBAGE_COLLECTION;
