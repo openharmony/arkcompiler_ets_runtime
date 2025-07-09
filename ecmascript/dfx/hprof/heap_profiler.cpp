@@ -394,7 +394,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     {
         if (dumpOption.isFullGC) {
             if (g_isEnableCMCGC) {
-                common::BaseRuntime::RequestGC(common::GcType::FULL);
+                common::BaseRuntime::RequestGC(common::GC_REASON_BACKUP, false, common::GC_TYPE_FULL);
             } else {
                 [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
                 ForceSharedGC();
@@ -463,7 +463,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
                                      bool traceAllocation, bool newThread)
 {
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::RequestGC(common::GcType::FULL);
+        common::BaseRuntime::RequestGC(common::GC_REASON_BACKUP, false, common::GC_TYPE_FULL);
     } else {
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
@@ -533,7 +533,7 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
     }
     {
         if (g_isEnableCMCGC) {
-            common::BaseRuntime::RequestGC(common::GcType::FULL);
+            common::BaseRuntime::RequestGC(common::GC_REASON_BACKUP, false, common::GC_TYPE_FULL);
             SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
             snapshot->FinishSnapshot();
         } else {

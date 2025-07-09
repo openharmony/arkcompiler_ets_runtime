@@ -44,7 +44,7 @@ public:
     explicit StubCollectorProxy(Allocator& allocator, CollectorResources& resources)
         : CollectorProxy(allocator, resources) {}
 
-    void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override {}
+    void RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCType gcType) override {}
 };
 }
 
@@ -53,7 +53,7 @@ class DummyCollectorProxy : public CollectorProxy {
 public:
     explicit DummyCollectorProxy(Allocator& alloc, CollectorResources& res)
         : CollectorProxy(alloc, res) {}
-    void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override {}
+    void RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCType gcType) override {}
 };
 
 class DummyCollectorResources : public CollectorResources {

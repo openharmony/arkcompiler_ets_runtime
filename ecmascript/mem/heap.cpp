@@ -1534,13 +1534,15 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 {
     if (g_isEnableCMCGC) {
-        common::GcType type = common::GcType::ASYNC;
+        common::GCReason cmcReason = common::GC_REASON_USER;
+        bool async = true;
         if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
             gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
             reason == GCReason::ALLOCATION_FAILED) {
-            type = common::GcType::FULL;
+            cmcReason = common::GC_REASON_BACKUP;
+            async = false;
         }
-        common::BaseRuntime::RequestGC(type);
+        common::BaseRuntime::RequestGC(cmcReason, async, common::GC_TYPE_FULL);
         return;
     }
     CollectGarbageImpl(gcType, reason);

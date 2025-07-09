@@ -43,7 +43,7 @@ public:
     void SetGCPhase(const GCPhase phase) override { currentCollector_->SetGCPhase(phase); }
 
     // dispatch garbage collection to the right collector
-    PUBLIC_API void RunGarbageCollection(uint64_t gcIndex, GCReason reason) override;
+    PUBLIC_API void RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCType gcType) override;
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return currentCollector_->ShouldIgnoreRequest(request); }
 

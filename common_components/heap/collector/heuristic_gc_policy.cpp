@@ -61,10 +61,10 @@ void HeuristicGCPolicy::TryHeuristicGC()
     if (allocated >= threshold) {
         if (collector.GetGCStats().shouldRequestYoung) {
             DLOG(ALLOC, "request heu gc: young %zu, threshold %zu", allocated, threshold);
-            collector.RequestGC(GC_REASON_YOUNG, true);
+            collector.RequestGC(GC_REASON_YOUNG, true, GC_TYPE_YOUNG);
         } else {
             DLOG(ALLOC, "request heu gc: allocated %zu, threshold %zu", allocated, threshold);
-            collector.RequestGC(GC_REASON_HEU, true);
+            collector.RequestGC(GC_REASON_HEU, true, GC_TYPE_FULL);
         }
     }
 }
@@ -85,10 +85,10 @@ void HeuristicGCPolicy::CheckGCForNative()
     if (currentNativeSize > currentThreshold) {
         if (currentNativeSize > URGENCY_NATIVE_LIMIT) {
             // Native binding size is too large, should wait a sync finished.
-            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE_SYNC, false);
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE_SYNC, false, GC_TYPE_FULL);
             return;
         }
-        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE, true);
+        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_NATIVE, true, GC_TYPE_FULL);
     }
 }
 void HeuristicGCPolicy::NotifyNativeFree(size_t bytes)
@@ -137,7 +137,7 @@ void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
         size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
         if (allocated > aliveSizeAfterGC_ && (allocated - aliveSizeAfterGC_) > BACKGROUND_LIMIT &&
             allocated > MIN_BACKGROUND_GC_SIZE) {
-            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_BACKGROUND, true);
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_BACKGROUND, true, GC_TYPE_FULL);
         }
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::BACKGROUND);
     } else {
@@ -166,7 +166,7 @@ bool HeuristicGCPolicy::CheckAndTriggerHintGC(MemoryReduceDegree degree)
     if (expectHeapSize < allocated) {
         DLOG(ALLOC, "request heu gc by hint: allocated %zu, expectHeapSize %zu, aliveSizeAfterGC %zu",
              allocated, expectHeapSize, aliveSizeAfterGC_);
-        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_HINT, true);
+        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_HINT, true, GC_TYPE_FULL);
         return true;
     }
     return false;

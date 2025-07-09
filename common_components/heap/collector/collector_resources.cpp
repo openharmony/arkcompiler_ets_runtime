@@ -146,21 +146,21 @@ void CollectorResources::PostIgnoredGcRequest(GCReason reason)
     }
 }
 
-void CollectorResources::RequestAsyncGC(GCReason reason)
+void CollectorResources::RequestAsyncGC(GCReason reason, GCType gcType)
 {
     // The gc request must be none blocked
     ASSERT_LOGF(!g_gcRequests[reason].IsSyncGC(), "trigger from unsafe context must be none blocked");
-    GCRunner gcTask(GCTask::GCTaskType::GC_TASK_INVOKE_GC, reason);
+    GCRunner gcTask(GCTask::GCTaskType::GC_TASK_INVOKE_GC, reason, gcType);
     // we use async enqueue because this doesn't have locks, lowering the risk
     // of timeouts when entering safe region due to thread scheduling
     taskQueue_->EnqueueAsync(gcTask);
 }
 
-void CollectorResources::RequestGCAndWait(GCReason reason)
+void CollectorResources::RequestGCAndWait(GCReason reason, GCType gcType)
 {
     // Enter saferegion since current thread may blocked by locks.
     ScopedEnterSaferegion enterSaferegion(false);
-    GCRunner gcTask(GCTask::GCTaskType::GC_TASK_INVOKE_GC, reason);
+    GCRunner gcTask(GCTask::GCTaskType::GC_TASK_INVOKE_GC, reason, gcType);
 
     GCTaskQueue<GCRunner>::GCTaskFilter filter = [](GCRunner& oldTask, GCRunner& newTask) {
         return oldTask.GetGCReason() == newTask.GetGCReason();
@@ -184,7 +184,7 @@ void CollectorResources::RequestGCAndWait(GCReason reason)
     gcFinishedCondVar_.wait(lock, pred);
 }
 
-void CollectorResources::RequestGC(GCReason reason, bool async)
+void CollectorResources::RequestGC(GCReason reason, bool async, GCType gcType)
 {
     if (!IsGCActive()) {
         return;
@@ -201,9 +201,9 @@ void CollectorResources::RequestGC(GCReason reason, bool async)
         if (reason == GCReason::GC_REASON_NATIVE) {
             SetIsNativeGCInvoked(true);
         }
-        RequestAsyncGC(reason);
+        RequestAsyncGC(reason, gcType);
     } else {
-        RequestGCAndWait(reason);
+        RequestGCAndWait(reason, gcType);
     }
 }
 

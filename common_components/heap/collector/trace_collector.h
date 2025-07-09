@@ -220,7 +220,7 @@ public:
 
     void SetGcStarted(bool val) { collectorResources_.SetGcStarted(val); }
 
-    void RunGarbageCollection(uint64_t, GCReason) override;
+    void RunGarbageCollection(uint64_t, GCReason, GCType) override;
 
     void ReclaimGarbageMemory(GCReason reason);
 
@@ -245,7 +245,10 @@ protected:
 
     virtual void DoGarbageCollection() = 0;
 
-    void RequestGCInternal(GCReason reason, bool async) override { collectorResources_.RequestGC(reason, async); }
+    void RequestGCInternal(GCReason reason, bool async, GCType gcType) override
+    {
+        collectorResources_.RequestGC(reason, async, gcType);
+    }
     void MergeWeakStack(WeakStack& weakStack);
     void UpdateNativeThreshold(GCParam& gcParam);
 
@@ -264,6 +267,8 @@ protected:
 
     // reason for current GC.
     GCReason gcReason_ = GC_REASON_USER;
+
+    GCType gcType_ = GC_TYPE_FULL;
 
     // indicate whether to fix references (including global roots and reference fields).
     // this member field is useful for optimizing concurrent copying gc.

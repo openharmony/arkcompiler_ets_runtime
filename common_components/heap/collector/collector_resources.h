@@ -36,7 +36,7 @@ public:
     void Init();
     void Fini();
     void StopGCWork();
-    void RequestGC(GCReason reason, bool async);
+    void RequestGC(GCReason reason, bool async, GCType gcType);
     void WaitForGCFinish();
     // gc main loop
     void RunTaskLoop();
@@ -78,8 +78,8 @@ private:
     // Notify the GC thread to start GC, and wait.
     // Called by mutator.
     // reason: The reason for this GC.
-    void RequestAsyncGC(GCReason reason);
-    void RequestGCAndWait(GCReason reason);
+    void RequestAsyncGC(GCReason reason, GCType gcType);
+    void RequestGCAndWait(GCReason reason, GCType gcType);
     void PostIgnoredGcRequest(GCReason reason);
 
     // the thread pool for parallel tracing.

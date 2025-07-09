@@ -147,7 +147,7 @@ void BaseRuntime::Fini()
 void BaseRuntime::PreFork(ThreadHolder *holder)
 {
     // Need appspawn space and compress gc.
-    RequestGC(GcType::APPSPAWN);
+    RequestGC(GC_REASON_APPSPAWN, false, GC_TYPE_FULL);
     {
         ThreadNativeScope scope(holder);
         HeapManager::StopRuntimeThreads();
@@ -185,26 +185,15 @@ void* BaseRuntime::AtomicReadBarrier(void* obj, void* field, std::memory_order o
         *reinterpret_cast<RefField<true>*>(field), order));
 }
 
-void BaseRuntime::RequestGC(GcType type)
+void BaseRuntime::RequestGC(GCReason reason, bool async, GCType gcType)
 {
-    switch (type) {
-        case GcType::SYNC: {
-            HeapManager::RequestGC(GC_REASON_USER, false);
-            break;
-        }
-        case GcType::ASYNC: {
-            HeapManager::RequestGC(GC_REASON_USER, true);
-            break;
-        }
-        case GcType::FULL: {
-            HeapManager::RequestGC(GC_REASON_BACKUP, false);
-            break;
-        }
-        case GcType::APPSPAWN: {
-            HeapManager::RequestGC(GC_REASON_APPSPAWN, false);
-            break;
-        }
+    if (reason < GC_REASON_BEGIN || reason > GC_REASON_END ||
+        gcType < GC_TYPE_BEGIN || gcType > GC_TYPE_END) {
+        VLOG(ERROR, "Invalid gc reason or gc type, gc reason: %s, gc type: %s",
+            GCReasonToString(reason), GCTypeToString(gcType));
+        return;
     }
+    HeapManager::RequestGC(reason, async, gcType);
 }
 
 void BaseRuntime::WaitForGCFinish() { Heap::GetHeap().WaitForGCFinish(); }

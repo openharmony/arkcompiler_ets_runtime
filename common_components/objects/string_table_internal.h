@@ -35,7 +35,7 @@ public:
             return;
         }
 #ifndef NDEBUG
-        BaseRuntime::RequestGC(GcType::ASYNC);  // Trigger CMC FULL GC
+        BaseRuntime::RequestGC(GC_REASON_USER, true, GC_TYPE_FULL);  // Trigger CMC FULL GC
 #endif
         ThreadStateTransitionScope<ThreadHolder, ThreadState::WAIT> ts(holder);
         mtx_.Lock();

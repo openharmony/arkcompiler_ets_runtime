@@ -51,9 +51,9 @@ Collector::Collector() {}
 
 const char* Collector::GetCollectorName() const { return COLLECTOR_NAME[collectorType_]; }
 
-void Collector::RequestGC(GCReason reason, bool async)
+void Collector::RequestGC(GCReason reason, bool async, GCType gcType)
 {
-    RequestGCInternal(reason, async);
+    RequestGCInternal(reason, async, gcType);
     return;
 }
 } // namespace common.

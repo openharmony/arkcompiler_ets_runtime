@@ -558,6 +558,7 @@ void TraceCollector::PreGarbageCollection(bool isConcurrent)
 
     GetGCStats().reason = gcReason_;
     GetGCStats().async = !g_gcRequests[gcReason_].IsSyncGC();
+    GetGCStats().gcType = gcType_;
     GetGCStats().isConcurrentMark = isConcurrent;
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpBeforeGC();
@@ -683,16 +684,19 @@ void TraceCollector::ReclaimGarbageMemory(GCReason reason)
     }
 }
 
-void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason)
+void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCType gcType)
 {
     gcReason_ = reason;
+    gcType_ = gcType;
     auto gcReasonName = std::string(g_gcRequests[gcReason_].name);
     auto currentAllocatedSize = Heap::GetHeap().GetAllocatedSize();
     auto currentThreshold = Heap::GetHeap().GetCollector().GetGCStats().GetThreshold();
-    VLOG(INFO, "Begin GC log. GCReason: %s, Current allocated %s, Current threshold %s, gcIndex=%llu",
-        gcReasonName.c_str(), Pretty(currentAllocatedSize).c_str(), Pretty(currentThreshold).c_str(), gcIndex);
+    VLOG(INFO, "Begin GC log. GCReason: %s, GCType: %s, Current allocated %s, Current threshold %s, gcIndex=%llu",
+        gcReasonName.c_str(), GCTypeToString(gcType), Pretty(currentAllocatedSize).c_str(),
+        Pretty(currentThreshold).c_str(), gcIndex);
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", (
-                    "GCReason:" + gcReasonName + ";Sensitive:0;IsInBackground:0;Startup:0" +
+                    "GCReason:" + gcReasonName + ";GCType:" + GCTypeToString(gcType) +
+                    ";Sensitive:0;IsInBackground:0;Startup:0" +
                     ";Current Allocated:" + Pretty(currentAllocatedSize) +
                     ";Current Threshold:" + Pretty(currentThreshold) +
                     ";Current Native:" + Pretty(Heap::GetHeap().GetNotifiedNativeSize()) +

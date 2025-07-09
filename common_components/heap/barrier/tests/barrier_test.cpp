@@ -41,7 +41,7 @@ public:
 class MockCollector : public Collector {
 public:
     void Init(const RuntimeParam& param) override {}
-    void RunGarbageCollection(uint64_t, GCReason) override {}
+    void RunGarbageCollection(uint64_t, GCReason, GCType) override {}
     BaseObject* ForwardObject(BaseObject*) override
     {
         return nullptr;

@@ -161,7 +161,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, GCTest)
     } else {
         auto baseRuntime = common::BaseRuntime::GetInstance();
         auto heapManager = baseRuntime->GetHeapManager();
-        baseRuntime->RequestGC(common::GcType::FULL);
+        baseRuntime->RequestGC(common::GC_REASON_BACKUP, false, common::GC_TYPE_FULL);
         EXPECT_TRUE(heapManager.IsInROSpace(object));
     }
 }
@@ -193,7 +193,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
             panda::RuntimeOption postOption;
             JSNApi::PostFork(vm, postOption);
             // test gc in child process
-            baseRuntime->RequestGC(common::GcType::FULL);
+            baseRuntime->RequestGC(common::GC_REASON_BACKUP, false, common::GC_TYPE_FULL);
             EXPECT_TRUE(heapManager.IsInROSpace(object));
         } else {
             int status;

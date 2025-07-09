@@ -96,7 +96,7 @@ void StopTrackingHeapObjects(const std::string &message, SendMsgCB sendMsg)
 
 void CollectGarbage(const std::string &message, SendMsgCB sendMsg)
 {
-    panda::Heap::GetHeap().GetCollectorResources().RequestGC(panda::GC_REASON_HEU, false);
+    panda::Heap::GetHeap().GetCollectorResources().RequestGC(panda::GC_REASON_HEU, false, GC_TYPE_FULL);
     SetEnd(message, panda::MsgType::END);
 }
 
