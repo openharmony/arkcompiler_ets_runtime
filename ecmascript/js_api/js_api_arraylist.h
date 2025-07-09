@@ -42,7 +42,7 @@ public:
     static void IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                                    int capacity);
     static void TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList);
-    static bool IsEmpty(const JSHandle<JSAPIArrayList> &arrayList);
+    static bool IsEmpty(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList);
     static int GetIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                           const JSHandle<JSTaggedValue> &value);
     static int GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
@@ -77,14 +77,13 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
-    inline uint32_t GetSize() const
+    inline uint32_t GetSize(JSThread *thread) const
     {
-        return GetLength();
+        return GetLength(thread).GetArrayLength();
     }
 
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
-    // Use uint64_t to keep the object size unchanged
-    ACCESSORS_FIXED_SIZE_FIELD(Length, uint32_t, uint64_t, LENGTH_OFFSET, SIZE);
+    ACCESSORS(Length, LENGTH_OFFSET, SIZE);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
     DECL_DUMP()

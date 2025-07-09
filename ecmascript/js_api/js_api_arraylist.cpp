@@ -26,19 +26,19 @@ using ErrorFlag = containers::ErrorFlag;
 bool JSAPIArrayList::Add(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                          const JSHandle<JSTaggedValue> &value)
 {
-    uint32_t length = arrayList->GetLength();
+    uint32_t length = arrayList->GetLength(thread).GetArrayLength();
     JSHandle<TaggedArray> elements = GrowCapacity(thread, arrayList, length + 1);
 
     ASSERT(!elements->IsDictionaryMode());
     elements->Set(thread, length, value);
-    arrayList->SetLength(++length);
+    arrayList->SetLength(thread, JSTaggedValue(++length));
     return true;
 }
 
 void JSAPIArrayList::Insert(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                             const JSHandle<JSTaggedValue> &value, const int &index)
 {
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     if (index < 0 || index > length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << length
@@ -52,19 +52,19 @@ void JSAPIArrayList::Insert(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
         elements->Set(thread, i + 1, elements->Get(thread, i));
     }
     elements->Set(thread, index, value);
-    arrayList->SetLength(++length);
+    arrayList->SetLength(thread, JSTaggedValue(++length));
 }
 
 void JSAPIArrayList::Clear(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList)
 {
     if (!arrayList.IsEmpty()) {
-        int length = arrayList->GetLength();
+        int length = arrayList->GetLength(thread).GetArrayLength();
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         ASSERT(!elements->IsDictionaryMode());
         for (int i = 0; i < length; ++i) {
             elements->Set(thread, i, JSTaggedValue::Hole());
         }
-        arrayList->SetLength(0);
+        arrayList->SetLength(thread, JSTaggedValue(0));
     }
 }
 
@@ -73,10 +73,10 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::Clone(JSThread *thread, const JSHandle<
     JSHandle<TaggedArray> srcElements(thread, obj->GetElements(thread));
     ASSERT(!srcElements->IsDictionaryMode());
 
-    uint32_t length = obj->GetSize();
+    uint32_t length = obj->GetSize(thread);
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIArrayList> newArrayList = factory->NewJSAPIArrayList(0);
-    newArrayList->SetLength(length);
+    newArrayList->SetLength(thread, JSTaggedValue(length));
 
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
     newArrayList->SetElements(thread, dstElements);
@@ -96,7 +96,7 @@ void JSAPIArrayList::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIAr
 {
     JSHandle<TaggedArray> elementData(thread, arrayList->GetElements(thread));
     ASSERT(!elementData->IsDictionaryMode());
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     int oldElementLength = static_cast<int>(elementData->GetLength());
     if (oldElementLength != capacity && length < capacity) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -108,7 +108,7 @@ void JSAPIArrayList::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIAr
 
 void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList)
 {
-    uint32_t length = arrayList->GetLength();
+    uint32_t length = arrayList->GetLength(thread).GetArrayLength();
     uint32_t capacity = JSAPIArrayList::GetCapacity(thread, arrayList);
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
@@ -119,15 +119,15 @@ void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIA
 
 JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)
 {
-    if (GetLength() == 0) {
+    if (GetLength(thread).GetArrayLength() == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (index >= GetLength()) {
-        ASSERT(GetLength() > 0);
+    if (index >= GetLength(thread).GetArrayLength()) {
+        ASSERT(GetLength(thread).GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
-            << (GetLength() - 1) << ". Received value is: " << index;
+            << (GetLength(thread).GetArrayLength() - 1) << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -136,9 +136,9 @@ JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)
     return elements->Get(thread, index);
 }
 
-bool JSAPIArrayList::IsEmpty(const JSHandle<JSAPIArrayList> &arrayList)
+bool JSAPIArrayList::IsEmpty(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList)
 {
-    return arrayList->GetSize() == 0;
+    return arrayList->GetSize(thread) == 0;
 }
 
 int JSAPIArrayList::GetIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
@@ -146,7 +146,7 @@ int JSAPIArrayList::GetIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> 
 {
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
-    uint32_t length = arrayList->GetLength();
+    uint32_t length = arrayList->GetLength(thread).GetArrayLength();
     JSTaggedValue targetValue = value.GetTaggedValue();
     for (uint32_t i = 0; i < length; ++i) {
         if (JSTaggedValue::StrictEqual(thread, targetValue, elements->Get(thread, i))) {
@@ -162,7 +162,7 @@ int JSAPIArrayList::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayLi
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
     JSTaggedValue targetValue = value.GetTaggedValue();
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     for (int i = length - 1; i >= 0; --i) {
         if (JSTaggedValue::StrictEqual(thread, targetValue, elements->Get(thread, i))) {
             return i;
@@ -173,7 +173,7 @@ int JSAPIArrayList::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayLi
 
 JSTaggedValue JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int index)
 {
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     if (length <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -193,7 +193,7 @@ JSTaggedValue JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSA
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         ASSERT(!elements->IsDictionaryMode());
         TaggedArray::RemoveElementByIndex(thread, elements, index, length);
-        arrayList->SetLength(length - 1);
+        arrayList->SetLength(thread, JSTaggedValue(length - 1));
     }
 
     return oldValue;
@@ -203,12 +203,12 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
                             const JSHandle<JSTaggedValue> &value)
 {
     int index = GetIndexOf(thread, arrayList, value);
-    uint32_t length = arrayList->GetSize();
+    uint32_t length = arrayList->GetSize(thread);
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
         ASSERT(!elements->IsDictionaryMode());
         TaggedArray::RemoveElementByIndex(thread, elements, index, length);
-        arrayList->SetLength(length - 1);
+        arrayList->SetLength(thread, JSTaggedValue(length - 1));
         return true;
     }
     return false;
@@ -220,7 +220,7 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
 {
     int32_t startIndex = JSTaggedValue::ToInt32(thread, value1);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, value2);
-    int32_t length = arrayList->GetLength();
+    int32_t length = arrayList->GetLength(thread).GetArrayLength();
     if (length <= 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -251,7 +251,7 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
         elements->Set(thread, startIndex + i, elements->Get(thread, static_cast<uint32_t>(endIndex + i)));
     }
     int32_t newLength = length - (endIndex - startIndex);
-    arrayList->SetLength(newLength);
+    arrayList->SetLength(thread, JSTaggedValue(newLength));
     elements->Trim(thread, newLength);
     return JSTaggedValue::Undefined();
 }
@@ -261,7 +261,7 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
                                                  const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(thisHandle);
-    uint32_t length = arrayList->GetSize();
+    uint32_t length = arrayList->GetSize(thread);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3;
@@ -284,15 +284,15 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
 
 JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    if (GetLength() == 0) {
+    if (GetLength(thread).GetArrayLength() == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (index >= GetLength()) {
-        ASSERT(GetLength() > 0);
+    if (index >= GetLength(thread).GetArrayLength()) {
+        ASSERT(GetLength(thread).GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
-            << (GetLength() - 1) << ". Received value is: " << index;
+            << (GetLength(thread).GetArrayLength() - 1) << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -306,7 +306,7 @@ JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAP
                                            const JSHandle<JSTaggedValue> &value1,
                                            const JSHandle<JSTaggedValue> &value2)
 {
-    int length = arrayList->GetLength();
+    int length = arrayList->GetLength(thread).GetArrayLength();
     int fromIndex = JSTaggedValue::ToInt32(thread, value1);
     int toIndex = JSTaggedValue::ToInt32(thread, value2);
     int32_t size = length > toIndex ? toIndex : length;
@@ -337,7 +337,7 @@ JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAP
     }
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements(thread));
     ASSERT(!elements->IsDictionaryMode());
-    subArrayList->SetLength(newLength);
+    subArrayList->SetLength(thread, JSTaggedValue(newLength));
 
     for (int i = 0; i < newLength; i++) {
         subArrayList->Set(thread, i, elements->Get(thread, fromIndex + i));
@@ -351,7 +351,7 @@ JSTaggedValue JSAPIArrayList::ForEach(JSThread *thread, const JSHandle<JSTaggedV
                                       const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(thisHandle);
-    uint32_t length = arrayList->GetSize();
+    uint32_t length = arrayList->GetSize(thread);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3;
@@ -365,8 +365,8 @@ JSTaggedValue JSAPIArrayList::ForEach(JSThread *thread, const JSHandle<JSTaggedV
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue funcResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
-        if (length != arrayList->GetSize()) {
-            length = arrayList->GetSize();
+        if (length != arrayList->GetSize(thread)) {
+            length = arrayList->GetSize(thread);
         }
     }
 
@@ -393,7 +393,7 @@ JSHandle<TaggedArray> JSAPIArrayList::GrowCapacity(const JSThread *thread, const
 bool JSAPIArrayList::Has(JSThread *thread, const JSTaggedValue value) const
 {
     TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
-    uint32_t length = GetSize();
+    uint32_t length = GetSize(thread);
     if (length == 0) {
         return false;
     }
@@ -430,7 +430,7 @@ bool JSAPIArrayList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayL
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    uint32_t length = obj->GetLength();
+    uint32_t length = obj->GetLength(thread).GetArrayLength();
     if (length == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
@@ -460,7 +460,7 @@ JSTaggedValue JSAPIArrayList::GetIteratorObj(JSThread *thread, const JSHandle<JS
 OperationResult JSAPIArrayList::GetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
                                             const JSHandle<JSTaggedValue> &key)
 {
-    int length = obj->GetLength();
+    int length = obj->GetLength(thread).GetArrayLength();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
         // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
@@ -491,7 +491,7 @@ bool JSAPIArrayList::SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList
                                  const JSHandle<JSTaggedValue> &key,
                                  const JSHandle<JSTaggedValue> &value)
 {
-    int length = obj->GetLength();
+    int length = obj->GetLength(thread).GetArrayLength();
     int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= length) {
         return false;

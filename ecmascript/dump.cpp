@@ -2269,14 +2269,14 @@ void JSSharedArrayIterator::Dump(const JSThread *thread, std::ostream &os) const
 
 void JSAPIArrayList::Dump(const JSThread *thread, std::ostream &os) const
 {
-    os << " - length: " << std::dec << GetSize() << "\n";
+    os << " - length: " << std::dec << GetSize(const_cast<JSThread *>(thread)) << "\n";
     JSObject::Dump(thread, os);
 }
 
 void JSAPIArrayListIterator::Dump(const JSThread *thread, std::ostream &os) const
 {
     JSAPIArrayList *arrayList = JSAPIArrayList::Cast(GetIteratedArrayList(thread).GetTaggedObject());
-    os << " - length: " << std::dec << arrayList->GetSize() << "\n";
+    os << " - length: " << std::dec << arrayList->GetSize(const_cast<JSThread *>(thread)) << "\n";
     os << " - nextIndex: " << std::dec << GetNextIndex() << "\n";
     JSObject::Dump(thread, os);
 }
@@ -5122,7 +5122,7 @@ void JSSharedArray::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
 
 void JSAPIArrayList::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength(thread)));
     JSObject::DumpForSnapshot(thread, vec);
 }
 

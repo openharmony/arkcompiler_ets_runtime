@@ -1566,7 +1566,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         // non ECMA standard jsapi container
         case JSType::JS_API_ARRAY_LIST: {
-            JSAPIArrayList::Cast(*obj)->SetLength(0);
+            JSAPIArrayList::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
             break;
         }
         case JSType::JS_API_HASH_MAP: {

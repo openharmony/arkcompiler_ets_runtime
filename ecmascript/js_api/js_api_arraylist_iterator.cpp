@@ -48,7 +48,7 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t length = 0;
 
     if (arrayList->IsJSAPIArrayList()) {
-        length = JSHandle<JSAPIArrayList>(arrayList)->GetLength();
+        length = JSHandle<JSAPIArrayList>(arrayList)->GetLength(thread).GetArrayLength();
     }
 
     if (index >= length) {
