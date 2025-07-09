@@ -143,7 +143,10 @@ public:
         if (IsLoadedMap()) {
             return escapeMap_;
         }
-        char lines[MAX_LENGTH][BUFFER_SIZE];
+        char (*lines)[BUFFER_SIZE] = new char[MAX_LENGTH][BUFFER_SIZE];
+        if (lines == nullptr) {
+            LOG_ECMA(FATAL) << "lines allocate failed";
+        }
         for (int i = 0; i < MAX_LENGTH; i++) {
             memset_s(lines[i], BUFFER_SIZE, '\0', BUFFER_SIZE);
         }
@@ -164,6 +167,7 @@ public:
         }
         SetLoadedMap(true);
         delete[] typeChar;
+        delete[] lines;
         return escapeMap_;
     }
 
@@ -186,7 +190,7 @@ public:
                 return "NONE";
         }
     }
-    
+
     RuntimeInfoType GetRuntimeInfoTypeByStr(std::string &type) const
     {
         const std::map<std::string, RuntimeInfoType> strMap = {
@@ -291,7 +295,7 @@ protected:
             return "";
         }
         char *token = strtok_r(buffer, OhosConstants::SPLIT_STR, &saveptr);
-        
+
         for (int i = 0; i < index; i++) {
             token = strtok_r(NULL, OhosConstants::SPLIT_STR, &saveptr);
         }
@@ -426,7 +430,7 @@ protected:
         if ((buildIdSize - sizeof(*nhdr) - AlignValues(nhdr->n_namesz, 4) < nhdr->n_descsz) || nhdr->n_descsz == 0) {
             return;
         }
-        
+
         char *curShNameValueForNhdr = reinterpret_cast<char *>(addr + buildIdOffset + sizeof(*nhdr) +
             AlignValues(nhdr->n_namesz, 4));
         GetReadableBuildId(curShNameValueForNhdr, buildId, length);
