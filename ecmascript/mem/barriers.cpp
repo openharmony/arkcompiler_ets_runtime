@@ -119,13 +119,13 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
 {
     // need opt
     ASSERT(g_isEnableCMCGC);
-    uintptr_t *dstPtr = reinterpret_cast<uintptr_t *>(dst);
-    uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
+    JSTaggedType *dstPtr = reinterpret_cast<JSTaggedType *>(dst);
+    JSTaggedType *srcPtr = reinterpret_cast<JSTaggedType *>(src);
     for (size_t i = 0; i < count; i++) {
-        uintptr_t offset = i * sizeof(uintptr_t);
-        uintptr_t value = srcPtr[i];
-        void* obj = reinterpret_cast<void*>(const_cast<TaggedObject*>(dstObj));
-        void* field = reinterpret_cast<void*>((uintptr_t)dst + offset);
+        JSTaggedType offset = i * sizeof(JSTaggedType);
+        JSTaggedType value = srcPtr[i];
+        void* obj = reinterpret_cast<void*>(const_cast<JSTaggedType *>(dstObj));
+        void* field = reinterpret_cast<void*>((JSTaggedType)dst + offset);
         common::BaseRuntime::WriteBarrier(obj, field, (void*)value);
     }
     return;
@@ -173,7 +173,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     common::BaseObject* object = reinterpret_cast<BaseObject*>(const_cast<TaggedObject*>(dstObj));
     common::RegionDesc::InlinedRegionMetaData *objMetaRegion =
         common::RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(object));
-    uintptr_t *srcPtr = reinterpret_cast<uintptr_t *>(src);
+    JSTaggedType *srcPtr = reinterpret_cast<JSTaggedType *>(src);
     common::GCPhase gcPhase = thread->GetCMCGCPhase();
     // 1. update Rememberset
     if (ShouldUpdateRememberSet(gcPhase)) {
