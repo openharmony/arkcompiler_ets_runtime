@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_JS_THREAD_HCLASS_ENTRIES_H
 #define ECMASCRIPT_JS_THREAD_HCLASS_ENTRIES_H
 
+#include <array>
 #include <string_view>
+
 #include "ecmascript/common.h"
 #include "ecmascript/ts_types/builtin_type_id.h"
 
