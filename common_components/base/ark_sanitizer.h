@@ -24,7 +24,7 @@
 #define ARK_ASAN_ON
 #endif
 
-#ifdef USE_ASAN
+#if defined(USE_ASAN) && defined(ARK_ASAN_ON)
 extern "C" {
 // NOLINTNEXTLINE(readability-identifier-naming)
 void __asan_poison_memory_region(void const volatile *addr, size_t size) __attribute__((visibility("default")));
