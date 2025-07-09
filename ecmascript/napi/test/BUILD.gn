@@ -232,7 +232,6 @@ host_unittest_action("JsnapiSample") {
   ]
 
   deps = [
-    "$ark_root/assembler:libarkassembler_static",
     "$js_root:libark_jsruntime_test",
   ]
 
@@ -241,6 +240,7 @@ host_unittest_action("JsnapiSample") {
   external_deps += [
     "icu:shared_icui18n",
     "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
   ]
   deps += hiviewdfx_deps
 }

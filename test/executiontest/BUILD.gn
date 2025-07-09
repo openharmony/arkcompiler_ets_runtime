@@ -59,7 +59,6 @@ host_unittest_action("ThreadTerminationTest") {
   ]
 
   deps = [
-    "$ark_root/assembler:libarkassembler_static",
     "$js_root:libark_jsruntime_test",
   ]
 
@@ -76,6 +75,7 @@ host_unittest_action("ThreadTerminationTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "runtime_core:libarkassembler_static" ]
   deps += hiviewdfx_deps
 }
 
