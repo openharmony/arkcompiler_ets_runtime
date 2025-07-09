@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 
 #include <map>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "ecmascript/compiler/builtins/builtins_call_signature_id_properties.h"
