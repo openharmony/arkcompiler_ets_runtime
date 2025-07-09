@@ -39,7 +39,7 @@ using panda::ecmascript::JSThread;
 using panda::ecmascript::TaggedType;
 
 // A fake EcmaVM which will never used, only for unify the BaseRuntime::Init&Fini
-static ecmascript::EcmaVM *g_fakeEcmaVM = nullptr;
+static panda::ecmascript::EcmaVM *g_fakeEcmaVM = nullptr;
 static std::mutex g_rtMutexForStatic;
 
 class CMCRootVisitor final : public panda::ecmascript::RootVisitor {
@@ -108,7 +108,7 @@ private:
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 {
     // todo 梁婷婷
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
 
@@ -120,7 +120,7 @@ void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 {
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
 
@@ -139,7 +139,7 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 {
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicLocalRoots", "");
@@ -151,13 +151,15 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 
         auto profiler = vm->GetPGOProfiler();
         if (profiler != nullptr) {
+            profiler->IteratePGOPreFuncList(visitor);
         }
+    });
 }
 
 void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakGlobalRoots", "");
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
     CMCWeakVisitor visitor(visitorFunc);
@@ -176,7 +178,7 @@ void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 
 void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakLocalRoots", "");
@@ -194,7 +196,7 @@ void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 {
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicThreadRoot", "");
@@ -213,7 +215,7 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 
 void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm)
 {
-    if (!ecmascript::Runtime::HasInstance()) {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakThreadRoot", "");
@@ -294,8 +296,8 @@ void CheckAndInitBaseRuntime(const RuntimeParam &param)
         // BaseRuntime is inited from Dynamic
         return;
     }
-    ecmascript::JSRuntimeOptions options(param);
-    g_fakeEcmaVM = ecmascript::EcmaVM::Create(options);
+    panda::ecmascript::JSRuntimeOptions options(param);
+    g_fakeEcmaVM = panda::ecmascript::EcmaVM::Create(options);
 }
 
 void CheckAndFiniBaseRuntime()
@@ -306,7 +308,7 @@ void CheckAndFiniBaseRuntime()
         return;
     }
     g_fakeEcmaVM->GetJSThread()->ManagedCodeBegin();
-    ecmascript::EcmaVM::Destroy(g_fakeEcmaVM);
+    panda::ecmascript::EcmaVM::Destroy(g_fakeEcmaVM);
     g_fakeEcmaVM = nullptr;
 }
 
@@ -330,17 +332,17 @@ bool IsMachineCodeObject(uintptr_t objPtr)
 
 void AddXRefToDynamicRoots()
 {
-    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     runtime->GCIterateThreadList([&](JSThread *thread) {
-        thread->SetNodeKind(ecmascript::NodeKind::NORMAL_NODE);
+        thread->SetNodeKind(panda::ecmascript::NodeKind::NORMAL_NODE);
     });
 }
 
 void RemoveXRefFromDynamicRoots()
 {
-    ecmascript::Runtime *runtime = ecmascript::Runtime::GetInstance();
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     runtime->GCIterateThreadList([&](JSThread *thread) {
-        thread->SetNodeKind(ecmascript::NodeKind::UNIFIED_NODE);
+        thread->SetNodeKind(panda::ecmascript::NodeKind::UNIFIED_NODE);
     });
 }
 

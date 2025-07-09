@@ -309,7 +309,7 @@ JSTaggedValue BuiltinsPromiseJob::HandelModuleException(JSThread *thread, JSHand
     }
     // try load 1.2 module;
     Local<FunctionRef> getEsModuleFunc = getEsModule;
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> exportObject = StaticModuleLoader::LoadStaticModule(thread, getEsModuleFunc, requestPath);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     LOG_ECMA(DEBUG) << "load static module successfull, requestPath: " << requestPath;

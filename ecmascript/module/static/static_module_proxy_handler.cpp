@@ -16,7 +16,6 @@
 #include "ecmascript/module/static/static_module_proxy_handler.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"

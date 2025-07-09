@@ -461,7 +461,7 @@ HWTEST_F_L0(BuiltinsNumberTest, parseInt)
 HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
 {
     JSHandle<EcmaString> str;
-    Span<const uint8_t> sp;
+    common::Span<const uint8_t> sp;
     CVector<uint8_t> buf;
 
     // flags of IGNORE_TRAILING
@@ -543,7 +543,7 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
 HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleRadix)
 {
     JSHandle<EcmaString> str;
-    Span<const uint8_t> sp;
+    common::Span<const uint8_t> sp;
     CVector<uint8_t> buf;
     int radix;
 

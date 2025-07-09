@@ -16,7 +16,6 @@
 #include "ecmascript/module/static/static_module_loader.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"
@@ -65,7 +64,7 @@ Local<JSValueRef> StaticModuleLoader::GetStaticModuleLoadFunc(EcmaVM *vm)
 JSHandle<JSTaggedValue> StaticModuleLoader::LoadStaticModule(JSThread *thread,
     Local<FunctionRef> getEsModuleFunc, const CString &key)
 {
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    auto moduleManager = thread->GetModuleManager();
     if (moduleManager->IsModuleLoaded(key)) {
         LOG_ECMA(INFO) << "load static module from cache.";
         JSHandle<SourceTextModule> moduleRecord = moduleManager->HostGetImportedModule(key);
