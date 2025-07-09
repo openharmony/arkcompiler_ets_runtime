@@ -4919,23 +4919,8 @@ DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
     return publishValue.GetTaggedValue().GetRawData();
 }
 
-void RuntimeStubs::CopyObjectPrimitive(uintptr_t argGlue, JSTaggedType *dstObj,
-                                       JSTaggedType *dst, JSTaggedType *src, uint32_t count)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    // check CMC-GC phase inside
-    if (thread->NeedReadBarrier()) {
-        Barriers::CopyObjectPrimitive<true, true>(thread,
-            reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
-    } else {
-        Barriers::CopyObjectPrimitive<false, true>(thread,
-            reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
-    }
-}
-
 void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
-                              JSTaggedType *dst, JSTaggedType *src, uint32_t count)
+                                JSTaggedType *dst, JSTaggedType *src, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (g_isEnableCMCGC) {
@@ -5005,20 +4990,6 @@ void RuntimeStubs::MarkInBuffer(BaseObject* ref)
     ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~(common::Barrier::TAG_WEAK));
     common::Mutator* mutator = common::Mutator::GetMutator();
     mutator->RememberObjectInSatbBuffer(ref);
-}
-
-void RuntimeStubs::BatchMarkInBuffer(void* src, size_t count)
-{
-    uintptr *srcPtr = reinterpret_cast<uintptr_t *>(src);
-    common::Mutator* mutator = common::Mutator::GetMutator();
-    for (size_t i = 0; i < count; i++) {
-        BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
-        if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
-            continue;
-        }
-        ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~(common::Barrier::TAG_WEAK));
-        mutator->RememberObjectInSatbBuffer(ref);
-    }
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

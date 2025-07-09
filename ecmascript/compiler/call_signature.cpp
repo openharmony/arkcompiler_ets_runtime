@@ -3716,26 +3716,6 @@ DEF_CALL_SIGNATURE(ReverseBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
 
-DEF_CALL_SIGNATURE(CopyObjectPrimitive)
-{
-    constexpr size_t paramCount = 5;
-    // 5 : 5 input parameters
-    CallSignature ArrayCopy("CopyObjectPrimitive", 0, paramCount,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = ArrayCopy;
-    // 5 : 5 input parameters
-    std::array<VariableType, paramCount> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::INT32()
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(ObjectCopy)
 {
     constexpr size_t paramCount = 5;
@@ -3938,21 +3918,6 @@ DEF_CALL_SIGNATURE(MarkInBuffer)
     *callSign = MarkInBuffer;
     std::array<VariableType, 1> params = { // 1 : 1 input parameters
         VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(BatchMarkInBuffer)
-{
-    // 3 : 3 input parameters
-    CallSignature BatchMarkInBuffer("BatchMarkInBuffer", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
-                                    VariableType::BOOL());
-    *callSign = BatchMarkInBuffer;
-    std::array<VariableType, 2> params = { // 2 : 2 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::INT32(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

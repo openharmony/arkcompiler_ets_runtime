@@ -822,16 +822,8 @@ public:
     void VerifyBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     GateRef GetCMCRegionRSet(GateRef obj);
     GateRef GetCMCRegionType(GateRef obj);
-    GateRef GetGCPhase(GateRef glue);
-    GateRef GetGCReason(GateRef glue);
     GateRef IsInYoungSpace(GateRef regionType);
-    GateRef IsOldToYoung(GateRef objRegionType, GateRef valueRegionType);
-    void MarkRSetCardTable(GateRef obj, Label *exit);
-    GateRef ShouldGetGCReason(GateRef gcPhase);
-    GateRef ShouldProcessSATB(GateRef gcPhase);
-    GateRef ShouldUpdateRememberSet(GateRef glue, GateRef gcPhase);
     void CMCSetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
-    void CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);

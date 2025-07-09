@@ -170,8 +170,6 @@ public:
                                                               uint64_t bytecodePos);
     static void ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
                             JSTaggedType *dst, JSTaggedType *src, uint32_t count);
-    static void CopyObjectPrimitive(uintptr_t argGlue, JSTaggedType *dstObj,
-                                    JSTaggedType *dst, JSTaggedType *src, uint32_t count);
     static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
     static void ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length);
 
@@ -182,7 +180,6 @@ public:
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
     static bool MarkRSetCardTable(BaseObject* obj);
     static void MarkInBuffer(BaseObject* ref);
-    static void BatchMarkInBuffer(void* src, size_t count);
 
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
