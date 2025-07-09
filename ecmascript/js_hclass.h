@@ -511,7 +511,6 @@ public:
                                                const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
 
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
-    static void NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandle<JSHClass> hclass);
 
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 

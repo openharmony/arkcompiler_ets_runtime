@@ -1125,12 +1125,6 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
 
 void JSHClass::NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass)
 {
-    hclass->NotifyLeafHClassChanged(const_cast<JSThread *>(thread), hclass);
-    NotifyAccessorChangedThroughChain(thread, hclass);
-}
-
-void JSHClass::NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandle<JSHClass> hclass)
-{
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue markerValue = hclass->GetProtoChangeMarker(thread);
     if (markerValue.IsProtoChangeMarker()) {
@@ -1153,7 +1147,7 @@ void JSHClass::NotifyAccessorChangedThroughChain(const JSThread *thread, JSHandl
         JSTaggedValue temp = listeners->Get(thread, i);
         if (temp.IsJSHClass()) {
             hclassTemp.Update(listeners->Get(thread, i));
-            NotifyAccessorChangedThroughChain(thread, hclassTemp);
+            NotifyAccessorChanged(thread, hclassTemp);
         }
     }
 }
