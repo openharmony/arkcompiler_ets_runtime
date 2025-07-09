@@ -28,14 +28,6 @@ public:
 
     static JSHandle<JSTaggedValue> LoadStaticModule(JSThread *thread,
         Local<FunctionRef> getEsModuleFunc, const CString &key);
-
-    static JSTaggedValue TryLoadStaticModule(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
-        JSHandle<JSPromiseReactionsFunction> reject, JSHandle<EcmaString> specifierString);
-
-    static JSTaggedValue TryLoadStaticModule(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
-        JSHandle<JSPromiseReactionsFunction> reject, const CString &requestPath);
-
-    static JSTaggedValue CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SATTIC_MODULE_NAMESPACE_H
