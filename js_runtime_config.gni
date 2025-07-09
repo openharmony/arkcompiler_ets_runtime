@@ -70,7 +70,7 @@ declare_args() {
   # NOTE(ipetrov): Need to enable for mac previewer
   ark_js_hybrid = !ark_standalone_build && !is_mac
 
-  ets_runtime_enable_cmc_gc = true
+  ets_runtime_enable_cmc_gc = (!is_mac && !is_mingw)
 
   enable_handle_leak_detect = false
 }

@@ -3910,10 +3910,8 @@ group("host_unittest") {
       ":Sendable_JsSharedArray_TestAction",
       ":Sendable_SharedObjectFactory_TestAction",
     ]
-  }
-
-  # TODO: CMC-GC UT FIX LATER
-  if (ets_runtime_enable_cmc_gc) {
+  } else if (ets_runtime_enable_cmc_gc) {
+    # TODO: CMC-GC UT FIX LATER
     deps -= [
       ":GC_ConcurrentMarking_TestAction",
       ":GC_First_TestAction",
