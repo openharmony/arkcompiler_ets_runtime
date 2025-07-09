@@ -155,6 +155,7 @@ void HeapProfiler::DumpHeapSnapshotForCMCOOM()
 
 void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
 {
+    LockHolder lock(mutex_);
     DISALLOW_GARBAGE_COLLECTION;
     if (isProfiling_) {
         // Id will be allocated later while add new node
@@ -498,12 +499,6 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     }
 
     {
-        if (g_isEnableCMCGC) {
-            common::BaseRuntime::RequestGC(common::GcType::FULL);
-        } else {
-            vm_->CollectGarbage(TriggerGCType::OLD_GC);
-            ForceSharedGC();
-        }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
         UpdateHeapObjects(snapshot);
         snapshot->RecordSampleTime();
