@@ -19,17 +19,25 @@
 #include "common_components/mutator/mutator.h"
 
 namespace common {
+
 void VisitRoots(const RefFieldVisitor &visitor)
 {
     VisitDynamicGlobalRoots(visitor);
     VisitDynamicLocalRoots(visitor);
     VisitBaseRoots(visitor);
+    // if (isMark) {
+    //     VisitStaticRoots(visitor);
+    // } else {
+    //     UpdateStaticRoots(visitor);
+    // }
 }
 
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
     VisitDynamicWeakLocalRoots(visitor);
+    // UpdateStaticRoots(visitor);
+    // SweepStaticRoots(visitor);
 }
 
 void VisitGlobalRoots(const RefFieldVisitor &visitor)
