@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluereffoundationvalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -21,89 +22,14 @@
 using namespace panda;
 using namespace panda::ecmascript;
 
-#define MAXBYTELEN sizeof(int32_t)
-
 namespace OHOS {
-void JSValueRefIsNumberValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int key = 0;
-    uint32_t inputUnit32 = 32;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&key, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<IntegerRef> intValue = IntegerRef::New(vm, key);
-    if (memcpy_s(&inputUnit32, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<NumberRef> resUnit32 = NumberRef::New(vm, inputUnit32);
-    bool inputBool = true;
-    if (size == 0 || data == nullptr) {
-        inputBool = false;
-    }
-    Local<BooleanRef> resBool = BooleanRef::New(vm, inputBool);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    intValue->IsNumber();
-    resUnit32->IsNumber();
-    resBool->IsNumber();
-    stringUtf8->IsNumber();
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSValueRefIsStringValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    tag->IsString(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSValueRefWithinInt32ValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int number = 0;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&number, MAXBYTELEN, data, size) != 0) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<JSValueRef> tag = IntegerRef::New(vm, number);
-    tag->WithinInt32();
-    JSNApi::DestroyJSVM(vm);
-}
-
 Local<JSValueRef> FunCallback(JsiRuntimeCallInfo *info)
 {
     EscapeLocalScope scope(info->GetVM());
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
-void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
+void JSValueRefFoundationValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -112,159 +38,140 @@ void JSValueRefIsFunctionValueFuzzTest(const uint8_t *data, size_t size)
         std::cout << "illegal input!";
         return;
     }
+
+    FuzzedDataProvider fdp(data, size);
+    int key = fdp.ConsumeIntegral<int>();
+    uint32_t inputUnit32 = fdp.ConsumeIntegral<uint32_t>();
+    bool inputBool = fdp.ConsumeBool();
+    std::string inputStr = fdp.ConsumeRandomLengthString(1024);
+    const int32_t bufferSize = fdp.ConsumeIntegralInRange<int32_t>(0, 1024);
+    const int32_t byteOffset = fdp.ConsumeIntegral<int32_t>();
+    const int32_t length = fdp.ConsumeIntegral<int32_t>();
     NativePointerCallback deleter = nullptr;
     FunctionCallback nativeFunc = FunCallback;
-    Local<FunctionRef> obj(FunctionRef::NewClassFunction(vm, nativeFunc, deleter, (void *)(data + size)));
-    (void)obj->IsFunction(vm);
-    JSNApi::DestroyJSVM(vm);
-}
+    void *ptr = static_cast<void *>(const_cast<char *>(inputStr.data()));
+    double timeRef = fdp.ConsumeFloatingPoint<double>();
 
-void JSValueRefIsTypedArrayValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int number = 123;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&number, MAXBYTELEN, data, size) != 0) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<JSValueRef> targetUInt = IntegerRef::New(vm, number);
-    targetUInt->IsTypedArray(vm);
-    int32_t input;
-    if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    const int32_t MaxMenory = 1024;
-    if (input > MaxMenory) {
-        input = MaxMenory;
-    }
-    Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
-    ref->IsArrayBuffer(vm);
-    Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-    typedArray->IsTypedArray(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSValueRefIsDateValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int key = 0;
-    uint32_t inputUnit32 = 32;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&key, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
     Local<IntegerRef> intValue = IntegerRef::New(vm, key);
-    if (memcpy_s(&inputUnit32, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
     Local<NumberRef> resUnit32 = NumberRef::New(vm, inputUnit32);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-
-    double timeRef = 1.1;
-    size_t maxByteLen = 8;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&timeRef, maxByteLen, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<DateRef> dateRef = DateRef::New(vm, timeRef);
-    resUnit32->IsDate(vm);
-    intValue->IsDate(vm);
-    stringUtf8->IsDate(vm);
-    dateRef->IsDate(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSValueRefIsErrorValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int key = 0;
-    uint32_t inputUnit32 = 32;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&key, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<IntegerRef> intValue = IntegerRef::New(vm, key);
-    if (memcpy_s(&inputUnit32, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<NumberRef> resUnit32 = NumberRef::New(vm, inputUnit32);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    Local<JSValueRef> error = Exception::Error(vm, stringUtf8);
-    resUnit32->IsError(vm);
-    intValue->IsError(vm);
-    stringUtf8->IsError(vm);
-    error->IsError(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSValueRefToStringValueFuzzTest(const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int key = 0;
-    uint32_t inputUnit32 = 32;
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
-    }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&key, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<IntegerRef> intValue = IntegerRef::New(vm, key);
-    if (memcpy_s(&inputUnit32, MAXBYTELEN, data, size) != EOK) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<NumberRef> resUnit32 = NumberRef::New(vm, inputUnit32);
-    bool inputBool = true;
-    if (size == 0 || data == nullptr) {
-        inputBool = false;
-    }
     Local<BooleanRef> resBool = BooleanRef::New(vm, inputBool);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, inputStr.data());
+    Local<JSValueRef> tag = IntegerRef::New(vm, key);
+    Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, bufferSize);
+    Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm, ref, byteOffset, length);
+    Local<FunctionRef> obj(FunctionRef::NewClassFunction(vm, nativeFunc, deleter, ptr));
+    Local<DateRef> dateRef = DateRef::New(vm, timeRef);
+    Local<JSValueRef> error = Exception::Error(vm, stringUtf8);
     Local<JSValueRef> toTarget(stringUtf8);
+
+    intValue->IsNumber();
+    resUnit32->IsNumber();
+    resBool->IsNumber();
+    stringUtf8->IsNumber();
+    tag->IsNumber();
+    ref->IsNumber();
+    typedArray->IsNumber();
+    obj->IsNumber();
+    dateRef->IsNumber();
+    error->IsNumber();
+    toTarget->IsNumber();
+
+    intValue->IsString(vm);
+    resUnit32->IsString(vm);
+    resBool->IsString(vm);
+    stringUtf8->IsString(vm);
+    tag->IsString(vm);
+    ref->IsString(vm);
+    typedArray->IsString(vm);
+    obj->IsString(vm);
+    dateRef->IsString(vm);
+    error->IsString(vm);
+    toTarget->IsString(vm);
+
+    intValue->WithinInt32();
+    resUnit32->WithinInt32();
+    resBool->WithinInt32();
+    stringUtf8->WithinInt32();
+    tag->WithinInt32();
+    ref->WithinInt32();
+    typedArray->WithinInt32();
+    obj->WithinInt32();
+    dateRef->WithinInt32();
+    error->WithinInt32();
+    toTarget->WithinInt32();
+
+    intValue->IsFunction(vm);
+    resUnit32->IsFunction(vm);
+    resBool->IsFunction(vm);
+    stringUtf8->IsFunction(vm);
+    tag->IsFunction(vm);
+    ref->IsFunction(vm);
+    typedArray->IsFunction(vm);
+    obj->IsFunction(vm);
+    dateRef->IsFunction(vm);
+    error->IsFunction(vm);
+    toTarget->IsFunction(vm);
+
+    intValue->IsArrayBuffer(vm);
+    resUnit32->IsArrayBuffer(vm);
+    resBool->IsArrayBuffer(vm);
+    stringUtf8->IsArrayBuffer(vm);
+    tag->IsArrayBuffer(vm);
+    ref->IsArrayBuffer(vm);
+    typedArray->IsArrayBuffer(vm);
+    obj->IsArrayBuffer(vm);
+    dateRef->IsArrayBuffer(vm);
+    error->IsArrayBuffer(vm);
+    toTarget->IsArrayBuffer(vm);
+
+    intValue->IsTypedArray(vm);
+    resUnit32->IsTypedArray(vm);
+    resBool->IsTypedArray(vm);
+    stringUtf8->IsTypedArray(vm);
+    tag->IsTypedArray(vm);
+    ref->IsTypedArray(vm);
+    typedArray->IsTypedArray(vm);
+    obj->IsTypedArray(vm);
+    dateRef->IsTypedArray(vm);
+    error->IsTypedArray(vm);
+    toTarget->IsTypedArray(vm);
+
+    intValue->IsDate(vm);
+    resUnit32->IsDate(vm);
+    resBool->IsDate(vm);
+    stringUtf8->IsDate(vm);
+    tag->IsDate(vm);
+    ref->IsDate(vm);
+    typedArray->IsDate(vm);
+    obj->IsDate(vm);
+    dateRef->IsDate(vm);
+    error->IsDate(vm);
+    toTarget->IsDate(vm);
+
+    intValue->IsError(vm);
+    resUnit32->IsError(vm);
+    resBool->IsError(vm);
+    stringUtf8->IsError(vm);
+    tag->IsError(vm);
+    ref->IsError(vm);
+    typedArray->IsError(vm);
+    obj->IsError(vm);
+    dateRef->IsError(vm);
+    error->IsError(vm);
+    toTarget->IsError(vm);
+
     intValue->ToString(vm);
     resUnit32->ToString(vm);
     resBool->ToString(vm);
+    stringUtf8->ToString(vm);
+    tag->ToString(vm);
+    ref->ToString(vm);
+    typedArray->ToString(vm);
+    obj->ToString(vm);
+    dateRef->ToString(vm);
+    error->ToString(vm);
     toTarget->ToString(vm);
+
     JSNApi::DestroyJSVM(vm);
 }
 }
@@ -274,13 +181,6 @@ void JSValueRefToStringValueFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSValueRefIsNumberValueFuzzTest(data, size);
-    OHOS::JSValueRefIsStringValueFuzzTest(data, size);
-    OHOS::JSValueRefWithinInt32ValueFuzzTest(data, size);
-    OHOS::JSValueRefIsFunctionValueFuzzTest(data, size);
-    OHOS::JSValueRefIsTypedArrayValueFuzzTest(data, size);
-    OHOS::JSValueRefIsDateValueFuzzTest(data, size);
-    OHOS::JSValueRefIsErrorValueFuzzTest(data, size);
-    OHOS::JSValueRefToStringValueFuzzTest(data, size);
+    OHOS::JSValueRefFoundationValueFuzzTest(data, size);
     return 0;
 }
