@@ -46,6 +46,25 @@ foreach(file, test_js_files) {
   }
 }
 
+metadata_json_path = rebase_path(root_out_dir) + "$target_test_path/"
+
+action("gen_metadata_for_test") {
+  script = "$js_root/script/metadata_generate.py"
+
+  args = [
+    "--enum",
+    rebase_path("$metadata_file_path/type_enums.json"),
+    "--metadata",
+    rebase_path("$metadata_file_path"),
+    "--output",
+    rebase_path(metadata_json_path + "metadata.json"),
+    "--version",
+    "1.0.0",
+  ]
+
+  outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/metadata_json_dummy.txt" ]
+}
+
 host_unittest_action("HeapDumpTest") {
   module_out_path = module_output_path
 
@@ -53,6 +72,7 @@ host_unittest_action("HeapDumpTest") {
     # test file
     "../rawheap_translate/metadata_parse.cpp",
     "../rawheap_translate/rawheap_translate.cpp",
+    "../rawheap_translate/serializer.cpp",
     "../rawheap_translate/string_hashmap.cpp",
     "../rawheap_translate/utils.cpp",
     "heap_dump_test.cpp",
@@ -60,7 +80,10 @@ host_unittest_action("HeapDumpTest") {
 
   configs = [ "../../../../:ecma_test_config" ]
 
-  deps = [ "../../../../:libark_jsruntime_test" ]
+  deps = [
+    ":gen_metadata_for_test",
+    "../../../../:libark_jsruntime_test",
+  ]
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
@@ -68,14 +91,17 @@ host_unittest_action("HeapDumpTest") {
 
   if (is_ohos && is_standard_system) {
     test_abc_dir = "/data/test/"
+    test_metadata_dir = "/system/lib64/module/arkcompiler/"
   } else {
     test_abc_dir = rebase_path(target_out_dir + "/abc_files/")
+    test_metadata_dir = rebase_path("$metadata_json_path")
   }
 
   test_js_dir = rebase_path(test_js_path)
   defines = [
     "HPROF_TEST_JS_FILES_DIR=\"${test_js_dir}\"",
     "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
+    "HPROF_TEST_METADATA_JSON_DIR=\"${test_metadata_dir}\"",
   ]
 
   external_deps = [
