@@ -134,7 +134,7 @@ HWTEST_F_L0(PreforwardBarrierTest, ReadRefField_TEST6)
     RefField<false> field(obj);
 
     BaseObject* resultObj = preforwardBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj == nullptr);
+    ASSERT_TRUE(resultObj != nullptr);
 }
 
 HWTEST_F_L0(PreforwardBarrierTest, ReadRefField_TEST7)
@@ -358,4 +358,3 @@ HWTEST_F_L0(PreforwardBarrierTest, CompareAndSwapRefField_TEST3)
     ASSERT_FALSE(result);
 }
 }  // namespace common::test
- 

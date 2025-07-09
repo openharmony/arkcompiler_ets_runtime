@@ -18,6 +18,7 @@
 #include "common_components/base/sys_call.h"
 #include "common_components/common/scoped_object_lock.h"
 #include "common_components/mutator/mutator.h"
+#include "heap/collector/collector_proxy.h"
 #if defined(COMMON_TSAN_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"
 #endif
@@ -27,28 +28,16 @@ BaseObject* PreforwardBarrier::ReadRefField(BaseObject* obj, RefField<false>& fi
 {
     do {
         RefField<> tmpField(field);
-        bool isWeak = tmpField.IsWeak();
-        BaseObject* oldRef = tmpField.GetTargetObject();
-        if (LIKELY_CC(!theCollector.IsFromObject(oldRef))) {
-            if (isWeak) {
-                return (BaseObject*)((uintptr_t)oldRef | TAG_WEAK);
-            } else {
-                return oldRef;
-            }
+        BaseObject* oldRef = reinterpret_cast<BaseObject *>(tmpField.GetAddress());
+        if (LIKELY_CC(!static_cast<CollectorProxy *>(&theCollector)->IsFromObject(oldRef))) {
+            return oldRef;
         }
+
+        auto weakMask = reinterpret_cast<MAddress>(oldRef) & TAG_WEAK;
+        oldRef = reinterpret_cast<BaseObject *>(reinterpret_cast<MAddress>(oldRef) & (~TAG_WEAK));
         BaseObject* toObj = nullptr;
-        if (theCollector.IsUnmovableFromObject(oldRef)) {
-            if (isWeak) {
-                return (BaseObject*)((uintptr_t)oldRef | TAG_WEAK);
-            } else {
-                return oldRef;
-            }
-        } else if (theCollector.TryForwardRefField(obj, field, toObj)) {
-            if (isWeak) {
-                return (BaseObject*)((uintptr_t)toObj | TAG_WEAK);
-            } else {
-                return toObj;
-            }
+        if (static_cast<CollectorProxy *>(&theCollector)->TryForwardRefField(obj, field, toObj)) {
+            return (BaseObject*)((uintptr_t)toObj | weakMask);
         }
     } while (true);
     // unreachable path.

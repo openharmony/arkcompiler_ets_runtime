@@ -134,7 +134,7 @@ HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST6)
     RefField<false> field(obj);
 
     BaseObject* resultObj = copyBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj == nullptr);
+    ASSERT_TRUE(resultObj != nullptr);
 }
 
 HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST7)

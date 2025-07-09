@@ -217,6 +217,8 @@ void Runtime::RegisterThread(JSThread* newThread)
         ThreadHolder* threadHolder = newThread->GetThreadHolder();
         threadHolder->BindMutator();
         newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
+        newThread->OnHeapCreated(common::Heap::heapStartAddr_);
+        newThread->OnHeapExtended(common::Heap::heapCurrentEnd_);
         threadHolder->RegisterJSThread(newThread);
     } else {
         // send all current suspended requests to the new thread

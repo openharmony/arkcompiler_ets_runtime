@@ -49,7 +49,7 @@ enum class GCMode: uint8_t {
     STW = 2
 };
 
-class WCollector : public TraceCollector {
+class WCollector final : public TraceCollector {
 public:
     explicit WCollector(Allocator& allocator, CollectorResources& resources)
         : TraceCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))
@@ -135,7 +135,6 @@ public:
     void SetGCThreadRssPriority(common::RssPriorityType type);
     void SetGCThreadQosPriority(common::PriorityMode mode);
 
-protected:
     BaseObject* CopyObjectImpl(BaseObject* obj);
     BaseObject* CopyObjectAfterExclusive(BaseObject* obj) override;
 
@@ -154,6 +153,7 @@ protected:
         }
     }
 
+protected:
     void CollectLargeGarbage()
     {
         COMMON_PHASE_TIMER("Collect large garbage");

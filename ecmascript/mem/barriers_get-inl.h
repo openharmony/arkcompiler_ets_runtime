@@ -70,6 +70,18 @@ static ARK_INLINE JSTaggedType AtomicReadBarrier(const JSThread *thread, const v
     return value.GetRawData();
 }
 
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress)
+{
+#ifdef ENABLE_CMC_RB_DFX
+        JSTaggedValue valueRB(
+            reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void *)slotAddress)));
+        valueRB.RemoveReadBarrierDFXTag();
+        return valueRB.GetRawData();
+#else
+        return reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void*)slotAddress));
+#endif
+}
+
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
 {
     JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);
