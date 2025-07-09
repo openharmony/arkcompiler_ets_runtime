@@ -3766,8 +3766,9 @@ void ResolvedIndexBinding::Dump(const JSThread *thread, std::ostream &os) const
     os << " - Module: ";
     GetModule(thread).Dump(thread, os);
     os << "\n";
-    os << " - Index: ";
-    GetIndex();
+    os << " - Index: " << GetIndex();
+    os << "\n";
+    os << " - IsUpdatedFromResolvedBinding: " << GetIsUpdatedFromResolvedBinding();
     os << "\n";
 }
 
@@ -3779,8 +3780,7 @@ void ResolvedRecordIndexBinding::Dump(const JSThread *thread, std::ostream &os) 
     os << " - AbcFileName: ";
     GetAbcFileName(thread).Dump(thread, os);
     os << "\n";
-    os << " - Index: ";
-    GetIndex();
+    os << " - Index: " << GetIndex();
     os << "\n";
 }
 
@@ -5995,6 +5995,7 @@ void ResolvedIndexBinding::DumpForSnapshot(const JSThread *thread, std::vector<R
 {
     vec.emplace_back(CString("Module"), GetModule(thread));
     vec.emplace_back(CString("Index"), JSTaggedValue(GetIndex()));
+    vec.emplace_back(CString("IsUpdatedFromResolvedBinding"), JSTaggedValue(GetIsUpdatedFromResolvedBinding()));
 }
 
 void ResolvedRecordIndexBinding::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const

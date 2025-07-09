@@ -400,9 +400,11 @@ JSTaggedValue ModuleValueAccessor::UpdateBindingAndGetModuleValue(JSThread *thre
     }
     // iii. Call envRec.CreateImportBinding(
     // in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
-    environment->Set(thread, index, resolution);
     ASSERT(resolution->IsResolvedIndexBinding());
     ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolution.GetTaggedValue());
+    // for ResolvedBinding updated to ResolvedIndexBinding, set IsUpdatedFromResolvedBinding to true.
+    binding->SetIsUpdatedFromResolvedBinding(true);
+    environment->Set(thread, index, resolution);
     return SourceTextModule::GetValueFromExportObject(thread, exports, binding->GetIndex());
 }
 

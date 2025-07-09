@@ -431,6 +431,9 @@ public:
                                          JSHandle<SourceTextModule> module,
                                          CVector<JSHandle<SourceTextModule>> &stack,
                                          int index, JSHandle<JSTaggedValue> exception);
+    static JSHandle<JSTaggedValue> CreateBindingByIndexBinding(JSThread* thread,
+                                                               JSHandle<ResolvedIndexBinding> binding,
+                                                               bool isShared);
 
     // Find function in JsModuleSourceText For Hook
     static JSHandle<JSTaggedValue> FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
@@ -484,6 +487,10 @@ private:
     static void SetRequestedModules(JSThread *thread, JSHandle<TaggedArray> requestedModules,
                                     uint32_t idx, JSHandle<JSTaggedValue> requiredModule, bool isShared);
 
+    static JSHandle<JSTaggedValue> GetBindingNameByIndex(JSThread *thread,
+                                                         const JSHandle<SourceTextModule> module,
+                                                         const int index);
+
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };
@@ -505,9 +512,12 @@ public:
 
     static constexpr size_t MODULE_OFFSET = Record::SIZE;
     ACCESSORS(Module, MODULE_OFFSET, INDEX_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, END_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Index, int32_t, INDEX_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, END_OFFSET)
     DEFINE_ALIGN_SIZE(END_OFFSET);
 
+    static constexpr size_t IS_UPDATED_FROM_RESOLVED_BINDING_BITS = 1;
+    FIRST_BIT_FIELD(BitField, IsUpdatedFromResolvedBinding, bool, IS_UPDATED_FROM_RESOLVED_BINDING_BITS)
     DECL_DUMP()
     DECL_VISIT_OBJECT(MODULE_OFFSET, INDEX_OFFSET)
 };

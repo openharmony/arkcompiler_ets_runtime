@@ -4497,6 +4497,19 @@ inline GateRef StubBuilder::GetIdxOfResolvedIndexBinding(GateRef resolvedBinding
     return LoadPrimitive(VariableType::INT32(), resolvedBinding, indexOffset);
 }
 
+inline void StubBuilder::SetIsUpdatedFromResolvedBindingOfResolvedIndexBinding(GateRef glue,
+    GateRef resolvedBinding, GateRef value)
+{
+    GateRef bitFieldOffset = IntPtr(ResolvedIndexBinding::BIT_FIELD_OFFSET);
+    GateRef oldVal = LoadPrimitive(VariableType::INT32(), resolvedBinding, bitFieldOffset);
+    GateRef mask = Int32LSL(
+        Int32((1LU << ResolvedIndexBinding::IsUpdatedFromResolvedBindingBits::SIZE) - 1),
+        Int32(ResolvedIndexBinding::IsUpdatedFromResolvedBindingBits::START_BIT));
+    GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), Int32LSL(ZExtInt1ToInt32(value),
+        Int32(ResolvedIndexBinding::IsUpdatedFromResolvedBindingBits::START_BIT)));
+    Store(VariableType::INT32(), glue, resolvedBinding, bitFieldOffset, newVal);
+}
+
 inline GateRef StubBuilder::GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding)
 {
     GateRef indexOffset = IntPtr(ResolvedRecordIndexBinding::INDEX_OFFSET);

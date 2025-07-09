@@ -168,7 +168,7 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         }
         data_->SetDataIndex(index);
     }
-    size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    size_t maxSerializerSize = GetMaxJSSerializerSize(vm_);
     if (data_->Size() > maxSerializerSize) {
         std::ostringstream errorMessage;
         errorMessage << "The serialization data size has exceed limit Size, current size is: " << data_->Size()

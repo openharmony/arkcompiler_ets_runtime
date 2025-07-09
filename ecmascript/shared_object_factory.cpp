@@ -1020,6 +1020,7 @@ JSHandle<ResolvedIndexBinding> ObjectFactory::NewSResolvedIndexBindingRecord(con
     JSHandle<ResolvedIndexBinding> obj(thread_, header);
     obj->SetModule(thread_, module);
     obj->SetIndex(index);
+    obj->SetIsUpdatedFromResolvedBinding(false);
     return obj;
 }
 

@@ -12142,8 +12142,9 @@ GateRef StubBuilder::UpdateBindingAndGetModuleValue(GateRef glue, GateRef module
 
         Bind(&notNullOrString);
         {
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, curModuleEnv, index, resolution);
             CheckIsResolvedIndexBinding(glue, resolution);
+            SetIsUpdatedFromResolvedBindingOfResolvedIndexBinding(glue, resolution, True());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, curModuleEnv, index, resolution);
             result = GetValueFromExportObject(glue, exports, GetIdxOfResolvedIndexBinding(resolution));
             Jump(&exit);
         }

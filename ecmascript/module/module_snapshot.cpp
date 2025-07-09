@@ -90,6 +90,34 @@ JSHandle<TaggedArray> ModuleSnapshot::GetModuleSerializeArray(JSThread *thread)
     return serializerArray;
 }
 
+void ModuleSnapshot::RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArray> serializeArray)
+{
+    auto globalConstants = thread->GlobalConstants();
+    JSMutableHandle<SourceTextModule> module(thread, globalConstants->GetUndefined());
+    JSMutableHandle<ResolvedIndexBinding> indexBinding(thread, globalConstants->GetUndefined());
+    JSMutableHandle<TaggedArray> environment(thread, globalConstants->GetUndefined());
+    for (uint32_t moduleIdx = 0; moduleIdx < serializeArray->GetLength(); ++moduleIdx) {
+        module.Update(serializeArray->Get(thread, moduleIdx));
+        JSTaggedValue moduleEnvironment = module->GetEnvironment(thread);
+        if (moduleEnvironment.IsUndefined()) {
+            continue;
+        }
+        environment.Update(moduleEnvironment);
+        bool isShared = SourceTextModule::IsSharedModule(module);
+        // check every binding and transfer from ResolvedIndexBinding to ResolvedBinding if binding updated.
+        for (uint32_t bindingIdx = 0; bindingIdx < environment->GetLength(); bindingIdx++) {
+            JSTaggedValue binding = environment->Get(thread, bindingIdx);
+            if (binding.IsResolvedIndexBinding() &&
+                ResolvedIndexBinding::Cast(binding)->GetIsUpdatedFromResolvedBinding()) {
+                indexBinding.Update(binding);
+                JSHandle<JSTaggedValue> nameBinding =
+                    SourceTextModule::CreateBindingByIndexBinding(thread, indexBinding, isShared);
+                environment->Set(thread, bindingIdx, nameBinding);
+            }
+        }
+    }
+}
+
 bool ModuleSnapshot::ModuleSnapshotTask::Run(uint32_t threadIndex)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotTask", "");
@@ -106,6 +134,7 @@ std::unique_ptr<SerializeData> ModuleSnapshot::GetSerializeData(JSThread *thread
 {
     ModuleSerializer serializer(thread);
     JSHandle<TaggedArray> serializeArray = GetModuleSerializeArray(thread);
+    RestoreUpdatedBinding(thread, serializeArray);
     const GlobalEnvConstants *globalConstants = thread->GlobalConstants();
     if (!serializer.WriteValue(thread, JSHandle<JSTaggedValue>(serializeArray),
                                globalConstants->GetHandledUndefined(),

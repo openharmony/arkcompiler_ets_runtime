@@ -384,7 +384,7 @@ public:
             {JSType::PROTO_CHANGE_MARKER, {"PROTO_CHANGE_MARKER"}},
             {JSType::RB_TREENODE, {"Left", "Right", "IsRed", "RB_TREENODE"}},
             {JSType::RESOLVEDBINDING_RECORD, {"Module", "BindingName", "RESOLVEDBINDING_RECORD"}},
-            {JSType::RESOLVEDINDEXBINDING_RECORD, {"Module", "Index", "RESOLVEDINDEXBINDING_RECORD"}},
+            {JSType::RESOLVEDINDEXBINDING_RECORD, {"Module", "Index", "BitField", "RESOLVEDINDEXBINDING_RECORD"}},
             {JSType::RESOLVEDRECORDBINDING_RECORD, {"ModuleRecord", "BindingName", "RESOLVEDRECORDBINDING_RECORD"}},
             {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, {"ModuleRecord",
                                                          "AbcFileName", "RESOLVEDRECORDINDEXBINDING_RECORD"}},
@@ -975,6 +975,7 @@ public:
             {JSType::RESOLVEDINDEXBINDING_RECORD, {
                 ResolvedIndexBinding::MODULE_OFFSET,
                 ResolvedIndexBinding::INDEX_OFFSET,
+                ResolvedIndexBinding::BIT_FIELD_OFFSET,
                 ResolvedIndexBinding::SIZE - ResolvedIndexBinding::MODULE_OFFSET}},
             {JSType::RESOLVEDRECORDBINDING_RECORD, {
                 ResolvedRecordBinding::MODULE_RECORD_OFFSET,
@@ -1716,7 +1717,8 @@ public:
                 ResolvedBinding::SIZE - ResolvedBinding::BINDING_NAME_OFFSET}},
             {JSType::RESOLVEDINDEXBINDING_RECORD, {
                 ResolvedIndexBinding::INDEX_OFFSET - ResolvedIndexBinding::MODULE_OFFSET,
-                ResolvedIndexBinding::END_OFFSET - ResolvedIndexBinding::INDEX_OFFSET}},
+                ResolvedIndexBinding::BIT_FIELD_OFFSET - ResolvedIndexBinding::INDEX_OFFSET,
+                ResolvedIndexBinding::END_OFFSET - ResolvedIndexBinding::BIT_FIELD_OFFSET}},
             {JSType::RESOLVEDRECORDBINDING_RECORD, {
                 ResolvedRecordBinding::BINDING_NAME_OFFSET - ResolvedRecordBinding::MODULE_RECORD_OFFSET,
                 ResolvedRecordBinding::SIZE - ResolvedRecordBinding::BINDING_NAME_OFFSET}},

@@ -10,6 +10,11 @@
             "name": "Index",
             "offset": 8,
             "size": 4
+        },
+        {
+            "name": "BitField",
+            "offset": 12,
+            "size": 4
         }
     ],
     "end_offset": 16,
