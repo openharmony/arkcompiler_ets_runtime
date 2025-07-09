@@ -938,6 +938,7 @@ bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessI
             checkInfo.SetPrimitiveType(primitiveType);
             parent_.checkerInfos_.emplace_back(checkInfo);
         }
+        SetPlrIsLoadFromIterResult(parent_.accessInfos_.back().Plr(), parent_.jitTypes_[i].GetReceiverType());
     }
     return true;
 }

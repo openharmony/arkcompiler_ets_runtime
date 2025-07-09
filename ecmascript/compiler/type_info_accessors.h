@@ -1016,7 +1016,12 @@ public:
             return plr_.GetData();
         }
 
-        PropertyLookupResult Plr() const
+        const PropertyLookupResult &Plr() const
+        {
+            return plr_;
+        }
+
+        PropertyLookupResult &Plr()
         {
             return plr_;
         }
@@ -1480,6 +1485,21 @@ public:
         bool GenerateObjectAccessInfo() override;
 
     private:
+        void SetPlrIsLoadFromIterResult(PropertyLookupResult &plr, ProfileType receiverType)
+        {
+            if (!receiverType.IsGlobalsType()) {
+                return;
+            }
+            auto globalsId = receiverType.GetGlobalsId();
+            if (!globalsId.IsGlobalEnvId()) {
+                return;
+            }
+            GlobalEnvField index = static_cast<GlobalEnvField>(globalsId.GetGlobalEnvId());
+            if (index == GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX) {
+                plr.SetIsLoadFromIterResult(true);
+            }
+        }
+
         LoadObjPropertyTypeInfoAccessor &parent_;
     };
     LoadObjPropertyTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
@@ -2152,7 +2172,7 @@ public:
 private:
     AccessorStrategy* strategy_;
     ChunkVector<pgo::PGOObjectInfo> jitTypes_;
-    
+
     friend class AotAccessorStrategy;
     friend class JitAccessorStrategy;
 };
