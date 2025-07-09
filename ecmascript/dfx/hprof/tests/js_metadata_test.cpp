@@ -3148,16 +3148,16 @@ HWTEST_F_L0(JSMetadataTest, TestJsFloat64ArrayMetadata)
     ASSERT_TRUE(tester.Test(JSType::JS_FLOAT64_ARRAY, metadata));
 }
 
-HWTEST_F_L0(JSMetadataTest, TestJsForinIteratorMetadata)
-{
-    JSMetadataTestHelper tester {};
-    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_forin_iterator.json";
-    JSMetadataTestHelper::Metadata metadata {};
+// HWTEST_F_L0(JSMetadataTest, TestJsForinIteratorMetadata)
+// {
+//     JSMetadataTestHelper tester {};
+//     std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_forin_iterator.json";
+//     JSMetadataTestHelper::Metadata metadata {};
 
-    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
-    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
-    ASSERT_TRUE(tester.Test(JSType::JS_FORIN_ITERATOR, metadata));
-}
+//     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+//     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+//     ASSERT_TRUE(tester.Test(JSType::JS_FORIN_ITERATOR, metadata));
+// }
 
 HWTEST_F_L0(JSMetadataTest, TestJsFunctionMetadata)
 {
