@@ -123,7 +123,7 @@ public:
 
     bool DecreaseRefCount()
     {
-        return refCount_-- <= 0;
+        return --refCount_ <= 0;
     }
 
     static constexpr size_t GetTLRegionOffset()
