@@ -33,6 +33,11 @@ void VisitSTWRoots(const RefFieldVisitor &visitor)
     VisitDynamicGlobalRoots(visitor);
     VisitDynamicLocalRoots(visitor);
     VisitBaseRoots(visitor);
+    // if (isMark) {
+    //     VisitStaticRoots(visitor);
+    // } else {
+    //     UpdateStaticRoots(visitor);
+    // }
 }
 
 void VisitConcurrentRoots(const RefFieldVisitor &visitor)
@@ -45,6 +50,8 @@ void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
     VisitDynamicWeakGlobalRoots(visitor);
     VisitDynamicWeakGlobalRootsOld(visitor);
     VisitDynamicWeakLocalRoots(visitor);
+    // UpdateStaticRoots(visitor);
+    // SweepStaticRoots(visitor);
 }
 
 void VisitGlobalRoots(const RefFieldVisitor &visitor)
