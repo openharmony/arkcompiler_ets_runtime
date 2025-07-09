@@ -98,6 +98,7 @@ private:
     GateRef GetSingleCharCodeFromSlicedString(GateRef glue, GateRef str, GateRef index);
     void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
+    static constexpr uint32_t INIT_LENGTH_TIMES = 4;
 };
 
 class FlatStringStubBuilder : public StubBuilder {
