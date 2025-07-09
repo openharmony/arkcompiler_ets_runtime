@@ -537,8 +537,8 @@ namespace panda::test {
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
             EXPECT_EQ(
-                handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>, i + lengthEcmaStrFrontU8
-                ), arrayBackU16NotComp[i]);
+                handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>,
+                i + lengthEcmaStrFrontU8), arrayBackU16NotComp[i]);
         }
         EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->GetLength(),
                   lengthEcmaStrFrontU8 + lengthEcmaStrBackU16NotComp);

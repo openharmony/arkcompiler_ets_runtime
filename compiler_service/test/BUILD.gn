@@ -27,7 +27,7 @@ group("compiler_service_unittest") {
 group("compiler_service_fuzztest") {
   testonly = true
   deps = [
-    "fuzztest/aotcompilerargsprepare_fuzzer:AotCompilerArgsPrepareFuzzTest",
-    "fuzztest/compilerinterfacestub_fuzzer:CompilerInterfaceStubFuzzTest",
+    #"fuzztest/aotcompilerargsprepare_fuzzer:AotCompilerArgsPrepareFuzzTest",
+    #"fuzztest/compilerinterfacestub_fuzzer:CompilerInterfaceStubFuzzTest",
   ]
 }

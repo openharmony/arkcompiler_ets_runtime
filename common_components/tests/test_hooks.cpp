@@ -35,4 +35,8 @@ bool IsMachineCodeObject(uintptr_t objPtr)
 {
     return false;
 }
+void CheckAndInitBaseRuntime(const RuntimeParam &param) {}
+void CheckAndFiniBaseRuntime() {}
+void RemoveXRefFromDynamicRoots() {}
+void AddXRefToDynamicRoots() {}
 } // namespace common

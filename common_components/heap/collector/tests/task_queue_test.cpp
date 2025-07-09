@@ -113,10 +113,12 @@ public:
     {
         return 0;
     }
+#ifndef NDEBUG
     bool IsHeapObject(HeapAddress addr) const
     {
         return false;
     }
+#endif
 };
 
 class TestCollectorResources : public CollectorResources {
