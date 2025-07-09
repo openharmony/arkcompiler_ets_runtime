@@ -84,6 +84,13 @@ inline PropertyAttributes LayoutInfo::GetAttr(const JSThread *thread, int index)
     return PropertyAttributes(TaggedArray::Get(thread, fixedIdx));
 }
 
+template<RBMode mode>
+inline PropertyAttributes LayoutInfo::GetAttr(const JSThread *thread, int index) const
+{
+    uint32_t fixedIdx = GetAttrIndex(index);
+    return PropertyAttributes(TaggedArray::Get<mode>(thread, fixedIdx));
+}
+
 inline JSTaggedValue LayoutInfo::GetSortedKey(const JSThread *thread, int index) const
 {
     uint32_t fixedIdx = GetSortedIndex(thread, index);

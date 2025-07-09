@@ -62,6 +62,8 @@ public:
     void SetNormalAttr(const JSThread *thread, int index, const PropertyAttributes &attr);
     JSTaggedValue GetKey(const JSThread *thread, int index) const;
     PropertyAttributes GetAttr(const JSThread *thread, int index) const;
+    template<RBMode mode = RBMode::DEFAULT_RB>
+    PropertyAttributes GetAttr(const JSThread *thread, int index) const;
     JSTaggedValue GetSortedKey(const JSThread *thread, int index) const;
     uint32_t GetSortedIndex(const JSThread *thread, int index) const;
     void SetSortedIndex(const JSThread *thread, int index, int sortedIndex);
