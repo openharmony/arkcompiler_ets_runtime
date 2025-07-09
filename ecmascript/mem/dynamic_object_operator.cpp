@@ -32,7 +32,7 @@ void DynamicObjectOperator::Initialize()
 void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *object,
                                         [[maybe_unused]] const common::RefFieldVisitor &visitor) const
 {
-#if defined(PANDA_JS_ETS_HYBRID_MODE)
+    #if defined(PANDA_JS_ETS_HYBRID_MODE) && defined(USE_CMC_GC)
     if (g_isEnableCMCGC) {
         JSTaggedValue value(reinterpret_cast<TaggedObject *>(const_cast<BaseObject *>(object)));
         if (value.IsJSXRefObject()) {

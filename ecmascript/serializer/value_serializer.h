@@ -69,7 +69,7 @@ private:
     bool SerializeModuleCNativeObjects(TaggedObject *object);
 
 protected:
-    void SerializeObjectImpl(TaggedObject *object) override;
+    void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) override;
     bool notSupport_ {false};
 
 private:
