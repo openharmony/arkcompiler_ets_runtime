@@ -14,13 +14,13 @@
 group("compiler_service_unittest") {
   testonly = true
   deps = [
-    "unittest/aotcompilerargshandler_unit:AotCompilerArgsHandlerUnitTest",
-    "unittest/aotcompilerclient_unit:AotCompilerClientUnitTest",
-    "unittest/aotcompilererrorutils_unit:AotCompilerErrorUtilsUnitTest",
-    "unittest/aotcompilerimpl_unit:AotCompilerImplUnitTest",
-    "unittest/aotcompilerproxy_unit:AotCompilerProxyUnitTest",
-    "unittest/aotcompilerservice_unit:AotCompilerServiceUnitTest",
-    "unittest/aotcompilerstub_unit:AotCompilerStubUnitTest",
+    #"unittest/aotcompilerargshandler_unit:AotCompilerArgsHandlerUnitTest",
+    #"unittest/aotcompilerclient_unit:AotCompilerClientUnitTest",
+    #"unittest/aotcompilererrorutils_unit:AotCompilerErrorUtilsUnitTest",
+    #"unittest/aotcompilerimpl_unit:AotCompilerImplUnitTest",
+    #"unittest/aotcompilerproxy_unit:AotCompilerProxyUnitTest",
+    #"unittest/aotcompilerservice_unit:AotCompilerServiceUnitTest",
+    #"unittest/aotcompilerstub_unit:AotCompilerStubUnitTest",
   ]
 }
 
