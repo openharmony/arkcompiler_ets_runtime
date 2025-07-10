@@ -31,11 +31,9 @@ namespace OHOS {
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         std::string str = fdp.ConsumeRandomLengthString(1024);
-        char *stringData = str.data();
-        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         [[maybe_unused]]PromiseRejectInfo promiseReject(promise, reason,
@@ -50,11 +48,9 @@ namespace OHOS {
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         std::string str = fdp.ConsumeRandomLengthString(1024);
-        char *stringData = str.data();
-        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason,
@@ -70,11 +66,9 @@ namespace OHOS {
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         std::string str = fdp.ConsumeRandomLengthString(1024);
-        char *stringData = str.data();
-        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> reason(reasonString);
         void *newdata = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, newdata);
@@ -89,11 +83,9 @@ namespace OHOS {
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         std::string str = fdp.ConsumeRandomLengthString(1024);
-        char *stringData = str.data();
-        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data2);
@@ -108,11 +100,9 @@ namespace OHOS {
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         std::string str = fdp.ConsumeRandomLengthString(1024);
-        char *stringData = str.data();
-        const int length = fdp.ConsumeIntegralInRange<int>(0, 1024);
-        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> promiseStirng = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> promise(promiseStirng);
-        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, stringData, length);
+        Local<StringRef> reasonString = StringRef::NewFromUtf8(vm, str.data());
         Local<JSValueRef> reason(reasonString);
         void *data2 = static_cast<void*>(new std::string("test"));
         PromiseRejectInfo promiseReject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data2);
