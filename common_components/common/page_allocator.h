@@ -132,6 +132,7 @@ public:
             // create page if nonFull_ is nullptr
             if (nonFull_ == nullptr) {
                 Page* cur = CreatePage();
+                DCHECK_CC(cur != nullptr);
                 InitPage(*cur);
                 ++totalPages_;
                 nonFull_ = cur;

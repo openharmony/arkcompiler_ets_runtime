@@ -109,8 +109,8 @@ public:
     }
     static constexpr size_t CARD_TABLE_OFFSET_IN_RSET = 8;
 private:
-    std::atomic<size_t> cardCnt;
-    std::atomic<uint64_t>* cardTable;
+    std::atomic<size_t> cardCnt {0};
+    std::atomic<uint64_t>* cardTable {nullptr};
 };
 }
 #endif // COMMON_COMPONENTS_HEAP_COLLECTOR_REGION_RSET_H

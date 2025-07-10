@@ -19,6 +19,7 @@
 #include <vector>
 #include <cstdlib>
 
+#include "common_interfaces/base/common.h"
 #include "securec.h"
 
 namespace common {
@@ -85,7 +86,11 @@ public:
 
     void ReplaceAll(CString replacement, CString target);
 
-    bool operator==(const CString& other) const { return strcmp(str_, other.str_) == 0; }
+    bool operator==(const CString& other) const
+    {
+        DCHECK_CC(other.str_ != nullptr);
+        return strcmp(str_, other.str_) == 0;
+    }
 
     bool operator!=(const CString& other) const { return !(strcmp(str_, other.str_) == 0); }
 

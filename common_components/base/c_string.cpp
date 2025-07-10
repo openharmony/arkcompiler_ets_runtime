@@ -199,9 +199,11 @@ CString& CString::Append(const CString& addStr, size_t addLen)
         addLen = strlen(addStr.str_);
     }
     EnsureSpace(addLen);
+    DCHECK_CC(addLen <= addStr.length_);
     LOGF_IF(memcpy_s(str_ + length_, capacity_ - length_, addStr.str_, addLen) != EOK) <<
         "CString::Append memcpy_s failed";
     length_ += addLen;
+    DCHECK_CC(str_ != nullptr);
     str_[length_] = '\0';
     return *this;
 }
@@ -215,6 +217,7 @@ CString& CString::Append(const char* addStr, size_t addLen)
         addLen = strlen(addStr);
     }
     EnsureSpace(addLen);
+    DCHECK_CC(addLen <= strlen(addStr));
     LOGF_IF(memcpy_s(str_ + length_, capacity_ - length_, addStr, addLen) != EOK) <<
         "CString::Append memcpy_s failed";
     length_ += addLen;
@@ -315,6 +318,7 @@ CString CString::SubStr(size_t index, size_t len) const
         return newStr;
     }
     newStr.length_ = len;
+    DCHECK_CC(newStr.str_ != nullptr);
     newStr.str_[newStr.length_] = '\0';
     return newStr;
 }
@@ -426,6 +430,7 @@ CString CString::RemoveBlankSpace() const
     if (length_ == 0) {
         return noBlankSpaceStr;
     }
+    DCHECK_CC(noBlankSpaceStr.str_ != nullptr);
     for (size_t i = 0; i < length_; i++) {
         if (str_[i] != ' ') {
             noBlankSpaceStr.str_[index++] = str_[i];
