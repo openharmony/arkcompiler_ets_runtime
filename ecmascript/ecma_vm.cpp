@@ -65,6 +65,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/base/gc_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -1354,6 +1355,16 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
     auto localResultRef = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));
     ThreadNativeScope nativeScope(thread_);
     concurrentCallback_(localResultRef, success, taskInfo, concurrentData_);
+}
+
+void EcmaVM::HandleUncatchableError()
+{
+    if (uncatchableErrorHandler_ != nullptr) {
+        panda::TryCatch trycatch(this);
+        ecmascript::ThreadNativeScope nativeScope(thread_);
+        uncatchableErrorHandler_(trycatch);
+    }
+    LOG_ECMA_MEM(FATAL) << "Out of Memory";
 }
 
 void EcmaVM::DumpCallTimeInfo()

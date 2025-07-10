@@ -869,14 +869,7 @@ public:
     }
 
     // handle uncatchable errors, such as oom
-    void HandleUncatchableError()
-    {
-        if (uncatchableErrorHandler_ != nullptr) {
-            panda::TryCatch trycatch(this);
-            uncatchableErrorHandler_(trycatch);
-        }
-        LOG_ECMA_MEM(FATAL) << "Out of Memory";
-    }
+    void HandleUncatchableError();
 
     void DumpCallTimeInfo();
 

@@ -48,7 +48,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/jit/jit.h"
 #include "common_interfaces/thread/thread_holder_manager.h"
-
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/asm_stack.h"
 
 namespace panda::ecmascript {
@@ -329,6 +329,7 @@ void JSThread::HandleUncaughtException(JSTaggedValue exception)
         if (callback) {
             ClearException();
             Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
+            ThreadNativeScope nativeScope(this);
             callback(exceptionRef, GetOnErrorData());
         }
     }
