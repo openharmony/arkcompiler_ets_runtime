@@ -156,6 +156,43 @@ public:
         return true;
     }
 
+    bool AddMetaDataJsonToRawheap(const std::string &rawFilePath)
+    {
+        uint32_t rawheapSize = rawheap_translate::FileReader::GetFileSize(rawFilePath);
+        uint32_t metadataSize = rawheap_translate::FileReader::GetFileSize(HPROF_TEST_METADATA_JSON_DIR"metadata.json");
+        if (rawheapSize == 0 || metadataSize == 0) {
+            std::cout << "rawheapSize=" << rawheapSize << ", metadataSize=" << metadataSize << std::endl;
+            return false;
+        }
+
+        std::ofstream rawheapFile(rawFilePath, std::ios::app | std::ios::binary);
+        std::ifstream metadataFile(HPROF_TEST_METADATA_JSON_DIR"metadata.json", std::ios::binary);
+        if (!rawheapFile.is_open() || !metadataFile.is_open()) {
+            return false;
+        }
+
+        uint32_t bufSize = metadataSize + sizeof(uint64_t);
+        char *buf = new char[bufSize];
+        if (!metadataFile.read(buf, metadataSize)) {
+            delete[] buf;
+            return false;
+        }
+
+        *reinterpret_cast<uint32_t *>(buf + bufSize - sizeof(uint64_t)) = rawheapSize;
+        *reinterpret_cast<uint32_t *>(buf + bufSize - sizeof(uint32_t)) = metadataSize;
+        rawheapFile.write(buf, bufSize);
+
+        rawheapFile.close();
+        metadataFile.close();
+        delete[] buf;
+        return true;
+    }
+
+    bool DecodeRawheap(const std::string &rawFilePath, const std::string &outputPath)
+    {
+        return rawheap_translate::RawHeap::TranslateRawheap(rawFilePath, outputPath);
+    }
+
     bool MatchHeapObjectReferencesV1(const std::vector<Reference> &refs, const CSet<JSTaggedType> &dumpObjects)
     {
         for (auto &ref : refs) {
@@ -1534,6 +1571,30 @@ void CreateObjectsForBinaryDump(JSThread *thread, ObjectFactory *factory, HeapDu
     CREATE_ARRAY_AND_ADD_REFS(factory, JSSharedArrayBuffer, 10, refs)
 }
 
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV0)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump_v0.rawheap");
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+
+    FILE* file = std::fopen(rawHeapPath.c_str(), "rb+");
+    ASSERT_TRUE(file != nullptr);
+
+    char version[sizeof(uint64_t)];
+    *reinterpret_cast<uint64_t *>(version) = 0;
+    std::fseek(file, 0, SEEK_SET);
+    std::fwrite(version, sizeof(char), sizeof(version), file);
+    std::fclose(file);
+
+    std::string heapsnapshotPath("test_binary_dump_v0.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
@@ -1541,13 +1602,17 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
     std::vector<Reference> vec;
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
-    std::string rawHeapPath("test_binary_dump.raw");
+    std::string rawHeapPath("test_binary_dump_v1.rawheap");
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
 
     ASSERT_TRUE(tester.MatchHeapObjectReferencesV1(vec, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
@@ -1557,7 +1622,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
     std::vector<Reference> vec;
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
-    std::string rawHeapPath("test_binary_dump.raw");
+    std::string rawHeapPath("test_binary_dump_v2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
 
@@ -1566,6 +1631,10 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
 
     ASSERT_TRUE(tester.MatchHeapObjectReferencesV2(vec, dumpObjects));
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::DEFAULT);
+
+    std::string heapsnapshotPath("test_binary_dump_v2.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)

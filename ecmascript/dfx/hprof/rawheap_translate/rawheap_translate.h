@@ -37,7 +37,11 @@ public:
     virtual bool Parse(FileReader &file, uint32_t rawheapFileSize) = 0;
     virtual void Translate() = 0;
 
+    static bool TranslateRawheap(const std::string &inputPath, const std::string &outputPath);
+    static bool ParseMetaData(FileReader &file, MetaParser *parser);
+    static RawHeap *ParseRawheap(FileReader &file, MetaParser *metaParser);
     static std::string ReadVersion(FileReader &file);
+
     std::vector<Node *>* GetNodes();
     std::vector<Edge *>* GetEdges();
     size_t GetNodeCount();

@@ -1935,16 +1935,17 @@ public:
 
     bool TestForTypeEnums(const CVector<std::string> typeEnums)
     {
-        uint8_t type = static_cast<uint8_t>(JSType::INVALID);
+        uint8_t type = 0;
         for (auto typeName : typeEnums) {
-            auto fieldNames = GetFieldNamesByType(static_cast<JSType>(type));
-            if (fieldNames.size() == 0) {
-                std::cout << "JSType " << int(type) << " got " << typeName << "missed in fieldNameTable_" << std::endl;
+            CString typeDesc = JSHClass::GetJSTypeDesc(static_cast<JSType>(type));
+            if (typeDesc.empty()) {
+                std::cout << "JSType " << int(type) << " got "
+                          << typeName << ", missed in JSTYPE_DECL" << std::endl;
                 return false;
             }
-            if (typeName != fieldNames[fieldNames.size() - 1]) {
+            if (typeName != typeDesc.c_str()) {
                 std::cout << "JSType " << int(type) << " expected "
-                          << fieldNames[fieldNames.size() - 1] << ", but got "
+                          << typeDesc << ", but got "
                           << typeName << std::endl;
                 return false;
             }

@@ -1418,6 +1418,18 @@ JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
     }
 }
 
+CString JSHClass::GetJSTypeDesc(JSType type)
+{
+    static const CString JSTYPE_METADATA[int(JSType::TYPE_LAST) + 1] = {
+        "INVALID",
+        JSTYPE_DECL(JSTYPE_STRING),
+    };
+    if (int(type) > int(JSType::TYPE_LAST)) {
+        return "";
+    }
+    return JSTYPE_METADATA[int(type)];
+}
+
 JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
                                                      const HClassLayoutDesc* desc,
                                                      uint32_t maxNum)

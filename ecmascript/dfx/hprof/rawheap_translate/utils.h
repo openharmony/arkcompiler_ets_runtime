@@ -156,5 +156,7 @@ private:
     int minor_ {0};
     int build_ {0};
 };
+
+static const Version VERSION(2, 0, 0);
 }  // namespace rawheap_translate
 #endif
