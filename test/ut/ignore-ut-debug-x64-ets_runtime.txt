@@ -21,3 +21,6 @@ obj/arkcompiler/ets_runtime/test/jittest/icnotfound/icnotfound
 
 #23099
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
+
+#27690
+obj/arkcompiler/ets_runtime/test/jittest/throw_error/throw_error

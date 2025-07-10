@@ -26,3 +26,6 @@ regresstest/ark-regress/mjsunit/compiler/lazy-deopt-async-function-resolve.js
 regresstest/ark-regress/mjsunit/compiler/bigint-compare.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-631318-10.js
 regresstest/ark-regress/mjsunit/regress/regress-2073.js
+
+#27744
+regresstest/ark-regress/mjsunit/regress/regress-dictionary-to-fast-arguments.js
