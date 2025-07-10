@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -406,8 +406,7 @@ public:
     // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
     ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
     ACCESSORS(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET)
-    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, INTERFACETYPE_OFFSET)
-    ACCESSORS(InterfaceType, INTERFACETYPE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
     ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)

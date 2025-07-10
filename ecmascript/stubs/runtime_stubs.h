@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -553,6 +553,14 @@ private:
                                                               const JSHandle<JSTaggedValue> &ihc,
                                                               const JSHandle<JSTaggedValue> &chc,
                                                               const JSHandle<ClassLiteral> &classLiteral);
+    static inline void DefineInterfaceTypeOwnProperty(JSThread *thread, JSHandle<JSFunction> &cls,
+                                                      const JSHandle<JSTaggedValue> &base,
+                                                      const JSHandle<JSTaggedValue> &lexenv,
+                                                      JSHandle<ClassInfoExtractor> &extractor,
+                                                      const JSHandle<JSTaggedValue> &ihc,
+                                                      const JSHandle<JSTaggedValue> &chc,
+                                                      const JSHandle<TaggedArray> &arrayHandle,
+                                                      const JSHandle<ClassLiteral> &classLiteral);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript
