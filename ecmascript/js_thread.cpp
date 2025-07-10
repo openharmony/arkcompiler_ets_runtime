@@ -131,7 +131,7 @@ void JSThread::UnregisterThread(JSThread *jsThread)
 JSThread *JSThread::Create(EcmaVM *vm)
 {
     auto jsThread = new JSThread(vm);
-
+    vm->SetJSThread(jsThread);
     AsmInterParsedOption asmInterOpt = vm->GetJSOptions().GetAsmInterParsedOption();
     if (asmInterOpt.enableAsm) {
         jsThread->EnableAsmInterpreter();
