@@ -128,7 +128,7 @@ bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
     }
 }
 
-uintptr_t RegionSpace::AllocRegion()
+uintptr_t RegionSpace::AllocOldRegion()
 {
     RegionDesc* region = regionManager_.TakeRegion(false, false);
     ASSERT(region != nullptr);
@@ -150,7 +150,7 @@ uintptr_t RegionSpace::AllocRegion()
         region, region->GetRegionStart(), region->GetRegionSize(),
         region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
         region->GetRegionType());
-    youngSpace_.AddFullRegion(region);
+    oldSpace_.AddFullRegion(region);
 
     uintptr_t start = region->GetRegionStart();
     uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());

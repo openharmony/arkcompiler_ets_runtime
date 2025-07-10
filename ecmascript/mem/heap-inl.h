@@ -1062,7 +1062,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObjectNoGC(JSThread *thread, size_t s
 {
     if (UNLIKELY(g_isEnableCMCGC)) {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateOldNoGC(size));
+        TaggedObject *object = reinterpret_cast<TaggedObject*>(common::HeapAllocator::AllocateOldOrLargeNoGC(size));
         return object;
     } else {
         std::abort();

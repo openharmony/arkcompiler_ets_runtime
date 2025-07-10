@@ -734,7 +734,7 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
     while (regionNum > 0) {
         uintptr_t regionAddr = 0U;
         if (regionType == RegionType::RegularRegion) {
-            regionAddr = common::HeapAllocator::AllocateRegion();
+            regionAddr = common::HeapAllocator::AllocateOldRegion();
         } else {
             regionAddr = common::HeapAllocator::AllocatePinnedRegion();
         }

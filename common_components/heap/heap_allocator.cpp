@@ -85,8 +85,11 @@ Address HeapAllocator::AllocateNoGC(size_t size)
     return HeapManager::Allocate(size, AllocType::MOVEABLE_OBJECT, false);
 }
 
-Address HeapAllocator::AllocateOldNoGC(size_t size)
+Address HeapAllocator::AllocateOldOrLargeNoGC(size_t size)
 {
+    if (size >= RegionDesc::LARGE_OBJECT_DEFAULT_THRESHOLD) {
+        return AllocateLargeRegion(size);
+    }
     return HeapManager::Allocate(size, AllocType::MOVEABLE_OLD_OBJECT, false);
 }
 
@@ -95,10 +98,10 @@ Address HeapAllocator::AllocatePinNoGC(size_t size)
     return HeapManager::Allocate(size, AllocType::PINNED_OBJECT, false);
 }
 
-Address HeapAllocator::AllocateRegion()
+Address HeapAllocator::AllocateOldRegion()
 {
     RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    return allocator.AllocRegion();
+    return allocator.AllocOldRegion();
 }
 
 Address HeapAllocator::AllocatePinnedRegion()
