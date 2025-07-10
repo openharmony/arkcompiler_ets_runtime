@@ -274,38 +274,36 @@ JSHandle<JSTaggedValue> JSObject::FindFuncInObjectForHook(JSThread *thread, JSHa
 {
     JSHandle<JSTaggedValue> notFound(thread, thread->GlobalConstants()->GetUndefined());
     JSHandle<JSTaggedValue> targetObject = object;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     if (targetObject->IsJSFunction()) {
-        if (!className.empty()) {
-            return notFound;
+        // When the className is empty and the object is JSFunction, it is export function directly
+        if (className.empty()) {
+            return object;
         }
+
+        // When the className is not empty and the object is JSFunction, it is export class/function
         JSFunction *function = JSFunction::Cast(targetObject->GetTaggedObject());
-        if (!function->IsClassConstructor()) {
-            // Compare method names when exporting functions directly
-            Method *method = Method::Cast(function->GetMethod(thread));
-            if (method->ParseFunctionNameView(thread).first == funcName) {
-                return targetObject;
-            } else {
-                return notFound;
-            }
-        }
         // Finding non-static function in a class is only supported.
         targetObject = JSHandle<JSTaggedValue>(thread, function->GetProtoOrHClass(thread));
+    } else if (!className.empty()) {
+        // When exporting namespace/classes/functions, first look up class in namespace
+        JSHandle<JSTaggedValue> classNameKey(factory->NewFromStdString(className));
+        JSHandle<JSTaggedValue> targetClass = JSObject::GetProperty(thread, targetObject, classNameKey).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, notFound);
+        if (!targetClass->IsUndefined()) {
+            JSTaggedValue value = JSFunction::Cast(targetClass->GetTaggedObject())->GetProtoOrHClass(thread);
+            targetObject = JSHandle<JSTaggedValue>(thread, value);
+        }
     }
 
-    // When exporting namespace/classes/functions, first look up class in namespace
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> classNameKey(factory->NewFromUtf8(className));
-    JSHandle<JSTaggedValue> targetClass = JSObject::GetProperty(thread, targetObject, classNameKey).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, notFound);
-    if (!targetClass->IsUndefined()) {
-        JSTaggedValue value = JSFunction::Cast(targetClass->GetTaggedObject())->GetProtoOrHClass(thread);
-        targetObject = JSHandle<JSTaggedValue>(thread, value);
+    if (targetObject->IsUndefined() || targetObject->IsHole()) {
+        return notFound;
     }
     
     // Three cases, one is export namesapce/function, two is export namesapce/class/function,
     // three is export classs/function, then according to the function name to find function
-    JSHandle<JSTaggedValue> funcNameKey(factory->NewFromUtf8(funcName));
+    JSHandle<JSTaggedValue> funcNameKey(factory->NewFromStdString(funcName));
     JSHandle<JSTaggedValue> targetFunc = JSObject::GetProperty(thread, targetObject, funcNameKey).GetValue();
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, notFound);
     return targetFunc;

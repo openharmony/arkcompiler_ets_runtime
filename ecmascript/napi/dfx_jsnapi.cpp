@@ -1160,10 +1160,11 @@ void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)
 }
 
 JSHandle<JSTaggedValue> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,
-                                                       const std::string &className, const std::string &funcName)
+                                                       const std::string &namespaceName, const std::string &className,
+                                                       const std::string &funcName)
 {
     JSThread *thread = vm->GetJSThread();
-    return SourceTextModule::FindFuncInModuleForHook(thread, recordName, className, funcName);
+    return SourceTextModule::FindFuncInModuleForHook(thread, recordName, namespaceName, className, funcName);
 }
 
 void DFXJSNApi::ReplaceFunctionForHook(const EcmaVM *vm, JSHandle<JSTaggedValue> &target,

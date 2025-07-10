@@ -793,10 +793,12 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_1)
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
-    std::string recordName = "module_export";
+    std::string recordName = "module";
+    std::string namespaceName = "TestNamespace2";
     std::string className = "TestClass1";
-    std::string funcName = "testFunction3";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
 
@@ -806,10 +808,12 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_2)
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
-    std::string recordName = "termination";
-    std::string className = "TestClass2";
-    std::string funcName = "testFunction3";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    std::string recordName = "module_export";
+    std::string namespaceName = "TestNamespace2";
+    std::string className = "TestClass1";
+    std::string funcName = "testFunction1";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsUndefined());
 }
 
@@ -820,13 +824,12 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_3)
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
     std::string recordName = "module_export";
-    std::string className = "TestClass1";
-    std::string funcName = "testFunction2";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
-    Method *method = Method::Cast(function->GetMethod(thread_));
-    EXPECT_EQ("testFunction2", method->ParseFunctionName(thread_));
+    std::string namespaceName = "TestNamespace2";
+    std::string className = "TestClass2";
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsUndefined());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_4)
@@ -836,13 +839,12 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_4)
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
     std::string recordName = "module_export";
-    std::string className = "";
+    std::string namespaceName = "";
+    std::string className = "TestClass2";
     std::string funcName = "testFunction1";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
-    Method *method = Method::Cast(function->GetMethod(thread_));
-    EXPECT_EQ("testFunction1", method->ParseFunctionName(thread_));
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsUndefined());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_5)
@@ -852,13 +854,12 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_5)
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
     std::string recordName = "module_export";
+    std::string namespaceName = "TestNamespace2";
     std::string className = "";
-    std::string funcName = "testFunction3";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
-    EXPECT_TRUE(functionFound->IsJSFunction());
-    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
-    Method *method = Method::Cast(function->GetMethod(thread_));
-    EXPECT_EQ("testFunction3", method->ParseFunctionName(thread_));
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsUndefined());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_6)
@@ -868,13 +869,69 @@ HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_6)
     bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
     EXPECT_TRUE(result);
     std::string recordName = "module_export";
+    std::string namespaceName = "TestNamespace1";
     std::string className = "";
-    std::string funcName = "testFunction4";
-    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName, className, funcName);
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
     EXPECT_TRUE(functionFound->IsJSFunction());
     JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
     Method *method = Method::Cast(function->GetMethod(thread_));
-    EXPECT_EQ("testFunction4", method->ParseFunctionName(thread_));
+    EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_7)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string namespaceName = "TestNamespace2";
+    std::string className = "TestClass1";
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_8)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string namespaceName = "";
+    std::string className = "TestClass2";
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_9)
+{
+    std::string baseFileName = ABC_PATH "module_export.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    bool result = JSNApi::Execute(vm_, baseFileName, "module_export");
+    EXPECT_TRUE(result);
+    std::string recordName = "module_export";
+    std::string namespaceName = "";
+    std::string className = "";
+    std::string funcName = "testFunction";
+    JSHandle<JSTaggedValue> functionFound = DFXJSNApi::FindFunctionForHook(vm_, recordName,
+        namespaceName, className, funcName);
+    EXPECT_TRUE(functionFound->IsJSFunction());
+    JSFunction *function = JSFunction::Cast(functionFound->GetTaggedObject());
+    Method *method = Method::Cast(function->GetMethod(thread_));
+    EXPECT_EQ("testFunction", method->ParseFunctionName(thread_));
 }
 
 static JSTaggedValue TestForFunction1([[maybe_unused]] EcmaRuntimeCallInfo *argv)

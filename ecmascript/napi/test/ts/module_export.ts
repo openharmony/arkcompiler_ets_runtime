@@ -15,7 +15,7 @@
 
 // export namspace/function
 export namespace TestNamespace1 {
-    export function testFunction1(num : number) {
+    export function testFunction(num : number) {
         return num
     }
 }
@@ -29,7 +29,7 @@ export namespace TestNamespace2 {
             this.value = 0
         }
 
-        testFunction2(num1 : number, num2 : number) {
+        testFunction(num1 : number, num2 : number) {
             return num1 + num2
         }
     }
@@ -44,12 +44,12 @@ export class TestClass2 {
         this.value = 0
     }
 
-    testFunction3(num1 : number, num2 : number) {
+    testFunction(num1 : number, num2 : number) {
         return num1 + num2
     }
 }
 
 // export function
-export function testFunction4(num1 : number, num2 : number) {
+export function testFunction(num1 : number, num2 : number) {
     return num1 + num2
 }

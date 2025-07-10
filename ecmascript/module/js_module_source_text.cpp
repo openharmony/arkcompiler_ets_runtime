@@ -2303,33 +2303,40 @@ JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByIndexBinding(JSThread* 
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
+                                                                  const std::string &namespaceName,
                                                                   const std::string &className,
                                                                   const std::string &funcName)
 {
     DisallowGarbageCollection no_gc;
-    JSHandle<JSTaggedValue> functionFound(thread, thread->GlobalConstants()->GetUndefined());
+    JSHandle<JSTaggedValue> functionNotFound(thread, thread->GlobalConstants()->GetUndefined());
 
     auto *moduleManager = thread->GetModuleManager();
     CString referencing(recordName.c_str(), recordName.length());
     if (!moduleManager->IsLocalModuleLoaded(referencing)) {
-        return functionFound;
+        return functionNotFound;
+    }
+    auto module = moduleManager->HostGetImportedModule(referencing);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    std::string keyStr = funcName;
+    if (!namespaceName.empty()) {
+        keyStr = namespaceName;
+    } else if (!className.empty()) {
+        keyStr = className;
     }
 
-    auto module = moduleManager->HostGetImportedModule(referencing);
-    JSHandle<JSTaggedValue> dictionary = JSHandle<JSTaggedValue>(thread, module->GetNameDictionary(thread));
-    if (dictionary->IsUndefined()) {
-        return functionFound;
+    JSTaggedValue result;
+    if (module->GetIsNewBcVersion()) {
+        int index = ecmascript::ModuleManager::GetExportObjectIndex(thread->GetEcmaVM(), module, keyStr.c_str());
+        result = module->GetModuleValue(thread, index, false);
+    } else {
+        JSHandle<EcmaString> keyHandle = factory->NewFromASCII(keyStr.c_str());
+        result = module->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     }
-    JSHandle<TaggedArray> exportArray = JSHandle<TaggedArray>(thread, dictionary.GetTaggedValue());
-    size_t arrLen = exportArray->GetLength();
-    JSMutableHandle<JSTaggedValue> exportEntity(thread, thread->GlobalConstants()->GetUndefined());
-    for (size_t idx = 0; idx < arrLen; idx++) {
-        exportEntity.Update(exportArray->Get(thread, idx));
-        functionFound = JSObject::FindFuncInObjectForHook(thread, exportEntity, className, funcName);
-        if (!functionFound->IsUndefined()) {
-            break;
-        }
+    JSHandle<JSTaggedValue> exportEntity(thread, result);
+    if (exportEntity->IsUndefined() || exportEntity->IsHole()) {
+        return functionNotFound;
     }
-    return functionFound;
+    return JSObject::FindFuncInObjectForHook(thread, exportEntity, className, funcName);
 }
 } // namespace panda::ecmascript

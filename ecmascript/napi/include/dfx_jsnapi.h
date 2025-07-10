@@ -170,7 +170,8 @@ public:
     static void SetJsRawHeapCropLevel(CropLevel level);
 
     static ecmascript::JSHandle<JSTaggedValue> FindFunctionForHook(const EcmaVM *vm,
-        const std::string &recordName, const std::string &className, const std::string &funcName);
+        const std::string &recordName, const std::string &namespaceName,
+        const std::string &className, const std::string &funcName);
     static void ReplaceFunctionForHook(const EcmaVM *vm, ecmascript::JSHandle<JSTaggedValue> &target,
         ecmascript::JSHandle<JSTaggedValue> &hook, ecmascript::JSHandle<JSTaggedValue> &backup);
     static bool LoadHookModule(const EcmaVM *vm);
