@@ -953,7 +953,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
 
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
-        object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+        object = reinterpret_cast<TaggedObject *>(
             common::HeapAllocator::AllocateInNonmoveOrHuge(size, common::LanguageType::DYNAMIC));
         object->SetClass(thread, hclass);
     } else {
@@ -984,7 +984,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
 
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
-        object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+        object = reinterpret_cast<TaggedObject *>(
             common::HeapAllocator::AllocateInNonmoveOrHuge(size, common::LanguageType::DYNAMIC));
     } else {
         object = thread->IsJitThread() ? nullptr :
@@ -1040,7 +1040,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
 {
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
-        object = thread->IsJitThread() ? nullptr : AllocateOldForCMC(thread, size);
+        object = AllocateOldForCMC(thread, size);
     } else {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         if (size > g_maxRegularHeapObjectSize) {
