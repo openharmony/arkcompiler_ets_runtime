@@ -379,7 +379,7 @@ void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
     });
     std::atomic<int> taskIter = 0;
     std::function<Mutator*()> getNextMutator = [&taskIter, &taskList]() -> Mutator* {
-        uint32_t idx = taskIter.fetch_add(1U, std::memory_order_relaxed);
+        auto idx = taskIter.fetch_add(1U, std::memory_order_relaxed);
         if (idx < taskList.size()) {
             return taskList[idx];
         }
@@ -954,8 +954,7 @@ void WCollector::SetGCThreadRssPriority(common::RssPriorityType type)
 #ifdef ENABLE_RSS
     if (IsPostForked()) {
         LOG_COMMON(DEBUG) << "SetGCThreadRssPriority gettid " << gettid();
-        uint64_t pid = getpid();
-        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(pid) },
+        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
                                                     { "tid", std::to_string(gettid()) } };
         OHOS::ResourceSchedule::ResSchedClient::GetInstance()
             .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,

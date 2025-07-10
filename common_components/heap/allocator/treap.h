@@ -430,6 +430,9 @@ private:
         }
 
         node = *nodePtr;
+        if (UNLIKELY_CC(node == nullptr)) {
+            return false;
+        }
         idx = node->GetIndex();
         auto count = node->GetCount();
 
