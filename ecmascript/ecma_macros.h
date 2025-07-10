@@ -185,6 +185,15 @@
 #define ACCESSORS_SYNCHRONIZED_DCHECK(name, offset, endOffset, check)                                                 \
     ACCESSORS_SYNCHRONIZED_WITH_DCHECK_BASE(name, offset, endOffset, true, check)
 
+#define ACCESSORS_SYNCHRONIZED_DCHECK_WITH_RB_MODE(name, offset, endOffset, check)                                    \
+    ACCESSORS_SYNCHRONIZED_DCHECK(name, offset, endOffset, check)                                                     \
+    template <RBMode mode = RBMode::DEFAULT_RB>                                                                       \
+    JSTaggedValue Get##name(const JSThread *thread) const                                                             \
+    {                                                                                                                 \
+        FIELD_ACCESS_CHECK(true, name, check);                                                                        \
+        return JSTaggedValue(Barriers::GetTaggedValueAtomic<mode>(thread, this, offset));                             \
+    }
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFINE_ALIGN_SIZE(offset) \
     static constexpr size_t SIZE = ((offset) + sizeof(JSTaggedType) - 1U) & (~(sizeof(JSTaggedType) - 1U))

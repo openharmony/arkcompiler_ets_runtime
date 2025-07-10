@@ -45,14 +45,26 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         auto thread = JSThread::GetCurrent();
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
+        LayoutInfo *layout;
+        if (thread == nullptr) {
+            // gc thread
+            layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_CMC_RB>(thread).GetTaggedObject());
+        } else {
+            // serialization
+            layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
+        }
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity(); // only += operator is supported
         end = std::min(end, realEnd);
 
         int index = 0;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr(thread, index++);
+            PropertyAttributes attr;
+            if (thread == nullptr) {
+                attr = layout->GetAttr<RBMode::FAST_CMC_RB>(thread, index++);
+            } else {
+                attr = layout->GetAttr(thread, index++);
+            }
             if (attr.IsTaggedRep()) {
                 cb(slot);
             }
