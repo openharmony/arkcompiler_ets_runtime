@@ -824,7 +824,7 @@ public:
     GateRef GetCMCRegionType(GateRef obj);
     GateRef GetGCPhase(GateRef glue);
     GateRef GetGCReason(GateRef glue);
-    GateRef IsInYoungSpace(GateRef regionType);
+    GateRef CMCIsInYoungSpace(GateRef regionType);
     GateRef IsOldToYoung(GateRef objRegionType, GateRef valueRegionType);
     void MarkRSetCardTable(GateRef obj, Label *exit);
     GateRef ShouldGetGCReason(GateRef gcPhase);

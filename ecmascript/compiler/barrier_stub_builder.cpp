@@ -744,27 +744,103 @@ void BarrierStubBuilder::DoReverseBarrier()
 {
     auto env = GetEnvironment();
     Label entry(env);
-    env->SubCfgEntry(&entry);
     Label exit(env);
     Label checkNext(env);
+    Label needMarking(env);
+    Label notMarkRSet(env);
+    Label markInBuffer(env);
+    Label continueProcessing(env);
+    Label isTaggedObject(env);
+    Label RefisTaggedObject(env);
+    Label markRSet(env);
+    Label continueLoopHead(env);
+    Label continueLoopEnd(env);
+    Label notMarkRSetLoopHead(env);
+    Label notMarkRSetLoopEnd(env);
+    Label iLessLength(env);
+    Label indexLessLength(env);
+    env->SubCfgEntry(&entry);
+
     BRANCH_UNLIKELY(LoadPrimitive(
         VariableType::BOOL(), glue_, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &exit, &checkNext);
-    Bind(&checkNext);
-    Label handleMark(env);
-    Label handleBitSet(env);
-    Label doReverse(env);
-    BRANCH_NO_WEIGHT(Int32Equal(slotCount_, Int32(0)), &exit, &doReverse);
-    Bind(&doReverse);
-    BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
-    Bind(&handleBitSet);
+        &needMarking, &checkNext);
+    Bind(&needMarking);
     {
-        DoReverseBarrierInternal();
-        Jump(&handleMark);
+        GateRef objRegionType = GetCMCRegionType(dstObj_);
+        GateRef gcPhase = GetGCPhase(glue_);
+        GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+        BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &continueProcessing);
+        Bind(&continueProcessing);
+        {
+            DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+            Label checkOldToYoung(env);
+            BRANCH(ShouldUpdateRememberSet(glue_, gcPhase), &checkOldToYoung, &notMarkRSet);
+            Bind(&checkOldToYoung);
+            Jump(&continueLoopHead);
+            LoopBegin(&continueLoopHead);
+            {
+                BRANCH(Int32UnsignedLessThan(*i, slotCount_), &iLessLength, &notMarkRSet);
+                Bind(&iLessLength);
+                {
+                    //GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uintptr_t)));
+                    GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
+                    GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
+                    BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &continueLoopEnd);
+                }
+                Bind(&isTaggedObject);
+                MarkRSetCardTable(dstObj_, &notMarkRSet);
+                Bind(&continueLoopEnd);
+                i = Int32Add(*i, Int32(1));
+                LoopEnd(&continueLoopHead);
+            }
+        }
+        Bind(&notMarkRSet);
+        {
+            DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+            GateRef gcPhase = GetGCPhase(glue_);
+            GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+            Jump(&notMarkRSetLoopHead);
+            LoopBegin(&notMarkRSetLoopHead);
+            {
+                BRANCH_LIKELY(Int32UnsignedLessThan(*index, slotCount_), &indexLessLength, &exit);
+                Bind(&indexLessLength);
+                GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+                GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
+
+                BRANCH(TaggedIsHeapObject(ref), &RefisTaggedObject, &notMarkRSetLoopEnd);
+                Bind(&RefisTaggedObject);
+
+                BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+                Bind(&markInBuffer);
+                {
+                    ASSERT(RuntimeStubCSigns::Get(RTSTUB_ID(MarkInBuffer))->IsNoTailCall());
+                    CallNGCRuntime(glue_, RTSTUB_ID(MarkInBuffer), {ref});
+                    Jump(&notMarkRSetLoopEnd);
+                }
+                
+                Bind(&notMarkRSetLoopEnd);
+                index = Int32Add(*index, Int32(1));
+                LoopEnd(&notMarkRSetLoopHead);
+            }
+        }
     }
-    Bind(&handleMark);
-    HandleMark();
-    Jump(&exit);
+    Bind(&checkNext);
+    {
+        Label handleMark(env);
+        Label handleBitSet(env);
+        Label doReverse(env);
+        BRANCH_NO_WEIGHT(Int32Equal(slotCount_, Int32(0)), &exit, &doReverse);
+        Bind(&doReverse);
+        BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
+        Bind(&handleBitSet);
+        {
+            DoReverseBarrierInternal();
+            Jump(&handleMark);
+        }
+        Bind(&handleMark);
+        HandleMark();
+        Jump(&exit);
+    }
     Bind(&exit);
     env->SubCfgExit();
 }

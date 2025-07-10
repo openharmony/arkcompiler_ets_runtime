@@ -2039,15 +2039,9 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Bind(&notCOWArray);
     GateRef thisLen = GetArrayLength(thisValue);
     GateRef thisArrLen = ZExtInt32ToInt64(thisLen);
-// CMC-GC may need to fix it later
 #if ENABLE_NEXT_OPTIMIZATION
     Label useReversBarrier(env);
     Label noReverseBarrier(env);
-    Label checkNext(env);
-    BRANCH_UNLIKELY(
-        LoadPrimitive(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &noReverseBarrier, &checkNext);
-    Bind(&checkNext);
     // 10 : length < 10 reverse item by item
     BRANCH(Int32LessThan(thisLen, Int32(10)), &noReverseBarrier, &useReversBarrier);
     Bind(&useReversBarrier);
