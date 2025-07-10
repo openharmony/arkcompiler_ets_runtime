@@ -312,6 +312,11 @@ public:
         return gcKeyStats_;
     }
 
+    void SetJSThread(JSThread *thread)
+    {
+        thread_ = thread;
+    }
+
     JSThread *GetAssociatedJSThread() const
     {
         return thread_;
