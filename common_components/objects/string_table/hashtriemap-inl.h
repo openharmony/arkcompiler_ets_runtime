@@ -222,6 +222,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
     }
 
     BaseString* value = *str;
+    ASSERT(value != nullptr);
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(value);
@@ -333,6 +334,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
         }
     }
 
+    ASSERT(value != nullptr);
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(value);
@@ -443,6 +445,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
     }
 
     BaseString* value = *str;
+    ASSERT(value != nullptr);
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(value);
@@ -641,6 +644,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
     }
 
     BaseString* value = *str;
+    ASSERT(value != nullptr);
     value->SetIsInternString();
     IntegerCache::InitIntegerCache(value);
     Entry* newEntry = new Entry(value);

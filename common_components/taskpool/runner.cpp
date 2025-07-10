@@ -115,10 +115,9 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 void Runner::SetRssPriority([[maybe_unused]] RssPriorityType type)
 {
 #ifdef ENABLE_RSS
-    uint64_t pid = getpid();
     int64_t status = static_cast<int64_t>(type);
     for (uint32_t threadId : gcThreadId_) {
-        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(pid) },
+        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
                                                     { "tid", std::to_string(threadId) } };
         OHOS::ResourceSchedule::ResSchedClient::GetInstance()
             .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,

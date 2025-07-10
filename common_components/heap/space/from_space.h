@@ -40,7 +40,7 @@ class FromSpace : public RegionalSpace {
 public:
     FromSpace(RegionManager& regionManager, RegionSpace& heap) : RegionalSpace(regionManager),
         fromRegionList_("from-regions"),
-        exemptedFromRegionList_("exempted from-regions"), heap_(heap) {}
+        exemptedFromRegionList_("exempted from-regions"), heap_(heap), exemptedRegionThreshold_(0) {}
 
     void DumpRegionStats() const;
 

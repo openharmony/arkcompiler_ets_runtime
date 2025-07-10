@@ -34,8 +34,8 @@ inline bool GCRequest::IsFrequentGC() const
 
 inline bool GCRequest::IsFrequentAsyncGC() const
 {
-    int64_t now = static_cast<int64_t>(TimeUtil::NanoSeconds());
-    return static_cast<uint64_t>(now - GCStats::GetPrevGCFinishTime()) < minIntervelNs;
+    uint64_t now = TimeUtil::NanoSeconds();
+    return (now - GCStats::GetPrevGCFinishTime()) < minIntervelNs;
 }
 
 // heuristic gc is triggered by object allocation,
