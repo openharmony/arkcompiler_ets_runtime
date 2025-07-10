@@ -198,12 +198,12 @@ bool ConstantPool::IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
         GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
 }
 
-JSTaggedValue ConstantPool::GetIhcFromAOTLiteralInfo(JSTaggedValue constpool, uint32_t index)
+JSTaggedValue ConstantPool::GetIhcFromAOTLiteralInfo(JSThread *thread, JSTaggedValue constpool, uint32_t index)
 {
     ASSERT(constpool.IsConstantPool());
-    auto val = ConstantPool::Cast(constpool.GetTaggedObject())->GetPrimitive(index);
+    auto val = ConstantPool::Cast(constpool.GetTaggedObject())->Get(thread, index);
     if (val.IsHeapObject() && val.IsAOTLiteralInfo()) {
-        return AOTLiteralInfo::Cast(val.GetTaggedObject())->GetIhc();
+        return AOTLiteralInfo::Cast(val.GetTaggedObject())->GetIhc(thread);
     }
     return JSTaggedValue::Undefined();
 }

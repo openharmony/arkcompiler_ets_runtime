@@ -955,8 +955,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSTaggedValue val = cp->GetObjectFromCache(thread, literalId);
     if (val.IsAOTLiteralInfo()) {
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
-        ihc.Update(aotLiteralInfo->GetIhc());
-        chc.Update(aotLiteralInfo->GetChc());
+        ihc.Update(aotLiteralInfo->GetIhc(thread));
+        chc.Update(aotLiteralInfo->GetChc(thread));
     }
 
     JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry);
@@ -2378,7 +2378,7 @@ void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread* thread,
             JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, clsPrototype->GetClass()));
         }
         //avoid one thread uses ihc twice or more times
-        aotLiteralInfo->SetIhc(JSTaggedValue::Undefined());
+        aotLiteralInfo->SetIhcPrimitive(JSTaggedValue::Undefined());
     }
 }
 
@@ -2399,7 +2399,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
         JSTaggedValue val = unsharedCpHandle->GetObjectFromCache(thread, methodId);
         if (val.IsAOTLiteralInfo()) {
             aotLiteralInfo.Update(val);
-            ihc.Update(aotLiteralInfo->GetIhc());
+            ihc.Update(aotLiteralInfo->GetIhc(thread));
         }
     }
     JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpoolHandle.GetTaggedValue(), methodId);

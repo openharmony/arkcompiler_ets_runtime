@@ -33,8 +33,8 @@ JsAotReaderCallback AOTFileManager::jsAotReader_ = nullptr;
 void AOTLiteralInfo::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength)
 {
     TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
-    SetIhc(JSTaggedValue::Undefined());
-    SetChc(JSTaggedValue::Undefined());
+    SetIhcPrimitive(JSTaggedValue::Undefined());
+    SetChcPrimitive(JSTaggedValue::Undefined());
     SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
 }
 

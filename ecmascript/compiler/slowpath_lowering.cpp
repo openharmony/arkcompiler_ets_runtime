@@ -3076,7 +3076,8 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     auto unsharedConstPool = compilationEnv_->FindOrCreateUnsharedConstpool(methodLiteral_->GetMethodId().GetOffset());
     // not optimize if it may use ihc to define function
     if (!unsharedConstPool.IsHole() &&
-        !ConstantPool::GetIhcFromAOTLiteralInfo(unsharedConstPool, methodIdValue).IsUndefined()) {
+        !ConstantPool::GetIhcFromAOTLiteralInfo(compilationEnv_->GetHostThread(),
+                                                unsharedConstPool, methodIdValue).IsUndefined()) {
         return false;
     }
 
