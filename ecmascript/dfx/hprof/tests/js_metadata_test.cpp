@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -254,9 +254,9 @@ public:
                                                 "MaybeUnregister", "Next", "Prev", "JS_FINALIZATION_REGISTRY"}},
             {JSType::JS_FLOAT32_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT32_ARRAY"}},
             {JSType::JS_FLOAT64_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT64_ARRAY"}},
-            {JSType::JS_FORIN_ITERATOR, {"Object", "CachedHClass", "Keys", "JS_FORIN_ITERATOR"}},
-            {JSType::JS_FUNCTION, {"ProtoOrHClass", "LexicalEnv", "MachineCode", "BaselineCode", "InterfaceType",
-                                   "RawProfileTypeInfo", "HomeObject", "Module", "JS_FUNCTION"}},
+            {JSType::JS_FORIN_ITERATOR, {"Object", "CachedHclass", "Keys", "JS_FORIN_ITERATOR"}},
+            {JSType::JS_FUNCTION, {"ProtoOrHClass", "LexicalEnv", "MachineCode", "BaselineCode", "RawProfileTypeInfo",
+                                   "HomeObject", "Module", "JS_FUNCTION"}},
             {JSType::JS_FUNCTION_BASE, {"Method", "JS_FUNCTION_BASE"}},
             {JSType::JS_GENERATOR_CONTEXT, {"RegsArray", "Method", "This", "Acc",
                                             "GeneratorObject", "LexicalEnv", "JS_GENERATOR_CONTEXT"}},
@@ -672,7 +672,6 @@ public:
                                    JSFunction::LEXICAL_ENV_OFFSET,
                                    JSFunction::MACHINECODE_OFFSET,
                                    JSFunction::BASELINECODE_OFFSET,
-                                   JSFunction::INTERFACETYPE_OFFSET,
                                    JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
                                    JSFunction::HOME_OBJECT_OFFSET,
                                    JSFunction::ECMA_MODULE_OFFSET,
@@ -1457,8 +1456,7 @@ public:
                 JSFunction::LEXICAL_ENV_OFFSET - JSFunction::PROTO_OR_DYNCLASS_OFFSET,
                 JSFunction::MACHINECODE_OFFSET - JSFunction::LEXICAL_ENV_OFFSET,
                 JSFunction::BASELINECODE_OFFSET - JSFunction::MACHINECODE_OFFSET,
-                JSFunction::INTERFACETYPE_OFFSET - JSFunction::BASELINECODE_OFFSET,
-                JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET - JSFunction::INTERFACETYPE_OFFSET,
+                JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET - JSFunction::BASELINECODE_OFFSET,
                 JSFunction::HOME_OBJECT_OFFSET - JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
                 JSFunction::ECMA_MODULE_OFFSET - JSFunction::HOME_OBJECT_OFFSET,
                 JSFunction::WORK_NODE_POINTER_OFFSET - JSFunction::ECMA_MODULE_OFFSET}},

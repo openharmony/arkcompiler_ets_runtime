@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1724,5 +1724,16 @@ HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
     vm_->CollectGarbage(TriggerGCType::FULL_GC);
     vm_->SetEnableForceGC(true);
     EXPECT_TRUE(weakRefArray->Get(thread_, 0).IsUndefined());
+}
+
+HWTEST_F_L0(JSNApiTests, InitHybridVMEnv)
+{
+    LocalScope scope(vm_);
+    JSNApi::InitHybridVMEnv(vm_);
+
+    auto instance = ecmascript::Runtime::GetInstance();
+    ASSERT(instance != nullptr);
+
+    EXPECT_TRUE(instance->IsHybridVm());
 }
 } // namespace panda::test

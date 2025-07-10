@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -297,6 +297,16 @@ public:
         return releaseSecureMemCallback_;
     }
 
+    bool IsHybridVm() const
+    {
+        return isHybridVm_;
+    }
+
+    void SetHybridVm(bool isHybridVm)
+    {
+        isHybridVm_ = isHybridVm;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -384,6 +394,8 @@ private:
 
     // for rawheap dump crop level
     RawHeapDumpCropLevel rawHeapDumpCropLevel_ {RawHeapDumpCropLevel::DEFAULT};
+    // for 1.2runtime interface type
+    bool isHybridVm_ {false};
     
     // release secure mem after jspandafile released.
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};

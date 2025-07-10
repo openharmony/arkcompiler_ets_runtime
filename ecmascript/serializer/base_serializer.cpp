@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -194,7 +194,6 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
         switch (fieldOffset) {
             case JSFunction::MACHINECODE_OFFSET:
             case JSFunction::BASELINECODE_OFFSET:
-            case JSFunction::INTERFACETYPE_OFFSET:
             case JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
@@ -325,7 +324,6 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
             case JSFunction::PROTO_OR_DYNCLASS_OFFSET:
             case JSFunction::MACHINECODE_OFFSET:
             case JSFunction::BASELINECODE_OFFSET:
-            case JSFunction::INTERFACETYPE_OFFSET:
             case JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET:
             case JSFunction::HOME_OBJECT_OFFSET:
             case JSFunction::ECMA_MODULE_OFFSET: {
