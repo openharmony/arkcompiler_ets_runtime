@@ -127,7 +127,8 @@ void FlipTest()
         EXPECT_FALSE(mutatorManager.WorldStopped());
         EXPECT_TRUE(stwCallbackExecuted);
     };
-    mutatorManager.FlipMutators("flip-test", stwTest, &mutatorTest);
+    STWParam stwParam{"flip-test"};
+    mutatorManager.FlipMutators(stwParam, stwTest, &mutatorTest);
 }
 
 HWTEST_F_L0(WCollectorTest, FlipTest)

@@ -85,7 +85,8 @@ void ArkHeapData::DumpHeap()
     }
 
     // step2 - write file
-    ScopedStopTheWorld scopedStopTheWorld("dump-heap");
+    STWParam stwParam{"dump-heap"};
+    ScopedStopTheWorld stw(stwParam);
     ProcessHeap();
     WriteHeap();
 

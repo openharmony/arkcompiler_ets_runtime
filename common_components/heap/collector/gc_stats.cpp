@@ -34,10 +34,12 @@ void GCStats::Init()
 {
     isConcurrentMark = false;
     async = false;
-    stw1Time = 0;
-    stw2Time = 0;
     gcStartTime = TimeUtil::NanoSeconds();
     gcEndTime = TimeUtil::NanoSeconds();
+
+    totalSTWTime = 0;
+    maxSTWTime = 0;
+
     collectedObjects = 0;
     collectedBytes = 0;
 
@@ -81,10 +83,10 @@ void GCStats::Dump() const
     std::ostringstream oss;
     oss <<
         "GC for " << g_gcRequests[reason].name << ": " << (async ? "async:" : "sync: ") <<
-        "gcType: " << GCTypeToString(gcType) << ", collected objects: " <<
-        collectedObjects << "(" << collectedBytes << "->" << PrettyOrderInfo(collectedBytes, "B") << "), " <<
+        "gcType: " << GCTypeToString(gcType) << ", collected bytes: " <<
+        collectedBytes << "->" << PrettyOrderInfo(collectedBytes, "B") << ", " <<
         "->" << PrettyOrderInfo(liveSize, "B") << "/" << heapSize << "->" <<
-        PrettyOrderInfo(heapSize, "B") << "), max pause: " << MaxSTWTime() <<
+        PrettyOrderInfo(heapSize, "B") << ", max pause: " << MaxSTWTime() <<
         "->" << maxSTWTime << ", total pause: " << TotalSTWTime() << "->" << totalSTWTime <<
         ", total GC time: " << (gcEndTime - gcStartTime) << "->" << totalGCTime;
     VLOG(INFO, oss.str().c_str());

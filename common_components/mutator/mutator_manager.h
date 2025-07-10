@@ -48,6 +48,14 @@ bool IsGcThread();
 
 using MutatorVisitor = std::function<void(Mutator&)>;
 
+struct STWParam {
+    const char* stwReason;
+    uint64_t elapsedTimeNs = 0;
+
+    uint64_t GetElapsedNs() const { return elapsedTimeNs; }
+    uint64_t GetElapsedUs() const { return elapsedTimeNs / 1000; }
+};
+
 class MutatorManager {
 public:
     MutatorManager() {}
@@ -163,7 +171,7 @@ public:
     void EnsureCpuProfileFinish(std::list<Mutator*> &undoneMutators);
 
     template<class STWFunction>
-    void FlipMutators(const char* reason, STWFunction&& stwFunction, FlipFunction *flipFunction);
+    void FlipMutators(STWParam& param, STWFunction&& stwFunction, FlipFunction *flipFunction);
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     void DumpForDebug();
     void DumpAllGcInfos();
@@ -259,17 +267,20 @@ private:
 // Scoped stop the world.
 class ScopedStopTheWorld {
 public:
-    __attribute__((always_inline)) explicit ScopedStopTheWorld(const char* stwReason,
+    __attribute__((always_inline)) explicit ScopedStopTheWorld(STWParam& param,
                                                                bool syncGCPhase = false, GCPhase phase = GC_PHASE_IDLE)
+        : stwParam_(param)
     {
-        reason_ = stwReason;
+        reason_ = param.stwReason;
         MutatorManager::Instance().StopTheWorld(syncGCPhase, phase);
         startTime_ = TimeUtil::NanoSeconds();
     }
 
     __attribute__((always_inline)) ~ScopedStopTheWorld()
     {
-        VLOG(DEBUG, "%s stw time %zu us", reason_, GetElapsedTime()/1000); // 1000:nsec per usec
+        uint64_t elapsedTimeNs = GetElapsedTime();
+        stwParam_.elapsedTimeNs = elapsedTimeNs;
+        VLOG(DEBUG, "%s stw time %zu us", reason_, elapsedTimeNs / 1000); // 1000:nsec per usec
         MutatorManager::Instance().StartTheWorld();
     }
 
@@ -278,6 +289,7 @@ public:
 private:
     uint64_t startTime_ = 0;
     const char* reason_ = nullptr;
+    STWParam& stwParam_;
 };
 
 // Scoped lock STW, this prevent other thread STW during the current scope.

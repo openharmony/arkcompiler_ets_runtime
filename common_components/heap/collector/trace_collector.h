@@ -141,7 +141,8 @@ public:
             if (MutatorManager::Instance().WorldStopped()) {
                 DumpHeap("before_gc");
             } else {
-                ScopedStopTheWorld stw("dump-heap-before-gc");
+                STWParam stwParam{"dump-heap-before-gc"};
+                ScopedStopTheWorld stw(stwParam);
                 DumpHeap("before_gc");
             }
         }
@@ -153,7 +154,8 @@ public:
             if (MutatorManager::Instance().WorldStopped()) {
                 DumpHeap("after_gc");
             } else {
-                ScopedStopTheWorld stw("dump-heap-after-gc");
+                STWParam stwParam{"dump-heap-after-gc"};
+                ScopedStopTheWorld stw(stwParam);
                 DumpHeap("after_gc");
             }
         }

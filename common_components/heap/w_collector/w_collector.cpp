@@ -480,6 +480,7 @@ void EnumRootsBuffer::UpdateBufferSize()
 template <WCollector::EnumRootsPolicy policy>
 CArrayList<BaseObject *> WCollector::EnumRoots()
 {
+    STWParam stwParam{"wgc-enumroot"};
     EnumRootsBuffer buffer;
     CArrayList<common::BaseObject *> *results = buffer.GetBuffer();
     common::RefFieldVisitor visitor = [&results](RefField<> &filed) { results->push_back(filed.GetTargetObject()); };
@@ -487,17 +488,18 @@ CArrayList<BaseObject *> WCollector::EnumRoots()
     if constexpr (policy == EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR) {
         EnumRootsImpl<VisitRoots>(visitor);
     } else if constexpr (policy == EnumRootsPolicy::STW_AND_NO_FLIP_MUTATOR) {
-        ScopedStopTheWorld stw("wgc-enumroot");
+        ScopedStopTheWorld stw(stwParam);
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL,
                      ("CMCGC::EnumRoots-STW-bufferSize(" + std::to_string(results->capacity()) + ")").c_str(), "");
         EnumRootsImpl<VisitRoots>(visitor);
     } else if constexpr (policy == EnumRootsPolicy::STW_AND_FLIP_MUTATOR) {
-        auto rootSet = EnumRootsFlip(visitor);
+        auto rootSet = EnumRootsFlip(stwParam, visitor);
         for (const auto &roots : rootSet) {
             std::copy(roots.begin(), roots.end(), std::back_inserter(*results));
         }
     }
     buffer.UpdateBufferSize();
+    GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
     return std::move(*results);
 }
 
@@ -580,8 +582,9 @@ void WCollector::PreforwardFlip()
         // Request finalize callback in each vm-thread when gc finished.
         mutator.SetFinalizeRequest();
     };
-    MutatorManager::Instance().FlipMutators("final-mark", remarkAndForwardGlobalRoot, &forwardMutatorRoot);
-
+    STWParam stwParam{"final-mark"};
+    MutatorManager::Instance().FlipMutators(stwParam, remarkAndForwardGlobalRoot, &forwardMutatorRoot);
+    GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
         allocBuffer->ClearRegion();
@@ -639,8 +642,9 @@ void WCollector::DoGarbageCollection()
 #ifdef ENABLE_CMC_RB_DFX
         WVerify::DisableReadBarrierDFX(*this);
 #endif
-
-        ScopedStopTheWorld stw("stw-gc");
+        STWParam stwParam{"stw-gc"};
+    {
+        ScopedStopTheWorld stw(stwParam);
         auto collectedRoots = EnumRoots<EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR>();
         TraceHeap(collectedRoots);
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
@@ -673,17 +677,21 @@ void WCollector::DoGarbageCollection()
 #if defined(ENABLE_CMC_RB_DFX)
         WVerify::EnableReadBarrierDFX(*this);
 #endif
+    }
+        GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
         return;
     } else if (gcMode_ == GCMode::CONCURRENT_MARK) { // 1: concurrent-mark
         auto collectedRoots = EnumRoots<EnumRootsPolicy::STW_AND_NO_FLIP_MUTATOR>();
         TraceHeap(collectedRoots);
+        STWParam finalMarkStwParam{"final-mark"};
     {
-        ScopedStopTheWorld stw("final-mark", true, GCPhase::GC_PHASE_FINAL_MARK);
+        ScopedStopTheWorld stw(finalMarkStwParam, true, GCPhase::GC_PHASE_FINAL_MARK);
         Remark();
         PostTrace();
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
         Preforward();
     }
+        GetGCStats().recordSTWTime(finalMarkStwParam.GetElapsedNs());
         ConcurrentPreforward();
         // reclaim large objects should after preforward(may process weak ref) and
         // before fix heap(may clear live bit)
@@ -721,10 +729,12 @@ void WCollector::DoGarbageCollection()
     CopyFromSpace();
     WVerify::VerifyAfterForward(*this);
 
+    STWParam prepareFixStwParam{"wgc-preparefix"};
     {
-        ScopedStopTheWorld stw("wgc-preparefix");
+        ScopedStopTheWorld stw(prepareFixStwParam);
         PrepareFix();
     }
+    GetGCStats().recordSTWTime(prepareFixStwParam.GetElapsedNs());
     FixHeap();
     if (isNotYoungGC) {
         CollectPinnedGarbage();
@@ -735,7 +745,7 @@ void WCollector::DoGarbageCollection()
     CollectSmallSpace();
 }
 
-CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(const common::RefFieldVisitor &visitor)
+CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(STWParam& param, const common::RefFieldVisitor &visitor)
 {
     const auto enumGlobalRoots = [this, &visitor]() {
         SetGCThreadQosPriority(common::PriorityMode::STW);
@@ -752,7 +762,7 @@ CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(const common::Ref
         std::lock_guard<std::mutex> lockGuard(stackMutex);
         rootSet.emplace_back(std::move(roots));
     };
-    MutatorManager::Instance().FlipMutators("wgc-enumroot", enumGlobalRoots, &enumMutatorRoot);
+    MutatorManager::Instance().FlipMutators(param, enumGlobalRoots, &enumMutatorRoot);
     return rootSet;
 }
 
