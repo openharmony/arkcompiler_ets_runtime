@@ -570,7 +570,7 @@ void TraceCollector::PostGarbageCollection(uint64_t gcIndex)
     SatbBuffer::Instance().ReclaimALLPages();
     // release pages in PagePool
     PagePool::Instance().Trim();
-    collectorResources_.NotifyGCFinished(gcIndex);
+    collectorResources_.MarkGCFinish(gcIndex);
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpAfterGC();

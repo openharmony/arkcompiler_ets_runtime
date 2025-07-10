@@ -42,7 +42,7 @@ void CollectorProxy::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCT
             currentCollector_ = &wCollector_;
             break;
     }
-    currentCollector_->SetGcStarted(true);
+    currentCollector_->MarkGCStart();
     currentCollector_->RunGarbageCollection(gcIndex, reason, gcType);
 }
 } // namespace common

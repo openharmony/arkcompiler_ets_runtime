@@ -198,6 +198,9 @@ void BaseRuntime::RequestGC(GCReason reason, bool async, GCType gcType)
 
 void BaseRuntime::WaitForGCFinish() { Heap::GetHeap().WaitForGCFinish(); }
 
+void BaseRuntime::EnterGCCriticalSection() { return Heap::GetHeap().MarkGCStart(); }
+void BaseRuntime::ExitGCCriticalSection() { return Heap::GetHeap().MarkGCFinish(); }
+
 bool BaseRuntime::ForEachObj(HeapVisitor& visitor, bool safe)
 {
     return Heap::GetHeap().ForEachObject(visitor, safe);

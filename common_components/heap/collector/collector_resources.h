@@ -40,9 +40,6 @@ public:
     void WaitForGCFinish();
     // gc main loop
     void RunTaskLoop();
-    // Notify that GC has finished.
-    // Must be called by gc thread only
-    void NotifyGCFinished(uint64_t gcIndex);
     uint32_t GetGCThreadCount(const bool isConcurrent) const;
 
     Taskpool *GetThreadPool() const { return gcThreadPool_; }
@@ -71,7 +68,13 @@ public:
     void StartRuntimeThreads();
     void StopRuntimeThreads();
 
+    void MarkGCStart();
+    void MarkGCFinish(uint64_t gcIndex = 0);
+
 private:
+    // Notify that GC has finished.
+    void NotifyGCFinished(uint64_t gcIndex);
+
     void StartGCThreads();
     void TerminateGCTask();
     void StopGCThreads();

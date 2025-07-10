@@ -220,6 +220,12 @@ public:
 
     void SetGcStarted(bool val) { collectorResources_.SetGcStarted(val); }
 
+    void MarkGCStart() { collectorResources_.MarkGCStart(); }
+    void MarkGCFinish(uint64_t gcIndex)
+    {
+        collectorResources_.MarkGCFinish(gcIndex);
+    }
+
     void RunGarbageCollection(uint64_t, GCReason, GCType) override;
 
     void ReclaimGarbageMemory(GCReason reason);

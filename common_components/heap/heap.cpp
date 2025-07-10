@@ -75,6 +75,9 @@ public:
 
     void WaitForGCFinish() override { return collectorResources_.WaitForGCFinish(); }
 
+    void MarkGCStart() override { return collectorResources_.MarkGCStart(); }
+    void MarkGCFinish() override { return collectorResources_.MarkGCFinish(); }
+
     bool IsGCEnabled() const override { return isGCEnabled_.load(); }
 
     void EnableGC(bool val) override { return isGCEnabled_.store(val); }
