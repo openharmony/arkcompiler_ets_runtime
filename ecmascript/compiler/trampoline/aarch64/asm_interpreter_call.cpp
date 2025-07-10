@@ -1844,9 +1844,10 @@ void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
     Register glue = __ TempRegister2();
     // 2: glue & pc
     __ Ldp(glue, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldr(prevFrameRegister, MemoryOperand(sp, 0));
+    __ Str(prevFrameRegister, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     // 2: skip frame type & prev
     __ Ldp(prevFrameRegister, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
-    __ Str(prevFrameRegister, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     size_t begin = __ GetCurrentPosition();
     __ RestoreFpAndLr();
     if (!assembler->FromInterpreterHandler()) {
