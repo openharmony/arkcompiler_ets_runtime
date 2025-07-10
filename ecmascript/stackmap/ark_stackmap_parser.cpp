@@ -74,7 +74,7 @@ int ArkStackMapParser::BinaraySearch(CallsiteHeader *callsiteHead, uint32_t call
     int mid = 0;
     uint32_t v = 0;
     while (low <= high) {
-        mid = (low + high) >> 1;
+        mid = (low + high) / BINARY_SEARCH_DIVISOR;
         v = callsiteHead[mid].calliteOffsetInTxtSec;
         if (v == callSiteAddr) {
             return mid;

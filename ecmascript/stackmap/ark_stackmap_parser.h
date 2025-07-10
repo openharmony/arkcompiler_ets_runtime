@@ -63,7 +63,7 @@ public:
 private:
     static constexpr size_t DEOPT_ENTRY_SIZE = 2;
     static constexpr size_t GC_ENTRY_SIZE = 2;
-
+    static constexpr int BINARY_SEARCH_DIVISOR = 2;
     int BinaraySearch(CallsiteHeader *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
     void GetArkDeopt(uint8_t *stackmapAddr, const CallsiteHeader& callsiteHead,
                      std::vector<ARKDeopt>& deopt) const;

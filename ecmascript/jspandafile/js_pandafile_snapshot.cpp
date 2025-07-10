@@ -41,7 +41,7 @@ void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString
     std::unordered_set<std::shared_ptr<JSPandaFile>> jspandaFiles =
         JSPandaFileManager::GetInstance()->GetHapJSPandaFiles();
     JSThread *thread = vm->GetJSThread();
-    int32_t tid = thread->GetThreadId();
+    int32_t tid = static_cast<int32_t>(thread->GetThreadId());
     for (const auto &item : jspandaFiles) {
         common::Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<JSPandaFileSnapshotTask>(tid, thread, item.get(), path, version));
