@@ -68,32 +68,36 @@ bool SharedModuleManager::SearchInSModuleManager(JSThread *thread, const CString
     RuntimeLockHolder locker(thread, mutex_);
     return SearchInSModuleManagerUnsafe(recordName);
 }
-void SharedModuleManager::InsertInSModuleManager(JSThread *thread, const CString &recordName,
-    JSHandle<SourceTextModule> &moduleRecord)
+
+bool SharedModuleManager::TryInsertInSModuleManager(JSThread *thread, const CString &recordName,
+                                                    const JSHandle<SourceTextModule> &moduleRecord)
 {
     RuntimeLockHolder locker(thread, mutex_);
     JSHandle<JSTaggedValue> module = JSHandle<JSTaggedValue>::Cast(moduleRecord);
-    if (!SearchInSModuleManagerUnsafe(recordName)) {
-        AddResolveImportedSModule(recordName, module.GetTaggedValue());
-        StateVisit stateVisit;
-        sharedModuleMutex_.emplace(recordName, std::move(stateVisit));
-    }
+    return AddResolveImportedSModule(recordName, module.GetTaggedValue());
 }
 
-void SharedModuleManager::TransferSModule(JSThread *thread)
+void SharedModuleManager::AddToResolvedModulesAndCreateSharedModuleMutex(
+    JSThread *thread, const CString &recordName, JSTaggedValue module)
 {
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    CVector<CString> instantiatingSModuleList = moduleManager->GetInstantiatingSModuleList();
-    for (auto s:instantiatingSModuleList) {
-        JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(s);
-        ASSERT(module->GetSharedType() == SharedTypes::SHARED_MODULE);
-        InsertInSModuleManager(thread, s, module);
-        moduleManager->RemoveModuleNameFromList(s);
-    }
-    moduleManager->ClearInstantiatingSModuleList();
+    // Add to normal module resolvedModules_
+    thread->GetModuleManager()->AddResolveImportedModule(recordName, module);
+    RuntimeLockHolder locker(thread, mutex_);
+    StateVisit stateVisit;
+    sharedModuleMutex_.emplace(recordName, std::move(stateVisit));
 }
 
-StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module)
+JSHandle<SourceTextModule> SharedModuleManager::TransferFromLocalToSharedModuleMapAndGetInsertedSModule(
+    JSThread *thread, const JSHandle<SourceTextModule> &module)
+{
+    ASSERT(module->GetSharedType() == SharedTypes::SHARED_MODULE);
+    CString recordName = module->GetEcmaModuleRecordNameString();
+    bool success = TryInsertInSModuleManager(thread, recordName, module);
+    thread->GetModuleManager()->RemoveModuleNameFromList(recordName);
+    return success? module : GetSModule(thread, recordName);
+}
+
+StateVisit &SharedModuleManager::FindModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module)
 {
     RuntimeLockHolder locker(thread, mutex_);
     CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());

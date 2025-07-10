@@ -1226,6 +1226,8 @@ public:
     inline GateRef GetModuleType(GateRef module);
     inline GateRef IsNativeModule(GateRef module);
     inline GateRef IsCjsModule(GateRef module);
+    inline GateRef GetSharedType(GateRef module);
+    inline GateRef IsSharedModule(GateRef module);
     inline GateRef GetCjsModuleFunction(GateRef glue);
     void ModuleEnvMustBeValid(GateRef glue, GateRef curEnv);
     GateRef SearchFromModuleCache(GateRef glue, GateRef moduleName);

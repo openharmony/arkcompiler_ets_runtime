@@ -32,7 +32,6 @@ public:
     explicit ModuleManager(EcmaVM *vm);
     ~ModuleManager()
     {
-        InstantiatingSModuleList_.clear();
         resolvedModules_.clear();
     }
 
@@ -63,7 +62,7 @@ public:
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
     void Iterate(RootVisitor &v);
-    void AddToInstantiatingSModuleList(const CString &record);
+
     ModuleExecuteMode GetExecuteMode() const
     {
         return isExecuteBuffer_.load(std::memory_order_acquire);
@@ -136,10 +135,6 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    CVector<CString> GetInstantiatingSModuleList();
-
-    void ClearInstantiatingSModuleList();
-
     void RemoveModuleFromCache(const CString &recordName);
 
     void RemoveModuleNameFromList(const CString &recordName);
@@ -151,7 +146,6 @@ private:
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
-    CVector<CString> InstantiatingSModuleList_;
 
     friend class EcmaVM;
     friend class PatchLoader;

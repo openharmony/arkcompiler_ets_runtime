@@ -12230,18 +12230,26 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             Label isLdEndExecPatchMain(env);
             Label notLdEndExecPatchMain(env);
             Label notHole(env);
-            GateRef resolvedModule = GetResolveModuleFromResolvedIndexBinding(glue, resolvedBinding);
-            ResolvedModuleMustBeSourceTextModule(glue, resolvedModule);
+            DEFVARIABLE(resolvedModule, VariableType::JS_ANY(), Hole());
+            resolvedModule = GetResolveModuleFromResolvedIndexBinding(glue, resolvedBinding);
+            ResolvedModuleMustBeSourceTextModule(glue, *resolvedModule);
             GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
             BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
 
             Bind(&isLdEndExecPatchMain);
             GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
-                                                               {glue, resolvedModule});
+                                                               {glue, *resolvedModule});
             BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
 
             Bind(&notLdEndExecPatchMain);
-            result = GetModuleValue(glue, resolvedModule, idxOfResolvedBinding);
+            Label isSharedModule(env);
+            Label notSharedModule(env);
+            BRANCH(IsSharedModule(*resolvedModule), &isSharedModule, &notSharedModule);
+            Bind(&isSharedModule);
+            resolvedModule = CallNGCRuntime(glue, RTSTUB_ID(UpdateSharedModule), {glue, *resolvedModule});
+            Jump(&notSharedModule);
+            Bind(&notSharedModule);
+            result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);
             Jump(&exit);
 
             Bind(&notHole);

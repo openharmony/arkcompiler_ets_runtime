@@ -523,7 +523,6 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     // 7. Assert: stack is empty.
     ASSERT(stack.empty());
     // 8. Return undefined.
-    SharedModuleManager::GetInstance()->TransferSModule(thread);
     return SourceTextModule::UNDEFINED_INDEX;
 }
 
@@ -1109,7 +1108,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, JSHandle<SourceTex
         return SourceTextModule::InnerModuleEvaluationUnsafe(
             thread, module, stack, errorStack, index, buffer, size, executeType);
     } else {
-        StateVisit &stateVisit = SharedModuleManager::GetInstance()->findModuleMutexWithLock(thread, module);
+        SharedModuleManager* sharedModuleManager = SharedModuleManager::GetInstance();
+        StateVisit &stateVisit = sharedModuleManager->FindModuleMutexWithLock(thread, module);
         ModuleStatus status = module->GetStatus();
         if (status == ModuleStatus::EVALUATING &&
                 stateVisit.threadId == thread->GetThreadId()) {
@@ -1121,7 +1121,9 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, JSHandle<SourceTex
             return index;
         }
         RuntimeLockHolder locker(thread, stateVisit.mutex);
-        if (status == ModuleStatus::INSTANTIATED) {
+        module = sharedModuleManager->
+            TransferFromLocalToSharedModuleMapAndGetInsertedSModule(thread, module);
+        if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
             stateVisit.threadId = thread->GetThreadId();
             int idx = SourceTextModule::InnerModuleEvaluationUnsafe(
                 thread, module, stack, errorStack, index, buffer, size, executeType);
@@ -2230,10 +2232,22 @@ JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModuleMayThrowError(JSThre
     return JSHandle<JSTaggedValue>::Cast(GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx));
 }
 
+/*
+ * case A import B
+ * if B is sharedModule, every thread will instantiate one if sharedModule B have not put on sharedModuleMap.
+ * In this case, current thread's B may not be the final shared module in sharedModuleMap,
+ * so we shoule use recordName instead of SourceTextModule,
+ * and use [GetImportedModule] to get the final sharedModule B.
+ *
+ * normal -> normal: SourceTextModule
+ * normal -> shared: recordName
+ * shared -> normal: recordName
+ * shared -> shared: recordName
+ */
 void SourceTextModule::SetRequestedModules(JSThread *thread, JSHandle<TaggedArray> requestedModules, uint32_t idx,
     JSHandle<JSTaggedValue> requiredModule, bool isShared)
 {
-    if (!isShared) {
+    if (!isShared && !IsSharedModule(JSHandle<SourceTextModule>::Cast(requiredModule))) {
         requestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
     } else {
         CString recordName = GetModuleName(requiredModule.GetTaggedValue());

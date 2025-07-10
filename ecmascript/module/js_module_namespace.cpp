@@ -154,6 +154,13 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {
+                if (SourceTextModule::IsSharedModule(module)) {
+                    JSHandle<SourceTextModule> sharedModule = SharedModuleManager::GetInstance()->GetSModule(
+                        thread, module->GetEcmaModuleRecordNameString());
+                    if (sharedModule.GetTaggedValue().IsSourceTextModule()) {
+                        module = sharedModule;
+                    }
+                }
                 result = module->GetModuleValue(thread, resolvedBind->GetIndex(), true);
             }
             break;
