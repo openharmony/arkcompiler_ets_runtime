@@ -61,6 +61,7 @@ public:
 
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {
+        std::lock_guard<std::mutex> lock(lock_);
         DCHECK_CC(region->IsThreadLocalRegion());
         tlRegionList_.DeleteRegion(region);
         recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_FULL_REGION);
@@ -88,6 +89,7 @@ public:
 
     void ClearAllGCInfo()
     {
+        std::lock_guard<std::mutex> lock(lock_);
         ClearGCInfo(tlRegionList_);
         ClearGCInfo(recentFullRegionList_);
     }
@@ -107,6 +109,10 @@ private:
             region->ResetMarkBit();
         });
     }
+    // Used to exclude the promotion of TLS regions during the ClearGCInfo phase
+    // This is necessary when the mutator can promote TL to recentFull while the GC is performing ClearGC
+    std::mutex lock_;
+
     // regions for thread-local allocation.
     // regions in this list are already used for allocation but not full yet.
     RegionList tlRegionList_;
