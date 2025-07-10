@@ -30,7 +30,7 @@ static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
     }
 #ifndef NDEBUG
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::RequestGC(common::GcType::ASYNC);  // Trigger CMC FULL GC
+        common::BaseRuntime::RequestGC(common::GC_REASON_USER, true, common::GC_TYPE_FULL);  // Trigger CMC FULL GC
     } else {
         SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     }

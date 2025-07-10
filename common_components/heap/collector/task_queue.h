@@ -80,7 +80,7 @@ public:
     static constexpr uint32_t PRIO_TIMEOUT = 1;
     static constexpr uint32_t PRIO_INVOKE_GC = 2;
 
-    static_assert(PRIO_INVOKE_GC + static_cast<uint32_t>(GC_REASON_MAX) <= std::numeric_limits<uint32_t>::digits,
+    static_assert(PRIO_INVOKE_GC + static_cast<uint32_t>(GC_REASON_END) < std::numeric_limits<uint32_t>::digits,
                   "task queue reached max capacity");
 
     GCRunner() : GCTask(GCTaskType::GC_TASK_INVALID), gcReason_(GC_REASON_INVALID) {}
@@ -90,9 +90,11 @@ public:
         ASSERT_LOGF(type != GCTaskType::GC_TASK_INVOKE_GC, "invalid gc task!");
     }
 
-    GCRunner(GCTaskType type, GCReason reason) : GCTask(type), gcReason_(reason)
+    GCRunner(GCTaskType type, GCReason reason, GCType gcType = GC_TYPE_FULL)
+        : GCTask(type), gcReason_(reason), gcType_(gcType)
     {
-        ASSERT_LOGF(gcReason_ < GC_REASON_MAX, "invalid reason");
+        ASSERT_LOGF(gcReason_ >= GC_REASON_BEGIN && gcReason_ <= GC_REASON_END, "invalid reason");
+        ASSERT_LOGF(gcType_ >= GC_TYPE_BEGIN && gcType_ <= GC_TYPE_END, "invalid gc type");
     }
 
     GCRunner(const GCRunner& task) = default;
@@ -103,7 +105,7 @@ public:
     {
         if (prio == PRIO_TERMINATE) {
             return GCRunner(GCTaskType::GC_TASK_TERMINATE_GC);
-        } else if (prio - PRIO_INVOKE_GC < GC_REASON_MAX) {
+        } else if (prio - PRIO_INVOKE_GC <= GC_REASON_END) {
             return GCRunner(GCTaskType::GC_TASK_INVOKE_GC, static_cast<GCReason>(prio - PRIO_INVOKE_GC));
         } else {
             LOG_COMMON(FATAL) << "Invalid priority in GetGCRequestByPrio function";
@@ -139,12 +141,17 @@ public:
 
     inline void SetGCReason(GCReason reason) { gcReason_ = reason; }
 
+    inline GCType GetGCType() const { return gcType_; }
+
+    inline void SetGCType(GCType type) { gcType_ = type; }
+
     bool NeedFilter() const override { return true; }
 
     bool Execute(void* owner) override;
 
 private:
     GCReason gcReason_;
+    GCType gcType_;
 };
 
 // Lockless async task queue implementation.

@@ -55,7 +55,7 @@ public:
     // reason: Reason for GC.
     // async:  Trigger from unsafe context, e.g., holding a lock, in the middle of an allocation.
     //         In order to prevent deadlocks, async trigger only add one async gc task and will not block.
-    void RequestGC(GCReason reason, bool async);
+    void RequestGC(GCReason reason, bool async, GCType gcType);
 
     virtual GCPhase GetGCPhase() const { return gcPhase_.load(std::memory_order_acquire); }
 
@@ -63,7 +63,7 @@ public:
 
     virtual void FixObjectRefFields(BaseObject*) const {}
 
-    virtual void RunGarbageCollection(uint64_t, GCReason) = 0;
+    virtual void RunGarbageCollection(uint64_t, GCReason, GCType) = 0;
 
     virtual GCStats& GetGCStats()
     {
@@ -100,7 +100,7 @@ public:
     };
 
 protected:
-    virtual void RequestGCInternal(GCReason, bool)
+    virtual void RequestGCInternal(GCReason, bool, GCType)
     {
         LOG_COMMON(FATAL) << "Unresolved fatal";
         UNREACHABLE_CC();

@@ -21,13 +21,13 @@
 
 namespace common {
 HeapManager::HeapManager() {}
-void HeapManager::RequestGC(GCReason reason, bool async)
+void HeapManager::RequestGC(GCReason reason, bool async, GCType gcType)
 {
     if (!Heap::GetHeap().IsGCEnabled()) {
         return;
     }
     Collector& collector = Heap::GetHeap().GetCollector();
-    collector.RequestGC(reason, async);
+    collector.RequestGC(reason, async, gcType);
 }
 
 HeapAddress HeapManager::Allocate(size_t allocSize, AllocType allocType, bool allowGC)

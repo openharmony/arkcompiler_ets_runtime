@@ -665,7 +665,7 @@ DEF_RUNTIME_STUBS(ForceGC)
         return JSTaggedValue::Hole().GetRawData();
     }
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::RequestGC(common::GcType::SYNC);
+        common::BaseRuntime::RequestGC(common::GC_REASON_USER, true, common::GC_TYPE_FULL);
     } else {
         thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     }

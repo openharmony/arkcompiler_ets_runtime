@@ -80,7 +80,8 @@ void GCStats::Dump() const
     std::string totalGCTime = PrettyOrderMathNano(gcEndTime - gcStartTime, "s");
     std::ostringstream oss;
     oss <<
-        "GC for " << g_gcRequests[reason].name << ": " << (async ? "async:" : "sync:") << " collected objects: " <<
+        "GC for " << g_gcRequests[reason].name << ": " << (async ? "async:" : "sync: ") <<
+        "gcType: " << GCTypeToString(gcType) << ", collected objects: " <<
         collectedObjects << "(" << collectedBytes << "->" << PrettyOrderInfo(collectedBytes, "B") << "), " <<
         "->" << PrettyOrderInfo(liveSize, "B") << "/" << heapSize << "->" <<
         PrettyOrderInfo(heapSize, "B") << "), max pause: " << MaxSTWTime() <<

@@ -109,13 +109,13 @@ bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
             ScopedEnterSaferegion enterSaferegion(false);
             Heap::GetHeap().GetCollectorResources().WaitForGCFinish();
         } else {
-            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_HEU, false);
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_HEU, false, GC_TYPE_FULL);
         }
         return true;
     } else if (tryTimes == static_cast<size_t>(TryAllocationThreshold::TRIGGER_OOM)) {
         if (!Heap::GetHeap().IsGcStarted()) {
             VLOG(INFO, "gc is triggered for OOM");
-            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_OOM, false);
+            Heap::GetHeap().GetCollector().RequestGC(GC_REASON_OOM, false, GC_TYPE_FULL);
         } else {
             ScopedEnterSaferegion enterSaferegion(false);
             Heap::GetHeap().GetCollectorResources().WaitForGCFinish();

@@ -3663,7 +3663,7 @@ void ObjectFactory::NewObjectHook() const
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
             if (g_isEnableCMCGC) {
-                common::BaseRuntime::RequestGC(common::GcType::ASYNC);
+                common::BaseRuntime::RequestGC(common::GC_REASON_USER, true, common::GC_TYPE_FULL);
             } else {
                 vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
                 vm_->CollectGarbage(TriggerGCType::OLD_GC);

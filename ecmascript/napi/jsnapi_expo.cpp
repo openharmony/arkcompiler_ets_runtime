@@ -4872,12 +4872,14 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
         }
 #endif
         if (ecmascript::g_isEnableCMCGC) {
-            common::GcType type = common::GcType::ASYNC;
+            common::GCReason cmcReason = common::GC_REASON_USER;
+            bool async = true;
             if (gcType == TRIGGER_GC_TYPE::FULL_GC || gcType == TRIGGER_GC_TYPE::SHARED_FULL_GC ||
                 reason == ecmascript::GCReason::ALLOCATION_FAILED) {
-                type = common::GcType::FULL;
+                cmcReason = common::GC_REASON_BACKUP;
+                async = false;
             }
-            common::BaseRuntime::RequestGC(type);
+            common::BaseRuntime::RequestGC(cmcReason, async, common::GC_TYPE_FULL);
         } else {
             auto sHeap = ecmascript::SharedHeap::GetInstance();
             switch (gcType) {

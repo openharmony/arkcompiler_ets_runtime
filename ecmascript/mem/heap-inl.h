@@ -18,6 +18,7 @@
 
 #include "clang.h"
 #include "common_components/heap/heap_allocator-inl.h"
+#include "common_interfaces/base_runtime.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/mem/heap.h"
 
@@ -1212,13 +1213,15 @@ template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
     if (UNLIKELY(g_isEnableCMCGC)) {
-        common::GcType type = common::GcType::ASYNC;
+        common::GCReason cmcReason = common::GC_REASON_USER;
+        bool async = true;
         if constexpr (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC ||
             gcType == TriggerGCType::APPSPAWN_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC ||
             gcReason == GCReason::ALLOCATION_FAILED) {
-            type = common::GcType::FULL;
+            cmcReason = common::GC_REASON_BACKUP;
+            async = false;
         }
-        common::BaseRuntime::RequestGC(type);
+        common::BaseRuntime::RequestGC(cmcReason, async, common::GC_TYPE_FULL);
         return;
     }
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||

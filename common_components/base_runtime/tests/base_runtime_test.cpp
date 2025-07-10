@@ -36,7 +36,7 @@ HWTEST_F_L0(BaseRuntimeTest, RequestGC_Test1)
 {
     BaseRuntime* runtime = BaseRuntime::GetInstance();
     ASSERT_TRUE(runtime != nullptr);
-    runtime->RequestGC(static_cast<GcType>(-1));
+    runtime->RequestGC(static_cast<GCReason>(-1), false, static_cast<GCType>(-1));
 
     BaseObject obj;
     RefField<false> field(reinterpret_cast<HeapAddress>(&obj));
@@ -92,19 +92,25 @@ HWTEST_F_L0(BaseRuntimeTest, RequestGC_Sync_CallsHeapManager) {
     auto* runtime = BaseRuntime::GetInstance();
     ASSERT_NE(runtime, nullptr);
     runtime->Init();
-    const GcType allTypes[] = {
-        GcType::SYNC,
-        GcType::ASYNC,
-        GcType::FULL,
-        GcType::APPSPAWN
+    struct TestCase {
+        GCReason reason;
+        bool async;
+        GCType gcType;
+    };
+    
+    const std::vector<TestCase> testCases = {
+        {GC_REASON_USER, false, GC_TYPE_FULL},
+        {GC_REASON_USER, true, GC_TYPE_FULL},
+        {GC_REASON_BACKUP, false, GC_TYPE_FULL},
+        {GC_REASON_APPSPAWN, false, GC_TYPE_FULL}
     };
 
-    for (GcType type : allTypes) {
+    for (TestCase tc : testCases) {
         testing::internal::CaptureStderr();
-        EXPECT_NO_FATAL_FAILURE(runtime->RequestGC(type));
+        EXPECT_NO_FATAL_FAILURE(runtime->RequestGC(tc.reason, tc.async, tc.gcType));
         std::string output = testing::internal::GetCapturedStderr();
 
-        EXPECT_TRUE(output.empty()) << "GC Type " << static_cast<int>(type)
+        EXPECT_TRUE(output.empty()) << "GC reason " << static_cast<int>(tc.reason)
                                     << " produced unexpected stderr output.";
     }
     
