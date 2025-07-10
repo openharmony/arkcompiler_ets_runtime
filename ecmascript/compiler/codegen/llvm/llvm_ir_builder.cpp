@@ -850,7 +850,11 @@ void LLVMIRBuilder::SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMV
     } else if (calleeDescriptor->GetCallConv() == CallSignature::CallConv::WebKitJSCallConv) {
         LLVMSetInstructionCallConv(call, LLVMWebKitJSCallConv);
     }
-    if (calleeDescriptor->GetTailCall()) {
+    if (calleeDescriptor->IsNoTailCall()) {
+        if (llvm::CallInst *ci = llvm::dyn_cast<llvm::CallInst>(llvm::unwrap(call))) {
+            ci->setTailCallKind(llvm::CallInst::TCK_NoTail);
+        }
+    } else if (calleeDescriptor->GetTailCall()) {
         LLVMSetTailCall(call, true);
     }
 }

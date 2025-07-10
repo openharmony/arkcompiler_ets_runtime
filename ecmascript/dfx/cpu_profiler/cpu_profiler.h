@@ -97,6 +97,7 @@ public:
 
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;
+    bool IfNeedSkipBarrierStubHeaderOrTail(JSThread *thread, uint64_t pc) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
     bool GetStackBeforeCallNapi(JSThread *thread);
     void GetStackAfterCallNapi(JSThread *thread);

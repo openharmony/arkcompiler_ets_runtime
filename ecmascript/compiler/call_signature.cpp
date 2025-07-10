@@ -2823,6 +2823,7 @@ DEF_CALL_SIGNATURE(ReadBarrier)
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetNoTailCall(true);
 }
 
 DEF_CALL_SIGNATURE(CopyCallTarget)
@@ -3942,6 +3943,7 @@ DEF_CALL_SIGNATURE(MarkInBuffer)
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetNoTailCall(true);
 }
 
 DEF_CALL_SIGNATURE(BatchMarkInBuffer)

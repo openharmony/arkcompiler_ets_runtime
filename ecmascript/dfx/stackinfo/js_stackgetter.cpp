@@ -65,7 +65,7 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
         GetNativeMethodCallPos(itNext, vm, codeEntry);
         GetNativeStack(vm, it, codeEntry.functionName, sizeof(codeEntry.functionName), isCpuProfiler);
     } else {
-        const JSPandaFile *jsPandaFile = method->GetJSPandaFile(vm->GetJSThread());
+        const JSPandaFile *jsPandaFile = method->GetJSPandaFile(vm->GetJSThreadNoCheck());
         if (jsPandaFile == nullptr) {
             return false;
         }
@@ -243,7 +243,7 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
 
 void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, const EcmaVM *vm, FrameInfoTemp &codeEntry)
 {
-    JSThread *thread = vm->GetJSThread();
+    JSThread *thread = vm->GetJSThreadNoCheck();
     auto nextMethod = it.CheckAndGetMethod();
     if (nextMethod == nullptr) {
         return ;
@@ -295,7 +295,7 @@ void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, const EcmaVM *vm, 
 
 void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it, const EcmaVM *vm)
 {
-    JSThread *thread = vm->GetJSThread();
+    JSThread *thread = vm->GetJSThreadNoCheck();
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(thread);
     if (method->IsNativeWithCallField()) {
@@ -311,7 +311,7 @@ void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it
 }
 void JsStackGetter::GetCallLineNumber(const FrameIterator &it, const EcmaVM *vm, int &LineNumber)
 {
-    JSThread *thread = vm->GetJSThread();
+    JSThread *thread = vm->GetJSThreadNoCheck();
     FrameIterator itNext(it.GetSp(), it.GetThread());
     itNext.Advance<GCVisitedFlag::IGNORED>();
     auto nextMethod = itNext.CheckAndGetMethod();

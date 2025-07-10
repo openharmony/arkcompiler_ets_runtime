@@ -78,7 +78,8 @@ public:
     using CallConvBit = TargetKindBit::NextField<CallConv, CALL_CONV_BIT_LENGTH>;
     using VariadicArgsBit = CallConvBit::NextField<bool, 1>;
     using TailCallBit = VariadicArgsBit::NextField<bool, 1>;
-    using GCLeafFunctionBit = TailCallBit::NextField<bool, 1>;
+    using NoTailCallBit = TailCallBit::NextField<bool, 1>;
+    using GCLeafFunctionBit = NoTailCallBit::NextField<bool, 1>;
 
     CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order,
                   VariableType returnType)
@@ -87,6 +88,7 @@ public:
         SetTargetKind(TargetKind::COMMON_STUB);
         SetCallConv(CallSignature::CallConv::CCallConv);
         SetTailCall(false);
+        SetNoTailCall(false);
         SetGCLeafFunction(false);
         SetVariadicArgs(flags);
     }
@@ -272,6 +274,16 @@ public:
     void SetVariadicArgs(bool variable)
     {
         VariadicArgsBit::Set<uint64_t>(variable, &kind_);
+    }
+
+    void SetNoTailCall(bool noTailCall)
+    {
+        NoTailCallBit::Set<uint64_t>(noTailCall, &kind_);
+    }
+
+    bool IsNoTailCall() const
+    {
+        return NoTailCallBit::Decode(kind_);
     }
 
     void SetTailCall(bool tailCall)

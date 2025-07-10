@@ -413,6 +413,9 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     }
     if (thread->IsAsmInterpreter() && profiler->IsAddrAtStubOrAot(pc) &&
         !profiler->IsEntryFrameHeaderOrTail(thread, pc)) {
+        if (profiler->IfNeedSkipBarrierStubHeaderOrTail(thread, pc)) {
+            return;
+        }
         [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
         [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
         [[maybe_unused]] void *fp = nullptr;
@@ -472,6 +475,14 @@ bool CpuProfiler::InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entr
         return true;
     }
     return false;
+}
+
+bool CpuProfiler::IfNeedSkipBarrierStubHeaderOrTail(JSThread *thread, uint64_t pc) const
+{
+    uint64_t headerSize = 0;
+    uintptr_t entryBegin = thread->GetFastStubEntry(kungfu::CommonStubCSigns::ID::GetValueWithBarrier);
+    bool needSkip = InHeaderOrTail(pc, entryBegin, 0, headerSize, 0);
+    return needSkip;
 }
 
 bool CpuProfiler::IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const
