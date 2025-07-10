@@ -35,8 +35,6 @@ public:
     void VisitRoot(Root type, ObjectSlot slot) override;
     void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
     void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override {}
-    void IterateRoots(const std::function<void(JSTaggedType)> &cb);
-    uint32_t RootsCount();
 };
 
 class ObjectMarker : public HeapMarker, public BaseObjectVisitor<ObjectMarker> {
@@ -46,8 +44,6 @@ public:
 
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t endAddr, VisitObjectArea area) override;
     void ProcessMarkObjectsFromRoot(JSTaggedType root);
-    void IterateHeapObjects(const std::function<void(JSTaggedType)> &cb);
-    uint32_t ObjectsCount();
 
 private:
     bool IsEmpty()
