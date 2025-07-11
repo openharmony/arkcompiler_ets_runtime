@@ -145,7 +145,7 @@ uint64_t GetDeviceValidSize(const std::string &path)
     constexpr uint64_t units = 1024;
     uint64_t bfree = static_cast<uint64_t>(stat.f_bfree);
     uint64_t bsize = static_cast<uint64_t>(stat.f_bsize);
-    if (bfree > UINT64_MAX / bsize) {
+    if (bsize == 0 || bfree > UINT64_MAX / bsize) {
         LOG_ECMA(ERROR) << "overflow detected: bfree * bsize";
         return 0;
     }
