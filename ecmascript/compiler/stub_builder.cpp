@@ -1908,7 +1908,7 @@ void StubBuilder::VerifyBarrier(GateRef glue, GateRef obj, [[maybe_unused]] Gate
 GateRef StubBuilder::GetCMCRegionRSet(GateRef obj)
 {
     GateRef metaDataAddr = IntPtrAnd(TaggedCastToIntPtr(obj),
-                                     IntPtr(~static_cast<int64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
+                                     IntPtr(~static_cast<uint64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
     GateRef regionRSet = LoadPrimitive(VariableType::NATIVE_POINTER(), metaDataAddr,
                                        IntPtr(common::RegionDesc::REGION_RSET_IN_INLINED_METADATA_OFFSET));
     return regionRSet;
@@ -1964,7 +1964,7 @@ void StubBuilder::MarkRSetCardTable(GateRef obj, Label *exit)
     auto env = GetEnvironment();
     Label markBit(env);
     GateRef regionBase = IntPtrAnd(TaggedCastToIntPtr(obj),
-        IntPtr(~static_cast<int64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
+        IntPtr(~static_cast<uint64_t>(common::RegionDesc::DEFAULT_REGION_UNIT_MASK)));
     GateRef objOffset = PtrSub(TaggedCastToIntPtr(obj), regionBase);
     GateRef rset = GetCMCRegionRSet(obj);
     GateRef cardIdx = IntPtrDiv(IntPtrDiv(objOffset, IntPtr(common::kMarkedBytesPerBit)),
