@@ -22,7 +22,7 @@
 #include "common_components/objects/string_table_internal.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_components/mutator/thread_local.h"
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
 #include "common_interfaces/thread/thread_holder.h"
 #include "common_interfaces/thread/thread_state_transition.h"
 #include "heap/heap_allocator.h"
@@ -38,7 +38,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::AllocateLineStringObject(s
     } else {
         str = reinterpret_cast<BaseString*>(HeapAllocator::AllocateInOld(size, LanguageType::DYNAMIC));
     }
-    BaseClass* cls = BaseRuntime::GetInstance()->GetBaseClassRoots().GetBaseClass(CommonType::LINE_STRING);
+    BaseClass* cls = BaseRuntime::GetInstance()->GetBaseClassRoots().GetBaseClass(ObjectType::LINE_STRING);
     str->SetFullBaseClassWithoutBarrier(cls);
     return str;
 }
@@ -48,7 +48,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternFlattenString(
     ThreadHolder* holder, const HandleCreator& handleCreator,
     BaseString* string)
 {
-    ASSERT(string->NotTreeString());
+    DCHECK_CC(!string->IsTreeString());
     if (string->IsInternString()) {
         return string;
     }
@@ -66,7 +66,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternFlattenString(
     ReadOnlyHandle<BaseString> stringHandle = handleCreator(holder, string);
     BaseString* result = stringTable_.template StoreOrLoad(
         holder, readBarrier, hashcode, loadResult, stringHandle);
-    ASSERT(result != nullptr);
+    DCHECK_CC(result != nullptr);
     return result;
 }
 
@@ -76,7 +76,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
     const ReadOnlyHandle<BaseString>& string,
     uint32_t offset, uint32_t utf8Len)
 {
-    const uint8_t* utf8Data = string->GetDataUtf8() + offset;
+    const uint8_t* utf8Data = ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     auto readBarrier = [](void* obj, size_t offset)-> BaseObject* {
         return BaseObject::Cast(
@@ -87,24 +87,24 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
     if (loadResult.value != nullptr) {
         return loadResult.value;
     }
-    auto allocator = [](size_t size, CommonType type)-> BaseString* {
-        ASSERT(type == CommonType::LINE_STRING);
+    auto allocator = [](size_t size, ObjectType type)-> BaseString* {
+        DCHECK_CC(type == ObjectType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
     BaseString* result = stringTable_.template StoreOrLoad(
         holder, hashcode, loadResult,
         [holder, string, offset, utf8Len, hashcode, handleCreator, allocator]() {
-            BaseString* str = BaseString::CreateFromUtf8CompressedSubString(
+            BaseString* str = LineString::CreateFromUtf8CompressedSubString(
                 std::move(allocator), string, offset, utf8Len);
             str->SetRawHashcode(hashcode);
-            ASSERT(!str->IsInternString());
-            ASSERT(str->NotTreeString());
+            DCHECK_CC(!str->IsInternString());
+            DCHECK_CC(!str->IsTreeString());
             // Strings in string table should not be in the young space.
             ReadOnlyHandle<BaseString> strHandle = handleCreator(holder, str);
             return strHandle;
         },
         [utf8Len, string, offset](const BaseString* foundString) {
-            const uint8_t* utf8Data = string->GetDataUtf8() + offset;
+            const uint8_t* utf8Data = ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
             auto readBarrier = [](void* obj, size_t offset)-> BaseObject* {
                 return BaseObject::Cast(
                     reinterpret_cast<MAddress>(BaseRuntime::ReadBarrier(
@@ -112,7 +112,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
             };
             return BaseString::StringIsEqualUint8Data(readBarrier, foundString, utf8Data, utf8Len, true);
         });
-    ASSERT(result != nullptr);
+    DCHECK_CC(result != nullptr);
     return result;
 }
 
@@ -124,17 +124,17 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(ThreadHo
                                                                         bool canBeCompress)
 {
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    auto allocator = [](size_t size, CommonType type)-> BaseString* {
-        ASSERT(type == CommonType::LINE_STRING);
+    auto allocator = [](size_t size, ObjectType type)-> BaseString* {
+        DCHECK_CC(type == ObjectType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
     BaseString* result = stringTable_.template LoadOrStore<true>(
         holder, hashcode,
         [holder, hashcode, utf8Data, utf8Len, canBeCompress, handleCreator, allocator]() {
-            BaseString* value = BaseString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
+            BaseString* value = LineString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
             value->SetRawHashcode(hashcode);
-            ASSERT(!value->IsInternString());
-            ASSERT(value->NotTreeString());
+            DCHECK_CC(!value->IsInternString());
+            DCHECK_CC(!value->IsTreeString());
             ReadOnlyHandle<BaseString> stringHandle = handleCreator(holder, value);
             return stringHandle;
         },
@@ -147,7 +147,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(ThreadHo
             return BaseString::StringIsEqualUint8Data(readBarrier, foundString, utf8Data, utf8Len,
                                                       canBeCompress);
         });
-    ASSERT(result != nullptr);
+    DCHECK_CC(result != nullptr);
     return result;
 }
 
@@ -158,18 +158,18 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(
     bool canBeCompress)
 {
     uint32_t hashcode = BaseString::ComputeHashcodeUtf16(const_cast<uint16_t*>(utf16Data), utf16Len);
-    auto allocator = [](size_t size, CommonType type)-> BaseString* {
-        ASSERT(type == CommonType::LINE_STRING);
+    auto allocator = [](size_t size, ObjectType type)-> BaseString* {
+        DCHECK_CC(type == ObjectType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
     BaseString* result = stringTable_.template LoadOrStore<true>(
         holder, hashcode,
         [holder, utf16Data, utf16Len, canBeCompress, hashcode, handleCreator, allocator]() {
-            BaseString* value = BaseString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len,
+            BaseString* value = LineString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len,
                                                             canBeCompress);
             value->SetRawHashcode(hashcode);
-            ASSERT(!value->IsInternString());
-            ASSERT(value->NotTreeString());
+            DCHECK_CC(!value->IsInternString());
+            DCHECK_CC(!value->IsTreeString());
             // Strings in string table should not be in the young space.
             ReadOnlyHandle<BaseString> stringHandle = handleCreator(holder, value);
             return stringHandle;
@@ -182,7 +182,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(
             };
             return BaseString::StringsAreEqualUtf16(readBarrier, foundString, utf16Data, utf16Len);
         });
-    ASSERT(result != nullptr);
+    DCHECK_CC(result != nullptr);
     return result;
 }
 
@@ -203,7 +203,7 @@ template <bool B, std::enable_if_t<B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index,
                                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries)
 {
-    ASSERT(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
+    DCHECK_CC(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
     auto* rootNode = stringTable_.root_.load(std::memory_order_relaxed);
     stringTable_.ClearNodeFromGC(rootNode, index, visitor, waitDeleteEntries);
 }
@@ -219,7 +219,7 @@ template <bool ConcurrentSweep>
 template <bool B, std::enable_if_t<!B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t index)
 {
-    ASSERT(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
+    DCHECK_CC(index >= 0 && index < TrieMapConfig::INDIRECT_SIZE);
     auto* rootNode = stringTable_.root_.load(std::memory_order_relaxed);
     stringTable_.ClearNodeFromGC(rootNode, index, visitor);
 }

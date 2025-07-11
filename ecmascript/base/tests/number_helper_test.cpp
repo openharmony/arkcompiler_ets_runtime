@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -572,7 +572,7 @@ HWTEST_F_L0(NumberHelperTest, StringToDoubleWithRadix)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     int radix;
-    Span<const uint8_t> sp;
+    common::Span<const uint8_t> sp;
     CVector<uint8_t> buf;
     JSHandle<EcmaString> resultStr;
 
@@ -922,10 +922,10 @@ HWTEST_F_L0(NumberHelperTest, FastStringToNumberForLineString)
         auto ecmaString = EcmaStringAccessor::CreateFromUtf8(instance, str.data(), str.size(), true);
         auto baseString = ecmaString->ToBaseString();
         baseString->SetIsInternString();
-        common::IntegerCache::InitIntegerCache(baseString);
+        common::IntegerCache::InitIntegerCache(LineString::Cast(baseString));
         common::IntegerCache *cache = nullptr;
         if (baseString->GetLength() <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) {
-            cache = common::IntegerCache::Extract(ecmaString->ToBaseString());
+            cache = common::IntegerCache::Extract(LineString::Cast(baseString));
         }
         auto resCached = NumberHelper::FastStringToNumber(str.begin(), str.end(), cache);
         ASSERT_EQ(resCached.first, expectedIsSuccess[i]);

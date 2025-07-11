@@ -72,10 +72,18 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     EXPECT_EQ(objectSize, 96U);
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetSize();
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
+    EXPECT_EQ(objectSize, 24U);
+#else
     EXPECT_EQ(objectSize, 16U);
+#endif
     string = factory->AllocTreeStringObject();
     objectSize = string->GetClass()->SizeFromJSHClass(string);
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
+    EXPECT_EQ(objectSize, 40U);
+#else
     EXPECT_EQ(objectSize, 32U);
+#endif
     MachineCodeDesc desc;
     desc.codeType = MachineCodeType::BASELINE_CODE;
     desc.instructionsSize = 100;

@@ -49,8 +49,9 @@ JSPandaFileManager::~JSPandaFileManager()
  * Typically return nullptr for JSPandafile load fail. Throw cppcrash if load hsp failed.
  * Specifically, return jscrash if napi load hsp failed.
 */
+template<ForHybridApp isHybrid>
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, bool needUpdate, bool isHybrid, const ExecuteTypes &executeType)
+    std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType)
 {
     {
         LockHolder lock(jsPandaFileLock_);
@@ -79,6 +80,9 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode &&
         !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
+        if constexpr (isHybrid == ForHybridApp::Hybrid) {
+            resolveBufferCallback = vm->GetResolveBufferCallbackForHybridApp();
+        }
         if (resolveBufferCallback == nullptr) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package is not supported in the Previewer.");
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
@@ -97,7 +101,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         uint8_t *data = nullptr;
         size_t dataSize = 0;
         std::string errorMsg;
-        bool getBuffer = resolveBufferCallback(hspPath, isHybrid, &data, &dataSize, errorMsg);
+        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
@@ -130,6 +134,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 #endif
     return jsPandaFile;
 }
+template std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile<ForHybridApp::Normal>(JSThread *thread,
+    const CString &filename, std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType);
+template std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile<ForHybridApp::Hybrid>(JSThread *thread,
+    const CString &filename, std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType);
 
 // The security interface needs to be modified accordingly.
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
@@ -552,7 +560,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 /*
  * Check whether the file path can be loaded into pandafile, excluding bundle packaging and decompression paths
  */
-bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName, bool isHybrid)
+template<ForHybridApp isHybrid>
+bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = FindJSPandaFileUnlocked(fileName);
     if (jsPandaFile != nullptr) {
@@ -562,6 +571,9 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
     ModuleManager *moduleManager = thread->GetModuleManager();
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
+        if constexpr (isHybrid == ForHybridApp::Hybrid) {
+            resolveBufferCallback = vm->GetResolveBufferCallbackForHybridApp();
+        }
         if (resolveBufferCallback == nullptr) {
             LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
             return false;
@@ -569,8 +581,7 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         uint8_t *data = nullptr;
         size_t dataSize = 0;
         std::string errorMsg;
-        bool getBuffer =
-            resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), isHybrid, &data, &dataSize, errorMsg);
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
         if (!getBuffer) {
             LOG_FULL(ERROR)
                 << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
@@ -579,6 +590,9 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
     }
     return true;
 }
+
+template bool JSPandaFileManager::CheckFilePath<ForHybridApp::Normal>(JSThread *thread, const CString &fileName);
+template bool JSPandaFileManager::CheckFilePath<ForHybridApp::Hybrid>(JSThread *thread, const CString &fileName);
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCache(
     JSThread *thread, const CString &filename, std::string_view entryPoint)

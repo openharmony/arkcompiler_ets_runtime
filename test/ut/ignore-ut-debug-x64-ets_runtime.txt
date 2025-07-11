@@ -20,3 +20,9 @@ obj/arkcompiler/ets_runtime/test/aottest/forin_enum_cache_chain/forin_enum_cache
 
 #25962
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Hclass_Test
+
+#25854
+obj/arkcompiler/ets_runtime/ecmascript/tests/Sendable_JsSharedArray_Test
+
+#26095
+obj/arkcompiler/ets_runtime/test/aottest/sharedset/sharedset/modules.ap

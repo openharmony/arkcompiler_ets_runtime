@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "common_interfaces/base/runtime_param.h"
 #include "common_interfaces/heap/heap_visitor.h"
 #include "common_interfaces/thread/mutator_base.h"
 
@@ -36,6 +37,9 @@ PUBLIC_API void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFun
 PUBLIC_API void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm);
 PUBLIC_API void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm);
 
+PUBLIC_API void AddXRefToDynamicRoots();
+PUBLIC_API void RemoveXRefFromDynamicRoots();
+
 PUBLIC_API void VisitJSThread(void *jsThread, CommonRootVisitor visitor);
 PUBLIC_API void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase);
 
@@ -49,5 +53,8 @@ PUBLIC_API void SweepThreadLocalJitFort();
 PUBLIC_API bool IsMachineCodeObject(uintptr_t obj);
 PUBLIC_API void JitFortUnProt(size_t size, void* base);
 
+// Used for init/fini BaseRuntime from static
+PUBLIC_API void CheckAndInitBaseRuntime(const RuntimeParam &param);
+PUBLIC_API void CheckAndFiniBaseRuntime();
 } // namespace common
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H

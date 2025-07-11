@@ -18,7 +18,8 @@
 
 #include "common_components/log/log.h"
 #include "common_interfaces/objects/readonly_handle.h"
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
+#include "common_interfaces/objects/string/line_string-inl.h"
 #include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/objects/string_table/integer_cache.h"
 
@@ -50,7 +51,7 @@ typename HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Node* HashTrieMap<Mutex,
                 GetMutex().Unlock();
             }
             LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while inserting";
-            UNREACHABLE();
+            UNREACHABLE_CC();
         }
 #endif
 
@@ -116,7 +117,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& re
     }
 
     LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-    UNREACHABLE();
+    UNREACHABLE_CC();
 }
 
 // LoadOrStore returns the existing value of the key, if it exists.
@@ -173,7 +174,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
 #ifndef NDEBUG
         if (!haveInsertPoint) {
             LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-            UNREACHABLE();
+            UNREACHABLE_CC();
         }
 #endif
         // invoke the callback to create str
@@ -186,7 +187,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
             GetMutex().LockWithThreadState(holder);
         }
 
-        ASSERT(slot != nullptr);
+        DCHECK_CC(slot != nullptr);
         node = slot->load(std::memory_order_acquire);
         if (node == nullptr || node->IsEntry()) {
             // see is still real, so can continue to insert.
@@ -294,14 +295,14 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
 #ifndef NDEBUG
         if (!haveInsertPoint) {
             LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-            UNREACHABLE();
+            UNREACHABLE_CC();
         }
 #endif
         // Jit need to lock the object before creating the object
         GetMutex().LockWithThreadState(holder);
         // invoke the callback to create str
         value = std::invoke(std::forward<LoaderCallback>(loaderCallback));
-        ASSERT(slot != nullptr);
+        DCHECK_CC(slot != nullptr);
         node = slot->load(std::memory_order_acquire);
         if (node == nullptr || node->IsEntry()) {
             // see is still real, so can continue to insert.
@@ -405,7 +406,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
 #ifndef NDEBUG
             if (!haveInsertPoint) {
                 LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-                UNREACHABLE();
+                UNREACHABLE_CC();
             }
 #endif
             // lock and double-check
@@ -495,7 +496,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
     }
 
     LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-    UNREACHABLE();
+    UNREACHABLE_CC();
 }
 
 // Load returns the value of the key stored in the mapping, or HashTrieMapLoadResult for StoreOrLoad
@@ -507,7 +508,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
 {
     uint32_t hash = key;
     Indirect* current = root_.load(std::memory_order_relaxed);
-    const uint8_t* utf8Data = string->GetDataUtf8() + offset;
+    const uint8_t* utf8Data = ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
          TrieMapConfig::N_CHILDREN_LOG2) {
         size_t index = (hash >> hashShift) & TrieMapConfig::N_CHILDREN_MASK;
@@ -539,7 +540,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
     }
 
     LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-    UNREACHABLE();
+    UNREACHABLE_CC();
 }
 
 // Based on the loadResult, try the store first
@@ -603,7 +604,7 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
 #ifndef NDEBUG
             if (!haveInsertPoint) {
                 LOG_COMMON(FATAL) << "StringTable: ran out of hash bits while iterating";
-                UNREACHABLE();
+                UNREACHABLE_CC();
             }
 #endif
             // lock and double-check
@@ -682,7 +683,7 @@ template <typename ReadBarrier>
 bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckValidity(ReadBarrier&& readBarrier, BaseString* value,
                                                                   bool& isValid)
 {
-    if (!value->NotTreeString()) {
+    if (value->IsTreeString()) {
         isValid = false;
         return false;
     }

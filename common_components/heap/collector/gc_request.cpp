@@ -68,6 +68,7 @@ GCRequest g_gcRequests[] = {
     { GC_REASON_HEU_SYNC, "heuristic_sync", true, true, 0, 0 },
     { GC_REASON_NATIVE_SYNC, "native_alloc_sync", true, true, 0, 0 },
     { GC_REASON_FORCE, "force", true, false, 0, 0 },
-    { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 }
+    { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 },
+    { GC_REASON_XREF, "force_xref", true, false, 0, 0 },
 };
 } // namespace common

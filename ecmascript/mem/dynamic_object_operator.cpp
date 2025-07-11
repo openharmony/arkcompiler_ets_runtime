@@ -14,7 +14,9 @@
  */
 
 #include "ecmascript/mem/dynamic_object_operator.h"
+
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 
@@ -25,6 +27,24 @@ void DynamicObjectOperator::Initialize()
     if (g_isEnableCMCGC) {
         BaseObject::RegisterDynamic(&dynOperator_);
     }
+}
+
+void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *object,
+                                        [[maybe_unused]] const common::RefFieldVisitor &visitor) const
+{
+#if defined(PANDA_JS_ETS_HYBRID_MODE) && defined(USE_CMC_GC)
+    if (g_isEnableCMCGC) {
+        JSTaggedValue value(reinterpret_cast<TaggedObject *>(const_cast<BaseObject *>(object)));
+        if (value.IsJSXRefObject()) {
+            Runtime::GetInstance()->GetSTSVMInterface()->MarkFromObject(
+                JSObject::Cast(TaggedObject::Cast(object))->GetNativePointerField(0), visitor);
+        }
+    } else {
+        std::abort();
+    }
+#else
+    std::abort();
+#endif
 }
 
 void RefFieldObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,

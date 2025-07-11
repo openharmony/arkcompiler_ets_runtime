@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -89,6 +89,11 @@ enum class QueueType : uint8_t {
 };
 }
 }  // namespace ecmascript
+
+enum class ForHybridApp {
+    Normal,
+    Hybrid
+};
 
 struct HmsMap {
     std::string originalPath;
@@ -474,6 +479,7 @@ public:
     // This method must be called before Global is released.
     void FreeGlobalHandleAddr();
     void FreeXRefGlobalHandleAddr();
+    void MarkFromObject(std::function<void(uintptr_t)> &visitor);
     void MarkFromObject();
     bool IsObjectAlive() const;
     bool IsValidHeapObject() const;
@@ -1426,6 +1432,9 @@ private:
     uint16_t oldThreadState_ {0};
     uint32_t isEnableCMCGC_ {0};
     uint32_t hasSwitchState_ {0};
+    // This is a temporary impl to adapt interop to cmc, because some interop call napi
+    // without transfering to NATIVE
+    [[maybe_unused]] bool extraCoroutineSwitchedForInterop_ {false};
 };
 
 /**
@@ -1647,6 +1656,12 @@ public:
         void *detachedHint = nullptr;
     };
 
+    struct XRefBindingInfo {
+        static XRefBindingInfo* CreateNewInstance() { return new(std::nothrow) XRefBindingInfo(); }
+        void *attachXRefFunc = nullptr;
+        void *attachXRefData = nullptr;
+    };
+
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
     enum class PUBLIC_API TRIGGER_GC_TYPE : uint8_t {
@@ -1709,8 +1724,13 @@ public:
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file);
+    template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                             const std::string &module_path, bool isHybrid = false);
+                                                             const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForNormalApp(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
+                                                             const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
@@ -1794,17 +1814,23 @@ public:
                                          Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
                                          bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
+    // InterOp Serialize & Deserialize.
+    static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+        Local<JSValueRef> cloneList, bool defaultTransfer = false, bool defaultCloneShared = true);
+    static Local<JSValueRef> InterOpDeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
     static void SetReleaseSecureMemCallback(EcmaVM *vm, ReleaseSecureMemCallback releaseSecureMemFunc);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
+    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath,
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void PandaFileSerialize(const EcmaVM *vm);
     static void ModuleSerialize(const EcmaVM *vm);
     static void ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion);
+    static void SetHostResolveBufferTrackerForHybridApp(EcmaVM *vm, std::function<bool(std::string dirPath,
+                                            uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
@@ -1912,6 +1938,9 @@ public:
 
     static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
 
+    // 1.2runtime interface info
+    static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
+
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
@@ -1930,6 +1959,7 @@ private:
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+    static void MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor);
     static void MarkFromObject(const EcmaVM *vm, uintptr_t addr);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 

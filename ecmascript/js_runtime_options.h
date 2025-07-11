@@ -253,6 +253,7 @@ enum CommandValues {
 class PUBLIC_API JSRuntimeOptions {
 public:
     JSRuntimeOptions();
+    JSRuntimeOptions(const common::RuntimeParam &param) : param_(param) {}
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);

@@ -26,27 +26,32 @@ void DynamicObjectDescriptor::Initialize()
     common::BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectDescriptor(&dynObjectDescriptor_);
 }
 
-std::pair<JSTaggedValue, HandlerBase> DynamicObjectDescriptor::GetProperty(ThreadHolder *thread, BaseObject *obj,
-                                                                           char *name)
+std::pair<JSTaggedValue, HandlerBase> DynamicObjectDescriptor::GetProperty(ThreadHolder *thread,
+                                                                           const BaseObject *obj,
+                                                                           const char *name) const
 {
     return std::make_pair(JSTaggedValue(), HandlerBase());
 }
 
 std::pair<bool, HandlerBase> DynamicObjectDescriptor::SetProperty(ThreadHolder *thread,
-                                                                  BaseObject *obj, char *name,
+                                                                  BaseObject *obj,
+                                                                  const char *name,
                                                                   JSTaggedValue value)
 {
     return std::make_pair(false, HandlerBase());
 }
 
-std::pair<JSTaggedValue, HandlerBase> DynamicObjectDescriptor::GetElementByIdx(ThreadHolder *thread, BaseObject *obj,
-                                                                               uint32_t index)
+std::pair<JSTaggedValue, HandlerBase> DynamicObjectDescriptor::GetElementByIdx(ThreadHolder *thread,
+                                                                               const BaseObject *obj,
+                                                                               uint32_t index) const
 {
     return std::make_pair(JSTaggedValue::Undefined(), HandlerBase());
 }
 
-std::pair<bool, HandlerBase> DynamicObjectDescriptor::SetElementByIdx(ThreadHolder *thread, BaseObject *obj,
-                                                                      uint32_t index, JSTaggedValue value)
+std::pair<bool, HandlerBase> DynamicObjectDescriptor::SetElementByIdx(ThreadHolder *thread,
+                                                                      BaseObject *obj,
+                                                                      uint32_t index,
+                                                                      JSTaggedValue value)
 {
     return std::make_pair(false, HandlerBase());
 }

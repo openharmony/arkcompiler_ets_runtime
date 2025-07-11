@@ -28,7 +28,7 @@
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
 #include "common_interfaces/objects/base_string_table.h"
-#include "common_interfaces/objects/string/base_string_declare.h"
+#include "common_interfaces/objects/string/base_string.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION

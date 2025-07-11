@@ -128,7 +128,7 @@ using SourceMapCallback = std::function<std::string(const std::string& rawStack)
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
     std::string &packageName)>;
 using ResolveBufferCallback =
-    std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using TimerCallbackFunc = void (*)(void *data);
 using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
 using CancelTimerCallback = void (*)(void *timerCallbackInfo);
@@ -554,6 +554,16 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
+    }
+
+    void SetResolveBufferCallbackForHybridApp(ResolveBufferCallback cb)
+    {
+        resolveBufferCallbackForHybridApp_ = cb;
+    }
+
+    ResolveBufferCallback GetResolveBufferCallbackForHybridApp() const
+    {
+        return resolveBufferCallbackForHybridApp_;
     }
 
     void SetTimerTaskCallback(TimerTaskCallback callback)
@@ -1439,6 +1449,7 @@ private:
 
     // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+    ResolveBufferCallback resolveBufferCallbackForHybridApp_ {nullptr};
 
     // set timer task to execute callback on time
     TimerTaskCallback timerTaskCallback_ {nullptr};

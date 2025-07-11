@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,10 +16,11 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_interfaces/base_runtime.h"
+
+#include "common_interfaces/thread/thread_holder_manager.h"
 #include "ecmascript/dynamic_object_accessor.h"
 #include "ecmascript/dynamic_object_descriptor.h"
 #include "ecmascript/dynamic_type_converter.h"
-#include "common_interfaces/thread/thread_holder_manager.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_runtime_options.h"
@@ -49,6 +50,11 @@ Runtime *Runtime::GetInstance()
 {
     ASSERT(instance_ != nullptr);
     return instance_;
+}
+
+bool Runtime::HasInstance()
+{
+    return instance_ != nullptr;
 }
 
 Runtime::~Runtime()
@@ -83,7 +89,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         if (g_isEnableCMCGC) {
             // Init common::BaseRuntime before daemon thread because creating mutator may access gcphase in heap
             LOG_ECMA(INFO) << "start run with cmc gc";
-            common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+            common::BaseRuntime::GetInstance()->InitFromDynamic(options.GetRuntimeParam());
         }
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
@@ -177,7 +183,7 @@ void Runtime::DestroyIfLastVm()
         DaemonThread::DestroyInstance();
         if (g_isEnableCMCGC) {
             // Finish common::BaseRuntime after daemon thread because it will unregister mutator
-            common::BaseRuntime::GetInstance()->Fini();
+            common::BaseRuntime::GetInstance()->FiniFromDynamic();
         }
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();

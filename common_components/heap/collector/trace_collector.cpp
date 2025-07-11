@@ -100,6 +100,7 @@ private:
     std::vector<TraceCollector::WorkStack> workStacks_;
 };
 
+template <bool ProcessXRef>
 class ConcurrentMarkingTask : public common::Task {
 public:
     ConcurrentMarkingTask(uint32_t id, TraceCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
@@ -126,7 +127,7 @@ public:
             if (workStack.empty()) {
                 break;
             }
-            collector_.ProcessMarkStack(threadIndex, threadPool_, workStack, globalQueue_);
+            collector_.ProcessMarkStack<ProcessXRef>(threadIndex, threadPool_, workStack, globalQueue_);
         }
         monitor_.NotifyFinishOne();
         return true;
@@ -161,6 +162,7 @@ void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, Glo
     }
 }
 
+template <bool ProcessXRef>
 void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
                                       GlobalWorkStackQueue &globalQueue)
 {
@@ -194,6 +196,11 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
             region->AddLiveByteCount(obj->GetSize());
             [[maybe_unused]] auto beforeSize = workStack.count();
             TraceObjectRefFields(obj, workStack, weakStack);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if constexpr (ProcessXRef) {
+                TraceObjectXRef(obj, workStack);
+            }
+#endif
             DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d", beforeSize,
                  workStack.count(), workStack.count() - beforeSize);
             // try to fork new task if needed.
@@ -288,17 +295,44 @@ void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
         TaskPackMonitor monitor(parallelCount, parallelCount);
         GlobalWorkStackQueue globalQueue;
         for (uint32_t i = 0; i < parallelCount; ++i) {
-            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask>(0, *this, threadPool, monitor, globalQueue));
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<true>>(0, *this, threadPool, monitor,
+                                                                                   globalQueue));
+            } else {
+                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, threadPool, monitor,
+                                                                                    globalQueue));
+            }
+#else
+            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, threadPool, monitor,
+                                                                                globalQueue));
+#endif
         }
         if (!AddConcurrentTracingWork(workStack, globalQueue, static_cast<size_t>(threadCount))) {
-            ProcessMarkStack(0, threadPool, workStack, globalQueue);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                ProcessMarkStack<true>(0, threadPool, workStack, globalQueue);
+            } else {
+                ProcessMarkStack<false>(0, threadPool, workStack, globalQueue);
+            }
+#else
+            ProcessMarkStack<false>(0, threadPool, workStack, globalQueue);
+#endif
         }
         while (true) {
             WorkStack stack = globalQueue.DrainAllWorkStack();
             if (stack.empty()) {
                 break;
             }
-            ProcessMarkStack(0, threadPool, stack, globalQueue);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                ProcessMarkStack<true>(0, threadPool, stack, globalQueue);
+            } else {
+                ProcessMarkStack<false>(0, threadPool, stack, globalQueue);
+            }
+#else
+            ProcessMarkStack<false>(0, threadPool, stack, globalQueue);
+#endif
         }
         globalQueue.NotifyFinish();
         monitor.WaitAllFinished();
@@ -306,7 +340,15 @@ void TraceCollector::TracingImpl(WorkStack& workStack, bool parallel)
         // serial marking with a single mark task.
         GlobalWorkStackQueue globalQueue;
         WorkStack stack(std::move(workStack));
-        ProcessMarkStack(0, nullptr, stack, globalQueue);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        if (gcReason_ == GCReason::GC_REASON_XREF) {
+            ProcessMarkStack<true>(0, nullptr, stack, globalQueue);
+        } else {
+            ProcessMarkStack<false>(0, nullptr, stack, globalQueue);
+        }
+#else
+        ProcessMarkStack<false>(0, nullptr, stack, globalQueue);
+#endif
     }
 }
 

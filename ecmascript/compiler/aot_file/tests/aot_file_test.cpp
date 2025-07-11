@@ -316,7 +316,7 @@ protected:
             // Ensure AOT file exists
             ASSERT_TRUE(AOTFileManager::AOTFileExist(testAotPath_, AOTFileManager::FILE_EXTENSION_AN));
             std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-                vm->GetJSThread(), CString(testAbcPath_.c_str()), testRecordName_, false, false, ExecuteTypes::STATIC);
+                vm->GetJSThread(), CString(testAbcPath_.c_str()), testRecordName_, false, ExecuteTypes::STATIC);
             ASSERT_TRUE(jsPandaFile != nullptr);
             // Perform binding
             vm->GetAOTFileManager()->BindPreloadedPandaFilesInAotFile(testRecordName_);
@@ -368,7 +368,6 @@ protected:
                 CString(testAbcPath.c_str()),
                 testRecordName,
                 false,
-                false,
                 ExecuteTypes::STATIC);
         ASSERT_TRUE(jsPandaFile.get() != nullptr);
         // Test command-line mode branch
@@ -400,7 +399,6 @@ protected:
                 vm->GetJSThread(),
                 CString(testAbcPath.c_str()),
                 testRecordName,
-                false,
                 false,
                 ExecuteTypes::STATIC);
         ASSERT_TRUE(jsPandaFile.get() != nullptr);

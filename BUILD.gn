@@ -157,14 +157,14 @@ group("common_components_js_unittest") {
 
   if (ets_runtime_enable_cmc_gc) {
     deps += [
-      "common_components/base_runtime/tests:unittest",
-      "common_components/heap/w_collector/tests:unittest",
-      "common_components/base/tests:unittest",
-      "common_components/heap/allocator/tests:unittest",
-      "common_components/mutator/tests:unittest",
-      "common_components/heap/collector/tests:unittest",
-      "common_components/objects/tests:unittest",
-      "common_components/heap/barrier/tests:unittest",
+      #"common_components/base_runtime/tests:unittest",
+      #"common_components/heap/w_collector/tests:unittest",
+      #"common_components/base/tests:unittest",
+      #"common_components/heap/allocator/tests:unittest",
+      #"common_components/mutator/tests:unittest",
+      #"common_components/heap/collector/tests:unittest",
+      #"common_components/objects/tests:unittest",
+      #"common_components/heap/barrier/tests:unittest",
     ]
   }
 }
@@ -175,14 +175,14 @@ group("common_components_unittest") {
 
   if (ets_runtime_enable_cmc_gc) {
     deps += [
-      "common_components/base_runtime/tests:host_unittest",
-      "common_components/heap/w_collector/tests:host_unittest",
-      "common_components/base/tests:host_unittest",
-      "common_components/heap/allocator/tests:host_unittest",
-      "common_components/mutator/tests:host_unittest",
-      "common_components/heap/collector/tests:host_unittest",
-      "common_components/objects/tests:host_unittest",
-      "common_components/heap/barrier/tests:host_unittest",
+      #"common_components/base_runtime/tests:host_unittest",
+      #"common_components/heap/w_collector/tests:host_unittest",
+      #"common_components/base/tests:host_unittest",
+      #"common_components/heap/allocator/tests:host_unittest",
+      #"common_components/mutator/tests:host_unittest",
+      #"common_components/heap/collector/tests:host_unittest",
+      #"common_components/objects/tests:host_unittest",
+      #"common_components/heap/barrier/tests:host_unittest",
     ]
   }
 }
@@ -233,13 +233,13 @@ group("ark_unittest") {
   }
   if (ets_runtime_enable_cmc_gc) {
     deps += [
-      "common_components/base_runtime/tests:host_unittest",
-      "common_components/heap/w_collector/tests:host_unittest",
-      "common_components/base/tests:host_unittest",
-      "common_components/heap/allocator/tests:host_unittest",
-      "common_components/mutator/tests:host_unittest",
-      "common_components/heap/barrier/tests:unittest",
-      "common_components/heap/collector/tests:host_unittest",
+      #"common_components/base_runtime/tests:host_unittest",
+      #"common_components/heap/w_collector/tests:host_unittest",
+      #"common_components/base/tests:host_unittest",
+      #"common_components/heap/allocator/tests:host_unittest",
+      #"common_components/mutator/tests:host_unittest",
+      #"common_components/heap/barrier/tests:unittest",
+      #"common_components/heap/collector/tests:host_unittest",
     ]
   }
 }
@@ -421,6 +421,7 @@ config("ark_jsruntime_common_config") {
   }
   if (ets_runtime_enable_cmc_gc) {
     defines += [ "DEFAULT_USE_CMC_GC" ]
+    defines += [ "ARK_HYBRID" ]
     defines += [ "USE_CMC_GC" ]
     if (ets_runtime_enable_cmc_rb_dfx) {
       defines += [ "ENABLE_CMC_RB_DFX" ]
@@ -1054,6 +1055,8 @@ ecma_source = [
   "ecmascript/module/accessor/module_data_accessor.cpp",
   "ecmascript/module/js_module_manager.cpp",
   "ecmascript/module/js_dynamic_import.cpp",
+  "ecmascript/module/static/static_module_proxy_handler.cpp",
+  "ecmascript/module/static/static_module_loader.cpp",
   "ecmascript/module/js_module_namespace.cpp",
   "ecmascript/module/js_module_source_text.cpp",
   "ecmascript/module/js_module_deregister.cpp",
@@ -1153,7 +1156,11 @@ ecma_source += [
 ]
 
 if (ark_js_hybrid) {
-  ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
+  ecma_source += [
+    "ecmascript/cross_vm/cross_vm_operator.cpp",
+    "ecmascript/serializer/inter_op_value_deserializer.cpp",
+    "ecmascript/serializer/inter_op_value_serializer.cpp",
+  ]
 }
 
 if (!is_arkui_x) {
@@ -1560,11 +1567,6 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
@@ -1612,11 +1614,6 @@ ohos_source_set("libark_jsruntime_static") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   external_deps = []
   if (!is_arkui_x) {

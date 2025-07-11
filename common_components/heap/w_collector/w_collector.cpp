@@ -202,6 +202,7 @@ void WCollector::TraceRefField(BaseObject* obj, RefField<>& field, WorkStack& wo
     if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
         return;
     }
+    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
@@ -241,8 +242,42 @@ void WCollector::TraceObjectRefFields(BaseObject* obj, WorkStack& workStack, Wea
         TraceRefField(obj, field, workStack, weakStack);
     };
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    obj->ForEachRefFieldSkipReferent(refFunc);
+#else
     obj->ForEachRefField(refFunc);
+#endif
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+// note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
+void WCollector::TraceXRef(RefField<>& field, WorkStack& workStack) const
+{
+    BaseObject* targetObj = field.GetTargetObject();
+    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(targetObj));
+    // field is tagged object, should be in heap
+    DCHECK_CC(Heap::IsHeapAddress(targetObj));
+
+    DLOG(TRACE, "trace obj %p <%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+    if (region->IsNewObjectSinceTrace(targetObj)) {
+        DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+        return;
+    }
+    ASSERT(!field.IsWeak());
+    if (!region->MarkObject(targetObj)) {
+        workStack.push_back(targetObj);
+    }
+}
+
+void WCollector::TraceObjectXRef(BaseObject* obj, WorkStack& workStack)
+{
+    auto refFunc = [this, &workStack] (RefField<>& field) {
+        TraceXRef(field, workStack);
+    };
+
+    obj->IterateXRef(refFunc);
+}
+#endif
 
 void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
@@ -516,9 +551,53 @@ void WCollector::FixHeap()
     WVerify::VerifyAfterFix(*this);
 }
 
+void WCollector::CollectGarbageWithXRef()
+{
+#ifdef ENABLE_CMC_RB_DFX
+    WVerify::DisableReadBarrierDFX(*this);
+#endif
+
+    ScopedStopTheWorld stw("stw-gc");
+    RemoveXRefFromRoots();
+
+    WorkStack workStack = NewWorkStack();
+    EnumRoots(workStack);
+    TraceHeap(workStack);
+    SweepUnmarkedXRefs();
+    PostTrace();
+
+    AddXRefToRoots();
+    Preforward();
+    // reclaim large objects should after preforward(may process weak ref) and
+    // before fix heap(may clear live bit)
+    CollectLargeGarbage();
+    SweepThreadLocalJitFort();
+
+    CopyFromSpace();
+    WVerify::VerifyAfterForward(*this);
+
+    PrepareFix();
+    FixHeap();
+    CollectPinnedGarbage();
+
+    TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
+
+    ClearAllGCInfo();
+    CollectSmallSpace();
+    UnmarkAllXRefs();
+
+#if defined(ENABLE_CMC_RB_DFX)
+    WVerify::EnableReadBarrierDFX(*this);
+#endif
+}
+
 void WCollector::DoGarbageCollection()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoGarbageCollection", "");
+    if (gcReason_ == GCReason::GC_REASON_XREF) {
+        CollectGarbageWithXRef();
+        return;
+    }
     if (gcMode_ == GCMode::STW) { // 2: stw-gc
 #ifdef ENABLE_CMC_RB_DFX
         WVerify::DisableReadBarrierDFX(*this);
@@ -528,6 +607,7 @@ void WCollector::DoGarbageCollection()
         WorkStack workStack = NewWorkStack();
         EnumRoots(workStack);
         TraceHeap(workStack);
+        TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark(workStack);
         PostTrace();
 

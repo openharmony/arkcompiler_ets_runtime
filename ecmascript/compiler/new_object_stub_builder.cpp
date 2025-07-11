@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1973,8 +1973,8 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
-    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::FIRST_OFFSET), first);
-    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::SECOND_OFFSET), second);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::LEFT_OFFSET), first);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::RIGHT_OFFSET), second);
     Jump(exit);
 }
 

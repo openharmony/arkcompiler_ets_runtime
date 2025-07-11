@@ -25,13 +25,15 @@ class DynamicObjectDescriptor : public common::DynamicObjectDescriptorInterface 
 public:
     static void Initialize();
 
-    std::pair<JSTaggedValue, HandlerBase> GetProperty(ThreadHolder *thread, BaseObject *obj, char *name) override;
+    std::pair<JSTaggedValue, HandlerBase> GetProperty(ThreadHolder *thread,
+                                                      const BaseObject *obj,
+                                                      const char *name) const override;
 
-    std::pair<bool, HandlerBase> SetProperty(ThreadHolder *thread, BaseObject *obj, char *name,
+    std::pair<bool, HandlerBase> SetProperty(ThreadHolder *thread, BaseObject *obj, const char *name,
                                              JSTaggedValue value) override;
 
-    std::pair<JSTaggedValue, HandlerBase> GetElementByIdx(ThreadHolder *thread, BaseObject *obj,
-                                                          uint32_t index) override;
+    std::pair<JSTaggedValue, HandlerBase> GetElementByIdx(ThreadHolder *thread, const BaseObject *obj,
+                                                          uint32_t index) const override;
 
     std::pair<bool, HandlerBase> SetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index,
                                                  JSTaggedValue value) override;

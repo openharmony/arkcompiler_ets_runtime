@@ -173,7 +173,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                     jt = JSTaggedValue(std::get<bool>(value));
                     break;
                 }
-                case LiteralTag::STRING: {
+                case LiteralTag::STRING:
+                case LiteralTag::ETS_IMPLEMENTS:{
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
                     EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);
@@ -575,7 +576,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     jt = JSTaggedValue(std::get<bool>(value));
                     break;
                 }
-                case LiteralTag::STRING: {
+                case LiteralTag::STRING:
+                case LiteralTag::ETS_IMPLEMENTS:{
                     StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
                     EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::SHARED_OLD_SPACE);
                     jt = JSTaggedValue(str);

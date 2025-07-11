@@ -24,7 +24,7 @@ namespace OHOS::ArkCompiler {
 constexpr const char* AOT_EXE = "/system/bin/ark_aot_compiler";
 constexpr const char* STATIC_AOT_EXE = "/system/bin/ark_aot";
 
-std::unordered_set<std::string> AotArgsList {
+std::unordered_set<std::string> aotArgsList {
     "aot-file",
     "ark-properties",
     "ark-bundleName",
@@ -146,7 +146,7 @@ std::unordered_set<std::string> AotArgsList {
     "compiler-trace-builtins",
 };
 
-std::unordered_set<std::string> StaticAotArgsList {
+std::unordered_set<std::string> staticAOTArgsList {
     "boot-panda-files",
     "paoc-panda-files",
     "paoc-output",
@@ -154,10 +154,18 @@ std::unordered_set<std::string> StaticAotArgsList {
     "paoc-use-cha",
 };
 
-std::vector<std::string> StaticAotDefaultArgs {
+std::vector<std::string> staticAOTDefaultArgs {
     "--load-runtimes=ets",
     "--compiler-enable-fast-interop=false",
+    "--compiler-lower-boxed-boolean=false",
     "--paoc-zip-panda-file=ets/modules_static.abc"
 };
+
+std::vector<std::string> staticFrameworkAOTDefaultArgs {
+    "--load-runtimes=ets",
+    "--compiler-enable-fast-interop=false",
+    "--compiler-lower-boxed-boolean=false"
+};
+
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_LIST_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1764,13 +1764,13 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         common::IntegerCache* cache = nullptr;
 #if ENABLE_NEXT_OPTIMIZATION
         if ((strLen <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
-            cache = common::IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
+            cache = common::IntegerCache::Extract(LineEcmaString::Cast(tagged)->ToLineString());
             if (cache->IsInteger()) {
                 return JSTaggedNumber(cache->GetInteger());
             }
         }
 #endif
-        Span<const uint8_t> str = strAccessor.FastToUtf8Span();
+        common::Span<const uint8_t> str = strAccessor.FastToUtf8Span();
         if (strAccessor.GetLength() == 0) {
             return JSTaggedNumber(0);
         }
@@ -1780,7 +1780,7 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         }
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
+    common::Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);
     return JSTaggedNumber(d);

@@ -63,7 +63,8 @@ public:
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                    const JSHandle<TaggedArray> &literal,
                                                    uint32_t length,
-                                                   ClassKind kind = ClassKind::NON_SENDABLE);
+                                                   ClassKind kind = ClassKind::NON_SENDABLE,
+                                                   uint32_t implementLength = 0);
 
     static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread,
                                                     JSHandle<TaggedArray> &keys,

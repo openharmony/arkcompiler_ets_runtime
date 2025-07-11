@@ -55,6 +55,10 @@
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/serializer/inter_op_value_deserializer.h"
+#include "ecmascript/serializer/inter_op_value_serializer.h"
+#endif
 
 namespace panda {
 using ecmascript::AccessorData;
@@ -2815,6 +2819,35 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
                                                       val.GetTaggedValue());
 }
 
+Local<JSValueRef> JSNApi::GetImplements(const EcmaVM *vm, Local<JSValueRef> instance)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSTaggedValue result;
+    {
+        LocalScope scope(vm);
+        if (!instance->IsObject(vm)) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(instance));
+        OperationResult ret = JSTaggedValue::GetProperty(
+            thread, obj, thread->GlobalConstants()->GetHandledConstructorString());
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        result = ret.GetValue().GetTaggedValue();
+        if (!result.IsJSFunction()) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> resultValue(thread, result);
+        JSHandle<JSFunction> objFunc = JSHandle<JSFunction>::Cast(resultValue);
+        result = objFunc->GetInterfaceType();
+        if (result.IsUndefined()) {
+            return JSValueRef::Undefined(vm);
+        }
+    }
+    JSHandle<JSTaggedValue> implementRet(thread, result);
+    return JSNApiHelper::ToLocal<JSValueRef>(implementRet);
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -4271,6 +4304,11 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
         hasSwitchState_ = oldThreadState_ != static_cast<uint16_t>(ecmascript::ThreadState::RUNNING);
     } else {
         isEnableCMCGC_ = true;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        // This is a temporary impl to adapt interop to cmc, because some interop call napi
+        // without transfering to NATIVE
+        extraCoroutineSwitchedForInterop_ = InterOpCoroutineToNative(thread_->GetThreadHolder());
+#endif
         hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
     }
 }
@@ -4284,6 +4322,11 @@ JsiFastNativeScope::~JsiFastNativeScope()
             thread_->GetThreadHolder()->TransferToNative();
         }
     }
+#if defined(PANDA_JS_ETS_HYBRID_MODE)
+    if (isEnableCMCGC_ && extraCoroutineSwitchedForInterop_) {
+        InterOpCoroutineToRunning(thread_->GetThreadHolder());
+    }
+#endif
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
@@ -4691,6 +4734,7 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
         hostVM->GetAssociatedJSThread()->GetModuleManager();
     vmModuleManager->SetExecuteMode(hostVMModuleManager->GetExecuteMode());
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
+    vm->SetResolveBufferCallbackForHybridApp(hostVM->GetResolveBufferCallbackForHybridApp());
 }
 
 bool JSNApi::IsProfiling(EcmaVM *vm)
@@ -5988,6 +6032,15 @@ void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    vm->GetCrossVMOperator()->MarkFromObject(value, visitor);
+}
+
 void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
 {
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
@@ -6015,6 +6068,68 @@ bool JSNApi::IsValidHeapObject(const EcmaVM *vm, uintptr_t addr)
     return vm->GetCrossVMOperator()->IsValidHeapObject(value);
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+void *JSNApi::InterOpSerializeValue([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Local<JSValueRef> value,
+    [[maybe_unused]] Local<JSValueRef> transfer, [[maybe_unused]] Local<JSValueRef> cloneList,
+    [[maybe_unused]] bool defaultTransfer, [[maybe_unused]] bool defaultCloneShared)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
+    JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
+    JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    ecmascript::InterOpValueSerializer serializer(thread, defaultTransfer, defaultCloneShared);
+    std::unique_ptr<ecmascript::SerializeData> data;
+    if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
+        data = serializer.Release();
+    }
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, true);
+    }
+    if (data == nullptr) {
+        return nullptr;
+    } else {
+        return reinterpret_cast<void *>(data.release());
+    }
+#else
+    LOG_FULL(FATAL) << "Only support in inter-op";
+    UNREACHABLE();
+#endif
+}
+
+Local<JSValueRef> JSNApi::InterOpDeserializeValue([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] void *recoder,
+                                                  [[maybe_unused]] void *hint)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    ecmascript::ThreadManagedScope scope(thread);
+    std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
+    ecmascript::InterOpValueDeserializer deserializer(thread, data.release(), hint);
+    bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
+    std::chrono::system_clock::time_point startTime;
+    std::chrono::system_clock::time_point endTime;
+    if (serializationTimeoutCheckEnabled) {
+        startTime = std::chrono::system_clock::now();
+    }
+    JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+    if (serializationTimeoutCheckEnabled) {
+        endTime = std::chrono::system_clock::now();
+        GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
+    }
+    return JSNApiHelper::ToLocal<ObjectRef>(result);
+#else
+    LOG_FULL(FATAL) << "Only support in inter-op";
+    UNREACHABLE();
+#endif
+}
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
                              Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)
@@ -6189,10 +6304,17 @@ void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
-    std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
+
+void JSNApi::SetHostResolveBufferTrackerForHybridApp(EcmaVM *vm,
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
+{
+    vm->SetResolveBufferCallbackForHybridApp(cb);
+}
+
 
 void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
     std::function<bool(const std::string moduleName, std::string &hapPath)> cb)
@@ -6411,7 +6533,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         ModulePathHelper::ParseAbcPathAndOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-                thread, name, entry.c_str(), false, false, ecmascript::ExecuteTypes::STATIC);
+                thread, name, entry.c_str(), false, ecmascript::ExecuteTypes::STATIC);
         if (jsPandaFile == nullptr) {
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
@@ -6500,16 +6622,32 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 
+template<ForHybridApp isHybrid>
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                          const std::string &module_path, bool isHybrid)
+                                                          const std::string &module_path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
     JSHandle<JSTaggedValue> nameSp =
-        ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm, requestPath, modulePath, isHybrid);
+        ecmascript::NapiModuleLoader::LoadModuleNameSpace<isHybrid>(vm, requestPath, modulePath);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
+}
+template Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Normal>(EcmaVM *vm,
+    const std::string &file, const std::string &module_path);
+template Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(EcmaVM *vm,
+    const std::string &file, const std::string &module_path);
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForNormalApp(EcmaVM *vm, const std::string &file,
+    const std::string &module_path)
+{
+    return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Normal>(vm, file, module_path);
+}
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
+    const std::string &module_path)
+{
+    return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)

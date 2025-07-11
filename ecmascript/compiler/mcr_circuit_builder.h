@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -820,13 +820,13 @@ GateRef CircuitBuilder::TreeStringIsFlat(GateRef glue, GateRef string)
 
 GateRef CircuitBuilder::GetFirstFromTreeString(GateRef glue, GateRef string)
 {
-    GateRef offset = IntPtr(TreeString::FIRST_OFFSET);
+    GateRef offset = IntPtr(TreeString::LEFT_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 
 GateRef CircuitBuilder::GetSecondFromTreeString(GateRef glue, GateRef string)
 {
-    GateRef offset = IntPtr(TreeString::SECOND_OFFSET);
+    GateRef offset = IntPtr(TreeString::RIGHT_OFFSET);
     return Load(VariableType::JS_POINTER(), glue, string, offset);
 }
 

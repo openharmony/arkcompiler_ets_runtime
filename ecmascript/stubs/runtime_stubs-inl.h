@@ -927,6 +927,28 @@ bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
     // Therefore, there is no need to check for the existence of both at this point.
     return (!ihc->IsUndefined() || !chc->IsUndefined()) && !classLiteral->GetIsAOTUsed();
 }
+
+bool RuntimeStubs::MaybeHasInterfacesType(JSThread *thread, const JSHandle<TaggedArray> &arrayHandle)
+{
+    // this interface is one of the conditions for determining whether it is an interop scenario.
+    return arrayHandle->GetLength() != 0 && arrayHandle->Get(thread, arrayHandle->GetLength() - 1).IsString();
+}
+
+JSHandle<JSFunction> RuntimeStubs::EntranceForDefineClass(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &base,
+                                                          const JSHandle<JSTaggedValue> &lexenv,
+                                                          JSHandle<ClassInfoExtractor> &extractor,
+                                                          const JSHandle<JSTaggedValue> &ihc,
+                                                          const JSHandle<JSTaggedValue> &chc,
+                                                          const JSHandle<ClassLiteral> &classLiteral)
+{
+    if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
+        classLiteral->SetIsAOTUsed(true);
+        return ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+    } else {
+        return ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
+    }
+}
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
@@ -965,14 +987,15 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    auto literalLength = arrayHandle->GetLength();
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle, literalLength);
-
-    if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
-        classLiteral->SetIsAOTUsed(true);
-        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+    if (MaybeHasInterfacesType(thread, arrayHandle)) {
+        ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(
+            thread, extractor, arrayHandle, arrayHandle->GetLength(), ClassKind::NON_SENDABLE, 1);
+        cls = EntranceForDefineClass(thread, base, lexenv, extractor, ihc, chc, classLiteral);
+        cls->SetInterfaceType(thread, arrayHandle->Get(thread, arrayHandle->GetLength() - 1));
     } else {
-        cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
+        ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(
+            thread, extractor, arrayHandle, arrayHandle->GetLength());
+        cls = EntranceForDefineClass(thread, base, lexenv, extractor, ihc, chc, classLiteral);
     }
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

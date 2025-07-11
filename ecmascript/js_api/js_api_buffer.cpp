@@ -178,7 +178,7 @@ string_view FromStringBase64(const JSHandle<JSTaggedValue> &str, string &stringD
 {
     auto strAccessor = EcmaStringAccessor(JSHandle<EcmaString>(str));
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = strAccessor.ToUtf8Span(buf);
+    common::Span<const uint8_t> sp = strAccessor.ToUtf8Span(buf);
     StringConverter::Base64Decode(string_view(reinterpret_cast<const char *>(sp.data()), sp.size()), stringDecoded);
     return std::string_view(stringDecoded);
 }

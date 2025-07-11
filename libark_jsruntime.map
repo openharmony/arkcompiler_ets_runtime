@@ -18,6 +18,9 @@
       panda::ecmascript::HELP_OPTION_MSG*;
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
       panda::ecmascript::g_isEnableCMCGC*;
+
+      panda::MutatorBase::*;
+
       panda::ArkCrashHolder*;
 
       panda::ArrayBufferRef::*;
@@ -97,6 +100,7 @@
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
       common::BaseRuntime::*;
+      common::HeapAllocator::*;
       common::VisitDynamicGlobalRoots*;
       common::VisitDynamicWeakGlobalRoots*;
       common::VisitDynamicLocalRoots*;
@@ -109,6 +113,17 @@
       common::FillFreeObject*;
       common::SetBaseAddress*;
       common::JSGCCallback*;
+      common::RegisterVisitStaticRootsHook*;
+      common::RegisterUpdateStaticRootsHook*;
+      common::RegisterSweepStaticRootsHook*;
+      common::InterOpCoroutineToNative*;
+      common::InterOpCoroutineToRunning*;
+      common::RegisterInterOpCoroutineToNativeHook*;
+      common::RegisterInterOpCoroutineToRunningHook*;
+      common::RegisterUnmarkAllXRefsHook*;
+      common::RegisterSweepUnmarkedXRefsHook*;
+      common::RegisterAddXRefToStaticRootsHook*;
+      common::RegisterRemoveXRefFromStaticRootsHook*;
       common::MutatorBase::*;
       common::Log::*;
       common::AndroidLog*;

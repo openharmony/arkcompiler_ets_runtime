@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/ecma_string-inl.h"
-#include "common_interfaces/objects/string/base_string_impl.h"
+#include "common_interfaces/objects/string/base_string-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
@@ -536,9 +536,9 @@ namespace panda::test {
                       arrayFrontU8[i]);
         }
         for (uint32_t i = 0; i < lengthEcmaStrBackU16NotComp; i++) {
-            EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(
-                          Barriers::GetTaggedObject<>, i + lengthEcmaStrFrontU8),
-                arrayBackU16NotComp[i]);
+            EXPECT_EQ(
+                handleEcmaStrConcatU8U16NotComp->ToBaseString()->At(Barriers::GetTaggedObject<>,
+                i + lengthEcmaStrFrontU8), arrayBackU16NotComp[i]);
         }
         EXPECT_EQ(handleEcmaStrConcatU8U16NotComp->ToBaseString()->GetLength(),
                   lengthEcmaStrFrontU8 + lengthEcmaStrBackU16NotComp);
@@ -638,14 +638,15 @@ namespace panda::test {
     HWTEST_F_L0(BaseStringTest, FastSubString_004)
     {
         ObjectFactory* factory = instance->GetFactory();
+        auto readBarrier = Barriers::GetTaggedObject<>;
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
             JSHandle<EcmaString> tmpString = factory->NewFromASCII("integer");
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 2, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf8());
-            EXPECT_TRUE(BaseString::StringsAreEqual(
-                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(
+                BaseString::StringsAreEqual(readBarrier, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
@@ -653,8 +654,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 2);
             EXPECT_TRUE(res->ToBaseString()->IsUtf16());
-            EXPECT_TRUE(BaseString::StringsAreEqual(
-                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(
+                BaseString::StringsAreEqual(readBarrier, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("整数integer");
@@ -662,8 +663,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf16());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 1, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf16());
-            EXPECT_TRUE(BaseString::StringsAreEqual(
-                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(
+                BaseString::StringsAreEqual(readBarrier, res->ToBaseString(), tmpString->ToBaseString()));
         }
         {
             JSHandle<EcmaString> sourceString = factory->NewFromASCII("integer123");
@@ -671,8 +672,8 @@ namespace panda::test {
             EXPECT_TRUE(sourceString->ToBaseString()->IsUtf8());
             EcmaString* res = EcmaStringAccessor::FastSubString(instance, sourceString, 0, 7);
             EXPECT_TRUE(res->ToBaseString()->IsUtf8());
-            EXPECT_TRUE(BaseString::StringsAreEqual(
-                Barriers::GetTaggedObject<>, res->ToBaseString(), tmpString->ToBaseString()));
+            EXPECT_TRUE(BaseString::StringsAreEqual(readBarrier, res->ToBaseString(),
+                tmpString->ToBaseString()));
         }
     }
 
@@ -694,12 +695,12 @@ namespace panda::test {
                                                           instance, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom,
                                                           true));
         size_t sizeEcmaStrU8WriteTo = 5;
-        JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
+        JSHandle<LineEcmaString> handleEcmaStrAllocTrueWriteTo(thread,
                                                            EcmaStringAccessor::CreateLineString(
                                                                instance, sizeEcmaStrU8WriteTo, true));
         uint32_t indexStartWriteFromArrayU8 = 2;
         uint32_t lengthWriteFromArrayU8 = 2;
-        handleEcmaStrAllocTrueWriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
+        handleEcmaStrAllocTrueWriteTo->ToLineString()->WriteData(Barriers::GetTaggedObject<>,
                                                                  handleEcmaStrU8WriteFrom->ToBaseString(),
                                                                  indexStartWriteFromArrayU8,
                                                                  sizeEcmaStrU8WriteTo, lengthWriteFromArrayU8);
@@ -724,11 +725,11 @@ namespace panda::test {
         // WriteData(). From char to EcmaString made by CreateLineString( , true, ).
         char u8Write = 'a';
         size_t sizeEcmaStrU8WriteTo = 5;
-        JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
+        JSHandle<LineEcmaString> handleEcmaStrAllocTrueWriteTo(thread,
                                                            EcmaStringAccessor::CreateLineString(
                                                                instance, sizeEcmaStrU8WriteTo, true));
         uint32_t indexAtWriteFromU8 = 4;
-        handleEcmaStrAllocTrueWriteTo->ToBaseString()->WriteData(indexAtWriteFromU8, u8Write);
+        handleEcmaStrAllocTrueWriteTo->ToLineString()->Set(indexAtWriteFromU8, u8Write);
         EXPECT_EQ(handleEcmaStrAllocTrueWriteTo->ToBaseString()->At(Barriers::GetTaggedObject<>, indexAtWriteFromU8),
                   u8Write);
     }
@@ -752,12 +753,12 @@ namespace panda::test {
                                                            instance, &arrayU16WriteFrom[0], lengthEcmaStrU16WriteFrom,
                                                            false));
         size_t sizeEcmaStrU16WriteTo = 10;
-        JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU16WriteTo(thread,
                                                      EcmaStringAccessor::CreateLineString(
                                                          instance, sizeEcmaStrU16WriteTo, false));
         uint32_t indexStartWriteFromArrayU16 = 3;
         uint32_t numBytesWriteFromArrayU16 = 2 * 3;
-        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
+        handleEcmaStrU16WriteTo->ToLineString()->WriteData(Barriers::GetTaggedObject<>,
                                                            handleEcmaStrU16WriteFrom->ToBaseString(),
                                                            indexStartWriteFromArrayU16, sizeEcmaStrU16WriteTo,
                                                            numBytesWriteFromArrayU16);
@@ -785,12 +786,12 @@ namespace panda::test {
                                                           instance, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom,
                                                           true));
         size_t sizeEcmaStrU16WriteTo = 10;
-        JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU16WriteTo(thread,
                                                      EcmaStringAccessor::CreateLineString(
                                                          instance, sizeEcmaStrU16WriteTo, false));
         uint32_t indexStartWriteFromU8ToU16 = 1;
         uint32_t numBytesWriteFromU8ToU16 = 4;
-        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(Barriers::GetTaggedObject<>,
+        handleEcmaStrU16WriteTo->ToLineString()->WriteData(Barriers::GetTaggedObject<>,
                                                            handleEcmaStrU8WriteFrom->ToBaseString(),
                                                            indexStartWriteFromU8ToU16, sizeEcmaStrU16WriteTo,
                                                            numBytesWriteFromU8ToU16);
@@ -812,12 +813,12 @@ namespace panda::test {
     {
         // WriteData(). From char to EcmaString made by CreateLineString( , false, ).
         size_t sizeEcmaStrU16WriteTo = 10;
-        JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU16WriteTo(thread,
                                                      EcmaStringAccessor::CreateLineString(
                                                          instance, sizeEcmaStrU16WriteTo, false));
         char u8Write = 'a';
         uint32_t indexAt = 4;
-        handleEcmaStrU16WriteTo->ToBaseString()->WriteData(indexAt, u8Write);
+        handleEcmaStrU16WriteTo->ToLineString()->Set(indexAt, u8Write);
         EXPECT_EQ(handleEcmaStrU16WriteTo->ToBaseString()->At(Barriers::GetTaggedObject<>, indexAt), u8Write);
     }
 
@@ -863,21 +864,21 @@ namespace panda::test {
         // From EcmaString made by CreateFromUtf8().
         uint8_t arrayU8[] = {"abcde"};
         uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
-        JSHandle<EcmaString> handleEcmaStrU8(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU8(thread,
                                              EcmaStringAccessor::CreateFromUtf8(
                                                  instance, &arrayU8[0], lengthEcmaStrU8, true));
         for (uint32_t i = 0; i < lengthEcmaStrU8; i++) {
-            EXPECT_EQ(*(handleEcmaStrU8->ToBaseString()->GetDataUtf8() + i), arrayU8[i]);
+            EXPECT_EQ(*(handleEcmaStrU8->ToLineString()->GetDataUtf8() + i), arrayU8[i]);
         }
 
         // From EcmaString made by CreateFromUtf16( , , , true).
         uint16_t arrayU16Comp[] = {3, 1, 34, 123, 127, 111, 42, 3, 20, 10};
         uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
-        JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU16Comp(thread,
                                                   EcmaStringAccessor::CreateFromUtf16(
                                                       instance, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
         for (uint32_t i = 0; i < sizeof(arrayU16Comp) / arrayU16Comp[0]; i++) {
-            EXPECT_EQ(*(handleEcmaStrU16Comp->ToBaseString()->GetDataUtf8() + i), arrayU16Comp[i]);
+            EXPECT_EQ(*(handleEcmaStrU16Comp->ToLineString()->GetDataUtf8() + i), arrayU16Comp[i]);
         }
     }
 
@@ -892,12 +893,12 @@ namespace panda::test {
         // From EcmaString made by CreateFromUtf16( , , , false).
         uint16_t arrayU16NotComp[] = {67, 777, 1999, 1, 45, 66, 23456, 65535, 127, 333};
         uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
-        JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
+        JSHandle<LineEcmaString> handleEcmaStrU16NotComp(thread,
                                                      EcmaStringAccessor::CreateFromUtf16(
                                                          instance, &arrayU16NotComp[0], lengthEcmaStrU16NotComp,
                                                          false));
         for (uint32_t i = 0; i < lengthEcmaStrU16NotComp; i++) {
-            EXPECT_EQ(*(handleEcmaStrU16NotComp->ToBaseString()->GetDataUtf16() + i), arrayU16NotComp[i]);
+            EXPECT_EQ(*(handleEcmaStrU16NotComp->ToLineString()->GetDataUtf16() + i), arrayU16NotComp[i]);
         }
     }
 
@@ -913,9 +914,8 @@ namespace panda::test {
         // CopyDataRegionUtf8(). From EcmaString made by CreateFromUtf8().
         uint8_t arrayU8CopyFrom[6] = {1, 12, 34, 56, 127};
         uint32_t lengthEcmaStrU8CopyFrom = sizeof(arrayU8CopyFrom) - 1;
-        JSHandle<EcmaString> handleEcmaStrU8CopyFrom(thread,
-                                                     EcmaStringAccessor::CreateFromUtf8(
-                                                         instance, &arrayU8CopyFrom[0], lengthEcmaStrU8CopyFrom, true));
+        JSHandle<EcmaString> handleEcmaStrU8CopyFrom(thread, EcmaStringAccessor::CreateFromUtf8(
+            instance, &arrayU8CopyFrom[0], lengthEcmaStrU8CopyFrom, true));
         const size_t lengthArrayU8Target = 7;
         uint8_t defaultByteForU8CopyTo = 1;
         uint8_t arrayU8CopyTo[lengthArrayU8Target];
@@ -926,13 +926,14 @@ namespace panda::test {
         size_t indexStartFromArrayU8 = 2;
         size_t lengthCopyToEcmaStrU8 = 3;
         size_t lengthReturnU8 = handleEcmaStrU8CopyFrom->ToBaseString()->CopyDataRegionUtf8(
-            Barriers::GetTaggedObject<>, arrayU8CopyTo, indexStartFromArrayU8,
-            lengthCopyToEcmaStrU8, lengthArrayU8Target);
+            Barriers::GetTaggedObject<>, arrayU8CopyTo, indexStartFromArrayU8, lengthCopyToEcmaStrU8,
+            lengthArrayU8Target);
 
         EXPECT_EQ(lengthReturnU8, lengthCopyToEcmaStrU8);
         for (uint32_t i = 0; i < lengthCopyToEcmaStrU8; i++) {
             EXPECT_EQ(arrayU8CopyTo[i],
-                handleEcmaStrU8CopyFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i + indexStartFromArrayU8));
+                      handleEcmaStrU8CopyFrom->ToBaseString()->At(Barriers::GetTaggedObject<>, i + indexStartFromArrayU8
+                      ));
         }
         for (uint32_t i = lengthCopyToEcmaStrU8; i < lengthArrayU8Target; i++) {
             EXPECT_EQ(arrayU8CopyTo[i], defaultByteForU8CopyTo);
@@ -941,10 +942,8 @@ namespace panda::test {
         // CopyDataRegionUtf8(). From EcmaString made by CreateFromUtf16( , , , true).
         uint16_t arrayU16CompCopyFrom[] = {1, 12, 34, 56, 127};
         uint32_t lengthEcmaStrU16CompCopyFrom = sizeof(arrayU16CompCopyFrom) / sizeof(arrayU16CompCopyFrom[0]);
-        JSHandle<EcmaString> handleEcmaStrU16CompCopyFrom(thread,
-                                                          EcmaStringAccessor::CreateFromUtf16(
-                                                              instance, &arrayU16CompCopyFrom[0],
-                                                              lengthEcmaStrU16CompCopyFrom, true));
+        JSHandle<EcmaString> handleEcmaStrU16CompCopyFrom(thread, EcmaStringAccessor::CreateFromUtf16(
+            instance, &arrayU16CompCopyFrom[0], lengthEcmaStrU16CompCopyFrom, true));
         const size_t lengthArrayU16Target = 8;
         uint8_t defaultByteForU16CompCopyTo = 1;
         uint8_t arrayU16CompCopyTo[lengthArrayU16Target];
@@ -1236,14 +1235,17 @@ namespace panda::test {
                                                 EcmaStringAccessor::CreateFromUtf8(
                                                     instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
         EXPECT_TRUE(
-            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(), &
-                arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
-            &arrayU8No1[0], lengthEcmaStrU8No1, false));
-        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(
-            Barriers::GetTaggedObject<>, handleEcmaStrU8No2->ToBaseString(), &arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(
-            Barriers::GetTaggedObject<>, handleEcmaStrU8No3->ToBaseString(), &arrayU8No1[0], lengthEcmaStrU8No1, true));
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
+                &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EXPECT_FALSE(
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No1->ToBaseString(),
+                &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_FALSE(
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No2->ToBaseString(),
+                &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EXPECT_FALSE(
+            BaseString::StringIsEqualUint8Data(Barriers::GetTaggedObject<>, handleEcmaStrU8No3->ToBaseString(),
+                &arrayU8No1[0], lengthEcmaStrU8No1, true));
     }
 
     /*
@@ -1617,7 +1619,7 @@ namespace panda::test {
      * @tc.type: FUNC
      * @tc.require:
      */
-    HWTEST_F_L0(BaseStringTest, EqualToSplicedString)
+    HWTEST_F_L0(BaseStringTest, EqualToSplicedString001)
     {
         ObjectFactory* factory = instance->GetFactory();
         {
@@ -1667,7 +1669,18 @@ namespace panda::test {
                 Barriers::GetTaggedObject<>, firstString->ToBaseString(), secondString->ToBaseString());
             EXPECT_TRUE(result);
         }
+    }
 
+    /*
+    * @tc.name: EqualToSplicedString
+    * @tc.desc: Tests whether the source string is equal to the concatenated string.
+    * is within expectations.
+    * @tc.type: FUNC
+    * @tc.require:
+    */
+    HWTEST_F_L0(BaseStringTest, EqualToSplicedString002)
+    {
+        ObjectFactory* factory = instance->GetFactory();
         {
             JSHandle<EcmaString> sourceString = factory->NewFromUtf8("Startstart");
             JSHandle<EcmaString> firstString = factory->NewFromASCII("Start");

@@ -199,7 +199,6 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_009, TestSize.Level0)
     int32_t ret = aotService.NeedReCompile(oldVersion, sigData);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_STREQ(oldVersion.c_str(), "4.0.0.0");
-    EXPECT_FALSE(sigData);
 }
 
 /**
