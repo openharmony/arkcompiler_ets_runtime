@@ -121,6 +121,11 @@ public:
         oldRegionList_.VisitAllRegions(visitFunc);
     }
 
+    void AddFullRegion(RegionDesc *region)
+    {
+        recentFullRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
+    }
+
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {
         DCHECK_CC(region->IsThreadLocalRegion());

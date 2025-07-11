@@ -1243,7 +1243,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, size_t objSi
         uintptr_t regionAddr;
         switch (spaceType) {
             case SerializedObjectSpace::REGULAR_SPACE:
-                regionAddr = common::HeapAllocator::AllocateRegion();
+                regionAddr = common::HeapAllocator::AllocateOldRegion();
                 regularRegions_.emplace_back(regionAddr, liveObjectSize);
                 break;
             case SerializedObjectSpace::PIN_SPACE:
@@ -1795,6 +1795,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
+        *value = taggedObjectAddr;
         if (!g_isEnableCMCGC) {
             Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
             Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
@@ -1813,8 +1814,11 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
                     valueRegion->AtomicMark(reinterpret_cast<void*>(taggedObjectAddr));
                 }
             }
+        } else {
+            size_t offset = ToUintPtr(root) - ToUintPtr(value);
+            WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset,
+                static_cast<JSTaggedType>(taggedObjectAddr));
         }
-        *value = taggedObjectAddr;
         return;
     }
 

@@ -95,7 +95,7 @@ public:
 
     // only used for deserialize allocation, allocate one region and regard it as full region
     // todo: adapt for concurrent gc
-    uintptr_t AllocRegion();
+    uintptr_t AllocOldRegion();
     uintptr_t AllocPinnedRegion();
     uintptr_t AllocLargeRegion(size_t size);
     uintptr_t AllocJitFortRegion(size_t size);
