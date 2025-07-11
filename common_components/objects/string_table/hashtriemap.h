@@ -52,7 +52,8 @@ class HashTrieMapIndirect;
 
 class HashTrieMapNode {
 public:
-    static constexpr uint64_t POINTER_LENGTH = 63;
+    // Do not use 57-64bits, HWAsan uses 57-64 bits as pointer tag
+    static constexpr uint64_t POINTER_LENGTH = 48;
     static constexpr uint64_t ENTRY_TAG_MASK = 1ULL << POINTER_LENGTH;
 
     using Pointer = BitField<uint64_t, 0, POINTER_LENGTH>;
