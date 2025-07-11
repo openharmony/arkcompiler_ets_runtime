@@ -402,7 +402,7 @@ EcmaVM::~EcmaVM()
 {
     if (g_isEnableCMCGC) {
         thread_->GetThreadHolder()->TransferToNative();
-        common::BaseRuntime::WaitForGCFinish();
+        common::BaseRuntime::EnterGCCriticalSection();
         thread_->GetThreadHolder()->TransferToRunning();
     }
     if (isJitCompileVM_) {
@@ -412,6 +412,9 @@ EcmaVM::~EcmaVM()
         }
         stringTable_ = nullptr;
         thread_ = nullptr;
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::ExitGCCriticalSection();
+        }
         return;
     }
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -618,6 +621,10 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::ExitGCCriticalSection();
     }
 }
 

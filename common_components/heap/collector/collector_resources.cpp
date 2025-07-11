@@ -218,6 +218,25 @@ void CollectorResources::NotifyGCFinished(uint64_t gcIndex)
     BroadcastGCFinished();
 }
 
+void CollectorResources::MarkGCStart()
+{
+    std::unique_lock<std::mutex> lock(gcFinishedCondMutex_);
+    
+    // Wait for any existing GC to finish - inline the wait logic
+    std::function<bool()> pred = [this] {
+        return !IsGcStarted();
+    };
+    gcFinishedCondVar_.wait(lock, pred);
+    
+    // Now claim GC ownership
+    SetGcStarted(true);
+}
+
+void CollectorResources::MarkGCFinish(uint64_t gcIndex)
+{
+    NotifyGCFinished(gcIndex);
+}
+
 void CollectorResources::WaitForGCFinish()
 {
     uint64_t startTime = TimeUtil::MicroSeconds();
