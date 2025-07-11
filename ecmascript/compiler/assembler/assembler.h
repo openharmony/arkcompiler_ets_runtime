@@ -114,7 +114,7 @@ enum FrameCompletionPos : uint64_t {
     // ARM64
     ARM64CppToAsmInterp = 56,
     ARM64AsmInterpToCpp = 40,
-    ARM64EntryFrameDuration = 116,
+    ARM64EntryFrameDuration = 120,
 };
 
 class Label {
