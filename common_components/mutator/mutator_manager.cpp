@@ -342,13 +342,6 @@ void MutatorManager::WaitUntilAllStopped()
             return;
         }
 
-        if (UNLIKELY_CC(TimeUtil::MilliSeconds() - beginTime >
-            (((remainMutatorsSize / STW_TIMEOUTS_THREADS_BASE_COUNT) * STW_TIMEOUTS_BASE_MS) + STW_TIMEOUTS_BASE_MS))) {
-            timeoutTimes++;
-            beginTime = TimeUtil::MilliSeconds();
-            DumpMutators(timeoutTimes);
-        }
-
         (void)sched_yield();
     }
 }
