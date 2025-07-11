@@ -534,7 +534,7 @@ public:
         JSHandle<ConstantPool> sharedCP, JSHandle<ConstantPool> unsharedCP);
 
     static bool PUBLIC_API IsAotMethodLiteralInfo(JSTaggedValue literalInfo);
-    static JSTaggedValue PUBLIC_API GetIhcFromAOTLiteralInfo(JSTaggedValue constpool, uint32_t index);
+    static JSTaggedValue PUBLIC_API GetIhcFromAOTLiteralInfo(JSThread *thread, JSTaggedValue constpool, uint32_t index);
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
         uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
@@ -575,7 +575,7 @@ public:
                         properties, constpoolHandle, entry, needSetAotFlag, entryIndexes);
                     JSTaggedValue ihcVal = JSTaggedValue::Undefined();
                     if (needSetAotFlag) {
-                        ihcVal = entryIndexes->GetIhc();
+                        ihcVal = entryIndexes->GetIhc(thread);
                         if (!ihcVal.IsUndefined()) {
                             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                             JSHClass::Cast(ihcVal.GetTaggedObject())->SetPrototype(thread,

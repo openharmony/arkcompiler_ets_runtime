@@ -157,11 +157,11 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
     }
 
     if (!ihc->IsUndefined()) {
-        aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
+        aotLiteralInfo->SetIhc(thread_, ihc.GetTaggedValue());
     }
 
     if (!chc->IsUndefined()) {
-        aotLiteralInfo->SetChc(chc.GetTaggedValue());
+        aotLiteralInfo->SetChc(thread_, chc.GetTaggedValue());
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -258,7 +258,7 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
         aotLiteralInfo->SetObjectToCache(thread_, 0, JSTaggedValue(initValue));
         aotLiteralInfo->SetLiteralType(JSTaggedValue(AOTLiteralInfo::METHOD_LITERAL_TYPE));
         if (!ihc->IsUndefined()) {
-            aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
+            aotLiteralInfo->SetIhc(thread_, ihc.GetTaggedValue());
             if (skippedMethods.find(methodOffset) == skippedMethods.end()) {
                 aotLiteralInfo->SetObjectToCache(thread_, 0, JSTaggedValue(methodOffset));
                 globalData.RecordReviseData(

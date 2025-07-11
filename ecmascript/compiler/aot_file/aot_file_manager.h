@@ -87,24 +87,42 @@ public:
         return GetLength() - RESERVED_LENGTH;
     }
 
-    inline void SetIhc(JSTaggedValue value)
+    inline void SetIhcPrimitive(JSTaggedValue value)
     {
         Barriers::SetPrimitive(GetData(), GetIhcOffset(), value.GetRawData());
     }
 
-    inline JSTaggedValue GetIhc() const
-    {
-        return JSTaggedValue(Barriers::GetPrimitive<JSTaggedType>(GetData(), GetIhcOffset()));
-    }
-
-    inline void SetChc(JSTaggedValue value)
+    inline void SetChcPrimitive(JSTaggedValue value)
     {
         Barriers::SetPrimitive(GetData(), GetChcOffset(), value.GetRawData());
     }
 
-    inline JSTaggedValue GetChc() const
+    inline void SetIhc(JSThread *thread, JSTaggedValue value)
     {
-        return JSTaggedValue(Barriers::GetPrimitive<JSTaggedType>(GetData(), GetChcOffset()));
+        if (value.IsHeapObject()) {
+            Barriers::SetObject(thread, GetData(), GetIhcOffset(), value.GetRawData());
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), GetIhcOffset(), value.GetRawData());
+        }
+    }
+
+    inline JSTaggedValue GetIhc(JSThread *thread) const
+    {
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetIhcOffset()));
+    }
+
+    inline void SetChc(JSThread *thread, JSTaggedValue value)
+    {
+        if (value.IsHeapObject()) {
+            Barriers::SetObject(thread, GetData(), GetChcOffset(), value.GetRawData());
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), GetChcOffset(), value.GetRawData());
+        }
+    }
+
+    inline JSTaggedValue GetChc(JSThread *thread) const
+    {
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, GetData(), GetChcOffset()));
     }
 
     inline void SetLiteralType(JSTaggedValue value)
