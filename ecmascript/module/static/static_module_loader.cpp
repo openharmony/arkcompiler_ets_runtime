@@ -67,7 +67,7 @@ JSHandle<JSTaggedValue> StaticModuleLoader::LoadStaticModule(JSThread *thread,
 {
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (moduleManager->IsModuleLoaded(key)) {
-        LOG_ECMA(INFO) << "load ets module from cache.";
+        LOG_ECMA(INFO) << "load static module from cache.";
         JSHandle<SourceTextModule> moduleRecord = moduleManager->HostGetImportedModule(key);
         return JSHandle<JSTaggedValue>(thread, moduleRecord->GetModuleValue(thread, 0, false));
     }
@@ -93,60 +93,4 @@ JSHandle<JSTaggedValue> StaticModuleLoader::LoadStaticModule(JSThread *thread,
     return value;
 }
 
-JSTaggedValue StaticModuleLoader::TryLoadStaticModule(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
-    JSHandle<JSPromiseReactionsFunction> reject, JSHandle<EcmaString> specifierString)
-{
-    CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
-    return TryLoadStaticModule(thread, resolve, reject, requestPath);
-}
-
-JSTaggedValue StaticModuleLoader::TryLoadStaticModule(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
-    JSHandle<JSPromiseReactionsFunction> reject, const CString &requestPath)
-{
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    ASSERT(thread->HasPendingException());
-    LOG_ECMA(DEBUG) << "start try load static module: " << requestPath;
-    // If the ohmurl is detected to be in compliance with the 1.0 prefix rule, then throw an exception directly
-    if (StaticModuleLoader::CanTryLoadStaticModulePath(requestPath)) {
-        JSHandle<JSTaggedValue> errorReuslt = JSPromise::IfThrowGetThrowValue(thread);
-        LOG_ECMA(DEBUG) << "start load static module: " << requestPath;
-        thread->ClearException();
-        EcmaVM *vm = thread->GetEcmaVM();
-        Local<JSValueRef> getEsModule = GetStaticModuleLoadFunc(vm);
-        if (!getEsModule->IsFunction(vm)) {
-            LOG_ECMA(DEBUG) << "napi static module function not found " << requestPath;
-            thread->SetException(errorReuslt.GetTaggedValue());
-            return CatchException(thread, reject);
-        }
-        // try load 1.2 module;
-        Local<FunctionRef> getEsModuleFunc = getEsModule;
-        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-        JSHandle<JSTaggedValue> exportObject = LoadStaticModule(thread, getEsModuleFunc, requestPath);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-        LOG_ECMA(DEBUG) << "load static module successfull, requestPath: " << requestPath;
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread,
-                                                JSHandle<JSTaggedValue>(resolve),
-                                                undefined, undefined, 1);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-        info->SetCallArg(exportObject.GetTaggedValue());
-        return JSFunction::Call(info);
-    }
-    return CatchException(thread, reject);
-}
-
-JSTaggedValue StaticModuleLoader::CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject)
-{
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    ASSERT(thread->HasPendingException());
-    JSHandle<JSTaggedValue> errorReuslt = JSPromise::IfThrowGetThrowValue(thread);
-    thread->ClearException();
-    JSHandle<JSTaggedValue> rejectfun(reject);
-    EcmaRuntimeCallInfo *runtimeInfo =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    runtimeInfo->SetCallArg(errorReuslt.GetTaggedValue());
-    return JSFunction::Call(runtimeInfo);
-}
 }  // namespace panda::ecmascript
