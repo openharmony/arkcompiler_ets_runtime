@@ -31,7 +31,6 @@ host_unittest_action("JsStackInfoTest") {
   ]
 
   deps = [
-    "$ark_root/assembler:libarkassembler_static",
     "../../../../:libark_jsruntime_test",
   ]
 
@@ -41,6 +40,7 @@ host_unittest_action("JsStackInfoTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+    "runtime_core:libarkassembler_static",
   ]
   deps += hiviewdfx_deps
 }

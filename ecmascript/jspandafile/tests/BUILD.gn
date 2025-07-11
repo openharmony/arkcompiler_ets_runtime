@@ -120,7 +120,6 @@ host_unittest_action("JSPandaFileTest") {
 
   deps = [
     "$js_root:libark_jsruntime_test",
-    "//arkcompiler/runtime_core/assembler:libarkassembler_static",
   ]
 
   foreach(file, test_js_files) {
@@ -145,6 +144,7 @@ host_unittest_action("JSPandaFileTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+    "runtime_core:libarkassembler_static",
   ]
   deps += hiviewdfx_deps
 }

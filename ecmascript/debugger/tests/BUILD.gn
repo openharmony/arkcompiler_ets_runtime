@@ -59,7 +59,6 @@ host_unittest_action("RuntimeDebuggerTest") {
 
   deps = [
     "$js_root:libark_jsruntime_test",
-    "//arkcompiler/runtime_core/assembler:libarkassembler_static",
   ]
 
   foreach(file, test_js_files) {
@@ -81,6 +80,7 @@ host_unittest_action("RuntimeDebuggerTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "runtime_core:libarkassembler_static" ]
   deps += hiviewdfx_deps
 }
 
