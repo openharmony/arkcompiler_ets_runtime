@@ -48,7 +48,11 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
         LayoutInfo *layout;
         if (thread == nullptr) {
             // gc thread
-            layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_CMC_RB>(thread).GetTaggedObject());
+            if (g_isEnableCMCGC) {
+                layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_CMC_RB>(thread).GetTaggedObject());
+            } else {
+                layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(thread).GetTaggedObject());
+            }
         } else {
             // serialization
             layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
@@ -61,7 +65,11 @@ class RefFieldObjectVisitor final : public BaseObjectVisitor<RefFieldObjectVisit
         for (ObjectSlot slot = start; slot < end; slot++) {
             PropertyAttributes attr;
             if (thread == nullptr) {
-                attr = layout->GetAttr<RBMode::FAST_CMC_RB>(thread, index++);
+                if (g_isEnableCMCGC) {
+                    attr = layout->GetAttr<RBMode::FAST_CMC_RB>(thread, index++);
+                } else {
+                    attr = layout->GetAttr<RBMode::FAST_NO_RB>(thread, index++);
+                }
             } else {
                 attr = layout->GetAttr(thread, index++);
             }

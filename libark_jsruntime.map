@@ -101,8 +101,10 @@
       common::VisitDynamicWeakGlobalRoots*;
       common::VisitDynamicLocalRoots*;
       common::VisitDynamicWeakLocalRoots*;
+      common::VisitDynamicPreforwardRoots*;
       common::VisitDynamicThreadRoot*;
       common::VisitDynamicWeakThreadRoot*;
+      common::VisitDynamicThreadPreforwardRoot*;
       common::VisitDynamicConcurrentRoots*;
       common::BaseObject::*;
       common::VisitJSThread*;

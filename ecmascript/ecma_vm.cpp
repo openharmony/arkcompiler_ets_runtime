@@ -1010,6 +1010,25 @@ size_t EcmaVM::IterateHandle(RootVisitor &visitor)
     return handleCount;
 }
 
+void EcmaVM::IterateWeakGlobalEnvList(WeakVisitor &visitor)
+{
+    for (auto it = globalEnvRecordList_.begin(); it != globalEnvRecordList_.end();) {
+        bool isAlive = visitor.VisitRoot(Root::ROOT_VM, ecmascript::ObjectSlot(static_cast<uintptr_t>(*it)));
+        if (isAlive) {
+            it++;
+        } else {
+            it = globalEnvRecordList_.erase(it);
+        }
+    }
+}
+
+void EcmaVM::IterateGlobalEnvField(RootVisitor &visitor)
+{
+    for (auto value : globalEnvRecordList_) {
+        GlobalEnv::Cast(JSTaggedValue(value).GetTaggedObject())->Iterate(visitor);
+    }
+}
+
 uintptr_t *EcmaVM::ExpandHandleStorage()
 {
     uintptr_t *result = nullptr;

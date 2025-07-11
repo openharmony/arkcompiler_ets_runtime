@@ -222,6 +222,7 @@ private:
     void PrepareFix();
     void FixHeap(); // roots and ref-fields
     WeakRefFieldVisitor GetWeakRefFieldVisitor();
+    RefFieldVisitor GetPrefowardRefFieldVisitor();
     void PreforwardFlip();
 
     CopyTable fwdTable_;

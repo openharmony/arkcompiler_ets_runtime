@@ -504,14 +504,6 @@ void JSThread::Iterate(RootVisitor &visitor)
     }
     if (!glueData_.currentEnv_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));
-        if (g_isEnableCMCGC) {
-            // check the correctness of this scheme when multiple GlobalEnv capability is enabled
-            JSTaggedValue value = glueData_.currentEnv_;
-            if (value.IsJSGlobalEnv()) {
-                GlobalEnv *currentGlobalEnv = reinterpret_cast<GlobalEnv *>(value.GetTaggedObject());
-                currentGlobalEnv->Iterate(visitor);
-            }
-        }
     }
     if (!hotReloadDependInfo_.IsUndefined()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&hotReloadDependInfo_)));
