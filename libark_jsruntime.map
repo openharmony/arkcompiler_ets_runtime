@@ -103,6 +103,7 @@
       common::VisitDynamicWeakLocalRoots*;
       common::VisitDynamicThreadRoot*;
       common::VisitDynamicWeakThreadRoot*;
+      common::VisitDynamicConcurrentRoots*;
       common::BaseObject::*;
       common::VisitJSThread*;
       common::SynchronizeGCPhaseToJSThread*;

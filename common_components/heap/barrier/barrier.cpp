@@ -36,6 +36,11 @@ void Barrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* 
     DLOG(BARRIER, "write obj %p ref-field@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
 }
 
+void Barrier::WriteRoot(BaseObject *obj) const
+{
+    DLOG(BARRIER, "write root obj %p", obj);
+}
+
 void Barrier::WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const
 {
     LOGF_CHECK(memcpy_s(reinterpret_cast<void*>(dst), dstLen, reinterpret_cast<void*>(src), srcLen) == EOK) <<

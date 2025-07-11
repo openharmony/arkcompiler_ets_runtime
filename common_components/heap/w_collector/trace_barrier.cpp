@@ -35,6 +35,14 @@ void TraceBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src,
     CHECK_CC(memcpy_s(reinterpret_cast<void*>(dst), size, reinterpret_cast<void*>(src), size) == EOK);
 }
 
+void TraceBarrier::WriteRoot(BaseObject *obj) const
+{
+    ASSERT(Heap::IsHeapAddress(obj));
+    Mutator *mutator = Mutator::GetMutator();
+    mutator->RememberObjectInSatbBuffer(obj);
+    DLOG(BARRIER, "write root obj %p", obj);
+}
+
 void TraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     UpdateRememberSet(obj, ref);

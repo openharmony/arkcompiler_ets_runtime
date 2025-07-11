@@ -19,6 +19,7 @@
 namespace panda::ecmascript {
 
 uint32_t PUBLIC_API g_isEnableCMCGC = 0;
+uint32_t PUBLIC_API g_isEnableCMCGCConcurrentRootMarking = 0;
 
 }  // namespace panda::ecmascript
 

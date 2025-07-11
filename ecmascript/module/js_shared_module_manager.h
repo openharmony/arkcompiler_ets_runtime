@@ -21,6 +21,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/module_manager_map.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -38,7 +39,7 @@ public:
 
     void Destroy()
     {
-        resolvedSharedModules_.clear();
+        resolvedSharedModules_.Clear();
     }
 
     void Iterate(RootVisitor &v);
@@ -59,19 +60,18 @@ public:
 
     JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
                                                      const JSHandle<TaggedArray> &exports);
-    
-    void AddToResolvedModulesAndCreateSharedModuleMutex(JSThread *thread,
-                                                        const CString &recordName,
+
+    void AddToResolvedModulesAndCreateSharedModuleMutex(JSThread *thread, const CString &recordName,
                                                         JSTaggedValue module);
 
     inline bool AddResolveImportedSModule(const CString &recordName, JSTaggedValue module)
     {
-        return resolvedSharedModules_.try_emplace(recordName, module).second;
+        return resolvedSharedModules_.Emplace(recordName, module);
     }
 
     inline void UpdateResolveImportedSModule(const CString &recordName, JSTaggedValue module)
     {
-        resolvedSharedModules_[recordName] = module;
+        resolvedSharedModules_.Insert(recordName, module);
     }
     void SharedNativeObjDestory();
 
@@ -82,14 +82,13 @@ public:
 
     inline uint32_t GetResolvedSharedModulesSize()
     {
-        return resolvedSharedModules_.size();
+        return resolvedSharedModules_.Size();
     }
 
     void AddSharedSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
     {
-        for (const auto& [_, moduleRecord] : resolvedSharedModules_) {
-            serializerArray->Set(thread, idx++, moduleRecord);
-        }
+        resolvedSharedModules_.ForEach(
+            [thread, &idx, &serializerArray](auto it) { serializerArray->Set(thread, idx++, it->second.Read()); });
     }
 
 private:
@@ -107,7 +106,7 @@ private:
         const JSHandle<SourceTextModule> &moduleRecord);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
-    CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;
+    ModuleManagerMap<CString> resolvedSharedModules_;
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
     RecursiveMutex sharedMutex_;

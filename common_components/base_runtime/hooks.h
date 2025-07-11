@@ -31,6 +31,8 @@ PUBLIC_API void VisitDynamicGlobalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakGlobalRoots(const WeakRefFieldVisitor &visitorFunc);
 PUBLIC_API void VisitDynamicLocalRoots(const RefFieldVisitor &visitor);
 PUBLIC_API void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc);
+// Inlcude concurrent local and concurrent global roots
+PUBLIC_API void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc);
 
 // Visit roots of specific local thread.
 PUBLIC_API void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm);

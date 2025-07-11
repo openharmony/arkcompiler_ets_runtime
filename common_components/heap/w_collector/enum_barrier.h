@@ -28,6 +28,7 @@ public:
     BaseObject* ReadStaticRef(RefField<false>& field) const override;
     void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const override;
 
+    void WriteRoot(BaseObject *obj) const override;
     void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
     void WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
 
