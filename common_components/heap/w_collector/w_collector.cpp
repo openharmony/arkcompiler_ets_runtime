@@ -379,7 +379,7 @@ void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
     });
     std::atomic<int> taskIter = 0;
     std::function<Mutator*()> getNextMutator = [&taskIter, &taskList]() -> Mutator* {
-        auto idx = taskIter.fetch_add(1U, std::memory_order_relaxed);
+        uint32_t idx = static_cast<uint32_t>(taskIter.fetch_add(1U, std::memory_order_relaxed));
         if (idx < taskList.size()) {
             return taskList[idx];
         }
