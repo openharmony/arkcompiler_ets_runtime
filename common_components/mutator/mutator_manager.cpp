@@ -23,6 +23,8 @@
 #include "common_components/mutator/mutator.inline.h"
 
 namespace common {
+bool g_enableGCTimeoutCheck = true;
+
 bool IsRuntimeThread()
 {
     if (static_cast<int>(ThreadLocal::GetThreadType()) >= static_cast<int>(ThreadType::GC_THREAD)) {
@@ -340,6 +342,13 @@ void MutatorManager::WaitUntilAllStopped()
 
         if (unstoppedMutators.size() == 0) {
             return;
+        }
+
+        if (UNLIKELY_CC(common::g_enableGCTimeoutCheck && TimeUtil::MilliSeconds() - beginTime >
+            (((remainMutatorsSize / STW_TIMEOUTS_THREADS_BASE_COUNT) * STW_TIMEOUTS_BASE_MS) + STW_TIMEOUTS_BASE_MS))) {
+            timeoutTimes++;
+            beginTime = TimeUtil::MilliSeconds();
+            DumpMutators(timeoutTimes);
         }
 
         (void)sched_yield();

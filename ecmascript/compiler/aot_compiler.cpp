@@ -75,6 +75,7 @@ int Main(const int argc, const char **argv)
     // ark_aot_compiler running need disable asm interpreter to disable the loading of AOT files.
     runtimeOptions.SetEnableAsmInterpreter(false);
     runtimeOptions.SetOptionsForTargetCompilation();
+    runtimeOptions.DisableGCTimeoutCheck();
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";

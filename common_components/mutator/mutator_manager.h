@@ -43,6 +43,8 @@ const uint32_t LOCK_OWNER_NONE = 0;
 const uint32_t LOCK_OWNER_GC = LOCK_OWNER_NONE + 1;
 const uint32_t LOCK_OWNER_MUTATOR = LOCK_OWNER_GC + 1;
 
+extern bool g_enableGCTimeoutCheck;
+
 bool IsRuntimeThread();
 bool IsGcThread();
 
