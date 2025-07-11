@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefispromisevalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -41,7 +42,10 @@ void JSValueRefIsPromiseValueFuzzTest(const uint8_t *data, size_t size)
     Local<PromiseRef> promise = capability->GetPromise(vm);
     FunctionCallback nativeFunc = RejectCallback;
     NativePointerCallback deleter = nullptr;
-    Local<FunctionRef> reject = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
+    FuzzedDataProvider fdp(data, size);
+    std::string str = fdp.ConsumeRandomLengthString(1024);
+    void *ptr = static_cast<void *>(const_cast<char *>(str.data()));
+    Local<FunctionRef> reject = FunctionRef::New(vm, nativeFunc, deleter, ptr);
     Local<PromiseRef> catchPromise = promise->Catch(vm, reject);
     promise->IsPromise(vm);
     catchPromise->IsPromise(vm);
