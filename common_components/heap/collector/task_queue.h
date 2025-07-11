@@ -106,7 +106,9 @@ public:
         if (prio == PRIO_TERMINATE) {
             return GCRunner(GCTaskType::GC_TASK_TERMINATE_GC);
         } else if (prio - PRIO_INVOKE_GC <= GC_REASON_END) {
-            return GCRunner(GCTaskType::GC_TASK_INVOKE_GC, static_cast<GCReason>(prio - PRIO_INVOKE_GC));
+            auto reason = static_cast<GCReason>(prio - PRIO_INVOKE_GC);
+            auto gcType = reason == GC_REASON_YOUNG ? GC_TYPE_YOUNG : GC_TYPE_FULL;
+            return GCRunner(GCTaskType::GC_TASK_INVOKE_GC, reason, gcType);
         } else {
             LOG_COMMON(FATAL) << "Invalid priority in GetGCRequestByPrio function";
             UNREACHABLE_CC();
