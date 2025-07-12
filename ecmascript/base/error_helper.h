@@ -45,8 +45,7 @@ public:
 private:
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);
 
-    static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread, std::string &stack,
-                                                    const JSHandle<JSObject> &jsErrorObj);
+    static std::string BuildStackTraceWithLimit(JSThread *thread, const JSHandle<JSObject> &jsErrorObj);
 
     static JSHandle<JSTaggedValue> GetErrorName(JSThread *thread, const JSHandle<JSTaggedValue> &name,
                                                 const ErrorType &errorType);

@@ -45,11 +45,9 @@ bool IsFastJitFunctionFrame(uintptr_t frameType)
            static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
-std::string JsStackInfo::BuildMethodTrace(const JSThread *thread, Method *method, uint32_t pcOffset,
-                                          LastBuilderCache &lastCache, bool enableStackSourceFile)
+void JsStackInfo::AppendMethodTrace(std::string &data, const JSThread *thread, Method *method, uint32_t pcOffset,
+                                    LastBuilderCache &lastCache, bool enableStackSourceFile)
 {
-    std::string data;
-    data.reserve(InitialLength);
     data.append("    at ");
     std::string name = method->ParseFunctionName(thread);
     if (name.empty()) {
@@ -95,7 +93,6 @@ std::string JsStackInfo::BuildMethodTrace(const JSThread *thread, Method *method
         data.push_back('?');
     }
     data.append(")\n");
-    return data;
 }
 
 void JsStackInfo::DumpJitCode(JSThread *thread)
@@ -190,8 +187,8 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
                 pcOffset = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(thread, function, baselineNativePc);
                 baselineNativePc = 0;
             }
-            data += BuildJsStackTraceInfo(thread, method, it, jsErrorObj, lastCache,
-                                          needBaselineSpecialHandling, pcOffset);
+            AppendJsStackTraceInfo(data, thread, method, it, jsErrorObj, lastCache,
+                                   needBaselineSpecialHandling, pcOffset);
             --depth;
         } else if (needNative) {
             auto addr = JSFunction::Cast(it.GetFunction().GetTaggedObject())->GetNativePointer();
@@ -211,10 +208,10 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
     return data;
 }
 
-std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
-                                               const JSHandle<JSObject> &jsErrorObj,
-                                               LastBuilderCache &lastCache,
-                                               bool needBaselineSpecialHandling, uint32_t pcOffset)
+void JsStackInfo::AppendJsStackTraceInfo(std::string &data, JSThread *thread, Method *method, FrameIterator &it,
+                                         const JSHandle<JSObject> &jsErrorObj,
+                                         LastBuilderCache &lastCache,
+                                         bool needBaselineSpecialHandling, uint32_t pcOffset)
 {
     FrameType frameType = it.GetFrameType();
     if (IsFastJitFunctionFrame(frameType)) {
@@ -225,14 +222,12 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
     }
     std::vector<std::pair<JSTaggedType, uint32_t>> stackTraceInfos;
     it.GetStackTraceInfos(stackTraceInfos, needBaselineSpecialHandling, pcOffset);
-    std::string data;
     for (auto &info : stackTraceInfos) {
         Method *methodInline = ECMAObject::Cast(reinterpret_cast<TaggedObject *>(info.first))->GetCallTarget(thread);
         uint32_t pcOffsetInline = info.second;
-        data += BuildMethodTrace(thread, methodInline, pcOffsetInline, lastCache,
-                                 thread->GetEnableStackSourceFile());
+        AppendMethodTrace(data, thread, methodInline, pcOffsetInline, lastCache,
+                          thread->GetEnableStackSourceFile());
     }
-    return data;
 }
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)

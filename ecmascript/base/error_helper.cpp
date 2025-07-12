@@ -188,19 +188,26 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
-    std::string stack;
-    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, stack, nativeInstanceObj);
-    JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
-    PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
-    [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, stackkey, stackDesc);
+    std::string stackTrace = BuildStackTraceWithLimit(thread, nativeInstanceObj);
+    JSHandle<EcmaString> stackTraceStr = factory->NewFromStdString(stackTrace);
+    JSHandle<EcmaString> cbStackTraceStr;
+    auto sourceMapcb = ecmaVm->GetSourceMapCallback();
+    if (sourceMapcb != nullptr && !stackTrace.empty()) {
+        cbStackTraceStr = factory->NewFromStdString(sourceMapcb(stackTrace.c_str()));
+    } else {
+        cbStackTraceStr = stackTraceStr;
+    }
+
+    PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(cbStackTraceStr), true, false, true);
+    [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+        globalConst->GetHandledStackString(), stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
 
     // Uncaught exception parsing source code
     JSHandle<JSTaggedValue> topStackkey = globalConst->GetHandledTopStackString();
-    PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(stack)),
-                                                                          true, false, true);
+    PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(stackTraceStr), true, false, true);
     [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
-                                                                       topStackkey, topStackDesc);
+        globalConst->GetHandledTopStackString(), topStackDesc);
     ASSERT_PRINT(topStackstatus == true, "return result exception!");
 
     // 5. Return O.
@@ -268,28 +275,17 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
     return thread->GlobalConstants()->GetHandledUndefined();
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::string &stack,
-                                                      const JSHandle<JSObject> &jsErrorObj)
+std::string ErrorHelper::BuildStackTraceWithLimit(JSThread *thread, const JSHandle<JSObject> &jsErrorObj)
 {
     std::string data = JsStackInfo::BuildJsStackTrace(thread, false, jsErrorObj, true);
     if (data.size() > MAX_ERROR_SIZE) {
         // find last line break from 0 to MAX_ERROR_SIZE
         size_t pos = data.rfind('\n', MAX_ERROR_SIZE);
         if (pos != std::string::npos) {
-            data = data.substr(0, pos);
+            data.resize(pos);
         }
     }
     LOG_ECMA(DEBUG) << data;
-    // unconverted stack
-    stack = data;
-    auto ecmaVm = thread->GetEcmaVM();
-    // sourceMap callback
-    auto sourceMapcb = ecmaVm->GetSourceMapCallback();
-    if (sourceMapcb != nullptr && !data.empty()) {
-        data = sourceMapcb(data.c_str());
-    }
-
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewFromStdString(data);
+    return data;
 }
 }  // namespace panda::ecmascript::base
