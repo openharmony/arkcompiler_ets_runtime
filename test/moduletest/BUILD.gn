@@ -432,6 +432,7 @@ group("ark_asm_assert_test") {
       "proxyget",
       "proxyrelease",
       "proxyset",
+      "releaseRegexp",
     ]
 
     # TODO: CMC-GC UT FIX LATER
