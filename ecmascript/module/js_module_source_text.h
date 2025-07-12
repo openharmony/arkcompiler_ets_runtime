@@ -439,7 +439,9 @@ public:
 
     // Find function in JsModuleSourceText For Hook
     static JSHandle<JSTaggedValue> FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
-                                                           const std::string &className, const std::string &funcName);
+                                                           const std::string &namespaceName,
+                                                           const std::string &className,
+                                                           const std::string &funcName);
 
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread,
