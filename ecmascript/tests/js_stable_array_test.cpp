@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -423,6 +423,27 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_ManyTiny)
  */
 HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
 {
+#if defined(ARK_HYBRID) || defined(USE_CMC_GC)
+    int32_t lengthArr = 8;
+    std::string sep = "";
+    // large string should use tree string.
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 40 x a
+    JSHandle<JSTaggedValue>
+        handleTagValElementEcmaStr(objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+#else
     int32_t lengthArr = 8;
     std::string sep = "";
     // large string should use tree string.
@@ -442,6 +463,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+#endif
 }
 
 /**
