@@ -103,6 +103,8 @@ public:
 
     void TryHeuristicGC();
 
+    void TryIdleGC();
+
     void NotifyNativeAllocation(size_t bytes);
 
     void NotifyNativeFree(size_t bytes);
@@ -127,6 +129,10 @@ public:
     static constexpr double IDLE_MIN_INC_RATIO = 1.1f;
     static constexpr size_t LOW_DEGREE_STEP_IN_IDLE = 5 * MB;
     static constexpr size_t HIGH_DEGREE_STEP_IN_IDLE = 1 * MB;
+
+    static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
+    static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1 * MB;
+
 private:
     void CheckGCForNative();
 

@@ -69,6 +69,25 @@ void HeuristicGCPolicy::TryHeuristicGC()
     }
 }
 
+void HeuristicGCPolicy::TryIdleGC()
+{
+    if (UNLIKELY_CC(ShouldRestrainGCOnStartup())) {
+        return;
+    }
+
+    if (aliveSizeAfterGC_ == 0) {
+        return;
+    }
+    size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    size_t expectHeapSize = std::max(static_cast<size_t>(aliveSizeAfterGC_ * IDLE_SPACE_SIZE_MIN_INC_RATIO),
+                                     aliveSizeAfterGC_ + IDLE_SPACE_SIZE_MIN_INC_STEP_FULL);
+    if (allocated >= expectHeapSize) {
+        DLOG(ALLOC, "request idle gc: allocated %zu, expectHeapSize %zu, aliveSizeAfterGC %zu", allocated,
+             expectHeapSize, aliveSizeAfterGC_);
+        Heap::GetHeap().GetCollector().RequestGC(GC_REASON_IDLE, true, GC_TYPE_FULL);
+    }
+}
+
 void HeuristicGCPolicy::NotifyNativeAllocation(size_t bytes)
 {
     notifiedNativeSize_.fetch_add(bytes, std::memory_order_relaxed);

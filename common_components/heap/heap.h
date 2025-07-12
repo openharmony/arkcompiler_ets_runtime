@@ -93,6 +93,7 @@ public:
     virtual Collector& GetCollector() = 0;
     virtual Allocator& GetAllocator() = 0;
     virtual void TryHeuristicGC() = 0;
+    virtual void TryIdleGC() = 0;
     virtual void NotifyNativeAllocation(size_t bytes) = 0;
     virtual void NotifyNativeFree(size_t bytes) = 0;
     virtual void NotifyNativeReset(size_t oldBytes, size_t newBytes) = 0;
