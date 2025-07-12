@@ -152,8 +152,8 @@ public:
     bool Execute(void* owner) override;
 
 private:
-    GCReason gcReason_;
-    GCType gcType_;
+    GCReason gcReason_ { GC_REASON_INVALID };
+    GCType gcType_ { GC_TYPE_FULL };
 };
 
 // Lockless async task queue implementation.
