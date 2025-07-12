@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,8 @@
  */
 
 #include <cstdio>
+
+#include "ecmascript/dfx/stackinfo/tests/js_stackinfo_test.h"
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
@@ -54,7 +56,8 @@ public:
     JSThread *thread {nullptr};
 };
 
-uintptr_t ToUintPtr(FrameType frame)
+template<typename T>
+uintptr_t ToUintPtr(T frame)
 {
     return static_cast<uintptr_t>(frame);
 }
@@ -611,5 +614,970 @@ HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__002)
     ark_destroy_local();
     // pandafile manager can't find jsPandaFile
     EXPECT_TRUE(ret == -1);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestFrameType_001)
+{
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_ENTRY_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_ENTRY_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_JS_FUNCTION_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::FASTJIT_FUNCTION_FRAME) ==
+                ToUintPtr(FrameType::FASTJIT_FUNCTION_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::FASTJIT_FAST_CALL_FUNCTION_FRAME) ==
+                ToUintPtr(FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::ASM_BRIDGE_FRAME) ==
+                ToUintPtr(FrameType::ASM_BRIDGE_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::LEAVE_FRAME) ==
+                ToUintPtr(FrameType::LEAVE_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::LEAVE_FRAME_WITH_ARGV) ==
+                ToUintPtr(FrameType::LEAVE_FRAME_WITH_ARGV));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BUILTIN_CALL_LEAVE_FRAME) ==
+                ToUintPtr(FrameType::BUILTIN_CALL_LEAVE_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::INTERPRETER_FRAME) ==
+                ToUintPtr(FrameType::INTERPRETER_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::ASM_INTERPRETER_FRAME) ==
+                ToUintPtr(FrameType::ASM_INTERPRETER_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::INTERPRETER_CONSTRUCTOR_FRAME) ==
+                ToUintPtr(FrameType::INTERPRETER_CONSTRUCTOR_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BUILTIN_FRAME) ==
+                ToUintPtr(FrameType::BUILTIN_FRAME));
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestFrameType_002)
+{
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BUILTIN_FRAME_WITH_ARGV) ==
+                ToUintPtr(FrameType::BUILTIN_FRAME_WITH_ARGV));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BUILTIN_ENTRY_FRAME) ==
+                ToUintPtr(FrameType::BUILTIN_ENTRY_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::INTERPRETER_BUILTIN_FRAME) ==
+                ToUintPtr(FrameType::INTERPRETER_BUILTIN_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::INTERPRETER_FAST_NEW_FRAME) ==
+                ToUintPtr(FrameType::INTERPRETER_FAST_NEW_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::INTERPRETER_ENTRY_FRAME) ==
+                ToUintPtr(FrameType::INTERPRETER_ENTRY_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::ASM_INTERPRETER_ENTRY_FRAME) ==
+                ToUintPtr(FrameType::ASM_INTERPRETER_ENTRY_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::ASM_INTERPRETER_BRIDGE_FRAME) ==
+                ToUintPtr(FrameType::ASM_INTERPRETER_BRIDGE_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME) ==
+                ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME) ==
+                ToUintPtr(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME));
+    EXPECT_TRUE(ToUintPtr(arkts_frame_type::BASELINE_BUILTIN_FRAME) ==
+                ToUintPtr(FrameType::BASELINE_BUILTIN_FRAME));
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_001)
+{
+    size_t size = 3;  // 3: size of OPTIMIZED_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, 0 };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_002)
+{
+    size_t size = 4;  // 4: size of OPTIMIZED_ENTRY_FRAME + returnaddr
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[1]) + 8; // 1: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == frame[2]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_003)
+{
+    size_t size = 4;  // 4: size of OPTIMIZED_JS_FUNCTION_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: JSFunction
+    frame[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);  // 1: type
+    frame[2] = static_cast<JSTaggedType>(62480);  // 2: prevFp
+    frame[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[1]) + 8; // 1: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == frame[2]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_004)
+{
+    size_t size = 4;  // 4: size of OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: JSFunction
+    frame[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME);  // 1: type
+    frame[2] = static_cast<JSTaggedType>(62480);  // 2: prevFp
+    frame[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[1]) + 8; // 1: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == frame[2]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_005)
+{
+    size_t size1 = 4;  // 4: size of OPTIMIZED_ENTRY_FRAME + returnaddr
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;  // 4: size of FASTJIT_FUNCTION_FRAME
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(1234);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[1]) + 8);  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame2[2]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame1[2]);
+    EXPECT_TRUE(pre_frame.pc == frame1[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame1[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame1[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_006)
+{
+    size_t size1 = 4;  // 4: size of OPTIMIZED_ENTRY_FRAME + returnaddr
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;  // 4: size of FASTJIT_FAST_CALL_FUNCTION_FRAME
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(1234);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[1]) + 8);  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame2[2]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame1[2]);
+    EXPECT_TRUE(pre_frame.pc == frame1[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame1[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame1[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_007)
+{
+    size_t size = 3;  // 3: size of ASM_BRIDGE_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::ASM_BRIDGE_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_008)
+{
+    size_t size = 5;  // 5: size of LEAVE_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::LEAVE_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: callsiteFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+    frame[3] = static_cast<JSTaggedType>(0); // 3: argRuntimeId
+    frame[4] = static_cast<JSTaggedType>(0); // 4: argc
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_009)
+{
+    size_t size = 5;  // 5: size of LEAVE_FRAME_WITH_ARGV
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::LEAVE_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: callsiteFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+    frame[3] = static_cast<JSTaggedType>(0); // 3: argRuntimeId
+    frame[4] = static_cast<JSTaggedType>(0); // 4: argc
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_010)
+{
+    size_t size = 5;  // 5: size of BUILTIN_CALL_LEAVE_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(0);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prev fp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: thread
+    frame[4] = static_cast<JSTaggedType>(0); // 4: argc
+
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_011)
+{
+    size_t size = 9;  // 9: size of INTERPRETER_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: constpool
+    frame[1] = JSTaggedValue::Hole().GetRawData();  // 1: function
+    frame[2] = JSTaggedValue::Hole().GetRawData();  // 2: thisObj
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: profileTypeInfo
+    frame[4] = JSTaggedValue::Hole().GetRawData(); // 4: acc
+    frame[5] = JSTaggedValue::Hole().GetRawData(); // 5: env
+    frame[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame[8] = static_cast<JSTaggedType>(FrameType::INTERPRETER_FRAME); // 8: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[8]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[7]);
+    EXPECT_TRUE(pre_frame.pc == frame[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_012)
+{
+    size_t size = 9;  // 9: size of ASM_INTERPRETER_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: function
+    frame[1] = JSTaggedValue::Hole().GetRawData();  // 1: thisObj
+    frame[2] = JSTaggedValue::Hole().GetRawData();  // 2: acc
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: env
+    frame[4] = JSTaggedValue::Hole().GetRawData(); // 4: callSize
+    frame[5] = JSTaggedValue::Hole().GetRawData(); // 5: fp
+    frame[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame[8] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_FRAME); // 8: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[8]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[7]);
+    EXPECT_TRUE(pre_frame.pc == frame[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_013)
+{
+    size_t size = 9;  // 9: size of INTERPRETER_CONSTRUCTOR_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: function
+    frame[1] = JSTaggedValue::Hole().GetRawData();  // 1: thisObj
+    frame[2] = JSTaggedValue::Hole().GetRawData();  // 2: acc
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: env
+    frame[4] = JSTaggedValue::Hole().GetRawData(); // 4: callSize
+    frame[5] = JSTaggedValue::Hole().GetRawData(); // 5: fp
+    frame[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame[8] = static_cast<JSTaggedType>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME); // 8: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[8]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[7]);
+    EXPECT_TRUE(pre_frame.pc == frame[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_014)
+{
+    size_t size = 6;  // 6: size of BUILTIN_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BUILTIN_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: thread
+    frame[4] = JSTaggedValue::Hole().GetRawData(); // 4: numArgs
+    frame[5] = JSTaggedValue::Hole().GetRawData(); // 5: stackArgs
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_015)
+{
+    size_t size = 3;  // 3: size of BUILTIN_FRAME_WITH_ARGV
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BUILTIN_FRAME_WITH_ARGV);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_016)
+{
+    size_t size = 3;  // 3: size of BUILTIN_ENTRY_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BUILTIN_ENTRY_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_017)
+{
+    size_t size1 = 9;  // 9: size of INTERPRETER_FRAME
+    JSTaggedType frame1[size1];
+    frame1[0] = JSTaggedValue::Hole().GetRawData();  // 0: constpool
+    frame1[1] = JSTaggedValue::Hole().GetRawData();  // 1: function
+    frame1[2] = JSTaggedValue::Hole().GetRawData();  // 2: thisObj
+    frame1[3] = JSTaggedValue::Hole().GetRawData(); // 3: profileTypeInfo
+    frame1[4] = JSTaggedValue::Hole().GetRawData(); // 4: acc
+    frame1[5] = JSTaggedValue::Hole().GetRawData(); // 5: env
+    frame1[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame1[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame1[8] = static_cast<JSTaggedType>(FrameType::INTERPRETER_FRAME); // 8: base.type
+
+    size_t size2 = 4;  // 3: size of INTERPRETER_BUILTIN_FRAME
+    JSTaggedType frame2[size2];
+    frame2[0] = JSTaggedValue::Hole().GetRawData(); // 0: function
+    frame2[1] = static_cast<JSTaggedType>(0); // 1: pc
+    frame2[2] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[8]) + 8); // 2: base.prevfp
+    frame2[3] = static_cast<JSTaggedType>(FrameType::INTERPRETER_BUILTIN_FRAME); // 3: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame2[3]) + 8; // 3: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame1[7]);
+    EXPECT_TRUE(pre_frame.pc == frame1[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame1[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame1[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_018)
+{
+    size_t size1 = 9;  // 9: size of INTERPRETER_FAST_NEW_FRAME
+    JSTaggedType frame[size1];
+    frame[0] = JSTaggedValue::Hole().GetRawData();  // 0: constpool
+    frame[1] = JSTaggedValue::Hole().GetRawData();  // 1: function
+    frame[2] = JSTaggedValue::Hole().GetRawData();  // 2: thisObj
+    frame[3] = JSTaggedValue::Hole().GetRawData(); // 3: profileTypeInfo
+    frame[4] = JSTaggedValue::Hole().GetRawData(); // 4: acc
+    frame[5] = JSTaggedValue::Hole().GetRawData(); // 5: env
+    frame[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame[8] = static_cast<JSTaggedType>(FrameType::INTERPRETER_FAST_NEW_FRAME); // 8: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[8]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[7]);
+    EXPECT_TRUE(pre_frame.pc == frame[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_019)
+{
+    size_t size1 = 9;  // 9: size of INTERPRETER_FRAME
+    JSTaggedType frame1[size1];
+    frame1[0] = JSTaggedValue::Hole().GetRawData();  // 0: constpool
+    frame1[1] = JSTaggedValue::Hole().GetRawData();  // 1: function
+    frame1[2] = JSTaggedValue::Hole().GetRawData();  // 2: thisObj
+    frame1[3] = JSTaggedValue::Hole().GetRawData(); // 3: profileTypeInfo
+    frame1[4] = JSTaggedValue::Hole().GetRawData(); // 4: acc
+    frame1[5] = JSTaggedValue::Hole().GetRawData(); // 5: env
+    frame1[6] = static_cast<JSTaggedType>(123456); // 6: pc
+    frame1[7] = static_cast<JSTaggedType>(62480); // 7: base.prevfp
+    frame1[8] = static_cast<JSTaggedType>(FrameType::INTERPRETER_FRAME); // 8: base.type
+
+    size_t size2 = 3;  // 3: size of INTERPRETER_ENTRY_FRAME
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(0); // 0: pc
+    frame2[1] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[8]) + 8); // 1: base.prevfp
+    frame2[2] = static_cast<JSTaggedType>(FrameType::INTERPRETER_BUILTIN_FRAME); // 2: base.type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame2[2]) + 8; // 3: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame1[7]);
+    EXPECT_TRUE(pre_frame.pc == frame1[6]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame1[7]);
+    EXPECT_TRUE(*arkStepParam.pc == frame1[6]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_020)
+{
+    size_t size = 5;  // 5: size of ASM_INTERPRETER_ENTRY_FRAME + prevfp + returnaddr
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(0); // 0: pc
+    frame[1] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame[8]) + 8); // 1: base.prevfp
+    frame[2] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_ENTRY_FRAME); // 2: base.type
+    frame[3] = static_cast<JSTaggedType>(62480); // 3: prev fp
+    frame[4] = static_cast<JSTaggedType>(123456); // 4: returnaddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[2]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[3]);
+    EXPECT_TRUE(pre_frame.pc == frame[4]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[3]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[4]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_021)
+{
+    size_t size = 5;  // 5: size of ASM_INTERPRETER_BRIDGE_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(0); // 0: pc
+    frame[1] = static_cast<JSTaggedType>(62480); // 1: base.prevfp
+    frame[2] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME); // 2: base.type
+    frame[3] = static_cast<JSTaggedType>(123456); // 3: returnaddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[2]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_022)
+{
+    size_t size = 4;  // 4: size of OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Undefined().GetRawData(); // 0: function
+    frame[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME); // 1: type
+    frame[2] = static_cast<JSTaggedType>(62480); // 2: prevfp
+    frame[3] = static_cast<JSTaggedType>(123456); // 3: returnaddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[1]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[2]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_023)
+{
+    size_t size = 4;  // 4: size of OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME
+    JSTaggedType frame[size];
+    frame[0] = JSTaggedValue::Undefined().GetRawData(); // 0: CallSiteSp
+    frame[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME); // 1: type
+    frame[2] = static_cast<JSTaggedType>(62480); // 2: prevfp
+    frame[3] = static_cast<JSTaggedType>(123456); // 3: returnaddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[1]) + 8; // 8: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[2]);
+    EXPECT_TRUE(pre_frame.pc == frame[3]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[2]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[3]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_024)
+{
+    size_t size = 3;  // 3: size of BUILTIN_FRAME_WITH_ARGV
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_025)
+{
+    size_t size = 3;  // 3: size of BASELINE_BUILTIN_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BASELINE_BUILTIN_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == frame[1]);
+    EXPECT_TRUE(pre_frame.pc == frame[2]);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(*arkStepParam.fp == frame[1]);
+    EXPECT_TRUE(*arkStepParam.pc == frame[2]);
+    EXPECT_TRUE(ret == 1);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_026)
+{
+    size_t size = 1;  // 1: unknown tpye
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::BASELINE_BUILTIN_FRAME) + 1; // 0: type
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+    uintptr_t sp  = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = -1;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
+
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
+    EXPECT_TRUE(ret == -1);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_001)
+{
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    unwind_stack_frame_s cur_frame = UNWIND_FRAME_EMPTY;
+
+    auto pre_frame = unwind_arkts(nullptr, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
+    pre_frame = unwind_arkts(ctx, nullptr);
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_002)
+{
+    size_t size = 3;  // 3: size of OPTIMIZED_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = 0;
+    unwind_stack_frame_s cur_frame = { fp, 0 };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_003)
+{
+    size_t size = 3;  // 3: size of OPTIMIZED_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_FRAME);  // 0: type
+    frame[1] = static_cast<JSTaggedType>(62480);  // 1: prevFp
+    frame[2] = static_cast<JSTaggedType>(123456);  // 2: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[0]) + 8; // 0: type addr
+
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = 1;
+    unwind_stack_frame_s cur_frame = { fp, 0 };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
+
+    free(ctx);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_004)
+{
+    size_t size = 5;  // 4: size of FASTJIT_FUNCTION_FRAME
+    JSTaggedType frame[size];
+    frame[0] = static_cast<JSTaggedType>(1234);  // 0: pc
+    frame[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FUNCTION_FRAME);  // 2: type
+    frame[3] = static_cast<JSTaggedType>(62480);  // 3: prevFp
+    frame[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp  = reinterpret_cast<uintptr_t>(&frame[2]) + 8; // 0: type addr
+    uintptr_t pc = 0;
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = 2;
+    unwind_stack_frame_s cur_frame = { fp, pc };
+    auto pre_frame = unwind_arkts(ctx, &cur_frame);
+
+    EXPECT_TRUE(pre_frame.fp == 0);
+    EXPECT_TRUE(pre_frame.pc == 0);
 }
 }  // namespace panda::test
