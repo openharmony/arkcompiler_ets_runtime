@@ -824,7 +824,7 @@ public:
     GateRef GetCMCRegionType(GateRef obj);
     GateRef GetGCPhase(GateRef glue);
     GateRef GetGCReason(GateRef glue);
-    GateRef IsInYoungSpace(GateRef regionType);
+    GateRef CMCIsInYoungSpace(GateRef regionType);
     GateRef IsOldToYoung(GateRef objRegionType, GateRef valueRegionType);
     void MarkRSetCardTable(GateRef obj, Label *exit);
     GateRef ShouldGetGCReason(GateRef gcPhase);
@@ -832,6 +832,7 @@ public:
     GateRef ShouldUpdateRememberSet(GateRef glue, GateRef gcPhase);
     void CMCSetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     void CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
+    void CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);
@@ -1286,7 +1287,6 @@ public:
         SameArray,
         DifferentArray,
     };
-
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
