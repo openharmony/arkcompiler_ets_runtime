@@ -3649,7 +3649,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentWithName(EcmaVM *vm, const Local<JS
     ecmascript::ThreadManagedScope managedScope(thread);
 
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8WithoutStringTable(name));
+    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8(name));
     PropertyDescriptor nameDesc(thread, functionName, false, false, true);
     ecmascript::PropertyAttributes attr(nameDesc);
     attr.SetIsInlinedProps(true);
