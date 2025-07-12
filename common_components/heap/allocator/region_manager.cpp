@@ -538,7 +538,8 @@ void RegionManager::ForEachObjectUnsafe(const std::function<void(BaseObject*)>& 
 void RegionManager::ForEachObjectSafe(const std::function<void(BaseObject*)>& visitor) const
 {
     ScopedEnterSaferegion enterSaferegion(false);
-    ScopedStopTheWorld stw("visit-all-objects");
+    STWParam stwParam{"visit-all-objects"};
+    ScopedStopTheWorld stw(stwParam);
     ForEachObjectUnsafe(visitor);
 }
 

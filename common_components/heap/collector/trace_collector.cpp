@@ -556,10 +556,17 @@ void TraceCollector::PreGarbageCollection(bool isConcurrent)
     SatbBuffer::Instance().Init();
     // prepare thread pool.
 
-    GetGCStats().reason = gcReason_;
-    GetGCStats().async = !g_gcRequests[gcReason_].IsSyncGC();
-    GetGCStats().gcType = gcType_;
-    GetGCStats().isConcurrentMark = isConcurrent;
+    GCStats& gcStats = GetGCStats();
+    gcStats.reason = gcReason_;
+    gcStats.async = !g_gcRequests[gcReason_].IsSyncGC();
+    gcStats.gcType = gcType_;
+    gcStats.isConcurrentMark = isConcurrent;
+    gcStats.collectedBytes = 0;
+    gcStats.smallGarbageSize = 0;
+    gcStats.pinnedGarbageSize = 0;
+    gcStats.gcStartTime = TimeUtil::NanoSeconds();
+    gcStats.totalSTWTime = 0;
+    gcStats.maxSTWTime = 0;
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
     DumpBeforeGC();
 #endif
@@ -708,10 +715,6 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCT
     PreGarbageCollection(true);
     Heap::GetHeap().SetGCReason(reason);
     GCStats& gcStats = GetGCStats();
-    gcStats.collectedBytes = 0;
-    gcStats.smallGarbageSize = 0;
-    gcStats.pinnedGarbageSize = 0;
-    gcStats.gcStartTime = TimeUtil::NanoSeconds();
 
     DoGarbageCollection();
 

@@ -206,7 +206,7 @@ private:
 
         rootsVisitFunc(visitor);
     }
-    CArrayList<CArrayList<BaseObject *>> EnumRootsFlip(const common::RefFieldVisitor &visitor);
+    CArrayList<CArrayList<BaseObject *>> EnumRootsFlip(STWParam& param, const common::RefFieldVisitor &visitor);
 
     void TraceHeap(const CArrayList<BaseObject *> &collectedRoots);
     void PostTrace();

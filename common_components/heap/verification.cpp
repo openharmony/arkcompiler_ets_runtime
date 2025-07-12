@@ -445,7 +445,8 @@ void WVerify::VerifyAfterMark(WCollector& collector)
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
-        ScopedStopTheWorld stw("WGC-verify-aftermark");
+        STWParam stwParam{"WGC-verify-aftermark"};
+        ScopedStopTheWorld stw(stwParam);
         VerifyAfterMarkInternal(space);
     } else {
         VerifyAfterMarkInternal(space);
@@ -471,7 +472,8 @@ void WVerify::VerifyAfterForward(WCollector& collector)
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
-        ScopedStopTheWorld stw("WGC-verify-aftermark");
+        STWParam stwParam{"WGC-verify-aftermark"};
+        ScopedStopTheWorld stw(stwParam);
         VerifyAfterForwardInternal(space);
     } else {
         VerifyAfterForwardInternal(space);
@@ -499,7 +501,8 @@ void WVerify::VerifyAfterFix(WCollector& collector)
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
-        ScopedStopTheWorld stw("WGC-verify-aftermark");
+        STWParam stwParam{"WGC-verify-aftermark"};
+        ScopedStopTheWorld stw(stwParam);
         VerifyAfterFixInternal(space);
     } else {
         VerifyAfterFixInternal(space);
@@ -525,7 +528,8 @@ void WVerify::EnableReadBarrierDFX(WCollector& collector)
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
-        ScopedStopTheWorld stw("WGC-verify-enable-rb-dfx");
+        STWParam stwParam{"WGC-verify-enable-rb-dfx"};
+        ScopedStopTheWorld stw(stwParam);
         EnableReadBarrierDFXInternal(space);
     } else {
         EnableReadBarrierDFXInternal(space);
@@ -548,7 +552,8 @@ void WVerify::DisableReadBarrierDFX(WCollector& collector)
 #endif
     RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
-        ScopedStopTheWorld stw("WGC-verify-disable-rb-dfx");
+        STWParam stwParam{"WGC-verify-disable-rb-dfx"};
+        ScopedStopTheWorld stw(stwParam);
         DisableReadBarrierDFXInternal(space);
     } else {
         DisableReadBarrierDFXInternal(space);

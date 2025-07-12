@@ -28,7 +28,8 @@ namespace panda {
 
 bool ArkHeapDataForIDE::Serialize()
 {
-    ScopedStopTheWorld scopedStopTheWorld("serialize-heap-data");
+    STWParam stwParam{"serialize-heap-data"};
+    ScopedStopTheWorld stw(stwParam);
     ProcessHeap();
     HeapProfilerStream* stream = &panda::HeapProfilerStream::GetInstance();
     stream->SetContext(DUMPHEAPSNAPSHOT);

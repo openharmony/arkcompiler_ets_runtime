@@ -20,13 +20,13 @@
 
 namespace common {
 template<class STWFunction>
-void MutatorManager::FlipMutators(const char* reason, STWFunction&& stwFunction, FlipFunction *flipFunction)
+void MutatorManager::FlipMutators(STWParam& param, STWFunction&& stwFunction, FlipFunction *flipFunction)
 {
     std::list<Mutator*> undoneMutators;
     {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "Waiting-STW", "");
-        ScopedStopTheWorld stw(reason);
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, reason, "");
+        ScopedStopTheWorld stw(param);
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, param.stwReason, "");
 
         stwFunction();
         bool ignoreFinalizer = true;
