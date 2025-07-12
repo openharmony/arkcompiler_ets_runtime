@@ -22,6 +22,7 @@
 #include "common_interfaces/objects/ref_field.h"
 #include "common_interfaces/profiler/heap_profiler_listener.h"
 #include "common_components/objects/string_table_internal.h"
+#include "common_components/heap/allocator/fix_heap.h"
 
 #ifdef ENABLE_RSS
 #include "res_sched_client.h"
@@ -699,12 +700,60 @@ void WCollector::PrepareFix()
     }
 }
 
+void WCollector::ParallelFixHeap()
+{
+    auto& regionSpace = reinterpret_cast<RegionSpace&>(theAllocator_);
+    auto taskList = regionSpace.CollectFixTasks();
+    std::atomic<int> taskIter = 0;
+    std::function<FixHeapTask *()> getNextTask = [&taskIter, &taskList]() -> FixHeapTask* {
+        uint32_t idx = taskIter.fetch_add(1U, std::memory_order_relaxed);
+        if (idx < taskList.size()) {
+            return &taskList[idx];
+        }
+        return nullptr;
+    };
+
+    const uint32_t runningWorkers = GetGCThreadCount(true) - 1;
+    uint32_t parallelCount = runningWorkers + 1; // 1 ：DaemonThread
+    FixHeapWorker::Result results[parallelCount];
+    {
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::FixHeap [Parallel]", "");
+        // Fix heap
+        TaskPackMonitor monitor(runningWorkers, runningWorkers);
+        for (uint32_t i = 1; i < parallelCount; ++i) {
+            GetThreadPool()->PostTask(std::make_unique<FixHeapWorker>(this, monitor, results[i], getNextTask));
+        }
+
+        FixHeapWorker gcWorker(this, monitor, results[0], getNextTask);
+        auto task = getNextTask();
+        while (task != nullptr) {
+            gcWorker.DispatchRegionFixTask(task);
+            task = getNextTask();
+        }
+        monitor.WaitAllFinished();
+    }
+
+    {
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Post FixHeap Clear [Parallel]", "");
+        // Post clear task
+        TaskPackMonitor monitor(runningWorkers, runningWorkers);
+        for (uint32_t i = 1; i < parallelCount; ++i) {
+            GetThreadPool()->PostTask(std::make_unique<PostFixHeapWorker>(results[i], monitor));
+        }
+
+        PostFixHeapWorker gcWorker(results[0], monitor);
+        gcWorker.PostClearTask();
+        PostFixHeapWorker::CollectEmptyRegions();
+        monitor.WaitAllFinished();
+    }
+}
+
 void WCollector::FixHeap()
 {
     TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
     COMMON_PHASE_TIMER("FixHeap");
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::FixHeap", "");
-    reinterpret_cast<RegionSpace&>(theAllocator_).FixHeap();
+    ParallelFixHeap();
 
     WVerify::VerifyAfterFix(*this);
 }

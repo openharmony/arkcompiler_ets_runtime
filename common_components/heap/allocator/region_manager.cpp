@@ -31,6 +31,7 @@
 #include "common_components/heap/heap.h"
 #include "common_components/mutator/mutator.inline.h"
 #include "common_components/mutator/mutator_manager.h"
+#include "common_components/heap/allocator/fix_heap.h"
 
 #if defined(COMMON_TSAN_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"
@@ -618,82 +619,6 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
     return nullptr;
 }
 
-static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
-{
-    // use copyline to skip new region after fix
-    // visit object before fix line to avoid race condition with mutator
-    bool isLargeRegion = region->IsLargeRegion();
-    bool isFixRegion = region->IsFixedRegion();
-    region->VisitAllObjectsBeforeCopy([&collector, region, isLargeRegion, isFixRegion](BaseObject* object) {
-        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
-            collector.FixObjectRefFields(object);
-        } else { // handle dead objects in tl-regions for concurrent gc.
-            if (isLargeRegion) {
-                // large region is no need to fillfreeobject.
-                return;
-            } else if (isFixRegion) {
-                region->CollectPinnedGarbage(object, region->GetRegionCellCount());
-                return;
-            }
-            FillFreeObject(object, RegionSpace::GetAllocSize(*object));
-            DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        }
-    });
-}
-
-void RegionManager::FixRecentRegionList(TraceCollector &collector, RegionList &list)
-{
-    CArrayList<RegionDesc *> cache;
-    cache.reserve(list.GetRegionCount());
-    list.VisitAllRegions([&cache](RegionDesc *region) { cache.push_back(region); });
-    for (const auto &region : cache) {
-        DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixRecentRegion(collector, region);
-    }
-}
-
-static void FixRecentPinnedRegion(TraceCollector& collector, RegionDesc* region,
-                                  std::vector<std::pair<BaseObject*, size_t>>& pinnedRegionObject)
-{
-    // use fixline to skip new region after fix
-    // visit object before fix line to avoid race condition with mutator
-    ASSERT_LOGF(!region->IsLargeRegion() && !region->IsFixedRegion(), "illegal pinned region");
-    region->VisitAllObjectsBeforeCopy([&collector, region, &pinnedRegionObject](BaseObject* object) {
-        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
-            collector.FixObjectRefFields(object);
-        } else { // handle dead objects in tl-regions for concurrent gc.
-            pinnedRegionObject.push_back({object, RegionSpace::GetAllocSize(*object)});
-            DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        }
-    });
-}
-
-void RegionManager::FixRecentPinnedRegionList(TraceCollector &collector, RegionList &list,
-                                              std::vector<std::pair<BaseObject*, size_t>> &pinnedRegionObject)
-{
-    CArrayList<RegionDesc *> cache;
-    cache.reserve(list.GetRegionCount());
-    list.VisitAllRegions([&cache](RegionDesc *region) { cache.push_back(region); });
-    for (const auto &region : cache) {
-        DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixRecentPinnedRegion(collector, region, pinnedRegionObject);
-    }
-}
-
-static void FixToRegion(TraceCollector& collector, RegionDesc* region)
-{
-    region->VisitAllObjects([&collector](BaseObject* object) {
-        collector.FixObjectRefFields(object);
-    });
-}
-
-void RegionManager::FixToRegionList(TraceCollector& collector, RegionList& list)
-{
-    list.VisitAllRegions([&collector](RegionDesc* region) {
-        DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixToRegion(collector, region);
-    });
-}
 
 void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats)
 {
@@ -724,146 +649,57 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
     stats.pinnedGarbageSize += garbageSize;
 }
 
-static void FixPinnedRegion(TraceCollector& collector, RegionDesc* region,
-                            std::vector<std::pair<BaseObject*, size_t>>& pinnedRegionObject)
+void RegionManager::CollectFixHeapTaskForPinnedRegion(TraceCollector &collector, RegionList &list,
+                                                      FixHeapTaskList &taskList)
 {
-    ASSERT_LOGF(!region->IsLargeRegion(), "illegal pinned region");
-    region->VisitAllObjects([&collector, &pinnedRegionObject](BaseObject* object) {
-        if (collector.IsSurvivedObject(object)) {
-            collector.FixObjectRefFields(object);
-        } else {
-            size_t siz = RegionSpace::GetAllocSize(*object);
-            pinnedRegionObject.push_back({object, siz});
-            DLOG(FIX, "fix: skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        }
-    });
-}
-
-static void FixRegion(TraceCollector& collector, RegionDesc* region)
-{
-    bool isLargeRegion = region->IsLargeRegion();
-    region->VisitAllObjects([&collector, isLargeRegion](BaseObject* object) {
-        if (collector.IsSurvivedObject(object)) {
-            collector.FixObjectRefFields(object);
-        } else {
-            if (isLargeRegion) {
-                // large region is no need to fillfreeobject.
-                return;
-            }
-            FillFreeObject(object, RegionSpace::GetAllocSize(*object));
-            DLOG(FIX, "fix: skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        }
-    });
-}
-
-void RegionManager::FixRegionList(TraceCollector& collector, RegionList& list)
-{
-    list.VisitAllRegions([&collector](RegionDesc* region) {
-        DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixRegion(collector, region);
-    });
-}
-
-static void FixOldRegion(TraceCollector& collector, RegionDesc* region)
-{
-    auto visitFunc = [&collector, &region](BaseObject* object) {
-        DLOG(FIX, "fix: old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        collector.FixObjectRefFields(object);
-    };
-    region->VisitRememberSet(visitFunc);
-}
-
-void RegionManager::FixOldRegionList(TraceCollector& collector, RegionList& list)
-{
-    list.VisitAllRegions([&collector](RegionDesc* region) {
-        DLOG(REGION, "fix mature region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixOldRegion(collector, region);
-    });
-}
-
-static void FixRecentOldRegion(TraceCollector& collector, RegionDesc* region)
-{
-    auto visitFunc = [&collector, &region](BaseObject* object) {
-        DLOG(FIX, "fix: old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-        collector.FixObjectRefFields(object);
-    };
-    region->VisitRememberSetBeforeCopy(visitFunc);
-}
-
-void RegionManager::FixRecentOldRegionList(TraceCollector& collector, RegionList& list)
-{
-    CArrayList<RegionDesc *> cache;
-    cache.reserve(list.GetRegionCount());
-    list.VisitAllRegions([&cache](RegionDesc *region) { cache.push_back(region); });
-    for (const auto &region : cache) {
-        DLOG(REGION, "fix mature region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixRecentOldRegion(collector, region);
-    }
-}
-
-void RegionManager::FixPinnedRegionList(TraceCollector& collector, RegionList& list,
-                                        std::vector<std::pair<BaseObject*, size_t>>& pinnedRegionObject,
-                                        GCStats& stats)
-{
-    size_t garbageSize = 0;
-    RegionDesc* region = list.GetHeadRegion();
+    RegionDesc *region = list.GetHeadRegion();
     while (region != nullptr) {
-        if (region->GetLiveByteCount() == 0) {
-            RegionDesc* del = region;
+        auto liveBytes = region->GetLiveByteCount();
+        if (liveBytes == 0) {
+            PostFixHeapWorker::AddEmptyRegionToCollectDuringPostFix(&list, region);
             region = region->GetNextRegion();
-            list.DeleteRegion(del);
-
-            garbageSize += CollectRegion(del);
             continue;
         }
-        DLOG(REGION, "fix region %p@%#zx+%zu", region, region->GetRegionStart(), region->GetLiveByteCount());
-        FixPinnedRegion(collector, region, pinnedRegionObject);
+        taskList.push_back({region, FIX_REGION});
         region = region->GetNextRegion();
     }
-    stats.pinnedGarbageSize += garbageSize;
 }
 
-void RegionManager::FixAllRegionLists()
+void RegionManager::CollectFixTasks(FixHeapTaskList& taskList)
 {
-    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
-
     // fix all objects.
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-        FixOldRegionList(collector, largeRegionList_);
-        FixOldRegionList(collector, appSpawnRegionList_);
+        FixHeapWorker::CollectFixHeapTasks(taskList, largeRegionList_, FIX_OLD_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, appSpawnRegionList_, FIX_OLD_REGION);
+
+        FixHeapWorker::CollectFixHeapTasks(taskList, recentLargeRegionList_, FIX_RECENT_OLD_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, recentPinnedRegionList_, FIX_RECENT_OLD_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, rawPointerRegionList_, FIX_RECENT_OLD_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, pinnedRegionList_, FIX_OLD_REGION);
+
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            FixHeapWorker::CollectFixHeapTasks(taskList, *recentFixedPinnedRegionList_[i], FIX_RECENT_OLD_REGION);
+            FixHeapWorker::CollectFixHeapTasks(taskList, *fixedPinnedRegionList_[i], FIX_OLD_REGION);
+        }
+    } else {
+        // fix only survived objects.
+        FixHeapWorker::CollectFixHeapTasks(taskList, largeRegionList_, FIX_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, appSpawnRegionList_, FIX_REGION);
 
         // fix survived object but should be with line judgement.
-        FixRecentOldRegionList(collector, recentLargeRegionList_);
-        FixRecentOldRegionList(collector, recentPinnedRegionList_);
-        FixRecentOldRegionList(collector, rawPointerRegionList_);
-        FixOldRegionList(collector, pinnedRegionList_);
+        FixHeapWorker::CollectFixHeapTasks(taskList, recentLargeRegionList_, FIX_RECENT_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, rawPointerRegionList_, FIX_RECENT_REGION);
+
+        FixHeapWorker::CollectFixHeapTasks(taskList, recentPinnedRegionList_, FIX_RECENT_REGION);
+        TraceCollector &collector = reinterpret_cast<TraceCollector &>(Heap::GetHeap().GetCollector());
+        CollectFixHeapTaskForPinnedRegion(collector, pinnedRegionList_, taskList);
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            FixRecentOldRegionList(collector, *recentFixedPinnedRegionList_[i]);
-            FixOldRegionList(collector, *fixedPinnedRegionList_[i]);
+            FixHeapWorker::CollectFixHeapTasks(taskList, *recentFixedPinnedRegionList_[i], FIX_RECENT_REGION);
+            CollectFixHeapTaskForPinnedRegion(collector, *fixedPinnedRegionList_[i], taskList);
         }
-        return;
-    }
-    GCStats& stats = Heap::GetHeap().GetCollector().GetGCStats();
-    std::vector<std::pair<BaseObject*, size_t>> pinnedRegionObject;
-    // fix only survived objects.
-    FixRegionList(collector, largeRegionList_);
-    FixRegionList(collector, appSpawnRegionList_);
-
-    // fix survived object but should be with line judgement.
-    FixRecentRegionList(collector, recentLargeRegionList_);
-    FixRecentPinnedRegionList(collector, recentPinnedRegionList_, pinnedRegionObject);
-    FixRecentRegionList(collector, rawPointerRegionList_);
-    FixPinnedRegionList(collector, pinnedRegionList_, pinnedRegionObject, stats);
-    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        FixRecentRegionList(collector, *recentFixedPinnedRegionList_[i]);
-        FixFixedRegionList(collector, *fixedPinnedRegionList_[i], i, stats);
-    }
-
-    size_t pinnedRegionObjectSize = pinnedRegionObject.size();
-    for (size_t i = 0; i < pinnedRegionObjectSize; i++) {
-        FillFreeObject(pinnedRegionObject[i].first, pinnedRegionObject[i].second);
     }
 }
+
 
 size_t RegionManager::CollectLargeGarbage()
 {

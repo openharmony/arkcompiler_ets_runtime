@@ -20,6 +20,7 @@
 #include "common_components/heap/space/from_space.h"
 #include "common_components/heap/space/to_space.h"
 #include "common_components/mutator/mutator.h"
+#include "common_components/heap/allocator/fix_heap.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
@@ -41,18 +42,18 @@ public:
         tlOldRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION);
     }
 
-    void FixAllRegions()
+    void CollectFixTasks(FixHeapTaskList &taskList)
     {
-        TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
-
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-            RegionManager::FixRecentOldRegionList(collector, tlOldRegionList_);
-            RegionManager::FixRecentOldRegionList(collector, recentFullOldRegionList_);
-            RegionManager::FixOldRegionList(collector, oldRegionList_);
+            FixHeapWorker::CollectFixHeapTasks(taskList, oldRegionList_, FIX_OLD_REGION);
+            std::lock_guard<std::mutex> lock(lock_);
+            FixHeapWorker::CollectFixHeapTasks(taskList, tlOldRegionList_, FIX_RECENT_OLD_REGION);
+            FixHeapWorker::CollectFixHeapTasks(taskList, recentFullOldRegionList_, FIX_RECENT_OLD_REGION);
         } else {
-            RegionManager::FixRecentRegionList(collector, tlOldRegionList_);
-            RegionManager::FixRecentRegionList(collector, recentFullOldRegionList_);
-            RegionManager::FixRegionList(collector, oldRegionList_);
+            FixHeapWorker::CollectFixHeapTasks(taskList, oldRegionList_, FIX_REGION);
+            std::lock_guard<std::mutex> lock(lock_);
+            FixHeapWorker::CollectFixHeapTasks(taskList, tlOldRegionList_, FIX_RECENT_REGION);
+            FixHeapWorker::CollectFixHeapTasks(taskList, recentFullOldRegionList_, FIX_RECENT_REGION);
         }
     }
 

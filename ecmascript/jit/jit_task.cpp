@@ -256,6 +256,7 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
     if (codeDesc.heapConstantTableAddr == 0) {
         return;
     }
+    ASSERT(!g_isEnableCMCGC);
     uint64_t *heapConstantTableAddr = reinterpret_cast<uint64_t*>(machineCodeObj->GetHeapConstantTableAddress());
     JSHandle<JSTaggedValue> *heapConstantTableInCodeDesc =
         reinterpret_cast<JSHandle<JSTaggedValue>*>(codeDesc.heapConstantTableAddr);
@@ -265,18 +266,13 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
     for (uint64_t i = 0; i < constTableSlotNum; ++i) {
         JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
         heapConstantTableAddr[i] = heapObj->GetRawData();
-        if (g_isEnableCMCGC) {
-            common::BaseRuntime::WriteBarrier(nullptr, nullptr, (void*)heapObj->GetRawData());
-        } else {
-            Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
-            Region *curMachineCodeObjRegion =
-                Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
-            if (heapObjRegion->InYoungSpace()) {
-                curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
-            } else if (heapObjRegion->InSharedHeap()) {
-                curMachineCodeObjRegion->InsertLocalToShareRSet(
-                    reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
-            }
+        Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
+        Region *curMachineCodeObjRegion =
+            Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
+        if (heapObjRegion->InYoungSpace()) {
+            curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+        } else if (heapObjRegion->InSharedHeap()) {
+            curMachineCodeObjRegion->InsertLocalToShareRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
         }
     }
 }
