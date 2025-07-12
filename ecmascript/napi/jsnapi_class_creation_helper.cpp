@@ -83,7 +83,8 @@ JSHandle<JSObject> JSNApiClassCreationHelper::NewClassFuncProtoWithProperties(
     // Step1: create hClass of protoOrHClass in class function
     // Set "constructor" in prototype
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>::Cast(func), true, false, true);
-    const size_t startInlPropIdx = classPrototypeHClass->GetNextInlinedPropsIndex();
+    ASSERT(classPrototypeHClass->GetNextInlinedPropsIndex() != -1);
+    const size_t startInlPropIdx = static_cast<size_t>(classPrototypeHClass->GetNextInlinedPropsIndex());
     JSHandle<JSTaggedValue> ctorKey = thread->GlobalConstants()->GetHandledConstructorString();
     JSHClass::AddInlinedPropToHClass(thread, ctorDesc, startInlPropIdx, ctorKey, classPrototypeHClass);
     // Set inlined property slot of non-static properties
@@ -152,9 +153,10 @@ JSHandle<JSFunction> JSNApiClassCreationHelper::CreateClassFuncWithProperties(
     JSHandle<JSHClass> functionClass = factory->CreateClassFuncHClass(thread, inlinedStaticPropCount);
     // Step1: create hClass of class function
     // Set name of class function
-    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8WithoutStringTable(name));
+    JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8(name));
     PropertyDescriptor nameDesc(thread, functionName, false, false, true);
-    const size_t startInlPropIdx = functionClass->GetNextInlinedPropsIndex();
+    ASSERT(functionClass->GetNextInlinedPropsIndex() != -1);
+    const size_t startInlPropIdx = static_cast<size_t>(functionClass->GetNextInlinedPropsIndex());
     JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
     JSHClass::AddInlinedPropToHClass(thread, nameDesc, startInlPropIdx, nameKey, functionClass);
     // Set static properties of class function
