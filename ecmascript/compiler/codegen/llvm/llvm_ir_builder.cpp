@@ -2576,8 +2576,19 @@ void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = GetLValue(e1);
     LLVMValueRef e2Value = GetLValue(e2);
-    LLVMValueRef result = LLVMBuildAtomicRMW(builder_, LLVMAtomicRMWBinOpOr, e1Value, e2Value,
-                                             LLVMAtomicOrderingAcquireRelease, false);
+    auto order = acc_.GetMemoryAttribute(gate);
+    LLVMAtomicOrdering atomic_order = LLVMAtomicOrderingSequentiallyConsistent;
+    switch (order.GetOrder()) {
+        case MemoryAttribute::NOT_ATOMIC: {
+            atomic_order = LLVMAtomicOrderingNotAtomic;
+            break;
+        }
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    LLVMValueRef result = LLVMBuildAtomicRMW(builder_, LLVMAtomicRMWBinOpOr, e1Value, e2Value, atomic_order, false);
     Bind(gate, result);
 
     if (IsLogEnabled()) {

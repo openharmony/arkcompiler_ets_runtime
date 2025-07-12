@@ -258,8 +258,7 @@ public:
     GateRef Int32Xor(GateRef x, GateRef y);
     GateRef FixLoadType(GateRef x);
     GateRef Int64Or(GateRef x, GateRef y);
-    // FetchOr with acquire and release
-    GateRef Int64FetchOr(GateRef x, GateRef y);
+    GateRef Int64FetchOr(GateRef x, GateRef y, MemoryAttribute mAttr);
     GateRef IntPtrOr(GateRef x, GateRef y);
     GateRef Int64And(GateRef x, GateRef y);
     GateRef Int64Xor(GateRef x, GateRef y);

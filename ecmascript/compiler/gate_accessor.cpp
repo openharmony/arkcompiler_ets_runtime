@@ -138,6 +138,7 @@ MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
     auto op = GetOpCode(gate);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     switch (op) {
+        case OpCode::FETCH_OR:
         case OpCode::LOAD_WITHOUT_BARRIER:
         case OpCode::LOAD:
         case OpCode::LOAD_HCLASS_OPCODE:

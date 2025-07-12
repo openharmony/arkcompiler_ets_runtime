@@ -32,7 +32,6 @@ namespace panda::ecmascript::kungfu {
     V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                                                         \
-    V(FetchOr, FETCH_OR, GateFlags::NONE_FLAG, 0, 1, 2)                                              \
     V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
@@ -79,7 +78,8 @@ namespace panda::ecmascript::kungfu {
     V(LoadWithoutBarrier, LOAD_WITHOUT_BARRIER, GateFlags::NO_WRITE, 0, 1, 1)           \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 5)                                      \
     V(StoreWithoutBarrier, STORE_WITHOUT_BARRIER, GateFlags::NONE_FLAG, 0, 1, 2)        \
-    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)
+    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                                    \
+    V(FetchOr, FETCH_OR, GateFlags::NONE_FLAG, 0, 1, 2)
 
 #define LCR_GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     LCR_GATE_META_DATA_LIST_WITH_VALUE(V)

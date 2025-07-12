@@ -118,11 +118,12 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     label->SetDepend(result);
 }
 
-GateRef CircuitBuilder::FetchOr(GateRef ptr, GateRef value)
+GateRef CircuitBuilder::FetchOr(GateRef ptr, GateRef value, MemoryAttribute mAttr)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = GetCircuit()->NewGate(circuit_->FetchOr(),
+    auto bits = LoadStoreAccessor::ToValue(mAttr);
+    GateRef result = GetCircuit()->NewGate(circuit_->FetchOr(bits),
         MachineType::I64, { depend, ptr, value }, acc_.GetGateType(value));
     label->SetDepend(result);
     return result;

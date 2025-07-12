@@ -1973,14 +1973,13 @@ void StubBuilder::MarkRSetCardTable(GateRef obj, Label *exit)
                                             IntPtr(common::kBitsPerWord));
     GateRef headMaskBits = Int64LSL(Int64(1), headMaskBitStart);
     GateRef cardOffset = PtrMul(cardIdx, IntPtr(common::kBytesPerWord));
-    GateRef cardTable = LoadPrimitive(VariableType::NATIVE_POINTER(), rset,
-                                        IntPtr(common::RegionRSet::CARD_TABLE_OFFSET_IN_RSET));
+    GateRef cardTable = PtrAdd(rset, IntPtr(common::RegionRSet::CARD_TABLE_DATA_OFFSET));
     GateRef card = LoadPrimitive(VariableType::INT64(), cardTable, cardOffset);
     GateRef isMarked = Int64NotEqual(Int64And(card, headMaskBits), Int64(0));
     BRANCH_NO_WEIGHT(isMarked, exit, &markBit);
     Bind(&markBit);
     {
-        Int64FetchOr(PtrAdd(cardTable, cardOffset), headMaskBits);
+        Int64FetchOr(PtrAdd(cardTable, cardOffset), headMaskBits, MemoryAttribute::Default());
         Jump(exit);
     }
 }
