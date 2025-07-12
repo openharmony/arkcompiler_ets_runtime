@@ -3619,4 +3619,14 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Dynamic_Object_Accessor_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="JS_DynamicTypeConverter_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>

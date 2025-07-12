@@ -24,9 +24,9 @@ class DynamicTypeConverter : public DynamicTypeConverterInterface {
 public:
     static void Initialize();
 
-    JSTaggedValue WrapTagged(ThreadHolder *thread, PandaType value) override;
+    JSTaggedValue PUBLIC_API WrapTagged(ThreadHolder *thread, PandaType value) override;
 
-    PandaType UnwrapTagged(JSTaggedValue value) override;
+    PandaType PUBLIC_API UnwrapTagged(JSTaggedValue value) override;
 
   private:
     static DynamicTypeConverter dynTypeConverter_;
