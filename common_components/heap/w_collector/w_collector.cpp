@@ -378,7 +378,7 @@ void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
             markObject(oldObj);
         }
     };
-    VisitRoots(visitor);
+    VisitRoots(visitor, false);
     // inline MergeAllocBufferRoots
     MutatorManager &mutatorManager = MutatorManager::Instance();
     bool worldStopped = mutatorManager.WorldStopped();
@@ -709,7 +709,7 @@ void WCollector::EnumRootsFlip(WorkStack& rootSet)
         TransitionToGCPhase(GCPhase::GC_PHASE_ENUM, true);
         const RefFieldVisitor& visitor =
             [this, &rootSet](RefField<>& root) { EnumRefFieldRoot(root, rootSet); };
-        VisitGlobalRoots(visitor);
+        VisitGlobalRoots(visitor, true);
         MergeAllocBufferRoots(rootSet);
     };
     FlipFunction enumMutatorRoot = [this, &rootSet, &stackMutex](Mutator &mutator) {
