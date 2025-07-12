@@ -549,9 +549,6 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
 template<typename T1, typename T2>
 JSTaggedValue BuiltinsArrayBuffer::CommonConvert(T1 &value, T2 &res, bool littleEndian)
 {
-    if (std::isnan(value) && !JSTaggedValue::IsImpureNaN(value)) {
-        return GetTaggedDouble(value);
-    }
     if (!littleEndian) {
         T1 d = base::bit_cast<T1>(res);
         if (JSTaggedValue::IsImpureNaN(d)) {
@@ -647,10 +644,6 @@ void BuiltinsArrayBuffer::SetValueInBufferForFloat(double val, uint8_t *block, u
 {
     ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be float type");
     auto data = static_cast<T>(val);
-    if (std::isnan(val)) {
-        SetTypeData(block, data, byteIndex);
-        return;
-    }
     if (!littleEndian) {
         if constexpr (std::is_same_v<T, float>) {
             uint32_t res = base::bit_cast<uint32_t>(data);

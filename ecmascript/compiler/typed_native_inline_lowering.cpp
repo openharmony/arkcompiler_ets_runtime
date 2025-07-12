@@ -1558,14 +1558,13 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
             }
             builder_.Bind(&bigEndian);
             {
-                GateRef originFloat32Res = builder_.CastInt32ToFloat32(int32Res);
-                GateRef originDoubleRes = builder_.ExtFloat32ToDouble(originFloat32Res);
-                BRANCH_CIR(builder_.DoubleIsNAN(originDoubleRes), &passResult, &notNaN);
+                GateRef bigEndianInt32Res = builder_.Int32ToBigEndianInt32(int32Res);
+                GateRef float32Res = builder_.CastInt32ToFloat32(bigEndianInt32Res);
+                GateRef doubleRes = builder_.ExtFloat32ToDouble(float32Res);
+                BRANCH_CIR(builder_.DoubleIsNAN(doubleRes), &passResult, &notNaN);
                 builder_.Bind(&notNaN);
                 {
-                    GateRef bigEndianInt32Res = builder_.Int32ToBigEndianInt32(int32Res);
-                    GateRef float32Res = builder_.CastInt32ToFloat32(bigEndianInt32Res);
-                    tempRes = builder_.ExtFloat32ToDouble(float32Res);
+                    tempRes = doubleRes;
                     builder_.Jump(&passResult);
                 }
             }
@@ -1581,37 +1580,28 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
                 builder_.LoadWithoutBarrier(VariableType::FLOAT64(), dataPointer,
                                             builder_.ZExtInt32ToPtr(bufferIndex));
             DEFVALUE(tempRes, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
-            Label NaNandNotImpure(&builder_);
-            Label ifLittleEndian(&builder_);
-            GateRef resIsImpure = builder_.DoubleIsImpureNaN(float64Res);
-            GateRef canPassResult = LogicAndBuilder(builder_.GetCurrentEnvironment())
-                .And(builder_.BoolNot(resIsImpure)).And(builder_.DoubleIsNAN(float64Res)).Done();
-            BRANCH_CIR(canPassResult, &passResult, &ifLittleEndian);
-            builder_.Bind(&ifLittleEndian);
+            BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
+            builder_.Bind(&bigEndian);
             {
-                BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
-                builder_.Bind(&bigEndian);
+                GateRef int64Res = builder_.CastDoubleToInt64(float64Res);
+                GateRef bigEndianInt64Res = builder_.Int64ToBigEndianInt64(int64Res);
+                GateRef bigEndianDoubleRes = builder_.CastInt64ToFloat64(bigEndianInt64Res);
+                Label bigEndianResNotImpure(&builder_);
+                BRANCH_CIR(builder_.DoubleIsImpureNaN(bigEndianDoubleRes), &passResult, &bigEndianResNotImpure);
+                builder_.Bind(&bigEndianResNotImpure);
                 {
-                    GateRef int64Res = builder_.CastDoubleToInt64(float64Res);
-                    GateRef bigEndianInt64Res = builder_.Int64ToBigEndianInt64(int64Res);
-                    GateRef bigEndianDoubleRes = builder_.CastInt64ToFloat64(bigEndianInt64Res);
-                    Label bigEndianResNotImpure(&builder_);
-                    BRANCH_CIR(builder_.DoubleIsImpureNaN(bigEndianDoubleRes), &passResult, &bigEndianResNotImpure);
-                    builder_.Bind(&bigEndianResNotImpure);
-                    {
-                        tempRes = bigEndianDoubleRes;
-                        builder_.Jump(&passResult);
-                    }
+                    tempRes = bigEndianDoubleRes;
+                    builder_.Jump(&passResult);
                 }
-                builder_.Bind(&littleEndian);
+            }
+            builder_.Bind(&littleEndian);
+            {
+                Label resNotImpure(&builder_);
+                BRANCH_CIR(builder_.DoubleIsImpureNaN(float64Res), &passResult, &resNotImpure);
+                builder_.Bind(&resNotImpure);
                 {
-                    Label resNotImpure(&builder_);
-                    BRANCH_CIR(resIsImpure, &passResult, &resNotImpure);
-                    builder_.Bind(&resNotImpure);
-                    {
-                        tempRes = float64Res;
-                        builder_.Jump(&passResult);
-                    }
+                    tempRes = float64Res;
+                    builder_.Jump(&passResult);
                 }
             }
             builder_.Bind(&passResult);
@@ -1679,31 +1669,20 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewSetFloat32: {
-            Label isNaN(&builder_);
-            Label notNaN(&builder_);
             GateRef float32Value = builder_.TruncDoubleToFloat32(value);
-            BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &notNaN);
-            builder_.Bind(&isNaN);
+            BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
+            builder_.Bind(&littleEndian);
             {
                 builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, float32Value);
                 builder_.Jump(&exit);
             }
-            builder_.Bind(&notNaN);
+            builder_.Bind(&bigEndian);
             {
-                BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
-                builder_.Bind(&littleEndian);
-                {
-                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, float32Value);
-                    builder_.Jump(&exit);
-                }
-                builder_.Bind(&bigEndian);
-                {
-                    GateRef int32Value = builder_.CastFloat32ToInt32(float32Value);
-                    GateRef bigEndianInt32Value = builder_.Int32ToBigEndianInt32(int32Value);
-                    GateRef bigEndianFloat32Value = builder_.CastInt32ToFloat32(bigEndianInt32Value);
-                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32Value);
-                    builder_.Jump(&exit);
-                }
+                GateRef int32Value = builder_.CastFloat32ToInt32(float32Value);
+                GateRef bigEndianInt32Value = builder_.Int32ToBigEndianInt32(int32Value);
+                GateRef bigEndianFloat32Value = builder_.CastInt32ToFloat32(bigEndianInt32Value);
+                builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32Value);
+                builder_.Jump(&exit);
             }
             break;
         }
@@ -1726,32 +1705,19 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewSetFloat64: {
-            Label isNaN(&builder_);
-            Label notNaN(&builder_);
-            BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &notNaN);
+            BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
+            builder_.Bind(&littleEndian);
             {
-                builder_.Bind(&isNaN);
-                {
-                    builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, value);
-                    builder_.Jump(&exit);
-                }
-                builder_.Bind(&notNaN);
-                {
-                    BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
-                    builder_.Bind(&littleEndian);
-                    {
-                        builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, value);
-                        builder_.Jump(&exit);
-                    }
-                    builder_.Bind(&bigEndian);
-                    {
-                        GateRef int64bitsValue = builder_.CastDoubleToInt64(value);
-                        GateRef bigEndianInt64Value = builder_.Int64ToBigEndianInt64(int64bitsValue);
-                        GateRef float64Value = builder_.CastInt64ToFloat64(bigEndianInt64Value);
-                        builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, float64Value);
-                        builder_.Jump(&exit);
-                    }
-                }
+                builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, value);
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&bigEndian);
+            {
+                GateRef int64bitsValue = builder_.CastDoubleToInt64(value);
+                GateRef bigEndianInt64Value = builder_.Int64ToBigEndianInt64(int64bitsValue);
+                GateRef float64Value = builder_.CastInt64ToFloat64(bigEndianInt64Value);
+                builder_.Store(VariableType::INT64(), glue, dataPointer, offset, float64Value);
+                builder_.Jump(&exit);
             }
             break;
         }
