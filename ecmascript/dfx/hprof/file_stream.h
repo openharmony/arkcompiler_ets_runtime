@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iosfwd>
 #include <utility>
+#include <vector>
 
 #include "ecmascript/dfx/hprof/stream.h"
 #include "ecmascript/mem/mem_common.h"
@@ -87,6 +88,46 @@ public:
 
 private:
     int32_t fd_;
+};
+
+class BinaryWriter {
+public:
+    explicit BinaryWriter(Stream *stream);
+    ~BinaryWriter();
+
+    void WriteBinBlock(char *block, int size);
+
+    void WriteUInt64(uint64_t num);
+
+    void WriteUInt32(uint32_t num);
+
+    void WriteUInt16(uint16_t num);
+
+    void WriteUInt8(uint8_t num);
+
+    void EndOfWriteBinBlock();
+
+    int GetCurrentFileSize()
+    {
+        return fileSize_;
+    }
+
+private:
+    void MaybeWriteBinBlock();
+
+    void WriteBinBlock();
+
+    void IncreaseFileIndex(uint32_t size)
+    {
+        current_ += size;
+        fileSize_ += size;
+    }
+
+    Stream *stream_ {nullptr};
+    int chunkSize_ {0};
+    std::vector<char> chunk_;
+    int current_ {0};
+    int fileSize_ {0};
 };
 }  // namespace panda::ecmascript::tooling
 

@@ -1215,7 +1215,7 @@ CString HeapSnapshot::ParseFunctionName(TaggedObject *obj, bool isRawHeap)
 {
     CString result;
     JSFunctionBase *func = JSFunctionBase::Cast(obj);
-    JSThread *thread = vm_->GetJSThread();
+    JSThread *thread = vm_->GetAssociatedJSThread();
     Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
     MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     if (methodLiteral == nullptr) {
@@ -1247,13 +1247,13 @@ CString HeapSnapshot::ParseFunctionName(TaggedObject *obj, bool isRawHeap)
     // fileName: module|referencedModule|version/filePath
     CString fileName = CString(debugExtractor->GetSourceFile(methodId));
     int32_t line = debugExtractor->GetFristLine(methodId);
-    return JSObject::ExtractFilePath(vm_->GetJSThread(), nameStr, moduleStr, defaultName, fileName, line);
+    return JSObject::ExtractFilePath(vm_->GetAssociatedJSThread(), nameStr, moduleStr, defaultName, fileName, line);
 }
 
 const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
     ASSERT(JSTaggedValue(obj).IsJSObject());
-    JSThread *thread = vm_->GetJSThread();
+    JSThread *thread = vm_->GetAssociatedJSThread();
     bool isCallGetter = false;
     return JSObject::ExtractConstructorAndRecordName(thread, obj, true, &isCallGetter);
 }

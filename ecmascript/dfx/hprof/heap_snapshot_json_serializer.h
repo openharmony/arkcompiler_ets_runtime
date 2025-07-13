@@ -63,29 +63,6 @@ public:
         }
     }
 
-    void WriteBinBlock(char *block, int size)
-    {
-        char *cur = block;
-        while (size > 0) {
-            MaybeWriteBinBlock();
-            int dstSize = chunkSize_ - current_;
-            int writeSize = std::min(dstSize, size);
-            if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed!";
-            }
-            cur += writeSize;
-            current_ += writeSize;
-            size -= writeSize;
-        }
-    }
-
-    void WriteUint8(uint8_t value)
-    {
-        MaybeWriteBinBlock();
-        *reinterpret_cast<uint8_t *>(chunk_.data() + current_) = value;
-        ++current_;
-    }
-
     void WriteChar(char c)
     {
         ASSERT(c != '\0');
@@ -107,14 +84,6 @@ public:
         stream_->EndOfStream();
     }
 
-    void EndOfWriteBinBlock()
-    {
-        if (current_ > 0) {
-            WriteBinBlock();
-        }
-        stream_->EndOfStream();
-    }
-
 private:
     void MaybeWriteChunk()
     {
@@ -124,23 +93,9 @@ private:
         }
     }
 
-    void MaybeWriteBinBlock()
-    {
-        ASSERT(current_ <= chunkSize_);
-        if (current_ == chunkSize_) {
-            WriteBinBlock();
-        }
-    }
-
     void WriteChunk()
     {
         stream_->WriteChunk(chunk_.data(), current_);
-        current_ = 0;
-    }
-
-    void WriteBinBlock()
-    {
-        stream_->WriteBinBlock(chunk_.data(), current_);
         current_ = 0;
     }
 

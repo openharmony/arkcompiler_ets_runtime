@@ -22,48 +22,27 @@
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
-#include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 
 
 namespace panda::ecmascript {
-class RootMarker : public HeapMarker, public RootVisitor {
-public:
-    RootMarker() = default;
-    ~RootMarker() = default;
-
-    void VisitRoot(Root type, ObjectSlot slot) override;
-    void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
-    void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override {}
-};
-
-class ObjectMarker : public HeapMarker, public BaseObjectVisitor<ObjectMarker> {
+class ObjectMarker : public HeapMarker, public RootVisitor, public BaseObjectVisitor<ObjectMarker> {
 public:
     ObjectMarker() = default;
     ~ObjectMarker() = default;
 
+    void VisitRoot(Root type, ObjectSlot slot) override;
+    void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
+    void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override;
     void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t endAddr, VisitObjectArea area) override;
-    void ProcessMarkObjectsFromRoot(JSTaggedType root);
+
+    void ProcessMarkObjectsFromRoot();
+    void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
+    void MarkObject(JSTaggedType addr);
 
 private:
-    bool IsEmpty()
-    {
-        return bfsQueue_.empty();
-    }
-
-    JSTaggedType PopUnchecked()
-    {
-        JSTaggedType addr = bfsQueue_.front();
-        bfsQueue_.pop();
-        return addr;
-    }
-
-    void Push(JSTaggedType addr)
-    {
-        bfsQueue_.push(addr);
-    }
-
     CQueue<JSTaggedType> bfsQueue_ {};
+    CVector<JSTaggedType> markedObjects_ {};
 };
 
 class RawHeapDump {
@@ -73,14 +52,14 @@ public:
     virtual ~RawHeapDump();
 
     virtual void BinaryDump() = 0;
-    uint32_t GetRawHeapFileOffset() const
+    uint32_t GetRawHeapFileOffset()
     {
-        return fileOffset_;
+        return static_cast<uint32_t>(writer_.GetCurrentFileSize());
     }
 
 protected:
-    void MarkRootForDump(RootMarker &rootMarker);
-    void MarkHeapObjectForDump(RootMarker &rootMarker, ObjectMarker &objectMarker);
+    void MarkRootForDump(ObjectMarker &marker);
+    void MarkHeapObjectForDump(ObjectMarker &marker);
     void DumpVersion(const std::string &version);
     void DumpSectionIndex();
     NodeId GenerateNodeId(JSTaggedType addr);
@@ -99,10 +78,12 @@ protected:
 
 private:
     const EcmaVM *vm_ {nullptr};
-    StreamWriter writer_;
+    BinaryWriter writer_;
     HeapSnapshot *snapshot_ {nullptr};
     EntryIdMap *entryIdMap_ {nullptr};
     CVector<uint32_t> secIndexVec_ {};
+    CUnorderedMap<JSTaggedType, StringId> objectStrIds_ {};
+    CUnorderedMap<Method *, StringId> functionStrIds_ {};
     uint32_t fileOffset_ {0};
     uint32_t preOffset_ {0};
     bool isOOM_ {false};
@@ -125,7 +106,7 @@ private:
         uint32_t offset; // offset to the file
     };
 
-    void DumpRootTable(RootMarker &marker);
+    void DumpRootTable(ObjectMarker &marker);
     void DumpStringTable(ObjectMarker &marker);
     void DumpObjectTable(ObjectMarker &marker);
     void DumpObjectMemory(ObjectMarker &marker);
@@ -152,7 +133,7 @@ private:
         uint32_t type;
     };
 
-    void DumpRootTable(RootMarker &marker);
+    void DumpRootTable(ObjectMarker &marker);
     void DumpStringTable(ObjectMarker &marker);
     void DumpObjectTable(ObjectMarker &marker);
     void DumpObjectMemory(ObjectMarker &marker);
@@ -164,7 +145,7 @@ private:
     constexpr static const char *const RAWHEAP_VERSION_V2 = "2.0.0";
     CUnorderedMap<uint64_t, CVector<uint32_t>> strIdMapObjVec_ {};
     CUnorderedMap<Region *, uint32_t> regionIdMap_ {};
-    uint32_t regionId_ {0x11U};  // region id start from 0x10
+    uint32_t regionId_ {0};  // region id start from 0x10
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_DUMP_H

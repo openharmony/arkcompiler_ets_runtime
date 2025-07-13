@@ -313,7 +313,7 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
 
 bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
-    [[maybe_unused]] EcmaHandleScope ecmaHandleScope(vm_->GetJSThread());
+    [[maybe_unused]] EcmaHandleScope ecmaHandleScope(vm_->GetAssociatedJSThread());
     DumpSnapShotOption option;
     std::vector<std::string> filePaths;
     std::vector<uint64_t> fileSizes;
@@ -389,7 +389,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
 {
     bool res = false;
     base::BlockHookScope blockScope;
-    ThreadManagedScope managedScope(vm_->GetJSThread());
+    ThreadManagedScope managedScope(vm_->GetAssociatedJSThread());
     pid_t pid = -1;
     {
         if (dumpOption.isFullGC) {
