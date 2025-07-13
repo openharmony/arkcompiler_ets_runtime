@@ -142,4 +142,87 @@ bool FileDescriptorStream::WriteBinBlock(char *data, int32_t size)
     }
     return true;
 }
+
+BinaryWriter::BinaryWriter(Stream *stream)
+    : stream_(stream), chunkSize_(stream->GetSize()), chunk_(chunkSize_), current_(0)
+{
+}
+
+BinaryWriter::~BinaryWriter()
+{
+}
+
+void BinaryWriter::WriteBinBlock(char *block, int size)
+{
+    char *cur = block;
+    while (size > 0) {
+        MaybeWriteBinBlock();
+        int dstSize = chunkSize_ - current_;
+        int writeSize = std::min(dstSize, size);
+        if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed!";
+        }
+        cur += writeSize;
+        size -= writeSize;
+        IncreaseFileIndex(writeSize);
+    }
+}
+
+void BinaryWriter::WriteUInt64(uint64_t num)
+{
+    if (UNLIKELY(chunkSize_ - current_ < sizeof(uint64_t))) {
+        WriteBinBlock();
+    }
+    *reinterpret_cast<uint64_t *>(chunk_.data() + current_) = num;
+    IncreaseFileIndex(sizeof(uint64_t));
+}
+
+void BinaryWriter::WriteUInt32(uint32_t num)
+{
+    if (UNLIKELY(chunkSize_ - current_ < sizeof(uint32_t))) {
+        WriteBinBlock();
+    }
+    *reinterpret_cast<uint32_t *>(chunk_.data() + current_) = num;
+    IncreaseFileIndex(sizeof(uint32_t));
+}
+
+void BinaryWriter::WriteUInt16(uint16_t num)
+{
+    if (UNLIKELY(chunkSize_ - current_ < sizeof(uint16_t))) {
+        WriteBinBlock();
+    }
+    *reinterpret_cast<uint16_t *>(chunk_.data() + current_) = num;
+    IncreaseFileIndex(sizeof(uint16_t));
+}
+
+void BinaryWriter::WriteUInt8(uint8_t num)
+{
+    if (UNLIKELY(chunkSize_ - current_ < sizeof(uint8_t))) {
+        WriteBinBlock();
+    }
+    *reinterpret_cast<uint8_t *>(chunk_.data() + current_) = num;
+    IncreaseFileIndex(sizeof(uint8_t));
+}
+
+void BinaryWriter::EndOfWriteBinBlock()
+{
+    if (current_ > 0) {
+        WriteBinBlock();
+    }
+    stream_->EndOfStream();
+}
+
+void BinaryWriter::MaybeWriteBinBlock()
+{
+    ASSERT(current_ <= chunkSize_);
+    if (UNLIKELY(current_ == chunkSize_)) {
+        WriteBinBlock();
+    }
+}
+
+void BinaryWriter::WriteBinBlock()
+{
+    stream_->WriteBinBlock(chunk_.data(), current_);
+    current_ = 0;
+}
 }
