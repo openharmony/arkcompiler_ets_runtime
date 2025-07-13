@@ -115,7 +115,7 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
     SetNeedUpdateGlobal(thread, true);
     SetHitCount(thread, GetHitCount() + 1);
     if (type != SEARCH_TYPE && type != SPLIT_TYPE) {
-        BuiltinsRegExp::SetLastIndex(thread, regexp, Get<mode>(thread, index + LAST_INDEX_INDEX), true);
+        BuiltinsRegExp::SetLastIndex(thread, regexp, Get<RBMode::FAST_NO_RB>(thread, index + LAST_INDEX_INDEX), true);
     }
     if (!isIntermediateResult && result.IsJSArray()) {
         JSHandle<JSArray> resultHandle(thread, JSArray::Cast(result));
@@ -145,14 +145,14 @@ bool RegExpExecResultCache::Match(JSThread *thread, int entry, JSTaggedValue &pa
     }
 
     uint8_t flagsBits = static_cast<uint8_t>(flags.GetInt());
-    JSTaggedValue keyFlags = Get<mode>(thread, index + FLAG_INDEX);
+    JSTaggedValue keyFlags = Get<RBMode::FAST_NO_RB>(thread, index + FLAG_INDEX);
     uint8_t keyFlagsBits = static_cast<uint8_t>(keyFlags.GetInt());
     if (flagsBits != keyFlagsBits) {
         return false;
     }
 
     uint32_t lastIndexInputInt = static_cast<uint32_t>(lastIndexInputValue.GetInt());
-    JSTaggedValue keyLastIndexInput = Get<mode>(thread, index + LAST_INDEX_INPUT_INDEX);
+    JSTaggedValue keyLastIndexInput = Get<RBMode::FAST_NO_RB>(thread, index + LAST_INDEX_INPUT_INDEX);
     uint32_t keyLastIndexInputInt = static_cast<uint32_t>(keyLastIndexInput.GetInt());
     if (lastIndexInputInt != keyLastIndexInputInt) {
         return false;

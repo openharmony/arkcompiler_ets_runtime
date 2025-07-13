@@ -2692,10 +2692,13 @@ void RegExpExecResultCache::SetEntry(JSThread *thread, int entry, JSTaggedValue 
             static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     Set(thread, index + PATTERN_INDEX, pattern);
-    Set(thread, index + FLAG_INDEX, flags);
+    ASSERT(flags.IsInt());
+    Set<false>(thread, index + FLAG_INDEX, flags);
     Set(thread, index + INPUT_STRING_INDEX, input);
-    Set(thread, index + LAST_INDEX_INPUT_INDEX, lastIndexInputValue);
-    Set(thread, index + LAST_INDEX_INDEX, lastIndexValue);
+    ASSERT(lastIndexInputValue.IsInt());
+    Set<false>(thread, index + LAST_INDEX_INPUT_INDEX, lastIndexInputValue);
+    ASSERT(lastIndexValue.IsInt());
+    Set<false>(thread, index + LAST_INDEX_INDEX, lastIndexValue);
     Set(thread, index + EXTEND_INDEX, extendValue);
     Set(thread, index + CAPTURE_SIZE, resTableArray);
 }
