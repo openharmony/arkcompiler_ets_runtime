@@ -1325,6 +1325,9 @@ void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)
 {
     ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
     if (g_isEnableCMCGC) {
+        // Note: CMC GC assumes JSNativePointer is always a non-young object and tries to optimize it out in young GC
+        ASSERT_LOGF(common::Heap::GetHeap().InRecentSpace(pointer) == false,
+                    "Violate CMC-GC assumption: should not be young object");
         common::BaseRuntime::NotifyNativeAllocation(pointer->GetBindingSize());
     }
     std::lock_guard<std::mutex> lock(sNativePointerListMutex_);

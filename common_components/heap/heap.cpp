@@ -86,6 +86,12 @@ public:
 
     void SetGCReason(GCReason reason) override { gcReason_ = reason; }
 
+    bool InRecentSpace(const void *addr) override
+    {
+        RegionDesc *region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(addr));
+        return region->IsInRecentSpace();
+    }
+
     HeapAddress Allocate(size_t size, AllocType allocType, bool allowGC = true) override;
 
     GCPhase GetGCPhase() const override;

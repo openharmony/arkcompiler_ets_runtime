@@ -25,41 +25,33 @@
 #include "common_components/heap/heap.h"
 
 namespace common {
-RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem, AllocType allocType)
+
+template <AllocBufferType type>
+RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
 {
     RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
-    if (region != nullptr) {
-        if (IsGcThread()) {
+    if constexpr (type == AllocBufferType::TO) {
+        if (region != nullptr) {
             toSpace_.AddThreadLocalRegion(region);
-            DLOG(REGION, "alloc to-region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
-                region, region->GetRegionStart(), region->GetRegionSize(),
-                region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-                region->GetRegionType());
-        } else {
-            GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-            if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-                phase == GC_PHASE_POST_MARK) {
-                region->SetTraceLine();
-            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
-                region->SetTraceLine();
-                region->SetCopyLine();
-            } else if (phase == GC_PHASE_FIX) {
-                region->SetTraceLine();
-                region->SetCopyLine();
-                region->SetFixLine();
-            }
+        }
+        return region;
+    }
 
-            if (allocType == AllocType::MOVEABLE_OBJECT) {
-                youngSpace_.AddThreadLocalRegion(region);
-            } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
-                oldSpace_.AddThreadLocalRegion(region);
-            } else {
-                UNREACHABLE();
-            }
-            DLOG(REGION, "alloc tl-region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u, gc phase: %u",
-                region, region->GetRegionStart(), region->GetRegionSize(),
-                region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-                region->GetRegionType(), phase);
+    ASSERT_LOGF(!IsGcThread(), "GC thread cannot take tlRegion/tlOldRegion");
+    if (region != nullptr) {
+        GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+        if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
+            phase == GC_PHASE_POST_MARK) {
+            region->SetTraceLine();
+        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
+            region->SetTraceLine();
+            region->SetCopyLine();
+        }
+
+        if constexpr (type == AllocBufferType::YOUNG) {
+            youngSpace_.AddThreadLocalRegion(region);
+        } else if constexpr (type == AllocBufferType::OLD) {
+            oldSpace_.AddThreadLocalRegion(region);
         }
     }
 
@@ -137,13 +129,9 @@ uintptr_t RegionSpace::AllocOldRegion()
     if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
         phase == GC_PHASE_POST_MARK) {
         region->SetTraceLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
         region->SetTraceLine();
         region->SetCopyLine();
-    } else if (phase == GC_PHASE_FIX) {
-        region->SetTraceLine();
-        region->SetCopyLine();
-        region->SetFixLine();
     }
 
     DLOG(REGION, "alloc small object region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
@@ -168,13 +156,9 @@ uintptr_t RegionSpace::AllocPinnedRegion()
     if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
         phase == GC_PHASE_POST_MARK) {
         region->SetTraceLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
         region->SetTraceLine();
         region->SetCopyLine();
-    } else if (phase == GC_PHASE_FIX) {
-        region->SetTraceLine();
-        region->SetCopyLine();
-        region->SetFixLine();
     }
 
     DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
@@ -344,6 +328,11 @@ void AllocationBuffer::ClearThreadLocalRegion()
         heap.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
         tlOldRegion_ = RegionDesc::NullRegion();
     }
+    if (LIKELY_CC(tlToRegion_ != RegionDesc::NullRegion())) {
+        RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        heap.HandleFullThreadLocalRegion<AllocBufferType::TO>(tlToRegion_);
+        tlToRegion_ = RegionDesc::NullRegion();
+    }
 }
 
 void AllocationBuffer::Unregister()
@@ -367,19 +356,26 @@ void AllocationBuffer::Init()
     Heap::GetHeap().RegisterAllocBuffer(*this);
 }
 
-HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize, AllocType allocType)
+HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize)
 {
     HeapAddress addr = 0;
-    if (UNLIKELY_CC(allocType == AllocType::RAW_POINTER_OBJECT)) {
-        return AllocateRawPointerObject(totalSize);
-    }
-
-    if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-        addr = tlRegion_->Alloc(totalSize);
+    if (LIKELY_CC(tlToRegion_ != RegionDesc::NullRegion())) {
+        addr = tlToRegion_->Alloc(totalSize);
     }
 
     if (UNLIKELY_CC(addr == 0)) {
-        addr = AllocateImpl(totalSize, allocType);
+        RegionSpace& heapSpace = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+
+        heapSpace.HandleFullThreadLocalRegion<AllocBufferType::TO>(tlToRegion_);
+        tlToRegion_ = RegionDesc::NullRegion();
+
+        RegionDesc* r = heapSpace.AllocateThreadLocalRegion<AllocBufferType::TO>(false);
+        if (UNLIKELY_CC(r == nullptr)) {
+            return 0;
+        }
+
+        tlToRegion_ = r;
+        addr = tlToRegion_->Alloc(totalSize);
     }
 
     DLOG(ALLOC, "alloc to 0x%zx(%zu)", addr, totalSize);
@@ -420,42 +416,31 @@ HeapAddress AllocationBuffer::AllocateImpl(size_t totalSize, AllocType allocType
 {
     RegionSpace& heapSpace = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
 
-    // allocate from thread local region
+    // allocate new thread local region and try alloc
     if (allocType == AllocType::MOVEABLE_OBJECT) {
-        if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-            // allocation failed because region is full.
-            if (tlRegion_->IsThreadLocalRegion()) {
-                heapSpace.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
-                tlRegion_ = RegionDesc::NullRegion();
-            }
+        heapSpace.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
+        tlRegion_ = RegionDesc::NullRegion();
+
+        RegionDesc* r = heapSpace.AllocateThreadLocalRegion<AllocBufferType::YOUNG>(false);
+        if (UNLIKELY_CC(r == nullptr)) {
+            return 0;
         }
-    } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
-        if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
-            HeapAddress addr = tlOldRegion_->Alloc(totalSize);
-            if (addr != 0) {
-                return addr;
-            }
 
-            // allocation failed because region is full.
-            if (tlOldRegion_->IsThreadLocalRegion()) {
-                heapSpace.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
-                tlOldRegion_ = RegionDesc::NullRegion();
-            }
-        }
-    }
-
-    RegionDesc* r = heapSpace.AllocateThreadLocalRegion(false, allocType);
-    if (UNLIKELY_CC(r == nullptr)) {
-        return 0;
-    }
-
-    if (allocType == AllocType::MOVEABLE_OBJECT) {
         tlRegion_ = r;
+        return tlRegion_->Alloc(totalSize);
     } else if (allocType == AllocType::MOVEABLE_OLD_OBJECT) {
-        tlOldRegion_ = r;
-    }
+        heapSpace.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
+        tlOldRegion_ = RegionDesc::NullRegion();
 
-    return r->Alloc(totalSize);
+        RegionDesc* r = heapSpace.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
+        if (UNLIKELY_CC(r == nullptr)) {
+            return 0;
+        }
+
+        tlOldRegion_ = r;
+        return tlOldRegion_->Alloc(totalSize);
+    }
+    UNREACHABLE();
 }
 
 HeapAddress AllocationBuffer::AllocateRawPointerObject(size_t totalSize)
@@ -500,7 +485,7 @@ void RegionSpace::FeedHungryBuffers()
     for (auto* buffer : hungryBuffers) {
         if (buffer->GetPreparedRegion() != nullptr) { continue; }
         if (region == nullptr) {
-            region = AllocateThreadLocalRegion(true);
+            region = AllocateThreadLocalRegion<AllocBufferType::YOUNG>(true);
             if (region == nullptr) { return; }
         }
         if (buffer->SetPreparedRegion(region)) {

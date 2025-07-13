@@ -24,6 +24,7 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitor) {}
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc) {}
 void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc) {}
 void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc) {}
+void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFunc) {}
 void VisitDynamicWeakLocalRoots(const WeakRefFieldVisitor &visitorFunc) {}
 void VisitDynamicPreforwardRoots(const RefFieldVisitor &visitorFunc) {}
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm) {}

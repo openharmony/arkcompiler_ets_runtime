@@ -17,7 +17,6 @@
 #define COMMON_COMPONENTS_HEAP_ALLOCATOR_REGION_LIST_H
 
 #include "common_components/heap/allocator/region_desc.h"
-#include "common_components/heap/allocator/slot_list.h"
 
 namespace common {
 class RegionList {
@@ -230,7 +229,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(listMutex_);
         for (RegionDesc* node = listHead_; node != nullptr; node = node->GetNextRegion()) {
-            node->ClearTraceCopyFixLine();
+            node->ClearTraceCopyLine();
         }
         active_ = false;
     }

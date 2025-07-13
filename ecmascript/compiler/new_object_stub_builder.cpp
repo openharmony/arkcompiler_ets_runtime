@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
+#include "common_components/heap/allocator/alloc_buffer.h"
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
@@ -1699,10 +1700,12 @@ void NewObjectStubBuilder::AllocateInSOldPrologueImplForCMCGC(Variable *result, 
 
     auto allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(env->Is32Bit());
     auto allocBufferAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, IntPtr(allocBufferOffset));
-    auto tlOldRegion =
-        LoadPrimitive(VariableType::NATIVE_POINTER(), allocBufferAddress, env->Is32Bit() ? IntPtr(4) : IntPtr(8));
-    auto allocPtr = LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, IntPtr(0));
-    auto regionEnd = LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, env->Is32Bit()? IntPtr(4) : IntPtr(8));
+    auto tlOldRegion = LoadPrimitive(VariableType::NATIVE_POINTER(), allocBufferAddress,
+                                     IntPtr(common::AllocationBuffer::GetTLOldRegionOffset()));
+    auto allocPtr =
+        LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, IntPtr(common::RegionDesc::GetAllocPtrOffset()));
+    auto regionEnd =
+        LoadPrimitive(VariableType::JS_POINTER(), tlOldRegion, IntPtr(common::RegionDesc::GetRegionEndOffset()));
     auto newAllocPtr = PtrAdd(allocPtr, size_);
     BRANCH(IntPtrGreaterThan(newAllocPtr, regionEnd), callRuntime, &success);
     Bind(&success);
@@ -1738,9 +1741,12 @@ void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMCGC(Variable *result,
 
     auto allocBufferOffset = JSThread::GlueData::GetAllocBufferOffset(env->Is32Bit());
     auto allocBufferAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, IntPtr(allocBufferOffset));
-    auto tlRegion = LoadPrimitive(VariableType::NATIVE_POINTER(), allocBufferAddress, IntPtr(0));
-    auto allocPtr = LoadPrimitive(VariableType::JS_POINTER(), tlRegion, IntPtr(0));
-    auto regionEnd = LoadPrimitive(VariableType::JS_POINTER(), tlRegion, env->Is32Bit()? IntPtr(4) : IntPtr(8));
+    auto tlRegion = LoadPrimitive(VariableType::NATIVE_POINTER(), allocBufferAddress,
+                                  IntPtr(common::AllocationBuffer::GetTLRegionOffset()));
+    auto allocPtr =
+        LoadPrimitive(VariableType::JS_POINTER(), tlRegion, IntPtr(common::RegionDesc::GetAllocPtrOffset()));
+    auto regionEnd =
+        LoadPrimitive(VariableType::JS_POINTER(), tlRegion, IntPtr(common::RegionDesc::GetRegionEndOffset()));
     auto newAllocPtr = PtrAdd(allocPtr, size_);
     BRANCH(IntPtrGreaterThan(newAllocPtr, regionEnd), callRuntime, &success);
     Bind(&success);

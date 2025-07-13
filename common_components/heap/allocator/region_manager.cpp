@@ -159,10 +159,10 @@ void RegionDesc::VisitAllObjectsWithFixedSize(size_t cellCount, const std::funct
     }
 }
 
-void RegionDesc::VisitAllObjectsBeforeFix(const std::function<void(BaseObject*)>&& func)
+void RegionDesc::VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)>&& func)
 {
     uintptr_t allocPtr = GetRegionAllocPtr();
-    uintptr_t phaseLine = GetFixLine();
+    uintptr_t phaseLine = GetCopyLine();
     uintptr_t end = std::min(phaseLine, allocPtr);
     VisitAllObjectsBefore(std::move(func), end);
 }
@@ -203,13 +203,13 @@ void RegionDesc::VisitRememberSetBeforeTrace(const std::function<void(BaseObject
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), end);
 }
 
-void RegionDesc::VisitRememberSetBeforeFix(const std::function<void(BaseObject*)>& func)
+void RegionDesc::VisitRememberSetBeforeCopy(const std::function<void(BaseObject*)>& func)
 {
     if (IsLargeRegion() && IsJitFortAwaitInstallFlag()) {
         // machine code which is not installed should skip here.
         return;
     }
-    uintptr_t end = std::min(GetFixLine(), GetRegionAllocPtr());
+    uintptr_t end = std::min(GetCopyLine(), GetRegionAllocPtr());
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), end);
 }
 
@@ -620,20 +620,12 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
 
 static void FixRecentRegion(TraceCollector& collector, RegionDesc* region)
 {
-    // use fixline to skip new region after fix
+    // use copyline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
     bool isLargeRegion = region->IsLargeRegion();
     bool isFixRegion = region->IsFixedRegion();
-    region->VisitAllObjectsBeforeFix([&collector, region, isLargeRegion, isFixRegion](BaseObject* object) {
-        if (region->IsNewObjectSinceForward(object)) {
-            // handle dead objects in tl-regions for concurrent gc.
-            if (collector.IsToVersion(object)) {
-                collector.FixObjectRefFields(object);
-                object->SetForwardState(BaseStateWord::ForwardState::NORMAL);
-            } else {
-                DLOG(FIX, "fix: skip new obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-            }
-        } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
+    region->VisitAllObjectsBeforeCopy([&collector, region, isLargeRegion, isFixRegion](BaseObject* object) {
+        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
             if (isLargeRegion) {
@@ -666,16 +658,8 @@ static void FixRecentPinnedRegion(TraceCollector& collector, RegionDesc* region,
     // use fixline to skip new region after fix
     // visit object before fix line to avoid race condition with mutator
     ASSERT_LOGF(!region->IsLargeRegion() && !region->IsFixedRegion(), "illegal pinned region");
-    region->VisitAllObjectsBeforeFix([&collector, region, &pinnedRegionObject](BaseObject* object) {
-        if (region->IsNewObjectSinceForward(object)) {
-            // handle dead objects in tl-regions for concurrent gc.
-            if (collector.IsToVersion(object)) {
-                collector.FixObjectRefFields(object);
-                object->SetForwardState(BaseStateWord::ForwardState::NORMAL);
-            } else {
-                DLOG(FIX, "fix: skip new obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
-            }
-        } else if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
+    region->VisitAllObjectsBeforeCopy([&collector, region, &pinnedRegionObject](BaseObject* object) {
+        if (region->IsNewObjectSinceTrace(object) || collector.IsSurvivedObject(object)) {
             collector.FixObjectRefFields(object);
         } else { // handle dead objects in tl-regions for concurrent gc.
             pinnedRegionObject.push_back({object, RegionSpace::GetAllocSize(*object)});
@@ -803,7 +787,7 @@ static void FixRecentOldRegion(TraceCollector& collector, RegionDesc* region)
         DLOG(FIX, "fix: old obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         collector.FixObjectRefFields(object);
     };
-    region->VisitRememberSetBeforeFix(visitFunc);
+    region->VisitRememberSetBeforeCopy(visitFunc);
 }
 
 void RegionManager::FixRecentOldRegionList(TraceCollector& collector, RegionList& list)
@@ -1029,8 +1013,8 @@ void RegionManager::RequestForRegion(size_t size)
 uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
 {
     GCPhase mutatorPhase = Mutator::GetMutator()->GetMutatorPhase();
-    // workaround: make sure once fixline is set, newly allocated objects are after fixline
-    if (mutatorPhase == GC_PHASE_FIX || mutatorPhase == GC_PHASE_MARK) {
+    // workaround: make sure collector doesn't fix newly allocated incomplete objects
+    if (mutatorPhase == GC_PHASE_MARK || mutatorPhase == GC_PHASE_FIX) {
         return 0;
     }
 
@@ -1071,13 +1055,9 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {
             region->SetTraceLine();
-        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
             region->SetTraceLine();
             region->SetCopyLine();
-        } else if (phase == GC_PHASE_FIX) {
-            region->SetTraceLine();
-            region->SetCopyLine();
-            region->SetFixLine();
         }
 
         // To make sure the allocedSize are consistent, it must prepend region first then alloc object.

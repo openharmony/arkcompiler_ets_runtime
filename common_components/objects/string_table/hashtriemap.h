@@ -75,6 +75,12 @@ class HashTrieMapEntry final : public HashTrieMapNode {
 public:
     HashTrieMapEntry(BaseString* v) : overflow_(nullptr)
     {
+        // Note: CMC GC assumes string is always a non-young object and tries to optimize it out in young GC
+        ASSERT_LOGF(Heap::GetHeap().IsHeapAddress(v)
+                        ? Heap::GetHeap().InRecentSpace(v) == false
+                        : true,
+                    "Violate CMC-GC assumption: should not be young object");
+
         bitField_ = (ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v));
     }
 
@@ -97,6 +103,12 @@ public:
 
     void SetValue(BaseString* v)
     {
+        // Note: CMC GC assumes string is always a non-young object and tries to optimize it out in young GC
+        ASSERT_LOGF(Heap::GetHeap().IsHeapAddress(v)
+                        ? Heap::GetHeap().InRecentSpace(v) == false
+                        : true,
+                    "Violate CMC-GC assumption: should not be young object");
+
         bitField_ = ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v);
     }
 

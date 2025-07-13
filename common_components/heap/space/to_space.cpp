@@ -40,6 +40,12 @@ void ToSpace::DumpRegionStats() const
 
 void ToSpace::GetPromotedTo(OldSpace& mspace)
 {
+    // release thread-local to-space regions as they will promote to old-space
+    AllocBufferVisitor visitor = [](AllocationBuffer& tlab) {
+        tlab.ClearRegion<AllocBufferType::TO>();
+    };
+    Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
+
     mspace.PromoteRegionList(fullToRegionList_);
     mspace.PromoteRegionList(tlToRegionList_);
 }

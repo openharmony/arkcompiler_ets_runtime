@@ -37,12 +37,12 @@ protected:
 
     void SetUp() override
     {
-        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::GC_THREAD);
+        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::ARK_PROCESSOR);
     }
 
     void TearDown() override
     {
-        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::GC_THREAD);
+        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::ARK_PROCESSOR);
     }
 };
 

@@ -30,7 +30,7 @@ void ThreadLocal::ClearAllocBufferRegion()
 {
     auto buffer = GetAllocBuffer();
     if (buffer != nullptr) {
-        buffer->ClearRegion();
+        buffer->ClearRegions();
     }
 }
 } // namespace common

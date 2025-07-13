@@ -65,6 +65,7 @@ public:
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {
         DCHECK_CC(Heap::GetHeap().IsGcStarted());
+        DCHECK_CC(region->IsToRegion());
         tlToRegionList_.DeleteRegion(region);
         fullToRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
     }
@@ -102,7 +103,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyFixLine();
+            region->ClearTraceCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });

@@ -181,6 +181,8 @@ public:
 
     virtual void SetGCReason(GCReason reason) = 0;
 
+    virtual bool InRecentSpace(const void *addr) = 0;
+
     static void OnHeapCreated(HeapAddress startAddr)
     {
         heapStartAddr_ = startAddr;

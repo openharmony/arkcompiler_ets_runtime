@@ -73,23 +73,26 @@ public:
 
     void Init(const RuntimeParam &param) override;
 
-    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false,
-                                          AllocType allocType = AllocType::MOVEABLE_OBJECT);
+    template <AllocBufferType type>
+    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem = false);
 
     template <AllocBufferType type = AllocBufferType::YOUNG>
     void HandleFullThreadLocalRegion(RegionDesc* region) noexcept
     {
-        ASSERT_LOGF(region->IsThreadLocalRegion(), "unexpected region type");
+        if (region == RegionDesc::NullRegion()) {
+            return;
+        }
+        ASSERT_LOGF(region->IsThreadLocalRegion() || region->IsToRegion() || region->IsOldRegion(),
+                    "unexpected region type");
 
         if constexpr (type == AllocBufferType::YOUNG) {
-            if (IsGcThread()) {
-                toSpace_.HandleFullThreadLocalRegion(region);
-            } else {
-                youngSpace_.HandleFullThreadLocalRegion(region);
-            }
+            ASSERT_LOGF(!IsGcThread(), "unexpected gc thread for old space");
+            youngSpace_.HandleFullThreadLocalRegion(region);
         } else if constexpr (type == AllocBufferType::OLD) {
             ASSERT_LOGF(!IsGcThread(), "unexpected gc thread for old space");
             oldSpace_.HandleFullThreadLocalRegion(region);
+        } else if constexpr (type == AllocBufferType::TO) {
+            toSpace_.HandleFullThreadLocalRegion(region);
         }
     }
 
@@ -201,7 +204,7 @@ public:
     BaseObject* RouteObject(BaseObject* fromObj, size_t size)
     {
         AllocationBuffer* buffer = AllocationBuffer::GetOrCreateAllocBuffer();
-        uintptr_t toAddr = buffer->ToSpaceAllocate(size, AllocType::MOVEABLE_OBJECT);
+        uintptr_t toAddr = buffer->ToSpaceAllocate(size);
         return reinterpret_cast<BaseObject*>(toAddr);
     }
 
@@ -281,8 +284,6 @@ public:
 
     void PrepareTrace() { regionManager_.PrepareTrace(); }
     void PrepareForward() { regionManager_.PrepareForward(); }
-    void PrepareFix() { regionManager_.PrepareFix(); }
-    void PrepareFixForPin() { regionManager_.PrepareFixForPin(); }
     void FeedHungryBuffers() override;
 
     // markObj

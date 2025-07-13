@@ -43,6 +43,7 @@ void VisitConcurrentRoots(const RefFieldVisitor &visitor)
 void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
+    VisitDynamicWeakGlobalRootsOld(visitor);
     VisitDynamicWeakLocalRoots(visitor);
 }
 
@@ -55,6 +56,7 @@ void VisitGlobalRoots(const RefFieldVisitor &visitor)
 void VisitWeakGlobalRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
+    VisitDynamicWeakGlobalRootsOld(visitor);
 }
 
 void VisitPreforwardRoots(const RefFieldVisitor &visitor)

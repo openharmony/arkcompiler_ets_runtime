@@ -27,7 +27,6 @@
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/free_region_manager.h"
 #include "common_components/heap/allocator/region_list.h"
-#include "common_components/heap/allocator/slot_list.h"
 
 namespace common {
 using JitFortUnProtHookType = void (*)(size_t size, void* base);
@@ -70,6 +69,8 @@ public:
         return RoundUp<size_t>(metadataSize, COMMON_PAGE_SIZE);
     }
 
+    // "recent" regions means thread local regions(full or not full) that are not included in current GC,
+    // objects in these regions after copy line are not needed to fix because barrier guarantee the correctness
     static void FixRegionList(TraceCollector& collector, RegionList& list);
     static void FixRecentPinnedRegionList(TraceCollector& collector, RegionList& list,
                                           std::vector<std::pair<BaseObject*, size_t>> &pinnedRegionObject);
@@ -188,13 +189,9 @@ public:
             if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK ||
                 phase == GC_PHASE_REMARK_SATB || phase == GC_PHASE_POST_MARK) {
                 region->SetTraceLine();
-            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
                 region->SetTraceLine();
                 region->SetCopyLine();
-            } else if (phase == GC_PHASE_FIX) {
-                region->SetTraceLine();
-                region->SetCopyLine();
-                region->SetFixLine();
             }
             // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
             list->PrependRegionLocked(region, RegionDesc::RegionType::FIXED_PINNED_REGION);
@@ -228,13 +225,9 @@ public:
             if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
                 phase == GC_PHASE_POST_MARK) {
                 region->SetTraceLine();
-            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+            } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
                 region->SetTraceLine();
                 region->SetCopyLine();
-            } else if (phase == GC_PHASE_FIX) {
-                region->SetTraceLine();
-                region->SetCopyLine();
-                region->SetFixLine();
             }
 
             // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
@@ -261,13 +254,9 @@ public:
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {
             region->SetTraceLine();
-        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY) {
+        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
             region->SetTraceLine();
             region->SetCopyLine();
-        } else if (phase == GC_PHASE_FIX) {
-            region->SetTraceLine();
-            region->SetCopyLine();
-            region->SetFixLine();
         }
 
         DLOG(REGION, "alloc large region @0x%zx+%zu type %u", region->GetRegionStart(),
@@ -444,37 +433,12 @@ public:
             if (region != RegionDesc::NullRegion()) {
                 region->SetCopyLine();
             }
-        };
-        Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
-    }
-
-    void PrepareFix()
-    {
-        AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
-            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
-            if (region != RegionDesc::NullRegion()) {
-                region->SetFixLine();
-            }
             region = regionBuffer.GetRegion<AllocBufferType::OLD>();
             if (region != RegionDesc::NullRegion()) {
-                region->SetFixLine();
+                region->SetCopyLine();
             }
         };
         Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
-    }
-
-    void PrepareFixForPin()
-    {
-        RegionDesc* region = recentPinnedRegionList_.GetHeadRegion();
-        if (region != nullptr && region != RegionDesc::NullRegion()) {
-            region->SetFixLine();
-        }
-        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            RegionDesc* region = recentFixedPinnedRegionList_[i]->GetHeadRegion();
-            if (region != nullptr && region != RegionDesc::NullRegion()) {
-                region->SetFixLine();
-            }
-        }
     }
 
     void ClearAllGCInfo()
@@ -538,7 +502,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyFixLine();
+            region->ClearTraceCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });
