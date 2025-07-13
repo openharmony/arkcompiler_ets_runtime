@@ -2576,6 +2576,7 @@ void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = GetLValue(e1);
     LLVMValueRef e2Value = GetLValue(e2);
+    e1Value = CanonicalizeToPtr(e1Value, LLVMPointerType(LLVMTypeOf(e2Value), 0));
     auto order = acc_.GetMemoryAttribute(gate);
     LLVMAtomicOrdering atomic_order = LLVMAtomicOrderingSequentiallyConsistent;
     switch (order.GetOrder()) {
