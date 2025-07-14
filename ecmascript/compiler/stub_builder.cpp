@@ -32,6 +32,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/transitions_dictionary.h"
 #include "common_components/heap/allocator/region_desc.h"
+#include "objects/base_state_word.h"
 
 namespace panda::ecmascript::kungfu {
 void StubBuilder::Jump(Label *label)
@@ -1059,7 +1060,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     opStubBuilder.StartLookup<ObjectOperatorStubBuilder::StartLookupType::NO_RECEIVER>(
         glue, key, &checkHolder, opOptions, opResult, hir);
 
-    // if holder is JSProxy, op's lookup will return. This will be handled by CallRuntime. 
+    // if holder is JSProxy, op's lookup will return. This will be handled by CallRuntime.
     Bind(&checkHolder);
     {
         Label isJSProxy(env);
@@ -2353,14 +2354,79 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     }
     Bind(&isHeapObject);
     {
-        result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });
-        Jump(&exit);
+        Label isHeapAddress(env);
+        Label notHeapAddress(env);
+        BRANCH(IsHeapAddress(glue, value), &isHeapAddress, &notHeapAddress);
+        Bind(&notHeapAddress);
+        {
+            result = value;
+            Jump(&exit);
+        }
+        Bind(&isHeapAddress);
+        {
+            result = FastReadBarrier(glue, addr, value);
+            Jump(&exit);
+        }
     }
 
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), value);
+
+    GateRef intValue = ChangeTaggedPointerToInt64(value);
+    GateRef regionType = GetCMCRegionType(value);
+    Label isFromeSpace(env);
+    GateRef fromType = Int8(static_cast<int8_t>(common::RegionDesc::RegionType::FROM_REGION));
+    Branch(Int8Equal(regionType, fromType), &isFromeSpace, &exit);
+    Bind(&isFromeSpace);
+    {
+        GateRef weakMask = Int64And(intValue, Int64(JSTaggedValue::TAG_WEAK));
+        GateRef obj = Int64And(intValue, Int64(~JSTaggedValue::TAG_WEAK));
+
+        GateRef forwardedAddr = LoadPrimitive(VariableType::INT64(), obj, IntPtr(0));
+        GateRef forwardState =
+            Int64LSR(forwardedAddr, Int64(common::BaseStateWord::PADDING_WIDTH + common::BaseStateWord::FORWARD_WIDTH));
+        Label forwarded(env);
+        Label notForwarded(env);
+        Branch(Int64Equal(forwardState, Int64(static_cast<int64_t>(common::BaseStateWord::ForwardState::FORWARDED))),
+            &forwarded, &notForwarded);
+        Bind(&forwarded);
+        {
+            result = Int64ToTaggedPtr(Int64Or(Int64And(forwardedAddr, Int64(TaggedStateWord::ADDRESS_MASK)), weakMask));
+            Jump(&exit);
+        }
+        Bind(&notForwarded);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsHeapAddress(GateRef glue, GateRef value)
+{
+    bool isArch32 = GetEnvironment()->Is32Bit();
+    GateRef heapStartAddr = LoadPrimitive(
+        VariableType::NATIVE_POINTER(), glue, IntPtr(JSThread::GlueData::GetHeapStartAddrOffset(isArch32)));
+    GateRef heapCurrentEnd = LoadPrimitive(
+        VariableType::NATIVE_POINTER(), glue, IntPtr(JSThread::GlueData::GetHeapCurrentEndOffset(isArch32)));
+    auto IntPtrValue =  ChangeTaggedPointerToInt64(value);
+    return BitAnd(IntPtrGreaterThanOrEqual(IntPtrValue, heapStartAddr), IntPtrLessThan(IntPtrValue, heapCurrentEnd));
 }
 
 GateRef StubBuilder::TaggedIsBigInt(GateRef glue, GateRef obj)
@@ -12661,7 +12727,7 @@ void StubBuilder::EndTraceLoadValue([[maybe_unused]]GateRef glue)
 #endif
 }
 
-void StubBuilder::StartTraceCallDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef profileTypeInfo, 
+void StubBuilder::StartTraceCallDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef profileTypeInfo,
                                        [[maybe_unused]] GateRef slotId)
 {
 #if ECMASCRIPT_ENABLE_TRACE_CALL

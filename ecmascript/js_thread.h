@@ -1109,9 +1109,22 @@ public:
         return glueData_.allocBuffer_;
     }
 
+    void OnHeapCreated(uintptr_t startAddr)
+    {
+        glueData_.heapStartAddr_ = startAddr;
+        glueData_.heapCurrentEnd_ = 0;
+    }
+
+    void OnHeapExtended(uintptr_t newEnd)
+    {
+        glueData_.heapCurrentEnd_ = newEnd;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  base::AlignedBool,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1168,6 +1181,8 @@ public:
             BcStubEntriesIndex = 0,
             IsEnableCMCGCIndex,
             ThreadHolderIndex,
+            HeapStartAddrIndex,
+            HeapCurrentEndIndex,
             AllocBufferIndex,
             StateAndFlagsIndex,
             ExceptionIndex,
@@ -1226,6 +1241,16 @@ public:
         static size_t GetThreadHolderOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ThreadHolderIndex)>(isArch32);
+        }
+
+        static size_t GetHeapStartAddrOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::HeapStartAddrIndex)>(isArch32);
+        }
+
+        static size_t GetHeapCurrentEndOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::HeapCurrentEndIndex)>(isArch32);
         }
 
         static size_t GetAllocBufferOffset(bool isArch32)
@@ -1511,6 +1536,8 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) uint32_t isEnableCMCGC_ {0};
         alignas(EAS) uintptr_t threadHolder_ {0};
+        alignas(EAS) uintptr_t heapStartAddr_ {0};
+        alignas(EAS) uintptr_t heapCurrentEnd_ {0};
         alignas(EAS) uintptr_t allocBuffer_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};

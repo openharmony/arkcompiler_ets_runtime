@@ -3525,7 +3525,7 @@ void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
 JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    return Barriers::GetTaggedValue(thread, addr);
+    return Barriers::ReadBarrierForObject(thread, addr);
 }
 
 void RuntimeStubs::CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget)

@@ -188,7 +188,7 @@ public:
     GateRef CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv, int index, const std::vector<GateRef>& args);
     GateRef CallRuntimeWithGlobalEnv(GateRef glue, GateRef globalEnv, int index, GateRef argc, GateRef argv);
     GateRef CallRuntimeWithCurrentEnv(GateRef glue, GateRef currentEnv, int index, const std::vector<GateRef>& args);
-    
+
     GateRef CallNGCRuntime(GateRef glue, int index,
                            const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
     GateRef FastCallOptimized(GateRef glue, GateRef code,
@@ -834,6 +834,8 @@ public:
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetValueWithBarrier(GateRef glue, GateRef addr);
+    GateRef FastReadBarrier(GateRef glue, GateRef addr, GateRef value);
+    GateRef IsHeapAddress(GateRef glue, GateRef value);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
                                GateRef GetPropertyByName(GateRef glue,

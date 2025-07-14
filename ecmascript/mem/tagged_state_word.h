@@ -27,15 +27,18 @@ class TaggedObject;
 
 class TaggedStateWord {
 public:
+    static constexpr size_t ADDRESS_WIDTH = 48;
+    static constexpr uint64_t ADDRESS_MASK = (0x1ULL << ADDRESS_WIDTH) - 1;
+
     // Little endian
     struct GCStateWord {
-        common::StateWordType address_   : 48;
+        common::StateWordType address_   : ADDRESS_WIDTH;
         common::StateWordType padding_   : 12;
         common::StateWordType remainded_ : 4;
     };
 
     struct ClassStateWord {
-        ClassWordType class_ : 48;
+        ClassWordType class_ : ADDRESS_WIDTH;
         ClassWordType padding_ : 12;
         ClassWordType remainded_ : 4;
     };
