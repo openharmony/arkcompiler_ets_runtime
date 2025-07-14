@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/base_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/mutator/satb_buffer.h"

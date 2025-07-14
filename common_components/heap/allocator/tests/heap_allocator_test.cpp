@@ -19,7 +19,7 @@
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/heap/collector/trace_collector.h"
 #include "common_components/heap/heap.cpp"
-#include "common_components/base_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
 

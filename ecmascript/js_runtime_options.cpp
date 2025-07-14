@@ -18,7 +18,7 @@
 #include <getopt.h>
 #include <type_traits>
 
-#include "common_components/base_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/base_runtime_param.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/bc_call_signature.h"

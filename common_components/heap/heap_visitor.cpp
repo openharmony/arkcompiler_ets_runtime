@@ -15,7 +15,7 @@
 
 #include "common_interfaces/heap/heap_visitor.h"
 
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/mutator/mutator.h"
 
 namespace common {

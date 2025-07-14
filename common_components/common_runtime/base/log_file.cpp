@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/common_runtime/src/base/log_file.h"
+#include "common_components/common_runtime/log_file.h"
 
 #include <unistd.h>
 

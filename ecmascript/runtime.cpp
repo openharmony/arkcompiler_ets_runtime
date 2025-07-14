@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/runtime.h"
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_interfaces/base_runtime.h"

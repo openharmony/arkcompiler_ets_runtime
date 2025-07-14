@@ -15,8 +15,8 @@
 
 #include "common_interfaces/base_runtime.h"
 
-#include "common_components/base_runtime/base_runtime_param.h"
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/common/page_pool.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"

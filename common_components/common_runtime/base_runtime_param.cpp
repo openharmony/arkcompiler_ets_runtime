@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/base_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/base_runtime_param.h"
 
 #include "common_components/platform/cpu.h"
 

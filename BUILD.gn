@@ -158,7 +158,7 @@ group("common_components_js_unittest") {
   if (ets_runtime_enable_cmc_gc) {
     deps += [
       "common_components/base/tests:unittest",
-      "common_components/base_runtime/tests:unittest",
+      "common_components/common_runtime/tests:unittest",
 
       #"common_components/heap/allocator/tests:unittest",
       "common_components/heap/barrier/tests:unittest",
@@ -180,7 +180,7 @@ group("common_components_unittest") {
   if (ets_runtime_enable_cmc_gc) {
     deps += [
       "common_components/base/tests:host_unittest",
-      "common_components/base_runtime/tests:host_unittest",
+      "common_components/common_runtime/tests:host_unittest",
 
       #"common_components/heap/allocator/tests:host_unittest",
       "common_components/heap/barrier/tests:host_unittest",
@@ -1428,8 +1428,8 @@ if (enable_target_compilation) {
 # Only use when cmc-gc enable
 ohos_source_set("libcommon_components_set") {
   sources = [
-    "common_components/base_runtime/base_runtime.cpp",
-    "common_components/base_runtime/base_runtime_param.cpp",
+    "common_components/common_runtime/base_runtime.cpp",
+    "common_components/common_runtime/base_runtime_param.cpp",
     "common_components/heap/heap_allocator.cpp",
     "common_components/heap/heap_visitor.cpp",
     "common_components/profiler/heap_profiler_listener.cpp",

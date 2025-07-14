@@ -15,7 +15,7 @@
 
 #include "common_interfaces/thread/thread_holder-inl.h"
 
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/mutator/mutator.h"
 #include "common_components/mutator/thread_local.h"
 #include "common_interfaces/base_runtime.h"
