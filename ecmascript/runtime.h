@@ -298,6 +298,16 @@ public:
     }
 #endif
 
+    bool IsHybridVm() const
+    {
+        return isHybridVm_;
+    }
+
+    void SetHybridVm(bool isHybridVm)
+    {
+        isHybridVm_ = isHybridVm;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -390,6 +400,9 @@ private:
     
     // release secure mem after jspandafile released.
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
+
+    // for 1.2runtime interface type
+    bool isHybridVm_ {false};
 
     friend class EcmaVM;
     friend class JSThread;

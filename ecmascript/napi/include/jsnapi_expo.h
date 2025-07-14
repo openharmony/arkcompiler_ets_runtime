@@ -1940,6 +1940,7 @@ public:
 
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
+    static void InitHybridVMEnv(const EcmaVM *vm);
 
 private:
     static bool isForked_;
