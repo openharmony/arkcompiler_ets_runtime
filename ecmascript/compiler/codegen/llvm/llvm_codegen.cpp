@@ -54,9 +54,14 @@ namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 using namespace llvm;
 
-CodeInfo::CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand) : codeSpaceOnDemand_(codeSpaceOnDemand)
+CodeInfo::CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand, bool useOwnSpace)
+    : codeSpaceOnDemand_(codeSpaceOnDemand),
+      useOwnSpace_(useOwnSpace)
 {
     secInfos_.fill(std::make_pair(nullptr, 0));
+    if (useOwnSpace_) {
+        ownCodeSpace_ = std::make_unique<CodeSpace>();
+    }
 }
 
 CodeInfo::~CodeInfo()
@@ -153,11 +158,17 @@ uint8_t *CodeInfo::AllocaOnDemand(uintptr_t size, size_t alignSize)
 
 uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, size_t alignSize)
 {
+    if (useOwnSpace_) {
+        return ownCodeSpace_->Alloca(size, true, alignSize);
+    }
     return CodeSpace::GetInstance()->Alloca(size, true, alignSize);
 }
 
 uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize)
 {
+    if (useOwnSpace_) {
+        return ownCodeSpace_->Alloca(size, false, alignSize);
+    }
     return CodeSpace::GetInstance()->Alloca(size, false, alignSize);
 }
 
@@ -467,8 +478,9 @@ void LLVMAssembler::BuildAndRunPassesFastMode()
     LLVMDisposePassManager(modPass);
 }
 
-LLVMAssembler::LLVMAssembler(LLVMModule *lm, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand, LOptions option)
-    : Assembler(codeSpaceOnDemand),
+LLVMAssembler::LLVMAssembler(LLVMModule *lm, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand, LOptions option,
+                             bool isStubCompiler)
+    : Assembler(codeSpaceOnDemand, isStubCompiler),
       llvmModule_(lm),
       module_(llvmModule_->GetModule()),
       listener_(this)

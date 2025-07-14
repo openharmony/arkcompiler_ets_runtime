@@ -512,7 +512,7 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
             UNREACHABLE();
             break;
     }
-    LLVMAssembler* ass = new LLVMAssembler(m, jitCodeSpace_, option);
+    LLVMAssembler* ass = new LLVMAssembler(m, jitCodeSpace_, option, true);
     modulePackage_.emplace_back(Module(m, ass));
     return &modulePackage_.back();
 }
