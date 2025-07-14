@@ -1918,6 +1918,14 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     // get native pointer
     if (isJSFunction) {
         __ Ldr(nativeCode, MemoryOperand(function, JSFunctionBase::CODE_ENTRY_OFFSET));
+
+        Label next;
+        Register lexicalEnv = temp;
+        __ Ldr(lexicalEnv, MemoryOperand(function, JSFunction::LEXICAL_ENV_OFFSET));
+        __ Cmp(lexicalEnv, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ B(Condition::EQ, &next);
+        __ Str(lexicalEnv, MemoryOperand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
+        __ Bind(&next);
     } else {
         // JSProxy or JSBoundFunction
         Register method(X2);

@@ -137,11 +137,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> dirPath(GetCallArg(argv, 2));                  // 2 : current file path(containing file name)
     JSHandle<JSTaggedValue> specifier(GetCallArg(argv, 3));             // 3 : request module's path
     JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));            // 4 : js recordName or undefined
-    // Switch current env to function's lexical env
-    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(argv->GetFunction());
-    JSTaggedValue env = func->GetLexicalEnv(thread);
-    ASSERT(env.IsJSGlobalEnv());
-    thread->SetGlueGlobalEnv(env);
 
     // Let specifierString be Completion(ToString(specifier))
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);

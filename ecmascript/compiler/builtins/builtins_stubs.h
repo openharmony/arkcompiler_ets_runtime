@@ -77,8 +77,8 @@ public:
 
     GateRef GetArgFromArgv(GateRef glue, GateRef index, GateRef numArgs = Gate::InvalidGateRef, bool needCheck = false);
 
-    GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
-                         GateRef newTarget);
+    GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef globalEnv, GateRef thisValue,
+                         GateRef numArgs, GateRef func, GateRef newTarget);
 
     inline GateRef IsNumberYearMonthDay(GateRef year, GateRef month, GateRef day)
     {

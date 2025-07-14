@@ -688,7 +688,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
 
     Bind(&newTargetNotObject);
     GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidNewTarget));
-    CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+    CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
     returnValue = Exception();
     Jump(&exit);
 

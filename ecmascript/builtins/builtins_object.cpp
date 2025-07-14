@@ -1117,6 +1117,7 @@ JSTaggedValue BuiltinsObject::FromEntries(EcmaRuntimeCallInfo *argv)
     JSHandle<Method> method(thread,
         thread->GetEcmaVM()->GetMethodByIndex(MethodIndex::BUILTINS_OBJECT_CREATE_DATA_PROPERTY_ON_OBJECT_FUNCTIONS));
     JSHandle<JSFunction> addrFunc = factory->NewJSFunction(env, method);
+    addrFunc->SetLexicalEnv(thread, env);
 
     JSHandle<JSTaggedValue> adder(thread, addrFunc.GetTaggedValue());
 

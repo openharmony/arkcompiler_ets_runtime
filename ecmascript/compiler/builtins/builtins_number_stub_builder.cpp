@@ -338,7 +338,8 @@ void BuiltinsNumberStubBuilder::ToStringFunc(Variable *result, Label *exit, Labe
         Bind(&throwError);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidRadixLength));
-            CallRuntime(glue_, RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
             Jump(exit);
         }
         Bind(&notThrowError);

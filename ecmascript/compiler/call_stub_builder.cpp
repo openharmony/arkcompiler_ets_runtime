@@ -547,8 +547,8 @@ void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJSFunction)
     GateRef ret;
     int idxForNative = PrepareIdxForNative();
     std::vector<GateRef> argsForNative = PrepareArgsForNative();
-    auto env = GetEnvironment();
-    Label notFastBuiltins(env);
+    auto env0 = GetEnvironment();
+    Label notFastBuiltins(env0);
     switch (callArgs_.mode) {
         case JSCallMode::CALL_THIS_ARG0:
         case JSCallMode::CALL_THIS_ARG1:
@@ -580,10 +580,44 @@ void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJSFunction)
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+            if (isJSFunction) {
+                Label setGlueGlobalEnv(env0);
+                Label next(env0);
+                GateRef lexicalEnv = GetFunctionLexicalEnv(glue_, func_);
+                {
+                    ASM_ASSERT(GET_MESSAGE_STRING_ID(LexicalEnvIsInvalid),
+                        BitOr(TaggedIsUndefined(lexicalEnv),
+                              LogicAndBuilder(env0).And(TaggedIsHeapObject(lexicalEnv))
+                                                   .And(IsGlobalEnv(glue_, lexicalEnv))
+                                                   .Done()));
+                }
+                BRANCH_UNLIKELY(TaggedIsUndefined(lexicalEnv), &next, &setGlueGlobalEnv);
+                Bind(&setGlueGlobalEnv);
+                SetGlueGlobalEnv(glue_, lexicalEnv);
+                Jump(&next);
+                Bind(&next);
+            }
             ret = CallNGCRuntime(glue_, idxForNative, argsForNative, hir_);
             break;
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+            if (isJSFunction) {
+                Label setGlueGlobalEnv(env0);
+                Label next(env0);
+                GateRef lexicalEnv = GetFunctionLexicalEnv(glue_, func_);
+                {
+                    ASM_ASSERT(GET_MESSAGE_STRING_ID(LexicalEnvIsInvalid),
+                        BitOr(TaggedIsUndefined(lexicalEnv),
+                              LogicAndBuilder(env0).And(TaggedIsHeapObject(lexicalEnv))
+                                                   .And(IsGlobalEnv(glue_, lexicalEnv))
+                                                   .Done()));
+                }
+                BRANCH_UNLIKELY(TaggedIsUndefined(lexicalEnv), &next, &setGlueGlobalEnv);
+                Bind(&setGlueGlobalEnv);
+                SetGlueGlobalEnv(glue_, lexicalEnv);
+                Jump(&next);
+                Bind(&next);
+            }
             ret = CallRuntime(glue_, idxForNative, argsForNative);
             break;
         default:

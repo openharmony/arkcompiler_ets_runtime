@@ -400,7 +400,7 @@ void BuiltinsObjectStubBuilder::SlowAssign(Variable *result, Label *funcExit, Ga
     Label entryLabel(env);
     env->SubCfgEntry(&entryLabel);
     Label exit(env);
-    CallRuntime(glue_, RTSTUB_ID(ObjectSlowAssign), { toAssign, source });
+    CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ObjectSlowAssign), { toAssign, source });
 
     Label exception(env);
     BRANCH(HasPendingException(glue_), &exception, &exit);
@@ -1161,7 +1161,8 @@ void BuiltinsObjectStubBuilder::SetPrototypeOf(Variable *result, Label *exit, La
             Bind(&statusIsFalse);
             {
                 GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPrototypeOfFailed));
-                CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                    RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                 *result = Exception();
                 Jump(exit);
             }

@@ -192,10 +192,12 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::Next(Variable *result,
     {
         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(MapIteratorTypeError));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
         } else {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetIteratorTypeError));
-            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(),
+                RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
         }
         result->WriteVariable(Exception());
         Jump(exit);

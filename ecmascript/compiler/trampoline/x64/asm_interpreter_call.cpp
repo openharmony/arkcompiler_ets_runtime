@@ -933,7 +933,17 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     Register nativeCode = r10;
     // get native pointer
     if (isJSFunction) {
+        [[maybe_unused]] TempRegisterScope scope(assembler);
+        Register lexicalEnv = __ TempRegister();
+        
         __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode);
+
+        Label next;
+        __ Movq(Operand(function, JSFunction::LEXICAL_ENV_OFFSET), lexicalEnv);
+        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), lexicalEnv);
+        __ Je(&next);
+        __ Movq(lexicalEnv, Operand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
+        __ Bind(&next);
     } else {
         // JSProxy or JSBoundFunction
         Register method = rdx;

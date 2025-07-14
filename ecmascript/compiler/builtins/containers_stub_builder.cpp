@@ -378,9 +378,9 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
                 LoopEnd(&nodeIsLinked);
                 Bind(&nodeIsRBTree);
                 {
-                    GateRef retValue = CallRuntime(glue, RTSTUB_ID(ContainerRBTreeForEach),
-                                                   { *node, callbackFnHandle, *thisArg, *thisObj,
-                                                     IntToTaggedInt(Int32(static_cast<int32_t>(type))) });
+                    GateRef retValue = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(ContainerRBTreeForEach), { *node, callbackFnHandle, *thisArg, *thisObj,
+                            IntToTaggedInt(Int32(static_cast<int32_t>(type))) });
                     BRANCH(HasPendingException(glue), &hasExceptionRBTree, &notHasExceptionRBTree);
                     Bind(&hasExceptionRBTree);
                     {

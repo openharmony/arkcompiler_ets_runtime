@@ -601,11 +601,13 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
                                         Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
                                         MemoryAttribute::NoBarrier());
                 if (getKind != FunctionKind::BASE_CONSTRUCTOR) {
-                    thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
+                    thisObj = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(InitializeGeneratorFunction), {kind});
                     SetProtoOrHClassToFunction(glue, func, *thisObj);
                 }
             } else if (!JSFunction::IsClassConstructor(getKind)) {
-                CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
+                CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                    RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
             }
             Jump(&exit);
         } else if (JSFunction::HasAccessor(getKind)) {
@@ -650,7 +652,8 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
                 BRANCH(IsGeneratorKind(kind), &isGenerator, &exit);
                 Bind(&isGenerator);
                 {
-                    thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
+                    thisObj = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(InitializeGeneratorFunction), {kind});
                     SetProtoOrHClassToFunction(glue, func, *thisObj);
                     Jump(&exit);
                 }
@@ -660,7 +663,8 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
                 BRANCH(IsClassConstructorKind(kind), &exit, &notClassConstructor);
                 Bind(&notClassConstructor);
                 {
-                    CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
+                    CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+                        RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
                     Jump(&exit);
                 }
             }

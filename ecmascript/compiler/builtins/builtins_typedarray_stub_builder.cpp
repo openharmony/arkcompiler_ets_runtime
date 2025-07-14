@@ -99,7 +99,7 @@ GateRef BuiltinsTypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateR
         }
         Bind(&slowPath);
         {
-            result = CallRuntime(glue, RTSTUB_ID(GetTypeArrayPropertyByIndex),
+            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypeArrayPropertyByIndex),
                 { array, IntToTaggedInt(index), IntToTaggedInt(jsType) });
             Jump(&exit);
         }
@@ -127,7 +127,7 @@ GateRef BuiltinsTypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, Gate
         BRANCH(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
         Bind(&indexIsvalid);
         {
-            result = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndex),
                 { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType) });
             Jump(&exit);
         }
@@ -170,7 +170,7 @@ GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, Gate
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(GetTypeArrayPropertyByIndex),
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypeArrayPropertyByIndex),
             { array, IntToTaggedInt(index), IntToTaggedInt(jsType)});
         Jump(&exit);
     }
@@ -226,7 +226,7 @@ GateRef BuiltinsTypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, Gate
     }
     Bind(&slowPath);
     {
-        CallRuntime(glue, RTSTUB_ID(FastCopyElementToArray), { typedArray, array});
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(FastCopyElementToArray), { typedArray, array});
         Jump(&exit);
     }
     Bind(&exit);
@@ -2814,7 +2814,7 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     }
     Bind(&slowPath);
     {
-        CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndex),
             { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
         Jump(&exit);
     }
@@ -3366,7 +3366,8 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArrayBuffer(GateRef glue, Ga
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(AllocateTypedArrayBuffer), { typedArray, lengthTagged });
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
+            RTSTUB_ID(AllocateTypedArrayBuffer), { typedArray, lengthTagged });
         Jump(&exit);
     }
     Bind(&exit);
@@ -3481,7 +3482,7 @@ void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, 
 {
     if (arrayType == DataViewType::UINT8_CLAMPED || arrayType == DataViewType::BIGINT64
         || arrayType == DataViewType::BIGUINT64) {
-        CallRuntime(glue, RTSTUB_ID(FastCopyFromArrayToTypedArray),
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(FastCopyFromArrayToTypedArray),
             { result->ReadVariable(), IntToTaggedInt(srcLength), array });
         Jump(check);
         return;
