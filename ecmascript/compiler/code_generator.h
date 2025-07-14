@@ -48,6 +48,7 @@ struct CodeInfo {
         // start point of the buffer reserved for sections not required in executing phase
         uint8_t *unreqSecs_ {nullptr};
         size_t unreqBufPos_ {0};
+        Mutex mutex_{};
     };
 
     class CodeSpaceOnDemand {
