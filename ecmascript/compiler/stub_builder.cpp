@@ -1924,7 +1924,7 @@ GateRef StubBuilder::GetCMCRegionType(GateRef obj)
     return regionDescAddr;
 }
 
-GateRef StubBuilder::IsInYoungSpace(GateRef regionType)
+GateRef StubBuilder::CMCIsInYoungSpace(GateRef regionType)
 {
     auto env = GetEnvironment();
     GateRef ret = LogicOrBuilder(env)
@@ -1939,8 +1939,8 @@ GateRef StubBuilder::IsOldToYoung(GateRef objRegionType, GateRef valueRegionType
 {
     auto env = GetEnvironment();
     GateRef isOldToYoung = LogicAndBuilder(env)
-        .And(BoolNot(IsInYoungSpace(objRegionType)))
-        .And(IsInYoungSpace(valueRegionType)).Done();
+        .And(BoolNot(CMCIsInYoungSpace(objRegionType)))
+        .And(CMCIsInYoungSpace(valueRegionType)).Done();
     return isOldToYoung;
 }
 

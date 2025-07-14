@@ -24,6 +24,7 @@ public:
     BarrierStubBuilder(StubBuilder *parent, GateRef glue, GateRef obj, GateRef startAddr, GateRef slotCount)
         : StubBuilder(parent),
           glue_(glue),
+          dstObj_(obj),
           dstAddr_(startAddr),
           slotCount_(slotCount),
           objectRegion_(ObjectAddressToRange(obj)) {}
@@ -69,6 +70,7 @@ private:
     void BitSetRangeReverse(GateRef bitSet, GateRef startIdx, GateRef length);
     void DoMoveBarrierSameRegionKind(GateRef srcAddr, GateRef srcRegion, RegionKind regionKind);
     const GateRef glue_;
+    const GateRef dstObj_;
     const GateRef dstAddr_;
     const GateRef slotCount_;
     const GateRef objectRegion_;
