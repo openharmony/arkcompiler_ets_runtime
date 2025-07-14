@@ -102,6 +102,7 @@ group("ark_jit_ts_test") {
     "constructor",
     "intrinsic_test",
     "intrinsic_test2",
+    "negative_zero_mod",
   ]
 
   # Until we support barriers for HeapConstant table

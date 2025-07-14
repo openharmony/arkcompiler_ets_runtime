@@ -878,7 +878,7 @@ void MCRLowering::LowerRemainderIsNegativeZero(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef remainderIsNegative = LogicAndBuilder(&env)
-        .And(builder_.Int32LessThan(left, builder_.Int32(0)))
+        .And(builder_.Int32LessThanOrEqual(left, builder_.Int32(0)))
         .And(builder_.Int32Equal(builder_.Int32(0),
             builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right, GateType::NJSValue())))
         .Done();
