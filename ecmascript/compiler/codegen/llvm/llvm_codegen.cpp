@@ -100,6 +100,7 @@ CodeInfo::CodeSpace::~CodeSpace()
 
 uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, size_t alignSize)
 {
+    LockHolder lock(mutex_);
     uint8_t *addr = nullptr;
     auto bufBegin = isReq ? reqSecs_ : unreqSecs_;
     auto &curPos = isReq ? reqBufPos_ : unreqBufPos_;
