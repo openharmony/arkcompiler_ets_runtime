@@ -1447,7 +1447,7 @@ private:
     CString assetPath_;
     CString bundleName_;
     CString moduleName_;
-    CList<CString> deregisterModuleList_;
+    std::set<CString> deregisterModuleList_;
     CMap<CString, CString> mockModuleList_;
     std::map<CString, HmsMap> hmsModuleList_;
     CMap<CString, CString> pkgNameList_;
