@@ -38,7 +38,7 @@ using namespace panda::ecmascript;
 
 LiteCGAssembler::LiteCGAssembler(LMIRModule &module, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand,
                                  const std::vector<std::string> &litecgOptions)
-    : Assembler(codeSpaceOnDemand), lmirModule(module), litecgOptions(litecgOptions) {}
+    : Assembler(codeSpaceOnDemand, false), lmirModule(module), litecgOptions(litecgOptions) {}
 
 static uint8_t *AllocateCodeSection(void *object, uint32_t size, [[maybe_unused]] uint32_t alignment,
                                     const std::string &sectionName)
