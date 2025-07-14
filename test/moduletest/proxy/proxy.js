@@ -145,3 +145,30 @@ const v9 = new Proxy(v7, Reflect);
 for (const v10 in v9) {
 }
 print("test proxy getPrototype success!");
+
+{
+    try {
+        const v1 = [];
+        function f3() {
+        }
+        class C25 {
+        }
+        const v26 = [];
+        function f27() {
+        }
+        function f30() {
+            const o31 = {
+            };
+            o31.get = f3;
+            const v33 = new Proxy(C25, o31);
+            v33.bind(v33, v33, o31, o31, f27);
+            return 1;
+        }
+        f3 ^= f3;
+        f27[Symbol.species] = f30;
+        v26.constructor = f27;
+        v26.flat();
+    } catch (err) {
+        print(err.name);
+    }
+}
