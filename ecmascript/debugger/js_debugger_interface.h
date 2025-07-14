@@ -20,6 +20,7 @@
 
 #include "ecmascript/debugger/js_pt_location.h"
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/napi/include/jsnapi.h"
 namespace panda::ecmascript {
 class Method;
@@ -102,6 +103,8 @@ public:
     virtual void DisableFirstTimeFlag() = 0;
 
     virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
+
+    virtual void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) = 0;
 
     /**
     * \brief called by the ecmavm when symbolic breakpoint hits. Thread where symbolic breakpoint hits is stopped until

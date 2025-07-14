@@ -314,4 +314,9 @@ void Tracing::MethodExit([[maybe_unused]] JSHandle<Method> method)
     TraceEventRecordMemory();
     return;
 }
+
+void Tracing::SetDebuggerAccessor([[maybe_unused]] JSHandle<GlobalEnv> &globalEnv)
+{
+    return;
+}
 }  // namespace panda::ecmascript

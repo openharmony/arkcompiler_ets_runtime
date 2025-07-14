@@ -199,6 +199,14 @@ public:
         }
     }
 
+    void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) override
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->SetDebuggerAccessor(globalEnv);
+    }
+
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
