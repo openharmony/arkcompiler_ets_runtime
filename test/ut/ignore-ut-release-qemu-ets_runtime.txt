@@ -203,5 +203,10 @@ obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWith
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestWithQemu
 
+<<<<<<< HEAD
 #27484
 obj/arkcompiler/ets_runtime/common_components/mutator/tests/Mutator_TestWithQemu
+=======
+#27555
+obj/arkcompiler/ets_runtime/common_components/mutator/tests/Mutator_Manager_TestWithQemu
+>>>>>>> 1530067fd... Update kfl 0710
