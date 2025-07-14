@@ -15,6 +15,7 @@
 
 #include "ecmascript/runtime.h"
 #include "common_components/base_runtime/hooks.h"
+#include "common_components/mutator/mutator_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_interfaces/base_runtime.h"
 #include "ecmascript/dynamic_object_accessor.h"
@@ -87,6 +88,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             // SetConfigHeapSize for cmc gc, pc and persist config may change heap size.
             const_cast<JSRuntimeOptions &>(options).SetConfigHeapSize(MemMapAllocator::GetInstance()->GetCapacity());
             common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+            common::g_enableGCTimeoutCheck = options.IsEnableGCTimeoutCheck();
         }
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
