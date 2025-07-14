@@ -241,7 +241,7 @@ EcmaString* EcmaStringTable::AtomicGetOrInternStringImplNoGC(JSThread *thread, E
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    EcmaString *result = GetStringThreadUnsafe(string, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(thread, string, hashcode);
     if (result == nullptr) {
         InternStringThreadUnsafe(string, hashcode);
         mutex.Unlock();
@@ -269,7 +269,7 @@ EcmaString* EcmaStringTable::GetOrInternFlattenStringNoGC(EcmaVM* vm, EcmaString
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
-    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode(thread);
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode(vm->GetJSThread());
     return AtomicGetOrInternStringImplNoGC(vm->GetJSThread(), string, hashcode);
 }
 
@@ -584,7 +584,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
 {
     ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    EcmaString *result = GetStringThreadUnsafe(thread, utf8Data, utf8Len, canBeCompress, hashcode);
+    EcmaString *result = GetStringThreadUnsafe(vm->GetJSThread(), utf8Data, utf8Len, canBeCompress, hashcode);
     if (result != nullptr) {
         return result;
     }
