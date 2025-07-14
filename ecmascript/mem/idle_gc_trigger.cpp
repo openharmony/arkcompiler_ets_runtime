@@ -212,6 +212,12 @@ bool IdleGCTrigger::CheckLocalBindingNativeTriggerOldGC() const
 
 void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
 {
+    if (ecmascript::g_isEnableCMCGC) {
+        if (gcType == TRIGGER_IDLE_GC_TYPE::FULL_GC) {
+            common::Heap::GetHeap().TryIdleGC();
+        }
+        return;
+    }
     LOG_GC(DEBUG) << "IdleGCTrigger: recv once notify of " << GetGCTypeName(gcType);
     switch (gcType) {
         case TRIGGER_IDLE_GC_TYPE::FULL_GC:

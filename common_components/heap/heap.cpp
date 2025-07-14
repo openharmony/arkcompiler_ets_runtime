@@ -118,6 +118,7 @@ public:
     void UnregisterAllocBuffer(AllocationBuffer& buffer) override;
     void StopGCWork() override;
     void TryHeuristicGC() override;
+    void TryIdleGC() override;
     void NotifyNativeAllocation(size_t bytes) override;
     void NotifyNativeFree(size_t bytes) override;
     void NotifyNativeReset(size_t oldBytes, size_t newBytes) override;
@@ -213,6 +214,11 @@ void HeapImpl::StopRuntimeThreads()
 void HeapImpl::TryHeuristicGC()
 {
     heuristicGCPolicy_.TryHeuristicGC();
+}
+
+void HeapImpl::TryIdleGC()
+{
+    heuristicGCPolicy_.TryIdleGC();
 }
 
 void HeapImpl::NotifyNativeAllocation(size_t bytes)
