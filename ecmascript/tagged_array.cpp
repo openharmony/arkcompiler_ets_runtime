@@ -118,16 +118,14 @@ void TaggedArray::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t l
 {
     SetLength(length);
     SetExtraLength(extraLength);
-    FillRangeWithSpecialValue(initValue, 0, length);
+    ASSERT(initValue.IsSpecial());
+    std::fill_n(GetData(), length, initValue.GetRawData());
 }
 
 void TaggedArray::FillRangeWithSpecialValue(JSTaggedValue initValue, uint32_t start, uint32_t end)
 {
     ASSERT(initValue.IsSpecial());
-    for (uint32_t i = start; i < end; i++) {
-        size_t offset = JSTaggedValue::TaggedTypeSize() * i;
-        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
-    }
+    std::fill_n(GetData() + start, end - start, initValue.GetRawData());
 }
 
 JSHandle<TaggedArray> TaggedArray::SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
