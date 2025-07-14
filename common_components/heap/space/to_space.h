@@ -71,12 +71,12 @@ public:
 
     size_t GetAllocatedSize() const
     {
-        return tlToRegionList_.GetAllocatedSize() + fullToRegionList_.GetAllocatedSize();
+        return tlToRegionList_.GetAllocatedSize(false) + fullToRegionList_.GetAllocatedSize();
     }
 
     size_t GetSurvivedSize() const
     {
-        return tlToRegionList_.GetAllocatedSize() + fullToRegionList_.GetAllocatedSize();
+        return tlToRegionList_.GetAllocatedSize(false) + fullToRegionList_.GetAllocatedSize();
     }
 
     size_t GetUsedUnitCount() const

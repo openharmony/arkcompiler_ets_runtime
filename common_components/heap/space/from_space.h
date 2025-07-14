@@ -64,6 +64,11 @@ public:
 
     size_t GetAllocatedSize() const
     {
+        return fromRegionList_.GetAllocatedSize() + exemptedFromRegionList_.GetAllocatedSize();
+    }
+
+    size_t GetFromRegionAllocatedSize() const
+    {
         return fromRegionList_.GetAllocatedSize();
     }
 

@@ -44,20 +44,13 @@ bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
     return regionInfo->IsUnmovableFromRegion();
 }
 
-bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
+bool WCollector::MarkObject(BaseObject* obj) const
 {
     bool marked = RegionSpace::MarkObject(obj);
     if (!marked) {
         RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        (void)region;
-
-        if (region->IsGarbageRegion()) {
-            LOG_COMMON(FATAL) << "Unresolved fatal";
-            UNREACHABLE_CC();
-        }
-        size_t size = cellCount == 0 ? obj->GetSize() : (cellCount + 1) * sizeof(uint64_t);
-        region->AddLiveByteCount(size);
-        DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), size,
+        DCHECK_CC(!region->IsGarbageRegion());
+        DLOG(TRACE, "mark obj %p<%p> in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(),
              region, region->GetRegionType(), region->GetRegionStart(), region->GetLiveByteCount());
     }
     return marked;
@@ -343,6 +336,7 @@ private:
     {
         // We've checked oldVersion is in fromSpace, no need to check traceLine
         if (!collector_->MarkObject(oldVersion)) {
+            // No need to count oldVersion object size, as it has been copied.
             collector_->MarkObject(toVersion);
             // oldVersion don't have valid type info, cannot push it
             localStack_.push_back(toVersion);
@@ -870,6 +864,7 @@ void WCollector::DoGarbageCollection()
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
+    reinterpret_cast<RegionSpace&>(theAllocator_).DumpAllRegionStats("region statistics when gc ends");
     CollectSmallSpace();
 }
 

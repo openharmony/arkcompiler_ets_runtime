@@ -364,7 +364,6 @@ bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
     bool marked = regionInfo->MarkObject(obj);
     if (!marked) {
         ASSERT(!regionInfo->IsGarbageRegion());
-        regionInfo->AddLiveByteCount(obj->GetSize());
         DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
              regionInfo, regionInfo->GetRegionType(), regionInfo->GetRegionStart(), regionInfo->GetLiveByteCount());
         workStack->push_back(obj);
@@ -739,7 +738,6 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCT
     DoGarbageCollection();
 
     HeapBitmapManager::GetHeapBitmapManager().ClearHeapBitmap();
-    reinterpret_cast<RegionSpace&>(theAllocator_).DumpAllRegionStats("region statistics when gc ends");
 
     ReclaimGarbageMemory(reason);
 
@@ -784,7 +782,7 @@ void TraceCollector::CopyFromSpace()
     stats.fromSpaceSize = space.FromSpaceSize();
     space.CopyFromSpace(GetThreadPool());
 
-    stats.smallGarbageSize = space.FromSpaceSize() - space.ToSpaceSize();
+    stats.smallGarbageSize = space.FromRegionSize() - space.ToSpaceSize();
 }
 
 void TraceCollector::ExemptFromSpace()

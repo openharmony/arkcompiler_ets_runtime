@@ -37,8 +37,8 @@ void FromSpace::DumpRegionStats() const
     size_t units = fromUnits + exemptedFromUnits;
 
     VLOG(DEBUG, "\tfrom space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
-    VLOG(DEBUG, "\tfrom-regions %zu: %zu units (%zu B, alloc %zu)", fromRegions,  fromUnits, fromSize, allocFromSize);
-    VLOG(DEBUG, "\texempted from-regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\t  from-regions %zu: %zu units (%zu B, alloc %zu)", fromRegions, fromUnits, fromSize, allocFromSize);
+    VLOG(DEBUG, "\t  exempted from-regions %zu: %zu units (%zu B, alloc %zu)",
         exemptedFromRegions, exemptedFromUnits, exemptedFromSize, allocExemptedFromSize);
 }
 

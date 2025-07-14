@@ -105,9 +105,9 @@ public:
 
     size_t GetRegionCount() const { return regionCount_; }
 
-    size_t GetAllocatedSize(bool count = false) const
+    size_t GetAllocatedSize(bool usedPageSize = true) const
     {
-        if (!count) {
+        if (usedPageSize) {
             return GetUnitCount() * RegionDesc::UNIT_SIZE;
         }
         return CountAllocatedSize();
@@ -176,7 +176,7 @@ private:
         unitCount_ = srcList.unitCount_;
     }
 
-    // allocated-size of to-region list must be calculated on the fly.
+    // allocated-size of tl-region list must be calculated on the fly.
     size_t CountAllocatedSize() const
     {
         size_t allocCnt = 0;

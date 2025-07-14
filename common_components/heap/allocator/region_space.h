@@ -142,7 +142,10 @@ public:
             youngSpace_.GetUsedUnitCount() + oldSpace_.GetUsedUnitCount() + regionManager_.GetUsedUnitCount();
     }
 
-    size_t GetUsedPageSize() const override { return regionManager_.GetUsedRegionSize(); }
+    size_t GetUsedPageSize() const override
+    {
+        return GetUsedUnitCount() * RegionDesc::UNIT_SIZE;
+    }
 
     inline size_t GetTargetSize() const
     {
@@ -159,6 +162,8 @@ public:
     size_t LargeObjectSize() const override { return regionManager_.GetLargeObjectSize(); }
 
     size_t FromSpaceSize() const { return fromSpace_.GetAllocatedSize(); }
+    // note: it doesn't contain exemptFromRegion
+    size_t FromRegionSize() const { return fromSpace_.GetFromRegionAllocatedSize(); }
     size_t ToSpaceSize() const { return toSpace_.GetAllocatedSize(); }
 
     size_t PinnedSpaceSize() const { return regionManager_.GetPinnedSpaceSize(); }

@@ -184,7 +184,7 @@ public:
         return RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsToRegion();
     }
 
-    virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const = 0;
+    virtual bool MarkObject(BaseObject* obj) const = 0;
 
     // avoid std::function allocation for each object trace
     class TraceRefFieldVisitor {

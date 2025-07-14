@@ -26,8 +26,7 @@ void OldSpace::DumpRegionStats() const
     size_t oldUnits =
         tlOldRegionList_.GetUnitCount() + recentFullOldRegionList_.GetUnitCount() + oldRegionList_.GetUnitCount();
     size_t oldSize = oldUnits * RegionDesc::UNIT_SIZE;
-    size_t allocFromSize = tlOldRegionList_.GetAllocatedSize() + recentFullOldRegionList_.GetAllocatedSize() +
-                           oldRegionList_.GetAllocatedSize();
+    size_t allocFromSize = GetAllocatedSize();
 
     VLOG(DEBUG, "\told-regions %zu: %zu units (%zu B, alloc %zu)",
         oldRegions,  oldUnits, oldSize, allocFromSize);
