@@ -31,7 +31,6 @@ namespace OHOS {
     constexpr int DOUBLE_SEQUENCE = 2;
     constexpr int TRIPLE_SEQUENCE = 3;
     constexpr int FOUR_SEQUENCE = 4;
-    constexpr size_t TWO_BYTE_BITS = 16;
 
     bool IsValidMultiByteSequence(const uint8_t* data, size_t start, int seqLen, size_t size)
     {
@@ -92,32 +91,6 @@ namespace OHOS {
         return result;
     }
 
-    struct ThreadWorkerArgs {
-        EcmaVM* vm;
-        common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NeedSlotBarrier>* map;
-        const std::vector<uint8_t>* utf8Data;
-        size_t inputSize;
-        size_t processedUtf8Len;
-        int opsPerThread;
-    };
-
-    void ThreadWorker(const ThreadWorkerArgs& args)
-    {
-        JSThread* thread = args.vm->GetJSThread();
-        for (int j = 0; j < args.opsPerThread; ++j) {
-            uint32_t key = (args.inputSize + j) % 0xFFFFFFFF;
-            size_t strLen = args.processedUtf8Len % TWO_BYTE_BITS;
-
-            JSHandle<EcmaString> value(
-                thread,
-                EcmaStringAccessor::CreateFromUtf8(args.vm, args.utf8Data->data(), strLen, true));
-
-            args.map->template LoadOrStore<true>(thread, key,
-                                                 [value]() { return value; },
-                                                 [](BaseString*) { return false; });
-        }
-    }
-
     void StringTableConcurrentLoadStoreFuzzTest(const uint8_t *data, size_t size)
     {
         if (data == nullptr || size <= 0) {
@@ -127,31 +100,16 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-
-        constexpr int threadCount = 4;
-        constexpr int opsPerThread = 10;
+        JSThread *thread = vm->GetJSThread();
 
         auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NeedSlotBarrier>();
         std::vector<uint8_t> utf8Data = CreateValidUtf8(data, size);
-        size_t utf8Len = utf8Data.size();
+        uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data.data(), utf8Data.size(), true);
+        JSHandle<EcmaString> value(thread,
+                                   EcmaStringAccessor::CreateFromUtf8(vm, utf8Data.data(), utf8Data.size(), true));
 
-        std::vector<std::thread> threads;
-        threads.reserve(threadCount);
-        ThreadWorkerArgs args{
-                .vm = vm,
-                .map = map,
-                .utf8Data = &utf8Data,
-                .inputSize = size,
-                .processedUtf8Len = utf8Len,
-                .opsPerThread = opsPerThread
-        };
-
-        for (int i = 0; i < threadCount; ++i) {
-            threads.emplace_back(ThreadWorker, args);
-        }
-        for (auto &t : threads) {
-            t.join();
-        }
+        map->template LoadOrStore<true>(thread, hashcode, [value]() { return value; },
+            [](BaseString *) { return false; });
         delete map;
         JSNApi::DestroyJSVM(vm);
     }
