@@ -36,8 +36,9 @@ void HeuristicGCPolicy::Init()
     heapSize_ = heapParam.heapSize * KB;
 }
 
-bool HeuristicGCPolicy::ShouldRestrainGCOnStartup()
+bool HeuristicGCPolicy::ShouldRestrainGCOnStartupOrSensitive()
 {
+    // Startup
     StartupStatus currentStatus = StartupStatusManager::GetStartupStatus();
     if (UNLIKELY_CC(currentStatus == StartupStatus::COLD_STARTUP)) {
         return true;
@@ -47,14 +48,21 @@ bool HeuristicGCPolicy::ShouldRestrainGCOnStartup()
         allocated < heapSize_ * COLD_STARTUP_GC_THRESHOLD_RATIO) {
         return true;
     }
-    return false;
+    // Sensitive
+    return ShouldRestrainGCInSensitive(allocated);
+}
+
+StartupStatus HeuristicGCPolicy::GetStartupStatus() const
+{
+    return StartupStatusManager::GetStartupStatus();
 }
 
 void HeuristicGCPolicy::TryHeuristicGC()
 {
-    if (UNLIKELY_CC(ShouldRestrainGCOnStartup())) {
+    if (UNLIKELY_CC(ShouldRestrainGCOnStartupOrSensitive())) {
         return;
     }
+
     Collector& collector = Heap::GetHeap().GetCollector();
     size_t threshold = collector.GetGCStats().GetThreshold();
     size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
@@ -71,7 +79,7 @@ void HeuristicGCPolicy::TryHeuristicGC()
 
 void HeuristicGCPolicy::TryIdleGC()
 {
-    if (UNLIKELY_CC(ShouldRestrainGCOnStartup())) {
+    if (UNLIKELY_CC(ShouldRestrainGCOnStartupOrSensitive())) {
         return;
     }
 
@@ -85,6 +93,36 @@ void HeuristicGCPolicy::TryIdleGC()
         DLOG(ALLOC, "request idle gc: allocated %zu, expectHeapSize %zu, aliveSizeAfterGC %zu", allocated,
              expectHeapSize, aliveSizeAfterGC_);
         Heap::GetHeap().GetCollector().RequestGC(GC_REASON_IDLE, true, GC_TYPE_FULL);
+    }
+}
+
+bool HeuristicGCPolicy::ShouldRestrainGCInSensitive(size_t currentSize)
+{
+    AppSensitiveStatus current = GetSensitiveStatus();
+    switch (current) {
+        case AppSensitiveStatus::NORMAL_SCENE:
+            return false;
+        case AppSensitiveStatus::ENTER_HIGH_SENSITIVE: {
+            if (GetRecordHeapObjectSizeBeforeSensitive() == 0) {
+                SetRecordHeapObjectSizeBeforeSensitive(currentSize);
+            }
+            if (Heap::GetHeap().GetCollector().GetGCStats().shouldRequestYoung) {
+                return false;
+            }
+            if (currentSize < (GetRecordHeapObjectSizeBeforeSensitive() + INC_OBJ_SIZE_IN_SENSITIVE)) {
+                return true;
+            }
+            return false;
+        }
+        case AppSensitiveStatus::EXIT_HIGH_SENSITIVE: {
+            if (CASSensitiveStatus(current, AppSensitiveStatus::NORMAL_SCENE)) {
+                // Set record heap obj size 0 after exit high senstive
+                SetRecordHeapObjectSizeBeforeSensitive(0);
+            }
+            return false;
+        }
+        default:
+            return false;
     }
 }
 
@@ -166,7 +204,7 @@ void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
 
 bool HeuristicGCPolicy::CheckAndTriggerHintGC(MemoryReduceDegree degree)
 {
-    if (UNLIKELY_CC(ShouldRestrainGCOnStartup())) {
+    if (UNLIKELY_CC(ShouldRestrainGCOnStartupOrSensitive())) {
         return false;
     }
     size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
