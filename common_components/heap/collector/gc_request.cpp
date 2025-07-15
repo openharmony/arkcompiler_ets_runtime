@@ -72,6 +72,7 @@ GCRequest g_gcRequests[] = {
     { GC_REASON_FORCE, "force", true, false, 0, 0 },
     { GC_REASON_APPSPAWN, "appspawn", true, false, 0, 0 },
     { GC_REASON_BACKGROUND, "backgound", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp },
-    { GC_REASON_HINT, "hint", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp }
+    { GC_REASON_HINT, "hint", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp },
+    { GC_REASON_IDLE, "idle", false, true, LONG_MIN_HEU_GC_INTERVAL_NS, g_initHeuTriggerTimestamp }
 };
 } // namespace common
