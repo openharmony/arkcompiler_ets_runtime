@@ -91,6 +91,7 @@ bool LazyDeoptAllDependencies::DependOnDetector(uint32_t detectorID, GlobalEnv *
         RegisterDependency(dependency);
         return true;
     }
+    delete dependency;
     return false;
 }
 
@@ -101,6 +102,7 @@ bool LazyDeoptAllDependencies::DependOnNotPrototype(JSHClass *hclass)
         RegisterDependency(dependency);
         return true;
     }
+    delete dependency;
     return false;
 }
 
@@ -117,6 +119,7 @@ bool LazyDeoptAllDependencies::DependOnStableHClass(JSHClass *hclass)
         RegisterDependency(dependency);
         return true;
     }
+    delete dependency;
     return false;
 }
 
@@ -196,6 +199,7 @@ bool LazyDeoptAllDependencies::DependOnNotHotReloadPatchMain(JSThread *thread)
         RegisterDependency(dependency);
         return true;
     }
+    delete dependency;
     return false;
 }
 
