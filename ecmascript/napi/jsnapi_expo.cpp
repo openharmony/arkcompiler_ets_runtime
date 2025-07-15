@@ -2403,6 +2403,10 @@ Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
     JSHandle<JSObject> obj =
         TypedArrayHelper::FastCreateTypedArray(thread, thread->GlobalConstants()->GetHandledUint8ArrayString(),
                                                length - 1, DataViewType::UINT8);
+    if (JSNApi::HasPendingException(vm)) {
+        LOG_ECMA(ERROR) << "JSNapi EncodeIntoUint8Array: Create TypedArray failed";
+        return Undefined(vm);
+    }
     JSHandle<JSObject> arrayBuffer(thread, JSTypedArray::Cast(*obj)->GetViewedArrayBufferOrByteArray(thread));
     JSTaggedValue bufferData = JSHandle<JSArrayBuffer>::Cast(arrayBuffer)->GetArrayBufferData(thread);
     void *buffer = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
