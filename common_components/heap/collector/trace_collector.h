@@ -107,8 +107,8 @@ class ConcurrentMarkingWork;
 using RootSet = MarkStack<BaseObject*>;
 using WorkStack = MarkStack<BaseObject*>;
 using WorkStackBuf = MarkStackBuffer<BaseObject*>;
-using WeakStack = MarkStack<RefField<>*>;
-using WeakStackBuf = MarkStackBuffer<RefField<>*>;
+using WeakStack = MarkStack<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
+using WeakStackBuf = MarkStackBuffer<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
 using GlobalWorkStackQueue = GlobalStackQueue<WorkStack>;
 using GlobalWeakStackQueue = GlobalStackQueue<WeakStack>;
 

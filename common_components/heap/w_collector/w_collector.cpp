@@ -167,7 +167,10 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workSta
     auto targetRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     if (gcReason != GC_REASON_YOUNG && oldField.IsWeak()) {
         DLOG(TRACE, "trace: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
-        weakStack.push_back(&field);
+        // weak ref is cleared after roots pre-forward, so there might be a to-version weak ref which also need to be
+        // cleared, offset recorded here will help us find it
+        weakStack.push_back(std::make_shared<std::tuple<RefField<>*, size_t>>(
+            &field, reinterpret_cast<uintptr_t>(&field) - reinterpret_cast<uintptr_t>(obj)));
         return;
     }
 
@@ -298,7 +301,11 @@ public:
         RefField<> oldField(refField);
         BaseObject* oldObj = oldField.GetTargetObject();
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
-        if (collector_->IsFromObject(oldObj)) {
+
+        auto regionType =
+            RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(oldObj))
+                ->GetRegionType();
+        if (regionType == RegionDesc::RegionType::FROM_REGION) {
             BaseObject* toVersion = collector_->TryForwardObject(oldObj);
             if (toVersion == nullptr) {
                 Heap::throwOOM();
@@ -314,28 +321,30 @@ public:
             }
             MarkToObject(oldObj, toVersion);
         } else {
-            MarkObject(oldObj);
+            if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
+                MarkObject(oldObj);
+            } else if (RegionSpace::IsYoungSpaceObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj) &&
+                       !RegionSpace::IsMarkedObject(oldObj)) {
+                // RSet don't protect exempted objects, we need to mark it
+                MarkObject(oldObj);
+            }
         }
     }
 
 private:
     void MarkObject(BaseObject *object)
     {
-        if (!collector_->MarkObject(object)) {
+        if (!RegionSpace::IsNewObjectSinceTrace(object) && !collector_->MarkObject(object)) {
             localStack_.push_back(object);
         }
     }
 
     void MarkToObject(BaseObject *oldVersion, BaseObject *toVersion)
     {
-        if (!collector_->MarkObject(toVersion)) {
-            // Therefore, we must still attempt to mark the old object to prevent
-            // it from being pushed into the mark stack during subsequent
-            // traversals.
-            collector_->MarkObject(oldVersion);
-            // The reference in toSpace needs to be fixed up. Therefore, even if
-            // the oldVersion has been marked, it must still be pushed into the
-            // stack. This will be optimized later.
+        // We've checked oldVersion is in fromSpace, no need to check traceLine
+        if (!collector_->MarkObject(oldVersion)) {
+            collector_->MarkObject(toVersion);
+            // oldVersion don't have valid type info, cannot push it
             localStack_.push_back(toVersion);
         }
     }
@@ -507,7 +516,7 @@ CArrayList<BaseObject *> WCollector::EnumRoots()
     STWParam stwParam{"wgc-enumroot"};
     EnumRootsBuffer buffer;
     CArrayList<common::BaseObject *> *results = buffer.GetBuffer();
-    common::RefFieldVisitor visitor = [&results](RefField<> &filed) { results->push_back(filed.GetTargetObject()); };
+    common::RefFieldVisitor visitor = [&results](RefField<>& field) { results->push_back(field.GetTargetObject()); };
 
     if constexpr (policy == EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR) {
         EnumRootsImpl<VisitRoots>(visitor);
