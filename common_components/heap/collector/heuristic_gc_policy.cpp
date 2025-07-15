@@ -39,13 +39,14 @@ void HeuristicGCPolicy::Init()
 bool HeuristicGCPolicy::ShouldRestrainGCOnStartupOrSensitive()
 {
     // Startup
+    size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
     StartupStatus currentStatus = StartupStatusManager::GetStartupStatus();
-    if (UNLIKELY_CC(currentStatus == StartupStatus::COLD_STARTUP)) {
+    if (UNLIKELY_CC(currentStatus == StartupStatus::COLD_STARTUP &&
+                    allocated < heapSize_ * COLD_STARTUP_PHASE1_GC_THRESHOLD_RATIO)) {
         return true;
     }
-    size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
     if (currentStatus == StartupStatus::COLD_STARTUP_PARTIALLY_FINISH &&
-        allocated < heapSize_ * COLD_STARTUP_GC_THRESHOLD_RATIO) {
+        allocated < heapSize_ * COLD_STARTUP_PHASE2_GC_THRESHOLD_RATIO) {
         return true;
     }
     // Sensitive

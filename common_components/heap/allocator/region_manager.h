@@ -81,7 +81,7 @@ public:
           pinnedRegionList_("pinned regions"), recentPinnedRegionList_("recent pinned regions"),
           rawPointerRegionList_("raw pointer pinned regions"), largeRegionList_("large regions"),
           recentLargeRegionList_("recent large regions"), readOnlyRegionList_("read only region"),
-          largeTraceRegions_("large trace regions"), appSpawnRegionList_("appSpawn regions")
+          appSpawnRegionList_("appSpawn regions")
     {
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
             recentFixedPinnedRegionList_[i] = new RegionList("fixed recent pinned regions");
@@ -335,7 +335,7 @@ public:
         return largeRegionList_.GetUnitCount() + recentLargeRegionList_.GetUnitCount() +
             pinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount() +
             rawPointerRegionList_.GetUnitCount() + readOnlyRegionList_.GetUnitCount() +
-            largeTraceRegions_.GetUnitCount() + appSpawnRegionList_.GetUnitCount();
+            appSpawnRegionList_.GetUnitCount();
     }
 
     size_t GetDirtyUnitCount() const { return freeRegionManager_.GetDirtyUnitCount(); }
@@ -351,8 +351,7 @@ public:
     {
         return largeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
             GetPinnedSpaceSize() + rawPointerRegionList_.GetAllocatedSize() +
-            readOnlyRegionList_.GetAllocatedSize() + largeTraceRegions_.GetAllocatedSize() +
-            appSpawnRegionList_.GetAllocatedSize();
+            readOnlyRegionList_.GetAllocatedSize() + appSpawnRegionList_.GetAllocatedSize();
     }
 
     inline size_t GetPinnedSpaceSize() const
@@ -547,11 +546,7 @@ private:
     // regions for read only objects
     RegionList readOnlyRegionList_;
 
-    // if large region is allocated during gc trace phase, it is called a trace-region,
-    // it is recorded here when it is full.
-    RegionCache largeTraceRegions_;
-
-	// regions for appspawn region list.
+    // regions for appspawn region list.
     RegionList appSpawnRegionList_;
 
     uintptr_t regionInfoStart_ = 0; // the address of first RegionDesc

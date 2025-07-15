@@ -105,7 +105,6 @@ public:
 
     enum class SampleType { ONE_SHOT, REAL_TIME };
 
-    void DumpHeapSnapshotForCMCOOM() override;
     void AllocationEvent(TaggedObject *address, size_t size) override;
     void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size) override;
     /**

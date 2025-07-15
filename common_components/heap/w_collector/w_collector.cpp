@@ -861,7 +861,8 @@ void WCollector::DoGarbageCollection()
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
-    reinterpret_cast<RegionSpace&>(theAllocator_).DumpAllRegionStats("region statistics when gc ends");
+    RegionSpace &space = reinterpret_cast<RegionSpace &>(theAllocator_);
+    space.DumpAllRegionStats("Peak GC log", gcReason_, gcType_);
     CollectSmallSpace();
 }
 

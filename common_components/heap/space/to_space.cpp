@@ -22,20 +22,22 @@
 namespace common {
 void ToSpace::DumpRegionStats() const
 {
-    size_t fullToRegions = fullToRegionList_.GetRegionCount();
-    size_t fullToUnits = fullToRegionList_.GetUnitCount();
-    size_t fullToSize = fullToUnits * RegionDesc::UNIT_SIZE;
-    size_t allocfullToSize = fullToRegionList_.GetAllocatedSize();
-
     size_t tlToRegions = tlToRegionList_.GetRegionCount();
     size_t tlToUnits = tlToRegionList_.GetUnitCount();
     size_t tlToSize = tlToUnits * RegionDesc::UNIT_SIZE;
     size_t allocTLToSize = tlToRegionList_.GetAllocatedSize(false);
 
-    VLOG(DEBUG, "\tfull to-regions %zu: %zu units (%zu B, alloc %zu)",
-        fullToRegions,  fullToUnits, fullToSize, allocfullToSize);
-    VLOG(DEBUG, "\tthread-local to-regions %zu: %zu units (%zu B, alloc %zu)",
+    size_t fullToRegions = fullToRegionList_.GetRegionCount();
+    size_t fullToUnits = fullToRegionList_.GetUnitCount();
+    size_t fullToSize = fullToUnits * RegionDesc::UNIT_SIZE;
+    size_t allocfullToSize = fullToRegionList_.GetAllocatedSize();
+
+    size_t units = tlToUnits + fullToUnits;
+    VLOG(DEBUG, "\tto space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\t  thread-local to-regions %zu: %zu units (%zu B, alloc %zu)",
         tlToRegions,  tlToUnits, tlToSize, allocTLToSize);
+    VLOG(DEBUG, "\t  full to-regions %zu: %zu units (%zu B, alloc %zu)",
+        fullToRegions,  fullToUnits, fullToSize, allocfullToSize);
 }
 
 void ToSpace::GetPromotedTo(OldSpace& mspace)

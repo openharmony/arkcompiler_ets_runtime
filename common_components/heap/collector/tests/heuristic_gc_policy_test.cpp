@@ -13,26 +13,87 @@
  * limitations under the License.
  */
 
+#include "common_components/heap/allocator/region_space.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/tests/test_helper.h"
 
 using namespace common;
 namespace common::test {
 class HeuristicGCPolicyTest : public common::test::BaseTestWithScope {
+    void SetUp() override
+    {
+        BaseRuntime::GetInstance()->Init();
+        holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+        scope_ = new ThreadHolder::TryBindMutatorScope(holder_);
+    }
+
+    void TearDown() override
+    {
+        if (scope_ != nullptr) {
+            delete scope_;
+            scope_ = nullptr;
+        }
+
+        BaseRuntime::GetInstance()->Fini();
+    }
+
+    ThreadHolder *holder_ {nullptr};
+    ThreadHolder::TryBindMutatorScope *scope_ {nullptr};
 };
 
-HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive)
+HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test1)
 {
     HeuristicGCPolicy gcPolicy;
+    gcPolicy.Init();
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
+    gcPolicy.TryHeuristicGC();
+    EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test2)
+{
+    HeuristicGCPolicy gcPolicy;
+    gcPolicy.Init();
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
     EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
-    gcPolicy.TryHeuristicGC();
+
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    auto allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    auto param = BaseRuntime::GetInstance()->GetHeapParam();
+    auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE1_GC_THRESHOLD_RATIO;
+    for (int i = 0; allocated < size; i++) {
+        uintptr_t addr = theAllocator.AllocOldRegion();
+        ASSERT_NE(addr, 0);
+        allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    }
 
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
     EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 
-    gcPolicy.Init();
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
     EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test3)
+{
+    HeuristicGCPolicy gcPolicy;
+    gcPolicy.Init();
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_PARTIALLY_FINISH);
+    EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    auto allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    auto param = BaseRuntime::GetInstance()->GetHeapParam();
+    auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE2_GC_THRESHOLD_RATIO;
+    for (int i = 0; allocated < size; i++) {
+        uintptr_t addr = theAllocator.AllocOldRegion();
+        ASSERT_NE(addr, 0);
+        allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    }
+
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
+    EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_PARTIALLY_FINISH);
     EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 }

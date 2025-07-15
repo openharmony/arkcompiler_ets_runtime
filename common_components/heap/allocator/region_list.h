@@ -55,6 +55,7 @@ public:
         return false;
     }
 
+    void DumpRegionSummary() const;
 #ifndef NDEBUG
     void DumpRegionList(const char*);
 #endif
