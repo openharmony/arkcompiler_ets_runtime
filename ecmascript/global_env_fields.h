@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -182,6 +182,7 @@
     V(JSTaggedValue, SharedArrayIteratorPrototype, SHARED_ARRAY_ITERATOR_PROTOTYPE_INDEX)           \
     V(JSTaggedValue, StringIteratorPrototype, STRING_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, AsyncFromSyncIteratorPrototype, ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_INDEX)      \
+    V(JSTaggedValue, InterfaceTypeSymbol, INTERFACE_TYPE_SYMBOL_OFFSET)                             \
     /* SymbolTable *RegisterSymbols */                                                              \
     V(JSTaggedValue, RegisterSymbols, SYMBOLS_INDEX)                                                \
     V(JSTaggedValue, ThrowTypeError, THROW_TYPE_ERROR_INDEX)                                        \
