@@ -123,9 +123,9 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     JSTaggedType *srcPtr = reinterpret_cast<JSTaggedType *>(src);
     for (size_t i = 0; i < count; i++) {
         JSTaggedType offset = i * sizeof(JSTaggedType);
-        JSTaggedType value = srcPtr[i];
+        JSTaggedType value = *reinterpret_cast<JSTaggedType *>(static_cast<JSTaggedType>(srcPtr) + offset);
         void* obj = reinterpret_cast<void*>(const_cast<JSTaggedType *>(dstObj));
-        void* field = reinterpret_cast<void*>((JSTaggedType)dst + offset);
+        void* field = reinterpret_cast<void*>(static_cast<JSTaggedType>(dst) + offset);
         common::BaseRuntime::WriteBarrier(obj, field, (void*)value);
     }
     return;
@@ -184,7 +184,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
         };
 
         for (size_t i = 0; i < count; i++) {
-            BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
+            BaseObject* ref = *reinterpret_cast<BaseObject**>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
             if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
                 continue;
             }
@@ -200,7 +200,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     if (ShouldProcessSATB(gcPhase)) {
         common::Mutator* mutator = common::Mutator::GetMutator();
         for (size_t i = 0; i < count; i++) {
-            BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
+            BaseObject* ref = *reinterpret_cast<BaseObject**>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
             if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
                 continue;
             }
