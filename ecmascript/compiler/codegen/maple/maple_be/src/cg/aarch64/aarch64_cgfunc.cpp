@@ -818,47 +818,9 @@ Operand *AArch64CGFunc::SelectDread(const BaseNode &parent, DreadNode &expr)
     MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(expr.GetStIdx());
 
     PrimType symType = symbol->GetType()->GetPrimType();
-    uint32 offset = 0;
-    bool parmCopy = false;
 
-    uint32 dataSize = GetPrimTypeBitSize(symType);
-    uint32 aggSize = 0;
     PrimType resultType = expr.GetPrimType();
     MemOperand *memOpnd = nullptr;
-    if (aggSize > k8ByteSize) {
-        if (parent.op == OP_eval) {
-            if (symbol->GetAttr(ATTR_volatile)) {
-                /* Need to generate loads for the upper parts of the struct. */
-                Operand &dest = GetZeroOpnd(k64BitSize);
-                uint32 numLoads = static_cast<uint32>(RoundUp(aggSize, k64BitSize) / k64BitSize);
-                for (uint32 o = 0; o < numLoads; ++o) {
-                    if (parmCopy) {
-                        memOpnd = &LoadStructCopyBase(*symbol, offset + o * GetPointerSize(), GetPointerSize());
-                    } else {
-                        memOpnd = &GetOrCreateMemOpnd(*symbol, offset + o * GetPointerSize(), GetPointerSize());
-                    }
-                    if (IsImmediateOffsetOutOfRange(*memOpnd, GetPointerSize())) {
-                        memOpnd = &SplitOffsetWithAddInstruction(*memOpnd, GetPointerSize());
-                    }
-                    SelectCopy(dest, PTY_u64, *memOpnd, PTY_u64);
-                }
-            } else {
-                /* No side-effects.  No need to generate anything for eval. */
-            }
-        } else {
-            if (expr.GetFieldID() != 0) {
-                CHECK_FATAL(false, "SelectDread: Illegal agg size");
-            }
-        }
-    }
-    if (parmCopy) {
-        memOpnd = &LoadStructCopyBase(*symbol, offset, static_cast<int>(dataSize));
-    } else {
-        memOpnd = &GetOrCreateMemOpnd(*symbol, offset, dataSize);
-    }
-    if ((memOpnd->GetMemVaryType() == kNotVary) && IsImmediateOffsetOutOfRange(*memOpnd, dataSize)) {
-        memOpnd = &SplitOffsetWithAddInstruction(*memOpnd, dataSize);
-    }
 
     RegOperand &resOpnd = GetOrCreateResOperand(parent, symType);
     SelectCopy(resOpnd, resultType, *memOpnd, symType);
