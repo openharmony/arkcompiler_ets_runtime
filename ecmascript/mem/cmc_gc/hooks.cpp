@@ -131,7 +131,7 @@ void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     runtime->GCIterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
-        ObjectXRay::VisitVMRoots(vm, visitor);
+        ObjectXRay::VisitSTWVMRoots(vm, visitor);
 
         auto profiler = vm->GetPGOProfiler();
         if (profiler != nullptr) {
@@ -223,7 +223,7 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
         return;
     }
     CMCRootVisitor visitor(visitorFunc);
-    ObjectXRay::VisitVMRoots(ecmaVm, visitor);
+    ObjectXRay::VisitSTWVMRoots(ecmaVm, visitor);
     if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
         ObjectXRay::VisitConcurrentVMRoots(ecmaVm, visitor);
     }
