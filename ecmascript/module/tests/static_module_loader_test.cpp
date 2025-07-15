@@ -149,12 +149,12 @@ HWTEST_F_L0(StaticModuleLoaderTest, LoadStaticModule)
     Local<FunctionRef> func = FunctionRef::New(const_cast<panda::EcmaVM *>(vm), MockGetModule);
     JSHandle<JSTaggedValue> specifier(factory->NewFromASCII("exportFile"));
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
-    CString path = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
+    CString path = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
     JSHandle<JSTaggedValue>  result = StaticModuleLoader::LoadStaticModule(thread, func, path);
 
     EXPECT_EQ(result->IsJSProxy(), true);
     JSHandle<JSTaggedValue> requestPath(factory->NewFromASCII("requestPath"));
-    EXPECT_EQ(JSTaggedValue::SameValue(JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
                                        specifier), true);
 }
 
@@ -167,13 +167,13 @@ HWTEST_F_L0(StaticModuleLoaderTest, LoadStaticModuleError)
     Local<FunctionRef> func = FunctionRef::New(const_cast<panda::EcmaVM *>(vm), MockGetModuleJSError);
     JSHandle<JSTaggedValue> specifier(factory->NewFromASCII("exportFile"));
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
-    CString path = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
+    CString path = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
     StaticModuleLoader::LoadStaticModule(thread, func, path);
     EXPECT_EQ(thread->HasPendingException(), true);
     JSHandle<JSTaggedValue> error(thread, thread->GetException());
     JSHandle<JSTaggedValue> code(factory->NewFromASCII("code"));
     JSHandle<JSTaggedValue> message = JSTaggedValue::GetProperty(thread, error, code).GetValue();
-    EXPECT_EQ(JSTaggedValue::SameValue(message, specifier), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, message, specifier), true);
     thread->ClearException();
 }
 

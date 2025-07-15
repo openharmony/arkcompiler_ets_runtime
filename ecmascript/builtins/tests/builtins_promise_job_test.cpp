@@ -82,8 +82,8 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
         JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(promiseFunc), promiseFunc));
     JSHandle<ResolvingFunctionsRecord> resolvingFunctions =
         JSPromise::CreateResolvingFunctions(thread, jsPromise);
-    JSHandle<JSPromiseReactionsFunction> resolve(thread, resolvingFunctions->GetResolveFunction());
-    JSHandle<JSPromiseReactionsFunction> reject(thread, resolvingFunctions->GetRejectFunction());
+    JSHandle<JSPromiseReactionsFunction> resolve(thread, resolvingFunctions->GetResolveFunction(thread));
+    JSHandle<JSPromiseReactionsFunction> reject(thread, resolvingFunctions->GetRejectFunction(thread));
     JSHandle<JSTaggedValue> dirPath(factory->NewFromASCII("./main.abc"));
     JSHandle<JSTaggedValue> specifier(factory->NewFromASCII("exportFile"));
     JSHandle<JSTaggedValue> recordName(factory->NewFromASCII("main"));
@@ -98,10 +98,10 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsPromiseJob::DynamicImportJob(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
-    JSHandle<JSTaggedValue> result(thread, jsPromise->GetPromiseResult());
+    JSHandle<JSTaggedValue> result(thread, jsPromise->GetPromiseResult(thread));
     EXPECT_EQ(result->IsJSProxy(), true);
     JSHandle<JSTaggedValue> requestPath(factory->NewFromASCII("requestPath"));
-    EXPECT_EQ(JSTaggedValue::SameValue(JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
                                        specifier), true);
 }
 
@@ -129,8 +129,8 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
         JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(promiseFunc), promiseFunc));
     JSHandle<ResolvingFunctionsRecord> resolvingFunctions =
         JSPromise::CreateResolvingFunctions(thread, jsPromise);
-    JSHandle<JSPromiseReactionsFunction> resolve(thread, resolvingFunctions->GetResolveFunction());
-    JSHandle<JSPromiseReactionsFunction> reject(thread, resolvingFunctions->GetRejectFunction());
+    JSHandle<JSPromiseReactionsFunction> resolve(thread, resolvingFunctions->GetResolveFunction(thread));
+    JSHandle<JSPromiseReactionsFunction> reject(thread, resolvingFunctions->GetRejectFunction(thread));
     JSHandle<JSTaggedValue> dirPath(factory->NewFromASCII("./main.abc"));
     JSHandle<JSTaggedValue> specifier(factory->NewFromASCII("exportFile"));
     JSHandle<JSTaggedValue> recordName(factory->NewFromASCII("main"));
@@ -145,10 +145,10 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     BuiltinsPromiseJob::DynamicImportJob(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
-    JSHandle<JSTaggedValue> error(thread, jsPromise->GetPromiseResult());
+    JSHandle<JSTaggedValue> error(thread, jsPromise->GetPromiseResult(thread));
     JSHandle<JSTaggedValue> code(factory->NewFromASCII("code"));
     JSHandle<JSTaggedValue> message = JSTaggedValue::GetProperty(thread, error, code).GetValue();
-    EXPECT_EQ(JSTaggedValue::SameValue(message, specifier), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, message, specifier), true);
     thread->ClearException();
 }
 }

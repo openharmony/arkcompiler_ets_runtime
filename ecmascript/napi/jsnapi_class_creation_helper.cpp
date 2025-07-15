@@ -54,7 +54,6 @@ bool JSNApiClassCreationHelper::TryAddOriKeyAndOriAttrToHClass(const JSThread *t
         // update string stable
         key.Update(JSTaggedValue(vm->GetFactory()->InternString(key)));
     }
-    ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
     ConstructDescByAttr(thread, oriAttr, &desc);
     // If property key is element index, property must be add by slow path(DefinePropertyOrThrow).
     if (UNLIKELY(!JSTaggedValue::IsPureString(const_cast<JSThread *>(thread), keyValue))) {

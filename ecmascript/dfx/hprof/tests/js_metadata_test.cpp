@@ -254,7 +254,7 @@ public:
                                                 "MaybeUnregister", "Next", "Prev", "JS_FINALIZATION_REGISTRY"}},
             {JSType::JS_FLOAT32_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT32_ARRAY"}},
             {JSType::JS_FLOAT64_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT64_ARRAY"}},
-            {JSType::JS_FORIN_ITERATOR, {"Object", "CachedHclass", "Keys", "JS_FORIN_ITERATOR"}},
+            {JSType::JS_FORIN_ITERATOR, {"Object", "CachedHClass", "Keys", "JS_FORIN_ITERATOR"}},
             {JSType::JS_FUNCTION, {"ProtoOrHClass", "LexicalEnv", "MachineCode", "BaselineCode", "RawProfileTypeInfo",
                                    "HomeObject", "Module", "JS_FUNCTION"}},
             {JSType::JS_FUNCTION_BASE, {"Method", "JS_FUNCTION_BASE"}},

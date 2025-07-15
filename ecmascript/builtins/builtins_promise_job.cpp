@@ -277,7 +277,7 @@ JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPr
 JSTaggedValue BuiltinsPromiseJob::HandelModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
     JSHandle<JSPromiseReactionsFunction> reject, JSHandle<EcmaString> specifierString)
 {
-    CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
+    CString requestPath = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
     return HandelModuleException(thread, resolve, reject, requestPath);
 }
 
@@ -303,7 +303,7 @@ JSTaggedValue BuiltinsPromiseJob::HandelModuleException(JSThread *thread, JSHand
     }
     // try load 1.2 module;
     Local<FunctionRef> getEsModuleFunc = getEsModule;
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> exportObject = StaticModuleLoader::LoadStaticModule(thread, getEsModuleFunc, requestPath);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     LOG_ECMA(DEBUG) << "load static module successfull, requestPath: " << requestPath;

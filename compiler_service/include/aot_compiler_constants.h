@@ -89,3 +89,4 @@ const std::unordered_map<int, InfoOfCompiler> RetInfoOfCompiler {
 
 const InfoOfCompiler OtherInfoOfCompiler = {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: other error"};
 } // namespace OHOS::ArkCompiler
+#endif
