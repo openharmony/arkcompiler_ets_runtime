@@ -246,14 +246,20 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
         GateRef thisObj = Undefined();
         GateRef argc = Int64(4); // 4: means func newtarget thisObj arg0
         GateRef argv = IntPtr(0);
-        Label readBarrier(env);
+        Label isEnableCMCGC(env);
         Label skipReadBarrier(env);
         BRANCH_UNLIKELY(LoadPrimitive(VariableType::BOOL(), glue,
                                       IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-                        &readBarrier, &skipReadBarrier);
-        Bind(&readBarrier);
-        CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, ctor});
-        Jump(&skipReadBarrier);
+                        &isEnableCMCGC, &skipReadBarrier);
+        Bind(&isEnableCMCGC);
+        {
+            Label readBarrier(env);
+            BRANCH_LIKELY(NeedSkipReadBarrier(glue), &skipReadBarrier, &readBarrier);
+            Bind(&readBarrier);
+
+            CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, ctor});
+            Jump(&skipReadBarrier);
+        }
         Bind(&skipReadBarrier);
         std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
@@ -1413,17 +1419,22 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
 
-    Label readBarrier(env);
+    Label isEnableCMCGC(env);
     Label skipReadBarrier(env);
     BRANCH_UNLIKELY(
         LoadPrimitive(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &readBarrier, &skipReadBarrier);
-    Bind(&readBarrier);
-    CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, func});
-    CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray), {glue, argv, argc});
-    Jump(&skipReadBarrier);
-    Bind(&skipReadBarrier);
+        &isEnableCMCGC, &skipReadBarrier);
+    Bind(&isEnableCMCGC);
+    {
+        Label readBarrier(env);
+        BRANCH_LIKELY(NeedSkipReadBarrier(glue), &skipReadBarrier, &readBarrier);
+        Bind(&readBarrier);
+        CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, func});
+        CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray), {glue, argv, argc});
+        Jump(&skipReadBarrier);
+    }
 
+    Bind(&skipReadBarrier);
     BRANCH(JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
         &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);

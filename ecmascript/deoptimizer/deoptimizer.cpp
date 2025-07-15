@@ -543,7 +543,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> ma
         const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
         JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
         JSTaggedValue acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
-        if (g_isEnableCMCGC) {
+        if (g_isEnableCMCGC && thread_->NeedReadBarrier()) {
             base::GCHelper::CopyCallTarget(thread_, callTarget.GetTaggedObject());
         }
         statePtr->function = callTarget;

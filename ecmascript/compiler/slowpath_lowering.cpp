@@ -2325,7 +2325,18 @@ void SlowPathLowering::SelectFastNew(GateRef selectCall, GateRef gate, GateRef f
         static_cast<int64_t>(FastCallType::AOT_CALL_BRIDGE),
     };
     if (g_isEnableCMCGC) {
-        builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+        Label needReadBarrier(&builder_);
+        Label skipReadBarrier(&builder_);
+
+        BRANCH_CIR_LIKELY(builder_.NeedSkipReadBarrier(glue_), &skipReadBarrier, &needReadBarrier);
+
+        builder_.Bind(&needReadBarrier);
+        {
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+            builder_.Jump(&skipReadBarrier);
+        }
+
+        builder_.Bind(&skipReadBarrier);
     }
     builder_.Switch(selectCall, &slowCall, valueBuffer, labelBuffer, lableCount);
     builder_.Bind(&fastAotCall);
@@ -3672,10 +3683,20 @@ void SlowPathLowering::LowerCallNewBuiltin(GateRef gate)
     ASSERT(num >= 3);  // 3: skip argc argv newtarget
     
     GateRef ctor = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
-    if (g_isEnableCMCGC) {
-        builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, ctor}, glue_);
-    }
 
+    if (g_isEnableCMCGC) {
+        Label needReadBarrier(&builder_);
+        Label skipReadBarrier(&builder_);
+        BRANCH_CIR_LIKELY(builder_.NeedSkipReadBarrier(glue_), &skipReadBarrier, &needReadBarrier);
+
+        builder_.Bind(&needReadBarrier);
+        {
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, ctor}, glue_);
+            builder_.Jump(&skipReadBarrier);
+        }
+
+        builder_.Bind(&skipReadBarrier);
+    }
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCallNew));
     auto depend = builder_.GetDepend();
@@ -3692,7 +3713,17 @@ void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func
     Label compiled(&builder_);
     Label slowPath(&builder_);
     if (g_isEnableCMCGC) {
-        builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+        Label needReadBarrier(&builder_);
+        Label skipReadBarrier(&builder_);
+        BRANCH_CIR_LIKELY(builder_.NeedSkipReadBarrier(glue), &skipReadBarrier, &needReadBarrier);
+
+        builder_.Bind(&needReadBarrier);
+        {
+            builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+            builder_.Jump(&skipReadBarrier);
+        }
+
+        builder_.Bind(&skipReadBarrier);
     }
     BRANCH_CIR(IsAotOrFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT), &compiled, &slowPath);
     builder_.Bind(&compiled);
@@ -3750,7 +3781,17 @@ void SlowPathLowering::LowerTypedCall(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
     if (g_isEnableCMCGC) {
-        builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+        Label needReadBarrier(&builder_);
+        Label skipReadBarrier(&builder_);
+        BRANCH_CIR_LIKELY(builder_.NeedSkipReadBarrier(glue_), &skipReadBarrier, &needReadBarrier);
+
+        builder_.Bind(&needReadBarrier);
+        {
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+            builder_.Jump(&skipReadBarrier);
+        }
+
+        builder_.Bind(&skipReadBarrier);
     }
     GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);
@@ -3770,7 +3811,17 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FastCallArgIdx::FUNC));
     if (g_isEnableCMCGC) {
-        builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+        Label needReadBarrier(&builder_);
+        Label skipReadBarrier(&builder_);
+        BRANCH_CIR_LIKELY(builder_.NeedSkipReadBarrier(glue_), &skipReadBarrier, &needReadBarrier);
+
+        builder_.Bind(&needReadBarrier);
+        {
+            builder_.CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue_, func}, glue_);
+            builder_.Jump(&skipReadBarrier);
+        }
+
+        builder_.Bind(&skipReadBarrier);
     }
     GateRef code = builder_.GetCodeAddr(func);
     size_t num = acc_.GetNumValueIn(gate);

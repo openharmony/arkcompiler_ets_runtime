@@ -972,6 +972,8 @@ public:
                              GateRef right, GateType gateType = GateType::Empty(), const char* comment = nullptr);
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment = nullptr);
 
+    GateRef NeedSkipReadBarrier(GateRef glue);
+
     // Load
     GateRef Load(VariableType type, GateRef glue, GateRef base, GateRef offset,
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());

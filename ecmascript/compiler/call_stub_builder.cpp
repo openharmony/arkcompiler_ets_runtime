@@ -32,12 +32,20 @@ void CallStubBuilder::JSCallDispatchForBaseline(Label *exit, Label *noNeedCheckE
     auto env = GetEnvironment();
     baselineBuiltinFp_ = CallNGCRuntime(glue_, RTSTUB_ID(GetBaselineBuiltinFp), {glue_});
 
-    CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
-    if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
-        CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
-            { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+    Label needSkipReadBarrier(env);
+    Label needReadBarrier(env);
+    BRANCH_LIKELY(NeedSkipReadBarrier(glue_), &needSkipReadBarrier, &needReadBarrier);
+    Bind(&needReadBarrier);
+    {
+        CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), { glue_, func_ });
+        if (callArgs_.mode == JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV) {
+            CallNGCRuntime(glue_, RTSTUB_ID(CopyArgvArray),
+                { glue_, callArgs_.superCallArgs.argv, callArgs_.superCallArgs.argc });
+        }
+        Jump(&needSkipReadBarrier);
     }
 
+    Bind(&needSkipReadBarrier);
     // 1. call initialize
     Label funcIsHeapObject(env);
     Label funcIsCallable(env);
@@ -225,20 +233,25 @@ void CallCoStubBuilder::LowerFastSuperCall(GateRef glue, CircuitBuilder &builder
 
     GateRef method = builder.GetMethodFromFunction(glue, superFunc);
     GateRef expectedNum = builder.GetExpectedNumOfArgs(method);
-    Label readBarrier(&builder);
+    Label isEnableCMCGC(&builder);
     Label skipReadBarrier(&builder);
-    BRANCH_CIR(
-        builder.LoadWithoutBarrier(
-            VariableType::BOOL(), glue,
-            builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &readBarrier, &skipReadBarrier);
-    builder_.Bind(&readBarrier);
-    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                            Gate::InvalidGateRef, {glue, superFunc}, glue);
-    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray),
-                            Gate::InvalidGateRef,
-                            {glue, elementsPtr, actualArgc}, glue);
-    builder_.Jump(&skipReadBarrier);
+    BRANCH_CIR(builder.LoadWithoutBarrier(VariableType::BOOL(), glue,
+        builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &isEnableCMCGC, &skipReadBarrier);
+    builder.Bind(&isEnableCMCGC);
+    {
+        Label readBarrier(&builder);
+        BRANCH_CIR_LIKELY(
+            builder.NeedSkipReadBarrier(glue),
+            &skipReadBarrier, &readBarrier);
+        builder_.Bind(&readBarrier);
+        builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
+                                Gate::InvalidGateRef, {glue, superFunc}, glue);
+        builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyArgvArray),
+                                Gate::InvalidGateRef,
+                                {glue, elementsPtr, actualArgc}, glue);
+        builder_.Jump(&skipReadBarrier);
+    }
     builder_.Bind(&skipReadBarrier);
     BRANCH_CIR(IsAotFastCall(builder, superFunc), &fastCall, &notFastCall);
     builder.Bind(&fastCall);
@@ -296,17 +309,23 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     Label isCallConstructor(&builder);
     // use builder_ to make BRANCH_CIR work.
     auto &builder_ = builder;
-    Label readBarrier(&builder);
+
+    Label isEnableCMCGC(&builder);
     Label skipReadBarrier(&builder);
-    BRANCH_CIR(
-        builder.LoadWithoutBarrier(
-            VariableType::BOOL(), glue,
-            builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &readBarrier, &skipReadBarrier);
-    builder.Bind(&readBarrier);
-    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                            Gate::InvalidGateRef, {glue, func}, glue);
-    builder.Jump(&skipReadBarrier);
+    BRANCH_CIR(builder.LoadWithoutBarrier(VariableType::BOOL(), glue,
+        builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+        &isEnableCMCGC, &skipReadBarrier);
+    builder.Bind(&isEnableCMCGC);
+    {
+        Label readBarrier(&builder);
+        BRANCH_CIR_LIKELY(
+            builder.NeedSkipReadBarrier(glue),
+            &skipReadBarrier, &readBarrier);
+        builder.Bind(&readBarrier);
+        builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
+                                Gate::InvalidGateRef, {glue, func}, glue);
+        builder.Jump(&skipReadBarrier);
+    }
     builder.Bind(&skipReadBarrier);
     BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder.Bind(&isHeapObject);
@@ -434,10 +453,7 @@ GateRef CallStubBuilder::JSCallDispatch()
 
     Label prepareForAsmBridgeEntry(env);
     Label finishPrepare(env);
-    GateRef gcStateBitField = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
-        IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-    GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
-    BRANCH_LIKELY(Int64Equal(readBarrierStateBit, Int64(0)), &finishPrepare, &prepareForAsmBridgeEntry);
+    BRANCH_LIKELY(NeedSkipReadBarrier(glue_), &finishPrepare, &prepareForAsmBridgeEntry);
     Bind(&prepareForAsmBridgeEntry);
     {
         // func_ should be ToSpace Reference
@@ -648,11 +664,8 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     HandleProfileCall();
 
     Label skipReadBarrier(env);
-    GateRef gcStateBitField = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
-                                            IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-    GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
     Label readBarrier(env);
-    BRANCH_LIKELY(Int64Equal(readBarrierStateBit, Int64(0)), &skipReadBarrier, &readBarrier);
+    BRANCH_LIKELY(NeedSkipReadBarrier(glue_), &skipReadBarrier, &readBarrier);
     Bind(&readBarrier);
     {
         CallNGCRuntime(glue_, RTSTUB_ID(CopyCallTarget), {glue_, func_});
