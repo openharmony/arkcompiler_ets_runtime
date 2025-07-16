@@ -499,14 +499,14 @@ public:
     void MarkJitFortMemInstalled(BaseObject *obj)
     {
         std::lock_guard guard(awaitingJitFortMutex_);
-        RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
+        RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
         awaitingJitFort_.erase(obj);
     }
 
     void MarkJitFortMemAwaitingInstall(BaseObject *obj)
     {
         std::lock_guard guard(awaitingJitFortMutex_);
-        RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(true);
+        RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(true);
         awaitingJitFort_.insert(obj);
     }
 

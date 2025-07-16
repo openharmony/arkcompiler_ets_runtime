@@ -58,7 +58,7 @@ BaseObject* PreforwardBarrier::ReadStringTableStaticRef(RefField<false>& field) 
     auto isSurvivor = [](BaseObject* obj) {
         auto gcReason = Heap::GetHeap().GetGCReason();
         RegionDesc *regionInfo =
-            RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+            RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         return (regionInfo->IsNewObjectSinceTrace(obj) || regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
     };
 

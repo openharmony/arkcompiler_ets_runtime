@@ -39,7 +39,7 @@ bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
     }
 
     RegionDesc* regionInfo = nullptr;
-    regionInfo = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj));
+    regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj));
     return regionInfo->IsUnmovableFromRegion();
 }
 
@@ -47,7 +47,7 @@ bool WCollector::MarkObject(BaseObject* obj, size_t cellCount) const
 {
     bool marked = RegionSpace::MarkObject(obj);
     if (!marked) {
-        RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+        RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         (void)region;
 
         if (region->IsGarbageRegion()) {
@@ -163,7 +163,7 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workSta
     // field is tagged object, should be in heap
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
-    auto targetRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
+    auto targetRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     if (gcReason != GC_REASON_YOUNG && oldField.IsWeak()) {
         DLOG(TRACE, "trace: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
         weakStack.push_back(&field);
@@ -239,8 +239,8 @@ void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 
     // update remember set
     BaseObject* toObj = latest == nullptr ? targetObj : latest;
-    RegionDesc* objRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
-    RegionDesc* refRegion = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void*)toObj));
+    RegionDesc* objRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
+    RegionDesc* refRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)toObj));
     if (!objRegion->IsInRecentSpace() && refRegion->IsInRecentSpace()) {
         if (objRegion->MarkRSetCardTable(obj)) {
             DLOG(TRACE, "fix phase update point-out remember set of region %p, obj %p, ref: %p<%p>",
@@ -848,7 +848,7 @@ void WCollector::ProcessStringTable()
 
     WeakRefFieldVisitor weakVisitor = [this](RefField<> &refField) -> bool {
         auto isSurvivor = [this](BaseObject* oldObj) {
-            RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(oldObj));
+            RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(oldObj));
             return (gcReason_ == GC_REASON_YOUNG && !region->IsInYoungSpace())
                 || region->IsMarkedObject(oldObj)
                 || region->IsNewObjectSinceTrace(oldObj)

@@ -181,7 +181,7 @@ public:
 
     inline bool IsToObject(const BaseObject* obj) const
     {
-        return RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsToRegion();
+        return RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj))->IsToRegion();
     }
 
     virtual bool MarkObject(BaseObject* obj, size_t cellCount = 0) const = 0;

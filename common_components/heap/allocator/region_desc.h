@@ -663,6 +663,13 @@ public:
                                                                           BITS_5));
     }
 
+    static RegionType GetAliveRegionType(uintptr_t allocAddr)
+    {
+        // only alive region have `InlinedRegionMetaData`.
+        InlinedRegionMetaData *metaData = InlinedRegionMetaData::GetInlinedRegionMetaData(allocAddr);
+        return metaData->GetRegionType();
+    }
+
     UnitRole GetUnitRole() const { return static_cast<UnitRole>(metadata.unitRole); }
 
     size_t GetUnitIdx() const { return RegionDesc::UnitInfo::GetUnitIdx(reinterpret_cast<const UnitInfo*>(this)); }

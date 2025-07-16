@@ -56,7 +56,7 @@ BaseObject* CopyBarrier::ReadStringTableStaticRef(RefField<false>& field) const
 
     auto isSurvivor = [](BaseObject* obj) {
         RegionDesc *regionInfo =
-            RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+            RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         return (regionInfo->IsNewObjectSinceTrace(obj) || regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
     };
 

@@ -192,7 +192,7 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
             // get next object from work stack.
             BaseObject *obj = workStack.back();
             workStack.pop_back();
-            auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>((void *)obj));
+            auto region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void *)obj));
             region->AddLiveByteCount(obj->GetSize());
             [[maybe_unused]] auto beforeSize = workStack.count();
             TraceObjectRefFields(obj, &visitor);
@@ -338,7 +338,7 @@ bool TraceCollector::AddWeakStackClearWork(WeakStack &weakStack,
 
 bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
 {
-    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+    RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
     if (gcReason_ == GCReason::GC_REASON_YOUNG && regionInfo->IsInOldSpace()) {
         DLOG(ENUM, "enum: skip old object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
         return false;
@@ -486,7 +486,7 @@ void TraceCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStac
     object->ForEachRefField([this, &workStack, &object](RefField<>& field) {
         BaseObject* targetObj = field.GetTargetObject();
         if (Heap::IsHeapAddress(targetObj)) {
-            RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(targetObj));
+            RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(targetObj));
             if (region->IsInYoungSpace() &&
                 !region->IsNewObjectSinceTrace(targetObj) &&
                 !this->MarkObject(targetObj)) {
