@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,9 +25,9 @@ public:
     // Release Version           Snapshot Version
     //     3.2                      0.0.0.x
     //     4.0                      4.0.0.x
-    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 1, 5};
+    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 1, 6};
     static constexpr bool AN_STRICT_MATCH = true;
-    static constexpr base::FileHeaderBase::VersionType AI_VERSION = {4, 0, 1, 2};
+    static constexpr base::FileHeaderBase::VersionType AI_VERSION = {4, 0, 1, 3};
     static constexpr bool AI_STRICT_MATCH = true;
     constexpr static const int VERSION_MULTIPLE_SIZE = 2;
     static PUBLIC_API std::string GetAOTVersion()
