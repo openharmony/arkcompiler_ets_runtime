@@ -170,8 +170,9 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workSta
         return;
     }
 
-    if (gcReason == GC_REASON_YOUNG && targetRegion->IsInOldSpace()) {
-        DLOG(TRACE, "trace: skip old object %p@%p, target object: %p<%p>(%zu)",
+    // cannot skip objects in EXEMPTED_FROM_REGION, because its rset is incomplete
+    if (gcReason == GC_REASON_YOUNG && !targetRegion->IsInYoungSpace()) {
+        DLOG(TRACE, "trace: skip non-young object %p@%p, target object: %p<%p>(%zu)",
             obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
