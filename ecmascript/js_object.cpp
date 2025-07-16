@@ -26,6 +26,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_accessor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/js_proxy.h"
 
 namespace panda::ecmascript {
 using PGOProfiler = pgo::PGOProfiler;
@@ -1891,6 +1892,10 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     if (!JSHandle<JSTaggedValue>::Cast(obj)->IsJSShared()) {
         sCheckMode = SCheckMode::CHECK;
     }
+    if (UNLIKELY(obj->IsJSProxy())) {
+        PropertyDescriptor desc(thread, value, true, true, true);
+        return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>(obj), key, desc);
+    }
     auto result = ObjectFastOperator::SetPropertyByValue<ObjectFastOperator::Status::DefineSemantics>(
         thread, obj.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -1905,6 +1910,12 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
                                   const JSHandle<JSTaggedValue> &value, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
+    if (UNLIKELY(obj->IsJSProxy())) {
+        JSTaggedValue key(index);
+        JSHandle<JSTaggedValue> keyHandle(thread, key);
+        PropertyDescriptor desc(thread, value, true, true, true);
+        return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>(obj), keyHandle, desc);
+    }
     auto result = ObjectFastOperator::SetPropertyByIndex<ObjectFastOperator::Status::DefineSemantics>
             (thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
