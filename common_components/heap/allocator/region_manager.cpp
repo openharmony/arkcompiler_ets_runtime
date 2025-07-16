@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <unistd.h>
 
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/base/c_string.h"

@@ -15,7 +15,7 @@
 
 #include "common_components/tests/test_helper.h"
 #include "common_components/mutator/mutator_manager.h"
-#include "common_components/base_runtime/base_runtime.cpp"
+#include "common_components/common_runtime/base_runtime.cpp"
 #include "common_components/heap/w_collector/w_collector.h"
 
 using namespace common;

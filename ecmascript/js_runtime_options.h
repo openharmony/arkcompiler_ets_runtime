@@ -22,7 +22,7 @@
 #include <vector>
 #include <set>
 
-#include "common_components/base_runtime/base_runtime_param.h"
+#include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/log/log_base.h"
 #include "common_interfaces/base/common.h"
 #include "common_interfaces/base/runtime_param.h"

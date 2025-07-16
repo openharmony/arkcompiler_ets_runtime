@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 
 namespace common {
 void SetBaseAddress(uintptr_t base) {}

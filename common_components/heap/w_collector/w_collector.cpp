@@ -14,7 +14,7 @@
  */
 #include "common_components/heap/w_collector/w_collector.h"
 
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/log/log.h"
 #include "common_components/mutator/mutator_manager-inl.h"
 #include "common_components/heap/verification.h"

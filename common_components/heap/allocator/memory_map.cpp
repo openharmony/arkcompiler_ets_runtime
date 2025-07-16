@@ -23,7 +23,7 @@
 #endif
 
 #include "common_components/platform/os.h"
-#include "common_components/base_runtime/hooks.h"
+#include "common_components/common_runtime/hooks.h"
 #include "common_components/base/sys_call.h"
 #include "common_components/log/log.h"
 
