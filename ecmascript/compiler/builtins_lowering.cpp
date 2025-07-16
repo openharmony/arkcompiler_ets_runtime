@@ -33,9 +33,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(StringLocaleCompare):
             LowerTypedLocaleCompare(gate);
             break;
-        case BUILTINS_STUB_ID(ArraySort):
-            LowerTypedArraySort(gate);
-            break;
         case BUILTINS_STUB_ID(JsonStringify):
             LowerTypedStringify(gate);
             break;
@@ -216,14 +213,6 @@ void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
         }
         result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare), args);
     }
-    ReplaceHirWithValue(gate, result);
-}
-
-void BuiltinLowering::LowerTypedArraySort(GateRef gate)
-{
-    GateRef glue = acc_.GetGlueFromArgList();
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArraySort), { thisObj });
     ReplaceHirWithValue(gate, result);
 }
 
