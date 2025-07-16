@@ -86,6 +86,7 @@ void Runner::ForEachTask(const std::function<void(Task*)> &f)
 void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 {
 #ifdef ENABLE_QOS
+    std::lock_guard<std::mutex> guard(mtx_);
     switch (mode) {
         case PriorityMode::STW: {
             for (uint32_t threadId : gcThreadId_) {
@@ -115,6 +116,7 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 void Runner::SetRssPriority([[maybe_unused]] RssPriorityType type)
 {
 #ifdef ENABLE_RSS
+    std::lock_guard<std::mutex> guard(mtx_);
     int64_t status = static_cast<int64_t>(type);
     for (uint32_t threadId : gcThreadId_) {
         std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
