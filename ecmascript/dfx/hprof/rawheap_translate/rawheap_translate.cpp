@@ -49,12 +49,11 @@ bool RawHeap::TranslateRawheap(const std::string &inputPath, const std::string &
         return false;
     }
 
-    if (!rawheap->Parse(file, file.GetHeaderLeft())) {
+    if (!rawheap->Parse(file, file.GetHeaderLeft()) || !rawheap->Translate()) {
         delete rawheap;
         return false;
     }
 
-    rawheap->Translate();
     StreamWriter writer;
     if (!writer.Initialize(outputPath)) {
         delete rawheap;
@@ -223,7 +222,7 @@ bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
     return true;
 }
 
-void RawHeapTranslateV1::Translate()
+bool RawHeapTranslateV1::Translate()
 {
     auto nodes = GetNodes();
     for (auto it = nodes->begin() + 1; it != nodes->end(); ++it) {
@@ -231,7 +230,7 @@ void RawHeapTranslateV1::Translate()
         Node *hclass = FindNode(ByteToU64(node->data));
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
-            return;
+            return false;
         }
 
         JSType type = metaParser_->GetJSTypeFromHClass(hclass);
@@ -242,6 +241,7 @@ void RawHeapTranslateV1::Translate()
         }
     }
     LOG_INFO_ << "success!";
+    return true;
 }
 
 bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
@@ -410,10 +410,10 @@ void RawHeapTranslateV1::FillNodes(Node *node, JSType type)
 
 void RawHeapTranslateV1::BuildEdges(Node *node, JSType type)
 {
-    if (metaParser_->IsArray(type)) {
-        BuildArrayEdges(node, type);
-    } else if (metaParser_->IsGlobalEnv(type)) {
+    if (metaParser_->IsGlobalEnv(type)) {
         BuildGlobalEnvEdges(node, type);
+    } else if (metaParser_->IsArray(type)) {
+        BuildArrayEdges(node, type);
     } else {
         BuildFieldEdges(node, type);
         if (metaParser_->IsJSObject(type)) {
@@ -425,11 +425,12 @@ void RawHeapTranslateV1::BuildEdges(Node *node, JSType type)
 void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node, JSType type)
 {
     uint32_t offset = sizeof(uint64_t);
+    uint32_t index = 0;
     while ((offset + sizeof(uint64_t)) <= node->size) {
         uint64_t addr = ByteToU64(node->data + offset);
         offset += sizeof(uint64_t);
         EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
-        CreateEdge(node, addr, 1, edgeType);
+        CreateEdge(node, addr, index++, edgeType);
     }
 }
 
@@ -551,7 +552,7 @@ bool RawHeapTranslateV2::Parse(FileReader &file, uint32_t rawheapFileSize)
            ReadObjectTable(file) && ReadRootTable(file) && ReadStringTable(file);
 }
 
-void RawHeapTranslateV2::Translate()
+bool RawHeapTranslateV2::Translate()
 {
     FillNodes();
     auto nodes = GetNodes();
@@ -561,7 +562,7 @@ void RawHeapTranslateV2::Translate()
         Node *hclass = GetNextEdgeTo();
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
-            return;
+            return false;
         } else if (hclass->nodeId != node->nodeId) {
             CreateEdge(node, hclass, InsertAndGetStringId("hclass"), EdgeType::DEFAULT);
         }
@@ -572,6 +573,7 @@ void RawHeapTranslateV2::Translate()
         BuildEdges(node);
     }
     LOG_INFO_ << "success!";
+    return true;
 }
 
 bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
