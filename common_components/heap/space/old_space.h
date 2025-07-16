@@ -92,9 +92,10 @@ public:
 
     void ClearAllGCInfo()
     {
+        ClearGCInfo(oldRegionList_);
+        std::lock_guard<std::mutex> lock(lock_);
         ClearGCInfo(tlOldRegionList_);
         ClearGCInfo(recentFullOldRegionList_);
-        ClearGCInfo(oldRegionList_);
     }
 
     void MarkRememberSet(const std::function<void(BaseObject*)>& func)
@@ -120,6 +121,7 @@ public:
 
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {
+        std::lock_guard<std::mutex> lock(lock_);
         ASSERT_LOGF(region->GetRegionType() == RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION,
                     "not thread local old region");
         tlOldRegionList_.DeleteRegion(region);
@@ -145,6 +147,9 @@ private:
             region = region->GetNextRegion();
         }
     }
+    // Used to exclude the promotion of TLS regions during the ClearGCInfo phase
+    // This is necessary when the mutator can promote TL to recentFull while the GC is performing ClearGC
+    std::mutex lock_;
 
     // regions for thread-local allocation.
     // regions in this list are already used for allocation but not full yet.
