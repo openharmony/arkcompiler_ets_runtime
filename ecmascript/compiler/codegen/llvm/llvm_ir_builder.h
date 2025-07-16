@@ -108,6 +108,7 @@ public:
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
+    void SetUpForBytecodeStwCopyHandlerStubs();
     void SetUpForBuiltinsStubs();
     void SetUpForBaselineStubs();
 

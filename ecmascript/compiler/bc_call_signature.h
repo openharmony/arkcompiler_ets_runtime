@@ -616,7 +616,11 @@ public:
 #define DEF_VALID_BC_STUB_ID(name) name##StwCopy,
         ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
-        NUM_OF_VALID_STUBS
+        NUM_OF_VALID_STUBS,
+        VID_STW_COPY_START = HandleLdundefinedStwCopy,
+        VID_STW_COPY_END = NUM_OF_VALID_STUBS,
+        VID_NORMAL_START = 0,
+        VID_NORMAL_END = VID_STW_COPY_START
     };
 
 #define DEF_BC_STUB_ID(name) PREF_ID_##name,
@@ -665,6 +669,8 @@ public:
     static void Initialize();
 
     static void GetCSigns(std::vector<const CallSignature*>& outCSigns);
+    static void GetNormalCSigns(std::vector<const CallSignature*>& outCSigns);
+    static void GetStwCopyCSigns(std::vector<const CallSignature*>& outCSigns);
 
     static const CallSignature* Get(size_t index)
     {

@@ -90,7 +90,7 @@ private:
     void CalculateStrTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
     void CalculateSymTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
 
-    static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 5;
     static constexpr uint32_t ShStrTableModuleDesIndex = 0;
     static constexpr uint32_t FullSecIndex = 0;
     static constexpr int32_t IMM28_MIN = -(1l<<27);

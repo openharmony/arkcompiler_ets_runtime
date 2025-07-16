@@ -3161,7 +3161,13 @@ void LLVMModule::SetUpForCommonStubs()
 
 void LLVMModule::SetUpForBytecodeHandlerStubs()
 {
-    BytecodeStubCSigns::GetCSigns(callSigns_);
+    BytecodeStubCSigns::GetNormalCSigns(callSigns_);
+    InitialLLVMFuncTypeAndFuncByModuleCSigns();
+}
+
+void LLVMModule::SetUpForBytecodeStwCopyHandlerStubs()
+{
+    BytecodeStubCSigns::GetStwCopyCSigns(callSigns_);
     InitialLLVMFuncTypeAndFuncByModuleCSigns();
 }
 
