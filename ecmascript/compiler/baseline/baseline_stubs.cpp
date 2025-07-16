@@ -2972,6 +2972,7 @@ void BaselineStownbynameImm8Id16V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
@@ -3018,6 +3019,7 @@ void BaselineStownbynameImm16Id16V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
@@ -3259,6 +3261,7 @@ void BaselineStownbynamewithnamesetImm8Id16V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
@@ -3310,6 +3313,7 @@ void BaselineStownbynamewithnamesetImm16Id16V8StubBuilder::GenerateCircuit()
             Branch(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                SetCurrentGlobalEnv(GetGlobalEnv(glue));
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);

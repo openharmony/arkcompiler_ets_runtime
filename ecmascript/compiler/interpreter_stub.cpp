@@ -50,10 +50,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define REGISTER_PROFILE_CALL_BACK(format)                                                                             \
     ProfileOperation callback(                                                                                         \
         [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
-            GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));                                                  \
+            GateRef state = GetFrame(sp);                                                                              \
+            GateRef currentEnv = GetEnvFromFrame(glue, state);                                                         \
             GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);                                                 \
             ProfilerStubBuilder profiler(this, globalEnv);                                                             \
-            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)),                                   \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, state),                                          \
                 profileTypeInfo, values, format, type);                                                                \
         }, nullptr);
 
@@ -61,10 +62,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     ProfileOperation callback(                                                                                         \
         nullptr,                                                                                                       \
         [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
-            GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));                                                  \
+            GateRef state = GetFrame(sp);                                                                              \
+            GateRef currentEnv = GetEnvFromFrame(glue, state);                                                         \
             GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);                                                 \
             ProfilerStubBuilder profiler(this, globalEnv);                                                             \
-            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)),                                   \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, state),                                          \
                 profileTypeInfo, values, format, type);                                                                \
         });
 
@@ -2377,6 +2379,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
     GateRef stringId = ReadInst16_1(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
 
@@ -2393,6 +2396,8 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
             BRANCH(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
+                GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+                SetCurrentGlobalEnv(globalEnv);
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 BRANCH(TaggedIsHole(*result), &slowPath, &checkResult);
             }
@@ -2400,7 +2405,6 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
     }
     Bind(&slowPath);
     {
-        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
@@ -2416,6 +2420,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
     GateRef stringId = ReadInst16_2(pc);
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
 
@@ -2432,6 +2437,8 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
             BRANCH(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
+                GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+                SetCurrentGlobalEnv(globalEnv);
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
                 BRANCH(TaggedIsHole(*result), &slowPath, &checkResult);
             }
@@ -2439,7 +2446,6 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
     }
     Bind(&slowPath);
     {
-        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         result = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByName), { receiver, propKey, acc });
         Jump(&checkResult);
     }
@@ -2455,6 +2461,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
     GateRef stringId = ReadInst16_1(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     Label isJSObject(env);
     Label notJSObject(env);
     Label notClassConstructor(env);
@@ -2471,6 +2478,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             BRANCH(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+                SetCurrentGlobalEnv(globalEnv);
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 BRANCH(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
@@ -2486,7 +2495,6 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
     }
     Bind(&notJSObject);
     {
-        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByNameWithNameSet),
                                                 { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);
@@ -2500,6 +2508,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
     GateRef stringId = ReadInst16_2(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     Label isJSObject(env);
     Label notJSObject(env);
     Label notClassConstructor(env);
@@ -2516,6 +2525,8 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             BRANCH(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
+                GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+                SetCurrentGlobalEnv(globalEnv);
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback, false, true);
                 BRANCH(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
@@ -2531,7 +2542,6 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
     }
     Bind(&notJSObject);
     {
-        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
         GateRef res = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(StOwnByNameWithNameSet),
                                                 { receiver, propKey, acc });
         CHECK_EXCEPTION_WITH_JUMP(res, &notException1);

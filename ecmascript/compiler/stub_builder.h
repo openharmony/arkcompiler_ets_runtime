@@ -754,10 +754,10 @@ public:
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef TruncDoubleToFloat32(GateRef x);
     GateRef DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef value);
-    inline GateRef ToObject(GateRef glue, GateRef obj);
+    inline GateRef ToObject(GateRef glue, GateRef globalEnv, GateRef obj);
     GateRef DeleteProperty(GateRef glue, GateRef obj, GateRef value);
     inline GateRef OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto);
-    inline GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
+    inline GateRef NewJSPrimitiveRef(GateRef glue, GateRef globalEnv, size_t index, GateRef obj);
     GateRef ModuleNamespaceDeleteProperty(GateRef glue, GateRef obj, GateRef value);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);

@@ -1002,7 +1002,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
     NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     GateRef msg = GetCallArg0(numArgs_);
     // 1. Let obj be ToObject(O).
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     Label isPendingException(env);
     Label noPendingException(env);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
@@ -1067,7 +1067,7 @@ void BuiltinsObjectStubBuilder::GetPrototypeOf(Variable *result, Label *exit, La
     Label isPendingException(env);
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
     {
@@ -1265,7 +1265,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
     Label isPendingException(env);
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
     {
@@ -1374,7 +1374,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
     Label isPendingException(env);
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
     {
@@ -1638,7 +1638,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
     Label isPendingException(env);
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     NewObjectStubBuilder newBuilder(this, GetCurrentGlobalEnv());
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
@@ -2012,7 +2012,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
 {
     auto env = GetEnvironment();
     GateRef msg = GetCallArg0(numArgs_);
-    GateRef obj = ToObject(glue_, msg);
+    GateRef obj = ToObject(glue_, GetCurrentGlobalEnv(), msg);
     Label isPendingException(env);
     Label noPendingException(env);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);

@@ -4407,14 +4407,14 @@ inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef prot
     return env_->GetBuilder()->OrdinaryNewJSObjectCreate(glue, proto);
 }
 
-inline GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
+inline GateRef StubBuilder::NewJSPrimitiveRef(GateRef glue, GateRef globalEnv, size_t index, GateRef obj)
 {
-    return env_->GetBuilder()->NewJSPrimitiveRef(glue, index, obj);
+    return env_->GetBuilder()->NewJSPrimitiveRef(glue, globalEnv, index, obj);
 }
 
-inline GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
+inline GateRef StubBuilder::ToObject(GateRef glue, GateRef globalEnv, GateRef obj)
 {
-    return env_->GetBuilder()->ToObject(glue, obj);
+    return env_->GetBuilder()->ToObject(glue, globalEnv, obj);
 }
 
 inline GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
