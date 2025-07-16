@@ -32,13 +32,10 @@ struct CodeInfo {
     class CodeSpace {
     public:
         static CodeSpace *GetInstance();
-
-        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
-
-    private:
         CodeSpace();
         ~CodeSpace();
-
+        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
+    private:
         static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
         static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
 
@@ -72,7 +69,7 @@ struct CodeInfo {
         kungfu::CalleeRegAndOffsetVec calleeRegInfo;
     };
 
-    CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand);
+    CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand, bool useOwnSpace);
 
     ~CodeInfo();
 
@@ -138,11 +135,14 @@ private:
     std::unordered_map<uint64_t, std::vector<uint8_t>> pc2CallsiteInfo;
     bool alreadyPageAlign_ {false};
     CodeSpaceOnDemand &codeSpaceOnDemand_;
+    bool useOwnSpace_ {false};
+    std::unique_ptr<CodeSpace> ownCodeSpace_ {nullptr};
 };
 
 class Assembler {
 public:
-    explicit Assembler(CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand) : codeInfo_(codeSpaceOnDemand)
+    explicit Assembler(CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand, bool useOwnSpace)
+        : codeInfo_(codeSpaceOnDemand, useOwnSpace)
     {}
     virtual ~Assembler() = default;
     virtual void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) = 0;
