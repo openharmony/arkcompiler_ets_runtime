@@ -439,6 +439,23 @@ public:
             }
         };
         Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
+
+        RegionDesc* pinRegion = recentPinnedRegionList_.GetHeadRegion();
+        if (pinRegion != nullptr && pinRegion != RegionDesc::NullRegion()) {
+            pinRegion->SetCopyLine();
+        }
+
+        RegionDesc* readOnlyRegion = readOnlyRegionList_.GetHeadRegion();
+        if (readOnlyRegion != nullptr && readOnlyRegion != RegionDesc::NullRegion()) {
+            readOnlyRegion->SetCopyLine();
+        }
+
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            RegionDesc* region = recentFixedPinnedRegionList_[i]->GetHeadRegion();
+            if (region != nullptr && region != RegionDesc::NullRegion()) {
+                region->SetCopyLine();
+            }
+        }
     }
 
     void ClearAllGCInfo()
