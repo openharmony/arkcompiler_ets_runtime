@@ -27,7 +27,6 @@ namespace common {
 class StringHashInternal {
 friend class StringHashHelper;
 private:
-#if ENABLE_NEXT_OPTIMIZATION
     template <typename T>
     static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
                                                    uint32_t hashSeed)
@@ -94,36 +93,6 @@ private:
         }
         return vaddvq_u32(hashVec);
     }
-#else
-    template <typename T>
-    static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
-                                                   uint32_t hashSeed)
-    {
-        constexpr uint32_t hashShift = static_cast<uint32_t>(StringHash::HASH_SHIFT);
-        constexpr uint32_t blockSize = static_cast<size_t>(StringHash::BLOCK_SIZE);
-        uint32_t hash[blockSize] = {0};
-        uint32_t index = 0;
-        uint32x4_t hashVec = vld1q_u32(hash);
-        uint32x4_t multiplier_vec = vdupq_n_u32(static_cast<uint32_t>(StringHash::HASH_MULTIPLY));
-        uint32x4_t dataVec;
-        for (; index + blockSize <= size; index += blockSize) {
-            dataVec[0] = data[index];
-            dataVec[1] = data[index + 1]; // 1: the second element of the block
-            dataVec[2] = data[index + 2]; // 2: the third element of the block
-            dataVec[3] = data[index + 3]; // 3: the fourth element of the block
-            hashVec = vaddq_u32(vmulq_u32(hashVec, multiplier_vec), dataVec);
-        }
-        vst1q_u32(hash, hashVec);
-        for (; index < size; ++index) {
-            hash[0] = (hash[0] << hashShift) - hash[0] + data[index];
-        }
-        uint32_t totalHash = hashSeed;
-        for (uint32_t i = 0; i < blockSize; ++i) {
-            totalHash = (totalHash << hashShift) - totalHash + hash[i];
-        }
-        return totalHash;
-    }
-#endif
 };
 }  // namespace common
 #endif  // COMMON_COMPONENTS_PLATFORM_STRING_HASH_ARM64_H

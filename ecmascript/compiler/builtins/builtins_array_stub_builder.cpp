@@ -4920,7 +4920,7 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
                                              { glue, thisValue, IntToTaggedPtr(*i) });
 #else
-            GateRef hasProp = CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
+            GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                 {thisValue, IntToTaggedInt(*i)});
 #endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
