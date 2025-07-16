@@ -2091,13 +2091,58 @@ void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef
     {
         BRANCH(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
         Bind(&iLessLength);
-        GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uintptr_t)));
+        GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
         GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
         BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
         Bind(&isTaggedObject);
         GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
         BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
         Bind(&markRSet);
+        MarkRSetCardTable(dstObj, &notMarkRSet);
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&notMarkRSet);
+    Label markInBuffer(env);
+    GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+    Bind(&markInBuffer);
+    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label iLessLength(env);
+    Label isTaggedObject(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label markRSet(env);
+    Label notMarkRSet(env);
+    GateRef objRegionType = GetCMCRegionType(dstObj);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    GateRef gcPhase = GetGCPhase(glue);
+    Label checkOldToYoung(env);
+    BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &checkOldToYoung);
+    Bind(&checkOldToYoung);
+    BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &loopHead, &notMarkRSet);
+    LoopBegin(&loopHead);
+    {
+        BRANCH_UNLIKELY(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
+        Bind(&iLessLength);
+        {
+            GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
+            BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
+        }
+        Bind(&isTaggedObject);
         MarkRSetCardTable(dstObj, &notMarkRSet);
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
@@ -13200,7 +13245,11 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     {
         CallNGCRuntime(glue, RTSTUB_ID(CopyObjectPrimitive),
             {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-        CMCArrayCopyWriteBarrier(glue, dstObj, dstAddr, srcAddr, taggedValueCount);
+        if (copyKind == SameArray) {
+            CMCArrayCopyWriteBarrierSameArray(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
+        } else {
+            CMCArrayCopyWriteBarrier(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
+        }
         Jump(&exit);
     }
     Bind(&notCMCGC);
@@ -13213,17 +13262,13 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
         {
             if (copyKind == SameArray) {
                 CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
-                            {
-                                glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
-                                TaggedCastToIntPtr(srcAddr)
-                            });
+                    {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                    TaggedCastToIntPtr(srcAddr)});
             } else {
                 ASSERT(copyKind == DifferentArray);
                 CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
-                            {
-                                glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
-                                TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)
-                            });
+                    {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                    TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)});
             }
             Jump(&exit);
         }
