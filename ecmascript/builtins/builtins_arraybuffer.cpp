@@ -229,10 +229,6 @@ JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const J
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
     }
-    uint64_t totalNativeSize = static_cast<uint64_t>(thread->GetNativeAreaAllocator()->GetArrayBufferNativeSize());
-    if (UNLIKELY(totalNativeSize > MAX_NATIVE_SIZE_LIMIT)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE, JSTaggedValue::Exception());
-    }
     uint32_t arrayByteLength = static_cast<uint32_t>(byteLength);
     JSHandle<JSArrayBuffer> arrayBuffer(obj);
     // 6. Set obj’s [[ArrayBufferData]] internal slot to block.

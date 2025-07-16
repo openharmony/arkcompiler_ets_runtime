@@ -113,10 +113,6 @@ public:
                                             DataViewType type, bool littleEndian);
     static void *GetDataPointFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 
-protected:
-    static constexpr uint64_t MAX_NATIVE_SIZE_LIMIT = 4_GB;
-    static constexpr char const *NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE = "total array buffer size out of limit(4_GB)";
-
 private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id)                                                             \
     base::BuiltinFunctionEntry::Create((name), (BuiltinsArrayBuffer::func), (length), (BUILTINS_STUB_ID(id))),
