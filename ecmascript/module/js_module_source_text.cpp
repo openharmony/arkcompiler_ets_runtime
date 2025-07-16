@@ -20,13 +20,14 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/module/module_tools.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/module/module_value_accessor.h"
-#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/patch/quick_fix_manager.h"
@@ -307,147 +308,133 @@ ModuleTypes SourceTextModule::GetNativeModuleType(const CString &moduleRequestNa
     return ModuleTypes::INTERNAL_MODULE;
 }
 
-JSTaggedValue SourceTextModule::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
+Local<JSValueRef> SourceTextModule::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
 {
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
     auto globalConstants = vm->GetJSThread()->GlobalConstants();
     auto funcName = (moduleType == ModuleTypes::NATIVE_MODULE) ?
-        globalConstants->GetRequireNativeModuleString() :
-        globalConstants->GetRequireNapiString();
-    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
-    return ObjectFastOperator::FastGetPropertyByValue(vm->GetJSThread(), globalEnv->GetGlobalObject(), funcName);
+        globalConstants->GetHandledRequireNativeModuleString() :
+        globalConstants->GetHandledRequireNapiString();
+    return globalObject->Get(vm, JSNApiHelper::ToLocal<StringRef>(funcName));
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
-                                                               const JSHandle<SourceTextModule> &requiredModule,
-                                                               ModuleTypes moduleType)
+void SourceTextModule::MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    const CString &soPath, const CString &moduleName)
+{
+    CString soName = ModulePathHelper::GetNormalizedPathFromOhmUrl(soPath);
+    CString path = base::ConcatToCString(ModulePathHelper::GetBundleNameFromNormalized(vm, soPath),
+                                         PathHelper::SLASH_TAG, moduleName);
+    // use module name as so name
+    arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
+    arguments.emplace_back(BooleanRef::New(vm, true));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+}
+
+void SourceTextModule::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    const CString &soPath, const CString &moduleName, const CString &requestName)
+{
+    if (!StringHelper::StringStartWith(requestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX)) {
+        return MakeNormalizedAppArgs(vm, arguments, soPath, moduleName);
+    }
+    size_t pos = soPath.find_last_of(PathHelper::SLASH_TAG);
+    if (pos == CString::npos) { // LCOV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "Invalid native module " << soPath;
+        UNREACHABLE();
+    }
+    CString soName = soPath.substr(pos + 1);
+    CString path = soPath.substr(0, pos);
+    // use module name as so name
+    arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
+    arguments.emplace_back(BooleanRef::New(vm, true));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+}
+
+void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    const CString &moduleRequestName)
+{
+    arguments.emplace_back(BooleanRef::New(vm, false));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, ""));
+    CString moduleDir = PathHelper::GetInternalModulePrefix(moduleRequestName);
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
+}
+
+Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
+    const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     CString moduleRequestName = requiredModule->GetEcmaModuleRecordNameString();
     ModuleTraceScope moduleTraceScope(thread, "SourceTextModule::LoadNativeModule:" + moduleRequestName);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    auto globalConstants = vm->GetJSThread()->GlobalConstants();
     if (moduleLogger != nullptr) {
         moduleLogger->SetStartTime(moduleRequestName);
     }
-    auto func = GetRequireNativeModuleFunc(vm, moduleType);
-    if (!func.IsCallable()) {
+    CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
+
+    CString fileName = requiredModule->GetEcmaModuleFilenameString();
+    CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
+    std::vector<Local<JSValueRef>> arguments;
+    LOG_FULL(DEBUG) << "Request module is " << moduleRequestName;
+
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, soName.c_str()));
+    if (moduleType == ModuleTypes::APP_MODULE) {
+        MakeAppArgs(vm, arguments, soName, moduleName, moduleRequestName);
+    } else if (moduleType == ModuleTypes::INTERNAL_MODULE) {
+        MakeInternalArgs(vm, arguments, moduleRequestName);
+    }
+    auto maybeFuncRef = GetRequireNativeModuleFunc(vm, moduleType);
+    // some function(s) may not registered in global object for non-main thread
+    if (!maybeFuncRef->IsFunction(vm)) {
         LOG_FULL(WARN) << "Not found require func";
         if (moduleLogger != nullptr) {
             moduleLogger->SetEndTime(moduleRequestName);
         }
-        return globalConstants->GetHandledUndefined();
+        return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     }
-    JSHandle<JSTaggedValue> maybeFunc = JSHandle<JSTaggedValue>(thread, func);
-    CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
-    CString fileName = requiredModule->GetEcmaModuleFilenameString();
-    CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
-    LOG_FULL(DEBUG) << "Request module is " << moduleRequestName;
-    JSHandle<JSTaggedValue> undefined = globalConstants->GetHandledUndefined();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    if (moduleType == ModuleTypes::APP_MODULE) {
-        CString normalizedSoName;
-        CString path;
-        if (!StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX)) {
-            normalizedSoName = ModulePathHelper::GetNormalizedPathFromOhmUrl(soName);
-            path = ModulePathHelper::GetBundleNameFromNormalized(vm, soName) + PathHelper::SLASH_TAG + moduleName;
-        } else {
-            size_t pos = soName.find_last_of(PathHelper::SLASH_TAG);
-            if (pos == CString::npos) {
-                LOG_FULL(FATAL) << "Invalid native module " << soName;
-                UNREACHABLE();
-            }
-            normalizedSoName = soName.substr(pos + 1);
-            path = soName.substr(0, pos);
-        }
-        // The number 3 indicates that the number of parameters is three.
-        EcmaRuntimeCallInfo *info =
-                ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, maybeFunc, undefined, undefined, 3);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        // use module name as so name
-        JSHandle<EcmaString> arg0 = factory->NewFromUtf8(normalizedSoName.c_str());
-        JSHandle<EcmaString> arg2 = factory->NewFromUtf8(path.c_str());
-        info->SetCallArg(arg0.GetTaggedValue(),
-                         globalConstants->GetTrue(),
-                         arg2.GetTaggedValue());
-        JSTaggedValue exportObject = JSFunction::Call(info);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(moduleRequestName);
-        }
-        JSHandle<JSTaggedValue> res = JSHandle<JSTaggedValue>(thread, exportObject);
-        return res;
-    } else if (moduleType == ModuleTypes::INTERNAL_MODULE) {
-        // The number 4 indicates that the number of parameters is four.
-        EcmaRuntimeCallInfo *info =
-                ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, maybeFunc, undefined, undefined, 4);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        CString moduleDir = PathHelper::GetInternalModulePrefix(moduleRequestName);
-        JSHandle<EcmaString> arg0 = factory->NewFromUtf8(soName.c_str());
-        JSHandle<EcmaString> arg3 = factory->NewFromUtf8(moduleDir.c_str());
-        info->SetCallArg(arg0.GetTaggedValue(),
-                         globalConstants->GetFalse(),
-                         globalConstants->GetEmptyString(),
-                         arg3.GetTaggedValue());
-        JSTaggedValue exportObject = JSFunction::Call(info);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(moduleRequestName);
-        }
-        JSHandle<JSTaggedValue> res = JSHandle<JSTaggedValue>(thread, exportObject);
-        return res;
+
+    Local<FunctionRef> funcRef = maybeFuncRef;
+    auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetEndTime(moduleRequestName);
     }
-    // The number 1 indicates that the number of parameters is one.
-    EcmaRuntimeCallInfo *info =
-            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, maybeFunc, undefined, undefined, 1);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // use module name as so name
-    // The number 0 represents the first parameter.
-    info->SetCallArg(0, factory->NewFromUtf8(soName.c_str()).GetTaggedValue());
-    JSTaggedValue exportObject = JSFunction::Call(info);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    JSHandle<JSTaggedValue> res(thread,  exportObject);
-    return res;
+    return exportObject;
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thread,
+Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thread,
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     EcmaVM *vm = thread->GetEcmaVM();
-    
+    EscapeLocalScope scope(vm);
+
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
+    if (exportObject->IsNativeModuleFailureInfoObject(vm) || exportObject->IsUndefined()) {
         CString errorMsg = "load native module failed.";
         LOG_FULL(ERROR) << errorMsg.c_str();
         auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, thread->GlobalConstants()->GetHandledUndefined());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+            JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined())));
     }
-    return exportObject;
+    return scope.Escape(exportObject);
 }
 
 bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                         ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    [[maybe_unused]] LocalScope scope(vm);
     
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    if (UNLIKELY(exportObject->IsNativeModuleFailureInfo())) {
-        if (EcmaVM::GetErrorInfoEnhance()) {
-            SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
-        }
-        requiredModule->SetException(thread, exportObject);
-        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " <<
-            requiredModule->GetEcmaModuleRecordNameString();
-        return false;
-    }
     if (UNLIKELY(exportObject->IsUndefined())) {
         CString fileName = requiredModule->GetEcmaModuleFilenameString();
-        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " <<
-            requiredModule->GetEcmaModuleRecordNameString();
+        CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
+        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
+        return false;
+    }
+    if (UNLIKELY(exportObject->IsNativeModuleFailureInfoObject(vm))) {
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
+        LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
     }
     ASSERT(!thread->HasPendingException());
-    SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
+    SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     return true;
 }
 

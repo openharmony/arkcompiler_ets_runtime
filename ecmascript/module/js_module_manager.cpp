@@ -274,9 +274,9 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     SourceTextModule::RecordEvaluatedOrError(thread, nativeModule);
     nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-    SourceTextModule::StoreModuleValue(thread, nativeModule, 0, exportObject);
+    SourceTextModule::StoreModuleValue(thread, nativeModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
-    return exportObject;
+    return JSNApiHelper::ToJSHandle(exportObject);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, const CString &recordName)

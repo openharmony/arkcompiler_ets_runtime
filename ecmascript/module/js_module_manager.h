@@ -68,7 +68,7 @@ public:
     {
         return isExecuteBuffer_.load(std::memory_order_acquire);
     }
-    void SetExecuteMode(ModuleExecuteMode mode)
+    inline void SetExecuteMode(ModuleExecuteMode mode)
     {
         isExecuteBuffer_.store(mode, std::memory_order_release);
     }
