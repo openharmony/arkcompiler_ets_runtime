@@ -29,6 +29,12 @@ enum class StartupStatus: uint8_t {
     COLD_STARTUP_FINISH,
 };
 
+enum AppSensitiveStatus : uint8_t {
+    NORMAL_SCENE,
+    ENTER_HIGH_SENSITIVE,
+    EXIT_HIGH_SENSITIVE,
+};
+
 class StartupStatusManager {
 public:
     static std::atomic<StartupStatus> startupStatus_;
@@ -99,11 +105,59 @@ public:
     static constexpr double COLD_STARTUP_GC_THRESHOLD_RATIO = 0.25;
     void Init();
 
-    bool ShouldRestrainGCOnStartup();
+    bool ShouldRestrainGCOnStartupOrSensitive();
 
     void TryHeuristicGC();
 
     void TryIdleGC();
+
+    bool ShouldRestrainGCInSensitive(size_t currentSize);
+
+    void NotifyHighSensitive(bool isStart)
+    {
+        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "SmartGC: set high sensitive status: ",
+            std::to_string(isStart).c_str());
+        isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
+            : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
+        LOG_COMMON(INFO) << "SmartGC: set high sensitive status: " << isStart;
+    }
+
+    bool InSensitiveStatus() const
+    {
+        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE;
+    }
+
+    bool OnStartupEvent() const
+    {
+        return StartupStatusManager::GetStartupStatus() == StartupStatus::COLD_STARTUP;
+    }
+
+    StartupStatus GetStartupStatus() const;
+
+    void SetSensitiveStatus(AppSensitiveStatus status)
+    {
+        sensitiveStatus_.store(status, std::memory_order_release);
+    }
+
+    AppSensitiveStatus GetSensitiveStatus() const
+    {
+        return sensitiveStatus_.load(std::memory_order_acquire);
+    }
+
+    bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
+    {
+        return sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
+    }
+    
+    void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize)
+    {
+        recordSizeBeforeSensitive_.store(objSize, std::memory_order_release);
+    }
+
+    size_t GetRecordHeapObjectSizeBeforeSensitive() const
+    {
+        return recordSizeBeforeSensitive_.load(std::memory_order_acquire);
+    }
 
     void NotifyNativeAllocation(size_t bytes);
 
@@ -122,7 +176,11 @@ public:
     void ChangeGCParams(bool isBackground);
 
     bool CheckAndTriggerHintGC(MemoryReduceDegree degree);
-
+#if defined(PANDA_TARGET_32)
+    static constexpr size_t INC_OBJ_SIZE_IN_SENSITIVE = 40 * MB;
+#else
+    static constexpr size_t INC_OBJ_SIZE_IN_SENSITIVE = 80 * MB;
+#endif
     static constexpr size_t BACKGROUND_LIMIT = 2 * MB;
     static constexpr size_t MIN_BACKGROUND_GC_SIZE = 30 * MB;
 
@@ -142,6 +200,9 @@ private:
     std::atomic<size_t> notifiedNativeSize_ = 0;
     std::atomic<size_t> nativeHeapThreshold_ = NATIVE_INIT_THRESHOLD;
     std::atomic<size_t> nativeHeapObjects_ = 0;
+
+    std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
+    std::atomic<size_t> recordSizeBeforeSensitive_ {0};
 };
 } // namespace common
 

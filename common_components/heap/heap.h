@@ -24,6 +24,7 @@
 #include "common_components/common/type_def.h"
 #include "common_components/heap/barrier/barrier.h"
 #include "common_components/heap/collector/collector.h"
+#include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/profiler/common_profiler_interface.h"
 #include "common_interfaces/base/runtime_param.h"
 #include "common_interfaces/base_runtime.h"
@@ -103,6 +104,10 @@ public:
     virtual void ChangeGCParams(bool isBackground) = 0;
     virtual void RecordAliveSizeAfterLastGC(size_t aliveBytes) = 0;
     virtual bool CheckAndTriggerHintGC(MemoryReduceDegree degree) = 0;
+    virtual void NotifyHighSensitive(bool isStart) = 0;
+    virtual void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize) = 0;
+    virtual AppSensitiveStatus GetSensitiveStatus() = 0;
+    virtual StartupStatus GetStartupStatus() = 0;
     /* to avoid misunderstanding, variant types of heap size are defined as followed:
      * |------------------------------ max capacity ---------------------------------|
      * |------------------------------ current capacity ------------------------|

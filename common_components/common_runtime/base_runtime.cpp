@@ -241,4 +241,9 @@ bool BaseRuntime::CheckAndTriggerHintGC(MemoryReduceDegree degree)
 {
     return Heap::GetHeap().CheckAndTriggerHintGC(degree);
 }
+
+void BaseRuntime::NotifyHighSensitive(bool isStart)
+{
+    Heap::GetHeap().NotifyHighSensitive(isStart);
+}
 }  // namespace common

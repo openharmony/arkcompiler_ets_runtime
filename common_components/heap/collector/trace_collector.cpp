@@ -630,6 +630,9 @@ void TraceCollector::UpdateGCStats()
 
     UpdateNativeThreshold(gcParam);
     Heap::GetHeap().RecordAliveSizeAfterLastGC(bytesAllocated);
+    if (!gcStats.isYoungGC()) {
+        Heap::GetHeap().SetRecordHeapObjectSizeBeforeSensitive(bytesAllocated);
+    }
 
     if (!gcStats.isYoungGC()) {
         g_gcRequests[GC_REASON_HEU].SetMinInterval(gcParam.gcInterval);
@@ -703,7 +706,8 @@ void TraceCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCT
         Pretty(currentThreshold).c_str(), gcIndex);
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RunGarbageCollection", (
                     "GCReason:" + gcReasonName + ";GCType:" + GCTypeToString(gcType) +
-                    ";Sensitive:0;IsInBackground:0;Startup:0" +
+                    ";Sensitive:" + std::to_string(static_cast<int>(Heap::GetHeap().GetSensitiveStatus())) +
+                    ";Startup:" + std::to_string(static_cast<int>(Heap::GetHeap().GetStartupStatus())) +
                     ";Current Allocated:" + Pretty(currentAllocatedSize) +
                     ";Current Threshold:" + Pretty(currentThreshold) +
                     ";Current Native:" + Pretty(Heap::GetHeap().GetNotifiedNativeSize()) +

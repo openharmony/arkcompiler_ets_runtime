@@ -17,7 +17,6 @@
 
 #include "common_components/heap/collector/collector_proxy.h"
 #include "common_components/heap/collector/collector_resources.h"
-#include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/heap/w_collector/idle_barrier.h"
 #include "common_components/heap/w_collector/enum_barrier.h"
 #include "common_components/heap/w_collector/trace_barrier.h"
@@ -128,6 +127,10 @@ public:
     void ChangeGCParams(bool isBackground) override;
     void RecordAliveSizeAfterLastGC(size_t aliveBytes) override;
     bool CheckAndTriggerHintGC(MemoryReduceDegree degree) override;
+    void NotifyHighSensitive(bool isStart) override;
+    void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize) override;
+    AppSensitiveStatus GetSensitiveStatus() override;
+    StartupStatus GetStartupStatus() override;
 
 private:
     // allocator is actually a subspace in heap
@@ -265,6 +268,28 @@ void HeapImpl::RecordAliveSizeAfterLastGC(size_t aliveBytes)
 bool HeapImpl::CheckAndTriggerHintGC(MemoryReduceDegree degree)
 {
     return heuristicGCPolicy_.CheckAndTriggerHintGC(degree);
+}
+
+void HeapImpl::NotifyHighSensitive(bool isStart)
+{
+    heuristicGCPolicy_.NotifyHighSensitive(isStart);
+}
+
+void HeapImpl::SetRecordHeapObjectSizeBeforeSensitive(size_t objSize)
+{
+    if (heuristicGCPolicy_.InSensitiveStatus()) {
+        heuristicGCPolicy_.SetRecordHeapObjectSizeBeforeSensitive(objSize);
+    }
+}
+
+AppSensitiveStatus HeapImpl::GetSensitiveStatus()
+{
+    return heuristicGCPolicy_.GetSensitiveStatus();
+}
+
+StartupStatus HeapImpl::GetStartupStatus()
+{
+    return heuristicGCPolicy_.GetStartupStatus();
 }
 
 Collector& HeapImpl::GetCollector() { return collectorProxy_.GetCurrentCollector(); }

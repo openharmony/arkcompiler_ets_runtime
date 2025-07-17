@@ -2518,6 +2518,10 @@ void Heap::NotifyHighSensitive(bool isStart)
     isStart ? SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE)
         : SetSensitiveStatus(AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
     LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
+
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::NotifyHighSensitive(isStart);
+    }
 }
 
 bool Heap::HandleExitHighSensitiveEvent()
