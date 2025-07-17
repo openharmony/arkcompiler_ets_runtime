@@ -204,7 +204,6 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     ASSERT_PRINT(status == true, "return result exception!");
 
     // Uncaught exception parsing source code
-    JSHandle<JSTaggedValue> topStackkey = globalConst->GetHandledTopStackString();
     PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(stackTraceStr), true, false, true);
     [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
         globalConst->GetHandledTopStackString(), topStackDesc);

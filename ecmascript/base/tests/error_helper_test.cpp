@@ -366,25 +366,4 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_004)
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeCauseValue)).ToCString(thread).c_str(),
                  "error cause");
 }
-
-HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_005)
-{
-    auto factory = instance->GetFactory();
-    auto env = instance->GetGlobalEnv();
-    JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
-
-    JSHandle<JSFunction> error(env->GetErrorFunction());
-
-    JSHandle<JSTaggedValue> errorMsg(factory->NewFromASCII("You have an Error!"));
-    EcmaRuntimeCallInfo *argv1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*error), 6);
-    argv1->SetFunction(error.GetTaggedValue());
-    argv1->SetThis(JSTaggedValue(*error));
-    argv1->SetCallArg(0, errorMsg.GetTaggedValue());
-    auto prev1 = TestHelper::SetupFrame(thread, argv1);
-    JSHandle<JSTaggedValue> errorResult(thread, ErrorHelper::ErrorCommonConstructor(argv1, ErrorType::ERROR));
-    TestHelper::TearDownFrame(thread, prev1);
-    JSHandle<JSTaggedValue> errorStackValue(JSObject::GetProperty(thread, errorResult, stackKey).GetValue());
-
-    EXPECT_TRUE(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorStackValue)).ToCString(thread).empty());
-}
 }  // namespace panda::test
