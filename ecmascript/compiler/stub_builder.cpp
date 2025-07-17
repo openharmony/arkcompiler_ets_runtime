@@ -2080,36 +2080,41 @@ void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef
     Label loopEnd(env);
     Label markRSet(env);
     Label notMarkRSet(env);
+    Label notIdlePhase(env);
     GateRef objRegionType = GetCMCRegionType(dstObj);
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     GateRef gcPhase = GetGCPhase(glue);
-    Label checkOldToYoung(env);
-    BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
-    Bind(&checkOldToYoung);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
+    BRANCH(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_IDLE)), &exit, &notIdlePhase);
+    Bind(&notIdlePhase);
     {
-        BRANCH(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
-        Bind(&iLessLength);
-        GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
-        GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
-        BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
-        Bind(&isTaggedObject);
-        GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
-        BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
-        Bind(&markRSet);
-        MarkRSetCardTable(dstObj, &notMarkRSet);
-        Bind(&loopEnd);
-        i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
+        Label checkOldToYoung(env);
+        BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
+        Bind(&checkOldToYoung);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
+            Bind(&iLessLength);
+            GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
+            BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
+            Bind(&isTaggedObject);
+            GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
+            BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
+            Bind(&markRSet);
+            MarkRSetCardTable(dstObj, &notMarkRSet);
+            Bind(&loopEnd);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&loopHead);
+        }
+        Bind(&notMarkRSet);
+        Label markInBuffer(env);
+        GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+        BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+        Bind(&markInBuffer);
+        CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+        Jump(&exit);
     }
-    Bind(&notMarkRSet);
-    Label markInBuffer(env);
-    GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
-    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
-    Bind(&markInBuffer);
-    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
-    Jump(&exit);
     Bind(&exit);
     env->SubCfgExit();
 }
@@ -2126,35 +2131,38 @@ void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj
     Label loopEnd(env);
     Label markRSet(env);
     Label notMarkRSet(env);
+    Label notIdlePhase(env);
     GateRef objRegionType = GetCMCRegionType(dstObj);
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     GateRef gcPhase = GetGCPhase(glue);
-    Label checkOldToYoung(env);
-    BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &checkOldToYoung);
-    Bind(&checkOldToYoung);
-    BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &loopHead, &notMarkRSet);
-    LoopBegin(&loopHead);
+    BRANCH(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_IDLE)), &exit, &notIdlePhase);
+    Bind(&notIdlePhase);
     {
-        BRANCH_UNLIKELY(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
-        Bind(&iLessLength);
+        Label checkOldToYoung(env);
+        BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &checkOldToYoung);
+        Bind(&checkOldToYoung);
+        BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &loopHead, &notMarkRSet);
+        LoopBegin(&loopHead);
         {
+            BRANCH_UNLIKELY(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
+            Bind(&iLessLength);
             GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
             GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
             BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
+            Bind(&isTaggedObject);
+            MarkRSetCardTable(dstObj, &notMarkRSet);
+            Bind(&loopEnd);
+            i = Int32Add(*i, Int32(1));
+            LoopEnd(&loopHead);
         }
-        Bind(&isTaggedObject);
-        MarkRSetCardTable(dstObj, &notMarkRSet);
-        Bind(&loopEnd);
-        i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
+        Bind(&notMarkRSet);
+        Label markInBuffer(env);
+        GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+        BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+        Bind(&markInBuffer);
+        CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+        Jump(&exit);
     }
-    Bind(&notMarkRSet);
-    Label markInBuffer(env);
-    GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
-    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
-    Bind(&markInBuffer);
-    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
-    Jump(&exit);
     Bind(&exit);
     env->SubCfgExit();
 }
