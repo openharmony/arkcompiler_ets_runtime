@@ -35,7 +35,7 @@ const std::string COMPILER_LOG_OPT = "compiler-log";
 const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
 const std::string AOT_FILE = "aot-file";
 
-const std::string CODE_LANGUAGE = "codeLanguage";
+const std::string ARKTS_MODE = "moduleArkTSMode";
 } // namespace ArgsIdx
 
 namespace Symbols {
