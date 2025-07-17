@@ -759,6 +759,7 @@ void BarrierStubBuilder::DoReverseBarrier()
     Label notMarkRSetLoopEnd(env);
     Label iLessLength(env);
     Label indexLessLength(env);
+    Label notIdlePhase(env);
     env->SubCfgEntry(&entry);
 
     BRANCH_UNLIKELY(LoadPrimitive(
@@ -766,61 +767,61 @@ void BarrierStubBuilder::DoReverseBarrier()
         &needMarking, &checkNext);
     Bind(&needMarking);
     {
-        GateRef objRegionType = GetCMCRegionType(dstObj_);
         GateRef gcPhase = GetGCPhase(glue_);
+        GateRef objRegionType = GetCMCRegionType(dstObj_);
         GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
-        BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &continueProcessing);
-        Bind(&continueProcessing);
+        BRANCH(Int8Equal(gcPhase, Int8(common::GCPhase::GC_PHASE_IDLE)), &exit, &notIdlePhase);
+        Bind(&notIdlePhase);
         {
-            DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-            Label checkOldToYoung(env);
-            BRANCH(ShouldUpdateRememberSet(glue_, gcPhase), &checkOldToYoung, &notMarkRSet);
-            Bind(&checkOldToYoung);
-            Jump(&continueLoopHead);
-            LoopBegin(&continueLoopHead);
+            BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &continueProcessing);
+            Bind(&continueProcessing);
             {
-                BRANCH(Int32UnsignedLessThan(*i, slotCount_), &iLessLength, &notMarkRSet);
-                Bind(&iLessLength);
+                DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+                Label checkOldToYoung(env);
+                BRANCH(ShouldUpdateRememberSet(glue_, gcPhase), &checkOldToYoung, &notMarkRSet);
+                Bind(&checkOldToYoung);
+                Jump(&continueLoopHead);
+                LoopBegin(&continueLoopHead);
                 {
-                    //GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uintptr_t)));
-                    GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
-                    GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
-                    BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &continueLoopEnd);
+                    BRANCH(Int32UnsignedLessThan(*i, slotCount_), &iLessLength, &notMarkRSet);
+                    Bind(&iLessLength);
+                    {
+                        GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
+                        GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
+                        BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &continueLoopEnd);
+                    }
+                    Bind(&isTaggedObject);
+                    MarkRSetCardTable(dstObj_, &notMarkRSet);
+                    Bind(&continueLoopEnd);
+                    i = Int32Add(*i, Int32(1));
+                    LoopEnd(&continueLoopHead);
                 }
-                Bind(&isTaggedObject);
-                MarkRSetCardTable(dstObj_, &notMarkRSet);
-                Bind(&continueLoopEnd);
-                i = Int32Add(*i, Int32(1));
-                LoopEnd(&continueLoopHead);
             }
-        }
-        Bind(&notMarkRSet);
-        {
-            DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-            GateRef gcPhase = GetGCPhase(glue_);
-            GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
-            Jump(&notMarkRSetLoopHead);
-            LoopBegin(&notMarkRSetLoopHead);
+            Bind(&notMarkRSet);
             {
-                BRANCH_LIKELY(Int32UnsignedLessThan(*index, slotCount_), &indexLessLength, &exit);
-                Bind(&indexLessLength);
-                GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
-                GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
-
-                BRANCH(TaggedIsHeapObject(ref), &RefisTaggedObject, &notMarkRSetLoopEnd);
-                Bind(&RefisTaggedObject);
-
-                BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
-                Bind(&markInBuffer);
+                DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
+                Jump(&notMarkRSetLoopHead);
+                LoopBegin(&notMarkRSetLoopHead);
                 {
-                    ASSERT(RuntimeStubCSigns::Get(RTSTUB_ID(MarkInBuffer))->IsNoTailCall());
-                    CallNGCRuntime(glue_, RTSTUB_ID(MarkInBuffer), {ref});
-                    Jump(&notMarkRSetLoopEnd);
+                    BRANCH_LIKELY(Int32UnsignedLessThan(*index, slotCount_), &indexLessLength, &exit);
+                    Bind(&indexLessLength);
+                    GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+                    GateRef ref = LoadPrimitive(VariableType::JS_ANY(), dstAddr_, offset);
+                    BRANCH(TaggedIsHeapObject(ref), &RefisTaggedObject, &notMarkRSetLoopEnd);
+                    Bind(&RefisTaggedObject);
+                    BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
+                    Bind(&markInBuffer);
+                    {
+                        ASSERT(RuntimeStubCSigns::Get(RTSTUB_ID(MarkInBuffer))->IsNoTailCall());
+                        CallNGCRuntime(glue_, RTSTUB_ID(MarkInBuffer), {ref});
+                        Jump(&notMarkRSetLoopEnd);
+                    }
+                    
+                    Bind(&notMarkRSetLoopEnd);
+                    index = Int32Add(*index, Int32(1));
+                    LoopEnd(&notMarkRSetLoopHead);
                 }
-                
-                Bind(&notMarkRSetLoopEnd);
-                index = Int32Add(*index, Int32(1));
-                LoopEnd(&notMarkRSetLoopHead);
             }
         }
     }
@@ -844,6 +845,7 @@ void BarrierStubBuilder::DoReverseBarrier()
     Bind(&exit);
     env->SubCfgExit();
 }
+
 
 void BarrierStubBuilder::DoReverseBarrierInternal()
 {
