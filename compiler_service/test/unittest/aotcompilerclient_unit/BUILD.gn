@@ -21,7 +21,12 @@ config("module_private_config") {
     "${compiler_service_root}/include",
     "${compiler_service_root}/interface",
   ]
-  cflags = [ "-Wno-error=keyword-macro" ]
+  cflags = [
+    "-Wno-error=keyword-macro",
+    "-Wno-nested-anon-types",
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-variadic-macros",
+  ]
 }
 
 ohos_unittest("AotCompilerClientUnitTest") {
@@ -29,7 +34,6 @@ ohos_unittest("AotCompilerClientUnitTest") {
   configs = [ 
     ":module_private_config",
     "$js_root:ark_jsruntime_public_config",
-    "$js_root:ark_jsruntime_common_config",
   ]
   version_script = "${compiler_service_root}/libaot_compiler_service.map"
   sources = [

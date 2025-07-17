@@ -22,8 +22,11 @@ ohos_fuzztest("AotCompilerArgsPrepareFuzzTest") {
   cflags = [
     "-g",
     "-O0",
+    "-Wno-nested-anon-types",
+    "-Wno-gnu-anonymous-struct",
     "-Wno-unused-variable",
     "-fno-omit-frame-pointer",
+    "-Wno-variadic-macros",
   ]
   include_dirs = [
     "${compiler_service_root}/include",
@@ -31,7 +34,6 @@ ohos_fuzztest("AotCompilerArgsPrepareFuzzTest") {
   ]
   configs = [
     "$js_root:ark_jsruntime_public_config",
-    "$js_root:ark_jsruntime_common_config",
   ]
   version_script = "${compiler_service_root}/libaot_compiler_service.map"
   sources = [
