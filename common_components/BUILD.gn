@@ -32,6 +32,7 @@ source_Heap = [
   "heap/allocator/memory_map.cpp",
   "heap/allocator/region_manager.cpp",
   "heap/allocator/region_space.cpp",
+  "heap/allocator/fix_heap.cpp",
   "heap/barrier/barrier.cpp",
   "heap/verification.cpp",
   "heap/collector/collector.cpp",

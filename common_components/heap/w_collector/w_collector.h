@@ -220,6 +220,7 @@ private:
     void PreforwardConcurrencyModelRoots();
 
     void PrepareFix();
+    void ParallelFixHeap();
     void FixHeap(); // roots and ref-fields
     WeakRefFieldVisitor GetWeakRefFieldVisitor();
     RefFieldVisitor GetPrefowardRefFieldVisitor();

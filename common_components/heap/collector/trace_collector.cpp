@@ -403,9 +403,9 @@ void TraceCollector::Remark()
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Remark[STW]", "");
     COMMON_PHASE_TIMER("STW re-marking");
     RemarkAndPreforwardStaticRoots(workStack);
-    ConcurrentRemark(workStack, maxWorkers > 0);
+    ConcurrentRemark(workStack, maxWorkers > 0); // Mark enqueue
     TracingImpl(workStack, maxWorkers > 0, true);
-    MarkAwaitingJitFort();
+    MarkAwaitingJitFort(); // Mark awaiting
     ClearWeakStack(maxWorkers > 0);
 
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::TraceRoots END",

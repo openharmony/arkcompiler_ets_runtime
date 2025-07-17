@@ -27,6 +27,8 @@
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/free_region_manager.h"
 #include "common_components/heap/allocator/region_list.h"
+#include "common_components/heap/allocator/fix_heap.h"
+#include "common_components/heap/allocator/slot_list.h"
 
 namespace common {
 using JitFortUnProtHookType = void (*)(size_t size, void* base);
@@ -69,15 +71,8 @@ public:
         return RoundUp<size_t>(metadataSize, COMMON_PAGE_SIZE);
     }
 
-    // "recent" regions means thread local regions(full or not full) that are not included in current GC,
-    // objects in these regions after copy line are not needed to fix because barrier guarantee the correctness
-    static void FixRegionList(TraceCollector& collector, RegionList& list);
-    static void FixRecentPinnedRegionList(TraceCollector& collector, RegionList& list,
-                                          std::vector<std::pair<BaseObject*, size_t>> &pinnedRegionObject);
-    static void FixRecentRegionList(TraceCollector& collector, RegionList& list);
-    static void FixToRegionList(TraceCollector& collector, RegionList& list);
-    static void FixOldRegionList(TraceCollector& collector, RegionList& list);
-    static void FixRecentOldRegionList(TraceCollector& collector, RegionList& list);
+    void CollectFixTasks(FixHeapTaskList& taskList);
+    void CollectFixHeapTaskForPinnedRegion(TraceCollector& collector, RegionList& list, FixHeapTaskList& taskList);
 
     void Initialize(size_t regionNum, uintptr_t regionInfoStart);
 
@@ -98,10 +93,6 @@ public:
 
     RegionManager& operator=(const RegionManager&) = delete;
 
-    void FixAllRegionLists();
-    void FixPinnedRegionList(TraceCollector& collector, RegionList& list,
-                             std::vector<std::pair<BaseObject*, size_t>>& pinnedRegionObject,
-                             GCStats& stats);
     void FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
 
     using RootSet = MarkStack<BaseObject*>;

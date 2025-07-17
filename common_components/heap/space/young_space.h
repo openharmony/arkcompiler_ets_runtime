@@ -28,6 +28,7 @@
 #include "common_components/heap/space/regional_space.h"
 #include "common_components/heap/space/from_space.h"
 #include "common_components/mutator/mutator.h"
+#include "common_components/heap/allocator/fix_heap.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
@@ -42,11 +43,11 @@ public:
 
     void DumpRegionStats() const;
 
-    void FixAllRegions()
+    void CollectFixTasks(FixHeapTaskList &taskList)
     {
-        TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
-        RegionManager::FixRecentRegionList(collector, tlRegionList_);
-        RegionManager::FixRecentRegionList(collector, recentFullRegionList_);
+        std::lock_guard<std::mutex> lock(lock_);
+        FixHeapWorker::CollectFixHeapTasks(taskList, tlRegionList_, FIX_RECENT_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, recentFullRegionList_, FIX_RECENT_REGION);
     }
 
     void AddThreadLocalRegion(RegionDesc* region)

@@ -44,11 +44,10 @@ public:
 
     void DumpRegionStats() const;
 
-    void FixAllRegions()
+    void CollectFixTasks(FixHeapTaskList &taskList)
     {
-        TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
-        RegionManager::FixToRegionList(collector, fullToRegionList_);
-        RegionManager::FixToRegionList(collector, tlToRegionList_);
+        FixHeapWorker::CollectFixHeapTasks(taskList, tlToRegionList_, FIX_TO_REGION);
+        FixHeapWorker::CollectFixHeapTasks(taskList, fullToRegionList_, FIX_TO_REGION);
     }
 
     void AddFullRegion(RegionDesc* region)

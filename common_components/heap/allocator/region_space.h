@@ -214,13 +214,16 @@ public:
         fromSpace_.CopyFromRegions(threadPool);
     }
 
-    void FixHeap()
+    FixHeapTaskList CollectFixTasks()
     {
-        youngSpace_.FixAllRegions();
-        oldSpace_.FixAllRegions();
-        fromSpace_.FixAllRegions();
-        toSpace_.FixAllRegions();
-        regionManager_.FixAllRegionLists();
+        FixHeapTaskList taskList;
+        youngSpace_.CollectFixTasks(taskList);
+        oldSpace_.CollectFixTasks(taskList);
+        fromSpace_.CollectFixTasks(taskList);
+        toSpace_.CollectFixTasks(taskList);
+        regionManager_.CollectFixTasks(taskList);
+
+        return taskList;
     }
 
     void MarkAwaitingJitFort()
