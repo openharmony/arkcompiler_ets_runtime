@@ -91,9 +91,9 @@ public:
         TRIM_END,
     };
 
-    void SetRawHashcode(uint32_t rawHashCode)
+    void SetMixHashcode(uint32_t mixHashCode)
     {
-        return ToBaseString()->SetRawHashcode(rawHashCode);
+        ToBaseString()->SetMixHashcode(mixHashCode);
     }
 
 private:
@@ -134,8 +134,19 @@ private:
     static uint32_t CalculateConcatHashCode(const JSThread *thread,
                                             const JSHandle<EcmaString> &firstString,
                                             const JSHandle<EcmaString> &secondString);
+
+    bool HashIntegerString(uint32_t length, uint32_t *hash, uint32_t hashSeed) const;
+
+    inline bool IsInteger(const JSThread* thread)
+    {
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
+        };
+        return ToBaseString()->IsInteger(std::move(readBarrier));
+    }
+
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
-        uint32_t length, bool compressed);
+                                            uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static bool SubStringIsUtf8(const EcmaVM *vm,
@@ -209,16 +220,21 @@ private:
     // if string is not flat, this func has low efficiency.
     uint32_t PUBLIC_API GetHashcode(const JSThread *thread)
     {
-        uint32_t hashcode = ToBaseString()->GetRawHashcode();
-        // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
-        if (hashcode == 0 && GetLength() != 0) {
-            hashcode = ComputeRawHashcode(thread);
-            SetRawHashcode(hashcode);
-        }
-        return hashcode;
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
+        };
+        return ToBaseString()->GetHashcode(std::move(readBarrier));
     }
 
-    uint32_t PUBLIC_API ComputeRawHashcode(const JSThread *thread) const;
+    // not change this data structure.
+    // if string is not flat, this func has low efficiency.
+    uint32_t PUBLIC_API ComputeHashcode(const JSThread *thread) const
+    {
+        auto readBarrier = [thread](const void* obj, size_t offset)-> TaggedObject* {
+            return Barriers::GetTaggedObject(thread, obj, offset);
+        };
+        return ToBaseString()->ComputeHashcode(std::move(readBarrier));
+    }
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress);
     static uint32_t ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length);
@@ -988,7 +1004,7 @@ public:
 
     uint32_t ComputeHashcode(const JSThread *thread)
     {
-        return string_->ComputeRawHashcode(thread);
+        return string_->ComputeHashcode(thread);
     }
 
     static uint32_t ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)

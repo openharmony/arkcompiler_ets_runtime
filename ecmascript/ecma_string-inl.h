@@ -32,7 +32,7 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 {
     auto string = vm->GetFactory()->AllocNonMovableLineStringObject(BaseString::SIZE);
     string->InitLengthAndFlags(0, true);
-    string->SetRawHashcode(0);
+    string->SetMixHashcode(0);
     return string;
 }
 

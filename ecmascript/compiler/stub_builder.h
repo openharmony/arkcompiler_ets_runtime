@@ -590,7 +590,7 @@ public:
     void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);
     void CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
-    inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
+    inline void SetMixHashcode(GateRef glue, GateRef str, GateRef mixHashcode);
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef GetFirstFromTreeString(GateRef glue, GateRef string);
     GateRef GetSecondFromTreeString(GateRef glue, GateRef string);
@@ -1068,8 +1068,6 @@ public:
     void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
                                      GateRef dstAddr, GateRef length, GateRef needBarrier);
     GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);
-    void ComputeRawHashcode(GateRef glue, Label *exit, Variable* result, StringInfoGateRef stringGate, bool isUtf8);
-    GateRef ComputeStringHashcode(GateRef glue, GateRef str);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);

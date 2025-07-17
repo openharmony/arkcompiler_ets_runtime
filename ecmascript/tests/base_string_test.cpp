@@ -1520,8 +1520,8 @@ namespace panda::test {
             thread, EcmaStringAccessor::CreateLineString(instance, sizeAlloc, true));
         JSHandle<EcmaString> handleEcmaStrAllocNotComp(
             thread, EcmaStringAccessor::CreateLineString(instance, sizeAlloc, false));
-        EXPECT_EQ(handleEcmaStrAllocComp->ToBaseString()->GetRawHashcode(), 0U);
-        EXPECT_EQ(handleEcmaStrAllocNotComp->ToBaseString()->GetRawHashcode(), 0U);
+        EXPECT_EQ(handleEcmaStrAllocComp->ToBaseString()->GetMixHashcode(), 0U);
+        EXPECT_EQ(handleEcmaStrAllocNotComp->ToBaseString()->GetMixHashcode(), 0U);
     }
 
     /*

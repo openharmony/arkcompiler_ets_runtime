@@ -417,6 +417,16 @@ uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t siz
 uint32_t EcmaString::CalculateConcatHashCode(const JSThread *thread, const JSHandle<EcmaString> &firstString,
                                              const JSHandle<EcmaString> &secondString)
 {
+    uint32_t hashCode;
+    uint32_t firstLength = firstString->GetLength();
+    uint32_t secondLength = secondString->GetLength();
+    if ((firstLength + secondLength < BaseString::MAX_ELEMENT_INDEX_LEN) &&
+        firstString->IsUtf8() && secondString->IsUtf8() &&
+        firstString->IsInteger(thread) && secondString->IsInteger(thread)) {
+        firstString->HashIntegerString(firstLength, &hashCode, 0);
+        secondString->HashIntegerString(secondLength, &hashCode, hashCode);
+        return hashCode;
+    }
     bool isFirstStringUtf8 = EcmaStringAccessor(firstString).IsUtf8();
     bool isSecondStringUtf8 = EcmaStringAccessor(secondString).IsUtf8();
     EcmaString *firstStr = *firstString;
@@ -449,6 +459,13 @@ uint32_t EcmaString::CalculateConcatHashCode(const JSThread *thread, const JSHan
         return  CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
                                             dataSecond, secondStr->GetLength());
     }
+}
+
+bool EcmaString::HashIntegerString(uint32_t length, uint32_t *hash, const uint32_t hashSeed) const
+{
+    ASSERT(length >= 0);
+    Span<const uint8_t> str = FastToUtf8Span();
+    return BaseString::HashIntegerString(str.data(), length, hash, hashSeed);
 }
 
 // static
@@ -572,15 +589,6 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
         UNREACHABLE();
     }
     return true;
-}
-
-// hashSeed only be used when computing two separate strings merged hashcode.
-uint32_t EcmaString::ComputeRawHashcode(const JSThread *thread) const
-{
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
-        return Barriers::GetTaggedObject(thread, obj, offset);
-    };
-    return ToBaseString()->ComputeRawHashcode(std::move(readBarrier));
 }
 
 /* static */

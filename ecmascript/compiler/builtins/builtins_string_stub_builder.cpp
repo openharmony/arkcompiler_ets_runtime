@@ -2493,7 +2493,7 @@ GateRef BuiltinsStringStubBuilder::AllocateLineString(GateRef glue, GateRef leng
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, lineString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, lineString,
-                   builder_.IntPtr(BaseString::RAW_HASHCODE_OFFSET), builder_.Int32(0));
+                   builder_.IntPtr(BaseString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
     auto ret = builder_.FinishAllocate(lineString);
     builder_.SubCfgExit();
     return ret;
@@ -2519,7 +2519,7 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, slicedString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, slicedString,
-                   builder_.IntPtr(BaseString::RAW_HASHCODE_OFFSET), builder_.Int32(0));
+                   builder_.IntPtr(BaseString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
     builder_.Store(VariableType::JS_POINTER(), glue, slicedString,
                    builder_.IntPtr(SlicedString::PARENT_OFFSET), flatString);
     StoreStartIndexAndBackingStore(glue, slicedString, builder_.Int32(0), builder_.Boolean(true));

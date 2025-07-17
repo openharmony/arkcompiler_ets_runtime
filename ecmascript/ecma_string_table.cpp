@@ -287,7 +287,7 @@ EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm
     EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len,
         MemSpaceType::SHARED_OLD_SPACE);
     JSHandle<EcmaString> strHandle(thread, str);
-    strHandle->SetRawHashcode(hashcode);
+    strHandle->SetMixHashcode(hashcode);
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
@@ -331,7 +331,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaSt
         EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
     JSHandle<EcmaString> flattenConcatHandle(thread,
         EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE));
-    flattenConcatHandle->SetRawHashcode(hashcode);
+    flattenConcatHandle->SetMixHashcode(hashcode);
     return AtomicGetOrInternStringImpl(thread, flattenConcatHandle, hashcode);
 }
 
@@ -351,7 +351,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
     }
     JSHandle<EcmaString> strHandle(thread,
         EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type));
-    strHandle->SetRawHashcode(hashcode);
+    strHandle->SetMixHashcode(hashcode);
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
@@ -378,7 +378,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16
     }
     JSHandle<EcmaString> strHandle(thread,
         EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE));
-    strHandle->SetRawHashcode(hashcode);
+    strHandle->SetMixHashcode(hashcode);
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
@@ -435,7 +435,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
     }
     EcmaString *str = nullptr;
     str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
-    str->SetRawHashcode(hashcode);
+    str->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(str, hashcode);
     return str;
 }
@@ -462,7 +462,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
         return result;
     }
     EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm, u16Buffer.data(), utf16Len, false, type);
-    str->SetRawHashcode(hashcode);
+    str->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(str, hashcode);
     return str;
 }
@@ -573,7 +573,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm,
     JSHandle<EcmaString> concatHandle(thread,
         EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
     EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
-    concatString->SetRawHashcode(hashcode);
+    concatString->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(concatString, hashcode);
     return concatString;
 }
@@ -590,7 +590,7 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uin
     }
     EcmaString *str =
         EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
-    str->SetRawHashcode(hashcode);
+    str->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(str, hashcode);
     return str;
 }

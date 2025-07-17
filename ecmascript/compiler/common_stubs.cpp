@@ -1922,14 +1922,6 @@ void FindEntryFromNameDictionaryStubBuilder::GenerateCircuit()
     Return(entry);
 }
 
-void ComputeStringHashcodeStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef str = PtrArgument(1);
-    GateRef hash = ComputeStringHashcode(glue, str);
-    Return(hash);
-}
-
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

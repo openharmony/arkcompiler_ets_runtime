@@ -13378,65 +13378,6 @@ GateRef StubBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
     return env_->GetBuilder()->ThreeInt64Min(first, second, third);
 }
 
-void StubBuilder::ComputeRawHashcode(GateRef glue, Label *exit, Variable* result, StringInfoGateRef stringGate, bool isUtf8)
-{
-    auto env= GetEnvironment();
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label doLoop(env);
-    GateRef hashShift = Int32(static_cast<uint32_t>(BaseString::HASH_SHIFT));
-    GateRef length = stringGate.GetLength();
-    GateRef data = GetNormalStringData(glue, stringGate);
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH_LIKELY(Int32LessThan(*i, length), &doLoop, exit);
-        Bind(&doLoop);
-        {
-            GateRef offset = isUtf8 ? *i : Int32LSL(*i, Int32(1));
-            GateRef c = LoadPrimitive(isUtf8 ? VariableType::INT8() : VariableType::INT16(), data, offset);
-            GateRef u32c = isUtf8 ? ZExtInt8ToInt32(c) : ZExtInt16ToInt32(c);
-            GateRef preHash = result->ReadVariable();
-            result->WriteVariable(Int32Add(Int32Sub(Int32LSL(preHash, hashShift), preHash), u32c));
-            Jump(&loopEnd);
-        }
-    }
-    Bind(&loopEnd);
-    i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead);
-}
-
-GateRef StubBuilder::ComputeStringHashcode(GateRef glue, GateRef str)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-
-    FlatStringStubBuilder flatBuilder(this);
-    Label afterFlatten(env);
-    flatBuilder.FlattenString(glue, str, &afterFlatten);
-    Bind(&afterFlatten);
-    StringInfoGateRef stringInfoGate(&flatBuilder);
-    Label isUtf8(env);
-    Label isUtf16(env);
-    BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
-    Bind(&isUtf8);
-    {
-        ComputeRawHashcode(glue, &exit, &result, stringInfoGate, true);
-    }
-    Bind(&isUtf16);
-    {
-        ComputeRawHashcode(glue, &exit, &result, stringInfoGate, false);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef StubBuilder::GetCurrentGlobalEnv(GateRef glue, GateRef currentEnv)
 {
     auto env0 = GetEnvironment();

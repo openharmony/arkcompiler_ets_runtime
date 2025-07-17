@@ -156,7 +156,6 @@ namespace panda::ecmascript::kungfu {
     V(FindEntryFromNameDictionary)    \
     V(ReverseBarrier)                 \
     V(GetValueWithBarrier)            \
-    V(ComputeStringHashcode)          \
     V(DefineNormalFuncForJit)         \
     V(DefineArrowFuncForJit)          \
     V(DefineBaseConstructorForJit)    \

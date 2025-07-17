@@ -39,7 +39,9 @@ int NameDictionary::Hash(const JSThread *thread, const JSTaggedValue &key)
 // for ohmurl path to compute hash code
 int NameDictionary::Hash(const uint8_t* str, int strSize)
 {
-    return BaseString::ComputeHashForData(str, strSize, 0);
+    uint32_t hash = BaseString::ComputeHashForData(str, strSize, 0);
+    // url path can not be small int.
+    return BaseString::MixHashcode(hash, BaseString::NOT_INTEGER);
 }
 
 bool NameDictionary::IsMatch([[maybe_unused]] const JSThread *thread, const JSTaggedValue &key,

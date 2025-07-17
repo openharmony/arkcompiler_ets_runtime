@@ -1330,9 +1330,9 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, GateRef length, boo
     return Circuit::NullGate();
 }
 
-void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
+void CircuitBuilder::SetMixHashcode(GateRef glue, GateRef str, GateRef mixHashcode)
 {
-    Store(VariableType::INT32(), glue, str, IntPtr(BaseString::RAW_HASHCODE_OFFSET), rawHashcode);
+    Store(VariableType::INT32(), glue, str, IntPtr(BaseString::MIX_HASHCODE_OFFSET), mixHashcode);
 }
 
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
@@ -1385,12 +1385,13 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value, GateR
     Label noRawHashcode(env_);
     Label exit(env_);
     DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
-    hashcode = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(BaseString::RAW_HASHCODE_OFFSET));
+    hashcode = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(BaseString::MIX_HASHCODE_OFFSET));
     BRANCH(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = CallCommonStub(glue, hir, CommonStubCSigns::ComputeStringHashcode, {glue, value});
-        Store(VariableType::INT32(), glue, value, IntPtr(BaseString::RAW_HASHCODE_OFFSET), *hashcode);
+        hashcode = GetInt32OfTInt(
+            CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, {value}, hir));
+        Store(VariableType::INT32(), glue, value, IntPtr(BaseString::MIX_HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1407,8 +1408,8 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label storeHash(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
-    GateRef hashCode = ZExtInt32ToInt64(
-        LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::RAW_HASHCODE_OFFSET)));
+    GateRef hashCode =
+        ZExtInt32ToInt64(LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(BaseString::MIX_HASHCODE_OFFSET)));
     BRANCH(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {
