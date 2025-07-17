@@ -117,7 +117,7 @@ private:
 
     void WriteBinBlock();
 
-    void IncreaseFileIndex(uint32_t size)
+    void IncreaseFileIndex(int size)
     {
         current_ += size;
         fileSize_ += size;
