@@ -1068,42 +1068,6 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionAndObject)
     ASSERT_TRUE(strMatched7);
 }
 
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestAllocationMassiveMoveNode)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"allocation.abc";
-    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-
-    // start allocation
-    bool start = heapProfile->StartHeapTracking(50);
-    EXPECT_TRUE(start);
-
-    auto currentTime = std::chrono::system_clock::now();
-    auto currentTimeBeforeMs =
-        std::chrono::time_point_cast<std::chrono::milliseconds>(currentTime).time_since_epoch().count();
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "allocation");
-
-    currentTime = std::chrono::system_clock::now();
-    auto currentTimeAfterMs =
-        std::chrono::time_point_cast<std::chrono::milliseconds>(currentTime).time_since_epoch().count();
-    EXPECT_TRUE(result);
-
-    std::string fileName = "test.allocationtime";
-    fstream outputString(fileName, std::ios::out);
-    outputString.close();
-    outputString.clear();
-
-    // stop allocation
-    FileStream stream(fileName.c_str());
-    bool stop = heapProfile->StopHeapTracking(&stream, nullptr);
-    EXPECT_TRUE(stop);
-    HeapProfilerInterface::Destroy(ecmaVm_);
-
-    auto timeSpent = currentTimeAfterMs - currentTimeBeforeMs;
-    long long int limitedTimeMs = 30000;
-    ASSERT_TRUE(timeSpent < limitedTimeMs);
-}
-
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName1)
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
