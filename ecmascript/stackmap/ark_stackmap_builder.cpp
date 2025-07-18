@@ -86,7 +86,7 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::GenerateArkSta
     ARKCallsiteAOTFileInfo AOTFileInfo;
     GenArkCallsiteAOTFileInfo(stackMapInfo, AOTFileInfo, triple);
     uint32_t secSize = AOTFileInfo.secHead.secSize;
-    uint8_t *p = new(std::nothrow) uint8_t[secSize];
+    uint8_t *p = new(std::nothrow) uint8_t[secSize]();
     if (p == nullptr) {
         LOG_FULL(FATAL) << "new secSize:0x" << std::hex << secSize << " failed";
     }
