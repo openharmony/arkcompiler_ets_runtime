@@ -102,3 +102,15 @@ function func3(element, index, arr) {
     return element === 100;
 }
 print(arr6.findLast(func3));
+
+{
+    function call(obj, ...args) {
+        obj.findLast(...args);
+    }
+    var v1 = new Array(5);
+    function f1() {
+        return v1.pop();
+    }
+    call(v1, f1);
+    print("test findeLast & pop success");
+}
