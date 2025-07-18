@@ -150,13 +150,29 @@ void TraceCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, Glo
 void TraceCollector::ProcessWeakStack(WeakStack &weakStack)
 {
     while (!weakStack.empty()) {
-        RefField<>& field = reinterpret_cast<RefField<>&>(*weakStack.back());
+        auto [fieldPointer, offset] = *weakStack.back();
         weakStack.pop_back();
+        ASSERT_LOGF(offset % sizeof(RefField<>) == 0, "offset is not aligned");
+
+        RefField<> &field = reinterpret_cast<RefField<>&>(*fieldPointer);
         RefField<> oldField(field);
+
         BaseObject* targetObj = oldField.GetTargetObject();
         if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
             RegionSpace::IsNewObjectSinceTrace(targetObj)) {
             continue;
+        }
+
+        BaseObject* obj = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(&field) - offset);
+        auto regionType = RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(obj))
+                              ->GetRegionType();
+        // the object might be trimed then forwarded, we need to make sure toField still points to the current object
+        if (regionType == RegionDesc::RegionType::FROM_REGION && obj->IsForwarded() &&
+            obj->GetSizeForwarded() > offset) {
+            BaseObject *toObj = obj->GetForwardingPointer();
+            RefField<> &toField = *reinterpret_cast<RefField<>*>(reinterpret_cast<uintptr_t>(toObj) + offset);
+
+            toField.ClearRef(oldField.GetFieldValue());
         }
         field.ClearRef(oldField.GetFieldValue());
     }
@@ -339,10 +355,11 @@ bool TraceCollector::AddWeakStackClearWork(WeakStack &weakStack,
 bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
 {
     RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-    if (gcReason_ == GCReason::GC_REASON_YOUNG && regionInfo->IsInOldSpace()) {
+    if (gcReason_ == GCReason::GC_REASON_YOUNG && !regionInfo->IsInYoungSpace()) {
         DLOG(ENUM, "enum: skip old object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
         return false;
     }
+
     // inline MarkObject
     bool marked = regionInfo->MarkObject(obj);
     if (!marked) {
@@ -350,12 +367,11 @@ bool TraceCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
         regionInfo->AddLiveByteCount(obj->GetSize());
         DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
              regionInfo, regionInfo->GetRegionType(), regionInfo->GetRegionStart(), regionInfo->GetLiveByteCount());
-    }
-    if (marked) {
+        workStack->push_back(obj);
+        return true;
+    } else {
         return false;
     }
-    workStack->push_back(obj);
-    return true;
 }
 
 void TraceCollector::PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots)
