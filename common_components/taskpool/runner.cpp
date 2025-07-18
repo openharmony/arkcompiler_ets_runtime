@@ -20,10 +20,6 @@
 #include "qos.h"
 #endif
 
-#ifdef ENABLE_RSS
-#include "res_sched_client.h"
-#endif
-
 namespace common {
 Runner::Runner(uint32_t threadNum, const std::function<void(native_handle_type)> prologueHook,
     const std::function<void(native_handle_type)> epilogueHook)
@@ -109,21 +105,6 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
         default:
             UNREACHABLE();
             break;
-    }
-#endif
-}
-
-void Runner::SetRssPriority([[maybe_unused]] RssPriorityType type)
-{
-#ifdef ENABLE_RSS
-    std::lock_guard<std::mutex> guard(mtx_);
-    int64_t status = static_cast<int64_t>(type);
-    for (uint32_t threadId : gcThreadId_) {
-        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
-                                                    { "tid", std::to_string(threadId) } };
-        OHOS::ResourceSchedule::ResSchedClient::GetInstance()
-            .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,
-            status, payLoad);
     }
 #endif
 }

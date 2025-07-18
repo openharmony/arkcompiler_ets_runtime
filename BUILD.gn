@@ -502,10 +502,6 @@ config("ark_jsruntime_common_config") {
     defines += [ "ANDROID_PLATFORM" ]
   }
 
-  if (enable_rss) {
-    defines += [ "ENABLE_RSS" ]
-  }
-
   if (is_ohos && is_standard_system && !is_arkui_x &&
       defined(global_parts_info) &&
       defined(global_parts_info.resourceschedule_qos_manager)) {
