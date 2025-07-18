@@ -2278,4 +2278,16 @@ for (let i = 0; i < 2; i++) {
 }
 assert_equal([0, 1, 2, 3].copyWithin(0, 1, -10), [0,1,2,3]);
 
+var arr1 = new Array(1);
+var arr2 = arr1.splice(16310, -2, '9');
+arr2.length = 60627;
+arr2.fill(51442, 53470);
+var fn = function() 
+{
+    arr2.length = 23670;
+    arr2.length = 53125;
+    arr2.fill(53470, 44166, 127);
+}
+assert_equal(arr2.reduce(fn, 44166), undefined);
+
 test_end();
