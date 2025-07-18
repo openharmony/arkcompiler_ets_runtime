@@ -167,7 +167,7 @@ const std::unordered_map<std::string, std::string> argsMapForTest {
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
 {
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::CODE_LANGUAGE, "1.1");
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "dynamic");
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
@@ -183,7 +183,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
 {
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::CODE_LANGUAGE, "1.2");
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
