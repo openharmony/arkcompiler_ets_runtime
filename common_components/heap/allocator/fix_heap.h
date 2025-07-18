@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <stack>
+#include <vector>
 #include "common_components/taskpool/task.h"
 namespace common {
 
