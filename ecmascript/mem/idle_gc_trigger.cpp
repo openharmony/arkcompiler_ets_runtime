@@ -98,9 +98,7 @@ bool IdleGCTrigger::TryTriggerIdleSharedOldGC()
         !sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
         return false;
     }
-    if (ReachIdleSharedPartialGCThresholds()) {
-        return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
-    } else if (ReachIdleSharedGCThresholds()) {
+    if (ReachIdleSharedGCThresholds()) {
         return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
     }
     return false;
