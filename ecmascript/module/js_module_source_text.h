@@ -166,16 +166,17 @@ public:
                                    const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
     static bool IsNativeModule(const CString &moduleRequestName);
     static ModuleTypes GetNativeModuleType(const CString &moduleRequestName);
-    static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
-    static void MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    static JSHandle<JSTaggedValue> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
+    static EcmaRuntimeCallInfo* MakeNormalizedAppArgs(const EcmaVM *vm, JSHandle<JSTaggedValue> func,
         const CString &soPath, const CString &moduleName);
-    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-        const CString &soPath, const CString &moduleName, const CString &requestName);
-    static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-                                 const CString &moduleRequestName);
-    static Local<JSValueRef> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
+    static EcmaRuntimeCallInfo* MakeAppArgs(const EcmaVM *vm, JSHandle<JSTaggedValue> func, const CString &soPath,
+        const CString &moduleName, const CString &requestName);
+    static EcmaRuntimeCallInfo* MakeInternalArgs(const EcmaVM *vm, JSHandle<JSTaggedValue> func, const CString &soPath,
+        const CString &moduleRequestName);
+    static JSHandle<JSTaggedValue> LoadNativeModuleCallFunc(EcmaVM *vm, EcmaRuntimeCallInfo* info);
+    static JSHandle<JSTaggedValue> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
         const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
-    static Local<JSValueRef> LoadNativeModuleMayThrowError(JSThread *thread,
+    static JSHandle<JSTaggedValue> LoadNativeModuleMayThrowError(JSThread *thread,
         const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
     static bool LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                  ModuleTypes moduleType);
@@ -443,6 +444,7 @@ public:
     static JSHandle<JSTaggedValue> CreateBindingByIndexBinding(JSThread* thread,
                                                                JSHandle<ResolvedIndexBinding> binding,
                                                                bool isShared);
+
     // Find function in JsModuleSourceText For Hook
     static JSHandle<JSTaggedValue> FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
                                                            const std::string &namespaceName,
