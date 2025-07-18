@@ -2581,7 +2581,7 @@ void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
     LLVMAtomicOrdering atomic_order = LLVMAtomicOrderingSequentiallyConsistent;
     switch (order.GetOrder()) {
         case MemoryAttribute::NOT_ATOMIC: {
-            atomic_order = LLVMAtomicOrderingNotAtomic;
+            atomic_order = LLVMAtomicOrderingMonotonic;
             break;
         }
         default: {
