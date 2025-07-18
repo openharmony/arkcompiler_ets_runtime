@@ -159,16 +159,21 @@ group("common_components_js_unittest") {
     deps += [
       "common_components/base/tests:unittest",
       "common_components/common_runtime/tests:unittest",
-
-      #"common_components/heap/allocator/tests:unittest",
+      "common_components/common/tests:unittest",
+      "common_components/heap/allocator/tests:unittest",
       "common_components/heap/barrier/tests:unittest",
-
-      #"common_components/heap/collector/tests:unittest",
+      "common_components/heap/collector/tests:unittest",
+      "common_components/heap/space/tests:unittest",
       "common_components/heap/w_collector/tests:unittest",
+      "common_components/heap/tests:unittest",
       "common_components/mutator/tests:unittest",
       "common_components/objects/tests:unittest",
+      "common_components/profiler/tests:unittest",
+      "common_components/serialize/tests:unittest",
       "common_components/thread/tests:unittest",
       "common_components/log/tests:unittest",
+      "common_components/platform/unix/tests:unittest",
+      "common_components/taskpool/tests:unittest",
     ]
   }
 }
@@ -181,16 +186,21 @@ group("common_components_unittest") {
     deps += [
       "common_components/base/tests:host_unittest",
       "common_components/common_runtime/tests:host_unittest",
-
-      #"common_components/heap/allocator/tests:host_unittest",
+      "common_components/common/tests:host_unittest",
+      "common_components/heap/allocator/tests:host_unittest",
       "common_components/heap/barrier/tests:host_unittest",
-
-      #"common_components/heap/collector/tests:host_unittest",
+      "common_components/heap/collector/tests:host_unittest",
+      "common_components/heap/space/tests:host_unittest",
       "common_components/heap/w_collector/tests:host_unittest",
+      "common_components/heap/tests:host_unittest",
       "common_components/mutator/tests:host_unittest",
       "common_components/objects/tests:host_unittest",
+      "common_components/profiler/tests:host_unittest",
+      "common_components/serialize/tests:host_unittest",
       "common_components/thread/tests:host_unittest",
       "common_components/log/tests:host_unittest",
+      "common_components/platform/unix/tests:host_unittest",
+      "common_components/taskpool/tests:host_unittest",
     ]
   }
 }

@@ -25,7 +25,7 @@ namespace common {
 // collector. However, it actually manages a set of collectors implemented yet, and delegate garbage-collecting to
 // one of these collectors.
 // CollectorProxy should inherit collector interfaces, but no datas
-class CollectorProxy final : public Collector {
+class CollectorProxy : public Collector {
 public:
     explicit CollectorProxy(Allocator& allocator, CollectorResources& resources)
         : wCollector_(allocator, resources)

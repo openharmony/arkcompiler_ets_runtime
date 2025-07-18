@@ -85,7 +85,7 @@ public:
 
     void DecTotalCount(uint32_t cnt)
     {
-        if (totalCount_ < cnt) {
+        if (totalCount_ < cnt) { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Treap::DecTotalCount() Should not execute here, abort.";
             UNREACHABLE_CC();
         }
@@ -608,7 +608,7 @@ private:
             node = it.Next();
         }
 
-        if (total != GetTotalCount()) {
+        if (total != GetTotalCount()) { //LCOV_EXCL_BR_LINE
             DLOG(REGION, "c-tree %p total unit count %u (expect %u)", this, GetTotalCount(), total);
             DumpTree("internal error tree");
             LOG_COMMON(FATAL) << "Treap::VerifyTree() Should not execute here, abort.";

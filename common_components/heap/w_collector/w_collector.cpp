@@ -85,8 +85,8 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
             return false;
         }
         RefField<> tmpField(toObj, oldRef.IsWeak());
-        if (field.CompareExchange(oldRef.GetFieldValue(), tmpField.GetFieldValue())) {
-            if (obj != nullptr) {
+        if (field.CompareExchange(oldRef.GetFieldValue(), tmpField.GetFieldValue())) { //LCOV_EXCL_BR_LINE
+            if (obj != nullptr) { //LCOV_EXCL_BR_LINE
                 DLOG(TRACE, "update obj %p<%p>(%zu)+%zu ref-field@%p: %#zx -> %#zx", obj, obj->GetTypeInfo(),
                     obj->GetSize(), BaseObject::FieldOffset(obj, &field), &field, oldRef.GetFieldValue(),
                     tmpField.GetFieldValue());
@@ -132,7 +132,7 @@ bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject
             target = oldRef.GetTargetObject();
             RefField<> newRef(target);
             if (field.CompareExchange(oldRef.GetFieldValue(), newRef.GetFieldValue())) { //LCOV_EXCL_BR_LINE
-                if (obj != nullptr) {
+                if (obj != nullptr) { //LCOV_EXCL_BR_LINE
                     DLOG(FIX, "untag obj %p<%p>(%zu) ref-field@%p: %#zx -> %#zx", obj, obj->GetTypeInfo(),
                          obj->GetSize(), &field, oldRef.GetFieldValue(), newRef.GetFieldValue());
                 } else { //LCOV_EXCL_BR_LINE
@@ -300,7 +300,7 @@ public:
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
         if (collector_->IsFromObject(oldObj)) {
             BaseObject* toVersion = collector_->TryForwardObject(oldObj);
-            if (toVersion == nullptr) {
+            if (toVersion == nullptr) { //LCOV_EXCL_BR_LINE
                 Heap::throwOOM();
                 return;
             }
@@ -1012,7 +1012,7 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
             "is survived: " << (IsSurvivedObject(obj) ? "true" : "false");
     }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
-    if (toObj == nullptr) {
+    if (toObj == nullptr) { //LCOV_EXCL_BR_LINE
         Heap::throwOOM();
         // ConcurrentGC
         obj->UnlockExclusive(BaseStateWord::ForwardState::NORMAL);

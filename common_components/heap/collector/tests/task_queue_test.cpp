@@ -37,6 +37,7 @@ public:
     bool IsHeapObject(HeapAddress) const override { return false; }
 #endif
     void FeedHungryBuffers() override {}
+    size_t GetSurvivedSize() const override { return 0; }
 };
 
 class StubCollectorProxy : public CollectorProxy {

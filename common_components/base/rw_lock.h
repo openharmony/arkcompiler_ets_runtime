@@ -66,7 +66,7 @@ public:
     void UnlockRead()
     {
         int count = lockCount_.fetch_sub(1);
-        if (count < 0) {
+        if (count < 0) { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Unresolved fatal";
             UNREACHABLE_CC();
         }

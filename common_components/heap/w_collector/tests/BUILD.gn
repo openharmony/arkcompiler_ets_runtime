@@ -192,6 +192,7 @@ host_unittest_action("W_Collector_Test") {
 
   # hiviewdfx libraries
   external_deps = [
+    "bounds_checking_function:libsec_shared",
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",

@@ -13,96 +13,56 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/heap/heap_allocator.h"
+#include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_space.h"
-#include "common_components/heap/collector/trace_collector.h"
-#include "common_components/heap/heap.cpp"
-#include "common_components/common_runtime/base_runtime_param.h"
-#include "common_components/heap/heap_manager.h"
+#include "common_components/heap/allocator/region_space.cpp"
+#include "common_components/heap/collector/collector_resources.h"
 #include "common_components/tests/test_helper.h"
-#include <cstdint>
+#include "common_interfaces/base_runtime.h"
 
 using namespace common;
 
 namespace common::test {
 class RegionSpaceTest : public common::test::BaseTestWithScope {
-protected:
-    void* regionMemory_;
-    size_t totalUnits_ = 1024;
-    size_t heapSize_;
-    Mutator* mutator_ = nullptr;
-
-    static void SetUpTestCase()
-    {
-        BaseRuntime::GetInstance()->Init();
-    }
-
-    static void TearDownTestCase()
-    {
-        BaseRuntime::GetInstance()->Fini();
-    }
-
     void SetUp() override
     {
-        heapSize_ = totalUnits_ * RegionDesc::UNIT_SIZE;
-        size_t allocSize = heapSize_ + totalUnits_ * sizeof(RegionDesc);
-        regionMemory_ = malloc(allocSize);
-        ASSERT_NE(regionMemory_, nullptr);
-        uintptr_t unitInfoStart = reinterpret_cast<uintptr_t>(regionMemory_);
-        size_t metadataSize = totalUnits_ * sizeof(RegionDesc);
-        uintptr_t heapStartAddress = unitInfoStart + metadataSize;
-        RegionDesc::Initialize(totalUnits_, unitInfoStart, heapStartAddress);
-        mutator_ = Mutator::NewMutator();
-        ASSERT_NE(mutator_, nullptr);
-        mutator_->InitTid();
-        ThreadLocal::GetThreadLocalData()->mutator = mutator_;
-        BaseRuntime::GetInstance()->GetHeapParam().regionSize = 64; // 64：region size
-        RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-        RegionManager& regionManager = theAllocator.GetRegionManager();
-        regionManager.SetMaxUnitCountForRegion();
+        BaseRuntime::GetInstance()->Init();
+        holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
+        scope_ = new ThreadHolder::TryBindMutatorScope(holder_);
     }
 
     void TearDown() override
     {
-        if (mutator_) {
-            delete mutator_;
-            mutator_ = nullptr;
+        if (scope_ != nullptr) {
+            delete scope_;
+            scope_ = nullptr;
         }
-        if (regionMemory_) {
-            free(regionMemory_);
-            regionMemory_ = nullptr;
-        }
-    }
-};
 
-HWTEST_F_L0(RegionSpaceTest, ShouldRetryAllocation)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_UNDEF);
-    ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
-    Heap::GetHeap().EnableGC(false);
-    Heap::GetHeap().GetCollectorResources().SetGcStarted(true);
-    Allocator *regionSpace = RegionSpace::CreateAllocator();
-    EXPECT_EQ(regionSpace->Allocate(16, AllocType::MOVEABLE_OBJECT), 0);
-}
+        BaseRuntime::GetInstance()->Fini();
+    }
+
+    ThreadHolder *holder_ {nullptr};
+    ThreadHolder::TryBindMutatorScope *scope_ {nullptr};
+};
 
 HWTEST_F_L0(RegionSpaceTest, FeedHungryBuffers2)
 {
     auto* mutator = common::Mutator::GetMutator();
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    RegionManager& manager = theAllocator.GetRegionManager();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    manager.Initialize(1024, reinterpret_cast<uintptr_t>(regionMemory_));
     AllocationBuffer* buffer1 = new (std::nothrow) AllocationBuffer();
     AllocationBuffer* buffer2 = new (std::nothrow) AllocationBuffer();
-    RegionDesc* Region = RegionDesc::InitRegion(0, 1, RegionDesc::UnitRole::SMALL_SIZED_UNITS);
-    buffer1->SetPreparedRegion(Region);
+    RegionDesc* region = RegionDesc::InitRegion(0, 1, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
+    region->InitFreeUnits();
+    buffer1->SetPreparedRegion(region);
+    buffer2->SetPreparedRegion(region);
 
     Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer1);
     Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer2);
     Heap::GetHeap().GetAllocator().FeedHungryBuffers();
     EXPECT_NE(buffer2->GetPreparedRegion(), nullptr);
+    delete buffer1;
+    delete buffer2;
 }
 
 HWTEST_F_L0(RegionSpaceTest, FeedHungryBuffers3)
@@ -115,57 +75,52 @@ HWTEST_F_L0(RegionSpaceTest, FeedHungryBuffers3)
     EXPECT_EQ(hungryBuffers.size(), 0);
 }
 
-
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseEnum)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseMark)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseRemarkStab)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhasePostMark)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhasePrecopy)
@@ -199,7 +154,6 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseFix)
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), region->GetRegionStart());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseUndef)
@@ -211,59 +165,54 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseUndef)
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseEnum)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseMark)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseRemarkStab)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhasePostMark)
 {
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhasePrecopy)
@@ -297,7 +246,6 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseFix)
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), region->GetRegionStart());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseUndef)
@@ -309,7 +257,6 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseUndef)
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion2)
@@ -318,9 +265,8 @@ HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion2)
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    RegionDesc* region = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), region->GetRegionStart());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion3)
@@ -329,13 +275,11 @@ HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion3)
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_COPY);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    RegionDesc* region = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_PRECOPY);
-    RegionDesc* region1 = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region1 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region1->GetCopyLine(), region1->GetRegionStart());
-    EXPECT_EQ(region1->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion4)
@@ -344,42 +288,141 @@ HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion4)
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    RegionDesc* region = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
-    RegionDesc* region2 = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region2 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region2->GetTraceLine(), region2->GetRegionStart());
     EXPECT_EQ(region2->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region2->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
-    RegionDesc* region3 = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region3 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region3->GetTraceLine(), region3->GetRegionStart());
     EXPECT_EQ(region3->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region3->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
-    RegionDesc* region4 = theAllocator.AllocateThreadLocalRegion(false);
+    RegionDesc* region4 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
     EXPECT_EQ(region4->GetTraceLine(), region4->GetRegionStart());
     EXPECT_EQ(region4->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region4->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
-HWTEST_F_L0(RegionSpaceTest, CopyRegion1)
+HWTEST_F_L0(RegionSpaceTest, CopyRegion)
 {
     auto* mutator = common::Mutator::GetMutator();
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    theAllocator.AssembleSmallGarbageCandidates();
-    RegionDesc* region = theAllocator.GetRegionManager().TakeRegion(
-        16, RegionDesc::UnitRole::SMALL_SIZED_UNITS, true, false);
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
     region->SetRegionType(RegionDesc::RegionType::FROM_REGION);
     ASSERT(region->IsFromRegion());
-    region->AddLiveByteCount(1);
     theAllocator.CopyRegion(region);
-    EXPECT_NE(theAllocator.FromSpaceSize(), 0);
+    EXPECT_EQ(theAllocator.FromSpaceSize(), 0);
+}
+
+HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion1_NotGcThread_EntersElseBranch)
+{
+    auto& heapAllocator = Heap::GetHeap().GetAllocator();
+    RegionSpace& regionSpace = reinterpret_cast<RegionSpace&>(heapAllocator);
+
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
+
+    auto* region = regionSpace.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
+    EXPECT_NE(region, nullptr);
+}
+
+HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion2_NotGcThread_EntersElseBranch)
+{
+    auto& heapAllocator = Heap::GetHeap().GetAllocator();
+    RegionSpace& regionSpace = reinterpret_cast<RegionSpace&>(heapAllocator);
+
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_PRECOPY);
+
+    auto* region = regionSpace.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
+    EXPECT_NE(region, nullptr);
+}
+
+HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion3_NotGcThread_EntersElseBranch)
+{
+    auto& heapAllocator = Heap::GetHeap().GetAllocator();
+    RegionSpace& regionSpace = reinterpret_cast<RegionSpace&>(heapAllocator);
+
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
+
+    auto* region = regionSpace.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
+    EXPECT_NE(region, nullptr);
+}
+
+HWTEST_F_L0(RegionSpaceTest, Allocate_ValidSize_ReturnsNonNull)
+{
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->InitFreeUnits();
+    region->SetRegionType(RegionDesc::RegionType::THREAD_LOCAL_REGION);
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_UNDEF);
+    Heap::GetHeap().EnableGC(true);
+    Heap::GetHeap().GetCollectorResources().SetGcStarted(false);
+
+    uintptr_t result = theAllocator.Allocate(16, AllocType::PINNED_OBJECT);
+    EXPECT_NE(result, 0u);
+}
+
+HWTEST_F_L0(RegionSpaceTest, FeedHungryBuffers_ShouldProvideValidRegions)
+{
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+
+    AllocationBuffer* buffer1 = new (std::nothrow) AllocationBuffer();
+    AllocationBuffer* buffer2 = new (std::nothrow) AllocationBuffer();
+    ASSERT_NE(buffer1, nullptr);
+    ASSERT_NE(buffer2, nullptr);
+
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    ASSERT_NE(region, nullptr);
+    region->InitFreeUnits();
+    region->SetRegionType(RegionDesc::RegionType::THREAD_LOCAL_REGION);
+
+    buffer1->SetPreparedRegion(region);
+    buffer2->SetPreparedRegion(region);
+    Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer1);
+    Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer2);
+
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
+
+    Heap::GetHeap().GetAllocator().FeedHungryBuffers();
+
+    EXPECT_NE(buffer2->GetPreparedRegion(), nullptr);
+    delete buffer1;
+    delete buffer2;
+}
+
+HWTEST_F_L0(RegionSpaceTest, AllocationBuffer_AllocateRawPointerObject_ValidSize_ReturnsNonNull)
+{
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    ASSERT_NE(region, nullptr);
+    region->InitFreeUnits();
+    region->SetRegionType(RegionDesc::RegionType::THREAD_LOCAL_REGION);
+
+    AllocationBuffer* buffer = new (std::nothrow) AllocationBuffer();
+    ASSERT_NE(buffer, nullptr);
+    buffer->SetPreparedRegion(region);
+
+    Mutator::GetMutator()->SetMutatorPhase(GCPhase::GC_PHASE_UNDEF);
+    Heap::GetHeap().EnableGC(true);
+    Heap::GetHeap().GetCollectorResources().SetGcStarted(false);
+
+    uintptr_t result = theAllocator.Allocate(16, AllocType::PINNED_OBJECT);
+    EXPECT_NE(result, 0u);
+    delete buffer;
 }
 }

@@ -108,7 +108,7 @@ void TraceBarrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const
 void TraceBarrier::WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const
 {
     CHECK_CC(obj != nullptr);
-    if (obj != nullptr) {
+    if (obj != nullptr) { //LCOV_EXCL_BR_LINE
         ASSERT_LOGF(dst > reinterpret_cast<HeapAddress>(obj), "WriteStruct struct addr is less than obj!");
         Mutator* mutator = Mutator::GetMutator();
         if (mutator != nullptr) {

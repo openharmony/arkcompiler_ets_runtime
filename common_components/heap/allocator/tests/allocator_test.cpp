@@ -44,6 +44,7 @@ public:
     bool IsHeapObject(HeapAddress) const override { return false; }
 #endif
     void FeedHungryBuffers() override {}
+    size_t GetSurvivedSize() const override { return 0; }
 };
 class AllocatorTest : public common::test::BaseTestWithScope {
 };
@@ -51,8 +52,14 @@ class AllocatorTest : public common::test::BaseTestWithScope {
 HWTEST_F_L0(AllocatorTest, EnvNotSet)
 {
     unsetenv("arkEnableAsyncAllocation");
+
     TestAllocator allocator;
-    EXPECT_FALSE(allocator.GetIsAsyncAllocationEnable());
+    bool result = allocator.GetIsAsyncAllocationEnable();
+#if defined(PANDA_TARGET_OHOS)
+    EXPECT_TRUE(result);
+#else
+    EXPECT_FALSE(result);
+#endif
 }
 
 HWTEST_F_L0(AllocatorTest, InvalidLength)

@@ -135,7 +135,7 @@ protected:
     {
 #ifdef _WIN64
         void* result = VirtualAlloc(NULL, size, isCommit ? MEM_COMMIT : MEM_RESERVE, PAGE_READWRITE);
-        if (result == NULL) {
+        if (result == NULL) { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "allocate create page failed! Out of Memory!";
             UNREACHABLE_CC();
         }

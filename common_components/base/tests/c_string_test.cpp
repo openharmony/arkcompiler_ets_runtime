@@ -15,7 +15,6 @@
 
 #include "common_components/base/c_string.h"
 #include "common_components/tests/test_helper.h"
-#include <gtest/gtest.h>
 
 using namespace common;
 namespace common::test {
@@ -273,5 +272,138 @@ HWTEST_F_L0(CStringTest, ConstructTest)
     nonEmptyStr = emptyStr;
     EXPECT_EQ(nonEmptyStr.Length(), static_cast<size_t>(0));
     EXPECT_EQ(nonEmptyStr.Str()[0], '\0');
+}
+
+HWTEST_F_L0(CStringTest, FormatStringBasicTest)
+{
+    CString result = CString::FormatString("Hello, %s!", "World");
+    EXPECT_STREQ(result.Str(), "Hello, World!");
+}
+
+HWTEST_F_L0(CStringTest, FormatString_InvalidArguments_ReturnsError)
+{
+    CString result = CString::FormatString("%n", nullptr);
+    EXPECT_STREQ(result.Str(), "invalid arguments for FormatString");
+}
+
+HWTEST_F_L0(CStringTest, InsertMiddle_Success)
+{
+    CString str("helloworld");
+    EXPECT_STREQ(str.Insert(5, ", ").Str(), "hello, world");
+}
+
+HWTEST_F_L0(CStringTest, TruncateValidIndex_Success)
+{
+    CString str("hello world");
+    EXPECT_STREQ(str.Truncate(5).Str(), "hello");
+    EXPECT_EQ(str.Length(), static_cast<size_t>(5));
+}
+
+HWTEST_F_L0(CStringTest, GetStr_NonEmptyString_ReturnsCorrect)
+{
+    CString str("test string");
+    EXPECT_STREQ(str.GetStr(), "test string");
+}
+
+HWTEST_F_L0(CStringTest, CombineWithEmptyString_ReturnsOriginal)
+{
+    CString str("original");
+    CString emptyStr;
+    CString combined = str.Combine(emptyStr);
+    EXPECT_STREQ(combined.Str(), "original");
+    EXPECT_EQ(combined.Length(), str.Length());
+}
+
+HWTEST_F_L0(CStringTest, CombineWithEmptyCStr_ReturnsOriginal)
+{
+    CString str("original");
+    const char* emptyCStr = "";
+    CString combined = str.Combine(emptyCStr);
+    EXPECT_STREQ(combined.Str(), "original");
+    EXPECT_EQ(combined.Length(), str.Length());
+}
+
+HWTEST_F_L0(CStringTest, AppendNullptr_NoChange)
+{
+    CString str("original");
+    str.Append(nullptr, 5);
+    EXPECT_STREQ(str.Str(), "original");
+    EXPECT_EQ(str.Length(), strlen("original"));
+}
+
+HWTEST_F_L0(CStringTest, AppendZeroLength_NoChange)
+{
+    CString str("test");
+    CString emptyStr;
+
+    str.Append(emptyStr, 0);
+
+    EXPECT_STREQ(str.Str(), "test");
+    EXPECT_EQ(str.Length(), strlen("test"));
+}
+
+HWTEST_F_L0(CStringTest, AppendSelf_ValidResult)
+{
+    CString str("abc");
+    str.Append(str.Str(), str.Length());
+    EXPECT_STREQ(str.Str(), "abcabc");
+    EXPECT_EQ(str.Length(), strlen("abcabc"));
+}
+
+HWTEST_F_L0(CStringTest, AppendEmptyCString_NoChange)
+{
+    CString str("original");
+    CString emptyStr;
+    str.Append(emptyStr);
+    EXPECT_STREQ(str.Str(), "original");
+    EXPECT_EQ(str.Length(), strlen("original"));
+}
+
+HWTEST_F_L0(CStringTest, AppendEmptyCStringZeroLength_NoChange)
+{
+    CString str("test");
+    CString emptyStr;
+
+    str.Append(emptyStr, 0);
+
+    EXPECT_STREQ(str.Str(), "test");
+    EXPECT_EQ(str.Length(), strlen("test"));
+}
+
+HWTEST_F_L0(CStringTest, AppendValidCString_CorrectResult)
+{
+    CString str("hello");
+    CString addStr(" world!");
+    str.Append(addStr, strlen(addStr.Str()));
+    EXPECT_STREQ(str.Str(), "hello world!");
+    EXPECT_EQ(str.Length(), strlen("hello world!"));
+}
+
+HWTEST_F_L0(CStringTest, EnsureMultipleCalls_CapacityGrowsCorrectly)
+{
+    CString str("initial");
+    char* firstPtr = str.GetStr();
+
+    str.EnsureSpace(16);
+    char* secondPtr = str.GetStr();
+
+    EXPECT_NE(firstPtr, secondPtr);
+
+    str.EnsureSpace(100);
+    char* thirdPtr = str.GetStr();
+
+    EXPECT_NE(secondPtr, thirdPtr);
+    EXPECT_EQ(str.Length(), strlen("initial"));
+    EXPECT_STREQ(str.Str(), "initial");
+}
+
+HWTEST_F_L0(CStringTest, CStringSubscriptOperatorTest)
+{
+    const CString constStr("hello world");
+    EXPECT_EQ(constStr[0], 'h');
+
+    CString mutableStr("mutable");
+    mutableStr[0] = 'M';
+    EXPECT_EQ(mutableStr[0], 'M');
 }
 }

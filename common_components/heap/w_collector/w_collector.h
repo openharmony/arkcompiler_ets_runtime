@@ -49,7 +49,7 @@ enum class GCMode: uint8_t {
     STW = 2
 };
 
-class WCollector final : public TraceCollector {
+class WCollector : public TraceCollector {
 public:
     explicit WCollector(Allocator& allocator, CollectorResources& resources)
         : TraceCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))

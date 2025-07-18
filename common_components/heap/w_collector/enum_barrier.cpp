@@ -53,7 +53,7 @@ void EnumBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObj
     if (remeberedObject != nullptr) {
         mutator->RememberObjectInSatbBuffer(remeberedObject);
     }
-    if (ref != nullptr) {
+    if (ref != nullptr) { //LCOV_EXCL_BR_LINE
         mutator->RememberObjectInSatbBuffer(ref);
     }
     DLOG(BARRIER, "write obj %p ref@%p: 0x%zx -> %p", obj, &field, remeberedObject, ref);

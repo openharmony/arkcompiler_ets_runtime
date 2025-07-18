@@ -156,9 +156,8 @@ HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix1)
 
     uintptr_t start = region->GetRegionStart();
     region->SetRegionAllocPtr(start + SIZE_SIXTEEN);
-    region->SetFixLine();
     bool callbackCalled = false;
-    region->VisitAllObjectsBeforeFix([&](BaseObject* obj) {
+    region->VisitAllObjectsBeforeCopy([&](BaseObject* obj) {
         callbackCalled = true;
         EXPECT_EQ(obj, reinterpret_cast<BaseObject*>(region->GetRegionStart()));
     });
@@ -175,9 +174,8 @@ HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix2)
 
     uintptr_t start = region->GetRegionStart();
     region->SetRegionAllocPtr(start + SIZE_SIXTEEN);
-    region->SetFixLine();
     bool callbackCalled = false;
-    region->VisitAllObjectsBeforeFix([&](BaseObject* obj) {
+    region->VisitAllObjectsBeforeCopy([&](BaseObject* obj) {
         callbackCalled = true;
         EXPECT_EQ(obj, reinterpret_cast<BaseObject*>(region->GetRegionStart()));
     });
@@ -191,9 +189,9 @@ HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix3)
 
     RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
     ASSERT_NE(region, nullptr);
-    region->SetFixLine();
+
     bool callbackCalled = false;
-    region->VisitAllObjectsBeforeFix([&](BaseObject* obj) {
+    region->VisitAllObjectsBeforeCopy([&](BaseObject* obj) {
         callbackCalled = true;
         EXPECT_EQ(obj, reinterpret_cast<BaseObject*>(region->GetRegionStart()));
     });
@@ -207,9 +205,9 @@ HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix4)
 
     RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::SMALL_SIZED_UNITS);
     ASSERT_NE(region, nullptr);
-    region->SetFixLine();
+
     bool callbackCalled = false;
-    region->VisitAllObjectsBeforeFix([&](BaseObject* obj) {
+    region->VisitAllObjectsBeforeCopy([&](BaseObject* obj) {
         callbackCalled = true;
         EXPECT_EQ(obj, reinterpret_cast<BaseObject*>(region->GetRegionStart()));
     });
@@ -301,9 +299,9 @@ HWTEST_F_L0(RegionManagerTest, TakeRegion2)
     size_t nUnit = 1;
     manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
     RegionDesc* garbageRegion = RegionDesc::InitRegion(SIZE_HALF_MAX_TEST, nUnit,
-        RegionDesc::UnitRole::SMALL_SIZED_UNITS);
+        RegionDesc::UnitRole::LARGE_SIZED_UNITS);
     auto size = manager.CollectRegion(garbageRegion);
-    RegionDesc* region = manager.TakeRegion(16, RegionDesc::UnitRole::SMALL_SIZED_UNITS, true, false);
+    RegionDesc* region = manager.TakeRegion(16, RegionDesc::UnitRole::LARGE_SIZED_UNITS, true, false);
     EXPECT_NE(region, nullptr);
 }
 
@@ -314,15 +312,6 @@ HWTEST_F_L0(RegionManagerTest, AllocPinnedFromFreeList)
     RegionManager manager;
     manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
     EXPECT_EQ(manager.AllocPinnedFromFreeList(0), 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, FixAllRegionLists)
-{
-    Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.FixAllRegionLists();
-    EXPECT_EQ(Heap::GetHeap().GetGCReason(), GCReason::GC_REASON_YOUNG);
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly1)
@@ -345,11 +334,7 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly2)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly3)
@@ -361,11 +346,7 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly3)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly4)
@@ -377,10 +358,7 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly4)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly5)
@@ -392,10 +370,7 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly5)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly6)
@@ -407,10 +382,7 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly6)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetCopyLine(), region->GetRegionStart());
-    EXPECT_EQ(region->GetFixLine(), region->GetRegionStart());
 }
 
 HWTEST_F_L0(RegionManagerTest, AllocReadOnly7)
@@ -422,10 +394,96 @@ HWTEST_F_L0(RegionManagerTest, AllocReadOnly7)
     manager.ClearAllGCInfo();
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    RegionDesc* region = RegionDesc::GetRegionDescAt(ret);
     EXPECT_NE(ret, 0);
-    EXPECT_EQ(region->GetTraceLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
-    EXPECT_EQ(region->GetFixLine(), std::numeric_limits<uintptr_t>::max());
+}
+
+HWTEST_F_L0(RegionManagerTest, VisitRememberSetTest)
+{
+    size_t totalUnits = 1024;
+    size_t heapSize = totalUnits * RegionDesc::UNIT_SIZE;
+
+    void* regionMemory = malloc(heapSize + 4096);
+    ASSERT_NE(regionMemory, nullptr);
+
+    uintptr_t heapStartAddress = reinterpret_cast<uintptr_t>(regionMemory);
+    uintptr_t regionInfoAddr = heapStartAddress + 4096;
+
+    RegionManager manager;
+    manager.Initialize(totalUnits, regionInfoAddr);
+
+    size_t unitIdx = 0;
+    size_t nUnit = 4;
+    RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
+    ASSERT_NE(region, nullptr);
+
+    manager.MarkRememberSet([&](BaseObject* obj) {});
+
+    int callbackCount = 0;
+    region->VisitRememberSet([&](BaseObject* obj) {
+        callbackCount++;
+    });
+
+    EXPECT_GE(callbackCount, 0);
+    free(regionMemory);
+}
+
+HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeCopyTest)
+{
+    size_t totalUnits = 1024;
+    size_t heapSize = totalUnits * RegionDesc::UNIT_SIZE;
+
+    void* regionMemory = malloc(heapSize + 4096);
+    ASSERT_NE(regionMemory, nullptr);
+
+    uintptr_t heapStartAddress = reinterpret_cast<uintptr_t>(regionMemory);
+    uintptr_t regionInfoAddr = heapStartAddress + 4096;
+
+    RegionManager manager;
+    manager.Initialize(totalUnits, regionInfoAddr);
+
+    size_t unitIdx = 0;
+    size_t nUnit = 4;
+    RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
+    ASSERT_NE(region, nullptr);
+
+    manager.MarkRememberSet([&](BaseObject* obj) {});
+
+    int callbackCount = 0;
+    region->VisitRememberSetBeforeCopy([&](BaseObject* obj) {
+        callbackCount++;
+    });
+
+    EXPECT_GE(callbackCount, 0);
+    free(regionMemory);
+}
+
+HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeTraceTest)
+{
+    size_t totalUnits = 1024;
+    size_t heapSize = totalUnits * RegionDesc::UNIT_SIZE;
+
+    void* regionMemory = malloc(heapSize + 4096);
+    ASSERT_NE(regionMemory, nullptr);
+
+    uintptr_t heapStartAddress = reinterpret_cast<uintptr_t>(regionMemory);
+    uintptr_t regionInfoAddr = heapStartAddress + 4096;
+
+    RegionManager manager;
+    manager.Initialize(totalUnits, regionInfoAddr);
+
+    size_t unitIdx = 0;
+    size_t nUnit = 4;
+    RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
+    ASSERT_NE(region, nullptr);
+
+    manager.MarkRememberSet([&](BaseObject* obj) {});
+
+    int callbackCount = 0;
+    region->VisitRememberSetBeforeTrace([&](BaseObject* obj) {
+        callbackCount++;
+    });
+
+    EXPECT_GE(callbackCount, 0);
+    free(regionMemory);
 }
 }

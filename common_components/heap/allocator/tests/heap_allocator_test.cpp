@@ -13,15 +13,11 @@
  * limitations under the License.
  */
 
-#include <cstdint>
-
 #include "common_interfaces/heap/heap_allocator.h"
+#include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_space.h"
-#include "common_components/heap/collector/trace_collector.h"
-#include "common_components/heap/heap.cpp"
-#include "common_components/common_runtime/base_runtime_param.h"
-#include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
+#include "common_interfaces/base_runtime.h"
 
 using namespace common;
 
@@ -36,7 +32,11 @@ class HeapAllocatorTest : public BaseTestWithScope {
 
     void TearDown() override
     {
-        delete scope_;
+        if (scope_ != nullptr) {
+            delete scope_;
+            scope_ = nullptr;
+        }
+
         BaseRuntime::GetInstance()->Fini();
     }
 
@@ -46,7 +46,7 @@ class HeapAllocatorTest : public BaseTestWithScope {
 
 HWTEST_F_L0(HeapAllocatorTest, AllocLargeObject)
 {
-    uintptr_t addr = common::HeapAllocator::Allocate(Heap::NORMAL_UNIT_SIZE, common::LanguageType::DYNAMIC);
+    uintptr_t addr = common::HeapAllocator::AllocateInHuge(Heap::NORMAL_UNIT_SIZE, common::LanguageType::DYNAMIC);
     ASSERT(addr > 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
     ASSERT(region->IsLargeRegion());

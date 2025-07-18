@@ -114,7 +114,7 @@ bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
             tryTimes--;
         }
         return true;
-    } else {
+    } else { //LCOV_EXCL_BR_LINE
         Heap::throwOOM();
         return false;
     }
@@ -225,7 +225,7 @@ HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
     } else if (LIKELY_CC(allocType == AllocType::MOVEABLE_OBJECT || allocType == AllocType::MOVEABLE_OLD_OBJECT)) {
         AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
         internalAddr = allocBuffer->Allocate(allocSize, allocType);
-    } else {
+    } else { //LCOV_EXCL_BR_LINE
         // Unreachable for serialization
         UNREACHABLE_CC();
     }

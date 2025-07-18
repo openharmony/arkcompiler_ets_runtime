@@ -34,6 +34,52 @@ host_unittest_action("C_String_Test") {
   external_deps = [
     "icu:shared_icui18n",
     "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Mem_Utils_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "mem_utils_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+}
+
+host_unittest_action("Utf_Helper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "utf_helper_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
     "runtime_core:libarkassembler_static",
   ]
 }
@@ -44,6 +90,8 @@ group("unittest") {
   # deps file
   deps = [
     ":C_String_Test",
+    ":Mem_Utils_Test",
+    ":Utf_Helper_Test",
   ]
 }
 
@@ -53,5 +101,7 @@ group("host_unittest") {
   # deps file
   deps = [
     ":C_String_TestAction",
+    ":Mem_Utils_TestAction",
+    ":Utf_Helper_TestAction",
   ]
 }

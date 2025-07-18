@@ -74,18 +74,6 @@ public:
     void RemoveRawPointerObject(BaseObject*) override {}
 };
 
-class MockCollectorUnmovableTest : public MockCollector {
-public:
-    bool IsFromObject(BaseObject*) const override
-    {
-        return true;
-    }
-    bool IsUnmovableFromObject(BaseObject*) const override
-    {
-        return true;
-    }
-};
-
 class MockCollectorForwardTest : public MockCollector {
 public:
     bool IsFromObject(BaseObject*) const override
@@ -94,6 +82,12 @@ public:
     }
     bool TryForwardRefField(BaseObject*, RefField<>&, BaseObject*&) const override
     {
+        static bool isForward = false;
+        if (!isForward) {
+            isForward = true;
+            return false;
+        }
+
         return true;
     }
 };

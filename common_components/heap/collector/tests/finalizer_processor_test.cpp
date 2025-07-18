@@ -35,12 +35,12 @@ protected:
 
     void SetUp() override
     {
-        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::GC_THREAD);
+        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::ARK_PROCESSOR);
     }
 
     void TearDown() override
     {
-        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::GC_THREAD);
+        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::ARK_PROCESSOR);
     }
 };
 
@@ -123,12 +123,10 @@ HWTEST_F_L0(FinalizerProcessorTest, Run_TEST1)
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
     new (obj) BaseObject();
-    AllocationBuffer* buffer1 = new (std::nothrow) AllocationBuffer();
-    AllocationBuffer* buffer2 = new (std::nothrow) AllocationBuffer();
-    RegionDesc* Region = RegionDesc::InitRegion(0, 1, RegionDesc::UnitRole::SMALL_SIZED_UNITS);
-    buffer1->SetPreparedRegion(Region);
-    Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer1);
-    Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer2);
+    AllocationBuffer* buffer = new (std::nothrow) AllocationBuffer();
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    buffer->SetPreparedRegion(region);
+    Heap::GetHeap().GetAllocator().AddHungryBuffer(*buffer);
     finalizerProcessor.RegisterFinalizer(obj);
     finalizerProcessor.Start();
     std::thread notifier([&]() {
@@ -140,6 +138,7 @@ HWTEST_F_L0(FinalizerProcessorTest, Run_TEST1)
     notifier.join();
     std::this_thread::sleep_for(std::chrono::seconds(TWO_SECONDS));
     finalizerProcessor.Stop();
-    EXPECT_NE(buffer2->GetPreparedRegion(), nullptr);
+    EXPECT_NE(buffer->GetPreparedRegion(), nullptr);
+    delete buffer;
 }
 } // namespace common::test

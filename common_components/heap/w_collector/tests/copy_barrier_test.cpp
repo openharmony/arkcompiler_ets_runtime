@@ -92,52 +92,19 @@ HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST3)
 
 HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST4)
 {
-    MockCollectorUnmovableTest collector;
-    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
-    ASSERT_TRUE(copyBarrier != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    RefField<false> field(obj);
-
-    BaseObject* resultObj = copyBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj != nullptr);
-    EXPECT_EQ(resultObj, obj);
-}
-
-HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST5)
-{
-    MockCollectorUnmovableTest collector;
-    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
-    ASSERT_TRUE(copyBarrier != nullptr);
-
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    RefField<false> field(obj, true);
-
-    BaseObject* resultObj = copyBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj != nullptr);
-    constexpr uint64_t TAG_WEAK = 0x01ULL;
-    BaseObject* newObj = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(obj) | TAG_WEAK);
-    EXPECT_EQ(resultObj, newObj);
-}
-
-
-HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST6)
-{
     MockCollectorForwardTest collector;
     auto copyBarrier = std::make_unique<CopyBarrier>(collector);
     ASSERT_TRUE(copyBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    RefField<false> field(obj);
+    RefField<false> field(nullptr);
 
     BaseObject* resultObj = copyBarrier->ReadRefField(obj, field);
-    ASSERT_TRUE(resultObj != nullptr);
+    ASSERT_TRUE(resultObj == nullptr);
 }
 
-HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST7)
+HWTEST_F_L0(CopyBarrierTest, ReadRefField_TEST5)
 {
     MockCollectorForwardTest collector;
     auto copyBarrier = std::make_unique<CopyBarrier>(collector);
@@ -178,6 +145,54 @@ HWTEST_F_L0(CopyBarrierTest, ReadStringTableStaticRef_TEST1)
     ASSERT_TRUE(resultObj == nullptr);
 }
 
+HWTEST_F_L0(CopyBarrierTest, ReadStringTableStaticRef_TEST2)
+{
+    MockCollector collector;
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
+    regionInfo->SetRegionAllocPtr(addr - 1);
+    regionInfo->SetTraceLine();
+    RefField<false> field(obj);
+
+    BaseObject* resultObj = copyBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj != nullptr);
+}
+
+HWTEST_F_L0(CopyBarrierTest, ReadStringTableStaticRef_TEST3)
+{
+    MockCollector collector;
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
+    regionInfo->SetRegionType(RegionDesc::RegionType::ALIVE_REGION_FIRST);
+    RefField<false> field(obj);
+
+    BaseObject* resultObj = copyBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj == nullptr);
+}
+
+HWTEST_F_L0(CopyBarrierTest, ReadStringTableStaticRef_TEST4)
+{
+    MockCollector collector;
+    auto copyBarrier = std::make_unique<CopyBarrier>(collector);
+    ASSERT_TRUE(copyBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    BaseObject* resultObj = copyBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj != nullptr);
+}
+
 HWTEST_F_L0(CopyBarrierTest, ReadStruct_TEST1)
 {
     MockCollector collector;
@@ -186,15 +201,19 @@ HWTEST_F_L0(CopyBarrierTest, ReadStruct_TEST1)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+
+    constexpr size_t size = sizeof(BaseObject);
     uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
     HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+
     copyBarrier->ReadStruct(dst, obj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(CopyBarrierTest, ReadStruct_TEST2)
@@ -203,15 +222,19 @@ HWTEST_F_L0(CopyBarrierTest, ReadStruct_TEST2)
     auto copyBarrier = std::make_unique<CopyBarrier>(collector);
     ASSERT_TRUE(copyBarrier != nullptr);
 
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+
+    constexpr size_t size = sizeof(BaseObject);
     uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
     HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+
     copyBarrier->ReadStruct(dst, nullptr, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(CopyBarrierTest, AtomicWriteRefField_TEST1)

@@ -109,7 +109,7 @@ public:
             auto reason = static_cast<GCReason>(prio - PRIO_INVOKE_GC);
             auto gcType = reason == GC_REASON_YOUNG ? GC_TYPE_YOUNG : GC_TYPE_FULL;
             return GCRunner(GCTaskType::GC_TASK_INVOKE_GC, reason, gcType);
-        } else {
+        } else { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Invalid priority in GetGCRequestByPrio function";
             UNREACHABLE_CC();
             return GCRunner();

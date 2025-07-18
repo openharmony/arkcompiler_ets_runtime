@@ -40,12 +40,64 @@ host_unittest_action("Base_String_Test") {
   ]
 }
 
+host_unittest_action("Base_String_Table_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "base_string_table_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("Composite_Base_Class_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "composite_base_class_test.cpp",
+    "//arkcompiler/ets_runtime/common_components/objects/base_string.cpp",
+    "//arkcompiler/ets_runtime/common_components/base/utf_helper.cpp",
+    "base_string_table_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
+
 group("unittest") {
   testonly = true
 
   # deps file
   deps = [
     ":Base_String_Test",
+    ":Base_String_Table_Test",
+    ":Composite_Base_Class_Test",
   ]
 }
 
@@ -55,5 +107,7 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Base_String_TestAction",
+    ":Base_String_Table_TestAction",
+    ":Composite_Base_Class_TestAction",
   ]
 }
